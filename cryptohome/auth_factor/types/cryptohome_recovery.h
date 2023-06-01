@@ -33,7 +33,8 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
-      public AfDriverNoDelay {
+      public AfDriverNoDelay,
+      public AfDriverNoExpiration {
  public:
   explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto)
       : crypto_(crypto) {}

@@ -54,7 +54,8 @@ class PasswordAuthFactorDriver final
       public AfDriverWithMetadata<PasswordAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
-      public AfDriverNoDelay {
+      public AfDriverNoDelay,
+      public AfDriverNoExpiration {
  public:
   PasswordAuthFactorDriver() = default;
 

@@ -30,7 +30,8 @@ class LegacyFingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<>,
       public AfDriverWithMetadata<std::monostate>,
       public AfDriverFullAuthUnsupported,
-      public AfDriverNoDelay {
+      public AfDriverNoDelay,
+      public AfDriverNoExpiration {
  public:
   explicit LegacyFingerprintAuthFactorDriver(
       FingerprintAuthBlockService* fp_service)

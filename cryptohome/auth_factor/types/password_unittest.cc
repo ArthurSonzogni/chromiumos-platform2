@@ -141,6 +141,20 @@ TEST_F(PasswordDriverTest, GetDelayFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
+TEST_F(PasswordDriverTest, GetExpirationFails) {
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordAuthFactorMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
+
+  auto expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(expired, NotOk());
+  EXPECT_THAT(expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(PasswordDriverTest, PrepareForAddFails) {
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;

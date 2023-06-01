@@ -200,6 +200,15 @@ class AfDriverNoDelay : public virtual AuthFactorDriver {
       const ObfuscatedUsername& username, const AuthFactor& factor) final;
 };
 
+// Common implementation of the expiration functions for drivers which do not
+// support availability expiration.
+class AfDriverNoExpiration : public virtual AuthFactorDriver {
+ private:
+  bool IsExpirationSupported() const final { return false; }
+  CryptohomeStatusOr<bool> IsExpired(const ObfuscatedUsername& username,
+                                     const AuthFactor& factor) final;
+};
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_

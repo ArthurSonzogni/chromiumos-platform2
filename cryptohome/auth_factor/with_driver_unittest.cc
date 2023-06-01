@@ -174,7 +174,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
   EXPECT_THAT(intents, IsEmpty());
 }
 
-TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
+TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   AuthFactor fp_factor = CreateFactor(AuthFactorType::kFingerprint,
                                       FingerprintAuthFactorMetadata(),
                                       FingerprintAuthBlockState{});
@@ -185,6 +185,27 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(0));
+
+  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+
+  EXPECT_THAT(intents, IsEmpty());
+}
+
+TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
+  AuthFactor fp_factor = CreateFactor(AuthFactorType::kFingerprint,
+                                      FingerprintAuthFactorMetadata(),
+                                      FingerprintAuthBlockState{});
+  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillOnce(ReturnValue(true));
+  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
+      .WillRepeatedly(
+          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(15));
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
@@ -202,8 +223,10 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
+      .WillRepeatedly(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(15));
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 

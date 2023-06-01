@@ -35,7 +35,8 @@ class SmartCardAuthFactorDriver final
       public AfDriverWithMetadata<SmartCardAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
-      public AfDriverNoDelay {
+      public AfDriverNoDelay,
+      public AfDriverNoExpiration {
  public:
   SmartCardAuthFactorDriver(
       Crypto* crypto,

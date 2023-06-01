@@ -25,6 +25,15 @@ base::flat_set<AuthIntent> GetSupportedIntents(
     return {};
   }
 
+  // If the driver supports expiration lockout, and the factor is currently
+  // expired then no intents are available.
+  if (driver.IsExpirationSupported()) {
+    auto is_expired = driver.IsExpired(username, auth_factor);
+    if (is_expired.value_or(true)) {
+      return {};
+    }
+  }
+
   // If the driver supports delay or lockout, and the factor is currently locked
   // then no intents are available. If the delay lookup fails then we assume
   // that the factor is not working correctly and so is also unavailable.

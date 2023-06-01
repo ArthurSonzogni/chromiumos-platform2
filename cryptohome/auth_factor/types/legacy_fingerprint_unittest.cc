@@ -194,6 +194,20 @@ TEST_F(LegacyFingerprintDriverTest, GetDelayFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
+TEST_F(LegacyFingerprintDriverTest, GetExpirationFails) {
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  AuthFactor factor(AuthFactorType::kLegacyFingerprint, "",
+                    CreateMetadataWithType<std::monostate>(),
+                    {.state = std::monostate()});
+
+  auto expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(expired, NotOk());
+  EXPECT_THAT(expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 // Verify that the legacy fingerprint verifier cannot be created with a label.
 TEST_F(LegacyFingerprintDriverTest, CreateCredentialVerifierFailsWithLabel) {
   LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);

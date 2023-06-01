@@ -236,6 +236,20 @@ TEST_F(PinDriverTest, GetDelayZero) {
   EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
+TEST_F(PinDriverTest, GetExpirationFails) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinAuthFactorMetadata>(),
+                    {.state = PinWeaverAuthBlockState()});
+
+  auto expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(expired, NotOk());
+  EXPECT_THAT(expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(PinDriverTest, CreateCredentialVerifierFails) {
   PinAuthFactorDriver pin_driver(&crypto_);
   AuthFactorDriver& driver = pin_driver;

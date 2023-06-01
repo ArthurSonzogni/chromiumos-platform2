@@ -148,6 +148,20 @@ TEST_F(KioskDriverTest, GetDelayFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
+TEST_F(KioskDriverTest, GetExpirationFails) {
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  AuthFactor factor(AuthFactorType::kKiosk, kLabel,
+                    CreateMetadataWithType<KioskAuthFactorMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
+
+  auto expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(expired, NotOk());
+  EXPECT_THAT(expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(KioskDriverTest, CreateCredentialVerifierFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;

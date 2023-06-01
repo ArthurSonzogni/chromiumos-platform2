@@ -32,7 +32,8 @@ class KioskAuthFactorDriver final
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
-      public AfDriverNoDelay {
+      public AfDriverNoDelay,
+      public AfDriverNoExpiration {
  public:
   KioskAuthFactorDriver() = default;
 

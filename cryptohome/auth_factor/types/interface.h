@@ -105,6 +105,15 @@ class AuthFactorDriver {
   virtual CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
       const ObfuscatedUsername& username, const AuthFactor& factor) = 0;
 
+  // This returns if a type supports availability expiration.
+  virtual bool IsExpirationSupported() const = 0;
+
+  // Given an AuthFactor instance, attempt to determine whether it is expired.
+  // Returns a not-OK status if the expiration cannot be determined or the type
+  // does not support expiration.
+  virtual CryptohomeStatusOr<bool> IsExpired(const ObfuscatedUsername& username,
+                                             const AuthFactor& factor) = 0;
+
   // Return an enum indicating the label arity of the auth factor (e.g. does the
   // factor support single-label authentication or multi-label authentication).
   virtual AuthFactorLabelArity GetAuthFactorLabelArity() const = 0;

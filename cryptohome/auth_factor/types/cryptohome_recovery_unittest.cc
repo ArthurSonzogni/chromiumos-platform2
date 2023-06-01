@@ -162,6 +162,21 @@ TEST_F(CryptohomeRecoveryDriverTest, GetDelayFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
+TEST_F(CryptohomeRecoveryDriverTest, GetExpirationFails) {
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  AuthFactor factor(
+      AuthFactorType::kCryptohomeRecovery, kLabel,
+      CreateMetadataWithType<CryptohomeRecoveryAuthFactorMetadata>(),
+      {.state = CryptohomeRecoveryAuthBlockState()});
+
+  auto expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(expired, NotOk());
+  EXPECT_THAT(expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(CryptohomeRecoveryDriverTest, CreateCredentialVerifierFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;

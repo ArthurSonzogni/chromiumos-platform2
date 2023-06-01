@@ -143,6 +143,55 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
   }
 }
 
+bool FingerprintAuthFactorDriver::IsExpirationSupported() const {
+  return true;
+}
+
+CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
+    const ObfuscatedUsername& username, const AuthFactor& factor) {
+  // Do all the error checks to make sure the input is useful.
+  if (factor.type() != type()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredWrongFactorType),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  if (!user_metadata_reader_) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthFactorFingerprintIsExpiredNoUserMetadataReader),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  CryptohomeStatusOr<UserMetadata> user_metadata =
+      user_metadata_reader_->Load(username);
+  if (!user_metadata.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed))
+        .Wrap(std::move(user_metadata).err_status());
+  }
+  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredNoLabel),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  // Try and extract the expiration from the LE credential manager.
+  LECredStatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
+      crypto_->le_manager()->GetExpirationInSeconds(
+          *user_metadata->fingerprint_rate_limiter_id);
+  if (!time_until_expiration_in_seconds.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredReadFailed))
+        .Wrap(std::move(time_until_expiration_in_seconds).err_status());
+  }
+  // If |time_until_expiration_in_seconds| is nullopt, the leaf has no
+  // expiration.
+  return time_until_expiration_in_seconds->has_value() &&
+         time_until_expiration_in_seconds->value() == 0;
+}
+
 AuthFactorLabelArity FingerprintAuthFactorDriver::GetAuthFactorLabelArity()
     const {
   return AuthFactorLabelArity::kMultiple;

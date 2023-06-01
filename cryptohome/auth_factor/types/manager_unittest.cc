@@ -253,6 +253,28 @@ TEST_F(AuthFactorDriverManagerTest, IsDelaySupported) {
                 "All types of AuthFactorType are not all included here");
 }
 
+// Test AuthFactorDriver::IsExpirationSupported. We do this here instead of in a
+// per-driver test because the check is trivial enough that one test is simpler
+// to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsExpirationSupported) {
+  auto has_expiration = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsExpirationSupported();
+  };
+
+  EXPECT_THAT(has_expiration(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(has_expiration(AuthFactorType::kFingerprint), IsTrue());
+
+  EXPECT_THAT(has_expiration(AuthFactorType::kUnspecified), IsFalse());
+
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
 // Test AuthFactorDriver::GetAuthFactorLabelArity. We do this here instead of in
 // a per-driver test because the check is trivial enough that one test is
 // simpler to validate than N separate tests.

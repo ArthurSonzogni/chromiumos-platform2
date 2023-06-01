@@ -1717,6 +1717,18 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFingerprintGetFactorDelayNoLabel = 3395,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintGetFactorDelayReadFailed = 3396,
+  /* ./auth_factor/types/common.cc */
+  kLocAuthFactorCommonIsExpiredUnsupported = 3397,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredWrongFactorType = 3398,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredNoUserMetadataReader = 3399,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed = 3400,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredNoLabel = 3401,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredReadFailed = 3402,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

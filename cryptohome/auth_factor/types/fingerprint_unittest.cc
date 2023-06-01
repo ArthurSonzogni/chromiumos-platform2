@@ -364,6 +364,70 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
   EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
+TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
+  FingerprintAuthFactorDriver fp_driver(
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
+      &mock_user_metadata_reader_);
+  AuthFactorDriver& driver = fp_driver;
+
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<FingerprintAuthFactorMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
+
+  EXPECT_CALL(mock_user_metadata_reader_, Load)
+      .WillOnce(ReturnError<CryptohomeError>(
+          kErrorLocationPlaceholder, ErrorActionSet(),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+
+  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(is_expired, NotOk());
+  EXPECT_THAT(is_expired.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+}
+
+TEST_F(FingerprintDriverTest, IsNotExpired) {
+  FingerprintAuthFactorDriver fp_driver(
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
+      &mock_user_metadata_reader_);
+  AuthFactorDriver& driver = fp_driver;
+
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<FingerprintAuthFactorMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
+  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
+      .WillOnce(
+          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(10));
+
+  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(is_expired, IsOk());
+  EXPECT_FALSE(*is_expired);
+}
+
+TEST_F(FingerprintDriverTest, IsExpired) {
+  FingerprintAuthFactorDriver fp_driver(
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
+      &mock_user_metadata_reader_);
+  AuthFactorDriver& driver = fp_driver;
+
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<FingerprintAuthFactorMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
+  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
+      .WillOnce(
+          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(0));
+
+  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
+  ASSERT_THAT(is_expired, IsOk());
+  EXPECT_TRUE(*is_expired);
+}
+
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_,

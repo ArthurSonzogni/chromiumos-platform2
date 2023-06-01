@@ -63,6 +63,9 @@ class FingerprintAuthFactorDriver final
   bool IsDelaySupported() const override;
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
       const ObfuscatedUsername& username, const AuthFactor& factor) override;
+  bool IsExpirationSupported() const override;
+  CryptohomeStatusOr<bool> IsExpired(const ObfuscatedUsername& username,
+                                     const AuthFactor& factor) override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
