@@ -79,6 +79,9 @@ constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
 
 const base::FilePath kEffectsRunningMarker("/run/camera/effects_running");
 const base::TimeDelta kEffectsRunningMarkerLifetime = base::Seconds(10);
+// TODO(b:242631540) Find permanent location for this file
+const base::FilePath kOverrideEffectsConfigFile(
+    "/run/camera/effects/effects_config_override.json");
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -300,6 +303,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
                    uint32_t height);
 
   std::unique_ptr<ReloadableConfigFile> config_;
+  base::FilePath config_file_path_;
+  bool override_config_exists_ GUARDED_BY_CONTEXT(gl_thread_checker_) = false;
   RuntimeOptions* runtime_options_;
   StreamManipulator::Callbacks callbacks_;
 
@@ -381,7 +386,8 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
     RuntimeOptions* runtime_options,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     void (*callback)(bool))
-    : runtime_options_(runtime_options),
+    : config_file_path_(config_file_path),
+      runtime_options_(runtime_options),
       still_capture_processor_(std::move(still_capture_processor)),
       gl_thread_("EffectsGlThread"),
       set_effect_callback_(callback) {
@@ -787,7 +793,17 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig());
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
-    SetEffect(new_config);
+    // Ignore the mojo config if the override config file is being used. This is
+    // to avoid race conditions in tests where Chrome is also setting a default
+    // (no-op) config mojo. Note that this flag isn't unset, so the camera
+    // service must be restarted after the override config file has been
+    // deleted.
+    if (!override_config_exists_) {
+      SetEffect(new_config);
+    } else {
+      LOGF(WARNING) << "Override config exists, ignoring mojo effect settings: "
+                    << kOverrideEffectsConfigFile;
+    }
   }
 
   auto timestamp = TryGetSensorTimestamp(&result);
@@ -1123,11 +1139,11 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
 void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     const base::Value::Dict& json_values) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
-  if (!pipeline_) {
-    LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
-    return;
-  }
   LOGF(INFO) << "Reloadable Options update detected";
+  CHECK(pipeline_);
+
+  override_config_exists_ = base::PathExists(kOverrideEffectsConfigFile);
+
   EffectsConfig new_config;
   std::string effect;
   if (GetStringFromKey(json_values, kEffectKey, &effect)) {
@@ -1235,20 +1251,17 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
 
 void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
-  if (pipeline_) {
-    // The maximum number of in-flight frames is determined in this SM.
-    CHECK_GT(graph_max_frames_in_flight_, 0);
-    new_config.graph_max_frames_in_flight =
-        base::checked_cast<int>(graph_max_frames_in_flight_);
+  CHECK(pipeline_);
+  // The maximum number of in-flight frames is determined in this SM.
+  CHECK_GT(graph_max_frames_in_flight_, 0);
+  new_config.graph_max_frames_in_flight =
+      base::checked_cast<int>(graph_max_frames_in_flight_);
 
-    pipeline_->SetEffect(&new_config, set_effect_callback_);
-    last_set_effect_config_ = new_config;
+  pipeline_->SetEffect(&new_config, set_effect_callback_);
+  last_set_effect_config_ = new_config;
 
-    if (new_config.HasEnabledEffects()) {
-      metrics_.RecordSelectedEffect(new_config);
-    }
-  } else {
-    LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
+  if (new_config.HasEnabledEffects()) {
+    metrics_.RecordSelectedEffect(new_config);
   }
 }
 
@@ -1256,18 +1269,6 @@ bool EffectsStreamManipulatorImpl::SetupGlThread(
     base::FilePath config_file_path) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS();
-
-  config_ =
-      std::make_unique<ReloadableConfigFile>(ReloadableConfigFile::Options{
-          .default_config_file_path = std::move(config_file_path),
-          .override_config_file_path =
-              base::FilePath(kOverrideEffectsConfigFile),
-      });
-  if (!config_->IsValid()) {
-    LOGF(WARNING) << "Cannot load valid config";
-  }
-  config_->SetCallback(base::BindRepeating(
-      &EffectsStreamManipulatorImpl::OnOptionsUpdated, base::Unretained(this)));
 
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
@@ -1292,6 +1293,7 @@ bool EffectsStreamManipulatorImpl::SetupGlThread(
 
 void EffectsStreamManipulatorImpl::CreatePipeline(
     const base::FilePath& dlc_root_path) {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   // Check to see if the cache dir is empty, and if so,
   // point the pipeline to the prebuilt cache as this may
   // indicate the opencl_cacher tool hasn't had the chance
@@ -1318,6 +1320,17 @@ void EffectsStreamManipulatorImpl::CreatePipeline(
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulatorImpl::OnFrameProcessed,
                           base::Unretained(this))));
+
+  config_ =
+      std::make_unique<ReloadableConfigFile>(ReloadableConfigFile::Options{
+          .default_config_file_path = config_file_path_,
+          .override_config_file_path = kOverrideEffectsConfigFile,
+      });
+  if (!config_->IsValid()) {
+    LOGF(WARNING) << "Cannot load valid JSON config";
+  }
+  config_->SetCallback(base::BindRepeating(
+      &EffectsStreamManipulatorImpl::OnOptionsUpdated, base::Unretained(this)));
 }
 
 void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {

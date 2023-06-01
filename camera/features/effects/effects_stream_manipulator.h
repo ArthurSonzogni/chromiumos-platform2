@@ -19,10 +19,6 @@ class StillCaptureProcessor;
 
 class EffectsStreamManipulator : public StreamManipulator {
  public:
-  // TODO(b:242631540) Find permanent location for this file
-  static constexpr const char kOverrideEffectsConfigFile[] =
-      "/run/camera/effects/effects_config_override.json";
-
   static std::unique_ptr<EffectsStreamManipulator> Create(
       base::FilePath config_file_path,
       RuntimeOptions* runtime_options,
