@@ -58,6 +58,11 @@ static bool ReadFileRelativeToDirFD(const int dir_fd,
     return false;
   }
 
+  absl::Cleanup close_file = [=] {
+    if (close(fd) == -1)
+      PLOG(ERROR) << "Failed to close file " << filename;
+  };
+
   FILE* fs = fdopen(fd, "r");
   if (!fs) {
     PLOG(ERROR) << "Failed to obtain FD for " << filename << " file";
@@ -121,7 +126,7 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
 
   absl::Cleanup close_dir = [=] {
     if (closedir(pid_dir_ptr) == -1)
-      PLOG(ERROR) << "Failed to close " << pid_path;
+      PLOG(ERROR) << "Failed to close dir " << pid_path;
   };
 
   int pid_dir_fd = HANDLE_EINTR(dirfd(pid_dir_ptr));
