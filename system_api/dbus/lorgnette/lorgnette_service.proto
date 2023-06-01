@@ -298,6 +298,10 @@ message StartScannerDiscoveryRequest {
   // may still be sent for network scanners if other discovery sessions are
   // active.
   bool local_only = 3;
+
+  // If true, only return the preferred backend for devices that are discovered
+  // by multiple backends.
+  bool preferred_only = 4;
 }
 
 // Response from the StartScannerDiscovery d-bus method.

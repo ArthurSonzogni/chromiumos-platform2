@@ -72,4 +72,12 @@ std::optional<std::string> UsbDeviceImpl::GetStringDescriptor(uint8_t index) {
   return std::string((const char*)buf.data(), bytes);
 }
 
+uint8_t UsbDeviceImpl::GetBusNumber() const {
+  return libusb_get_bus_number(device_);
+}
+
+uint8_t UsbDeviceImpl::GetDeviceAddress() const {
+  return libusb_get_device_address(device_);
+}
+
 }  // namespace lorgnette

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include "base/containers/flat_set.h"
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
@@ -23,6 +24,7 @@
 #include <metrics/metrics_library.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+#include "lorgnette/firewall_manager.h"
 
 using brillo::dbus_utils::DBusMethodResponse;
 
@@ -89,8 +91,10 @@ class DeviceTracker {
     std::string client_id;
     base::Time start_time;
     BackendDownloadPolicy dlc_policy;
+    std::unique_ptr<PortToken> port_token;
     bool dlc_started;
     bool local_only;
+    bool preferred_only;
   };
 
   std::optional<DiscoverySessionState*> GetSession(
@@ -106,7 +110,7 @@ class DeviceTracker {
   void ProbeIPPUSBDevice(std::string session_id,
                          std::unique_ptr<UsbDevice> device);
   void EnumerateSANEDevices(std::string session_id);
-  void ProbeSANEDevice(std::string session_id);
+  void ProbeSANEDevice(std::string session_id, const ScannerInfo& scanner_info);
   void SendEnumerationCompletedSignal(std::string session_id);
   void SendSessionEndingSignal(std::string session_id);
 
@@ -138,6 +142,16 @@ class DeviceTracker {
   // dangling pointers if a session is closed while discovery events are
   // pending.
   base::flat_map<std::string, DiscoverySessionState> discovery_sessions_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // The vid and pid in the format vid:pid of all previously discovered
+  // devices. Cached to avoid parsing `known_devices_` repeatedly.
+  base::flat_set<std::string> known_vid_pids_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // The buses and device addresses in the format bus:dev of all previously
+  // discovered devices. Cached to avoid parsing `known_devices_` repeatedly.
+  base::flat_set<std::string> known_bus_devs_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.

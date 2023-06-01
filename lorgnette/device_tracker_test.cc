@@ -4,6 +4,7 @@
 
 #include "lorgnette/device_tracker.h"
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -20,6 +21,7 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 
+#include "lorgnette/firewall_manager.h"
 #include "lorgnette/sane_client_fake.h"
 #include "lorgnette/test_util.h"
 #include "lorgnette/usb/libusb_wrapper_fake.h"
@@ -31,6 +33,14 @@ using ::testing::ElementsAre;
 namespace lorgnette {
 
 namespace {
+
+class MockFirewallManager : public FirewallManager {
+ public:
+  explicit MockFirewallManager(const std::string& interface)
+      : FirewallManager(interface) {}
+
+  MOCK_METHOD(PortToken, RequestUdpPortAccess, (uint16_t), (override));
+};
 
 TEST(DeviceTrackerTest, CreateMultipleSessions) {
   base::test::SingleThreadTaskEnvironment task_environment;
@@ -219,6 +229,8 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   descriptor.interface = interface.get();
 
   ippusb_escl_device->SetConfigDescriptors({descriptor});
+  ippusb_escl_device->SetBusNumber(1);
+  ippusb_escl_device->SetDeviceAddress(1);
   ippusb_escl_device->Init();
 
   // Printer that supports IPP-USB but not eSCL.
@@ -243,9 +255,6 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   non_printer->MutableDeviceDescriptor().idProduct = 0x7654;
   non_printer->MutableDeviceDescriptor().bDeviceClass = LIBUSB_DT_HUB;
   non_printer->SetStringDescriptors({"", "GoogleTest", "USB Gadget 500"});
-
-  // TODO(b/277049004): Wrap one of the above devices in a SaneDeviceFake
-  // to get test coverage of the SANE devices path.
 
   std::vector<std::unique_ptr<UsbDevice>> device_list;
   device_list.emplace_back(std::move(non_printer));
@@ -275,8 +284,23 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
       "airscan:escl:GoogleTest eSCL Scanner 3000:unix://1234-4321.sock/eSCL/",
       std::move(ippusb_scanner));
 
+  sane_client->SetListDevicesResult(true);
+  // Duplicates of eSCL over ippusb that are filtered out.
+  sane_client->AddDevice("pixma:12344321_12AF", "GoogleTest",
+                         "eSCL Scanner 3001", "eSCL");
+  sane_client->AddDevice("epson2:libusb:001:001", "GoogleTest",
+                         "eSCL Scanner 3002", "eSCL");
+  // Unique device without ippusb support that is added during SANE probing.
+  sane_client->AddDevice("epsonds:libusb:001:002", "GoogleTest",
+                         "SANE Scanner 4000", "USB");
   auto tracker =
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  EXPECT_CALL(firewall_manager, RequestUdpPortAccess(8612))
+      .WillOnce(testing::Return(PortToken(/*firewall_manager=*/nullptr,
+                                          /*port=*/8612)));
+  tracker->SetFirewallManager(&firewall_manager);
 
   // Signal handler that tracks all the events of interest.
   std::vector<std::string> closed_sessions;
@@ -304,6 +328,7 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
 
   StartScannerDiscoveryRequest start_request;
   start_request.set_client_id("ippusb");
+  start_request.set_preferred_only(true);
   StartScannerDiscoveryResponse response =
       tracker->StartScannerDiscovery(start_request);
   EXPECT_TRUE(response.started());
@@ -313,10 +338,13 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   run_loop.Run();
 
   EXPECT_THAT(closed_sessions, ElementsAre(response.session_id()));
-  ASSERT_EQ(scanners.size(), 1);
+  ASSERT_EQ(scanners.size(), 2);
   auto& scanner = *scanners.begin();
+  auto& second_scanner = *(++scanners.begin());
   EXPECT_EQ(scanner->manufacturer(), "GoogleTest");
   EXPECT_EQ(scanner->model(), "eSCL Scanner 3000");
+  EXPECT_EQ(second_scanner->manufacturer(), "GoogleTest");
+  EXPECT_EQ(second_scanner->model(), "SANE Scanner 4000");
 }
 
 }  // namespace

@@ -8,6 +8,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libusb.h>
+#include <cstdint>
 
 #include "lorgnette/ippusb_device.h"
 
@@ -18,6 +19,14 @@ namespace {
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
 }  // namespace
+
+uint16_t UsbDevice::GetVid() const {
+  return vid_;
+}
+
+uint16_t UsbDevice::GetPid() const {
+  return pid_;
+}
 
 std::string UsbDevice::Description() const {
   return vid_pid_;

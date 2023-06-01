@@ -4,17 +4,22 @@
 
 #include "lorgnette/device_tracker.h"
 
+#include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/manager.h"
 #include "lorgnette/sane_client.h"
+#include "lorgnette/scanner_match.h"
 #include "lorgnette/usb/libusb_wrapper.h"
 #include "lorgnette/usb/usb_device.h"
 #include "lorgnette/uuid_util.h"
@@ -88,6 +93,7 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   session.dlc_policy = request.download_policy();
   session.dlc_started = false;
   session.local_only = request.local_only();
+  session.preferred_only = request.preferred_only();
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DeviceTracker::StartDiscoverySessionInternal,
@@ -144,7 +150,8 @@ void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   LOG(INFO) << __func__ << ": Starting discovery session " << session_id;
 
   if (!session->local_only) {
-    // TODO(b/277049004): Open firewall ports before starting discovery.
+    session->port_token = std::make_unique<PortToken>(
+        firewall_manager_->RequestPixmaPortAccess());
   }
 
   if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
@@ -249,6 +256,12 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
   *signal.mutable_scanner() = *scanner_info;
   signal_sender_.Run(signal);
 
+  std::string bus_dev = base::StringPrintf("%03d:%03d", device->GetBusNumber(),
+                                           device->GetDeviceAddress());
+  std::string vid_pid =
+      base::StringPrintf("%04x:%04x", device->GetVid(), device->GetPid());
+  known_bus_devs_.insert(bus_dev);
+  known_vid_pids_.insert(vid_pid);
   known_devices_.push_back(std::move(*scanner_info));
 }
 
@@ -263,13 +276,20 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Checking for SANE devices in " << session_id;
 
-  // TODO(b/277049004): Call SaneClient
-  // Foreach device from sane_get_devices
-  (void)sane_client_;
-  {
+  brillo::ErrorPtr error_ptr;
+  std::optional<std::vector<ScannerInfo>> devices =
+      sane_client_->ListDevices(&error_ptr);
+
+  if (!devices.has_value()) {
+    LOG(ERROR) << __func__ << ": Failed to get SANE devices";
+    return;
+  }
+
+  for (const ScannerInfo& scanner_info : devices.value()) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&DeviceTracker::ProbeSANEDevice,
-                                  weak_factory_.GetWeakPtr(), session_id));
+        FROM_HERE,
+        base::BindOnce(&DeviceTracker::ProbeSANEDevice,
+                       weak_factory_.GetWeakPtr(), session_id, scanner_info));
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -277,7 +297,8 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
                                 weak_factory_.GetWeakPtr(), session_id));
 }
 
-void DeviceTracker::ProbeSANEDevice(std::string session_id) {
+void DeviceTracker::ProbeSANEDevice(std::string session_id,
+                                    const ScannerInfo& scanner_info) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto maybe_session = GetSession(session_id);
@@ -288,7 +309,28 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Probing SANE device for " << session_id;
 
-  // TODO(b/277049004):  Check device and match against existing entries.
+  if (!Manager::ScannerCanBeUsed(scanner_info)) {
+    return;
+  }
+
+  DiscoverySessionState* session = *maybe_session;
+
+  // The preferred_only flag tells us whether or not we want to drop any
+  // duplicates of IPP-USB devices that were already discovered.
+  if (session->preferred_only) {
+    if (DuplicateScannerExists(scanner_info.name(), known_vid_pids_,
+                               known_bus_devs_)) {
+      return;
+    }
+  }
+
+  ScannerListChangedSignal signal;
+  signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
+  signal.set_session_id(session_id);
+  *signal.mutable_scanner() = scanner_info;
+
+  known_devices_.push_back(std::move(scanner_info));
+  signal_sender_.Run(signal);
 }
 
 void DeviceTracker::SendEnumerationCompletedSignal(std::string session_id) {

@@ -5,6 +5,7 @@
 #ifndef LORGNETTE_USB_USB_DEVICE_H_
 #define LORGNETTE_USB_USB_DEVICE_H_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -37,6 +38,18 @@ class UsbDevice {
 
   // Equivalent of `libusb_get_string_descriptor_ascii`.
   virtual std::optional<std::string> GetStringDescriptor(uint8_t index) = 0;
+
+  // Equivalent of `libusb_get_bus_number`.
+  virtual uint8_t GetBusNumber() const = 0;
+
+  // Equivalent of `libusb_get_device_address`.
+  virtual uint8_t GetDeviceAddress() const = 0;
+
+  // Returns `vid_`.
+  uint16_t GetVid() const;
+
+  // Returns `pid_`.
+  uint16_t GetPid() const;
 
   // Returns a description of this device that can be used for logging.
   std::string Description() const;

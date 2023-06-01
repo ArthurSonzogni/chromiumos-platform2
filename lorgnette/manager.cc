@@ -23,7 +23,6 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <libusb.h>
-#include <re2/re2.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/daemon.h"
@@ -35,6 +34,7 @@
 #include "lorgnette/image_readers/jpeg_reader.h"
 #include "lorgnette/image_readers/png_reader.h"
 #include "lorgnette/ippusb_device.h"
+#include "lorgnette/scanner_match.h"
 #include "lorgnette/uuid_util.h"
 #include "permission_broker/dbus-proxies.h"
 
@@ -222,18 +222,23 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
       continue;
     }
     scanners.push_back(scanner);
-    std::string vid_str, pid_str;
+
     int vid = 0, pid = 0;
-    if (!RE2::FullMatch(
+    std::optional<std::pair<std::string, std::string>> result =
+        ExtractIdentifiersFromDeviceName(
             scanner.name(),
-            "ippusb:[^:]+:[^:]+:([0-9a-fA-F]{4})_([0-9a-fA-F]{4})/.*", &vid_str,
-            &pid_str)) {
+            "ippusb:[^:]+:[^:]+:([0-9a-fA-F]{4})_([0-9a-fA-F]{4})/.*");
+
+    if (!result.has_value()) {
       LOG(ERROR) << "Problem matching ippusb name for " << scanner.name();
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Problem matching ippusb name for '%s'", scanner.name().c_str());
       return false;
     }
+    std::string vid_str = result.value().first;
+    std::string pid_str = result.value().second;
+
     if (!(base::HexStringToInt(vid_str, &vid) &&
           base::HexStringToInt(pid_str, &pid))) {
       LOG(ERROR) << "Problems converting" << vid_str + ":" + pid_str
@@ -577,24 +582,8 @@ void Manager::RemoveDuplicateScanners(
     base::flat_set<std::string> seen_busdev,
     const std::vector<ScannerInfo>& sane_scanners) {
   for (const ScannerInfo& scanner : sane_scanners) {
-    std::string scanner_name = scanner.name();
-    std::string s_vid, s_pid, s_bus, s_dev;
-    // Currently pixma only uses 'pixma' as scanner name
-    // while epson has multiple formats (i.e. epsonds and epson2)
-    if (RE2::FullMatch(scanner_name,
-                       "pixma:([0-9a-fA-F]{4})([0-9a-fA-F]{4})_[0-9a-fA-F]*",
-                       &s_vid, &s_pid)) {
-      s_vid = base::ToLowerASCII(s_vid);
-      s_pid = base::ToLowerASCII(s_pid);
-      if (seen_vidpid.contains(s_vid + ":" + s_pid)) {
-        continue;
-      }
-    } else if (RE2::FullMatch(scanner_name,
-                              "epson(?:2|ds)?:libusb:([0-9]{3}):([0-9]{3})",
-                              &s_bus, &s_dev)) {
-      if (seen_busdev.contains(s_bus + ":" + s_dev)) {
-        continue;
-      }
+    if (DuplicateScannerExists(scanner.name(), seen_vidpid, seen_busdev)) {
+      continue;
     }
     scanners->push_back(scanner);
   }

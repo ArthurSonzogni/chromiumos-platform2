@@ -34,12 +34,12 @@ class PortToken {
 };
 
 // Class for managing required firewall rules for lorgnette.
-class FirewallManager final {
+class FirewallManager {
  public:
   explicit FirewallManager(const std::string& interface);
   FirewallManager(const FirewallManager&) = delete;
   FirewallManager& operator=(const FirewallManager&) = delete;
-  ~FirewallManager() = default;
+  virtual ~FirewallManager() = default;
 
   void Init(std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>
                 permission_broker_proxy);
@@ -48,7 +48,7 @@ class FirewallManager final {
   PortToken RequestPixmaPortAccess();
 
   // Request UDP port access for the specified port.
-  PortToken RequestUdpPortAccess(uint16_t port);
+  virtual PortToken RequestUdpPortAccess(uint16_t port);
 
  private:
   // ReleaseUdpPortAccess() should be private so that users don't free ports

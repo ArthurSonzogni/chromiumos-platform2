@@ -42,6 +42,8 @@ std::unique_ptr<UsbDeviceFake> UsbDeviceFake::Clone(UsbDevice& source) {
     ++i;
   }
   device->SetStringDescriptors(strings);
+  device->SetBusNumber(source.GetBusNumber());
+  device->SetDeviceAddress(source.GetDeviceAddress());
 
   device->Init();
   return device;
@@ -99,6 +101,22 @@ libusb_config_descriptor& UsbDeviceFake::MutableConfigDescriptor(
 void UsbDeviceFake::SetStringDescriptors(std::vector<std::string> strings) {
   CHECK(strings[0].empty()) << "String descriptor at index 0 must be empty";
   string_descriptors_ = std::move(strings);
+}
+
+uint8_t UsbDeviceFake::GetBusNumber() const {
+  return bus_;
+}
+
+uint8_t UsbDeviceFake::GetDeviceAddress() const {
+  return device_address_;
+}
+
+void UsbDeviceFake::SetBusNumber(uint8_t bus) {
+  bus_ = bus;
+}
+
+void UsbDeviceFake::SetDeviceAddress(uint8_t device_address) {
+  device_address_ = device_address;
 }
 
 }  // namespace lorgnette
