@@ -12,16 +12,14 @@
 #include <memory>
 #include <string>
 
+#include <net-base/ipv4_address.h>
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
 
 #include "patchpanel/file_descriptor_watcher_posix.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
-
-constexpr uint32_t kBcastAddr = Ipv4Addr(255, 255, 255, 255);
 
 // Listens to broadcast messages sent by applications and forwards them between
 // network interfaces of host and guest.
@@ -57,9 +55,9 @@ class BroadcastForwarder {
   struct Socket {
     base::ScopedFD fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
-    uint32_t addr;
-    uint32_t broadaddr;
-    uint32_t netmask;
+    net_base::IPv4Address addr;
+    net_base::IPv4Address broadaddr;
+    net_base::IPv4Address netmask;
   };
 
   // Bind will create a broadcast socket and return its fd.
@@ -94,10 +92,11 @@ class BroadcastForwarder {
                          size_t buffer_len,
                          const struct sockaddr_in* dst_addr);
 
-  virtual std::unique_ptr<Socket> CreateSocket(base::ScopedFD fd,
-                                               uint32_t addr,
-                                               uint32_t broadaddr,
-                                               uint32_t netmask);
+  virtual std::unique_ptr<Socket> CreateSocket(
+      base::ScopedFD fd,
+      const net_base::IPv4Address& addr,
+      const net_base::IPv4Address& broadaddr,
+      const net_base::IPv4Address& netmask);
 
  private:
   // Listens for RTMGRP_IPV4_IFADDR messages and invokes AddrMsgHandler.

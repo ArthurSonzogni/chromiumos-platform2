@@ -23,10 +23,12 @@
 #include <base/logging.h>
 #include <shill/net/rtnl_handler.h>
 
+#include "patchpanel/net_util.h"
 #include "patchpanel/socket.h"
 
 namespace {
 
+constexpr net_base::IPv4Address kBcastAddr(255, 255, 255, 255);
 constexpr int kBufSize = 4096;
 constexpr uint16_t kIpFragOffsetMask = 0x1FFF;
 // Broadcast forwarder will not forward system ports (0 - 1023).
@@ -37,7 +39,7 @@ constexpr uint16_t kMinValidPort = 1024;
 // - UDP protocol,
 // - Destination address equals to 255.255.255.255 or |bcast_addr|,
 // - Source and destination port is not a system port (>= 1024).
-bool SetBcastSockFilter(int fd, uint32_t bcast_addr) {
+bool SetBcastSockFilter(int fd, const net_base::IPv4Address& bcast_addr) {
   sock_filter kBcastFwdBpfInstructions[] = {
       // Load IP protocol value.
       BPF_STMT(BPF_LD | BPF_B | BPF_ABS, offsetof(iphdr, protocol)),
@@ -47,9 +49,11 @@ bool SetBcastSockFilter(int fd, uint32_t bcast_addr) {
       BPF_STMT(BPF_LD | BPF_W | BPF_IND, offsetof(iphdr, daddr)),
       // Check if it is a broadcast address.
       // All 1s.
-      BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, patchpanel::kBcastAddr, 1, 0),
+      BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, htonl(kBcastAddr.ToInAddr().s_addr),
+               1, 0),
       // Current interface broadcast address.
-      BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, htonl(bcast_addr), 0, 5),
+      BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, htonl(bcast_addr.ToInAddr().s_addr),
+               0, 5),
       // Move index to start of UDP header.
       BPF_STMT(BPF_LDX | BPF_IMM, sizeof(iphdr)),
       // Load UDP source port.
@@ -97,19 +101,20 @@ void Ioctl(int fd,
   }
 }
 
-uint32_t GetIfreqAddr(const struct ifreq& ifr) {
-  return reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_addr)
-      ->sin_addr.s_addr;
+net_base::IPv4Address GetIfreqAddr(const struct ifreq& ifr) {
+  return net_base::IPv4Address(
+      reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_addr)->sin_addr);
 }
 
-uint32_t GetIfreqBroadaddr(const struct ifreq& ifr) {
-  return reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_broadaddr)
-      ->sin_addr.s_addr;
+net_base::IPv4Address GetIfreqBroadaddr(const struct ifreq& ifr) {
+  return net_base::IPv4Address(
+      reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_broadaddr)
+          ->sin_addr);
 }
 
-uint32_t GetIfreqNetmask(const struct ifreq& ifr) {
-  return reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_netmask)
-      ->sin_addr.s_addr;
+net_base::IPv4Address GetIfreqNetmask(const struct ifreq& ifr) {
+  return net_base::IPv4Address(
+      reinterpret_cast<const struct sockaddr_in*>(&ifr.ifr_netmask)->sin_addr);
 }
 
 }  // namespace
@@ -117,7 +122,10 @@ uint32_t GetIfreqNetmask(const struct ifreq& ifr) {
 namespace patchpanel {
 
 std::unique_ptr<BroadcastForwarder::Socket> BroadcastForwarder::CreateSocket(
-    base::ScopedFD fd, uint32_t addr, uint32_t broadaddr, uint32_t netmask) {
+    base::ScopedFD fd,
+    const net_base::IPv4Address& addr,
+    const net_base::IPv4Address& broadaddr,
+    const net_base::IPv4Address& netmask) {
   auto socket = std::make_unique<Socket>();
   socket->watcher = base::FileDescriptorWatcher::WatchReadable(
       fd.get(),
@@ -158,25 +166,29 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   // Interface address is added.
   if (msg.HasAttribute(IFA_ADDRESS)) {
     shill::ByteString b(msg.GetAttribute(IFA_ADDRESS));
-    if (b.GetLength() != sizeof(dev_socket_->addr)) {
+    const auto addr =
+        net_base::IPv4Address::CreateFromBytes(b.GetConstData(), b.GetLength());
+    if (!addr) {
       LOG(WARNING) << "Expected IFA_ADDRESS length "
-                   << sizeof(dev_socket_->addr) << " but got " << b.GetLength();
+                   << net_base::IPv4Address::kAddressLength << " but got "
+                   << b.GetLength();
       return;
     }
-    memcpy(&dev_socket_->addr, b.GetConstData(), sizeof(dev_socket_->addr));
+    dev_socket_->addr = *addr;
   }
 
   // Broadcast address is added.
   if (msg.HasAttribute(IFA_BROADCAST)) {
     shill::ByteString b(msg.GetAttribute(IFA_BROADCAST));
-    if (b.GetLength() != sizeof(dev_socket_->broadaddr)) {
+    const auto broadaddr =
+        net_base::IPv4Address::CreateFromBytes(b.GetConstData(), b.GetLength());
+    if (!broadaddr) {
       LOG(WARNING) << "Expected IFA_BROADCAST length "
-                   << sizeof(dev_socket_->broadaddr) << " but got "
+                   << net_base::IPv4Address::kAddressLength << " but got "
                    << b.GetLength();
       return;
     }
-    memcpy(&dev_socket_->broadaddr, b.GetConstData(),
-           sizeof(dev_socket_->broadaddr));
+    dev_socket_->broadaddr = *broadaddr;
 
     base::ScopedFD dev_fd(BindRaw(dev_ifname_));
     if (!dev_fd.is_valid()) {
@@ -184,7 +196,7 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
       return;
     }
     dev_socket_ = CreateSocket(std::move(dev_fd), dev_socket_->addr,
-                               dev_socket_->broadaddr, 0);
+                               dev_socket_->broadaddr, /*netmask=*/{});
   }
 }
 
@@ -263,7 +275,7 @@ base::ScopedFD BroadcastForwarder::BindRaw(const std::string& ifname) {
   }
 
   Ioctl(fd.get(), ifname, SIOCGIFBRDADDR, &ifr);
-  uint32_t bcast_addr = GetIfreqBroadaddr(ifr);
+  const auto bcast_addr = GetIfreqBroadaddr(ifr);
 
   if (!SetBcastSockFilter(fd.get(), bcast_addr)) {
     return base::ScopedFD();
@@ -287,11 +299,11 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
 
   struct ifreq ifr;
   Ioctl(br_fd.get(), br_ifname, SIOCGIFADDR, &ifr);
-  uint32_t br_addr = GetIfreqAddr(ifr);
+  const auto br_addr = GetIfreqAddr(ifr);
   Ioctl(br_fd.get(), br_ifname, SIOCGIFBRDADDR, &ifr);
-  uint32_t br_broadaddr = GetIfreqBroadaddr(ifr);
+  const auto br_broadaddr = GetIfreqBroadaddr(ifr);
   Ioctl(br_fd.get(), br_ifname, SIOCGIFNETMASK, &ifr);
-  uint32_t br_netmask = GetIfreqNetmask(ifr);
+  const auto br_netmask = GetIfreqNetmask(ifr);
 
   std::unique_ptr<Socket> br_socket =
       CreateSocket(std::move(br_fd), br_addr, br_broadaddr, br_netmask);
@@ -308,11 +320,12 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
     }
 
     Ioctl(dev_fd.get(), dev_ifname_, SIOCGIFADDR, &ifr);
-    uint32_t dev_addr = GetIfreqAddr(ifr);
+    const auto dev_addr = GetIfreqAddr(ifr);
     Ioctl(dev_fd.get(), dev_ifname_, SIOCGIFBRDADDR, &ifr);
-    uint32_t dev_broadaddr = GetIfreqBroadaddr(ifr);
+    const auto dev_broadaddr = GetIfreqBroadaddr(ifr);
 
-    dev_socket_ = CreateSocket(std::move(dev_fd), dev_addr, dev_broadaddr, 0);
+    dev_socket_ = CreateSocket(std::move(dev_fd), dev_addr, dev_broadaddr,
+                               /*netmask=*/{});
   }
   return true;
 }
@@ -391,7 +404,7 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   // Forward ingress traffic to guests.
   if (fd == dev_socket_->fd.get()) {
     // Prevent looped back broadcast packets to be forwarded.
-    if (fromaddr.sin_addr.s_addr == dev_socket_->addr)
+    if (net_base::IPv4Address(fromaddr.sin_addr) == dev_socket_->addr)
       return;
 
     SendToGuests(buffer, len, dst);
@@ -403,14 +416,15 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       continue;
 
     // Prevent looped back broadcast packets to be forwarded.
-    if (fromaddr.sin_addr.s_addr == socket.second->addr)
+    if (net_base::IPv4Address(fromaddr.sin_addr) == socket.second->addr)
       return;
 
     // We are spoofing packets source IP to be the actual sender source IP.
     // Prevent looped back broadcast packets by not forwarding anything from
     // outside the interface netmask.
-    if ((fromaddr.sin_addr.s_addr & socket.second->netmask) !=
-        (socket.second->addr & socket.second->netmask))
+    if ((fromaddr.sin_addr.s_addr & socket.second->netmask.ToInAddr().s_addr) !=
+        (socket.second->addr.ToInAddr().s_addr &
+         socket.second->netmask.ToInAddr().s_addr))
       return;
 
     // Forward egress traffic from one guest to outside network.
@@ -432,8 +446,8 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
   struct sockaddr_in dev_dst = {0};
   memcpy(&dev_dst, &dst, sizeof(sockaddr_in));
 
-  if (dev_dst.sin_addr.s_addr != kBcastAddr)
-    dev_dst.sin_addr.s_addr = dev_socket_->broadaddr;
+  if (net_base::IPv4Address(dev_dst.sin_addr) != kBcastAddr)
+    dev_dst.sin_addr = dev_socket_->broadaddr.ToInAddr();
 
   if (SendTo(temp_fd.get(), data, len, &dev_dst) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured.
@@ -485,9 +499,9 @@ bool BroadcastForwarder::SendToGuests(const void* ip_pkt,
 
   for (auto const& socket : br_sockets_) {
     // Set destination address.
-    if (br_dst.sin_addr.s_addr != kBcastAddr) {
-      br_dst.sin_addr.s_addr = socket.second->broadaddr;
-      ip_hdr->daddr = socket.second->broadaddr;
+    if (net_base::IPv4Address(br_dst.sin_addr) != kBcastAddr) {
+      br_dst.sin_addr = socket.second->broadaddr.ToInAddr();
+      ip_hdr->daddr = socket.second->broadaddr.ToInAddr().s_addr;
       ip_hdr->check = Ipv4Checksum(ip_hdr);
     }
     udp_hdr->check =

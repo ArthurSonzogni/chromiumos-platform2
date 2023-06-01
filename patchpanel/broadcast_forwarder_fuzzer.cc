@@ -27,7 +27,7 @@ namespace {
 // with stubs.
 class TestBroadcastForwarder : public BroadcastForwarder {
  public:
-  TestBroadcastForwarder(const std::string& lan_ifname)
+  explicit TestBroadcastForwarder(const std::string& lan_ifname)
       : BroadcastForwarder(lan_ifname) {}
   TestBroadcastForwarder(const TestBroadcastForwarder&) = delete;
   TestBroadcastForwarder& operator=(const TestBroadcastForwarder&) = delete;
@@ -40,15 +40,16 @@ class TestBroadcastForwarder : public BroadcastForwarder {
     return base::ScopedFD(fd);
   }
 
-  virtual base::ScopedFD BindRaw(const std::string& ifname) override {
+  base::ScopedFD BindRaw(const std::string& ifname) override {
     // Make a real socket to satisfy ScopedFD's checks.
     return Bind(ifname, 0);
   }
 
-  std::unique_ptr<Socket> CreateSocket(base::ScopedFD fd,
-                                       uint32_t addr,
-                                       uint32_t broadaddr,
-                                       uint32_t netmask) override {
+  std::unique_ptr<Socket> CreateSocket(
+      base::ScopedFD fd,
+      const net_base::IPv4Address& addr,
+      const net_base::IPv4Address& broadaddr,
+      const net_base::IPv4Address& netmask) override {
     auto socket = std::make_unique<Socket>();
     socket->fd = std::move(fd);
     return socket;
