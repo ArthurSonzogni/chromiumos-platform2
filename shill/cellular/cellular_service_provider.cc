@@ -334,6 +334,7 @@ void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
 
 void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
   SLOG(1) << __func__ << " with ICCID: " << service->iccid();
+  manager_->PersistService(service);
   manager_->DeregisterService(service);
   auto iter = std::find(services_.begin(), services_.end(), service);
   if (iter == services_.end()) {
