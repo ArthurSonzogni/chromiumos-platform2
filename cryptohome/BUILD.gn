@@ -295,6 +295,7 @@ if (use.test) {
       "auth_factor/auth_factor_metadata_unittest.cc",
       "auth_factor/auth_factor_unittest.cc",
       "auth_factor/auth_factor_utils_unittest.cc",
+      "auth_factor/flatbuffer_unittest.cc",
       "auth_factor/types/cryptohome_recovery_unittest.cc",
       "auth_factor/types/fingerprint_unittest.cc",
       "auth_factor/types/kiosk_unittest.cc",

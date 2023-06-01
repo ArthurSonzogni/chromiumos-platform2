@@ -182,6 +182,8 @@ action("enumerations-flatbuffers-binding-generate") {
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/enumerations_generated.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "--impl_include_paths",
@@ -190,7 +192,7 @@ action("enumerations-flatbuffers-binding-generate") {
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "${root_gen_dir}/bfbs/enumerations.bfbs",
     "--filter_by_namespace",
-    "cryptohome::structure",
+    "cryptohome::enumeration",
   ]
   deps = [
     ":enumerations-flatbuffers-binding-binary",
@@ -554,6 +556,7 @@ static_library("libcryptohome") {
     "../auth_factor/auth_factor_storage_type.cc",
     "../auth_factor/auth_factor_type.cc",
     "../auth_factor/auth_factor_utils.cc",
+    "../auth_factor/flatbuffer.cc",
     "../auth_factor/types/common.cc",
     "../auth_factor/types/cryptohome_recovery.cc",
     "../auth_factor/types/fingerprint.cc",
