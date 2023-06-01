@@ -26,18 +26,18 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <vboot/crossystem.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/minijailed_process_runner.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/patchpanel_daemon.h"
 
 namespace patchpanel {
 namespace {
 // adb-proxy will connect to adbd on its standard TCP port.
 constexpr uint16_t kTcpConnectPort = 5555;
-constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
+constexpr net_base::IPv4Address kTcpAddr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
 constexpr int kMaxConn = 16;
 // Reference: "device/google/cheets2/init.usb.rc".
@@ -175,7 +175,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpConnectPort);
-  addr_in.sin_addr.s_addr = kTcpAddr;
+  addr_in.sin_addr = kTcpAddr.ToInAddr();
   auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
   if (!dst->is_valid()) {
     PLOG(ERROR) << "Failed to create TCP socket";
