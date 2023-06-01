@@ -5,6 +5,7 @@
 #include "shill/service.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/time/time.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
@@ -702,6 +704,42 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_EQ(std::string(""), service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_FALSE(service_->has_ever_connected_);
+}
+
+TEST_F(ServiceTest, SaveAndLoadConnectionTimestamps) {
+  FakeStore storage;
+  base::Time time1, time2, time3;
+  ASSERT_TRUE(base::Time::FromString("01 Jan 2018 12:00:00", &time1));
+  ASSERT_TRUE(base::Time::FromString("02 Jan 2018 12:00:00", &time2));
+  ASSERT_TRUE(base::Time::FromString("03 Jan 2018 12:00:00", &time3));
+  service_->SetLastConnectedProperty(time1);
+  service_->SetLastManualConnectAttemptProperty(time2);
+  service_->SetLastOnlineProperty(time3);
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // Verify the values in the storage
+  uint64_t time_ms;
+  EXPECT_TRUE(
+      storage.GetUint64(storage_id_, Service::kStorageLastConnected, &time_ms));
+  EXPECT_EQ(time_ms, time1.ToDeltaSinceWindowsEpoch().InMilliseconds());
+
+  EXPECT_TRUE(storage.GetUint64(
+      storage_id_, Service::kStorageLastManualConnectAttempt, &time_ms));
+  EXPECT_EQ(time_ms, time2.ToDeltaSinceWindowsEpoch().InMilliseconds());
+
+  EXPECT_TRUE(
+      storage.GetUint64(storage_id_, Service::kStorageLastOnline, &time_ms));
+  EXPECT_EQ(time_ms, time3.ToDeltaSinceWindowsEpoch().InMilliseconds());
+
+  // Load into a separate service
+  EXPECT_TRUE(service2_->Load(&storage));
+  EXPECT_EQ(time1, base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(
+                       service2_->GetLastConnectedProperty(nullptr))));
+  EXPECT_EQ(time2,
+            base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(
+                service2_->GetLastManualConnectAttemptProperty(nullptr))));
+  EXPECT_EQ(time3, base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(
+                       service2_->GetLastOnlineProperty(nullptr))));
 }
 
 // Tests that callback is invoked properly when static IP configs changed.

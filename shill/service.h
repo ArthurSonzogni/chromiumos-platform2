@@ -108,6 +108,10 @@ class Service : public base::RefCounted<Service> {
   // expect them to be read from patchpanel and stored in the profile.
   static const char* const kStorageTrafficCounterSuffixes[];
   static const char kStorageTrafficCounterResetTime[];
+  // The datetime of the last connection attempt.
+  static const char kStorageLastManualConnectAttempt[];
+  static const char kStorageLastConnected[];
+  static const char kStorageLastOnline[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -711,10 +715,6 @@ class Service : public base::RefCounted<Service> {
                                 int32_t (Service::*get)(Error* error),
                                 bool (Service::*set)(const int32_t& value,
                                                      Error* error));
-  void HelpRegisterDerivedUint64(const std::string& name,
-                                 uint64_t (Service::*get)(Error* error),
-                                 bool (Service::*set)(const uint64_t& value,
-                                                      Error* error));
   void HelpRegisterDerivedString(const std::string& name,
                                  std::string (Service::*get)(Error* error),
                                  bool (Service::*set)(const std::string& value,
@@ -865,6 +865,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, PortalDetectionFailure);
   FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
+  FRIEND_TEST(ServiceTest, SaveAndLoadConnectionTimestamps);
   FRIEND_TEST(ServiceTest, SaveMeteredOverride);
   FRIEND_TEST(ServiceTest, SaveTrafficCounters);
   FRIEND_TEST(ServiceTest, SecurityLevel);
@@ -928,6 +929,14 @@ class Service : public base::RefCounted<Service> {
   Strings GetMisconnectsProperty(Error* error) const;
 
   uint64_t GetTrafficCounterResetTimeProperty(Error* error) const;
+
+  uint64_t GetLastManualConnectAttemptProperty(Error* error) const;
+  uint64_t GetLastConnectedProperty(Error* error) const;
+  uint64_t GetLastOnlineProperty(Error* error) const;
+
+  void SetLastManualConnectAttemptProperty(const base::Time& value);
+  void SetLastConnectedProperty(const base::Time& value);
+  void SetLastOnlineProperty(const base::Time& value);
 
   bool GetMeteredProperty(Error* error);
   bool SetMeteredProperty(const bool& metered, Error* error);
@@ -1094,6 +1103,12 @@ class Service : public base::RefCounted<Service> {
   // Uplink and downlink speed for the service in Kbps.
   uint32_t uplink_speed_kbps_ = 0;
   uint32_t downlink_speed_kbps_ = 0;
+
+  // Timestamps of last manual connect attempt, last successful connection and
+  // last time online.
+  base::Time last_manual_connect_attempt_;
+  base::Time last_connected_;
+  base::Time last_online_;
 };
 
 }  // namespace shill

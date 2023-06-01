@@ -24,6 +24,7 @@
 #include <base/time/time.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/dbus/dbus_control.h"
@@ -144,6 +145,10 @@ const char* const Service::kStorageTrafficCounterSuffixes[] = {
     kStorageTrafficCounterTxPacketsSuffix};
 const char Service::kStorageTrafficCounterResetTime[] =
     "TrafficCounterResetTime";
+const char Service::kStorageLastManualConnectAttempt[] =
+    "LastManualConnectAttempt";
+const char Service::kStorageLastConnected[] = "LastConnected";
+const char Service::kStorageLastOnline[] = "LastOnline";
 
 const size_t Service::kTrafficCounterArraySize = 4;
 
@@ -289,6 +294,13 @@ Service::Service(Manager* manager, Technology technology)
   HelpRegisterConstDerivedUint64(kTrafficCounterResetTimeProperty,
                                  &Service::GetTrafficCounterResetTimeProperty);
 
+  HelpRegisterConstDerivedUint64(kLastManualConnectAttemptProperty,
+                                 &Service::GetLastManualConnectAttemptProperty);
+  HelpRegisterConstDerivedUint64(kLastConnectedProperty,
+                                 &Service::GetLastConnectedProperty);
+  HelpRegisterConstDerivedUint64(kLastOnlineProperty,
+                                 &Service::GetLastOnlineProperty);
+
   store_.RegisterConstUint32(kUplinkSpeedPropertyKbps, &uplink_speed_kbps_);
   store_.RegisterConstUint32(kDownlinkSpeedPropertyKbps, &downlink_speed_kbps_);
 
@@ -339,6 +351,12 @@ void Service::AutoConnect() {
 
 void Service::Connect(Error* error, const char* reason) {
   CHECK(reason);
+  // If there is no record of a manual connect, record the first time a
+  // connection is attempted so there is way to track how long it's been since
+  // the first connection attempt.
+  if (last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
+    SetLastManualConnectAttemptProperty(base::Time::Now());
+
   if (!connectable()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
@@ -417,6 +435,8 @@ void Service::DisconnectWithFailure(ConnectFailure failure,
 }
 
 void Service::UserInitiatedConnect(const char* reason, Error* error) {
+  SLOG(this, 3) << __func__;
+  SetLastManualConnectAttemptProperty(base::Time::Now());
   Connect(error, reason);
 
   // Since Service::Connect will clear a failure state when it gets far enough,
@@ -587,12 +607,19 @@ void Service::SetState(ConnectState state) {
   if (state == kStateConnected) {
     failed_time_ = base::Time();
     has_ever_connected_ = true;
+    SetLastConnectedProperty(base::Time::Now());
     SaveToProfile();
     // When we succeed in connecting, forget that connects failed in the past.
     // Give services one chance at a fast autoconnect retry by resetting the
     // cooldown to 0 to indicate that the last connect was successful.
     ResetAutoConnectCooldownTime();
   }
+  // Because we can bounce between `online` and 'limited-connectivity' states
+  // while connected, this value will store the last time the service
+  // transitioned to the `online` state.
+  if (state == kStateOnline)
+    SetLastOnlineProperty(base::Time::Now());
+
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
   metrics()->NotifyServiceStateChanged(*this, state);
@@ -793,13 +820,23 @@ bool Service::Load(const StoreInterface* storage) {
     }
   }
 
-  uint64_t traffic_counter_reset_time_ms;
-  if (storage->GetUint64(id, kStorageTrafficCounterResetTime,
-                         &traffic_counter_reset_time_ms)) {
-    traffic_counter_reset_time_ = base::Time::FromDeltaSinceWindowsEpoch(
-        base::Milliseconds(traffic_counter_reset_time_ms));
+  uint64_t temp_ms;
+  if (storage->GetUint64(id, kStorageTrafficCounterResetTime, &temp_ms)) {
+    traffic_counter_reset_time_ =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
   }
-
+  if (storage->GetUint64(id, kStorageLastManualConnectAttempt, &temp_ms)) {
+    last_manual_connect_attempt_ =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
+  }
+  if (storage->GetUint64(id, kStorageLastConnected, &temp_ms)) {
+    last_connected_ =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
+  }
+  if (storage->GetUint64(id, kStorageLastOnline, &temp_ms)) {
+    last_online_ =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
+  }
   return true;
 }
 
@@ -922,6 +959,18 @@ bool Service::Save(StoreInterface* storage) {
 
   storage->SetUint64(id, kStorageTrafficCounterResetTime,
                      GetTrafficCounterResetTimeProperty(/*error=*/nullptr));
+
+  if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
+    storage->SetUint64(id, kStorageLastManualConnectAttempt,
+                       GetLastManualConnectAttemptProperty(/*error=*/nullptr));
+
+  if (!last_connected_.ToDeltaSinceWindowsEpoch().is_zero())
+    storage->SetUint64(id, kStorageLastConnected,
+                       GetLastConnectedProperty(/*error=*/nullptr));
+
+  if (!last_online_.ToDeltaSinceWindowsEpoch().is_zero())
+    storage->SetUint64(id, kStorageLastOnline,
+                       GetLastOnlineProperty(/*error=*/nullptr));
 
   return true;
 }
@@ -2138,6 +2187,43 @@ Strings Service::GetMisconnectsProperty(Error* /*error*/) const {
 uint64_t Service::GetTrafficCounterResetTimeProperty(Error* /*error*/) const {
   return traffic_counter_reset_time_.ToDeltaSinceWindowsEpoch()
       .InMilliseconds();
+}
+
+void Service::SetLastManualConnectAttemptProperty(const base::Time& value) {
+  if (last_manual_connect_attempt_ == value)
+    return;
+  last_manual_connect_attempt_ = value;
+  adaptor_->EmitUint64Changed(kLastManualConnectAttemptProperty,
+                              GetLastManualConnectAttemptProperty(nullptr));
+}
+
+uint64_t Service::GetLastManualConnectAttemptProperty(Error* /*error*/) const {
+  return last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch()
+      .InMilliseconds();
+}
+
+void Service::SetLastConnectedProperty(const base::Time& value) {
+  if (last_connected_ == value)
+    return;
+  last_connected_ = value;
+  adaptor_->EmitUint64Changed(kLastConnectedProperty,
+                              GetLastConnectedProperty(nullptr));
+}
+
+uint64_t Service::GetLastConnectedProperty(Error* /*error*/) const {
+  return last_connected_.ToDeltaSinceWindowsEpoch().InMilliseconds();
+}
+
+void Service::SetLastOnlineProperty(const base::Time& value) {
+  if (last_online_ == value)
+    return;
+  last_online_ = value;
+  adaptor_->EmitUint64Changed(kLastOnlineProperty,
+                              GetLastOnlineProperty(nullptr));
+}
+
+uint64_t Service::GetLastOnlineProperty(Error* /*error*/) const {
+  return last_online_.ToDeltaSinceWindowsEpoch().InMilliseconds();
 }
 
 bool Service::GetMeteredProperty(Error* /*error*/) {

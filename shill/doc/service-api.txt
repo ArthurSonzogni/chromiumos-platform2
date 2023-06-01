@@ -964,6 +964,28 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			set. In addition, since XAUTH is an extension rather than
 			replacement of psk, L2TPIPsec.PSK must also be set.
 
+		uint64 LastConnected [readonly]
+
+			A UTC timestamp, in milliseconds, representing the time of the last
+			successful network connection.
+			The timestamp's value equals the number of milliseconds since the
+			Windows epoch (1601-01-01 00:00:00 UTC).
+
+		uint64 LastManualConnectAttempt [readonly]
+
+			A UTC timestamp, in milliseconds, representing the last manual
+			connection attempt. If the value has never been set, an AutoConnect
+			will initialize the value to the current time.
+			The timestamp's value equals the number of milliseconds since the
+			Windows epoch (1601-01-01 00:00:00 UTC).
+
+		uint64 LastOnline [readonly]
+
+			A UTC timestamp, in milliseconds, representing the time of the last
+			time the service transitioned to the Online state.
+			The timestamp's value equals the number of milliseconds since the
+			Windows epoch (1601-01-01 00:00:00 UTC).
+
 		boolean LinkMonitorDisable [readwrite]
 
 			Specifies whether to disable or enable link monitoring

@@ -175,6 +175,9 @@ constexpr char kVisibleProperty[] = "Visible";
 constexpr char kONCSourceProperty[] = "ONCSource";
 constexpr char kUplinkSpeedPropertyKbps[] = "UplinkSpeedKbps";
 constexpr char kDownlinkSpeedPropertyKbps[] = "DownlinkSpeedKbps";
+constexpr char kLastManualConnectAttemptProperty[] = "LastManualConnectAttempt";
+constexpr char kLastConnectedProperty[] = "LastConnected";
+constexpr char kLastOnlineProperty[] = "LastOnline";
 
 // Cellular Service property names.
 constexpr char kActivationStateProperty[] = "Cellular.ActivationState";
