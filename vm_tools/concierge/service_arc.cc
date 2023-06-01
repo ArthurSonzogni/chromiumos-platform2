@@ -192,29 +192,24 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
   return true;
 }
 
-// Returns true if AAudio MMAP feature should be enabled.
+// Returns whether AAudio MMAP feature should be enabled based on the flag.
 // In dev mode, it is always enabled.
-// On production, check the feature flag and CPU.
 bool ShouldEnableAAudioMMAP(bool is_feature_enabled, bool is_dev_mode) {
-  if (is_dev_mode)
-    return true;
+  return is_dev_mode || is_feature_enabled;
+}
 
-  // On production, support any CPU that is not Celeron or Pentium.
+// Returns the period size to use for AAudio MMAP.
+// - If low latency is enabled and CPU is supported, use 256 frames which has
+//   lower latency but may cause audio glitches.
+// - If not, use 512 frames.
+int GetAAudioMMAPPeriodSize(bool is_low_latency_enabled) {
+  // Support any CPU that is not Celeron or Pentium.
   const std::string cpu_model_name =
       base::ToLowerASCII(base::CPU().cpu_brand());
   const bool supported_cpu =
       (cpu_model_name.find("celeron") == std::string::npos &&
        cpu_model_name.find("pentium") == std::string::npos);
-
-  return is_feature_enabled && supported_cpu;
-}
-
-// Returns the period size to use for AAudio MMAP.
-// If low latency is enabled, use period size = 256 which gives lower
-// latency but may cause audio glitches.
-// If not, use period size = 512.
-int GetAAudioMMAPPeriodSize(bool is_low_latency_enabled) {
-  return is_low_latency_enabled ? 256 : 512;
+  return is_low_latency_enabled && supported_cpu ? 256 : 512;
 }
 
 // This function boosts the arcvm and arcvm-vcpus cgroups, by applying the
