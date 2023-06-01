@@ -155,7 +155,7 @@ EncryptedData MockEncryptedData(std::string data) {
 
 KeyInfo CreateChallengeKeyInfo(std::string customer_id = "") {
   KeyInfo key_info;
-  key_info.set_key_type(EUK);
+  key_info.set_flow_type(ENTERPRISE_USER);
   key_info.set_domain("domain");
   key_info.set_device_id("device_id");
   key_info.set_certificate("");
@@ -176,7 +176,7 @@ KeyInfo CreateMachineChallengeKeyInfoWithSPKAC(
       "-----END CERTIFICATE-----";
 
   KeyInfo key_info;
-  key_info.set_key_type(EMK);
+  key_info.set_flow_type(ENTERPRISE_MACHINE);
   key_info.set_customer_id("customer_id");
   key_info.set_device_id("device_id");
   key_info.set_certificate(pem_certificate_of_key_for_spkac);

@@ -3124,11 +3124,11 @@ void AttestationService::SignEnterpriseChallengeTask(
   // EUK -> Enterprise User Key
   // EMK -> Enterprise Machine Key
   if (is_user_specific) {
-    key_info.set_key_type(EUK);
+    key_info.set_flow_type(ENTERPRISE_USER);
     key_info.set_domain(request.domain());
   } else {
     // For machine key the domain name should not be include.
-    key_info.set_key_type(EMK);
+    key_info.set_flow_type(ENTERPRISE_MACHINE);
   }
   if (request.include_customer_id() && !PopulateCustomerId(&key_info)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
