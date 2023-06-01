@@ -352,7 +352,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};

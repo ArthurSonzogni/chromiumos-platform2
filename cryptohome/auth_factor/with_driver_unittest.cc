@@ -102,7 +102,8 @@ class AuthFactorWithDriverTest : public ::testing::Test {
           [](AuthFactorWithDriverTest* test) {
             return test->bio_service_.get();
           },
-          base::Unretained(this)))};
+          base::Unretained(this))),
+      nullptr};
 };
 
 TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {

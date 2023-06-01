@@ -494,14 +494,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     auth_factor_manager_ = default_auth_factor_manager_.get();
   }
 
-  if (!auth_factor_driver_manager_) {
-    default_auth_factor_driver_manager_ =
-        std::make_unique<AuthFactorDriverManager>(
-            platform_, crypto_, async_cc_helper, key_challenge_service_factory_,
-            fingerprint_service_.get(), async_biometrics_service);
-    auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
-  }
-
   if (!user_secret_stash_storage_) {
     default_user_secret_stash_storage_ =
         std::make_unique<UserSecretStashStorage>(platform_);
@@ -509,6 +501,15 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
   user_metadata_reader_ =
       std::make_unique<UserMetadataReader>(user_secret_stash_storage_);
+
+  if (!auth_factor_driver_manager_) {
+    default_auth_factor_driver_manager_ =
+        std::make_unique<AuthFactorDriverManager>(
+            platform_, crypto_, async_cc_helper, key_challenge_service_factory_,
+            fingerprint_service_.get(), async_biometrics_service,
+            user_metadata_reader_.get());
+    auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
+  }
 
   if (!auth_session_manager_) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(

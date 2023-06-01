@@ -199,7 +199,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       &key_challenge_service_factory_,
       &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
-          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
+          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))),
+      nullptr};
 
   FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;

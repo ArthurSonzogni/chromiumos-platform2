@@ -371,7 +371,8 @@ class AuthSessionTest : public ::testing::Test {
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
-          base::Unretained(this)))};
+          base::Unretained(this))),
+      nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
   UserSecretStashStorage user_secret_stash_storage_{&platform_};

@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/types/pin.h"
 #include "cryptohome/auth_factor/types/smart_card.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 
 namespace cryptohome {
 namespace {
@@ -31,7 +32,8 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
-    AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+    UserMetadataReader* user_metadata_reader) {
   // This is written using a switch to force full enum coverage.
   switch (auth_factor_type) {
     case AuthFactorType::kPassword:
@@ -63,7 +65,8 @@ CreateDriverMap(
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
-    AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+    UserMetadataReader* user_metadata_reader) {
   std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
       driver_map;
   for (AuthFactorType auth_factor_type : {
@@ -75,9 +78,10 @@ CreateDriverMap(
            AuthFactorType::kLegacyFingerprint,
            AuthFactorType::kFingerprint,
        }) {
-    auto driver = CreateDriver(
-        auth_factor_type, platform, crypto, challenge_credentials_helper,
-        key_challenge_service_factory, fp_service, bio_service);
+    auto driver = CreateDriver(auth_factor_type, platform, crypto,
+                               challenge_credentials_helper,
+                               key_challenge_service_factory, fp_service,
+                               bio_service, user_metadata_reader);
     CHECK_NE(driver.get(), nullptr);
     driver_map[auth_factor_type] = std::move(driver);
   }
@@ -92,14 +96,16 @@ AuthFactorDriverManager::AuthFactorDriverManager(
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
-    AsyncInitPtr<BiometricsAuthBlockService> bio_service)
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+    UserMetadataReader* user_metadata_reader)
     : null_driver_(std::make_unique<NullAuthFactorDriver>()),
       driver_map_(CreateDriverMap(platform,
                                   crypto,
                                   challenge_credentials_helper,
                                   key_challenge_service_factory,
                                   fp_service,
-                                  bio_service)) {}
+                                  bio_service,
+                                  user_metadata_reader)) {}
 
 AuthFactorDriver& AuthFactorDriverManager::GetDriver(
     AuthFactorType auth_factor_type) {

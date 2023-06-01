@@ -18,6 +18,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 
 namespace cryptohome {
 namespace {
@@ -48,7 +49,8 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       &fp_service_,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      nullptr};
 };
 
 TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {
