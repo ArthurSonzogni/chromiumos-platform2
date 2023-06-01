@@ -1004,8 +1004,24 @@ void Network::StartConnectionDiagnostics() {
     return;
   }
   DCHECK(connection_ != nullptr);
-  connection_diagnostics_ =
-      CreateConnectionDiagnostics(*local(), *gateway(), dns_servers());
+
+  const auto local_address = local();
+  if (!local_address) {
+    LOG(ERROR)
+        << logging_tag_
+        << ": Local address unavailable, aborting connection diagnostics";
+    return;
+  }
+
+  const auto gateway_address = gateway();
+  if (!gateway_address) {
+    LOG(ERROR) << logging_tag_
+               << ": Gateway unavailable, aborting connection diagnostics";
+    return;
+  }
+
+  connection_diagnostics_ = CreateConnectionDiagnostics(
+      *local_address, *gateway_address, dns_servers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
