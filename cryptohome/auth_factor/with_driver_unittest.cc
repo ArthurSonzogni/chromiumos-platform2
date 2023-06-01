@@ -27,6 +27,7 @@
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/mock_user_metadata.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -95,6 +96,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
+  MockUserMetadataReader mock_user_metadata_reader_;
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
@@ -108,7 +110,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
             return test->bio_service_.get();
           },
           base::Unretained(this))),
-      nullptr};
+      &mock_user_metadata_reader_};
 };
 
 TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
@@ -172,6 +174,25 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
   EXPECT_THAT(intents, IsEmpty());
 }
 
+TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
+  AuthFactor fp_factor = CreateFactor(AuthFactorType::kFingerprint,
+                                      FingerprintAuthFactorMetadata(),
+                                      FingerprintAuthBlockState{});
+  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillOnce(ReturnValue(true));
+  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
+      .WillOnce(
+          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(15));
+
+  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+
+  EXPECT_THAT(intents, IsEmpty());
+}
+
 TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   AuthFactor fp_factor = CreateFactor(AuthFactorType::kFingerprint,
                                       FingerprintAuthFactorMetadata(),
@@ -180,6 +201,11 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
+  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
+      .WillOnce(
+          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(0));
 
   auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
 

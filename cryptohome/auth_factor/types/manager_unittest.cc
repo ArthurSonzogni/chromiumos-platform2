@@ -245,7 +245,7 @@ TEST_F(AuthFactorDriverManagerTest, IsDelaySupported) {
   EXPECT_THAT(is_delayable(AuthFactorType::kKiosk), IsFalse());
   EXPECT_THAT(is_delayable(AuthFactorType::kSmartCard), IsFalse());
   EXPECT_THAT(is_delayable(AuthFactorType::kLegacyFingerprint), IsFalse());
-  EXPECT_THAT(is_delayable(AuthFactorType::kFingerprint), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kFingerprint), IsTrue());
 
   EXPECT_THAT(is_delayable(AuthFactorType::kUnspecified), IsFalse());
 

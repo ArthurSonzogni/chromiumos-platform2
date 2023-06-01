@@ -50,8 +50,8 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     case AuthFactorType::kLegacyFingerprint:
       return std::make_unique<LegacyFingerprintAuthFactorDriver>(fp_service);
     case AuthFactorType::kFingerprint:
-      return std::make_unique<FingerprintAuthFactorDriver>(platform, crypto,
-                                                           bio_service);
+      return std::make_unique<FingerprintAuthFactorDriver>(
+          platform, crypto, bio_service, user_metadata_reader);
     case AuthFactorType::kUnspecified:
       return nullptr;
   }

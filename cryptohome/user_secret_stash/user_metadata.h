@@ -19,9 +19,11 @@ class UserMetadataReader {
 
   UserMetadataReader(const UserMetadataReader&) = delete;
   UserMetadataReader& operator=(const UserMetadataReader&) = delete;
+  virtual ~UserMetadataReader() = default;
 
   // Attempt to load the metadata for the given user.
-  CryptohomeStatusOr<UserMetadata> Load(const ObfuscatedUsername& username);
+  virtual CryptohomeStatusOr<UserMetadata> Load(
+      const ObfuscatedUsername& username);
 
  private:
   UserSecretStashStorage* storage_;

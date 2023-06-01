@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/fingerprint.h"
 
+#include <limits>
 #include <utility>
 
 #include <libhwsec-foundation/status/status_chain.h>
@@ -19,6 +20,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -87,6 +89,58 @@ bool FingerprintAuthFactorDriver::NeedsResetSecret() const {
 
 bool FingerprintAuthFactorDriver::NeedsRateLimiter() const {
   return true;
+}
+
+bool FingerprintAuthFactorDriver::IsDelaySupported() const {
+  return true;
+}
+
+CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
+    const ObfuscatedUsername& username, const AuthFactor& factor) {
+  // Do all the error checks to make sure the input is useful.
+  if (factor.type() != type()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthFactorFingerprintGetFactorDelayWrongFactorType),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  if (!user_metadata_reader_) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthFactorFingerprintGetFactorDelayNoUserMetadataReader),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  CryptohomeStatusOr<UserMetadata> user_metadata =
+      user_metadata_reader_->Load(username);
+  if (!user_metadata.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed))
+        .Wrap(std::move(user_metadata).err_status());
+  }
+  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintGetFactorDelayNoLabel),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  // Try and extract the delay from the LE credential manager.
+  auto delay_in_seconds = crypto_->le_manager()->GetDelayInSeconds(
+      *user_metadata->fingerprint_rate_limiter_id);
+  if (!delay_in_seconds.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorFingerprintGetFactorDelayReadFailed))
+        .Wrap(std::move(delay_in_seconds).err_status());
+  }
+  // Return the extracted time, handling the max value case.
+  if (*delay_in_seconds == std::numeric_limits<uint32_t>::max()) {
+    return base::TimeDelta::Max();
+  } else {
+    return base::Seconds(*delay_in_seconds);
+  }
 }
 
 AuthFactorLabelArity FingerprintAuthFactorDriver::GetAuthFactorLabelArity()

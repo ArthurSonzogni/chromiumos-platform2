@@ -25,6 +25,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/username.h"
 #include "cryptohome/util/async_init.h"
 
@@ -36,14 +37,17 @@ class FingerprintAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
-      public AfDriverNoCredentialVerifier,
-      public AfDriverNoDelay {
+      public AfDriverNoCredentialVerifier {
  public:
   FingerprintAuthFactorDriver(
       Platform* platform,
       Crypto* crypto,
-      AsyncInitPtr<BiometricsAuthBlockService> bio_service)
-      : platform_(platform), crypto_(crypto), bio_service_(bio_service) {}
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+      UserMetadataReader* user_metadata_reader)
+      : platform_(platform),
+        crypto_(crypto),
+        bio_service_(bio_service),
+        user_metadata_reader_(user_metadata_reader) {}
 
  private:
   bool IsSupportedByHardware() const override;
@@ -56,6 +60,9 @@ class FingerprintAuthFactorDriver final
   bool IsFullAuthAllowed(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
+  bool IsDelaySupported() const override;
+  CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
+      const ObfuscatedUsername& username, const AuthFactor& factor) override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
@@ -65,6 +72,7 @@ class FingerprintAuthFactorDriver final
   Platform* platform_;
   Crypto* crypto_;
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
+  UserMetadataReader* user_metadata_reader_;
 };
 
 }  // namespace cryptohome

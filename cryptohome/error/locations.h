@@ -1707,6 +1707,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManUnSyncedTreeInRemoveCred = 3390,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManExpiredInConvertTpmError = 3391,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintGetFactorDelayWrongFactorType = 3392,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintGetFactorDelayNoUserMetadataReader = 3393,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed = 3394,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintGetFactorDelayNoLabel = 3395,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintGetFactorDelayReadFailed = 3396,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
