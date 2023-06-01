@@ -82,22 +82,22 @@ class BpfPlugin : public PluginInterface {
       BatchSenderInterface<typename Config::HashType,
                            typename Config::XdrType,
                            typename Config::XdrAtomicType>;
-  using BatchKeyGenerator = base::RepeatingCallback<typename Config::HashType(
+  using BatchKeyGenerator = base::RepeatingCallback<std::string(
       const typename Config::XdrAtomicType&)>;
 
   BpfPlugin(
       BatchKeyGenerator batch_key_generator,
       scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<DeviceUserInterface> device_user,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
-      scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s)
-      : device_user_(device_user),
-        process_cache_(process_cache),
-        batch_interval_s_(batch_interval_s),
+      : batch_interval_s_(batch_interval_s),
+        device_user_(device_user),
         message_sender_(message_sender),
         policies_features_broker_(policies_features_broker),
+        process_cache_(process_cache),
         weak_ptr_factory_(this) {
     batch_sender_ = std::make_unique<BatchSenderType>(
         std::move(batch_key_generator), message_sender,
@@ -139,12 +139,18 @@ class BpfPlugin : public PluginInterface {
   bool IsActive() const override { return skeleton_wrapper_ != nullptr; }
 
  protected:
+  uint32_t batch_interval_s_;
   std::unique_ptr<BatchSenderInterfaceType> batch_sender_;
   scoped_refptr<DeviceUserInterface> device_user_;
+  scoped_refptr<MessageSenderInterface> message_sender_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
 
  private:
   friend testing::NetworkPluginTestFixture;
+
+  virtual void EnqueueBatchedEvent(
+      std::unique_ptr<typename Config::XdrAtomicType> atomic_event) = 0;
   void HandleBpfRingBufferReadReady() const {
     skeleton_wrapper_->ConsumeEvent();
   }
@@ -153,12 +159,10 @@ class BpfPlugin : public PluginInterface {
       std::unique_ptr<BatchSenderInterfaceType> given) {
     batch_sender_ = std::move(given);
   }
-  uint32_t batch_interval_s_;
+
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
-  scoped_refptr<MessageSenderInterface> message_sender_;
-  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
-  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
   base::WeakPtrFactory<BpfPlugin> weak_ptr_factory_;
+  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };
 
 class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
@@ -176,14 +180,13 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
                         // TODO(b:282814056): Make hashing function optional
                         //  for batch_sender then drop this. Not all users
                         //  of batch_sender need the visit functionality.
-                        CHECK(false);
                         return "";
                       }),
                   bpf_skeleton_factory,
+                  device_user,
                   message_sender,
                   process_cache,
                   policies_features_broker,
-                  device_user,
                   batch_interval_s) {}
 
   std::string GetName() const override;
@@ -191,11 +194,33 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
  private:
   void EnqueueBatchedEvent(
       std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>
-          atomic_event);
+          atomic_event) override;
+  template <typename ProtoT>
+  void FillProcessTree(ProtoT proto,
+                       const bpf::cros_process_task_info& task) const {
+    auto hierarchy =
+        process_cache_->GetProcessHierarchy(task.pid, task.start_time, 2);
+    if (hierarchy.empty()) {
+      LOG(ERROR) << absl::StrFormat(
+          "ProcessCache hierarchy fetch for pid %d cmdline(%s) failed. "
+          "Creating a "
+          "NetworkSocketListen with unpopulated process and parent_process "
+          "fields.",
+          task.pid, task.commandline);
+    }
+    if (hierarchy.size() >= 1) {
+      proto->set_allocated_process(hierarchy[0].release());
+    }
+    if (hierarchy.size() == 2) {
+      proto->set_allocated_parent_process(hierarchy[1].release());
+    }
+  }
   void HandleRingBufferEvent(const bpf::cros_event& bpf_event) override;
   std::unique_ptr<cros_xdr::reporting::NetworkSocketListenEvent>
   MakeListenEvent(
       const secagentd::bpf::cros_network_socket_listen& listen_event) const;
+  std::unique_ptr<cros_xdr::reporting::NetworkFlowEvent> MakeFlowEvent(
+      const secagentd::bpf::cros_synthetic_network_flow& flow_event) const;
 };
 
 // TODO(b:283278819): convert this over to use the generic BpfPlugin.

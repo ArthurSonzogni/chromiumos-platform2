@@ -37,6 +37,17 @@ struct ExpectedProcess {
   uint64_t rel_start_time_s;
 };
 const uint64_t kDefaultPid{1452};
+constexpr bpf::time_ns_t kSpawnStartTime{2222};
+
+const bpf::cros_process_task_info kDefaultProcess = {
+    .pid = 5139,
+    .ppid = 5132,
+    .start_time = 51382,
+    .parent_start_time = 5786,
+    .uid = 382,
+    .gid = 4234,
+};
+
 const std::vector<ExpectedProcess> kDefaultProcessHierarchy{
     {.pid = kDefaultPid,
      .uid = 3123,
@@ -47,6 +58,14 @@ const std::vector<ExpectedProcess> kDefaultProcessHierarchy{
      .cmdline{"commandline2"},
      .rel_start_time_s = 51234},
 };
+bpf::cros_event CreateCrosFlowEvent(const bpf::cros_synthetic_network_flow& f) {
+  bpf::cros_event rv = {
+      .data.network_event{
+          .type = bpf::cros_network_event_type::kSyntheticNetworkFlow},
+      .type = bpf::kNetworkEvent};
+  memmove(&rv.data.network_event.data.flow, &f, sizeof(f));
+  return rv;
+}
 }  // namespace
 
 using ::testing::_;
@@ -151,8 +170,72 @@ TEST_F(NetworkPluginTestFixture, TestWrongBPFEvent) {
       bpf::cros_event{.type = bpf::kProcessEvent});
 }
 
+TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
+  bpf::cros_network_5_tuple tuple;
+  tuple.dest_addr.addr4 = 0x010A98A8;    // 168.152.10.1
+  tuple.source_addr.addr4 = 0x0100A8C0;  // 192.168.0.1
+  tuple.source_port = 4591;
+  tuple.dest_port = 5231;
+  tuple.protocol = bpf::CROS_PROTOCOL_TCP;
+
+  bpf::cros_flow_map_value val;
+  val.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
+  val.garbage_collect_me = false;
+  val.rx_bytes = 1456;
+  val.tx_bytes = 2563;
+
+  bpf::cros_synthetic_network_flow flow;
+  flow.flow_map_key.five_tuple = tuple;
+  flow.flow_map_value = val;
+
+  flow.process_map_value.common.process = kDefaultProcess;
+
+  auto event = CreateCrosFlowEvent(flow);
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+  std::vector<pb::Process> expected_hierarchy;
+  for (const auto& p : kDefaultProcessHierarchy) {
+    hierarchy.push_back(std::make_unique<pb::Process>());
+    hierarchy.back()->set_canonical_pid(p.pid);
+    hierarchy.back()->set_canonical_uid(p.uid);
+    hierarchy.back()->set_commandline(p.cmdline);
+    hierarchy.back()->set_rel_start_time_s(p.rel_start_time_s);
+    expected_hierarchy.emplace_back(*hierarchy.back());
+  }
+  auto& process =
+      event.data.network_event.data.flow.process_map_value.common.process;
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(process.pid, process.start_time, 2))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(1)
+      .WillOnce([&actual_sent_event](
+                    std::unique_ptr<pb::NetworkEventAtomicVariant> e) {
+        actual_sent_event = std::move(e);
+      });
+
+  cbs_.ring_buffer_event_callback.Run(event);
+  EXPECT_THAT(expected_hierarchy[0],
+              EqualsProto(actual_sent_event->network_flow().process()));
+  EXPECT_THAT(expected_hierarchy[1],
+              EqualsProto(actual_sent_event->network_flow().parent_process()));
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_ip(),
+            "192.168.0.1");
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_port(),
+            4591);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_ip(),
+            "168.152.10.1");
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_port(),
+            5231);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().protocol(),
+            pb::TCP);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().direction(),
+            pb::NetworkFlow_Direction_OUTGOING);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(), 1456);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(), 2563);
+}
 TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
-  constexpr bpf::time_ns_t kSpawnStartTime = 2222;
   // Descending order in time starting from the youngest.
   std::vector<std::unique_ptr<pb::Process>> hierarchy;
   std::vector<pb::Process> expected_hierarchy;
