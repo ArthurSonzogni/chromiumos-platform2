@@ -1291,6 +1291,14 @@ bool Init::Setup() {
       }
     }
 
+    // Create all the directories.
+    for (const auto& dir : boot_dirs) {
+      if (mkdir(dir.path, dir.mode) != 0 && errno != EEXIST) {
+        PLOG(ERROR) << "Failed to create " << dir.path;
+        return false;
+      }
+    }
+
     // Enable hierarchial memory accounting for LXD.
     base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
                                        .Append("memory")
@@ -1319,14 +1327,6 @@ bool Init::Setup() {
     }
     if (setenv("PATH", kDefaultPath, 1 /*overwrite*/) != 0) {
       PLOG(ERROR) << "Failed to set PATH";
-      return false;
-    }
-  }
-
-  // Create all the directories.
-  for (const auto& dir : boot_dirs) {
-    if (mkdir(dir.path, dir.mode) != 0 && errno != EEXIST) {
-      PLOG(ERROR) << "Failed to create " << dir.path;
       return false;
     }
   }
