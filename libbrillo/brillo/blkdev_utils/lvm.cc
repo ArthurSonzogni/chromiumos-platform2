@@ -46,15 +46,16 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
     return false;
   }
 
-  std::optional<base::Value> pv_dictionary =
+  std::optional<base::Value> pv_value =
       lvm_->UnwrapReportContents(output, "pv");
 
-  if (!pv_dictionary || !pv_dictionary->is_dict()) {
+  if (!pv_value || !pv_value->is_dict()) {
     LOG(ERROR) << "Failed to get report contents";
     return false;
   }
+  const auto& pv_dictionary = pv_value->GetDict();
 
-  const std::string* pv_name = pv_dictionary->FindStringKey("pv_name");
+  const std::string* pv_name = pv_dictionary.FindString("pv_name");
   if (!pv_name) {
     LOG(ERROR) << "Missing value \"pv_name\".";
     return false;
@@ -65,7 +66,7 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
   }
 
   if (volume_group_name) {
-    const std::string* vg_name = pv_dictionary->FindStringKey("vg_name");
+    const std::string* vg_name = pv_dictionary.FindString("vg_name");
     if (!vg_name) {
       LOG(ERROR) << "Failed to fetch volume group name";
       return false;
@@ -106,15 +107,16 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
     return false;
   }
 
-  std::optional<base::Value> lv_dictionary =
+  std::optional<base::Value> lv_value =
       lvm_->UnwrapReportContents(output, "lv");
 
-  if (!lv_dictionary || !lv_dictionary->is_dict()) {
+  if (!lv_value || !lv_value->is_dict()) {
     LOG(ERROR) << "Failed to get report contents";
     return false;
   }
+  const auto& lv_dictionary = lv_value->GetDict();
 
-  const std::string* output_lv_name = lv_dictionary->FindStringKey("lv_name");
+  const std::string* output_lv_name = lv_dictionary.FindString("lv_name");
   if (!output_lv_name) {
     LOG(ERROR) << "Missing value \"lv_name\".";
     return false;
@@ -160,13 +162,14 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
     return lv_vector;
   }
 
-  for (const auto& lv_dictionary : lv_list->GetList()) {
-    if (!lv_dictionary.is_dict()) {
+  for (const auto& lv_value : lv_list->GetList()) {
+    if (!lv_value.is_dict()) {
       LOG(ERROR) << "Failed to get dictionary value for physical volume";
       continue;
     }
+    const auto& lv_dictionary = lv_value.GetDict();
 
-    const std::string* output_lv_name = lv_dictionary.FindStringKey("lv_name");
+    const std::string* output_lv_name = lv_dictionary.FindString("lv_name");
     if (!output_lv_name) {
       LOG(ERROR) << "Failed to get logical volume name";
       continue;
@@ -201,10 +204,16 @@ std::optional<VolumeGroup> LogicalVolumeManager::CreateVolumeGroup(
 
 std::optional<Thinpool> LogicalVolumeManager::CreateThinpool(
     const VolumeGroup& vg, const base::Value& config) {
+  if (!config.is_dict()) {
+    LOG(ERROR) << "Invalid configuration";
+    return std::nullopt;
+  }
+  const auto& config_dict = config.GetDict();
+
   std::vector<std::string> cmd = {"lvcreate"};
-  const std::string* size = config.FindStringKey("size");
-  const std::string* metadata_size = config.FindStringKey("metadata_size");
-  const std::string* name = config.FindStringKey("name");
+  const std::string* size = config_dict.FindString("size");
+  const std::string* metadata_size = config_dict.FindString("metadata_size");
+  const std::string* name = config_dict.FindString("name");
   if (!size || !name || !metadata_size) {
     LOG(ERROR) << "Invalid configuration";
     return std::nullopt;

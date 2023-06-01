@@ -75,7 +75,7 @@ TEST(GetImageVars, BaseVars) {
       startup::StatefulMount::GetImageVars(json_file, "load_base_vars", &vars));
   LOG(INFO) << "vars is: " << vars;
   EXPECT_TRUE(vars.is_dict());
-  const std::string* format = vars.FindStringKey("FORMAT_STATE");
+  const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
   EXPECT_NE(format, nullptr);
   EXPECT_EQ(*format, "base");
 }
@@ -90,7 +90,7 @@ TEST(GetImageVars, PartitionVars) {
       json_file, "load_partition_vars", &vars));
   LOG(INFO) << "vars is: " << vars;
   EXPECT_TRUE(vars.is_dict());
-  const std::string* format = vars.FindStringKey("FORMAT_STATE");
+  const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
   LOG(INFO) << "FORMAT_STATE is: " << *format;
   EXPECT_NE(format, nullptr);
   EXPECT_EQ(*format, "partition");

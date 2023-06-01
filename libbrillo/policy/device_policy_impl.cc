@@ -877,9 +877,10 @@ bool DevicePolicyImpl::GetHighestDeviceMinimumVersion(
       LOG(WARNING) << "Invalid JSON string given. Version is not a dictionary.";
       continue;
     }
+    const auto& version_value_dict = version_value.GetDict();
 
     const std::string* version_str =
-        version_value.FindStringKey("chromeos_version");
+        version_value_dict.FindString("chromeos_version");
     if (!version_str) {
       LOG(WARNING) << " Invalid JSON string given. Version is missing.";
       continue;

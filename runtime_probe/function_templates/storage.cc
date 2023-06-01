@@ -90,7 +90,7 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
 
     // Get type specific fields and their values.
     auto node_res = ProbeFromSysfs(node_path);
-    if (!node_res)
+    if (!node_res || !node_res->is_dict())
       continue;
 
     // Report the absolute path we probe the reported info from.

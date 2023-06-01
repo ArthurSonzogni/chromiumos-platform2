@@ -155,35 +155,39 @@ bool GetConfiguration(AdbdConfiguration* config) {
     LOG(ERROR) << "Failed to parse root dictionary from adb.json";
     return false;
   }
+  const auto& config_root_dict = config_root->GetDict();
+
   const std::string* usb_product_id =
-      config_root->FindStringKey("usbProductId");
+      config_root_dict.FindString("usbProductId");
   if (!usb_product_id) {
     LOG(ERROR) << "Failed to parse usbProductId";
     return false;
   }
   config->usb_product_id = *usb_product_id;
   // kernelModules are optional.
-  const base::Value* kernel_module_list =
-      config_root->FindListKey("kernelModules");
+  const base::Value::List* kernel_module_list =
+      config_root_dict.FindList("kernelModules");
   if (kernel_module_list) {
-    for (const auto& kernel_module_value : kernel_module_list->GetList()) {
+    for (const auto& kernel_module_value : *kernel_module_list) {
       AdbdConfigurationKernelModule module;
       if (!kernel_module_value.is_dict()) {
         LOG(ERROR) << "kernelModules contains a non-dictionary";
         return false;
       }
+      const auto& kernel_module_value_dict = kernel_module_value.GetDict();
+
       const std::string* module_name =
-          kernel_module_value.FindStringKey("name");
+          kernel_module_value_dict.FindString("name");
       if (!module_name) {
         LOG(ERROR) << "Failed to parse kernelModules.name";
         return false;
       }
       module.name = *module_name;
-      const base::Value* module_parameters =
-          kernel_module_value.FindListKey("parameters");
+      const base::Value::List* module_parameters =
+          kernel_module_value_dict.FindList("parameters");
       if (module_parameters) {
         // Parameters are optional.
-        for (const auto& parameter_value : module_parameters->GetList()) {
+        for (const auto& parameter_value : *module_parameters) {
           if (!parameter_value.is_string()) {
             LOG(ERROR) << "kernelModules.parameters contains a non-string";
             return false;

@@ -55,7 +55,7 @@ TEST(SysfsFunctionTest, TestRead) {
   ASSERT_EQ(results.size(), 2);
 
   for (auto& result : results) {
-    auto* value_1 = result.FindStringKey("1");
+    auto* value_1 = result.GetDict().FindString("1");
     ASSERT_TRUE(value_1) << "result: " << result;
 
     ASSERT_EQ(value_1->at(1), '1') << "result: " << result;
@@ -64,7 +64,7 @@ TEST(SysfsFunctionTest, TestRead) {
       case 'a':
         break;
       case 'b': {
-        auto* value_2 = result.FindStringKey("2");
+        auto* value_2 = result.GetDict().FindString("2");
         ASSERT_TRUE(value_2) << "result: " << result;
         ASSERT_EQ(*value_2, "b2") << "result: " << result;
       } break;

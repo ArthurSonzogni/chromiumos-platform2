@@ -83,7 +83,7 @@ TEST(HexFieldConverterTest, TestHexStringToDecString) {
     ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
         << "failed to convert string: \"" << in << "\"";
 
-    auto* string_value = dict_value.FindStringKey("key");
+    auto* string_value = dict_value.GetDict().FindString("key");
     ASSERT_NE(string_value, nullptr);
     ASSERT_EQ(*string_value, out)
         << "\"" << in << "\" is not converted to " << out;
@@ -107,7 +107,7 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
     ASSERT_EQ(converter->Convert("key", &value), ReturnCode::OK)
         << "failed to convert string: " << in;
 
-    auto* string_value = value.FindStringKey("key");
+    auto* string_value = value.GetDict().FindString("key");
     ASSERT_NE(string_value, nullptr);
     ASSERT_EQ(*string_value, out) << in << " is not converted to " << out;
   }

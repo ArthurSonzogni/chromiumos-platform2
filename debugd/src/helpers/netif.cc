@@ -251,7 +251,7 @@ void AddSignalStrengths(
 int main() {
   struct ifaddrs* ifaddrs;
   int fd;
-  Value result(Value::Type::DICT);
+  Value::Dict result;
   std::map<std::string, std::unique_ptr<NetInterface>> interfaces;
 
   if (getifaddrs(&ifaddrs) == -1) {
@@ -277,7 +277,7 @@ int main() {
   AddSignalStrengths(&interfaces);
 
   for (const auto& interface : interfaces)
-    result.SetKey(interface.first, interface.second->ToValue());
+    result.Set(interface.first, interface.second->ToValue());
 
   std::string json;
   base::JSONWriter::WriteWithOptions(

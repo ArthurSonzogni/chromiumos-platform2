@@ -91,9 +91,11 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
 std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   auto nvme_data = GetStorageToolData();
-  if (!nvme_data)
+  if (!nvme_data || !nvme_data->is_dict())
     return std::nullopt;
-  const auto* devices = nvme_data->FindListKey("Devices");
+  const auto& nvme_data_dict = nvme_data->GetDict();
+
+  const auto* devices = nvme_data_dict.FindList("Devices");
   if (!devices) {
     LOG(ERROR) << "Cannot find \"Devices\" in nvme output.";
     return std::nullopt;
@@ -101,15 +103,19 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
 
   const auto& device_name = node_path.BaseName();
   base::Value result(base::Value::Type::DICT);
-  for (const auto& device : devices->GetList()) {
-    const auto* path = device.FindStringKey("DevicePath");
+  for (const auto& device : *devices) {
+    if (!device.is_dict())
+      continue;
+    const auto& device_dict = device.GetDict();
+
+    const auto* path = device_dict.FindString("DevicePath");
     if (!path || base::FilePath(*path).BaseName() != device_name)
       continue;
-    const auto* firmware = device.FindStringKey("Firmware");
+    const auto* firmware = device_dict.FindString("Firmware");
     if (firmware) {
       result.GetDict().Set("storage_fw_version", *firmware);
     }
-    const auto* model = device.FindStringKey("ModelNumber");
+    const auto* model = device_dict.FindString("ModelNumber");
     if (model) {
       result.GetDict().Set("nvme_model", *model);
     }

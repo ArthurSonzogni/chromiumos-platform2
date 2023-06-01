@@ -90,7 +90,7 @@ base::Value ProbeConfig::Eval(const std::vector<std::string>& category) const {
       continue;
     }
 
-    result.SetKey(c, base::Value(it->second->Eval()));
+    result.GetDict().Set(c, base::Value(it->second->Eval()));
   }
 
   return result;

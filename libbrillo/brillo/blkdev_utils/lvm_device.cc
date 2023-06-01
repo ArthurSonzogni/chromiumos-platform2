@@ -379,32 +379,32 @@ std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     return std::nullopt;
   }
 
-  base::Value* report_list = report->FindListKey("report");
+  base::Value::List* report_list = report->GetDict().FindList("report");
   if (!report_list) {
     LOG(ERROR) << "Failed to find 'report' list";
     return std::nullopt;
   }
 
-  if (report_list->GetList().size() != 1) {
-    LOG(ERROR) << "Unexpected size: " << report_list->GetList().size();
+  if (report_list->size() != 1) {
+    LOG(ERROR) << "Unexpected size: " << report_list->size();
     return std::nullopt;
   }
 
-  base::Value& report_dictionary = report_list->GetList()[0];
+  base::Value& report_dictionary = report_list->front();
   if (!report_dictionary.is_dict()) {
     LOG(ERROR) << "Failed to find 'report' dictionary";
     return std::nullopt;
   }
 
-  base::Value* key_list = report_dictionary.FindListKey(key);
+  base::Value::List* key_list = report_dictionary.GetDict().FindList(key);
   if (!key_list) {
     LOG(ERROR) << "Failed to find " << key << " list";
     return std::nullopt;
   }
 
   // If the list has just a single dictionary element, return it directly.
-  if (key_list->GetList().size() == 1) {
-    base::Value& key_dictionary = key_list->GetList()[0];
+  if (key_list->size() == 1) {
+    base::Value& key_dictionary = key_list->front();
     if (!key_dictionary.is_dict()) {
       LOG(ERROR) << "Failed to get " << key << " dictionary";
       return std::nullopt;
@@ -412,7 +412,7 @@ std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     return std::move(key_dictionary);
   }
 
-  return std::move(*key_list);
+  return base::Value{std::move(*key_list)};
 }
 
 }  // namespace brillo

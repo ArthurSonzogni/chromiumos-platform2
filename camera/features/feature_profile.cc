@@ -156,10 +156,11 @@ bool FeatureProfile::ShouldEnableFeature(
                 << " must be a dict";
     return false;
   }
+  const auto& enable_on_dict = enable_on->GetDict();
 
   EnableConditions m = {
-      .module_id = enable_on->FindStringKey(kKeyModuleId),
-      .sensor_id = enable_on->FindStringKey(kKeySensorId),
+      .module_id = enable_on_dict.FindString(kKeyModuleId),
+      .sensor_id = enable_on_dict.FindString(kKeySensorId),
   };
 
   if (!HasMatchingCameraModule(m, device_metadata_.value())) {

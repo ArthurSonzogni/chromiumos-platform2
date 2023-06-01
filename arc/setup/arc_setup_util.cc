@@ -1097,14 +1097,16 @@ std::optional<std::string> FilterMediaProfile(
     return content;
   }
   auto config = base::JSONReader::ReadAndReturnValueWithError(json_str);
-  if (!config.has_value()) {
+  if (!config.has_value() || !config->is_dict()) {
     LOG(ERROR) << "Failed to parse camera test config content: " << json_str;
     return content;
   }
+  const auto& config_dict = config->GetDict();
+
   bool enable_front_camera =
-      config->FindBoolPath(kEnableFrontCamera).value_or(true);
+      config_dict.FindBool(kEnableFrontCamera).value_or(true);
   bool enable_back_camera =
-      config->FindBoolPath(kEnableBackCamera).value_or(true);
+      config_dict.FindBool(kEnableBackCamera).value_or(true);
   if (enable_front_camera && enable_back_camera) {
     return content;
   }

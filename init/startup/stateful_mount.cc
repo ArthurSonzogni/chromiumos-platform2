@@ -357,6 +357,11 @@ void StatefulMount::MountStateful() {
   if (!StatefulMount::GetImageVars(json_file, load_vars, &image_vars)) {
     return;
   }
+  if (!image_vars.is_dict()) {
+    PLOG(ERROR) << "Failed to parse dictionary from partition_vars.json";
+    return;
+  }
+  const auto& image_vars_dict = image_vars.GetDict();
 
   bool status;
   int32_t stateful_mount_flags;
@@ -373,7 +378,7 @@ void StatefulMount::MountStateful() {
     const int part_num_state =
         GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_STATE");
     const std::string* fs_form_state =
-        image_vars.FindStringKey("FS_FORMAT_STATE");
+        image_vars_dict.FindString("FS_FORMAT_STATE");
     state_dev_ = brillo::AppendPartition(root_dev_type_, part_num_state);
     if (fs_form_state->compare("ext4") == 0) {
       int dirty_expire_centisecs = GetDirtyExpireCentisecs(root_);
@@ -458,7 +463,8 @@ void StatefulMount::MountStateful() {
     int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
     const int part_num_oem =
         GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_OEM");
-    const std::string* fs_form_oem = image_vars.FindStringKey("FS_FORMAT_OEM");
+    const std::string* fs_form_oem =
+        image_vars_dict.FindString("FS_FORMAT_OEM");
     const base::FilePath oem_dev =
         brillo::AppendPartition(root_dev_type_, part_num_oem);
     status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
