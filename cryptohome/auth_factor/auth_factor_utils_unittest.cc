@@ -139,61 +139,6 @@ std::unique_ptr<VaultKeyset> CreateMigratedVaultKeyset(
   return migrated_vk;
 }
 
-TEST(AuthFactorUtilsTest, AuthFactorTypeConversionIsInvertable) {
-  // Test a round trip of conversion gets back the original types.
-  EXPECT_EQ(
-      AuthFactorTypeFromProto(AuthFactorTypeToProto(AuthFactorType::kPassword)),
-      AuthFactorType::kPassword);
-  EXPECT_EQ(
-      AuthFactorTypeFromProto(AuthFactorTypeToProto(AuthFactorType::kPin)),
-      AuthFactorType::kPin);
-  EXPECT_EQ(AuthFactorTypeFromProto(
-                AuthFactorTypeToProto(AuthFactorType::kCryptohomeRecovery)),
-            AuthFactorType::kCryptohomeRecovery);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_PASSWORD)),
-            user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  EXPECT_EQ(AuthFactorTypeToProto(
-                *AuthFactorTypeFromProto(user_data_auth::AUTH_FACTOR_TYPE_PIN)),
-            user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY)),
-            user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_KIOSK)),
-            user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD)),
-            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT)),
-            user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
-  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
-                user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT)),
-            user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-
-  // These proto types are known to not be supported
-  EXPECT_EQ(
-      AuthFactorTypeFromProto(user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED),
-      AuthFactorType::kUnspecified);
-}
-
-TEST(AuthFactorUtilsTest, AuthFactorTypeConversionFromProtoCoversAllValues) {
-  // With proto enums we can't use a "complete" switch to cover every value so
-  // we enforce that every value is given an explicit mapping (even if just to
-  // Unspecified) via this test.
-  for (int raw_type = user_data_auth::AuthFactorType_MIN;
-       raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
-    if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
-      continue;
-    }
-    auto type = static_cast<user_data_auth::AuthFactorType>(raw_type);
-    EXPECT_NE(AuthFactorTypeFromProto(type), std::nullopt)
-        << "user_data_auth::AuthFactorType has no mapping for "
-        << user_data_auth::AuthFactorType_Name(type);
-  }
-}
-
 TEST(AuthFactorUtilsTest, PopulateSysinfoWithOsVersion) {
   static constexpr char kLsbRelease[] =
       R"(CHROMEOS_RELEASE_NAME=Chrome OS

@@ -557,6 +557,7 @@ static_library("libcryptohome") {
     "../auth_factor/auth_factor_type.cc",
     "../auth_factor/auth_factor_utils.cc",
     "../auth_factor/flatbuffer.cc",
+    "../auth_factor/protobuf.cc",
     "../auth_factor/types/common.cc",
     "../auth_factor/types/cryptohome_recovery.cc",
     "../auth_factor/types/fingerprint.cc",
