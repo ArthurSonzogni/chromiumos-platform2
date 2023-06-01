@@ -93,11 +93,14 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
                 "cros_ml_effects_SetRenderedImageObserver"));
     set_effect_fn_ = reinterpret_cast<cros_ml_effects_SetEffectFn>(
         library_->GetFunctionPointer("cros_ml_effects_SetEffect"));
+    set_log_observer_fn_ = reinterpret_cast<cros_ml_effects_SetLogObserverFn>(
+        library_->GetFunctionPointer("cros_ml_effects_SetLogObserver"));
 
     bool load_ok = (create_fn_ != nullptr) && (delete_fn_ != nullptr) &&
                    (process_frame_fn_ != nullptr) && (wait_fn_ != nullptr) &&
                    (set_rendered_image_observer_fn_ != nullptr) &&
-                   (set_effect_fn_ != nullptr);
+                   (set_effect_fn_ != nullptr) &&
+                   (set_log_observer_fn_ != nullptr);
 
     if (!load_ok) {
       LOG(ERROR) << "create_fn_" << create_fn_;
@@ -107,6 +110,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       LOG(ERROR) << "set_rendered_image_observer_fn_"
                  << set_rendered_image_observer_fn_;
       LOG(ERROR) << "set_effect_fn_" << set_effect_fn_;
+      LOG(ERROR) << "set_log_observer_fn_" << set_log_observer_fn_;
       LOG(ERROR) << "Pipeline cannot load the expected functions";
       return false;
     }
@@ -118,6 +122,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
     LOG(INFO) << "Pipeline created, cache_dir: " << cache_dir;
     set_rendered_image_observer_fn_(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
+    set_log_observer_fn_(pipeline_, &EffectsPipelineImpl::OnLogMessage);
 
     return true;
   }
@@ -135,6 +140,27 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
     }
   }
 
+  static void OnLogMessage(cros_ml_effects_LogSeverity severity,
+                           const char* msg,
+                           size_t len) {
+    switch (severity) {
+      default:
+        [[fallthrough]];
+      case cros_ml_effects_LogSeverity_Info:
+        LOG(INFO) << std::string(msg, len);
+        break;
+      case cros_ml_effects_LogSeverity_Warning:
+        LOG(WARNING) << std::string(msg, len);
+        break;
+      case cros_ml_effects_LogSeverity_Error:
+        LOG(ERROR) << std::string(msg, len);
+        break;
+      case cros_ml_effects_LogSeverity_Fatal:
+        LOG(FATAL) << std::string(msg, len);
+        break;
+    }
+  }
+
   std::optional<base::ScopedNativeLibrary> library_;
   cros_ml_effects_CreateEffectsPipelineFn create_fn_ = nullptr;
   cros_ml_effects_DeleteEffectsPipelineFn delete_fn_ = nullptr;
@@ -143,6 +169,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   cros_ml_effects_SetRenderedImageObserverFn set_rendered_image_observer_fn_ =
       nullptr;
   cros_ml_effects_SetEffectFn set_effect_fn_ = nullptr;
+  cros_ml_effects_SetLogObserverFn set_log_observer_fn_ = nullptr;
   void* pipeline_ = nullptr;
   bool frames_started_ = false;
 
