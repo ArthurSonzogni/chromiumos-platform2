@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/notreached.h>
+#include <base/time/time.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -51,14 +52,13 @@ constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr size_t kHeSecretSize = 32;
 constexpr size_t kResetSecretSize = 32;
 
-// TODO(b/270108392): Use a suitable delay schedule. For now, use the same delay
-// schedule as attempt-limited PIN.
 constexpr struct {
   uint32_t attempts;
   uint32_t delay;
 } kDefaultDelaySchedule[] = {
     {5, kInfiniteDelay},
 };
+constexpr base::TimeDelta kExpirationLockout = base::Days(14);
 
 std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
     const ObfuscatedUsername& obfuscated_username) {
@@ -453,10 +453,9 @@ CryptoStatusOr<uint64_t> FingerprintAuthBlock::CreateRateLimiter(
   }
 
   uint64_t label;
-  // TODO(b/269819919): Set a suitable expiration delay for the rate limiter.
   LECredStatus ret = le_manager_->InsertRateLimiter(
       kFingerprintAuthChannel, policies, reset_secret, delay_sched,
-      /*expiration_delay=*/std::nullopt, &label);
+      kExpirationLockout.InSeconds(), &label);
   if (!ret.ok()) {
     return ret;
   }
