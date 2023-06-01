@@ -20,6 +20,7 @@ const char kRecoveryDurationMinutes[] = "Installer.Recovery.NbrDurationMinutes";
 const char kRecoveryReason[] = "Installer.Recovery.Reason";
 const char kStatefulEventsPath[] = "/stateful/.recovery_histograms";
 
+// NOTE: The metrics should be renamed if the following settings are changed.
 const int kRecoveryDurationMinutes_Buckets = 50;
 const int kRecoveryDurationMinutes_MAX = 10 * 24 * 60;  // 10 days
 const int kRecoveryReasonCode_NBR = 200;
