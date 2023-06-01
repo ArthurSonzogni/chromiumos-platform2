@@ -255,7 +255,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     ss << ", IPv6 config: " << *ip6config();
   }
   LOG(INFO) << logging_tag_ << ": Stopping "
-            << (is_failure ? " after failure" : " normally") << ss.str();
+            << (is_failure ? "after failure" : "normally") << ss.str();
 
   weak_factory_for_connection_.InvalidateWeakPtrs();
 
