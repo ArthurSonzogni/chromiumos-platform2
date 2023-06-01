@@ -29,42 +29,30 @@ namespace {
 }  // namespace
 
 AddressManager::AddressManager() {
-  for (auto g :
-       {GuestType::kArc0, GuestType::kArcNet, GuestType::kTerminaVM,
-        GuestType::kParallelsVM, GuestType::kLXDContainer, GuestType::kNetns}) {
-    uint32_t base_addr;
-    uint32_t prefix_length = 30;
-    uint32_t subnets = 1;
-    switch (g) {
-      case GuestType::kArc0:
-        base_addr = Ipv4Addr(100, 115, 92, 0);
-        break;
-      case GuestType::kArcNet:
-        base_addr = Ipv4Addr(100, 115, 92, 4);
-        subnets = 5;
-        break;
-      case GuestType::kTerminaVM:
-        base_addr = Ipv4Addr(100, 115, 92, 24);
-        subnets = 26;
-        break;
-      case GuestType::kNetns:
-        base_addr = Ipv4Addr(100, 115, 92, 128);
-        prefix_length = 30;
-        subnets = 16;
-        break;
-      case GuestType::kLXDContainer:
-        base_addr = Ipv4Addr(100, 115, 92, 192);
-        prefix_length = 28;
-        subnets = 4;
-        break;
-      case GuestType::kParallelsVM:
-        base_addr = Ipv4Addr(100, 115, 93, 0);
-        prefix_length = 29;
-        subnets = 32;
-        break;
-    }
-    pools_.emplace(g, SubnetPool::New(base_addr, prefix_length, subnets));
-  }
+  pools_.emplace(
+      GuestType::kArc0,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.0/30"), 1));
+  pools_.emplace(
+      GuestType::kArcNet,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.4/30"), 5));
+  pools_.emplace(
+      GuestType::kTerminaVM,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30"), 26));
+  pools_.emplace(
+      GuestType::kNetns,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.128/30"), 16));
+  pools_.emplace(
+      GuestType::kLXDContainer,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28"), 4));
+  pools_.emplace(
+      GuestType::kParallelsVM,
+      SubnetPool::New(
+          *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32));
 }
 
 MacAddress AddressManager::GenerateMacAddress(uint32_t index) {

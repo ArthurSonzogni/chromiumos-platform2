@@ -23,25 +23,26 @@ using std::string;
 namespace patchpanel {
 
 // static
-std::unique_ptr<SubnetPool> SubnetPool::New(uint32_t base_addr,
-                                            uint32_t prefix_length,
+std::unique_ptr<SubnetPool> SubnetPool::New(const net_base::IPv4CIDR& base_cidr,
                                             uint32_t num_subnets) {
+  if (base_cidr.GetPrefixAddress() != base_cidr.address()) {
+    LOG(ERROR) << "base_cidr doesn't contain the base address: " << base_cidr;
+    return nullptr;
+  }
   if (num_subnets > kMaxSubnets) {
     LOG(ERROR) << "Maximum subnets supported is " << kMaxSubnets << "; got "
                << num_subnets;
     return nullptr;
   }
-  return base::WrapUnique(
-      new SubnetPool(base_addr, prefix_length, num_subnets));
+  return base::WrapUnique(new SubnetPool(base_cidr, num_subnets));
 }
 
-SubnetPool::SubnetPool(uint32_t base_addr,
-                       uint32_t prefix_length,
+SubnetPool::SubnetPool(const net_base::IPv4CIDR& base_cidr,
                        uint32_t num_subnets)
-    : base_addr_(base_addr),
-      prefix_length_(prefix_length),
+    : base_cidr_(base_cidr),
       num_subnets_(num_subnets),
-      addr_per_index_(1 << (kMaxSubnets - prefix_length)) {
+      addr_per_index_(1 << (net_base::IPv4CIDR::kMaxPrefixLength -
+                            base_cidr_.prefix_length())) {
   subnets_.set(0);  // unused.
 }
 
@@ -70,20 +71,12 @@ std::unique_ptr<Subnet> SubnetPool::Allocate(uint32_t index) {
   }
 
   subnets_.set(index);
-  uint32_t subnet_addr =
-      htonl(ntohl(base_addr_) + (index - 1) * addr_per_index_);
-  const auto subnet_cidr = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(subnet_addr),
-      static_cast<int>(prefix_length_));
-  if (!subnet_cidr) {
-    LOG(WARNING) << "Failed to create subnet CIDR. prefix_length_="
-                 << prefix_length_;
-    return nullptr;
-  }
-
+  const auto subnet_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      AddOffset(base_cidr_.address(), (index - 1) * addr_per_index_),
+      base_cidr_.prefix_length());
   return std::make_unique<Subnet>(
-      *subnet_cidr, base::BindOnce(&SubnetPool::Release,
-                                   weak_ptr_factory_.GetWeakPtr(), index));
+      subnet_cidr, base::BindOnce(&SubnetPool::Release,
+                                  weak_ptr_factory_.GetWeakPtr(), index));
 }
 
 void SubnetPool::Release(uint32_t index) {

@@ -39,6 +39,10 @@ std::optional<Address> CreateAddressFromBytes(const uint8_t* bytes,
 template <typename Address>
 class NET_BASE_EXPORT CIDR {
  public:
+  static constexpr int kBitsPerByte = 8;
+  static constexpr int kMaxPrefixLength =
+      static_cast<int>(Address::kAddressLength * kBitsPerByte);
+
   // Creates the Address that has all the high-order |prefix_length| bits set.
   // Returns std::nullopt if the prefix_length is invalid.
   static std::optional<Address> GetNetmask(int prefix_length) {
@@ -169,10 +173,6 @@ class NET_BASE_EXPORT CIDR {
 
  private:
   using DataType = typename Address::DataType;
-
-  static constexpr int kBitsPerByte = 8;
-  static constexpr int kMaxPrefixLength =
-      static_cast<int>(Address::kAddressLength * kBitsPerByte);
 
   static bool IsValidPrefixLength(int prefix_length) {
     return 0 <= prefix_length && prefix_length <= kMaxPrefixLength;

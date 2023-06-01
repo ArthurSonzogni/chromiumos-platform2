@@ -41,6 +41,10 @@ namespace patchpanel {
 // uint32_t are migrated to net_base::IPv4Address.
 net_base::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr);
 
+// Adds a positive offset of the IPv4Address.
+net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
+                                uint32_t offset);
+
 // Returns the network-byte order int32 representation of the IPv4 address given
 // byte per byte, most significant bytes first.
 BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,

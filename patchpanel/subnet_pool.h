@@ -13,6 +13,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/subnet.h"
 
@@ -25,9 +26,7 @@ constexpr uint32_t kMaxSubnets = 32;
 class BRILLO_EXPORT SubnetPool {
  public:
   // Returns a new pool or nullptr if num_subnets exceeds 32.
-  // |base_addr| must be in network-byte order.
-  static std::unique_ptr<SubnetPool> New(uint32_t base_addr,
-                                         uint32_t prefix_length,
+  static std::unique_ptr<SubnetPool> New(const net_base::IPv4CIDR& base_cidr,
                                          uint32_t num_subnets);
   ~SubnetPool();
 
@@ -37,15 +36,14 @@ class BRILLO_EXPORT SubnetPool {
   std::unique_ptr<Subnet> Allocate(uint32_t index = kAnySubnetIndex);
 
  private:
-  SubnetPool(uint32_t base_addr, uint32_t prefix_length, uint32_t num_subnets);
+  SubnetPool(const net_base::IPv4CIDR& base_cidr, uint32_t num_subnets);
   SubnetPool(const SubnetPool&) = delete;
   SubnetPool& operator=(const SubnetPool&) = delete;
 
   // Called by Subnets on destruction to free a given subnet.
   void Release(uint32_t index);
 
-  const uint32_t base_addr_;
-  const uint32_t prefix_length_;
+  const net_base::IPv4CIDR base_cidr_;
   const uint32_t num_subnets_;
   const uint32_t addr_per_index_;
   std::bitset<kMaxSubnets + 1> subnets_;

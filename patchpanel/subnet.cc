@@ -15,20 +15,6 @@
 
 #include "patchpanel/net_util.h"
 
-namespace {
-
-// Adds a positive offset of the IPv4Address.
-net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
-                                uint32_t offset) {
-  const uint32_t host_endian = ntohl(addr.ToInAddr().s_addr) + offset;
-
-  in_addr new_addr;
-  new_addr.s_addr = htonl(host_endian);
-  return net_base::IPv4Address(new_addr);
-}
-
-}  // namespace
-
 namespace patchpanel {
 
 SubnetAddress::SubnetAddress(const net_base::IPv4CIDR& cidr,

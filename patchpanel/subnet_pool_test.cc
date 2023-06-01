@@ -16,7 +16,6 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "patchpanel/net_util.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/subnet_pool.h"
 
@@ -24,22 +23,39 @@ using std::string;
 
 namespace patchpanel {
 namespace {
-
-// The maximum number of subnets that can be allocated at a given time.
-constexpr uint32_t kBaseAddress = Ipv4Addr(44, 55, 66, 77);
-constexpr uint32_t kPrefixLength = 30;
-
+const net_base::IPv4CIDR kBaseCIDR =
+    *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
 }  // namespace
 
-// Tests cannot create a pool with more than 32 supported subnets.
-TEST(SubnetPool, MaxSubnets) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets + 1);
+TEST(SubnetPool, New_InvalidBaseCIDR) {
+  const auto invalid_base_cidr =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/30");
+  auto pool = SubnetPool::New(invalid_base_cidr, 1);
   EXPECT_TRUE(pool == nullptr);
+}
+
+// Tests cannot create a pool with more than 32 supported subnets.
+TEST(SubnetPool, New_InvalidMaxSubnets) {
+  auto pool = SubnetPool::New(kBaseCIDR, 33);
+  EXPECT_TRUE(pool == nullptr);
+}
+
+TEST(SubnetPool, Allocate) {
+  auto pool = SubnetPool::New(kBaseCIDR, kMaxSubnets);
+
+  auto subnet = pool->Allocate(1);
+  EXPECT_EQ(subnet->base_cidr().ToString(), "100.115.92.24/30");
+  subnet = pool->Allocate(2);
+  EXPECT_EQ(subnet->base_cidr().ToString(), "100.115.92.28/30");
+  subnet = pool->Allocate(3);
+  EXPECT_EQ(subnet->base_cidr().ToString(), "100.115.92.32/30");
+  subnet = pool->Allocate(32);
+  EXPECT_EQ(subnet->base_cidr().ToString(), "100.115.92.148/30");
 }
 
 // Tests that the SubnetPool does not allocate more than max subnets at a time.
 TEST(SubnetPool, AllocationRange) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
+  auto pool = SubnetPool::New(kBaseCIDR, kMaxSubnets);
 
   std::deque<std::unique_ptr<Subnet>> subnets;
   for (size_t i = 0; i < kMaxSubnets; ++i) {
@@ -54,7 +70,7 @@ TEST(SubnetPool, AllocationRange) {
 
 // Tests that subnets are properly released and reused.
 TEST(SubnetPool, Release) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
+  auto pool = SubnetPool::New(kBaseCIDR, kMaxSubnets);
 
   // First allocate all the subnets.
   std::deque<std::unique_ptr<Subnet>> subnets;
@@ -88,7 +104,7 @@ TEST(SubnetPool, Release) {
 }
 
 TEST(SubnetPool, Index) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
+  auto pool = SubnetPool::New(kBaseCIDR, kMaxSubnets);
   auto subnet = pool->Allocate(1);
   ASSERT_TRUE(subnet);
   EXPECT_FALSE(pool->Allocate(1));

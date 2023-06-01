@@ -61,6 +61,15 @@ net_base::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
                                static_cast<uint8_t>(host_endian & 0xff));
 }
 
+net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
+                                uint32_t offset) {
+  const uint32_t host_endian = ntohl(addr.ToInAddr().s_addr) + offset;
+
+  in_addr new_addr;
+  new_addr.s_addr = htonl(host_endian);
+  return net_base::IPv4Address(new_addr);
+}
+
 std::optional<uint32_t> Ipv4Addr(const std::string& bytes) {
   if (bytes.length() != 4) {
     return std::nullopt;
