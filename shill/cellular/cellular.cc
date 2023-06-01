@@ -1555,7 +1555,29 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     return TetheringOperationType::kFailed;
   }
 
-  // TODO(b/285267867): reuse DEFAULT if no DUN APN specified
+  std::deque<Stringmap> tethering_apn_try_list = BuildTetheringApnTryList();
+
+  // No other APN is specified for tethering, we can reuse the DEFAULT for
+  // tethering as fallback.
+  if (tethering_apn_try_list.empty()) {
+    // This is a database error, an operator that flags "use_dun_apn_as_default"
+    // must also provide a separate APN of type DUN.
+    if (mobile_operator_info_->use_dun_apn_as_default()) {
+      if (out_error) {
+        *out_error = Error(
+            Error::kWrongState,
+            "Operator requires DUN APN as DEFAULT but no DUN APN configured");
+      }
+      return TetheringOperationType::kFailed;
+    }
+
+    LOG(INFO)
+        << LoggingTag()
+        << ": Tethering network selection: reusing default APN for tethering "
+           "as there is no DUN specific APN";
+    return TetheringOperationType::kReuseDefault;
+  }
+
   // TODO(b/283395729): reuse DEFAULT network as DUN if APN type DEFAULT+DUN
   // TODO(b/283396208): use DUN APN as DEFAULT
   // TODO(b/283402454): connect DUN APN as additional multiplexed network
@@ -1569,6 +1591,7 @@ void Cellular::AcquireTetheringNetwork(
 
   Error error;
   switch (GetTetheringOperationType(&error)) {
+    case TetheringOperationType::kReuseDefault:
     case TetheringOperationType::kReuseDefaultFallback:
       ReuseDefaultForTethering(std::move(callback));
       return;

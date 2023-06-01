@@ -3020,6 +3020,32 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefault) {
   EXPECT_TRUE(future.Get<Error>().IsSuccess());
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultNoDun) {
+  CellularService* service = SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // No DUN APN in the list
+  Stringmap apn;
+  apn[kApnProperty] = "apn";
+  apn[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  service->SetLastGoodApn(apn);
+
+  Stringmaps apn_list;
+  apn_list.push_back(apn);
+  device_->SetApnList(apn_list);
+
+  // Test only the operation type selection
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kReuseDefault);
+}
+
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);

@@ -278,6 +278,8 @@ class Cellular : public Device,
 
   // Public to ease testing tethering acquisition logic.
   enum class TetheringOperationType {
+    // The currently connected default network will be reused for tethering.
+    kReuseDefault,
     // TODO(aleksandermj): Remove kReuseDefaultFallback once all the tethering
     // acquisition approaches are implemented.
     kReuseDefaultFallback,
