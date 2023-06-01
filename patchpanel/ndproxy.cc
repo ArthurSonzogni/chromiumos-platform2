@@ -637,7 +637,7 @@ bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
 bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
   DCHECK(rtnl_client_);
 
-  const auto neighbor_mac_table = rtnl_client_->GetNeighborMacTable();
+  const auto neighbor_mac_table = rtnl_client_->GetIPv6NeighborMacTable();
   const auto it = neighbor_mac_table.find(net_base::IPv6Address(ipv6_addr));
   if (it == neighbor_mac_table.end()) {
     return false;
