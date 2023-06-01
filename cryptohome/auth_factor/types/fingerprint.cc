@@ -96,7 +96,7 @@ bool FingerprintAuthFactorDriver::IsDelaySupported() const {
 }
 
 CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
-    const ObfuscatedUsername& username, const AuthFactor& factor) {
+    const ObfuscatedUsername& username, const AuthFactor& factor) const {
   // Do all the error checks to make sure the input is useful.
   if (factor.type() != type()) {
     return MakeStatus<CryptohomeError>(

@@ -103,7 +103,7 @@ class AuthFactorDriver {
   // availability delay is. Returns a not-OK status if the delay cannot be
   // determined or the type does not support delay.
   virtual CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
-      const ObfuscatedUsername& username, const AuthFactor& factor) = 0;
+      const ObfuscatedUsername& username, const AuthFactor& factor) const = 0;
 
   // This returns if a type supports availability expiration.
   virtual bool IsExpirationSupported() const = 0;

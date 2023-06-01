@@ -197,7 +197,7 @@ class AfDriverNoDelay : public virtual AuthFactorDriver {
  private:
   bool IsDelaySupported() const final { return false; }
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
-      const ObfuscatedUsername& username, const AuthFactor& factor) final;
+      const ObfuscatedUsername& username, const AuthFactor& factor) const final;
 };
 
 // Common implementation of the expiration functions for drivers which do not
