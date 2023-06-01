@@ -28,7 +28,7 @@ impl ShaderCacheMount {
     pub(super) fn unmount(self: &ShaderCacheMount, steam_app_id: SteamAppId) -> Result<()> {
         // Unmount the shader cache dlc
         let path = self.get_str_absolute_mount_destination_path(steam_app_id)?;
-        if !self.is_game_mounted(steam_app_id, &get_mount_list()?)? {
+        if !self.is_game_mounted(steam_app_id, None)? {
             debug!(
                 "Path {} is already unmounted or does not exist, skipping",
                 path
@@ -59,7 +59,7 @@ impl ShaderCacheMount {
         // requesting permissions from concierge
         let dst = self.get_str_absolute_mount_destination_path(steam_app_id)?;
 
-        if self.is_game_mounted(steam_app_id, &get_mount_list()?)? {
+        if self.is_game_mounted(steam_app_id, None)? {
             // If directory is mounted, assume it is correctly mounted because the
             // directory permission is 750 - ie. only shadercached can modify it and
             // assume shadercached mounts correct path.
@@ -99,11 +99,10 @@ impl ShaderCacheMount {
 
     fn dlc_content_path(&self, steam_app_id: SteamAppId) -> Result<String> {
         // Generate DLC content
-        let str_base = format!(
-            "/run/imageloader/{}/package/root/",
-            steam_app_id_to_dlc(steam_app_id),
-        );
-        let path = Path::new(&str_base).join(self.get_relative_mesa_cache_path()?);
+        let path = Path::new(IMAGE_LOADER)
+            .join(steam_app_id_to_dlc(steam_app_id))
+            .join("package/root")
+            .join(self.get_relative_mesa_cache_path()?);
 
         if !path.exists() {
             return Err(anyhow!(
@@ -118,8 +117,20 @@ impl ShaderCacheMount {
             .map_err(|os_str| anyhow!("Failed to convert path to string: {:?}", os_str))
     }
 
-    fn is_game_mounted(&self, steam_app_id: SteamAppId, mount_list: &str) -> Result<bool> {
-        Ok(mount_list.contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?))
+    pub fn is_game_mounted(
+        &self,
+        steam_app_id: SteamAppId,
+        mount_list: Option<&str>,
+    ) -> Result<bool> {
+        if let Some(mount_list) = mount_list {
+            return Ok(
+                mount_list.contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?)
+            );
+        }
+        Ok(
+            get_mount_list()?
+                .contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?),
+        )
     }
 
     fn is_any_mounted(&self, mount_list: &str) -> Result<bool> {
@@ -156,7 +167,7 @@ impl ShaderCacheMountMap {
                 let mount_list = get_mount_list()?;
                 for shader_cache_mount in mount_map.values() {
                     still_mounted = if let Some(steam_app_id) = steam_app_id {
-                        shader_cache_mount.is_game_mounted(steam_app_id, &mount_list)?
+                        shader_cache_mount.is_game_mounted(steam_app_id, Some(&mount_list))?
                     } else {
                         shader_cache_mount.is_any_mounted(&mount_list)?
                     };

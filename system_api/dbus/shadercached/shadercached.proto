@@ -20,6 +20,11 @@ message InstallRequest {
   string vm_owner_id = 4;
 }
 
+message InstallResponse {
+  // If true, shader cache is installed and mounted.
+  bool mounted = 1;
+}
+
 message UninstallRequest {
   // Steam application id.
   uint64 steam_app_id = 1;

@@ -121,6 +121,21 @@ void ShadercachedHelper::InstallShaderCache(
     // at ShaderCacheMountStatusChanged.
     *error_out = "";
     event->Signal();
+    return;
+  }
+
+  shadercached::InstallResponse response;
+  auto reader = dbus::MessageReader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    *error_out = "Failed to parse InstallResponse";
+    event->Signal();
+    return;
+  }
+
+  if (response.mounted()) {
+    // If shader cache is already mounted, don't wait for mount signal
+    mount_callbacks_.erase(condition);
+    event->Signal();
   }
 }
 

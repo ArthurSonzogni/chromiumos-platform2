@@ -94,7 +94,7 @@ pub async fn main() -> Result<()> {
         builder.method_with_cr_async(
             dbus_constants::INSTALL_METHOD,
             ("install_request_proto",),
-            (),
+            ("install_response_proto",),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 debug!("Received install request");
                 let handler = service::handle_install(
@@ -105,7 +105,7 @@ pub async fn main() -> Result<()> {
                 );
                 async move {
                     match handler.await.map_err(to_method_err) {
-                        Ok(result) => ctx.reply(Ok(result)),
+                        Ok(result) => ctx.reply(Ok((result,))),
                         Err(e) => ctx.reply(Err(e)),
                     }
                 }

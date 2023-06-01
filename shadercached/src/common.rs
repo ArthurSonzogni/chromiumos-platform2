@@ -21,6 +21,7 @@ pub const MAX_INSTALL_QUEUE_SIZE: usize = 5;
 
 pub const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
 pub const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
+pub const IMAGE_LOADER: &str = "/run/imageloader";
 
 // GPU device id reported by the pcie ID
 lazy_static! {

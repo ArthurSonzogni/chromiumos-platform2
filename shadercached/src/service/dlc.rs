@@ -165,7 +165,7 @@ pub async fn periodic_dlc_handler(
     dlc_queue.queue_uninstall_multi(&failed_uninstalls);
 }
 
-async fn mount_dlc(
+pub async fn mount_dlc(
     steam_app_id: SteamAppId,
     mount_map: ShaderCacheMountMapPtr,
     conn: Arc<SyncConnection>,

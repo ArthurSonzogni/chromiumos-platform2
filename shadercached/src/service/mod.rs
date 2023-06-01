@@ -20,20 +20,21 @@ use helper::unsafe_quota::set_quota_normal;
 
 use anyhow::{anyhow, Result};
 use dbus::{nonblock::SyncConnection, MethodErr};
-use libchromeos::sys::{debug, warn};
+use libchromeos::sys::{debug, error, warn};
 use protobuf::Message;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use system_api::shadercached::{
-    InstallRequest, PrepareShaderCacheRequest, PrepareShaderCacheResponse, PurgeRequest,
-    UninstallRequest, UnmountRequest,
+    InstallRequest, InstallResponse, PrepareShaderCacheRequest, PrepareShaderCacheResponse,
+    PurgeRequest, UninstallRequest, UnmountRequest,
 };
 
 // Selectively expose service methods
 pub use concierge::add_shader_cache_group_permission;
 pub use concierge::handle_vm_stopped;
 pub use dlc::handle_dlc_state_changed;
+pub use dlc::mount_dlc;
 pub use dlc::periodic_dlc_handler;
 pub use spaced::handle_disk_space_update;
 
@@ -44,50 +45,88 @@ pub async fn handle_install(
     mount_map: ShaderCacheMountMapPtr,
     dlc_queue: DlcQueuePtr,
     conn: Arc<SyncConnection>,
-) -> Result<()> {
+) -> Result<std::vec::Vec<u8>> {
     let request: InstallRequest = Message::parse_from_bytes(&raw_bytes)?;
-    // Populate mount path before installation to ensure mount happens
-    if request.mount {
-        debug!(
-            "Install and mount requested for game {}",
-            request.steam_app_id
+
+    let vm_id = VmId {
+        vm_name: request.vm_name,
+        vm_owner_id: request.vm_owner_id,
+    };
+
+    let mut mut_mount_map = mount_map.write().await;
+    // TODO(b/271776528): move the insert ShaderCacheMount to
+    // PrepareShaderCache method response once we support local RW shader
+    // cache in shadercached.
+    if !mut_mount_map.contains_key(&vm_id) {
+        let vm_gpu_cache_path =
+            Path::new(&concierge::get_vm_gpu_cache_path(&vm_id, conn.clone()).await?).to_path_buf();
+        mut_mount_map.insert(
+            vm_id.clone(),
+            ShaderCacheMount::new(vm_gpu_cache_path, &vm_id)?,
         );
-        let vm_id = VmId {
-            vm_name: request.vm_name,
-            vm_owner_id: request.vm_owner_id,
-        };
+    } else {
+        debug!("Reusing mount information for {:?}", vm_id);
+    }
 
-        let mut mut_mount_map = mount_map.write().await;
+    let shader_cache_mount = mut_mount_map
+        .get_mut(&vm_id)
+        .ok_or_else(|| MethodErr::failed("Failed to get mount information"))?;
 
-        // TODO(b/271776528): move the insert ShaderCacheMount to
-        // PrepareShaderCache method response once we support local RW shader
-        // cache in shadercached.
-        if !mut_mount_map.contains_key(&vm_id) {
-            let vm_gpu_cache_path =
-                Path::new(&concierge::get_vm_gpu_cache_path(&vm_id, conn.clone()).await?)
-                    .to_path_buf();
-            mut_mount_map.insert(
-                vm_id.clone(),
-                ShaderCacheMount::new(vm_gpu_cache_path, &vm_id)?,
-            );
-        } else {
-            debug!("Reusing mount information for {:?}", vm_id);
-        }
+    // Mesa cache path initialization must succeed before we enqueue mount
+    // Repeated initializations are no-op.
+    // |initialize()| will fail iff mesa shader cache has not been
+    // initialized - i.e. VM launched but no applications have run before. Under
+    // Normal circumstances, that's not happening because Steam Store UI would
+    // have triggered mesa to initialize shader cache.
+    // Hence, treat initialize attempt failure as failure. We are not supporting
+    // the case of manually triggering shadercached before Steam launch.
+    shader_cache_mount.initialize()?;
 
-        let shader_cache_mount = mut_mount_map
-            .get_mut(&vm_id)
-            .ok_or_else(|| MethodErr::failed("Failed to get mount information"))?;
+    // Save the current mount status in the response
+    let mut response: InstallResponse = InstallResponse::new();
+    if let Ok(is_mounted) = shader_cache_mount.is_game_mounted(request.steam_app_id, None) {
+        // Shader cache might be mounted from the previous mount call.
+        response.mounted = is_mounted;
+    }
 
-        // Mesa cache path initialization must succeed before we enqueue mount
-        shader_cache_mount.initialize()?;
-        // Even if current application is mounted, re-install and re-mount
+    if request.mount && !response.mounted {
+        // Queue mount if not mounted already
         shader_cache_mount.enqueue_mount(request.steam_app_id);
     }
 
-    let mut dlc_queue = dlc_queue.write().await;
-    dlc_queue.queue_install(&request.steam_app_id);
+    if !is_dlc_installed(request.steam_app_id) {
+        if response.mounted {
+            error!("Invalid state, DLC not installed but reported as mount");
+            error!("Proceeding with DLC installation");
+        }
+        // Queue install and upon installation completion, mount if queued.
+        let mut dlc_queue = dlc_queue.write().await;
+        dlc_queue.queue_install(&request.steam_app_id);
+        return Ok(response.write_to_bytes()?);
+    }
 
-    Ok(())
+    drop(mut_mount_map);
+    debug!(
+        "Shader cached already installed for {}",
+        request.steam_app_id
+    );
+    if request.mount && !response.mounted {
+        // Mount if dlc is not mounted already
+        response.mounted = mount_dlc(request.steam_app_id, mount_map.clone(), conn.clone())
+            .await
+            .is_ok();
+        debug!("Mounting result: {}", response.mounted);
+    }
+    Ok(response.write_to_bytes()?)
+}
+
+fn is_dlc_installed(steam_app_id: SteamAppId) -> bool {
+    // /run/imageloader/<dlc_name>/package must exist for DLC to be
+    // installed.
+    Path::new(IMAGE_LOADER)
+        .join(steam_app_id_to_dlc(steam_app_id))
+        .join("package")
+        .exists()
 }
 
 pub async fn handle_uninstall(raw_bytes: Vec<u8>, dlc_queue: DlcQueuePtr) -> Result<()> {
