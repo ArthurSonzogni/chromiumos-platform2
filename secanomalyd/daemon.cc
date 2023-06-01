@@ -28,6 +28,7 @@
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
+#include "secanomalyd/processes.h"
 #include "secanomalyd/reporter.h"
 #include "secanomalyd/system_context.h"
 
@@ -118,7 +119,7 @@ void Daemon::ReportUmaMetrics() {
 
   EmitWXMountCountUma();
   EmitMemfdExecProcCountUma();
-  EmitLandlockStatusUma();
+  EmitSandboxingUma();
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
@@ -298,19 +299,46 @@ void Daemon::EmitMemfdExecProcCountUma() {
   }
 }
 
-void Daemon::EmitLandlockStatusUma() {
-  if (has_emitted_landlock_status_uma_) {
-    return;
+void Daemon::EmitSandboxingUma() {
+  if (!has_emitted_landlock_status_uma_) {
+    VLOG(1) << "Reporting Landlock status UMA metric";
+    // If landlock is in any other state than enabled, such as not supported or
+    // an unknown state, we consider it disabled.
+    if (!SendLandlockStatusToUMA(system_context_->GetLandlockState() ==
+                                 LandlockState::kEnabled)) {
+      LOG(WARNING) << "Could not upload Landlock status UMA metric";
+    } else {
+      has_emitted_landlock_status_uma_ = true;
+    }
   }
 
-  VLOG(1) << "Reporting Landlock status UMA metric";
-  // If landlock is in any other state than enabled, such as not supported or an
-  // unknown state, we consider it disabled.
-  if (!SendLandlockStatusToUMA(system_context_->GetLandlockState() ==
-                               LandlockState::kEnabled)) {
-    LOG(WARNING) << "Could not upload Landlock status UMA metric";
-  } else {
-    has_emitted_landlock_status_uma_ = true;
+  // Refresh the login state.
+  system_context_->Refresh(/*skip_known_mount_refresh=*/true);
+
+  if (!has_emitted_seccomp_coverage_uma_ && system_context_->IsUserLoggedIn()) {
+    MaybeProcEntries proc_entries =
+        ReadProcesses(ProcessFilter::kNoKernelTasks);
+    if (!proc_entries.has_value() || proc_entries.value().size() == 0) {
+      return;
+    }
+
+    size_t total_proc_count = proc_entries.value().size();
+    size_t seccomp_proc_count = 0;
+    seccomp_proc_count = std::count_if(
+        proc_entries->begin(), proc_entries->end(), [](const ProcEntry& entry) {
+          return entry.sandbox_status()[ProcEntry::kSecCompBit] == 1;
+        });
+    unsigned int coverage_percentage = static_cast<unsigned int>(
+        round((static_cast<float>(seccomp_proc_count) /
+               static_cast<float>(total_proc_count)) *
+              100));
+
+    VLOG(1) << "Reporting SecComp coverage UMA metric";
+    if (!SendSecCompCoverageToUMA(coverage_percentage)) {
+      LOG(WARNING) << "Could not upload SecComp coverage UMA metric";
+    } else {
+      has_emitted_seccomp_coverage_uma_ = true;
+    }
   }
 }
 

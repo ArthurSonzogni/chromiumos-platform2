@@ -26,6 +26,8 @@ bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count);
 
 bool SendLandlockStatusToUMA(bool enabled);
 
+bool SendSecCompCoverageToUMA(unsigned int coverage_percentage);
+
 bool SendAnomalyUploadResultToUMA(bool success);
 
 #endif  // SECANOMALYD_METRICS_H_

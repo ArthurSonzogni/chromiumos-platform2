@@ -38,7 +38,12 @@ constexpr int kAnomalousProcCountNumBuckets = 30;
 // system that have attempted to execute a memfd.
 constexpr char kAttemptedMemfdExec[] = "AttemptedMemfdExec";
 
-constexpr char kLandlockEnabled[] = "ChromeOS.Sandboxing.LandlockEnabled";
+// The `Sandboxing` prefix is used for metrics regarding the sandboxing state of
+// the system.
+constexpr char kLandlockEnabledHistogramName[] =
+    "ChromeOS.Sandboxing.LandlockEnabled";
+constexpr char kSecCompCoverageHistogramName[] =
+    "ChromeOS.Sandboxing.SecCompCoverage";
 
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
@@ -79,7 +84,13 @@ bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count) {
 
 bool SendLandlockStatusToUMA(bool enabled) {
   InitializeMetricsIfNecessary();
-  return metrics_library->SendBoolToUMA(kLandlockEnabled, enabled);
+  return metrics_library->SendBoolToUMA(kLandlockEnabledHistogramName, enabled);
+}
+
+bool SendSecCompCoverageToUMA(unsigned int coverage_percentage) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendPercentageToUMA(
+      kSecCompCoverageHistogramName, static_cast<int>(coverage_percentage));
 }
 
 bool SendAnomalyUploadResultToUMA(bool success) {

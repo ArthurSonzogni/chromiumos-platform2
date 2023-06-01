@@ -21,7 +21,7 @@ class SystemContextMock : public SystemContext {
     set_previous_known_mounts(known_mounts);
   }
 
-  MOCK_METHOD(void, Refresh, (), (override));
+  MOCK_METHOD(void, Refresh, (bool), (override));
 };
 
 #endif  // SECANOMALYD_SYSTEM_CONTEXT_MOCK_H_

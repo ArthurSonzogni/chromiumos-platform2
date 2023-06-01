@@ -5,7 +5,6 @@
 #ifndef SECANOMALYD_DAEMON_H_
 #define SECANOMALYD_DAEMON_H_
 
-#include <cstddef>
 #include <map>
 #include <memory>
 #include <set>
@@ -51,7 +50,7 @@ class Daemon : public brillo::DBusDaemon {
   // UMA Reporting tasks are invoked by |ReportUmaMetrics()|.
   void EmitWXMountCountUma();
   void EmitMemfdExecProcCountUma();
-  void EmitLandlockStatusUma();
+  void EmitSandboxingUma();
 
   // Reporting tasks have rate limiting criteria built into them for uploading
   // crash reports.
@@ -70,6 +69,10 @@ class Daemon : public brillo::DBusDaemon {
   // Landlock status should only be reported once per execution of secanomalyd,
   // as a change in the Landlock state would require a system reboot.
   bool has_emitted_landlock_status_uma_ = false;
+
+  // SecComp coverage is sent only once per execution of secanomalyd and only in
+  // the logged-in state. We only need a rough percentage.
+  bool has_emitted_seccomp_coverage_uma_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;

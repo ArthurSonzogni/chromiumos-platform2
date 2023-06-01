@@ -19,9 +19,10 @@ SystemContext::SystemContext(SessionManagerProxyInterface* session_manager)
   UpdateLandlockState();
 }
 
-void SystemContext::Refresh() {
+void SystemContext::Refresh(bool skip_known_mount_refresh) {
   std::ignore = UpdateLoggedInState();
-  UpdateKnownMountsState();
+  if (!skip_known_mount_refresh)
+    UpdateKnownMountsState();
 }
 
 bool SystemContext::UpdateLoggedInState() {

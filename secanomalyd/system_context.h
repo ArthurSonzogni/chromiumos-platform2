@@ -31,7 +31,7 @@ class SystemContext {
   // order to update the context, including the logged in state and the list of
   // previously observed known mounts. The only exception is the landlock status
   // signal, which is determined once during instantiation of this class.
-  virtual void Refresh();
+  virtual void Refresh(bool skip_known_mount_refresh = false);
 
   bool IsUserLoggedIn() const { return logged_in_; }
   LandlockState GetLandlockState() const { return landlock_state_; }
