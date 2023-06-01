@@ -726,5 +726,15 @@ TEST_F(AuthStackManagerWrapperTest, TestCreateCredential) {
   EXPECT_THAT(returned_reply, EqualsProto(reply));
 }
 
+TEST_F(AuthStackManagerWrapperTest, TestOnUserLoggedInLoggedOut) {
+  const std::string kUserId("testuser");
+
+  EXPECT_CALL(*bio_manager_, OnUserLoggedIn(kUserId));
+  EXPECT_CALL(*bio_manager_, OnUserLoggedOut);
+
+  wrapper_->OnUserLoggedIn(kUserId, true);
+  wrapper_->OnUserLoggedOut();
+}
+
 }  // namespace
 }  // namespace biod

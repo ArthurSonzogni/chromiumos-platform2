@@ -14,7 +14,7 @@
 #include <base/memory/weak_ptr.h>
 
 #include "biod/cros_fp_device.h"
-#include "biod/cros_fp_record_manager.h"
+#include "biod/cros_fp_session_manager.h"
 #include "biod/pairing_key_storage.h"
 #include "biod/power_button_filter_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
@@ -43,7 +43,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
       BiodMetricsInterface* biod_metrics,
-      std::unique_ptr<CrosFpRecordManagerInterface> record_manager,
+      std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage);
   CrosFpAuthStackManager(const CrosFpAuthStackManager&) = delete;
   CrosFpAuthStackManager& operator=(const CrosFpAuthStackManager&) = delete;
@@ -62,8 +62,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::Session StartAuthSession() override;
   AuthenticateCredentialReply AuthenticateCredential(
       const AuthenticateCredentialRequest& request) override;
-  void RemoveRecordsFromMemory() override;
-  bool ReadRecordsForSingleUser(const std::string& user_id) override;
+  void OnUserLoggedOut() override;
+  void OnUserLoggedIn(const std::string& user_id) override;
   void SetEnrollScanDoneHandler(const AuthStackManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;
   void SetAuthScanDoneHandler(
@@ -109,9 +109,6 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
   SessionAction next_session_action_;
 
-  // This vector contains RecordIds of templates loaded into the MCU.
-  std::vector<std::string> loaded_records_;
-
   AuthStackManager::EnrollScanDoneCallback on_enroll_scan_done_;
   AuthStackManager::AuthScanDoneCallback on_auth_scan_done_;
   AuthStackManager::SessionFailedCallback on_session_failed_;
@@ -120,7 +117,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
-  std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
+  std::unique_ptr<CrosFpSessionManager> session_manager_;
 
   std::unique_ptr<PairingKeyStorage> pk_storage_;
 

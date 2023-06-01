@@ -33,18 +33,18 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
     std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
-    std::unique_ptr<CrosFpRecordManagerInterface> record_manager,
+    std::unique_ptr<CrosFpSessionManager> session_manager,
     std::unique_ptr<PairingKeyStorage> pk_storage)
     : biod_metrics_(biod_metrics),
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
-      record_manager_(std::move(record_manager)),
+      session_manager_(std::move(session_manager)),
       pk_storage_(std::move(pk_storage)),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
   CHECK(biod_metrics_);
-  CHECK(record_manager_);
+  CHECK(session_manager_);
   CHECK(pk_storage_);
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
@@ -70,7 +70,12 @@ BioSession CrosFpAuthStackManager::StartEnrollSession() {
     return BioSession(base::NullCallback());
   }
 
-  if (loaded_records_.size() >= cros_dev_->MaxTemplateCount()) {
+  if (!session_manager_->GetUser().has_value()) {
+    LOG(ERROR) << "Can only start enroll session when there is a user session.";
+    return Session(base::NullCallback());
+  }
+
+  if (session_manager_->GetNumOfTemplates() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
     return BioSession(base::NullCallback());
   }
@@ -92,6 +97,13 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
   if (!CanCreateCredential()) {
     LOG(ERROR) << "Can't create credential now, current state is: "
                << CurrentStateToString();
+    reply.set_status(CreateCredentialReply::INCORRECT_STATE);
+    return reply;
+  }
+
+  std::optional<std::string> current_user_id = session_manager_->GetUser();
+  if (!current_user_id.has_value() || request.user_id() != *current_user_id) {
+    LOG(ERROR) << "Credential can only be created for the current user.";
     reply.set_status(CreateCredentialReply::INCORRECT_STATE);
     return reply;
   }
@@ -134,7 +146,7 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
       .validation_val = {},
   };
 
-  if (!record_manager_->CreateRecord(record, std::move(tmpl))) {
+  if (!session_manager_->CreateRecord(record, std::move(tmpl))) {
     LOG(ERROR) << "Failed to create record for template.";
     reply.set_status(CreateCredentialReply::CREATE_RECORD_FAILED);
     return reply;
@@ -163,14 +175,14 @@ AuthenticateCredentialReply CrosFpAuthStackManager::AuthenticateCredential(
   return reply;
 }
 
-void CrosFpAuthStackManager::RemoveRecordsFromMemory() {
-  NOTREACHED();
+void CrosFpAuthStackManager::OnUserLoggedOut() {
+  session_manager_->UnloadUser();
 }
 
-bool CrosFpAuthStackManager::ReadRecordsForSingleUser(
-    const std::string& user_id) {
-  NOTREACHED();
-  return false;
+void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
+  if (!session_manager_->LoadUser(user_id)) {
+    LOG(ERROR) << "Failed to start user session when user logged in.";
+  }
 }
 
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(

@@ -33,11 +33,8 @@ class MockAuthStackManager : public AuthStackManager {
               AuthenticateCredential,
               (const AuthenticateCredentialRequest&),
               (override));
-  MOCK_METHOD(void, RemoveRecordsFromMemory, (), (override));
-  MOCK_METHOD(bool,
-              ReadRecordsForSingleUser,
-              (const std::string& user_id),
-              (override));
+  MOCK_METHOD(void, OnUserLoggedOut, (), (override));
+  MOCK_METHOD(void, OnUserLoggedIn, (const std::string&), (override));
   MOCK_METHOD(void,
               SetEnrollScanDoneHandler,
               (const EnrollScanDoneCallback& on_enroll_scan_done),

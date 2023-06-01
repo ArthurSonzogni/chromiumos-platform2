@@ -301,11 +301,11 @@ bool AuthStackManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
 
 void AuthStackManagerWrapper::OnUserLoggedIn(
     const std::string& sanitized_username, bool is_new_login) {
-  // TODO(b/251695952): Load records into memory here.
+  auth_stack_manager_->OnUserLoggedIn(sanitized_username);
 }
 
 void AuthStackManagerWrapper::OnUserLoggedOut() {
-  // TODO(b/251695952): Remove in-memory records here.
+  auth_stack_manager_->OnUserLoggedOut();
 }
 
 }  // namespace biod

@@ -14,6 +14,7 @@
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/cros_fp_auth_stack_manager.h"
 #include "biod/cros_fp_biometrics_manager.h"
+#include "biod/cros_fp_session_manager_impl.h"
 #include "biod/pairing_key_storage_impl.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
@@ -67,14 +68,16 @@ BiometricsDaemon::BiometricsDaemon() {
         base::FilePath(kBiodLibPath), biod::kCrosFpAuthStackManagerName);
     // Access is always allowed in BiodLibPath.
     biod_storage->set_allow_access(true);
+    auto record_manager =
+        std::make_unique<CrosFpRecordManager>(std::move(biod_storage));
+    auto session_manager =
+        std::make_unique<CrosFpSessionManagerImpl>(std::move(record_manager));
     auto pk_storage = std::make_unique<PairingKeyStorageImpl>(
         kBiodLibPath, kCrosFpAuthStackManagerName);
 
     auto cros_fp_manager = std::make_unique<CrosFpAuthStackManager>(
         std::move(power_button_filter), std::move(cros_fp_device),
-        biod_metrics_.get(),
-        std::make_unique<CrosFpRecordManager>(std::move(biod_storage)),
-        std::move(pk_storage));
+        biod_metrics_.get(), std::move(session_manager), std::move(pk_storage));
     if (cros_fp_manager && cros_fp_manager->Initialize()) {
       auth_stack_managers_.emplace_back(
           std::make_unique<AuthStackManagerWrapper>(

@@ -68,15 +68,11 @@ class AuthStackManager {
   virtual AuthenticateCredentialReply AuthenticateCredential(
       const AuthenticateCredentialRequest& request) = 0;
 
-  // Removes all decrypted records from memory. Still keeps them in storage.
   // This will be called when a user logs out.
-  virtual void RemoveRecordsFromMemory() = 0;
+  virtual void OnUserLoggedOut() = 0;
 
-  // Reads all the records for one user. Returns true if successful. This will
-  // be called when either a user logs in, or during AuthenticateCredential if
-  // no records are loaded yet (this might happen when we're doing the
-  // authentication for login).
-  virtual bool ReadRecordsForSingleUser(const std::string& user_id) = 0;
+  // This will be called when a user logs in.
+  virtual void OnUserLoggedIn(const std::string& user_id) = 0;
 
   // The callbacks should remain valid as long as this object is valid.
 
