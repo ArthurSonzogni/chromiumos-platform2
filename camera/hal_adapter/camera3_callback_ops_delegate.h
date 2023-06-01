@@ -7,6 +7,8 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA3_CALLBACK_OPS_DELEGATE_H_
 #define CAMERA_HAL_ADAPTER_CAMERA3_CALLBACK_OPS_DELEGATE_H_
 
+#include <vector>
+
 #include <hardware/camera3.h>
 
 #include "camera/mojo/camera3.mojom.h"
@@ -32,10 +34,23 @@ class Camera3CallbackOpsDelegate
 
   void Notify(mojom::Camera3NotifyMsgPtr msg);
 
+  void RequestStreamBuffers(
+      std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+      mojom::Camera3CallbackOps::RequestStreamBuffersCallback cb);
+
+  void ReturnStreamBuffers(std::vector<mojom::Camera3StreamBufferPtr> buffers);
+
  private:
   void ProcessCaptureResultOnThread(mojom::Camera3CaptureResultPtr result);
 
   void NotifyOnThread(mojom::Camera3NotifyMsgPtr msg);
+
+  void RequestStreamBuffersOnThread(
+      std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+      mojom::Camera3CallbackOps::RequestStreamBuffersCallback cb);
+
+  void ReturnStreamBuffersOnThread(
+      std::vector<mojom::Camera3StreamBufferPtr> buffers);
 };
 
 }  // end of namespace cros

@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/synchronization/lock.h>
 #include <base/threading/thread_checker.h>
 
 #include "camera3_test/camera3_device_connector.h"
@@ -48,6 +49,8 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   bool IsTemplateSupported(int32_t type);
 
+  bool IsBufferManagementSupported() const;
+
   void AddStream(int format,
                  int width,
                  int height,
@@ -58,10 +61,10 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   int ConfigureStreams(std::vector<const camera3_stream_t*>* streams);
 
-  int AllocateOutputStreamBuffers(
+  int PrepareOutputStreamBuffers(
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
-  int AllocateOutputBuffersByStreams(
+  int PrepareOutputBuffersByStreams(
       const std::vector<const camera3_stream_t*>& streams,
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
@@ -108,12 +111,13 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   void ConfigureStreamsOnThread(std::vector<const camera3_stream_t*>* streams,
                                 int* result);
 
-  void AllocateOutputStreamBuffersOnThread(
+  void PrepareOutputStreamBuffersOnThread(
       std::vector<camera3_stream_buffer_t>* output_buffers, int32_t* result);
 
-  void AllocateOutputBuffersByStreamsOnThread(
+  void PrepareOutputBuffersByStreamsOnThread(
       const std::vector<const camera3_stream_t*>* streams,
       std::vector<camera3_stream_buffer_t>* output_buffers,
+      bool allocate_buffers,
       int32_t* result);
 
   void RegisterOutputBufferOnThread(const camera3_stream_t* stream,
@@ -125,13 +129,27 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   void DestroyOnThread(int* result);
 
-  // Static callback forwarding methods from HAL to instance
+  // Static callback forwarding methods from HAL to instance.
   static void ProcessCaptureResultForwarder(
       const camera3_callback_ops* cb, const camera3_capture_result_t* result);
 
-  // Static callback forwarding methods from HAL to instance
+  // Static callback forwarding methods from HAL to instance.
   static void NotifyForwarder(const camera3_callback_ops* cb,
                               const camera3_notify_msg_t* msg);
+
+  // Static callback forwarding methods from HAL to instance.
+  static camera3_buffer_request_status_t RequestStreamBuffersForwarder(
+      const camera3_callback_ops* cb,
+      uint32_t num_buffer_reqs,
+      const camera3_buffer_request_t* buffer_reqs,
+      uint32_t* num_returned_buf_reqs,
+      camera3_stream_buffer_ret_t* returned_buf_reqs);
+
+  // Static callback forwarding methods from HAL to instance.
+  static void ReturnStreamBuffersForwarder(
+      const camera3_callback_ops* cb,
+      uint32_t num_buffers,
+      const camera3_stream_buffer_t* const* buffers);
 
   struct StreamBuffer : camera3_stream_buffer_t {
     explicit StreamBuffer(const camera3_stream_buffer_t& buffer);
@@ -144,15 +162,26 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
     std::vector<StreamBuffer> stream_buffers;
   };
 
-  // Callback functions from HAL device
+  // Callback function from HAL device.
   void ProcessCaptureResult(const camera3_capture_result_t* result);
 
   void ProcessCaptureResultOnThread(std::unique_ptr<CaptureResult> result);
 
-  // Callback functions from HAL device
+  // Callback function from HAL device.
   void Notify(const camera3_notify_msg_t* msg);
 
   void NotifyOnThread(camera3_notify_msg_t msg);
+
+  // Callback function from HAL device.
+  camera3_buffer_request_status RequestStreamBuffers(
+      uint32_t num_buffer_reqs,
+      const camera3_buffer_request_t* buffer_reqs,
+      uint32_t* num_returned_buf_reqs,
+      camera3_stream_buffer_ret_t* returned_buf_reqs);
+
+  // Callback function from HAL device.
+  void ReturnStreamBuffers(uint32_t num_buffers,
+                           const camera3_stream_buffer_t* const* buffers);
 
   // Get the buffers out of the given stream buffers |output_buffers|. The
   // buffers are return in the container |unique_buffers|, and the caller of
@@ -194,12 +223,15 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   // Index of active streams
   int cam_stream_idx_;
 
-  Camera3TestGralloc* gralloc_;
+  // A mutex to guard |gralloc_| and |stream_buffer_map_|.
+  base::Lock buffer_lock_;
+
+  Camera3TestGralloc* gralloc_ GUARDED_BY(buffer_lock_);
 
   // Store allocated buffers with streams as the key
   std::unordered_map<const camera3_stream_t*,
                      std::vector<cros::ScopedBufferHandle>>
-      stream_buffer_map_;
+      stream_buffer_map_ GUARDED_BY(buffer_lock_);
 
   uint32_t request_frame_number_;
 

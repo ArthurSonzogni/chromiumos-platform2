@@ -322,6 +322,11 @@ int MetadataHandler::FillDefaultMetadata(
   update_request(ANDROID_FLASH_STATE, ANDROID_FLASH_STATE_UNAVAILABLE);
   update_request(ANDROID_FLASH_MODE, ANDROID_FLASH_MODE_OFF);
 
+  // android.info
+  update_static(
+      ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION,
+      ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION_HIDL_DEVICE_3_5);
+
   // android.jpeg
   update_static(ANDROID_JPEG_MAX_SIZE, int32_t{13 << 20});
   update_request(ANDROID_JPEG_QUALITY, uint8_t{90});

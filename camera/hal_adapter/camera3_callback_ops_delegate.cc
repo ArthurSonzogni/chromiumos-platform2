@@ -39,6 +39,24 @@ void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
                                 base::AsWeakPtr(this), std::move(msg)));
 }
 
+void Camera3CallbackOpsDelegate::RequestStreamBuffers(
+    std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+    mojom::Camera3CallbackOps::RequestStreamBuffersCallback cb) {
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Camera3CallbackOpsDelegate::RequestStreamBuffersOnThread,
+                     base::AsWeakPtr(this), std::move(buffer_reqs),
+                     std::move(cb)));
+}
+
+void Camera3CallbackOpsDelegate::ReturnStreamBuffers(
+    std::vector<mojom::Camera3StreamBufferPtr> buffers) {
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Camera3CallbackOpsDelegate::ReturnStreamBuffersOnThread,
+                     base::AsWeakPtr(this), std::move(buffers)));
+}
+
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     mojom::Camera3CaptureResultPtr result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
@@ -53,6 +71,23 @@ void Camera3CallbackOpsDelegate::NotifyOnThread(
   TRACE_HAL_ADAPTER();
 
   remote_->Notify(std::move(msg));
+}
+
+void Camera3CallbackOpsDelegate::RequestStreamBuffersOnThread(
+    std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+    mojom::Camera3CallbackOps::RequestStreamBuffersCallback cb) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  remote_->RequestStreamBuffers(std::move(buffer_reqs), std::move(cb));
+}
+
+void Camera3CallbackOpsDelegate::ReturnStreamBuffersOnThread(
+    std::vector<mojom::Camera3StreamBufferPtr> buffers) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  remote_->ReturnStreamBuffers(std::move(buffers));
 }
 
 }  // end of namespace cros

@@ -203,6 +203,11 @@ CameraDeviceAdapter::CameraDeviceAdapter(
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
 
+  if (IsBufferManagementSupported()) {
+    camera3_callback_ops_t::request_stream_buffers = RequestStreamBuffers;
+    camera3_callback_ops_t::return_stream_buffers = ReturnStreamBuffers;
+  }
+
   std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ =
@@ -301,6 +306,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   }
 
   base::ElapsedTimer timer;
+
+  base::AutoLock configuring_streams_lock(configuring_streams_lock_);
 
   {
     base::AutoLock l(inflight_requests_lock_);
@@ -1012,58 +1019,63 @@ void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
   }
 }
 
-void CameraDeviceAdapter::NotifyInvalidCaptureRequest(
-    const mojom::Camera3CaptureRequestPtr& request_ptr) {
-  DCHECK(async_capture_request_call_);
+// static
+camera3_buffer_request_status_t CameraDeviceAdapter::RequestStreamBuffers(
+    const camera3_callback_ops_t* ops,
+    uint32_t num_buffer_reqs,
+    const camera3_buffer_request_t* buffer_reqs,
+    uint32_t* num_returned_buf_reqs,
+    camera3_stream_buffer_ret_t* returned_buf_reqs) {
   TRACE_HAL_ADAPTER();
 
-  mojom::Camera3CaptureResultPtr result_ptr =
-      mojom::Camera3CaptureResult::New();
-  result_ptr->frame_number = request_ptr->frame_number;
-  result_ptr->result = mojom::CameraMetadata::New();
-  result_ptr->result->size = 0;
-  result_ptr->result->entry_count = 0;
-  result_ptr->result->entry_capacity = 0;
-  result_ptr->result->data_count = 0;
-  result_ptr->result->data_capacity = 0;
-  result_ptr->partial_result = 0;
-  result_ptr->output_buffers = std::move(request_ptr->output_buffers);
-  for (const auto& out_buf : *result_ptr->output_buffers) {
-    out_buf->release_fence = std::move(out_buf->acquire_fence);
-    out_buf->buffer_handle = nullptr;
-    out_buf->status = mojom::Camera3BufferStatus::CAMERA3_BUFFER_STATUS_ERROR;
-  }
-  if (!request_ptr->input_buffer.is_null()) {
-    result_ptr->input_buffer = std::move(request_ptr->input_buffer);
-    result_ptr->input_buffer->release_fence =
-        std::move(result_ptr->input_buffer->acquire_fence);
-    result_ptr->input_buffer->buffer_handle = nullptr;
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
+
+  base::AutoTryLock configuring_streams_lock(self->configuring_streams_lock_);
+  if (!configuring_streams_lock.is_acquired()) {
+    *num_returned_buf_reqs = 0;
+    return CAMERA3_BUF_REQ_FAILED_CONFIGURING;
   }
 
-  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
-    result_ptr->physcam_metadata =
-        std::vector<mojom::Camera3PhyscamMetadataPtr>();
+  using RequestStreamBuffersReturn =
+      std::pair<mojom::Camera3BufferRequestStatus,
+                std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>>;
+  auto future = cros::Future<RequestStreamBuffersReturn>::Create(nullptr);
+  if (self->callback_ops_delegate_) {
+    auto request = self->PrepareBufferRequest(num_buffer_reqs, buffer_reqs);
+    if (!request.has_value()) {
+      return request.error();
+    }
+    auto cb = [](base::OnceCallback<void(RequestStreamBuffersReturn)> future_cb,
+                 mojom::Camera3BufferRequestStatus req_status,
+                 std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>
+                     ret_ptrs) {
+      std::move(future_cb).Run(std::pair{req_status, std::move(ret_ptrs)});
+    };
+    self->callback_ops_delegate_->RequestStreamBuffers(
+        std::move(request.value()),
+        base::BindOnce(cb, cros::GetFutureCallback(future)));
   }
-
-  camera3_notify_msg_t invalid_request_msg = {
-      .type = CAMERA3_MSG_ERROR,
-      .message =
-          {
-              .error =
-                  {
-                      .frame_number = request_ptr->frame_number,
-                      .error_code = CAMERA3_MSG_ERROR_REQUEST,
-                  },
-          },
-  };
-
-  base::AutoLock l(callback_ops_delegate_lock_);
-  mojom::Camera3NotifyMsgPtr msg_ptr = PrepareNotifyMsg(&invalid_request_msg);
-  if (callback_ops_delegate_) {
-    callback_ops_delegate_->Notify(std::move(msg_ptr));
+  if (!future->Wait()) {
+    LOGF(ERROR) << "RequestStreamBuffers() timed out";
+    *num_returned_buf_reqs = 0;
+    return CAMERA3_BUF_REQ_FAILED_UNKNOWN;
   }
-  if (callback_ops_delegate_) {
-    callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  RequestStreamBuffersReturn ret = future->Get();
+  return self->DeserializeReturnedBufferRequest(
+      ret.first, ret.second, num_returned_buf_reqs, returned_buf_reqs);
+}
+
+// static
+void CameraDeviceAdapter::ReturnStreamBuffers(
+    const camera3_callback_ops_t* ops,
+    uint32_t num_buffers,
+    const camera3_stream_buffer_t* const* buffers) {
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
+  if (self->callback_ops_delegate_) {
+    self->callback_ops_delegate_->ReturnStreamBuffers(
+        self->PrepareBufferReturn(num_buffers, buffers));
   }
 }
 
@@ -1332,6 +1344,108 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::PrepareNotifyMsg(
   return m;
 }
 
+base::expected<std::vector<mojom::Camera3BufferRequestPtr>,
+               camera3_buffer_request_status_t>
+CameraDeviceAdapter::PrepareBufferRequest(
+    uint32_t num_buffer_reqs, const camera3_buffer_request_t* buffer_reqs) {
+  std::vector<mojom::Camera3BufferRequestPtr> req_ptrs;
+  base::AutoLock streams_lock(streams_lock_);
+  for (size_t i = 0; i < num_buffer_reqs; ++i) {
+    mojom::Camera3BufferRequestPtr req_ptr = mojom::Camera3BufferRequest::New();
+    const camera3_buffer_request_t& buffer_req = buffer_reqs[i];
+    req_ptr->num_buffers_requested = buffer_req.num_buffers_requested;
+    bool is_stream_found = false;
+    for (const auto& s : streams_) {
+      if (s.second.get() == buffer_req.stream) {
+        req_ptr->stream_id = s.first;
+        is_stream_found = true;
+        break;
+      }
+    }
+    if (!is_stream_found) {
+      LOGF(ERROR) << "Unknown stream: " << buffer_req.stream;
+      return base::unexpected(CAMERA3_BUF_REQ_FAILED_ILLEGAL_ARGUMENTS);
+    }
+    req_ptrs.push_back(std::move(req_ptr));
+  }
+  return base::ok(std::move(req_ptrs));
+}
+
+camera3_buffer_request_status_t
+CameraDeviceAdapter::DeserializeReturnedBufferRequest(
+    mojom::Camera3BufferRequestStatus req_status,
+    std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>& ret_ptrs,
+    uint32_t* num_returned_buf_reqs,
+    camera3_stream_buffer_ret_t* returned_buf_reqs) {
+  auto status = static_cast<camera3_buffer_request_status_t>(req_status);
+  if (!ret_ptrs.has_value()) {
+    *num_returned_buf_reqs = 0;
+    return status;
+  }
+
+  *num_returned_buf_reqs = ret_ptrs->size();
+  for (size_t i = 0; i < ret_ptrs->size(); ++i) {
+    mojom::Camera3StreamBufferRetPtr& ret_ptr = ret_ptrs.value()[i];
+    camera3_stream_buffer_ret_t& ret = returned_buf_reqs[i];
+    ret.status =
+        static_cast<camera3_stream_buffer_req_status_t>(ret_ptr->status);
+    {
+      base::AutoLock streams_lock(streams_lock_);
+      auto it = streams_.find(ret_ptr->stream_id);
+      if (it == streams_.end()) {
+        LOGF(ERROR) << "Unknown stream: " << ret_ptr->stream_id;
+        ret.status = CAMERA3_PS_BUF_REQ_UNKNOWN_ERROR;
+        continue;
+      } else {
+        ret.stream = it->second.get();
+      }
+    }
+    if (!ret_ptr->output_buffers.has_value()) {
+      ret.output_buffers = nullptr;
+      continue;
+    }
+    size_t output_buffers_index = 0;
+    for (mojom::Camera3StreamBufferPtr& buf_ptr :
+         ret_ptr->output_buffers.value()) {
+      base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+      if (buf_ptr->buffer_handle) {
+        if (RegisterBufferLocked(std::move(buf_ptr->buffer_handle))) {
+          LOGF(ERROR) << "Failed to register output buffer";
+          ret.status = CAMERA3_PS_BUF_REQ_UNKNOWN_ERROR;
+          continue;
+        }
+      }
+      {
+        base::AutoLock streams_lock(streams_lock_);
+        internal::DeserializeStreamBuffer(
+            buf_ptr, streams_, buffer_handles_,
+            ret.output_buffers + output_buffers_index++);
+      }
+    }
+    ret.num_output_buffers = output_buffers_index;
+  }
+  return status;
+}
+
+std::vector<mojom::Camera3StreamBufferPtr>
+CameraDeviceAdapter::PrepareBufferReturn(
+    uint32_t num_buffers, const camera3_stream_buffer_t* const* buffers) {
+  std::vector<mojom::Camera3StreamBufferPtr> buf_ptrs;
+  base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+  base::AutoLock streams_lock(streams_lock_);
+  for (size_t i = 0; i < num_buffers; ++i) {
+    mojom::Camera3StreamBufferPtr buf_ptr = internal::SerializeStreamBuffer(
+        *buffers + i, streams_, buffer_handles_);
+    if (buf_ptr.is_null()) {
+      LOGF(ERROR) << "Failed to serialize output stream buffer";
+    }
+    RemoveReturnBufferLocked(buf_ptr->buffer_id, *(*buffers + i));
+    buf_ptrs.push_back(std::move(buf_ptr));
+  }
+
+  return buf_ptrs;
+}
+
 void CameraDeviceAdapter::RemoveBufferLocked(
     const camera3_stream_buffer_t& buffer) {
   buffer_handles_lock_.AssertAcquired();
@@ -1434,6 +1548,61 @@ void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
   callback_ops_delegate_.reset();
 }
 
+void CameraDeviceAdapter::NotifyInvalidCaptureRequest(
+    const mojom::Camera3CaptureRequestPtr& request_ptr) {
+  DCHECK(async_capture_request_call_);
+  TRACE_HAL_ADAPTER();
+
+  mojom::Camera3CaptureResultPtr result_ptr =
+      mojom::Camera3CaptureResult::New();
+  result_ptr->frame_number = request_ptr->frame_number;
+  result_ptr->result = mojom::CameraMetadata::New();
+  result_ptr->result->size = 0;
+  result_ptr->result->entry_count = 0;
+  result_ptr->result->entry_capacity = 0;
+  result_ptr->result->data_count = 0;
+  result_ptr->result->data_capacity = 0;
+  result_ptr->partial_result = 0;
+  result_ptr->output_buffers = std::move(request_ptr->output_buffers);
+  for (const auto& out_buf : *result_ptr->output_buffers) {
+    out_buf->release_fence = std::move(out_buf->acquire_fence);
+    out_buf->buffer_handle = nullptr;
+    out_buf->status = mojom::Camera3BufferStatus::CAMERA3_BUFFER_STATUS_ERROR;
+  }
+  if (!request_ptr->input_buffer.is_null()) {
+    result_ptr->input_buffer = std::move(request_ptr->input_buffer);
+    result_ptr->input_buffer->release_fence =
+        std::move(result_ptr->input_buffer->acquire_fence);
+    result_ptr->input_buffer->buffer_handle = nullptr;
+  }
+
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    result_ptr->physcam_metadata =
+        std::vector<mojom::Camera3PhyscamMetadataPtr>();
+  }
+
+  camera3_notify_msg_t invalid_request_msg = {
+      .type = CAMERA3_MSG_ERROR,
+      .message =
+          {
+              .error =
+                  {
+                      .frame_number = request_ptr->frame_number,
+                      .error_code = CAMERA3_MSG_ERROR_REQUEST,
+                  },
+          },
+  };
+
+  base::AutoLock l(callback_ops_delegate_lock_);
+  mojom::Camera3NotifyMsgPtr msg_ptr = PrepareNotifyMsg(&invalid_request_msg);
+  if (callback_ops_delegate_) {
+    callback_ops_delegate_->Notify(std::move(msg_ptr));
+  }
+  if (callback_ops_delegate_) {
+    callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  }
+}
+
 void CameraDeviceAdapter::ForceCloseOnDeviceOpsThread() {
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   Flush();
@@ -1444,6 +1613,21 @@ void CameraDeviceAdapter::ForceCloseOnDeviceOpsThread() {
                         .error_code = CAMERA3_MSG_ERROR_DEVICE}};
   NotifyClient(this, msg);
   Close();
+}
+
+bool CameraDeviceAdapter::IsBufferManagementSupported() const {
+  if (device_api_version_ < CAMERA_DEVICE_API_VERSION_3_6) {
+    return false;
+  }
+  camera_metadata_ro_entry_t entry = {};
+  if (find_camera_metadata_ro_entry(
+          static_info_, ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION,
+          &entry) != 0 ||
+      entry.count != 1) {
+    return false;
+  }
+  return entry.data.u8[0] ==
+         ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION_HIDL_DEVICE_3_5;
 }
 
 }  // namespace cros

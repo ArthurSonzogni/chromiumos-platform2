@@ -109,7 +109,7 @@ CameraClient::CameraClient(
       camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
-  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_5;
+  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_6;
   camera3_device_.common.close = cros::camera_device_close;
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   camera3_device_.ops = &g_camera_device_ops;
@@ -299,6 +299,8 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
     }
   }
 
+  base::flat_map<camera3_stream_t*, std::vector<const camera3_stream_buffer_t*>>
+      stream_to_buffers;
   for (size_t i = 0; i < request->num_output_buffers; i++) {
     const camera3_stream_buffer_t* buffer = &request->output_buffers[i];
     if (!IsFormatSupported(qualified_formats_, *(buffer->stream))) {
@@ -308,6 +310,41 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
                   << ", format: " << buffer->stream->format;
       return -EINVAL;
     }
+    stream_to_buffers[buffer->stream].push_back(buffer);
+  }
+
+  // If the buffer management APIs are enabled, requests do not contain output
+  // buffer handles and HAL needs to request buffers using
+  // request_stream_buffers().
+  std::vector<camera3_stream_buffer_t> returned_output_buffers(
+      request->num_output_buffers, camera3_stream_buffer_t{});
+  if (!request->output_buffers[0].buffer) {
+    std::vector<camera3_buffer_request_t> buf_reqs;
+    std::vector<camera3_stream_buffer_ret_t> returned_buf_reqs(
+        request->num_output_buffers, camera3_stream_buffer_ret_t{});
+
+    // Prepare |buf_reqs| and |returned_buf_reqs|.
+    size_t returned_buf_reqs_index = 0;
+    size_t returned_output_buffers_index = 0;
+    for (const auto& [stream, output_buffers] : stream_to_buffers) {
+      auto num_buffers = static_cast<uint32_t>(output_buffers.size());
+      buf_reqs.push_back(
+          {.stream = stream, .num_buffers_requested = num_buffers});
+      returned_buf_reqs[returned_buf_reqs_index++].output_buffers =
+          &returned_output_buffers[returned_output_buffers_index];
+      returned_output_buffers_index += num_buffers;
+    }
+
+    uint32_t num_returned_buf_reqs;
+    camera3_buffer_request_status_t ret = callback_ops_->request_stream_buffers(
+        callback_ops_, request->num_output_buffers, buf_reqs.data(),
+        &num_returned_buf_reqs, returned_buf_reqs.data());
+    if (ret != CAMERA3_BUF_REQ_OK) {
+      // TODO(b/226688669): Handle errors.
+      LOGF(ERROR) << "Failed to request stream buffers";
+      return -EINVAL;
+    }
+    request->output_buffers = returned_output_buffers.data();
   }
 
   // We cannot use |request| after this function returns. So we have to copy

@@ -70,6 +70,9 @@ class Camera3Device {
   // Whether or not the template is supported.
   bool IsTemplateSupported(int32_t type);
 
+  // Whether or not the buffer management APIs are supported.
+  bool IsBufferManagementSupported() const;
+
   // Construct default request settings.
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
 
@@ -95,16 +98,18 @@ class Camera3Device {
   // Configure streams and return configured streams if |streams| is not null.
   int ConfigureStreams(std::vector<const camera3_stream_t*>* streams);
 
-  // Allocate output buffers for all configured streams and return them
-  // in the stream buffer format, which has the buffer associated to the
-  // corresponding stream. The allocated buffers are owned by Camera3Device.
-  int AllocateOutputStreamBuffers(
+  // If the buffer management APIs are not supported, allocate output buffers
+  // for all configured streams and return them in the stream buffer format,
+  // which has the buffer associated to the corresponding stream. The allocated
+  // buffers are owned by Camera3Device.
+  int PrepareOutputStreamBuffers(
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
-  // Allocate output buffers for given streams |streams| and return them
-  // in the stream buffer format, which has the buffer associated to the
-  // corresponding stream. The allocated buffers are owned by Camera3Device.
-  int AllocateOutputBuffersByStreams(
+  // If the buffer management APIs are not supported, allocate output buffers
+  // for given streams |streams| and return them in the stream buffer format,
+  // which has the buffer associated to the corresponding stream. The allocated
+  // buffers are owned by Camera3Device.
+  int PrepareOutputBuffersByStreams(
       const std::vector<const camera3_stream_t*>& streams,
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
@@ -211,6 +216,9 @@ class Camera3Device::StaticInfo {
 
   // Determine if camera device support AWB lock control
   bool IsAWBLockSupported() const;
+
+  // Check if the buffer management APIs are supported.
+  bool IsBufferManagementSupported() const;
 
   // Get the maximum number of partial result a request can expect
   // Returns: maximum number of partial results; it is 1 by default.

@@ -95,6 +95,8 @@ int DeserializeStreamBuffer(
   }
   out_buffer->stream = it->second.get();
 
+  // TODO(b/226688669): Define a special buffer_id that indicates no buffer is
+  // attached for the buffer management APIs.
   auto buffer_handle = buffer_handles.find(ptr->buffer_id);
   if (buffer_handle == buffer_handles.end()) {
     LOGF(ERROR) << "Invalid buffer id: " << ptr->buffer_id;

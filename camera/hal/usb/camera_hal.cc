@@ -145,6 +145,10 @@ ScopedCameraMetadata StaticMetadataForAndroid(
   android::CameraMetadata data(static_metadata);
   std::vector<int32_t> stream_configurations;
 
+  // TODO(b/226688669): Remove this once we support the buffer management APIs
+  // for Android.
+  data.erase(ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION);
+
   if (device_info.quirks & kQuirkAndroidExternal) {
     data.update(
         ANDROID_LENS_FACING,
@@ -385,7 +389,7 @@ int CameraHal::GetCameraInfo(int id,
       return -EINVAL;
   }
   info->orientation = device_infos_[id].sensor_orientation;
-  info->device_version = CAMERA_DEVICE_API_VERSION_3_5;
+  info->device_version = CAMERA_DEVICE_API_VERSION_3_6;
   if (client_type == ClientType::kAndroid) {
     info->static_camera_characteristics = static_metadata_android_[id].get();
   } else {
@@ -928,7 +932,7 @@ static hw_module_methods_t gCameraModuleMethods = {
 
 camera_module_t HAL_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
     .common = {.tag = HARDWARE_MODULE_TAG,
-               .module_api_version = CAMERA_MODULE_API_VERSION_2_4,
+               .module_api_version = CAMERA_MODULE_API_VERSION_2_5,
                .hal_api_version = HARDWARE_HAL_API_VERSION,
                .id = CAMERA_HARDWARE_MODULE_ID,
                .name = "V4L2 UVC Camera HAL v3",

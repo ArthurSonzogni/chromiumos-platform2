@@ -392,6 +392,16 @@ void ClientDeviceConnector::ProcessCaptureRequestOnThread(
 cros::mojom::Camera3StreamBufferPtr
 ClientDeviceConnector::PrepareStreamBufferPtr(
     const camera3_stream_buffer_t* buffer) {
+  cros::mojom::Camera3StreamBufferPtr buffer_ptr =
+      cros::mojom::Camera3StreamBuffer::New();
+  buffer_ptr->stream_id = reinterpret_cast<uint64_t>(buffer->stream);
+  buffer_ptr->status =
+      static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
+  if (buffer->buffer == nullptr) {
+    buffer_ptr->buffer_id = 0;
+    return buffer_ptr;
+  }
+
   uint32_t drm_format = 0;
   switch (cros::CameraBufferManager::GetV4L2PixelFormat(*buffer->buffer)) {
     case V4L2_PIX_FMT_JPEG:
@@ -439,12 +449,7 @@ ClientDeviceConnector::PrepareStreamBufferPtr(
   uint64_t buffer_id = reinterpret_cast<uint64_t>(native_handle);
   base::AutoLock bufferLock(buffer_handle_map_lock_);
   buffer_handle_map_[buffer_id] = native_handle;
-  cros::mojom::Camera3StreamBufferPtr buffer_ptr =
-      cros::mojom::Camera3StreamBuffer::New();
-  buffer_ptr->stream_id = reinterpret_cast<uint64_t>(buffer->stream);
   buffer_ptr->buffer_id = buffer_id;
-  buffer_ptr->status =
-      static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
   cros::mojom::CameraBufferHandlePtr handle_ptr =
       cros::mojom::CameraBufferHandle::New();
   handle_ptr->buffer_id = buffer_id;
@@ -559,13 +564,73 @@ void ClientDeviceConnector::ProcessCaptureResult(
 }
 
 void ClientDeviceConnector::RequestStreamBuffers(
-    std::vector<cros::mojom::Camera3BufferRequestPtr> buffer_reqs,
-    RequestStreamBuffersCallback callback) {
-  // TODO(b/226688669): Implement ClientDeviceConnector::RequestStreamBuffers.
+    std::vector<cros::mojom::Camera3BufferRequestPtr> buffer_req_ptrs,
+    RequestStreamBuffersCallback cb) {
+  std::vector<camera3_buffer_request_t> buffer_reqs(buffer_req_ptrs.size(),
+                                                    camera3_buffer_request_t{});
+  uint32_t num_returned_buf_reqs;
+  std::vector<camera3_stream_buffer_ret_t> returned_buf_reqs(
+      buffer_req_ptrs.size(), camera3_stream_buffer_ret_t{});
+  std::vector<camera3_stream_buffer_t> output_buffers;
+  for (size_t i = 0; i < buffer_req_ptrs.size(); ++i) {
+    cros::mojom::Camera3BufferRequestPtr& req_ptr = buffer_req_ptrs[i];
+    buffer_reqs[i].num_buffers_requested = req_ptr->num_buffers_requested;
+    buffer_reqs[i].stream =
+        reinterpret_cast<camera3_stream_t*>(req_ptr->stream_id);
+
+    std::fill_n(std::back_inserter(output_buffers),
+                req_ptr->num_buffers_requested, camera3_stream_buffer_t{});
+    returned_buf_reqs[i].output_buffers =
+        &output_buffers.back() - req_ptr->num_buffers_requested + 1;
+  }
+
+  camera3_buffer_request_status_t status =
+      user_callback_ops_->request_stream_buffers(
+          user_callback_ops_, buffer_reqs.size(), buffer_reqs.data(),
+          &num_returned_buf_reqs, returned_buf_reqs.data());
+  std::vector<cros::mojom::Camera3StreamBufferRetPtr> ret_ptrs;
+  for (size_t i = 0; i < num_returned_buf_reqs; ++i) {
+    camera3_stream_buffer_ret_t& ret = returned_buf_reqs[i];
+    cros::mojom::Camera3StreamBufferRetPtr ret_ptr =
+        cros::mojom::Camera3StreamBufferRet::New();
+    ret_ptr->stream_id = reinterpret_cast<uint64_t>(ret.stream);
+    ret_ptr->status =
+        static_cast<cros::mojom::Camera3StreamBufferReqStatus>(ret.status);
+    ret_ptr->output_buffers =
+        std::vector<cros::mojom::Camera3StreamBufferPtr>();
+    for (size_t j = 0; j < ret.num_output_buffers; ++j) {
+      ret_ptr->output_buffers->push_back(
+          PrepareStreamBufferPtr(&ret.output_buffers[j]));
+    }
+    ret_ptrs.push_back(std::move(ret_ptr));
+  }
+  std::move(cb).Run(
+      static_cast<cros::mojom::Camera3BufferRequestStatus>(status),
+      std::move(ret_ptrs));
 }
+
 void ClientDeviceConnector::ReturnStreamBuffers(
-    std::vector<cros::mojom::Camera3StreamBufferPtr> buffers) {
-  // TODO(b/226688669): Implement ClientDeviceConnector::ReturnStreamBuffers.
+    std::vector<cros::mojom::Camera3StreamBufferPtr> buffer_ptrs) {
+  std::vector<camera3_stream_buffer_t> buffers(buffer_ptrs.size(),
+                                               camera3_stream_buffer_t{});
+  for (size_t i = 0; i < buffer_ptrs.size(); i++) {
+    cros::mojom::Camera3StreamBufferPtr& buffer_ptr = buffer_ptrs[i];
+    camera3_stream_buffer_t& buffer = buffers[i];
+    int ret = DecodeStreamBufferPtr(buffer_ptr, &buffer);
+    if (ret) {
+      LOGF(ERROR) << "Failed to decode output stream buffer";
+      continue;
+    }
+    if (camera3_streams_.count(buffer.stream) == 0) {
+      LOGF(ERROR) << "Invalid stream";
+      continue;
+    }
+    base::AutoLock buffer_lock(buffer_handle_map_lock_);
+    buffer_handle_map_.erase(buffer_ptr->buffer_id);
+  }
+  camera3_stream_buffer_t* buffer_addrs = buffers.data();
+  user_callback_ops_->return_stream_buffers(user_callback_ops_, buffers.size(),
+                                            &buffer_addrs);
 }
 
 int ClientDeviceConnector::DecodeStreamBufferPtr(

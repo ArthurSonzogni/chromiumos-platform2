@@ -549,7 +549,7 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
   for (uint32_t i = 0; i < number_of_capture_requests_; i++) {
     std::vector<const camera3_stream_t*> streams(1, preview_stream);
     std::vector<camera3_stream_buffer_t> output_buffers;
-    if (cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers) !=
+    if (cam_device_.PrepareOutputBuffersByStreams(streams, &output_buffers) !=
         0) {
       ADD_FAILURE() << "Failed to allocate output buffer";
       *result = -EINVAL;
@@ -691,7 +691,7 @@ void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
   for (uint32_t i = 0; i < number_of_capture_requests_; i++) {
     std::vector<const camera3_stream_t*> streams(1, record_stream);
     std::vector<camera3_stream_buffer_t> output_buffers;
-    if (cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers) !=
+    if (cam_device_.PrepareOutputBuffersByStreams(streams, &output_buffers) !=
         0) {
       ADD_FAILURE() << "Failed to allocate output buffer";
       std::move(cb).Run(-EINVAL);
@@ -742,7 +742,7 @@ void Camera3Service::Camera3DeviceService::
     std::vector<const camera3_stream_t*> streams(1, still_capture_stream);
     std::vector<camera3_stream_buffer_t> output_buffers;
     ASSERT_EQ(
-        0, cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers))
+        0, cam_device_.PrepareOutputBuffersByStreams(streams, &output_buffers))
         << "Failed to allocate output buffer";
     request->settings = still_capture_metadata_;
     output_stream_buffers_[capture_request_idx][request->num_output_buffers] =

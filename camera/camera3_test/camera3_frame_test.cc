@@ -28,17 +28,17 @@ namespace camera3_test {
 
 int32_t Camera3FrameFixture::CreateCaptureRequest(
     const camera_metadata_t& metadata, uint32_t* frame_number) {
-  // Allocate output buffers
+  // Prepare output buffers.
   std::vector<camera3_stream_buffer_t> output_buffers;
-  if (cam_device_.AllocateOutputStreamBuffers(&output_buffers)) {
-    ADD_FAILURE() << "Failed to allocate buffers for capture request";
+  if (cam_device_.PrepareOutputStreamBuffers(&output_buffers)) {
+    ADD_FAILURE() << "Failed to prepare output buffers for capture request";
     return -EINVAL;
   }
 
   camera3_capture_request_t capture_request = {
       .frame_number = UINT32_MAX,
       .settings = &metadata,
-      .input_buffer = NULL,
+      .input_buffer = nullptr,
       .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
       .output_buffers = output_buffers.data(),
       .num_physcam_settings = 0};
@@ -828,8 +828,8 @@ TEST_P(Camera3InvalidRequestTest, NullOrUnconfiguredRequest) {
   streams[0].height = static_cast<uint32_t>(default_height_);
   streams[0].format = default_format_;
   std::vector<const camera3_stream_t*> stream_ptrs(1, &streams[0]);
-  ASSERT_EQ(0, cam_device_.AllocateOutputBuffersByStreams(stream_ptrs,
-                                                          &output_buffers))
+  ASSERT_EQ(0, cam_device_.PrepareOutputBuffersByStreams(stream_ptrs,
+                                                         &output_buffers))
       << "Failed to allocate buffers for capture request";
   camera3_capture_request_t capture_request = {
       .frame_number = 0,
@@ -1389,6 +1389,9 @@ void Camera3InvalidBufferTest::RunInvalidBufferTest(buffer_handle_t* handle) {
 }
 
 TEST_P(Camera3InvalidBufferTest, NullBufferHandle) {
+  if (cam_device_.IsBufferManagementSupported()) {
+    GTEST_SKIP();
+  }
   buffer_handle_t handle = nullptr;
   RunInvalidBufferTest(&handle);
 }
@@ -2042,8 +2045,8 @@ void Camera3PortraitModeTest::TakePortraitModePictureTest(bool has_face) {
   std::vector<camera3_stream_buffer_t> output_buffers;
   auto out_stream = GetStream(HAL_PIXEL_FORMAT_BLOB, true);
   ASSERT_NE(out_stream, nullptr);
-  ASSERT_EQ(0, cam_device_.AllocateOutputBuffersByStreams({out_stream},
-                                                          &output_buffers))
+  ASSERT_EQ(0, cam_device_.PrepareOutputBuffersByStreams({out_stream},
+                                                         &output_buffers))
       << "Failed to allocate buffers for capture request";
   camera3_capture_request_t capture_request = {
       .frame_number = UINT32_MAX,

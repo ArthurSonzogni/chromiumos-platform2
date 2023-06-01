@@ -53,6 +53,11 @@ bool Camera3Device::IsTemplateSupported(int32_t type) {
   return impl_->IsTemplateSupported(type);
 }
 
+bool Camera3Device::IsBufferManagementSupported() const {
+  DCHECK(impl_);
+  return impl_->IsBufferManagementSupported();
+}
+
 const camera_metadata_t* Camera3Device::ConstructDefaultRequestSettings(
     int type) {
   DCHECK(impl_);
@@ -93,17 +98,17 @@ int Camera3Device::ConfigureStreams(
   return impl_->ConfigureStreams(streams);
 }
 
-int Camera3Device::AllocateOutputStreamBuffers(
+int Camera3Device::PrepareOutputStreamBuffers(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   DCHECK(impl_);
-  return impl_->AllocateOutputStreamBuffers(output_buffers);
+  return impl_->PrepareOutputStreamBuffers(output_buffers);
 }
 
-int Camera3Device::AllocateOutputBuffersByStreams(
+int Camera3Device::PrepareOutputBuffersByStreams(
     const std::vector<const camera3_stream_t*>& streams,
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   DCHECK(impl_);
-  return impl_->AllocateOutputBuffersByStreams(streams, output_buffers);
+  return impl_->PrepareOutputBuffersByStreams(streams, output_buffers);
 }
 
 int Camera3Device::RegisterOutputBuffer(
@@ -470,6 +475,18 @@ bool Camera3Device::StaticInfo::IsAWBLockSupported() const {
     return false;
   }
   return entry.data.u8[0] == ANDROID_CONTROL_AWB_LOCK_AVAILABLE_TRUE;
+}
+
+bool Camera3Device::StaticInfo::IsBufferManagementSupported() const {
+  camera_metadata_ro_entry_t entry = {};
+  if (find_camera_metadata_ro_entry(
+          characteristics_, ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION,
+          &entry) != 0 ||
+      entry.count != 1) {
+    return false;
+  }
+  return entry.data.u8[0] ==
+         ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION_HIDL_DEVICE_3_5;
 }
 
 int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {

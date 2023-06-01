@@ -23,6 +23,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
+#include <base/types/expected.h>
 #include <camera/camera_metadata.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -184,6 +185,18 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   static void NotifyClient(const camera3_callback_ops_t* ops,
                            camera3_notify_msg_t msg);
 
+  static camera3_buffer_request_status_t RequestStreamBuffers(
+      const camera3_callback_ops_t* ops,
+      uint32_t num_buffer_reqs,
+      const camera3_buffer_request_t* buffer_reqs,
+      uint32_t* num_returned_buf_reqs,
+      camera3_stream_buffer_ret_t* returned_buf_reqs);
+
+  static void ReturnStreamBuffers(
+      const camera3_callback_ops_t* ops,
+      uint32_t num_buffers,
+      const camera3_stream_buffer_t* const* buffers);
+
   // Allocates buffers for given |streams|. Returns true and the allocated
   // buffers will be put in |allocated_buffers| if the allocation succeeds.
   // Otherwise, false is returned.
@@ -212,6 +225,20 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       const camera3_capture_result_t* result);
 
   mojom::Camera3NotifyMsgPtr PrepareNotifyMsg(const camera3_notify_msg_t* msg);
+
+  base::expected<std::vector<mojom::Camera3BufferRequestPtr>,
+                 camera3_buffer_request_status_t>
+  PrepareBufferRequest(uint32_t num_buffer_reqs,
+                       const camera3_buffer_request_t* buffer_reqs);
+
+  camera3_buffer_request_status_t DeserializeReturnedBufferRequest(
+      mojom::Camera3BufferRequestStatus req_status,
+      std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>& ret_ptrs,
+      uint32_t* num_returned_buf_reqs,
+      camera3_stream_buffer_ret_t* returned_buf_reqs);
+
+  std::vector<mojom::Camera3StreamBufferPtr> PrepareBufferReturn(
+      uint32_t num_buffers, const camera3_stream_buffer_t* const* buffers);
 
   // Caller must hold |buffer_handles_lock_|.
   void RemoveBufferLocked(const camera3_stream_buffer_t& buffer);
@@ -244,6 +271,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       const mojom::Camera3CaptureRequestPtr& request_ptr);
 
   void ForceCloseOnDeviceOpsThread();
+
+  bool IsBufferManagementSupported() const;
 
   // The thread that all the camera3 device ops operate on.
   base::Thread camera_device_ops_thread_;
@@ -297,10 +326,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       request_templates_;
 
   // A mapping from Andoird HAL for all the configured streams.
-  internal::ScopedStreams streams_;
+  internal::ScopedStreams streams_ GUARDED_BY(streams_lock_);
 
   // A mutex to guard |streams_|.
   base::Lock streams_lock_;
+
+  // Needs to be locked during ConfigureStreams() or RequestStreamBuffers().
+  base::Lock configuring_streams_lock_;
 
   // A mapping from the locally created buffer handle to the handle ID of the
   // imported buffer.  We need to return the correct handle ID in
@@ -308,15 +340,15 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // buffer, can restore the buffer handle in the capture result before passing
   // up to the upper layer.
   std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>
-      buffer_handles_;
+      buffer_handles_ GUARDED_BY(buffer_handles_lock_);
+
+  // A mutex to guard |buffer_handles_|.
+  base::Lock buffer_handles_lock_;
 
   // A mapping that stores all buffer handles that are allocated when streams
   // are configured locally. When the session is over, all of these handles
   // should be freed.
   std::map<uint64_t, buffer_handle_t> allocated_stream_buffers_;
-
-  // A mutex to guard |buffer_handles_|.
-  base::Lock buffer_handles_lock_;
 
   // Metrics for camera service.
   std::unique_ptr<CameraMetrics> camera_metrics_;

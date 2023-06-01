@@ -359,7 +359,7 @@ void Camera3ReprocessingTest::DoTemplateCapture(
 
   std::vector<camera3_stream_buffer_t> buffers;
   ASSERT_EQ(
-      0, cam_device_.AllocateOutputBuffersByStreams({output_stream}, &buffers));
+      0, cam_device_.PrepareOutputBuffersByStreams({output_stream}, &buffers));
   camera3_capture_request_t capture_request = {.frame_number = UINT32_MAX,
                                                .settings = metadata,
                                                .input_buffer = NULL,
@@ -412,8 +412,8 @@ void Camera3ReprocessingTest::DoReprocessingCapture(
 
   // prepare output_stream_buffer
   std::vector<camera3_stream_buffer_t> output_buffers;
-  ASSERT_EQ(0, cam_device_.AllocateOutputBuffersByStreams({out_stream},
-                                                          &output_buffers));
+  ASSERT_EQ(0, cam_device_.PrepareOutputBuffersByStreams({out_stream},
+                                                         &output_buffers));
 
   camera3_capture_request_t capture_request = {
       .frame_number = UINT32_MAX,
