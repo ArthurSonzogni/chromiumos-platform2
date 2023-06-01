@@ -12,6 +12,7 @@
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <metrics/metrics_library.h>
 
 #include "swap_management/dbus_adaptors/org.chromium.SwapManagement.h"
 #include "swap_management/swap_tool.h"
@@ -54,6 +55,8 @@ class SwapManagementDBusAdaptor
   std::unique_ptr<base::OneShotTimer> shutdown_timer_;
 
   void ResetShutdownTimer();
+
+  MetricsLibrary metrics_;
 };
 
 }  // namespace swap_management

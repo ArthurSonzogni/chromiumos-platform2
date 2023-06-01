@@ -43,6 +43,9 @@ void SwapManagementDBusAdaptor::ResetShutdownTimer() {
 bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
   ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStart();
+  metrics_.SendEnumToUMA("ChromeOS.SwapManagement.SwapStart.Status",
+                         static_cast<int>(status.code()),
+                         21);  // There are 21 absl status.
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStart",
@@ -55,6 +58,9 @@ bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
 bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
   ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStop();
+  metrics_.SendEnumToUMA("ChromeOS.SwapManagement.SwapStop.Status",
+                         static_cast<int>(status.code()),
+                         21);  // There are 21 absl status.
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStop",
