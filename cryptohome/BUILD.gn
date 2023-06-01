@@ -42,7 +42,6 @@ group("all") {
     deps += [
       ":cryptohome_cryptolib_blob_to_hex_fuzzer",
       ":cryptohome_recovery_id_fuzzer",
-      ":cryptohome_tpm1_cmk_migration_parser_fuzzer",
       ":cryptohome_user_secret_stash_parser_fuzzer",
       ":cryptohome_userdataauth_fuzzer",
     ]
@@ -505,27 +504,6 @@ if (use.fuzzer) {
       "libchrome",
     ]
     deps = [ "libs:libcryptohome_platform" ]
-  }
-
-  executable("cryptohome_tpm1_cmk_migration_parser_fuzzer") {
-    sources = [ "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc" ]
-    libs = [
-      "hwsec",
-      "hwsec-foundation",
-    ]
-    configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ ":fuzz-helpers" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libchrome-test",
-      "openssl",
-    ]
-
-    # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
-    if (!use.tpm) {
-      libs += [ "tspi" ]
-    }
   }
 
   executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {

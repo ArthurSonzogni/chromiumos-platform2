@@ -22,5 +22,5 @@ generate_key()
 
 for KEY_SIZE_BITS in 512 1024 2048 4096; do
   generate_key "${KEY_SIZE_BITS}" "1"
-  generate_key "${KEY_SIZE_BITS}" "2"
+generate_key "${KEY_SIZE_BITS}" "2"
 done

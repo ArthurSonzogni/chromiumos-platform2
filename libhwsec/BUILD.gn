@@ -21,6 +21,9 @@ group("all") {
       ":libhwsec_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":libhwsec_tpm1_cmk_migration_parser_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -387,6 +390,24 @@ install_config("install_headers_overalls") {
 install_config("install_error_h") {
   sources = [ "error/tpm_error.h" ]
   install_path = "/usr/include/chromeos/libhwsec/error"
+}
+
+if (use.fuzzer) {
+  executable("libhwsec_tpm1_cmk_migration_parser_fuzzer") {
+    sources = [ "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc" ]
+    libs = [ "hwsec-foundation" ]
+    configs += [ "//common-mk/common_fuzzer" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "openssl",
+    ]
+    deps = [
+      ":hardware_abstraction_internal_library",
+      ":libhwsec",
+    ]
+  }
 }
 
 if (use.test) {
