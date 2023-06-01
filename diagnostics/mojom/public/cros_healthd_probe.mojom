@@ -368,7 +368,7 @@ union BlockDeviceInfo {
 
 // Information related to a specific non-removable block device.
 //
-// NextMinVersion: 2, NextIndex: 18
+// NextMinVersion: 3, NextIndex: 19
 [Stable]
 struct NonRemovableBlockDeviceInfo {
   // IO statistics
@@ -422,6 +422,8 @@ struct NonRemovableBlockDeviceInfo {
   uint8 manufacturer_id@15;
   // PSN: Product serial number, 32 bits
   uint32 serial@16;
+  // String representatil of the device FW version
+  [MinVersion=2] string? firmware_string@18;
 };
 
 // CPU probe result. Can either be populated with the CpuInfo or an error

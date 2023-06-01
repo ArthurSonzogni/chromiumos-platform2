@@ -361,6 +361,7 @@ void DisplayBlockDeviceInfo(
     SET_DICT(type, info, &data);
     SET_DICT(write_time_seconds_since_last_boot, info, &data);
     SET_DICT(manufacturer_id, info, &data);
+    SET_DICT(firmware_string, info, &data);
 
     // optional field
     SET_DICT(discard_time_seconds_since_last_boot, info, &data);

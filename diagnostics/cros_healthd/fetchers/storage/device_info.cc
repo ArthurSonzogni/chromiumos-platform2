@@ -75,6 +75,7 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchDefaultImmutableBlockDeviceInfo(
   block_device_info->product_id = mojom::BlockDeviceProduct::NewOther(0);
   block_device_info->revision = mojom::BlockDeviceRevision::NewOther(0);
   block_device_info->firmware_version = mojom::BlockDeviceFirmware::NewOther(0);
+  block_device_info->firmware_string = "";
   return block_device_info;
 }
 
@@ -84,13 +85,16 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
   uint32_t oem_id;
   uint32_t manfid;
   uint64_t fwrev;
+  std::string fwrev_str;
   if (!ReadAndTrimString(dev_sys_path, kEmmcNameFile, &model) ||
       !ReadIntegerAndLogError(dev_sys_path, kEmmcManfIdFile,
                               &base::HexStringToUInt, &manfid) ||
       !ReadIntegerAndLogError(dev_sys_path, kEmmcOemIdFile,
                               &base::HexStringToUInt, &oem_id) ||
       !ReadIntegerAndLogError(dev_sys_path, kEmmcFirmwareVersionFile,
-                              &base::HexStringToUInt64, &fwrev)) {
+                              &base::HexStringToUInt64, &fwrev) ||
+      !ReadAndTrimStringAndLogError(dev_sys_path, kEmmcFirmwareVersionFile,
+                                    &fwrev_str)) {
     return nullptr;
   }
 
@@ -120,6 +124,7 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
   block_device_info->revision = mojom::BlockDeviceRevision::NewEmmcPrv(prv);
   block_device_info->firmware_version =
       mojom::BlockDeviceFirmware::NewEmmcFwrev(fwrev);
+  block_device_info->firmware_string = fwrev_str;
   block_device_info->device_info = mojom::BlockDeviceInfo::NewEmmcDeviceInfo(
       mojom::EmmcDeviceInfo::New(manfid, pnm, prv, fwrev));
   return block_device_info;
@@ -169,7 +174,8 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
 
   std::string str_firmware_rev;
   auto path = dev_sys_path.Append(kNvmeFirmwareVersionFile);
-  if (!ReadFileToString(path, &str_firmware_rev)) {
+  if (!ReadAndTrimStringAndLogError(dev_sys_path, kNvmeFirmwareVersionFile,
+                                    &str_firmware_rev)) {
     LOG(ERROR) << "Failed to read " << path;
     return nullptr;
   }
@@ -189,6 +195,7 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
       mojom::BlockDeviceRevision::NewNvmePcieRev(pcie_rev);
   block_device_info->firmware_version =
       mojom::BlockDeviceFirmware::NewNvmeFirmwareRev(firmware_rev);
+  block_device_info->firmware_string = str_firmware_rev;
   block_device_info->device_info =
       mojom::BlockDeviceInfo::NewNvmeDeviceInfo(mojom::NvmeDeviceInfo::New(
           subsystem_vendor, subsystem_device, pcie_rev, firmware_rev));
@@ -239,6 +246,7 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
   block_device_info->revision = mojom::BlockDeviceRevision::NewOther(0);
   block_device_info->firmware_version =
       mojom::BlockDeviceFirmware::NewUfsFwrev(fwrev);
+  block_device_info->firmware_string = str_fwrev;
   block_device_info->device_info = mojom::BlockDeviceInfo::NewUfsDeviceInfo(
       mojom::UfsDeviceInfo::New(/*jedec_manfid=*/manfid, fwrev));
   return block_device_info;

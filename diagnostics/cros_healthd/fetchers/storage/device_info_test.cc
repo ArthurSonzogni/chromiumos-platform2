@@ -73,6 +73,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTest) {
   EXPECT_EQ(0x4D4E504D4E50, info->product_id->get_emmc_pnm());
   EXPECT_EQ(0x8, info->revision->get_emmc_prv());
   EXPECT_EQ("PNMPNM", info->name);
+  EXPECT_EQ("0x1223344556677889", info->firmware_string);
   EXPECT_EQ(0x1223344556677889, info->firmware_version->get_emmc_fwrev());
   EXPECT_TRUE(info->device_info->is_emmc_device_info());
   EXPECT_EQ(0xA5, info->device_info->get_emmc_device_info()->manfid);
@@ -113,6 +114,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithOldMmc) {
   EXPECT_EQ(0x4D4E504D4E50, info->product_id->get_emmc_pnm());
   EXPECT_EQ(0x4, info->revision->get_emmc_prv());
   EXPECT_EQ("PNMPNM", info->name);
+  EXPECT_EQ("0x1223344556677889", info->firmware_string);
   EXPECT_EQ(0x1223344556677889, info->firmware_version->get_emmc_fwrev());
   EXPECT_TRUE(info->device_info->is_emmc_device_info());
   EXPECT_EQ(0xA5, info->device_info->get_emmc_device_info()->manfid);
@@ -163,6 +165,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTest) {
   EXPECT_EQ(0x3243, info->product_id->get_nvme_subsystem_device());
   EXPECT_EQ(0x13, info->revision->get_nvme_pcie_rev());
   EXPECT_EQ("test_nvme_model", info->name);
+  EXPECT_EQ("TEST_REV", info->firmware_string);
   EXPECT_EQ(0x5645525F54534554,
             info->firmware_version->get_nvme_firmware_rev());
   EXPECT_TRUE(info->device_info->is_nvme_device_info());
@@ -206,6 +209,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithLegacyRevision) {
   EXPECT_EQ(0x3243, info->product_id->get_nvme_subsystem_device());
   EXPECT_EQ(0x17, info->revision->get_nvme_pcie_rev());
   EXPECT_EQ("test_nvme_model", info->name);
+  EXPECT_EQ("TEST_REV", info->firmware_string);
   EXPECT_EQ(0x5645525F54534554,
             info->firmware_version->get_nvme_firmware_rev());
   EXPECT_TRUE(info->device_info->is_nvme_device_info());
@@ -259,6 +263,7 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTest) {
   EXPECT_EQ(0, info->product_id->get_other());
   EXPECT_EQ(0, info->revision->get_other());
   EXPECT_EQ("MYUFS", info->name);
+  EXPECT_EQ("2022", info->firmware_string);
   EXPECT_EQ(0x32323032, info->firmware_version->get_ufs_fwrev());
   EXPECT_TRUE(info->device_info->is_ufs_device_info());
   EXPECT_EQ(0x1337, info->device_info->get_ufs_device_info()->jedec_manfid);
@@ -306,6 +311,7 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
   EXPECT_EQ(0, info->product_id->get_other());
   EXPECT_EQ(0, info->revision->get_other());
   EXPECT_EQ("BAR SATA", info->name);
+  EXPECT_EQ("", info->firmware_string);
   EXPECT_EQ(0, info->firmware_version->get_other());
   EXPECT_TRUE(info->device_info.is_null());
   EXPECT_EQ(kFakePurpose, info->purpose);
