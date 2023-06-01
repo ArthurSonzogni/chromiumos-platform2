@@ -18,6 +18,7 @@
 #include <brillo/process/process.h>
 
 namespace secanomalyd {
+const base::FilePath kProcPathBase("/proc");
 
 namespace testing {
 class ProcessesTestFixture;
@@ -40,6 +41,7 @@ class ProcEntry {
   ProcEntry& operator=(const ProcEntry& other) = default;
 
   pid_t pid() const { return pid_; }
+  pid_t ppid() const { return ppid_; }
   ino_t pidns() const { return pidns_; }
   ino_t mntns() const { return mntns_; }
   std::string comm() const { return comm_; }
@@ -51,12 +53,14 @@ class ProcEntry {
   FRIEND_TEST(ReporterTest, FullReport);
 
   ProcEntry(pid_t pid,
+            pid_t ppid,
             ino_t pidns,
             ino_t mntns,
             std::string comm,
             std::string args,
             SandboxStatus sandbox_status)
       : pid_(pid),
+        ppid_(ppid),
         pidns_(pidns),
         mntns_(mntns),
         comm_(comm),
@@ -64,6 +68,7 @@ class ProcEntry {
         sandbox_status_(sandbox_status) {}
 
   pid_t pid_;
+  pid_t ppid_;
   ino_t pidns_;
   ino_t mntns_;
   std::string comm_;
@@ -75,9 +80,10 @@ using MaybeProcEntry = std::optional<ProcEntry>;
 using ProcEntries = std::vector<ProcEntry>;
 using MaybeProcEntries = std::optional<ProcEntries>;
 
-enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly };
+enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly, kNoKernelTasks };
 
-MaybeProcEntries ReadProcesses(ProcessFilter filter);
+MaybeProcEntries ReadProcesses(ProcessFilter filter,
+                               const base::FilePath& proc = kProcPathBase);
 
 }  // namespace secanomalyd
 

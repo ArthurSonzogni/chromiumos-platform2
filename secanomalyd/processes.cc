@@ -34,8 +34,9 @@
 namespace secanomalyd {
 
 namespace {
+constexpr pid_t kKThreadDPid = 2;
+constexpr pid_t kKThreadDPPid = 0;
 constexpr char kInitExecutable[] = "/sbin/init";
-const base::FilePath kProcPathBase("/proc");
 constexpr char kProcSubdirPattern[] = "[0-9]*";
 const base::FilePath kProcStatusFile("status");
 const base::FilePath kProcCmdlineFile("cmdline");
@@ -106,7 +107,7 @@ static ino_t GetNsFromPath(const base::FilePath& ns_symlink_path) {
 
 MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // ProcEntry attributes.
-  pid_t pid;
+  pid_t pid, ppid;
   ino_t pidns = 0, mntns = 0;
   std::string comm, args;
   SandboxStatus sandbox_status;
@@ -148,12 +149,19 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // with a tab: Attribute:\tValue1\tValue2\tValue3\n...
   // See https://man7.org/linux/man-pages/man5/proc.5.html for the list of
   // attributes in this file.
-  // In our case we parse the values of `Name`, `NoNewPrivs` and `Seccomp`.
+  // In our case we parse the values of `Name`, `PPid`, `NoNewPrivs` and
+  // `Seccomp`.
   base::StringTokenizer t(status_file_content, "\n");
   while (t.GetNext()) {
     base::StringPiece line = t.token_piece();
     if (base::StartsWith(line, "Name:")) {
       comm = std::string(line.substr(line.rfind("\t") + 1));
+    }
+    if (base::StartsWith(line, "PPid:")) {
+      if (!base::StringToInt(std::string(line.substr(line.rfind("\t") + 1)),
+                             &ppid)) {
+        ppid = 0;
+      }
     }
     if (base::StartsWith(line, "NoNewPrivs:") &&
         line.substr(line.rfind("\t") + 1) == "1")
@@ -184,14 +192,15 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   pidns = GetNsFromPath(pid_path.Append(kProcNsPidPath));
   mntns = GetNsFromPath(pid_path.Append(kProcNsMntPath));
 
-  return ProcEntry(pid, pidns, mntns, comm, args, sandbox_status);
+  return ProcEntry(pid, ppid, pidns, mntns, comm, args, sandbox_status);
 }
 
-MaybeProcEntries ReadProcesses(ProcessFilter filter) {
+MaybeProcEntries ReadProcesses(ProcessFilter filter,
+                               const base::FilePath& proc) {
   ProcEntries entries;
   std::optional<ino_t> init_pidns = std::nullopt;
 
-  base::FileEnumerator proc_enumerator(kProcPathBase, /*Recursive=*/false,
+  base::FileEnumerator proc_enumerator(proc, /*Recursive=*/false,
                                        base::FileEnumerator::DIRECTORIES,
                                        kProcSubdirPattern);
   for (base::FilePath pid_path = proc_enumerator.Next(); !pid_path.empty();
@@ -208,12 +217,18 @@ MaybeProcEntries ReadProcesses(ProcessFilter filter) {
       }
 
       // Add the entry to the list if:
+      //    -Caller requested no kernel tasks and the process is not [kthreadd]
+      //    or doesn't have [kthreadd] as its parent.
       //    -Caller requested all processes, or
       //    -The init process hasn't yet been identified, or
       //    -The init process has been successfully identified, and the PID
       //     namespaces match.
-      if (filter == ProcessFilter::kAll || !init_pidns ||
-          entry->pidns() == init_pidns.value()) {
+      if (filter == ProcessFilter::kNoKernelTasks) {
+        if (entry->ppid() != kKThreadDPid && entry->ppid() != kKThreadDPPid) {
+          entries.push_back(*entry);
+        }
+      } else if (filter == ProcessFilter::kAll || !init_pidns ||
+                 entry->pidns() == init_pidns.value()) {
         entries.push_back(*entry);
       }
     }

@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <brillo/process/process_mock.h>
+#include <sys/types.h>
 
 namespace secanomalyd::testing {
 
@@ -26,11 +27,21 @@ namespace {
 const void ExpectEqProcEntry(const ProcEntry& actual_pe,
                              const ProcEntry& expected_pe) {
   EXPECT_EQ(actual_pe.pid(), expected_pe.pid());
+  EXPECT_EQ(actual_pe.ppid(), expected_pe.ppid());
   EXPECT_EQ(actual_pe.pidns(), expected_pe.pidns());
   EXPECT_EQ(actual_pe.mntns(), expected_pe.mntns());
   EXPECT_EQ(actual_pe.comm(), expected_pe.comm());
   EXPECT_EQ(actual_pe.args(), expected_pe.args());
   EXPECT_EQ(actual_pe.sandbox_status(), expected_pe.sandbox_status());
+}
+
+const void ExpectProcEntryPids(const MaybeProcEntries& proc_entries,
+                               std::set<pid_t> pids) {
+  ASSERT_TRUE(proc_entries.has_value());
+  ASSERT_EQ(proc_entries.value().size(), pids.size());
+  for (auto pe : proc_entries.value()) {
+    EXPECT_NE(pids.find(pe.pid()), pids.end());
+  }
 }
 
 }  // namespace
@@ -43,7 +54,7 @@ class ProcessesTestFixture : public ::testing::Test {
       "Tgid:	1\n"
       "Ngid:	0\n"
       "Pid:	1\n"
-      "PPid:	0\n"
+      "PPid:	$1\n"
       "TracerPid:	0\n"
       "Uid:	0	0	0	0\n"
       "Gid:	0	0	0	0\n"
@@ -82,8 +93,8 @@ class ProcessesTestFixture : public ::testing::Test {
       "CapEff:	000003ffffffffff\n"
       "CapBnd:	000003ffffffffff\n"
       "CapAmb:	0000000000000000\n"
-      "NoNewPrivs:	$1\n"
-      "Seccomp:	$2\n"
+      "NoNewPrivs:	$2\n"
+      "Seccomp:	$3\n"
       "Seccomp_filters:	0\n"
       "Speculation_Store_Bypass:	vulnerable\n"
       "SpeculationIndirectBranch:	always enabled\n"
@@ -97,17 +108,19 @@ class ProcessesTestFixture : public ::testing::Test {
  public:
   MaybeProcEntries ReadMockProcesses() { return std::nullopt; }
   ProcEntry CreateMockProcEntry(pid_t pid,
+                                pid_t ppid,
                                 ino_t pidns,
                                 ino_t mntns,
                                 std::string comm,
                                 std::string args,
                                 ProcEntry::SandboxStatus sandbox_status) {
-    return ProcEntry(pid, pidns, mntns, comm, args, sandbox_status);
+    return ProcEntry(pid, ppid, pidns, mntns, comm, args, sandbox_status);
   }
 
  protected:
   struct MockProccess {
     std::string pid;
+    std::string ppid;
     std::string name;
     std::string no_new_privs;
     std::string seccomp;
@@ -116,37 +129,40 @@ class ProcessesTestFixture : public ::testing::Test {
     base::FilePath mnt_ns_symlink;
   };
 
-  void CreateFakeProcfs(MockProccess& p, base::FilePath& pid_dir) {
-    // Creates a pristine procfs for the process.
+  // Creates a pristine procfs with a single mock process.
+  void CreateFakeProcfs(MockProccess& proc, base::FilePath& pid_dir) {
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     base::FilePath proc_dir = fake_root_.GetPath().Append("proc");
     ASSERT_TRUE(base::CreateDirectory(proc_dir));
-    pid_dir = proc_dir.Append(p.pid);
+    pid_dir = proc_dir.Append(proc.pid);
     ASSERT_TRUE(base::CreateDirectory(pid_dir));
+    CreateFakeProcDir(proc, pid_dir);
+  }
 
-    // Generates content for the process status file, based on template.
-    std::string status =
-        absl::Substitute(kStatusTemplate, p.name, p.no_new_privs, p.seccomp);
-
-    ASSERT_TRUE(base::WriteFile(pid_dir.Append("status"), status));
-    ASSERT_TRUE(base::WriteFile(pid_dir.Append("cmdline"), p.cmdline));
-
-    const base::FilePath ns_dir = pid_dir.Append("ns");
-    ASSERT_TRUE(base::CreateDirectory(ns_dir));
-    ASSERT_TRUE(
-        base::CreateSymbolicLink(p.pid_ns_symlink, ns_dir.Append("pid")));
-    ASSERT_TRUE(
-        base::CreateSymbolicLink(p.mnt_ns_symlink, ns_dir.Append("mnt")));
+  // Creates a pristine procfs with all processes listed in |mock_processes_|.
+  void CreateFakeProcfs(base::FilePath& proc_dir) {
+    ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
+    proc_dir = fake_root_.GetPath().Append("proc");
+    ASSERT_TRUE(base::CreateDirectory(proc_dir));
+    for (auto proc : mock_processes_) {
+      base::FilePath pid_dir = proc_dir.Append(proc.second.pid);
+      ASSERT_TRUE(base::CreateDirectory(pid_dir));
+      CreateFakeProcDir(proc.second, pid_dir);
+    }
   }
 
   void DestroyFakeProcfs() { ASSERT_TRUE(fake_root_.Delete()); }
 
   base::ScopedTempDir fake_root_;
+  const std::set<pid_t> kAllProcs = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  const std::set<pid_t> kInitPidNamespaceOnlyProcs = {1, 2, 3, 4, 6, 7, 9};
+  const std::set<pid_t> kNoKernelTasksProcs = {2, 3, 4, 5, 7, 8};
   // Each key corresponds to the name of the test.
   std::map<std::string, MockProccess> mock_processes_ = {
       {"InitProcess",
        {
            .pid = "1",
+           .ppid = "0",
            .name = "init",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -157,6 +173,7 @@ class ProcessesTestFixture : public ::testing::Test {
       {"NormalProcess",
        {
            .pid = "2",
+           .ppid = "1",
            .name = "normal_process",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -167,6 +184,7 @@ class ProcessesTestFixture : public ::testing::Test {
       {"NormalProcessSecure",
        {
            .pid = "3",
+           .ppid = "4",
            .name = "normal_process_secure",
            .no_new_privs = "1",
            .seccomp = "2",
@@ -177,6 +195,7 @@ class ProcessesTestFixture : public ::testing::Test {
       {"EmptyCmdline",
        {
            .pid = "4",
+           .ppid = "1",
            .name = "no_cmdline",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -187,6 +206,7 @@ class ProcessesTestFixture : public ::testing::Test {
       {"InvalidPIDNS",
        {
            .pid = "5",
+           .ppid = "1",
            .name = "invalid_pidns",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -194,9 +214,21 @@ class ProcessesTestFixture : public ::testing::Test {
            .pid_ns_symlink = base::FilePath("abc"),
            .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
        }},
-      {"StatusReadFailure",
+      {"InvalidPPID",
        {
            .pid = "6",
+           .ppid = "abc",
+           .name = "invalid_ppid",
+           .no_new_privs = "0",
+           .seccomp = "0",
+           .cmdline = std::string("invalid_ppid\0--start", 20),
+           .pid_ns_symlink = base::FilePath("pid:[402653184]"),
+           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
+       }},
+      {"StatusReadFailure",
+       {
+           .pid = "7",
+           .ppid = "1",
            .name = "status_read_failure",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -207,6 +239,7 @@ class ProcessesTestFixture : public ::testing::Test {
       {"InvalidPID",
        {
            .pid = "abc",
+           .ppid = "1",
            .name = "invalid_pid",
            .no_new_privs = "0",
            .seccomp = "0",
@@ -214,7 +247,46 @@ class ProcessesTestFixture : public ::testing::Test {
            .pid_ns_symlink = base::FilePath("pid:[402653184]"),
            .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
        }},
+      {"NotInInitPidNs",
+       {
+           .pid = "8",
+           .ppid = "9",
+           .name = "not_in_init_pid_ns",
+           .no_new_privs = "1",
+           .seccomp = "1",
+           .cmdline = std::string("not_in_init_pid_ns\0--start", 26),
+           .pid_ns_symlink = base::FilePath("pid:[987654321]"),
+           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
+       }},
+      {"KernelTask",
+       {
+           .pid = "9",
+           .ppid = "2",
+           .name = "kernel_task",
+           .no_new_privs = "0",
+           .seccomp = "0",
+           .cmdline = "",
+           .pid_ns_symlink = base::FilePath("pid:[402653184]"),
+           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
+       }},
   };
+
+ private:
+  void CreateFakeProcDir(MockProccess& mp, base::FilePath proc_dir) {
+    // Generates content for the process status file, based on template.
+    std::string status = absl::Substitute(kStatusTemplate, mp.name, mp.ppid,
+                                          mp.no_new_privs, mp.seccomp);
+
+    ASSERT_TRUE(base::WriteFile(proc_dir.Append("status"), status));
+    ASSERT_TRUE(base::WriteFile(proc_dir.Append("cmdline"), mp.cmdline));
+
+    const base::FilePath ns_dir = proc_dir.Append("ns");
+    ASSERT_TRUE(base::CreateDirectory(ns_dir));
+    ASSERT_TRUE(
+        base::CreateSymbolicLink(mp.pid_ns_symlink, ns_dir.Append("pid")));
+    ASSERT_TRUE(
+        base::CreateSymbolicLink(mp.mnt_ns_symlink, ns_dir.Append("mnt")));
+  }
 };
 
 TEST_F(ProcessesTestFixture, InitProcess) {
@@ -222,7 +294,7 @@ TEST_F(ProcessesTestFixture, InitProcess) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
-      CreateMockProcEntry(1, 402653184, 402653184, mock_processes_[key].name,
+      CreateMockProcEntry(1, 0, 402653184, 402653184, mock_processes_[key].name,
                           mock_processes_[key].cmdline, 0b0000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -234,7 +306,7 @@ TEST_F(ProcessesTestFixture, NormalProcess) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
-      CreateMockProcEntry(2, 402653184, 402653184, mock_processes_[key].name,
+      CreateMockProcEntry(2, 1, 402653184, 402653184, mock_processes_[key].name,
                           "normal_process --start", 0b0000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -246,7 +318,7 @@ TEST_F(ProcessesTestFixture, NormalProcessSecure) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
-      CreateMockProcEntry(3, 402653184, 402653184, mock_processes_[key].name,
+      CreateMockProcEntry(3, 4, 402653184, 402653184, mock_processes_[key].name,
                           "normal_process --start", 0b1010);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -258,7 +330,7 @@ TEST_F(ProcessesTestFixture, EmptyCmdline) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
-      CreateMockProcEntry(4, 402653184, 402653184, mock_processes_[key].name,
+      CreateMockProcEntry(4, 1, 402653184, 402653184, mock_processes_[key].name,
                           "[" + mock_processes_[key].name + "]", 0b0000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -270,8 +342,20 @@ TEST_F(ProcessesTestFixture, InvalidPIDNS) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
-      CreateMockProcEntry(5, 0, 402653184, mock_processes_[key].name,
+      CreateMockProcEntry(5, 1, 0, 402653184, mock_processes_[key].name,
                           "invalid_pidns --start", 0b0000);
+  MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
+  ASSERT_TRUE(actual_pe_ptr.has_value());
+  ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
+}
+
+TEST_F(ProcessesTestFixture, InvalidPPID) {
+  std::string key = "InvalidPPID";
+  base::FilePath pid_dir;
+  ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
+  ProcEntry expected_pe =
+      CreateMockProcEntry(6, 0, 402653184, 402653184, mock_processes_[key].name,
+                          "invalid_ppid --start", 0b0000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -292,6 +376,37 @@ TEST_F(ProcessesTestFixture, InvalidPID) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   EXPECT_EQ(actual_pe_ptr, std::nullopt);
+}
+
+TEST_F(ProcessesTestFixture, ReadProcessesAll) {
+  base::FilePath proc_dir;
+  ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(proc_dir));
+  MaybeProcEntries actual_proc_entries =
+      ReadProcesses(ProcessFilter::kAll, proc_dir);
+  ASSERT_TRUE(actual_proc_entries.has_value());
+  EXPECT_EQ(actual_proc_entries.value().size(), kAllProcs.size());
+  ExpectProcEntryPids(actual_proc_entries, kAllProcs);
+}
+
+TEST_F(ProcessesTestFixture, ReadProcessesInitNamespaceOnly) {
+  base::FilePath proc_dir;
+  ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(proc_dir));
+  MaybeProcEntries actual_proc_entries =
+      ReadProcesses(ProcessFilter::kInitPidNamespaceOnly, proc_dir);
+  ASSERT_TRUE(actual_proc_entries.has_value());
+  EXPECT_EQ(actual_proc_entries.value().size(),
+            kInitPidNamespaceOnlyProcs.size());
+  ExpectProcEntryPids(actual_proc_entries, kInitPidNamespaceOnlyProcs);
+}
+
+TEST_F(ProcessesTestFixture, ReadProcessesNoKernelTasks) {
+  base::FilePath proc_dir;
+  ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(proc_dir));
+  MaybeProcEntries actual_proc_entries =
+      ReadProcesses(ProcessFilter::kNoKernelTasks, proc_dir);
+  ASSERT_TRUE(actual_proc_entries.has_value());
+  EXPECT_EQ(actual_proc_entries.value().size(), kNoKernelTasksProcs.size());
+  ExpectProcEntryPids(actual_proc_entries, kNoKernelTasksProcs);
 }
 
 }  // namespace secanomalyd::testing
