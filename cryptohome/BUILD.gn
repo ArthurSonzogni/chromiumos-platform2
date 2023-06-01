@@ -41,7 +41,6 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":cryptohome_cryptolib_blob_to_hex_fuzzer",
-      ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer",
       ":cryptohome_recovery_id_fuzzer",
       ":cryptohome_tpm1_cmk_migration_parser_fuzzer",
       ":cryptohome_user_secret_stash_parser_fuzzer",
@@ -506,19 +505,6 @@ if (use.fuzzer) {
       "libchrome",
     ]
     deps = [ "libs:libcryptohome_platform" ]
-  }
-
-  executable("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer") {
-    sources = [ "fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc" ]
-    libs = [ "hwsec-foundation" ]
-    configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ ":fuzz-helpers" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libchrome-test",
-      "openssl",
-    ]
   }
 
   executable("cryptohome_tpm1_cmk_migration_parser_fuzzer") {

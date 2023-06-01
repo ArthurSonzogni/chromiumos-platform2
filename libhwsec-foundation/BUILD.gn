@@ -18,7 +18,10 @@ group("all") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":install_fuzzer_headers" ]
+    deps += [
+      ":install_fuzzer_headers",
+      ":libhwsec_foundation_rsa_oaep_decrypt_fuzzer",
+    ]
   }
   if (use.tpm_dynamic) {
     deps += [
@@ -204,6 +207,18 @@ if (use.fuzzer) {
   install_config("install_fuzzer_headers") {
     sources = [ "fuzzed_trousers_utils.h" ]
     install_path = "/usr/include/libhwsec-foundation"
+  }
+
+  executable("libhwsec_foundation_rsa_oaep_decrypt_fuzzer") {
+    sources = [ "fuzzers/rsa_oaep_decrypt_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer" ]
+    deps = [ ":libhwsec-foundation" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "openssl",
+    ]
   }
 }
 

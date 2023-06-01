@@ -16,7 +16,7 @@ generate_key()
   local KEY_SIZE_BITS=$1
   local KEY_INDEX=$2
 
-  local OUTPUT_FILE_PATH="data/cryptohome_fuzzer_key_rsa_${KEY_SIZE_BITS}_${KEY_INDEX}"
+  local OUTPUT_FILE_PATH="testdata/fuzzer_key_rsa_${KEY_SIZE_BITS}_${KEY_INDEX}"
   openssl genrsa -out "${OUTPUT_FILE_PATH}" "${KEY_SIZE_BITS}"
 }
 
