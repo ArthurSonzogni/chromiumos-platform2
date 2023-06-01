@@ -23,6 +23,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/ipv4_address.h>
 
 namespace permission_broker {
 
@@ -35,21 +36,12 @@ constexpr std::array<const char*, 4> kAllowedInterfacePrefixes{
     {"eth", "usb", "wlan", "mlan"}};
 constexpr const char kLocalhost[] = "lo";
 
-// Returns the network-byte order int32 representation of the IPv4 address given
-// byte per byte, most significant bytes first.
-constexpr uint32_t Ipv4Addr(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
-  return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
-}
-
 // TODO(hugobenichi): eventually import these values from
 // platform2/arc/network/address_manager.cc
 // Port forwarding can only forward to IPv4 addresses within the IPv4 prefix
 // used for static IPv4 subnet assignment to guest OSs and App platforms.
-constexpr const char* kGuestSubnetCidr = "100.115.92.0/23";
-constexpr const struct in_addr kGuestBaseAddr = {.s_addr =
-                                                     Ipv4Addr(100, 115, 92, 0)};
-constexpr const struct in_addr kGuestNetmask = {.s_addr =
-                                                    Ipv4Addr(255, 255, 254, 0)};
+const net_base::IPv4CIDR kGuestCidr =
+    *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.0/23");
 
 std::string RuleTypeName(PortTracker::PortRuleType type) {
   switch (type) {
@@ -336,15 +328,14 @@ bool PortTracker::ValidatePortRule(const PortRule& rule) {
         return false;
       }
 
-      struct in_addr addr;
-      if (inet_pton(AF_INET, rule.dst_ip.c_str(), &addr) != 1) {
+      const auto addr = net_base::IPv4Address::CreateFromString(rule.dst_ip);
+      if (!addr) {
         LOG(ERROR) << "Cannot forward to invalid IPv4 address " << rule.dst_ip;
         return false;
       }
-
-      if ((addr.s_addr & kGuestNetmask.s_addr) != kGuestBaseAddr.s_addr) {
+      if (!kGuestCidr.InSameSubnetWith(*addr)) {
         LOG(ERROR) << "Cannot forward to IPv4 address " << rule.dst_ip
-                   << " outside of " << kGuestSubnetCidr;
+                   << " outside of " << kGuestCidr;
         return false;
       }
 
