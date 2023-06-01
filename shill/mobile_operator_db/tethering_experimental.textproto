@@ -242,3 +242,27 @@ mno {
     }
   }
 }
+
+mno {
+  data {
+    uuid : "3c0341da-65f3-49f5-83c8-4d864b4e165e"
+    country : "pl"
+    localized_name {
+      name : "Orange"
+    }
+    mccmnc : "26003"
+    tethering_allowed: true
+    mobile_apn {
+      apn : "internet"
+      localized_name {
+        name : "Standard access - with image compression"
+      }
+      localized_name {
+        name : "Dostęp standardowy - z kompresją grafiki"
+      }
+      username : "internet"
+      password : "internet"
+      type : DEFAULT
+    }
+  }
+}
