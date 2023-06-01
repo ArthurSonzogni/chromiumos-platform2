@@ -13,6 +13,7 @@ group("all") {
     ":install_headers",
     ":install_init",
     ":install_minijail_conf",
+    ":libspaced-test_pc",
     ":libspaced_pc",
     ":spaced",
     ":spaced_cli",
@@ -55,6 +56,15 @@ generate_pkg_config("libspaced_pc") {
   description = "Library for disk usage introspection"
   version = getenv("PV")
   cflags = [ "-I/usr/include/spaced-client" ]
+  libs = [ "-lspaced" ]
+  install = true
+}
+
+generate_pkg_config("libspaced-test_pc") {
+  name = "libspaced-test"
+  description = "Library for disk usage introspection"
+  version = getenv("PV")
+  cflags = [ "-I/usr/include/spaced-client-test" ]
   libs = [ "-lspaced" ]
   install = true
 }
