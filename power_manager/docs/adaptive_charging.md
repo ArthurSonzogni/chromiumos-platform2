@@ -71,5 +71,15 @@ charge current that will be supplied to the battery.
 The slow charging feature is yet to be launched and will be rolled out gradually
 via Finch, the Chrome experimentation framework.
 
+## Charge Limit
+
+A separate solution to improve battery health than Adaptive Charging is Charge
+Limit. This feature always prevents charging above the Adaptive Charging hold
+percent, which is 80% by default. This is a more aggressive approach to
+improving battery health, but it has a larger benefit than Adaptive Charging.
+
+This feature is useful for the lab and other environments where you never need a
+full charge for the battery.
+
 [Adaptive Charging]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/powerd/policy/adaptive_charging.h
 [PowerManagementPolicy]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/policy.proto
