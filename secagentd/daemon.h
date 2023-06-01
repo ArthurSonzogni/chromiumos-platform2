@@ -41,7 +41,8 @@ class Daemon : public brillo::DBusDaemon {
   Daemon(bool bypass_policy_for_testing,
          bool bypass_enq_ok_wait_for_testing,
          uint32_t heartbeat_period_s,
-         uint32_t plugin_batch_interval_s);
+         uint32_t plugin_batch_interval_s,
+         uint32_t policy_polling_interval_s);
   ~Daemon() override = default;
 
  protected:
@@ -56,6 +57,8 @@ class Daemon : public brillo::DBusDaemon {
   bool bypass_enq_ok_wait_for_testing_ = false;
   uint32_t heartbeat_period_s_ = kDefaultHeartbeatPeriodS;
   uint32_t plugin_batch_interval_s_ = kDefaultPluginBatchIntervalS;
+  uint32_t feature_polling_interval_s_ =
+      PoliciesFeaturesBroker::kDefaultPollDurationS;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 };  // namespace secagentd

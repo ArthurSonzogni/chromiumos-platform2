@@ -46,7 +46,8 @@ class SecAgent {
            bool bypass_policy_for_testing,
            bool bypass_enq_ok_wait_for_testing,
            uint32_t heartbeat_period_s,
-           uint32_t plugin_batch_interval_s);
+           uint32_t plugin_batch_interval_s,
+           uint32_t feature_poll_interval_s_for_testing);
   ~SecAgent() = default;
 
   // Start polling for policy and feature flags.
@@ -56,24 +57,29 @@ class SecAgent {
   void CheckPolicyAndFeature();
 
  protected:
-  // Runs all of the plugin within the plugins_ vector.
-  void RunPlugins();
-  // Creates plugin of the given type.
-  int CreatePlugin(Types::Plugin);
+  // Activate or deactivate BPF plugins based on any applicable feature gates.
+  void ActivateOrDeactivateBpfPlugins();
+  // Create and activate all BPF plugins.
+  void CreateAndActivateBpfPlugins();
   // Starts the plugin loading process. First creates the agent plugin and
   // waits for a successfully sent heartbeat before creating and running
-  // the remaining plugins.
+  // the BPF plugins.
   void StartXDRReporting();
 
  private:
   friend class testing::SecAgentTestFixture;
 
+  struct PluginConfig {
+    std::optional<PoliciesFeaturesBrokerInterface::Feature> gated_by_feature;
+    std::unique_ptr<PluginInterface> plugin;
+  };
+
+  std::vector<PluginConfig> bpf_plugins_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
-  std::vector<std::unique_ptr<PluginInterface>> plugins_;
   std::unique_ptr<PluginInterface> agent_plugin_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_proxy_;
@@ -83,6 +89,7 @@ class SecAgent {
   bool reporting_events_ = false;
   uint32_t heartbeat_period_s_;
   uint32_t plugin_batch_interval_s_;
+  uint32_t feature_poll_interval_s_;
   base::OnceCallback<void(int)> quit_daemon_cb_;
   base::WeakPtrFactory<SecAgent> weak_ptr_factory_;
 };

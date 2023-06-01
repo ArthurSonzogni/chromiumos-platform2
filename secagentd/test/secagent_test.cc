@@ -3,27 +3,27 @@
 // found in the LICENSE file.
 
 #include "secagentd/secagent.h"
-#include <absl/status/status.h>
-#include <sysexits.h>
 
 #include <cstdint>
 #include <cstring>
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <sysexits.h>
 
+#include "absl/status/status.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/task_environment.h"
-#include "dbus/mock_bus.h"
-#include "dbus/mock_object_proxy.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
 #include "metrics/metrics_library.h"
 #include "secagentd/common.h"
 #include "secagentd/plugins.h"
+#include "secagentd/policies_features_broker.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_plugin_factory.h"
@@ -37,27 +37,37 @@ namespace secagentd::testing {
 namespace pb = cros_xdr::reporting;
 
 using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::AtLeast;
+using ::testing::AtMost;
 using ::testing::ByMove;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
 using ::testing::WithArgs;
 
-struct FeaturedAndPolicy {
-  bool featured;
-  bool policy;
+struct XdrFeatureAndPolicy {
+  bool xdr_feature_enabled;
+  bool xdr_policy_enabled;
 };
-
-class SecAgentTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
+class MockSystemQuit {
+ public:
+  MOCK_METHOD(void, Quit, (int rv));
+  base::WeakPtrFactory<MockSystemQuit> weak_factory_{this};
+};
+class SecAgentTestFixture
+    : public ::testing::TestWithParam<XdrFeatureAndPolicy> {
  protected:
-  SecAgentTestFixture()
-      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+  SecAgentTestFixture() = default;
   void SetUp() override {
     agent_plugin_ = std::make_unique<MockPlugin>();
     agent_plugin_ref_ = agent_plugin_.get();
 
     process_plugin_ = std::make_unique<MockPlugin>();
     process_plugin_ref_ = process_plugin_.get();
+
+    network_plugin_ = std::make_unique<MockPlugin>();
+    network_plugin_ref_ = network_plugin_.get();
 
     plugin_factory_ = std::make_unique<MockPluginFactory>();
     plugin_factory_ref = plugin_factory_.get();
@@ -67,69 +77,82 @@ class SecAgentTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
     policies_features_broker_ =
         base::MakeRefCounted<MockPoliciesFeaturesBroker>();
     device_user_ = base::MakeRefCounted<MockDeviceUser>();
-
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::MockBus(options);
-
     secagent_ = std::make_unique<SecAgent>(
-        base::BindOnce(&SecAgentTestFixture::DaemonCb, base::Unretained(this)),
+        base::BindOnce(&MockSystemQuit::Quit,
+                       mock_system_quit_.weak_factory_.GetWeakPtr()),
         message_sender_, process_cache_, device_user_,
         std::move(plugin_factory_),
         // attestation and tpm proxies.
         nullptr /* Attestation */, nullptr /* Tpm */,
-        nullptr /* PlatformFeatures */, 0, 0, 300, 120);
+        nullptr /* PlatformFeatures */, 0, 0, 300, 120, 10);
     secagent_->policies_features_broker_ = this->policies_features_broker_;
-  }
 
-  void TearDown() override { task_environment_.RunUntilIdle(); }
+    ON_CALL(*process_plugin_ref_, GetName())
+        .WillByDefault(Return("ProcessPluginTest"));
+    ON_CALL(*network_plugin_ref_, GetName())
+        .WillByDefault(Return("NetworkPluginTest"));
+    ON_CALL(*agent_plugin_ref_, GetName())
+        .WillByDefault(Return("AgentPluginRef"));
 
-  void DaemonCb(int rv) {
-    EXPECT_EQ(expected_exit_code_, rv);
-    run_loop_ptr_->Quit();
-  }
+    ON_CALL(*process_plugin_ref_, IsActive).WillByDefault(Invoke([this]() {
+      return process_plugin_ref_->is_active_;
+    }));
+    ON_CALL(*agent_plugin_ref_, IsActive).WillByDefault(Invoke([this] {
+      return agent_plugin_ref_->is_active_;
+    }));
+    ON_CALL(*network_plugin_ref_, IsActive).WillByDefault(Invoke([this]() {
+      return network_plugin_ref_->is_active_;
+    }));
 
-  void CallBroker(bool first_run, bool policy, bool featured) {
-    if (first_run) {
-      EXPECT_CALL(*policies_features_broker_, StartAndBlockForSync);
-    }
-    EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
-        .WillOnce(Return(policy));
-    EXPECT_CALL(*policies_features_broker_,
-                GetFeature(PoliciesFeaturesBroker::Feature::
-                               kCrOSLateBootSecagentdXDRReporting))
-        .WillOnce(Return(featured));
-  }
-
-  void ExpectReporting(bool isReporting) {
-    EXPECT_EQ(isReporting, secagent_->reporting_events_);
-  }
-
-  void EnableReporting() {
-    EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
-
-    // Check agent plugin.
-    EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin)
-        .WillOnce(WithArg<4>(Invoke([this](base::OnceCallback<void()> cb) {
-          std::move(cb).Run();
+    // Default behavior for plugin creation.
+    ON_CALL(*plugin_factory_ref, CreateAgentPlugin)
+        .WillByDefault(WithArg<4>(Invoke([this](base::OnceCallback<void()> cb) {
+          agent_activation_callback_ = std::move(cb);
           return std::move(agent_plugin_);
         })));
-    EXPECT_CALL(*agent_plugin_ref_, MockActivate)
-        .WillOnce(Return(absl::OkStatus()));
+    ON_CALL(*plugin_factory_ref, Create(Types::Plugin::kProcess, _, _, _, _, _))
+        .WillByDefault(Return(ByMove(std::move(process_plugin_))));
+    ON_CALL(*plugin_factory_ref, Create(Types::Plugin::kNetwork, _, _, _, _, _))
+        .WillByDefault(Return(ByMove(std::move(network_plugin_))));
 
-    // Check process plugin.
-    EXPECT_CALL(*plugin_factory_ref,
-                Create(Types::Plugin::kProcess, _, _, _, _, _))
-        .WillOnce(Return(ByMove(std::move(process_plugin_))));
-    EXPECT_CALL(*process_plugin_ref_, MockActivate)
-        .WillOnce(Return(absl::OkStatus()));
+    // Default activate actions.
+    ON_CALL(*process_plugin_ref_, MockActivate())
+        .WillByDefault(Return(absl::OkStatus()));
+    ON_CALL(*agent_plugin_ref_, MockActivate()).WillByDefault(Invoke([this]() {
+      std::move(agent_activation_callback_).Run();
+      return absl::OkStatus();
+    }));
+    ON_CALL(*network_plugin_ref_, MockActivate())
+        .WillByDefault(Return(absl::OkStatus()));
   }
 
-  base::test::TaskEnvironment task_environment_;
+  void InstallDontCarePluginIsActive() {
+    EXPECT_CALL(*process_plugin_ref_, IsActive()).Times(AnyNumber());
+    EXPECT_CALL(*agent_plugin_ref_, IsActive()).Times(AnyNumber());
+    EXPECT_CALL(*network_plugin_ref_, IsActive()).Times(AnyNumber());
+  }
+
+  void InstallDontCarePluginGetName() {
+    EXPECT_CALL(*process_plugin_ref_, GetName()).Times(AnyNumber());
+    EXPECT_CALL(*agent_plugin_ref_, GetName()).Times(AnyNumber());
+    EXPECT_CALL(*network_plugin_ref_, GetName()).Times(AnyNumber());
+  }
+
+  void InstallActivateExpectations() {
+    // An activated secagent should always fulfill these expectations.
+    EXPECT_CALL(*message_sender_, Initialize)
+        .WillOnce(Return(absl::OkStatus()));
+    EXPECT_CALL(*process_cache_, InitializeFilter);
+    EXPECT_CALL(*policies_features_broker_, StartAndBlockForSync);
+  }
+
+  base::OnceCallback<void()> agent_activation_callback_;
   std::unique_ptr<SecAgent> secagent_;
   std::unique_ptr<MockPluginFactory> plugin_factory_;
   std::unique_ptr<MockPlugin> agent_plugin_;
   MockPlugin* agent_plugin_ref_;
+  std::unique_ptr<MockPlugin> network_plugin_;
+  MockPlugin* network_plugin_ref_;
   std::unique_ptr<MockPlugin> process_plugin_;
   MockPlugin* process_plugin_ref_;
   MockPluginFactory* plugin_factory_ref;
@@ -137,142 +160,293 @@ class SecAgentTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
   scoped_refptr<MockProcessCache> process_cache_;
   scoped_refptr<MockPoliciesFeaturesBroker> policies_features_broker_;
   scoped_refptr<MockDeviceUser> device_user_;
-  scoped_refptr<dbus::MockBus> bus_;
-  base::RunLoop* run_loop_ptr_;
-  int expected_exit_code_;
+  ::testing::StrictMock<MockSystemQuit> mock_system_quit_;
+  base::test::TaskEnvironment task_environment_;
 };
 
 TEST_F(SecAgentTestFixture, TestReportingEnabled) {
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
-  CallBroker(/*first_run*/ true, /*policy*/ true, /*featured*/ true);
-  EnableReporting();
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  // All plugins should be created.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _));
+
+  // Everything is enabled so all plugins should be activated.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(true);
 }
 
 TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
-  expected_exit_code_ = EX_OK;
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
-  // Enable reporting.
-  CallBroker(/*first_run*/ true, /*policy*/ true, /*featured*/ true);
-  EnableReporting();
+  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  // All plugins should be created.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _));
+
+  // Everything is enabled so all plugins should be activated.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(true);
-
-  // Disable reporting.
-  CallBroker(/*first_run*/ false, /*policy*/ false, /*featured*/ false);
-  base::RunLoop run_loop = base::RunLoop();
-  run_loop_ptr_ = &run_loop;
+  // Retire expectations.
+  ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(policies_features_broker_.get());
+  // Now on policy refresh show that we deactivate all the plugins when
+  // XDR policy is disabled or emergency-XDR-kill-switch is enabled.
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(false));
+  // If no plugins were activated then no XDR events are being generated.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(mock_system_quit_, Quit(EX_OK));
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(false);
-  run_loop.Run();
 }
 
 TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
+  // Standard expectations of a just launched secagentd.
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
 
-  // Disable reporting.
-  CallBroker(/*first_run*/ true, /*policy*/ false, /*featured*/ false);
+  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  // Reporting is disabled.
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(false));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(false));
+  // With everything disabled, plugins can be created but shouldn't be
+  // activated.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin).Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _))
+      .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _))
+      .Times(AtMost(1));
+
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(false);
+  // Retire expectations.
+  ::testing::Mock::VerifyAndClearExpectations(plugin_factory_ref);
+  ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
 
   // Enable reporting.
-  CallBroker(/*first_run*/ false, /*policy*/ true, /*featured*/ true);
-  EnableReporting();
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBroker::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin).Times(1);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _))
+      .Times(1);
+  // If all plugins are activated then all XDR events are reporting.
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate());
+  EXPECT_CALL(*process_plugin_ref_, MockActivate());
+  EXPECT_CALL(*network_plugin_ref_, MockActivate());
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(true);
 }
 
 TEST_F(SecAgentTestFixture, TestFailedInitialization) {
-  expected_exit_code_ = EX_SOFTWARE;
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
   EXPECT_CALL(*message_sender_, Initialize)
       .WillOnce(Return(absl::InternalError(
           "InitializeQueues: Report queue failed to create")));
-  ExpectReporting(false);
-
-  base::RunLoop run_loop = base::RunLoop();
-  run_loop_ptr_ = &run_loop;
+  // Creating plugins is fine, it's the activation that don't want to happen.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin).Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _))
+      .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _))
+      .Times(AtMost(1));
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(mock_system_quit_, Quit(EX_SOFTWARE));
   secagent_->Activate();
-  run_loop.Run();
 }
 
 TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
-  expected_exit_code_ = EX_SOFTWARE;
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
   EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
 
+  // It's fine if plugins are created very early and we never get to
+  // instantiating the policy manager, grabbing device policies etc..
   EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin).WillOnce(Return(nullptr));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _))
+      .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _))
+      .Times(AtMost(1));
 
-  CallBroker(/*first_run*/ true, /*policy*/ true, /*featured*/ true);
-  ExpectReporting(false);
-  base::RunLoop run_loop = base::RunLoop();
-  run_loop_ptr_ = &run_loop;
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .Times(AtMost(1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .Times(AtMost(1))
+      .WillOnce(Return(true));
+  // But we should never see an activation of the plugins.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(mock_system_quit_, Quit(EX_SOFTWARE));
+
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  run_loop.Run();
 }
 
 TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
-  expected_exit_code_ = EX_SOFTWARE;
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
-  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin)
-      .WillOnce(WithArg<4>(Invoke([this](base::OnceCallback<void()> cb) {
-        std::move(cb).Run();
-        return std::move(agent_plugin_);
-      })));
-  EXPECT_CALL(*agent_plugin_ref_, MockActivate)
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*plugin_factory_ref,
-              Create(Types::Plugin::kProcess, _, _, _, _, _))
-      .WillOnce(Return(ByMove(std::move(process_plugin_))));
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  // All plugins should be created.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _));
+
+  // Everything is enabled so all plugins should be activated.
   EXPECT_CALL(*process_plugin_ref_, MockActivate)
       .WillOnce(
-          Return(absl::InternalError("Process BPF program loading error.")));
+          Return(absl::InternalError("Process plugin failed to activate.")));
+  EXPECT_CALL(*network_plugin_ref_, MockActivate).Times(1);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate).Times(1);
 
-  CallBroker(/*first_run*/ true, /*policy*/ true, /*featured*/ true);
-  ExpectReporting(false);
-  base::RunLoop run_loop = base::RunLoop();
-  run_loop_ptr_ = &run_loop;
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  run_loop.Run();
 }
 
 TEST_P(SecAgentTestFixture, TestReportingDisabled) {
-  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(*process_cache_, InitializeFilter);
-  const FeaturedAndPolicy param = GetParam();
+  const XdrFeatureAndPolicy param = GetParam();
 
-  CallBroker(/*first_run*/ true, param.policy, param.featured);
+  InstallActivateExpectations();
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(param.xdr_policy_enabled));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(param.xdr_feature_enabled));
+  // It's fine for plugins to be created regardless of whether XDR reporting
+  // is enabled. It's the activation that we want to guard against.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin)
+      .Times(AtMost(1))
+      .WillOnce(Return(ByMove(std::move(agent_plugin_))));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _))
+      .Times(AtMost(1))
+      .WillOnce(Return(ByMove(std::move(process_plugin_))));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _))
+      .Times(AtMost(1))
+      .WillOnce(Return(ByMove(std::move(network_plugin_))));
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
 
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
-  ExpectReporting(false);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     SecAgentTestFixture,
     SecAgentTestFixture,
     // {featured, policy}
-    ::testing::ValuesIn<FeaturedAndPolicy>(
+    ::testing::ValuesIn<XdrFeatureAndPolicy>(
         {{false, false}, {false, true}, {true, false}}),
     [](const ::testing::TestParamInfo<SecAgentTestFixture::ParamType>& info) {
-      std::string featured =
-          info.param.featured ? "FeaturedEnabled" : "FeaturedDisabled";
+      std::string featured = info.param.xdr_feature_enabled
+                                 ? "FeaturedEnabled"
+                                 : "FeaturedDisabled";
       std::string policy =
-          info.param.policy ? "PolicyEnabled" : "PolicyDisabled";
+          info.param.xdr_policy_enabled ? "PolicyEnabled" : "PolicyDisabled";
 
       return base::StringPrintf("%s_%s", featured.c_str(), policy.c_str());
     });

@@ -45,7 +45,8 @@ SecAgent::SecAgent(
     bool bypass_policy_for_testing,
     bool bypass_enq_ok_wait_for_testing,
     uint32_t heartbeat_period_s,
-    uint32_t plugin_batch_interval_s)
+    uint32_t plugin_batch_interval_s,
+    uint32_t feature_poll_interval_s_for_testing)
     : message_sender_(message_sender),
       process_cache_(process_cache),
       device_user_(device_user),
@@ -57,6 +58,7 @@ SecAgent::SecAgent(
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
       heartbeat_period_s_(heartbeat_period_s),
       plugin_batch_interval_s_(plugin_batch_interval_s),
+      feature_poll_interval_s_(feature_poll_interval_s_for_testing),
       quit_daemon_cb_(std::move(quit_daemon_cb)),
       weak_ptr_factory_(this) {
   policies_features_broker_ = base::MakeRefCounted<PoliciesFeaturesBroker>(
@@ -77,7 +79,7 @@ void SecAgent::Activate() {
 
   // This will post a task to run CheckPolicyAndFeature.
   policies_features_broker_->StartAndBlockForSync(
-      PoliciesFeaturesBroker::kDefaultPollDuration);
+      base::Seconds(feature_poll_interval_s_));
 }
 
 void SecAgent::CheckPolicyAndFeature() {
@@ -104,7 +106,14 @@ void SecAgent::CheckPolicyAndFeature() {
                                                      metrics::Policy::kEnabled);
     reporting_events_ = true;
     StartXDRReporting();
-  } else if (first_visit) {
+  } else if (reporting_events_ && xdr_reporting_feature &&
+             xdr_reporting_policy) {
+    // BPF plugins were activated in the past. Repoll features and
+    // activate/deactivate relevant plugins.
+    ActivateOrDeactivateBpfPlugins();
+  }
+
+  if (first_visit) {
     LOG(INFO) << "Not reporting yet.";
     LOG(INFO) << "DeviceReportXDREventsPolicy: " << xdr_reporting_policy
               << (bypass_policy_for_testing_ ? " (set by flag)" : "");
@@ -119,8 +128,8 @@ void SecAgent::StartXDRReporting() {
   MetricsSender::GetInstance().InitBatchedMetrics();
 
   using CbType = base::OnceCallback<void()>;
-  CbType cb_for_agent =
-      base::BindOnce(&SecAgent::RunPlugins, weak_ptr_factory_.GetWeakPtr());
+  CbType cb_for_agent = base::BindOnce(&SecAgent::CreateAndActivateBpfPlugins,
+                                       weak_ptr_factory_.GetWeakPtr());
   CbType cb_for_now = base::DoNothing();
   if (bypass_enq_ok_wait_for_testing_) {
     std::swap(cb_for_agent, cb_for_now);
@@ -144,40 +153,65 @@ void SecAgent::StartXDRReporting() {
       FROM_HERE, std::move(cb_for_now));
 }
 
-void SecAgent::RunPlugins() {
-  if (CreatePlugin(Types::Plugin::kProcess) != EX_OK) {
-    std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
-    return;
-  }
+void SecAgent::ActivateOrDeactivateBpfPlugins() {
+  absl::Status result;
+  std::string action;
+  auto activate = [&action](PluginConfig& pc) {
+    if (!pc.plugin->IsActive()) {
+      action = "activated";
+      return pc.plugin->Activate();
+    }
+    return absl::OkStatus();
+  };
+  auto deactivate = [&action](PluginConfig& pc) {
+    if (pc.plugin->IsActive()) {
+      action = "deactivated";
+      return pc.plugin->Deactivate();
+    }
+    return absl::OkStatus();
+  };
 
-  for (auto& plugin : plugins_) {
-    absl::Status result = plugin->Activate();
+  for (auto& plugin_config : bpf_plugins_) {
+    auto& feature = plugin_config.gated_by_feature;
+    auto& plugin = plugin_config.plugin;
+    action = "";
+    if (feature.has_value()) {
+      // The plugin is gated by a feature.
+      if (policies_features_broker_->GetFeature(feature.value())) {
+        result = activate(plugin_config);
+      } else {
+        result = deactivate(plugin_config);
+      }
+    } else {
+      result = activate(plugin_config);
+    }
     if (!result.ok()) {
       LOG(ERROR) << result.message();
-      std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
-      return;
+    } else if (!action.empty()) {
+      LOG(INFO) << plugin->GetName() << " plugin " << action;
     }
   }
 }
 
-int SecAgent::CreatePlugin(Types::Plugin type) {
+void SecAgent::CreateAndActivateBpfPlugins() {
+  using Feature = PoliciesFeaturesBrokerInterface::Feature;
+  using Plugin = Types::Plugin;
+  static const std::vector<std::pair<Plugin, std::optional<Feature>>>
+      bpf_plugins = {
+          std::make_pair(
+              Plugin::kNetwork,
+              std::optional(Feature::kCrOSLateBootSecagentdXDRNetworkEvents)),
+          std::make_pair(Plugin::kProcess, std::nullopt)};
   std::unique_ptr<PluginInterface> plugin;
-  switch (type) {
-    case Types::Plugin::kProcess: {
-      plugin = plugin_factory_->Create(
-          Types::Plugin::kProcess, message_sender_, process_cache_,
-          policies_features_broker_, device_user_, plugin_batch_interval_s_);
-      break;
+  for (const auto& p : bpf_plugins) {
+    plugin = plugin_factory_->Create(p.first, message_sender_, process_cache_,
+                                     policies_features_broker_, device_user_,
+                                     plugin_batch_interval_s_);
+    if (!plugin) {
+      std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
     }
-    default:
-      CHECK(false) << "Unsupported plugin type";
+    bpf_plugins_.push_back({p.second, std::move(plugin)});
   }
-
-  if (!plugin) {
-    return EX_SOFTWARE;
-  }
-  plugins_.push_back(std::move(plugin));
-  return EX_OK;
+  ActivateOrDeactivateBpfPlugins();
 }
-
 }  // namespace secagentd

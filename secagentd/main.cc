@@ -8,6 +8,7 @@
 #include "brillo/flag_helper.h"
 #include "brillo/syslog_logging.h"
 #include "secagentd/daemon.h"
+#include "secagentd/policies_features_broker.h"
 
 int main(int argc, char** argv) {
   DEFINE_int32(log_level, 0,
@@ -26,6 +27,10 @@ int main(int argc, char** argv) {
   DEFINE_uint32(plugin_batch_interval_s_for_testing,
                 secagentd::Daemon::kDefaultPluginBatchIntervalS,
                 "Set value in seconds for the event batching interval.");
+  DEFINE_uint32(feature_poll_interval_s_for_testing,
+                secagentd::PoliciesFeaturesBroker::kDefaultPollDurationS,
+                "Set value in seconds for the feature and policy polling "
+                "interval.");
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Security Event Reporting Daemon");
   brillo::InitLog(brillo::kLogToStderrIfTty | brillo::kLogToSyslog);
@@ -33,6 +38,7 @@ int main(int argc, char** argv) {
   auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing,
                                   FLAGS_bypass_enq_ok_wait_for_testing,
                                   FLAGS_set_heartbeat_period_s_for_testing,
-                                  FLAGS_plugin_batch_interval_s_for_testing);
+                                  FLAGS_plugin_batch_interval_s_for_testing,
+                                  FLAGS_feature_poll_interval_s_for_testing);
   return daemon.Run();
 }

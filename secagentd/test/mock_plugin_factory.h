@@ -44,14 +44,19 @@ class MockPluginFactory : public PluginFactoryInterface {
 class MockPlugin : public PluginInterface {
  public:
   absl::Status Activate() override {
-    is_active_ = true;
-    return MockActivate();
+    auto rv = MockActivate();
+    is_active_ = rv.ok() ? true : is_active_;
+    return rv;
   }
 
   absl::Status Deactivate() override {
-    is_active_ = false;
-    return MockDeactivate();
+    auto rv = MockDeactivate();
+    is_active_ = rv.ok() ? false : is_active_;
+    return rv;
   }
+
+  bool GetIsActive() { return is_active_; }
+
   MOCK_METHOD(absl::Status, MockActivate, ());
   MOCK_METHOD(std::string, GetName, (), (const override));
   MOCK_METHOD(absl::Status, MockDeactivate, ());

@@ -31,6 +31,7 @@ class PoliciesFeaturesBrokerInterface
     kCrOSLateBootSecagentdXDRReporting,
     kCrOSLateBootSecagentdBatchEvents,
     kCrOSLateBootSecagentdCoalesceTerminates,
+    kCrOSLateBootSecagentdXDRNetworkEvents,
   };
 
   // Starts polling the watched features and policies. Runs the first watch
@@ -56,8 +57,8 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
       feature::PlatformFeaturesInterface* features,
       base::RepeatingClosure poll_done_cb);
 
-  void StartAndBlockForSync(
-      base::TimeDelta poll_duration = kDefaultPollDuration) override;
+  void StartAndBlockForSync(base::TimeDelta poll_duration =
+                                base::Seconds(kDefaultPollDurationS)) override;
   bool GetFeature(Feature key) const override;
   bool GetDeviceReportXDREventsPolicy() const override;
 
@@ -67,7 +68,7 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
   PoliciesFeaturesBroker& operator=(PoliciesFeaturesBroker&&) = delete;
 
   // Default poll duration. Must be larger than poll_done_fallback_timer_
-  static constexpr base::TimeDelta kDefaultPollDuration = base::Minutes(10);
+  static constexpr uint32_t kDefaultPollDurationS = 10 * 60;
 
  private:
   struct VariationAndValue {

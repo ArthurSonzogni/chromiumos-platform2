@@ -32,20 +32,22 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
       policy_provider_(std::move(policy_provider)),
       features_(features),
       poll_done_cb_(std::move(poll_done_cb)),
-      feature_values_{
-          {Feature::kCrOSLateBootSecagentdXDRReporting,
-           {{.name = "CrOSLateBootSecagentdXDRReporting",
-             .default_state = FEATURE_ENABLED_BY_DEFAULT},
-            false}},
-          {Feature::kCrOSLateBootSecagentdBatchEvents,
-           {{.name = "CrOSLateBootSecagentdBatchEvents",
-             .default_state = FEATURE_ENABLED_BY_DEFAULT},
-            false}},
-          {Feature::kCrOSLateBootSecagentdCoalesceTerminates,
-           {{.name = "CrOSLateBootSecagentdCoalesceTerminates",
-             .default_state = FEATURE_DISABLED_BY_DEFAULT},
-            false}},
-      } {
+      feature_values_{{Feature::kCrOSLateBootSecagentdXDRReporting,
+                       {{.name = "CrOSLateBootSecagentdXDRReporting",
+                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
+                        false}},
+                      {Feature::kCrOSLateBootSecagentdBatchEvents,
+                       {{.name = "CrOSLateBootSecagentdBatchEvents",
+                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
+                        false}},
+                      {Feature::kCrOSLateBootSecagentdCoalesceTerminates,
+                       {{.name = "CrOSLateBootSecagentdCoalesceTerminates",
+                         .default_state = FEATURE_DISABLED_BY_DEFAULT},
+                        false}},
+                      {Feature::kCrOSLateBootSecagentdXDRNetworkEvents,
+                       {{.name = "CrOSLateBootSecagentdXDRNetworkEvents",
+                         .default_state = FEATURE_DISABLED_BY_DEFAULT},
+                        false}}} {
   for (const auto& [k, v] : feature_values_) {
     variations_to_query_.push_back(&v.variation);
   }

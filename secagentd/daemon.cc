@@ -7,10 +7,12 @@
 #include <cstdlib>
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sysexits.h>
 #include <utility>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
@@ -35,11 +37,13 @@ namespace secagentd {
 Daemon::Daemon(bool bypass_policy_for_testing,
                bool bypass_enq_ok_wait_for_testing,
                uint32_t heartbeat_period_s,
-               uint32_t plugin_batch_interval_s)
+               uint32_t plugin_batch_interval_s,
+               uint32_t feature_polling_interval_s)
     : bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
       heartbeat_period_s_(heartbeat_period_s),
       plugin_batch_interval_s_(plugin_batch_interval_s),
+      feature_polling_interval_s_(feature_polling_interval_s),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
@@ -60,7 +64,7 @@ int Daemon::OnInit() {
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
       feature::PlatformFeatures::Get(), bypass_policy_for_testing_,
       bypass_enq_ok_wait_for_testing_, heartbeat_period_s_,
-      plugin_batch_interval_s_);
+      plugin_batch_interval_s_, feature_polling_interval_s_);
 
   // Set up ERP.
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
@@ -76,7 +80,6 @@ int Daemon::OnEventLoopStarted() {
   MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
                                                    metrics::Policy::kChecked);
   secagent_->Activate();
-
   return EX_OK;
 }
 
