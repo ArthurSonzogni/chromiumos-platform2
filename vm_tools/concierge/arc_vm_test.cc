@@ -1416,5 +1416,38 @@ TEST_F(ArcVmTest, DisableVmmSwapFail) {
   ASSERT_FALSE(swap_policy_timer_->IsRunning());
 }
 
+TEST_F(ArcVmTest, HandleStatefulUpdateWithLow) {
+  ASSERT_TRUE(EnableVmmSwap());
+  spaced::StatefulDiskSpaceUpdate update;
+  update.set_state(spaced::StatefulDiskSpaceState::LOW);
+  vm_->HandleStatefulUpdate(update);
+  EXPECT_FALSE(swap_policy_timer_->IsRunning());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, HandleStatefulUpdateWithCritical) {
+  ASSERT_TRUE(EnableVmmSwap());
+  spaced::StatefulDiskSpaceUpdate update;
+  update.set_state(spaced::StatefulDiskSpaceState::CRITICAL);
+  vm_->HandleStatefulUpdate(update);
+  EXPECT_FALSE(swap_policy_timer_->IsRunning());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, HandleStatefulUpdateWhenVmmSwapIsNotEnabled) {
+  spaced::StatefulDiskSpaceUpdate update;
+  update.set_state(spaced::StatefulDiskSpaceState::LOW);
+  vm_->HandleStatefulUpdate(update);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 0);
+}
+
+TEST_F(ArcVmTest, HandleStatefulUpdateWhenStateIsNormal) {
+  ASSERT_TRUE(EnableVmmSwap());
+  spaced::StatefulDiskSpaceUpdate update;
+  update.set_state(spaced::StatefulDiskSpaceState::NORMAL);
+  vm_->HandleStatefulUpdate(update);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 0);
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

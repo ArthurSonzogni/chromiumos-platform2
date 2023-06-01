@@ -38,6 +38,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/constants/vm_tools.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 #include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -897,6 +898,22 @@ void ArcVm::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
   response.set_success(true);
 }
 
+void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // Should not disable vmm-swap if vmm-swap is not enabled because there is a
+  // case when vmm-swap is not available. StatefulDiskSpaceUpdate arrives
+  // independent from vmm-swap.
+  // state > spaced::StatefulDiskSpaceState::NORMAL means LOW or CRITICAL.
+  if ((update.state() == spaced::StatefulDiskSpaceState::LOW ||
+       update.state() == spaced::StatefulDiskSpaceState::CRITICAL) &&
+      is_vmm_swap_enabled_) {
+    LOG(INFO) << "Disable vmm-swap due to low disk notification";
+    if (!DisableVmmSwap()) {
+      LOG(ERROR) << "Failure on crosvm swap command for disable";
+    }
+  }
+}
+
 bool ArcVm::SetupLmkdVsock() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -1233,6 +1250,16 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
 void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnDisabled();
+  if (DisableVmmSwap()) {
+    response.set_success(true);
+  } else {
+    LOG(ERROR) << "Failure on crosvm swap command for disable";
+    response.set_failure_reason("Failure on crosvm swap command for disable");
+  }
+}
+
+bool ArcVm::DisableVmmSwap() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (swap_policy_timer_->IsRunning()) {
     LOG(INFO) << "Cancel pending swap out";
     swap_policy_timer_->Stop();
@@ -1241,14 +1268,8 @@ void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
     LOG(INFO) << "Cancel swap state monitor";
     swap_state_monitor_timer_->Stop();
   }
-  if (CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str())) {
-    response.set_success(true);
-  } else {
-    LOG(ERROR) << "Failure on crosvm swap command for disable";
-    response.set_success(false);
-    response.set_failure_reason("Failure on crosvm swap command for disable");
-  }
   is_vmm_swap_enabled_ = false;
+  return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str());
 }
 
 void ArcVm::TrimVmmSwapMemory() {

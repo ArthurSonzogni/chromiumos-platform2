@@ -210,6 +210,10 @@ class VmBaseImpl {
   // Stop inflating aggressive balloon.
   virtual void StopAggressiveBalloon(AggressiveBalloonResponse& response);
 
+  // Handle the low disk notification from spaced.
+  virtual void HandleStatefulUpdate(
+      const spaced::StatefulDiskSpaceUpdate update) = 0;
+
   std::string GetVmSocketPath() const;
 
  protected:

@@ -168,6 +168,9 @@ class ArcVm final : public VmBaseImpl {
   // Public for testing purpose.
   uint64_t DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size);
 
+  void HandleStatefulUpdate(
+      const spaced::StatefulDiskSpaceUpdate update) override;
+
   // Returns the kernel parameters for the VM
   static std::vector<std::string> GetKernelParams(
       const crossystem::Crossystem& cros_system,
@@ -228,6 +231,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
+  bool DisableVmmSwap();
   void ApplyVmmSwapPolicyResult(SwapVmCallback callback,
                                 VmmSwapPolicyResult policy_result);
   void TrimVmmSwapMemory();

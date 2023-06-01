@@ -96,6 +96,10 @@ class PluginVm final : public VmBaseImpl {
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
 
+  // Do nothing on HandleStatefulUpdate.
+  void HandleStatefulUpdate(
+      const spaced::StatefulDiskSpaceUpdate update) override {}
+
   static bool WriteResolvConf(const base::FilePath& parent_dir,
                               const std::vector<std::string>& nameservers,
                               const std::vector<std::string>& search_domains);

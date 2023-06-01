@@ -994,6 +994,10 @@ vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
 
 void TerminaVm::HandleStatefulUpdate(
     const spaced::StatefulDiskSpaceUpdate update) {
+  if (IsSuspended()) {
+    return;
+  }
+
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),

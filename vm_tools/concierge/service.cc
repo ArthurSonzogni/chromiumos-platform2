@@ -4911,13 +4911,7 @@ void Service::HandleStatefulDiskSpaceUpdate(
     return;
   }
 
-  auto classification = iter->second->GetInfo().type;
-  if (!iter->second->IsSuspended() &&
-      (classification == VmId::Type::BOREALIS ||
-       classification == VmId::Type::TERMINA ||
-       classification == VmId::Type::BRUSCHETTA)) {
-    static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
-  }
+  iter->second->HandleStatefulUpdate(update);
 }
 
 void Service::OnSiblingVmDead(VmId vm_id) {

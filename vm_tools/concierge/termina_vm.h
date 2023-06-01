@@ -244,7 +244,8 @@ class TerminaVm final : public VmBaseImpl {
   // Sends a stateful update to be handled by the VM. Generally this means
   // adjusting the size of a storage balloon and/or tweaking disk settings (i.e
   // proc/sys/vm/dirty_ratio).
-  void HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update);
+  void HandleStatefulUpdate(
+      const spaced::StatefulDiskSpaceUpdate update) override;
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
       std::unique_ptr<patchpanel::Subnet> subnet,
