@@ -93,7 +93,7 @@ int open_virtgpu(char** drm_device) {
 
 int32_t fstat_pipe(int fd, uint32_t& inode) {
   int32_t ret;
-  struct stat statbuf = {0};
+  struct stat statbuf = {};
 
   ret = fstat(fd, &statbuf);
 
@@ -129,8 +129,8 @@ int32_t VirtGpuChannel::init() {
   int32_t ret;
   char* drm_device = nullptr;
   uint32_t supports_wayland;
-  struct drm_virtgpu_get_caps args = {0};
-  struct CrossDomainCapabilities cross_domain_caps = {0};
+  struct drm_virtgpu_get_caps args = {};
+  struct CrossDomainCapabilities cross_domain_caps = {};
 
   virtgpu_ = open_virtgpu(&drm_device);
   if (virtgpu_ < 0) {
@@ -151,7 +151,7 @@ int32_t VirtGpuChannel::init() {
   };
 
   for (const auto& param : params) {
-    struct drm_virtgpu_getparam get_param = {0};
+    struct drm_virtgpu_getparam get_param = {};
 
     get_param.param = param.param;
     get_param.value = (uint64_t)(uintptr_t)&param.value;
@@ -201,11 +201,11 @@ bool VirtGpuChannel::supports_dmabuf() {
 
 int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
   int ret;
-  struct drm_virtgpu_map map = {0};
-  struct drm_virtgpu_context_init init = {0};
-  struct drm_virtgpu_resource_create_blob drm_rc_blob = {0};
-  struct drm_virtgpu_context_set_param ctx_set_params[3] = {{0}};
-  struct CrossDomainInit cmd_init = {{0}};
+  struct drm_virtgpu_map map = {};
+  struct drm_virtgpu_context_init init = {};
+  struct drm_virtgpu_resource_create_blob drm_rc_blob = {};
+  struct drm_virtgpu_context_set_param ctx_set_params[3] = {};
+  struct CrossDomainInit cmd_init = {};
 
   // Initialize the cross domain context.  Create one fence context to wait for
   // metadata queries.
@@ -455,8 +455,8 @@ int32_t VirtGpuChannel::submit_cmd(uint32_t* cmd,
                                    uint32_t ring_idx,
                                    bool wait) {
   int32_t ret;
-  struct drm_virtgpu_3d_wait wait_3d = {0};
-  struct drm_virtgpu_execbuffer exec = {0};
+  struct drm_virtgpu_3d_wait wait_3d = {};
+  struct drm_virtgpu_execbuffer exec = {};
 
   exec.command = (uint64_t)&cmd[0];
   exec.size = size;
@@ -501,8 +501,8 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
                                     uint64_t& blob_id) {
   int32_t ret = 0;
   uint32_t* addr = (uint32_t*)ring_addr_;
-  struct CrossDomainGetImageRequirements cmd_get_reqs = {{0}};
-  struct BufferDescription new_desc = {{0}};
+  struct CrossDomainGetImageRequirements cmd_get_reqs = {};
+  struct BufferDescription new_desc = {};
 
   // Sommelier is single threaded, so no need for locking.
   for (const auto& desc : description_cache_) {
@@ -555,7 +555,7 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
 
 int32_t VirtGpuChannel::close_gem_handle(uint32_t gem_handle) {
   int32_t ret;
-  struct drm_gem_close gem_close = {0};
+  struct drm_gem_close gem_close = {};
 
   gem_close.handle = gem_handle;
   ret = drmIoctl(virtgpu_, DRM_IOCTL_GEM_CLOSE, &gem_close);
@@ -570,7 +570,7 @@ int32_t VirtGpuChannel::close_gem_handle(uint32_t gem_handle) {
 
 int32_t VirtGpuChannel::channel_poll() {
   int32_t ret;
-  struct CrossDomainPoll cmd_poll = {{0}};
+  struct CrossDomainPoll cmd_poll = {};
 
   cmd_poll.hdr.cmd = CROSS_DOMAIN_CMD_POLL;
   cmd_poll.hdr.cmd_size = sizeof(struct CrossDomainPoll);
@@ -587,7 +587,7 @@ int32_t VirtGpuChannel::create_host_blob(uint64_t blob_id,
                                          uint64_t size,
                                          int& out_fd) {
   int32_t ret;
-  struct drm_virtgpu_resource_create_blob drm_rc_blob = {0};
+  struct drm_virtgpu_resource_create_blob drm_rc_blob = {};
 
   drm_rc_blob.size = size;
   drm_rc_blob.blob_mem = VIRTGPU_BLOB_MEM_HOST3D;
@@ -643,7 +643,7 @@ int32_t VirtGpuChannel::fd_analysis(int fd,
   uint32_t gem_handle;
   ret = drmPrimeFDToHandle(virtgpu_, fd, &gem_handle);
   if (ret == 0) {
-    struct drm_virtgpu_resource_info drm_res_info = {0};
+    struct drm_virtgpu_resource_info drm_res_info = {};
     drm_res_info.bo_handle = gem_handle;
 
     ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &drm_res_info);
@@ -681,7 +681,7 @@ int32_t VirtGpuChannel::create_pipe_internal(int& out_pipe_fd,
                                              uint32_t identifier_type) {
   int32_t ret;
   int fds[2];
-  struct PipeDescription pipe_desc = {0};
+  struct PipeDescription pipe_desc = {};
   bool return_read_pipe = false;
 
   // When proxying a Wayland pipe, we return one end to the WaylandChannel

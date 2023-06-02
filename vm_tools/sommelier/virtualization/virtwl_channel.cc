@@ -27,8 +27,8 @@ VirtWaylandChannel::~VirtWaylandChannel() {
 int32_t VirtWaylandChannel::init() {
   virtwl_ = open(VIRTWL_DEVICE, O_RDWR);
   int32_t ret;
-  struct WaylandBufferCreateInfo create_info = {0};
-  struct WaylandBufferCreateOutput create_output = {0};
+  struct WaylandBufferCreateInfo create_info = {};
+  struct WaylandBufferCreateOutput create_output = {};
   create_output.fd = -1;
 
   if (virtwl_ == -1)
@@ -163,7 +163,7 @@ int32_t VirtWaylandChannel::allocate(
     const struct WaylandBufferCreateInfo& create_info,
     struct WaylandBufferCreateOutput& create_output) {
   int ret;
-  struct virtwl_ioctl_new ioctl_new = {0};
+  struct virtwl_ioctl_new ioctl_new = {};
 
   if (create_info.dmabuf) {
     ioctl_new.type = VIRTWL_IOCTL_NEW_DMABUF;
@@ -203,7 +203,7 @@ int32_t VirtWaylandChannel::allocate(
 }
 
 int32_t VirtWaylandChannel::sync(int dmabuf_fd, uint64_t flags) {
-  struct virtwl_ioctl_dmabuf_sync sync = {0};
+  struct virtwl_ioctl_dmabuf_sync sync = {};
   int ret;
 
   sync.flags = flags;

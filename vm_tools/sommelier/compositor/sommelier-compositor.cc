@@ -223,8 +223,8 @@ static void sl_host_surface_attach(struct wl_client* client,
         int rv;
         size_t size;
         struct zwp_linux_buffer_params_v1* buffer_params;
-        struct WaylandBufferCreateInfo create_info = {0};
-        struct WaylandBufferCreateOutput create_output = {0};
+        struct WaylandBufferCreateInfo create_info = {};
+        struct WaylandBufferCreateOutput create_output = {};
         create_info.dmabuf = true;
 
         create_info.width = static_cast<__u32>(width);
@@ -266,8 +266,8 @@ static void sl_host_surface_attach(struct wl_client* client,
         host->current_buffer->mmap->end_write = sl_virtwl_dmabuf_end_write;
       } else {
         size_t size = host->contents_shm_mmap->size;
-        struct WaylandBufferCreateInfo create_info = {0};
-        struct WaylandBufferCreateOutput create_output = {0};
+        struct WaylandBufferCreateInfo create_info = {};
+        struct WaylandBufferCreateOutput create_output = {};
         struct wl_shm_pool* pool;
         int rv;
 

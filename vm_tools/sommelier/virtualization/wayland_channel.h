@@ -194,7 +194,7 @@ class VirtGpuChannel : public WaylandChannel {
   VirtGpuChannel()
       : virtgpu_{-1},
         ring_addr_{MAP_FAILED},
-        ring_handle_{0},
+        ring_handle_{},
         supports_dmabuf_(false),
         descriptor_id_{1} {}
   ~VirtGpuChannel() override;
