@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "cryptohome/auth_factor/flatbuffer.h"
+
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/flatbuffer_schemas/enumerations.h"
 
 namespace cryptohome {

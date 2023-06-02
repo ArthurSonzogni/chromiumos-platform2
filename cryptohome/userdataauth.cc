@@ -55,7 +55,7 @@
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
-#include "cryptohome/auth_session_proto_utils.h"
+#include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"

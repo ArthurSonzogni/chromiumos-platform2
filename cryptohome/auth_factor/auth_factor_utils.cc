@@ -20,7 +20,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_session_proto_utils.h"
+#include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/features.h"
 
 namespace cryptohome {
