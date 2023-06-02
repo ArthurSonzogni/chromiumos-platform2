@@ -612,10 +612,14 @@ wipe_stateful() {
     ;;
   esac
 
-  # When the stateful partition is wiped the TPM ownership must be reset. This
-  # command will not work on older devices which do not support it. In that case
-  # it will be ignored.
-  crossystem clear_tpm_owner_request=1 || true
+  # When the stateful partition is wiped the TPM ownership must be reset.
+  # This command will not work on Flex devices which do not support it.
+  # In that case the result will be ignored.
+  if [ "$(crossystem mainfw_type)" != "nonchrome" ]; then
+    crossystem clear_tpm_owner_request=1
+  else
+    crossystem clear_tpm_owner_request=1 || true
+  fi
 }
 
 # Install the stateful partition content
