@@ -117,4 +117,58 @@ flash_protect::Flags FlashProtectCommand_v2::GetWritableFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->writable_flags);
 }
 
+uint32_t FlashProtectCommand::GetVersion() const {
+  return command_version;
+}
+
+flash_protect::Flags FlashProtectCommand::GetFlags() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->GetFlags();
+  return flash_protect_command_v1_->GetFlags();
+}
+
+flash_protect::Flags FlashProtectCommand::GetValidFlags() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->GetValidFlags();
+  return flash_protect_command_v1_->GetValidFlags();
+}
+
+flash_protect::Flags FlashProtectCommand::GetWritableFlags() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->GetWritableFlags();
+  return flash_protect_command_v1_->GetWritableFlags();
+}
+
+bool FlashProtectCommand::Run(int ec_fd) {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->Run(ec_fd);
+  return flash_protect_command_v1_->Run(ec_fd);
+}
+
+bool FlashProtectCommand::Run(ec::EcUsbEndpointInterface& uep) {
+  if (GetVersion() == 2)
+    // TODO(b/286262144): Create an implementation for
+    // Run(ec::EcUsbEndpointInterface& uep) in EcCommandAsync.h.
+    return false;
+  return flash_protect_command_v1_->Run(uep);
+}
+
+bool FlashProtectCommand::RunWithMultipleAttempts(int fd, int num_attempts) {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->RunWithMultipleAttempts(fd, num_attempts);
+  return flash_protect_command_v1_->RunWithMultipleAttempts(fd, num_attempts);
+}
+
+uint32_t FlashProtectCommand::Version() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->Version();
+  return flash_protect_command_v1_->Version();
+}
+
+uint32_t FlashProtectCommand::Command() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->Command();
+  return flash_protect_command_v1_->Command();
+}
+
 }  // namespace ec

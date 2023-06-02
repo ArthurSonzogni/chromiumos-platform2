@@ -122,5 +122,25 @@ TEST(FlashProtectCommand_v2, FlashProtectCommand_v2) {
   EXPECT_EQ(cmd.options().validate_poll_result, false);
 }
 
+TEST(FlashProtectCommand, FlashProtectCommand_v1) {
+  flash_protect::Flags flags =
+      flash_protect::Flags::kRollbackAtBoot | flash_protect::Flags::kRoAtBoot;
+  flash_protect::Flags mask = flash_protect::Flags::kNone;
+  uint32_t version = 1;
+  FlashProtectCommand cmd(flags, mask, version);
+  EXPECT_EQ(cmd.Version(), 1);
+  EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
+}
+
+TEST(FlashProtectCommand, FlashProtectCommand_v2) {
+  flash_protect::Flags flags =
+      flash_protect::Flags::kRollbackAtBoot | flash_protect::Flags::kRoAtBoot;
+  flash_protect::Flags mask = flash_protect::Flags::kNone;
+  uint32_t version = 2;
+  FlashProtectCommand cmd(flags, mask, version);
+  EXPECT_EQ(cmd.Version(), 2);
+  EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
+}
+
 }  // namespace
 }  // namespace ec
