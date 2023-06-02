@@ -1,0 +1,40 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":liblorgnette-client-headers",
+    ":liblorgnette-client-test.pc",
+    ":liblorgnette-client.pc",
+  ]
+}
+
+# lorgnette client library generated headers. Used by other daemons to interact
+# with lorgnette.
+generate_dbus_proxies("liblorgnette-client-headers") {
+  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/lorgnette/dbus-proxies.h"
+  mock_output_file = "include/lorgnette/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "lorgnette/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.lorgnette.Manager.xml" ]
+}
+
+generate_pkg_config("liblorgnette-client.pc") {
+  name = "liblorgnette-client"
+  version = getenv("PV")
+  description = "lorgnette client interface library"
+  cflags = [ "-I/usr/include/lorgnette-client" ]
+  install = true
+}
+
+generate_pkg_config("liblorgnette-client-test.pc") {
+  name = "liblorgnette-client-test"
+  version = getenv("PV")
+  description = "lorgnette client interface mock library"
+  cflags = [ "-I/usr/include/lorgnette-client-test" ]
+  install = true
+}
