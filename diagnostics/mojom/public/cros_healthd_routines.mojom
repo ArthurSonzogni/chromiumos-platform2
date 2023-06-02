@@ -234,7 +234,8 @@ struct RoutineStateWaiting {
   };
   // Reason for why the routine is waiting.
   Reason reason@0;
-  // Message for why the routine is waiting, may be used to pass instruction or explanation.
+  // Message for why the routine is waiting, may be used to pass instruction or
+  // explanation.
   string message@1;
 };
 
@@ -282,8 +283,7 @@ struct AudioDriverRoutineDetail {
 // Details regarding cpu stress routine.
 //
 // NextMinVersion: 1, NextIndex: 0
-struct CpuStressRoutineDetail {
-};
+struct CpuStressRoutineDetail {};
 
 // Details regarding UFS lifetime routine.
 //
@@ -300,20 +300,17 @@ struct UfsLifetimeRoutineDetail {
 // Details regarding disk_read routine.
 //
 // NextMinVersion: 1, NextIndex: 0
-struct DiskReadRoutineDetail {
-};
+struct DiskReadRoutineDetail {};
 
 // Details regarding cpu cache routine.
 //
 // NextMinVersion: 1, NextIndex: 0
-struct CpuCacheRoutineDetail {
-};
+struct CpuCacheRoutineDetail {};
 
 // Details regarding prime search routine.
 //
 // NextMinVersion: 1, NextIndex: 0
-struct PrimeSearchRoutineDetail {
-};
+struct PrimeSearchRoutineDetail {};
 
 // Enumeration of each possible memtester test item.
 //
