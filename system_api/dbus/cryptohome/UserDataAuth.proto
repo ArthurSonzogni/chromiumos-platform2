@@ -607,6 +607,10 @@ message StartAuthSessionReply {
   // List of AuthFactors configured and available for authentication in the
   // context of this session.
   repeated AuthFactor auth_factors = 5;
+
+  // AuthFactor with status returns available authfactors for account_id
+  // provided in the request, along with their status information.
+  repeated AuthFactorWithStatus configured_auth_factors_with_status = 9;
 }
 
 message InvalidateAuthSessionRequest {
