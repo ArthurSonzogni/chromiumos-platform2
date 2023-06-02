@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <queue>
+#include <set>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -22,7 +24,9 @@
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/ranges/algorithm.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/switches/chrome_switches.h>
@@ -91,22 +95,53 @@ bool RemoveArgs(std::vector<std::string>* args, const std::string& arg) {
   return true;
 }
 
-// Joins the values of all switches in |args| prefixed by |prefix| using
-// |separator| and appends a merged version of the switch. If |keep_existing| is
-// true, all earlier occurrences of the switch are preserved; otherwise, they
-// are removed.
+// Split the values in |arg| following |prefix| by |separator|, adding them to
+// |agreeing_values| and removing them from |disagreeing_values|.
+void MergeSwitchValue(const std::string_view arg,
+                      const std::string_view prefix,
+                      const std::string_view separator,
+                      std::set<std::string>& agreeing_values,
+                      std::set<std::string>& disagreeing_values) {
+  auto values =
+      base::SplitString(arg.substr(prefix.size()), separator,
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (auto& value : values) {
+    disagreeing_values.erase(value);
+    agreeing_values.insert(std::move(value));
+  }
+}
+
+// Joins the values of all switches in |args| prefixed by |enable_prefix| and
+// |disable_prefix| (both of which include all characters up to the list of
+// values, typically ending in an "=" character), using |separator|, appending a
+// merged version of the switch, with each individual value included in at most
+// one of the enable and disable, depending on whether the value is last seen in
+// an enable or a disable. If |keep_existing| is true, all earlier occurrences
+// of the switch are preserved; otherwise, they are removed.
 void MergeSwitches(std::vector<std::string>* args,
-                   const std::string& prefix,
-                   const std::string& separator,
+                   const std::string_view enable_prefix,
+                   const std::string_view disable_prefix,
+                   const std::string_view separator,
                    bool keep_existing) {
-  std::string values;
+  std::set<std::string> enable_values, disable_values;
+  bool enable_seen = false;
+  bool disable_seen = false;
   auto head = args->begin();
   for (const auto& arg : *args) {
-    bool match = base::StartsWith(arg, prefix, base::CompareCase::SENSITIVE);
+    bool match =
+        base::StartsWith(arg, enable_prefix, base::CompareCase::SENSITIVE);
     if (match) {
-      if (!values.empty())
-        values += separator;
-      values += arg.substr(prefix.size());
+      MergeSwitchValue(arg, enable_prefix, separator, enable_values,
+                       disable_values);
+      enable_seen = true;
+    } else if (!disable_prefix.empty()) {
+      match =
+          base::StartsWith(arg, disable_prefix, base::CompareCase::SENSITIVE);
+      if (match) {
+        MergeSwitchValue(arg, disable_prefix, separator, disable_values,
+                         enable_values);
+        disable_seen = true;
+      }
     }
     if (!match || keep_existing) {
       *head++ = arg;
@@ -114,8 +149,30 @@ void MergeSwitches(std::vector<std::string>* args,
   }
   if (head != args->end())
     args->erase(head, args->end());
-  if (!values.empty())
-    args->push_back(prefix + values);
+
+  // Add the enable arg if the set of enabled values is non-empty or if existing
+  // instance of that arg is present and retained. The `!keep_existing` case is
+  // straightforward - any prior enable arg values will have been dropped so
+  // only whether the set of values is empty needs to be considered. Otherwise,
+  // when `keep_existing`, the previous value needs to be overridden, including
+  // when the resolved set of values is empty. An exception for this is made if
+  // no prior value was seen to avoid introducing the arg to all command lines
+  // unnecessarily.
+  if (!enable_values.empty() || (keep_existing && enable_seen)) {
+    args->push_back(base::StrCat(
+        {enable_prefix,
+         base::JoinString(std::vector<std::string_view>(enable_values.begin(),
+                                                        enable_values.end()),
+                          separator)}));
+  }
+  // The logic above also applies here.
+  if (!disable_values.empty() || (keep_existing && disable_seen)) {
+    args->push_back(base::StrCat(
+        {disable_prefix,
+         base::JoinString(std::vector<std::string_view>(disable_values.begin(),
+                                                        disable_values.end()),
+                          separator)}));
+  }
 }
 
 std::string GetUnprefixedFlagName(const std::string& flag) {
@@ -519,14 +576,11 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   // Chrome merges --enable-blink-features and --disable-blink-features for
   // renderer processes (see content::FeaturesFromSwitch()), but we still merge
   // the values here to produce shorter command lines.
-  MergeSwitches(&to_return, kVmoduleFlag, ",", false /* keep_existing */);
-  MergeSwitches(&to_return, kEnableFeaturesFlag, ",", true /* keep_existing */);
-  MergeSwitches(&to_return, kDisableFeaturesFlag, ",",
+  MergeSwitches(&to_return, kVmoduleFlag, "", ",", false /* keep_existing */);
+  MergeSwitches(&to_return, kEnableFeaturesFlag, kDisableFeaturesFlag, ",",
                 true /* keep_existing */);
-  MergeSwitches(&to_return, kEnableBlinkFeaturesFlag, ",",
-                false /* keep_existing */);
-  MergeSwitches(&to_return, kDisableBlinkFeaturesFlag, ",",
-                false /* keep_existing */);
+  MergeSwitches(&to_return, kEnableBlinkFeaturesFlag, kDisableBlinkFeaturesFlag,
+                ",", false /* keep_existing */);
 
   return to_return;
 }

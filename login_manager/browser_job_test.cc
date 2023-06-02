@@ -611,26 +611,26 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
   constexpr const char kArg1[] = "--first";
   constexpr const char kArg2[] = "--second";
 
-  constexpr const char kEnable1[] = "--enable-features=1a,1b";
-  constexpr const char kEnable2[] = "--enable-features=2a,2b";
-  constexpr const char kEnable3[] = "--enable-features=3a,3b";
+  constexpr const char kEnable1[] = "--enable-features=1a,1b,4a";
+  constexpr const char kEnable2[] = "--enable-features=2a,2b,5a";
+  constexpr const char kEnable3[] = "--enable-features=3a,3b,6a";
   constexpr const char kCombinedEnable[] =
       "--enable-features=1a,1b,2a,2b,3a,3b";
 
-  constexpr const char kDisable1[] = "--disable-features=4a,4b";
-  constexpr const char kDisable2[] = "--disable-features=5a,5b";
+  constexpr const char kDisable1[] = "--disable-features=4a,4b,2a";
+  constexpr const char kDisable2[] = "--disable-features=5a,5b,3a";
   constexpr const char kDisable3[] = "--disable-features=6a,6b";
   constexpr const char kCombinedDisable[] =
       "--disable-features=4a,4b,5a,5b,6a,6b";
 
-  constexpr const char kBlinkEnable1[] = "--enable-blink-features=7a,7b";
-  constexpr const char kBlinkEnable2[] = "--enable-blink-features=8a,8b";
-  constexpr const char kBlinkEnable3[] = "--enable-blink-features=9a,9b";
+  constexpr const char kBlinkEnable1[] = "--enable-blink-features=7a,7b,10a";
+  constexpr const char kBlinkEnable2[] = "--enable-blink-features=8a,8b,11a";
+  constexpr const char kBlinkEnable3[] = "--enable-blink-features=9a,9b,12a";
   constexpr const char kCombinedBlinkEnable[] =
       "--enable-blink-features=7a,7b,8a,8b,9a,9b";
 
-  constexpr const char kBlinkDisable1[] = "--disable-blink-features=10a,10b";
-  constexpr const char kBlinkDisable2[] = "--disable-blink-features=11a,11b";
+  constexpr const char kBlinkDisable1[] = "--disable-blink-features=10a,10b,8a";
+  constexpr const char kBlinkDisable2[] = "--disable-blink-features=11a,11b,9a";
   constexpr const char kBlinkDisable3[] = "--disable-blink-features=12a,12b";
   constexpr const char kCombinedBlinkDisable[] =
       "--disable-blink-features=10a,10b,11a,11b,12a,12b";
@@ -664,6 +664,93 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
       kCombinedDisable,
       kCombinedBlinkEnable,
       kCombinedBlinkDisable,
+  };
+  EXPECT_EQ(base::JoinString(job.ExportArgv(), " "),
+            base::JoinString(kExpected, " "));
+}
+
+TEST_F(BrowserJobTest, CombineFeatureArgs_ResolveToEmpty) {
+  constexpr const char kArg1[] = "--first";
+  constexpr const char kArg2[] = "--second";
+
+  constexpr const char kEnable[] = "--enable-features=1a,1b";
+  constexpr const char kCombinedEnable[] = "--enable-features=";
+
+  constexpr const char kDisable[] = "--disable-features=1a,1b";
+  constexpr const char kCombinedDisable[] = "--disable-features=1a,1b";
+
+  constexpr const char kBlinkEnable[] = "--enable-blink-features=2a,2b";
+
+  constexpr const char kBlinkDisable[] = "--disable-blink-features=2a,2b";
+  constexpr const char kCombinedBlinkDisable[] =
+      "--disable-blink-features=2a,2b";
+
+  const std::vector<std::string> kArgv = {
+      kEnable, kDisable, kArg1, kBlinkEnable, kBlinkDisable, kArg2,
+  };
+  BrowserJob job(kArgv, env_, &checker_, &metrics_, &utils_,
+                 BrowserJob::Config{false, false, std::nullopt},
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
+
+  // --enable-features and --disable-features should be merged into args at the
+  // end of the command line, but the original args should be preserved:
+  // https://crbug.com/767266. Since all enabled features are later disabled,
+  // the --enable-features switch has an empty value, to override the previous
+  // non-empty value.
+  //
+  // --enable-blink-features and --disable-blink-features should also be merged,
+  // but the original args don't need to be preserved in that case (since
+  // sentinel args aren't placed around them). Since all enabled blink features
+  // are disabled, but original args are not preserved, there is no need to an
+  // --enable-blink-features switch.
+  const std::vector<std::string> kExpected = {
+      kEnable,
+      kDisable,
+      kArg1,
+      kArg2,
+      kCombinedEnable,
+      kCombinedDisable,
+      kCombinedBlinkDisable,
+  };
+  EXPECT_EQ(base::JoinString(job.ExportArgv(), " "),
+            base::JoinString(kExpected, " "));
+}
+
+TEST_F(BrowserJobTest, CombineFeatureArgs_Empty) {
+  constexpr const char kArg1[] = "--first";
+  constexpr const char kArg2[] = "--second";
+
+  constexpr const char kEnable[] = "--enable-features=";
+  constexpr const char kCombinedEnable[] = "--enable-features=";
+
+  constexpr const char kBlinkEnable[] = "--enable-blink-features=";
+
+  const std::vector<std::string> kArgv = {
+      kEnable,
+      kArg1,
+      kBlinkEnable,
+      kArg2,
+  };
+  BrowserJob job(kArgv, env_, &checker_, &metrics_, &utils_,
+                 BrowserJob::Config{false, false, std::nullopt},
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
+
+  // --enable-features and --disable-features should be merged into args at the
+  // end of the command line, but the original args should be preserved:
+  // https://crbug.com/767266. Since no features are listed to enable, the
+  // --enable-features switch has an empty value, matching the behavior when
+  // non-empty. --disable-features is omitted since it was never present.
+  //
+  // --enable-blink-features and --disable-blink-features should also be merged,
+  // but the original args don't need to be preserved in that case (since
+  // sentinel args aren't placed around them). Since the blink features enable
+  // flag is empty, but original args are not preserved, there is no need to an
+  // --enable-blink-features switch.
+  const std::vector<std::string> kExpected = {
+      kEnable,
+      kArg1,
+      kArg2,
+      kCombinedEnable,
   };
   EXPECT_EQ(base::JoinString(job.ExportArgv(), " "),
             base::JoinString(kExpected, " "));
