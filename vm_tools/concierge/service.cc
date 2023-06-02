@@ -83,6 +83,7 @@
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
+#include <spaced/disk_usage_proxy.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -1496,10 +1497,9 @@ bool Service::Init() {
                           weak_ptr_factory_.GetWeakPtr()));
 
   // Setup D-Bus proxy for spaced.
-  spaced_observer_ = std::make_unique<SpacedObserver>(
-      base::BindRepeating(&Service::OnStatefulDiskSpaceUpdate,
-                          weak_ptr_factory_.GetWeakPtr()),
-      bus_);
+  disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(bus_);
+  disk_usage_proxy_->AddObserver(this);
+  disk_usage_proxy_->StartMonitoring();
 
   // Get the D-Bus proxy for communicating with cicerone.
   cicerone_service_proxy_ = bus_->GetObjectProxy(

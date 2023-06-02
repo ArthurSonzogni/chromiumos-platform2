@@ -166,7 +166,6 @@ static_library("libconcierge") {
     "../concierge/shadercached_helper.cc",
     "../concierge/shared_data.cc",
     "../concierge/shill_client.cc",
-    "../concierge/spaced_observer.cc",
     "../concierge/ssh_keys.cc",
     "../concierge/startup_listener_impl.cc",
     "../concierge/sysfs_notify_watcher.cc",

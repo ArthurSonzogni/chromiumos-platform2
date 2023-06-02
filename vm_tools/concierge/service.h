@@ -45,7 +45,6 @@
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
-#include "vm_tools/concierge/spaced_observer.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
@@ -62,7 +61,8 @@ class DlcHelper;
 
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
-class Service final : public org::chromium::VmConciergeInterface {
+class Service final : public org::chromium::VmConciergeInterface,
+                      public spaced::SpacedObserverInterface {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
@@ -433,7 +433,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   int GetCpuQuota();
 
   // Handles StatefulDiskSpaceUpdate from spaced.
-  void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& update);
+  void OnStatefulDiskSpaceUpdate(
+      const spaced::StatefulDiskSpaceUpdate& update) override;
 
   // Delegates a stateful disk update to be handled by the VM with the specified
   // |vm_id|.
@@ -538,7 +539,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   base::RepeatingTimer balloon_resizing_timer_;
 
   // Proxy for interacting with spaced.
-  std::unique_ptr<SpacedObserver> spaced_observer_;
+  std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 
   // List of active VMs using storage ballooning.
   std::set<VmId> storage_balloon_vms_;
