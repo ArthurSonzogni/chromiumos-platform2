@@ -524,6 +524,21 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   return true;
 }
 
+const ShillClient::Device* ShillClient::GetDevice(
+    const std::string& shill_device_ifname) const {
+  // To find the VPN Device, the default logical Device must be checked
+  // separately.
+  if (default_logical_device_.ifname == shill_device_ifname) {
+    return &default_logical_device_;
+  }
+  for (const auto& [_, device] : devices_) {
+    if (device.ifname == shill_device_ifname) {
+      return &device;
+    }
+  }
+  return nullptr;
+}
+
 void ShillClient::OnDevicePropertyChangeRegistration(
     const std::string& dbus_interface_name,
     const std::string& signal_name,

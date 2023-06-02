@@ -88,6 +88,16 @@ class FakeShillClient : public ShillClient {
     return true;
   }
 
+  const ShillClient::Device* GetDevice(
+      const std::string& shill_device_ifname) const override {
+    for (const auto& [_, device] : fake_device_properties_) {
+      if (device.ifname == shill_device_ifname) {
+        return &device;
+      }
+    }
+    return nullptr;
+  }
+
   const std::set<dbus::ObjectPath>& get_device_properties_calls() {
     return get_device_properties_calls_;
   }

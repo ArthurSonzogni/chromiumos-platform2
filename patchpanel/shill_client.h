@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <set>
 #include <string>
@@ -147,6 +148,13 @@ class ShillClient {
   virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
                                    Device* output);
 
+  // Finds the shill physical or VPN Device whose "Interface" property matches
+  // |shill_device_ifname|. This function is meant for associating a shill
+  // Device to an interface name argument passed directly to patchpanel DBus
+  // RPCs for DownstreamNetwork and ConnectNamespace.
+  // TODO(b/273744897): Migrate callers to use the future Network primitive
+  // directly.
+  virtual const Device* GetDevice(const std::string& shill_device_ifname) const;
   // Returns the cached default logical shill Device; does not initiate a
   // property fetch.
   virtual const Device& default_logical_device() const;
