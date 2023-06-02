@@ -39,10 +39,10 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
     const base::FilePath& device_path, std::string* volume_group_name) {
   std::string output;
 
-  if (!lvm_->RunProcess({"/sbin/pvdisplay", "-C", "--reportformat", "json",
-                         device_path.value()},
-                        &output)) {
-    LOG(ERROR) << "Failed to get output from pvdisplay";
+  if (!lvm_->RunProcess(
+          {"/sbin/pvs", "--reportformat", "json", device_path.value()},
+          &output)) {
+    LOG(ERROR) << "Failed to get output from pvs";
     return false;
   }
 
@@ -99,10 +99,10 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
 
   std::string pool_lv_check = is_thinpool ? "pool_lv=\"\"" : "pool_lv!=\"\"";
 
-  if (!lvm_->RunProcess({"/sbin/lvdisplay", "-S", pool_lv_check, "-C",
-                         "--reportformat", "json", vg_name + "/" + lv_name},
+  if (!lvm_->RunProcess({"/sbin/lvs", "-S", pool_lv_check, "--reportformat",
+                         "json", vg_name + "/" + lv_name},
                         &output)) {
-    LOG(ERROR) << "Failed to get output from lvdisplay";
+    LOG(ERROR) << "Failed to get output from lvs";
     return false;
   }
 
@@ -147,10 +147,10 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
   std::string vg_name = vg.GetName();
   std::vector<LogicalVolume> lv_vector;
 
-  if (!lvm_->RunProcess({"/sbin/lvdisplay", "-S", "pool_lv!=\"\"", "-C",
-                         "--reportformat", "json", vg_name},
+  if (!lvm_->RunProcess({"/sbin/lvs", "-S", "pool_lv!=\"\"", "--reportformat",
+                         "json", vg_name},
                         &output)) {
-    LOG(ERROR) << "Failed to get output from lvdisplay";
+    LOG(ERROR) << "Failed to get output from lvs";
     return lv_vector;
   }
 
