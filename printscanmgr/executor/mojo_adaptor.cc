@@ -20,13 +20,6 @@ MojoAdaptor::MojoAdaptor(
 
 MojoAdaptor::~MojoAdaptor() = default;
 
-void MojoAdaptor::StopUpstartJob(mojom::UpstartJob job,
-                                 StopUpstartJobCallback callback) {
-  std::string error;
-  bool success = upstart_tools_->StopJob(job, &error);
-  std::move(callback).Run(success, error);
-}
-
 void MojoAdaptor::RestartUpstartJob(mojom::UpstartJob job,
                                     RestartUpstartJobCallback callback) {
   std::string error;

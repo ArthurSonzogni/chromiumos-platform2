@@ -25,10 +25,6 @@ class MockExecutor : public mojom::Executor {
 
   // mojom::Executor overrides:
   MOCK_METHOD(void,
-              StopUpstartJob,
-              (mojom::UpstartJob, StopUpstartJobCallback),
-              (override));
-  MOCK_METHOD(void,
               RestartUpstartJob,
               (mojom::UpstartJob, RestartUpstartJobCallback),
               (override));

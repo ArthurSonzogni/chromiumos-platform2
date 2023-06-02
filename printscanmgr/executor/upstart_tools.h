@@ -24,7 +24,6 @@ class UpstartTools {
 
   virtual bool IsJobRunning(mojom::UpstartJob job, std::string* error) = 0;
   virtual bool RestartJob(mojom::UpstartJob job, std::string* error) = 0;
-  virtual bool StopJob(mojom::UpstartJob job, std::string* error) = 0;
 };
 
 }  // namespace printscanmgr

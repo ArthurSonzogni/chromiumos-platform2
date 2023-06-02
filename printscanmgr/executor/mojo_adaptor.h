@@ -31,8 +31,6 @@ class MojoAdaptor final : public mojom::Executor {
   ~MojoAdaptor() override;
 
   // mojom::Executor overrides:
-  void StopUpstartJob(mojom::UpstartJob job,
-                      StopUpstartJobCallback callback) override;
   void RestartUpstartJob(mojom::UpstartJob job,
                          RestartUpstartJobCallback callback) override;
 

@@ -25,15 +25,12 @@ constexpr char kUpstartServicePath[] = "/com/ubuntu/Upstart";
 constexpr char kUpstartJobInterface[] = "com.ubuntu.Upstart0_6.Job";
 constexpr char kGetInstanceMethod[] = "GetInstance";
 constexpr char kRestartMethod[] = "Restart";
-constexpr char kStopMethod[] = "Stop";
 constexpr char kUpstartJobPath[] = "/com/ubuntu/Upstart/jobs/";
 
 std::string UpstartJobToString(mojom::UpstartJob job) {
   switch (job) {
     case mojom::UpstartJob::kCupsd:
       return "cupsd";
-    case mojom::UpstartJob::kLorgnette:
-      return "lorgnette";
   }
 }
 
@@ -52,14 +49,10 @@ class UpstartToolsImpl : public UpstartTools {
   }
 
   bool RestartJob(mojom::UpstartJob job, std::string* error) override {
-    return CallJobMethod(job, kRestartMethod, error);
-  }
-
-  bool StopJob(mojom::UpstartJob job, std::string* error) override {
     if (!IsJobRunning(job, error)) {
       return true;
     }
-    return CallJobMethod(job, kStopMethod, error);
+    return CallJobMethod(job, kRestartMethod, error);
   }
 
  private:
