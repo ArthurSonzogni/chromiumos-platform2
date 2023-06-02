@@ -3548,8 +3548,8 @@ void AuthSession::ResetLECredentials() {
     }
 
     CryptoError error;
-    if (!crypto_->ResetLeCredentialEx(state->le_label.value(), reset_secret,
-                                      error)) {
+    if (!crypto_->ResetLeCredential(state->le_label.value(), reset_secret,
+                                    error)) {
       LOG(WARNING) << "Failed to reset an LE credential for "
                    << state->le_label.value() << " with error: " << error;
     }
@@ -3576,8 +3576,8 @@ void AuthSession::ResetRateLimiterCredentials() {
   }
   CryptoError error;
   if (crypto_->GetWrongAuthAttempts(rate_limiter_label.value()) != 0 &&
-      !crypto_->ResetLeCredentialEx(rate_limiter_label.value(),
-                                    reset_secret.value(), error)) {
+      !crypto_->ResetLeCredential(rate_limiter_label.value(),
+                                  reset_secret.value(), error)) {
     LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
                  << error;
   }
@@ -3602,8 +3602,8 @@ void AuthSession::ResetRateLimiterCredentials() {
     if (crypto_->GetWrongAuthAttempts(state->gsc_secret_label.value()) == 0) {
       continue;
     }
-    if (!crypto_->ResetLeCredentialEx(state->gsc_secret_label.value(),
-                                      reset_secret.value(), error)) {
+    if (!crypto_->ResetLeCredential(state->gsc_secret_label.value(),
+                                    reset_secret.value(), error)) {
       LOG(WARNING) << "Failed to reset fingerprint credential for "
                    << state->gsc_secret_label.value()
                    << " with error: " << error;

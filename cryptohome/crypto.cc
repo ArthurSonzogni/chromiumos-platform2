@@ -112,40 +112,9 @@ void Crypto::PasswordToPasskey(const char* password,
   passkey->swap(local_passkey);
 }
 
-bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
-                               const VaultKeyset& vk,
-                               CryptoError* error) const {
-  // Bail immediately if we don't have a valid LECredentialManager.
-  if (!le_manager_) {
-    LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
-                  "support LECredential";
-    PopulateError(error, CryptoError::CE_LE_NOT_SUPPORTED);
-    return false;
-  }
-
-  if (!vk_reset.IsLECredential()) {
-    LOG(ERROR) << "vk_reset is not an LE credential.";
-    PopulateError(error, CryptoError::CE_LE_FLAGS_AND_POLICY_MISMATCH);
-    return false;
-  }
-
-  SecureBlob local_reset_seed(vk.GetResetSeed().begin(),
-                              vk.GetResetSeed().end());
-  SecureBlob reset_salt(vk_reset.GetResetSalt().begin(),
-                        vk_reset.GetResetSalt().end());
-  if (local_reset_seed.empty() || reset_salt.empty()) {
-    LOG(ERROR) << "Reset seed/salt is empty, can't reset LE credential.";
-    PopulateError(error, CryptoError::CE_OTHER_FATAL);
-    return false;
-  }
-
-  SecureBlob reset_secret = HmacSha256(reset_salt, local_reset_seed);
-  return ResetLeCredentialEx(vk_reset.GetLELabel(), reset_secret, *error);
-}
-
-bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
-                                 const SecureBlob& reset_secret,
-                                 CryptoError& out_error) const {
+bool Crypto::ResetLeCredential(const uint64_t le_label,
+                               const SecureBlob& reset_secret,
+                               CryptoError& out_error) const {
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
     LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
