@@ -1538,31 +1538,23 @@ class LogicalVolumeStatefulPartitionTest : public ::testing::Test {
 
   void ExpectStatefulLogicalVolume() {
     // Expect physical volume and volume group.
-    std::vector<std::string> pvdisplay = {
-        "/sbin/pvdisplay", "-C", "--reportformat", "json", "/dev/mmcblk0p1"};
-    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(pvdisplay, _))
+    std::vector<std::string> pvs = {"/sbin/pvs", "--reportformat", "json",
+                                    "/dev/mmcblk0p1"};
+    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(pvs, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(std::string(kPhysicalVolumeReport)),
                   Return(true)));
     // Expect thinpool.
-    std::vector<std::string> thinpool_display = {"/sbin/lvdisplay",
-                                                 "-S",
-                                                 "pool_lv=\"\"",
-                                                 "-C",
-                                                 "--reportformat",
-                                                 "json",
-                                                 "STATEFULSTATEFUL/thinpool"};
+    std::vector<std::string> thinpool_display = {
+        "/sbin/lvs",      "-S",   "pool_lv=\"\"",
+        "--reportformat", "json", "STATEFULSTATEFUL/thinpool"};
     EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(thinpool_display, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(std::string(kThinpoolReport)),
                               Return(true)));
     // Expect logical volume.
-    std::vector<std::string> lv_display = {"/sbin/lvdisplay",
-                                           "-S",
-                                           "pool_lv!=\"\"",
-                                           "-C",
-                                           "--reportformat",
-                                           "json",
-                                           "STATEFULSTATEFUL/unencrypted"};
+    std::vector<std::string> lv_display = {
+        "/sbin/lvs",      "-S",   "pool_lv!=\"\"",
+        "--reportformat", "json", "STATEFULSTATEFUL/unencrypted"};
     EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(lv_display, _))
         .WillRepeatedly(DoAll(
             SetArgPointee<1>(std::string(kLogicalVolumeReport)), Return(true)));
