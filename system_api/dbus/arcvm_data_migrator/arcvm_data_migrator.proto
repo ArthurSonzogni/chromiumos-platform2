@@ -14,12 +14,6 @@ message HasDataToMigrateRequest {
   string username = 1;
 }
 
-// The message that is sent from Chrome with GetAndroidDataSize call.
-message GetAndroidDataSizeRequest {
-  // Username of the current login user. Usually looks like an email address.
-  string username = 1;
-}
-
 // The message that is sent from Chrome with GetAndroidDataInfo call.
 message GetAndroidDataInfoRequest {
   // Username of the current login user. Usually looks like an email address.

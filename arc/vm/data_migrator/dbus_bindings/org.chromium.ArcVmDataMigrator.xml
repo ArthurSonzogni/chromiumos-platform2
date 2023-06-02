@@ -15,17 +15,6 @@
       </arg>
       <arg name="response" type="b" direction="out"/>
     </method>
-    <method name="GetAndroidDataSize">
-      <tp:docstring>
-        Measures and returns the total size of the files under the host-side
-        /home/root/&lt;hash&gt;/android-data/data.
-      </tp:docstring>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::GetAndroidDataSizeRequest"/>
-      </arg>
-      <arg name="response" type="x" direction="out"/>
-    </method>
     <method name="GetAndroidDataInfo">
       <tp:docstring>
         Measures and returns information (such as the total size of files

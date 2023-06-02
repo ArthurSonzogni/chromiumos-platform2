@@ -91,31 +91,6 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     return true;
   }
 
-  // TODO(b/280248293): Remove this method after migrating all callers to
-  // GetAndroidDataInfo().
-  bool GetAndroidDataSize(brillo::ErrorPtr* error,
-                          const GetAndroidDataSizeRequest& request,
-                          int64_t* size) override {
-    const base::FilePath android_data_dir =
-        brillo::cryptohome::home::GetRootPath(
-            brillo::cryptohome::home::Username(request.username()))
-            .Append("android-data/data");
-
-    base::FileEnumerator enumerator(
-        android_data_dir, /*recursive=*/true,
-        // Use the same set of file types as
-        // cryptohome::data_migrator::MigrationHelper::CalculateDataToMigrate.
-        base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-            base::FileEnumerator::SHOW_SYM_LINKS);
-
-    *size = 0;
-    for (base::FilePath entry = enumerator.Next(); !entry.empty();
-         entry = enumerator.Next()) {
-      *size += enumerator.GetInfo().GetSize();
-    }
-    return true;
-  }
-
   bool GetAndroidDataInfo(brillo::ErrorPtr* error,
                           const GetAndroidDataInfoRequest& request,
                           GetAndroidDataInfoResponse* response) override {
@@ -243,8 +218,6 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     metrics_.ReportSetupResult(SetupResult::kSuccess);
     return true;
   }
-
-  // TODO(momohatt): Add StopMigration as a D-Bus method?
 
  private:
   bool CreateDataMediaWithCasefoldFlag() {
