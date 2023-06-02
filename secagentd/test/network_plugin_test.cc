@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <cstddef>
 #include <iterator>
@@ -151,14 +152,30 @@ TEST_F(NetworkPluginTestFixture, TestActivationFailureBadSkeleton) {
 TEST_F(NetworkPluginTestFixture, TestGetName) {
   ASSERT_EQ("Network", plugin_->GetName());
 }
-
 TEST_F(NetworkPluginTestFixture, TestBPFEventIsAvailable) {
+  const bpf::cros_event socket_listen_event = {
+      .data.network_event =
+          {
+              .type = bpf::cros_network_event_type::kNetworkSocketListen,
+              .data.socket_listen =
+                  {
+                      /* 192.168.0.1 */
+                      .common = {.family = bpf::CROS_FAMILY_AF_INET,
+                                 .protocol = bpf::CROS_PROTOCOL_TCP,
+                                 .process{.pid = kDefaultPid,
+                                          .start_time = kSpawnStartTime}},
+                      .socket_type = SOCK_STREAM,
+                      .port = 1234,
+                      .ipv4_addr = 0x0100A8C0,
+                  },
+          },
+      .type = bpf::kNetworkEvent,
+  };
   EXPECT_CALL(*bpf_skeleton_, ConsumeEvent()).Times(1);
   // Notify the plugin that an event is available.
   cbs_.ring_buffer_read_ready_callback.Run();
   EXPECT_CALL(*message_sender_, SendMessage).Times(AnyNumber());
-  cbs_.ring_buffer_event_callback.Run(
-      bpf::cros_event{.type = bpf::kNetworkEvent});
+  cbs_.ring_buffer_event_callback.Run(socket_listen_event);
 }
 
 TEST_F(NetworkPluginTestFixture, TestWrongBPFEvent) {
@@ -172,8 +189,9 @@ TEST_F(NetworkPluginTestFixture, TestWrongBPFEvent) {
 
 TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   bpf::cros_network_5_tuple tuple;
-  tuple.dest_addr.addr4 = 0x010A98A8;    // 168.152.10.1
-  tuple.source_addr.addr4 = 0x0100A8C0;  // 192.168.0.1
+  // inet_pton stores in network byte order.
+  inet_pton(AF_INET, "168.152.10.1", &tuple.dest_addr.addr4);
+  inet_pton(AF_INET, "192.168.0.1", &tuple.source_addr.addr4);
   tuple.source_port = 4591;
   tuple.dest_port = 5231;
   tuple.protocol = bpf::CROS_PROTOCOL_TCP;
@@ -234,6 +252,8 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
             pb::NetworkFlow_Direction_OUTGOING);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(), 1456);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(), 2563);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
+            "1:xQuGZjr6e08tldWqhl7702m03YU=");
 }
 TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
   // Descending order in time starting from the youngest.
@@ -407,6 +427,7 @@ INSTANTIATE_TEST_SUITE_P(
     [](::testing::TestParamInfo<bpf::cros_network_protocol> p) -> std::string {
       switch (p.param) {
         case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP:
+        case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP6:
           return "ICMP";
         case bpf::cros_network_protocol::CROS_PROTOCOL_RAW:
           return "RAW";
@@ -451,6 +472,7 @@ TEST_P(ProtocolVariationsTestFixture, TestSocketListenProtocols) {
   pb::NetworkProtocol expected_protocol;
   switch (a.data.network_event.data.socket_listen.common.protocol) {
     case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP:
+    case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP6:
       expected_protocol = pb::NetworkProtocol::ICMP;
       break;
     case bpf::cros_network_protocol::CROS_PROTOCOL_RAW:
@@ -566,5 +588,139 @@ TEST_P(SocketTypeVariationsTestFixture, TestSocketListenSocketTypes) {
   cbs_.ring_buffer_event_callback.Run(a);
   EXPECT_EQ(actual_sent_event->network_socket_listen().socket().socket_type(),
             expected_socket_type);
+}
+
+struct CommunityHashTestParam {
+  std::string source_address;
+  std::string dest_address;
+  uint16_t source_port;
+  uint16_t dest_port;
+  bpf::cros_network_protocol protocol;
+  std::string expected;
+};
+class CommunityHashingTestFixture
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<CommunityHashTestParam> {
+ public:
+  absl::StatusOr<std::array<uint8_t, 16>> TryIPv6StringToNBOBuffer(
+      std::string_view in) {
+    struct in6_addr addr;
+    if (inet_pton(AF_INET6, in.data(), &addr) != 1) {
+      return absl::InvalidArgumentError(
+          absl::StrFormat("%s is not a valid ipv6 address.", in));
+    }
+    std::array<uint8_t, sizeof(addr.__in6_u.__u6_addr8)> rv;
+    memmove(rv.data(), &addr.__in6_u.__u6_addr8[0], rv.size());
+    return rv;
+  }
+
+  absl::StatusOr<std::array<uint8_t, 4>> TryIPv4StringToNBOBuffer(
+      std::string_view in) {
+    struct in_addr addr;
+    if (inet_pton(AF_INET, in.data(), &addr) != 1) {
+      return absl::InvalidArgumentError(
+          absl::StrFormat("%s is not a valid ipv4 address.", in));
+    }
+    std::array<uint8_t, 4> rv;
+    memmove(rv.data(), &addr.s_addr, rv.size());
+    return rv;
+  }
+};
+INSTANTIATE_TEST_SUITE_P(
+    CommunityIDHashing,
+    CommunityHashingTestFixture,
+    ::testing::Values(
+        // Same ip addr but different port.
+        CommunityHashTestParam{
+            // idx 0.
+            .source_address = "b475:3424:de03:a090:a086:b5ff:3c12:b456",
+            .dest_address = "b475:3424:de03:a090:a086:b5ff:3c12:b456",
+            .source_port = 456,
+            .dest_port = 457,
+            .protocol = bpf::CROS_PROTOCOL_TCP,
+            .expected = "1:9nlcNcNqbWThbbrqcZ653+nS/Ig="},
+
+        // Same port but source address has a smaller IP address.
+        CommunityHashTestParam{
+            // idx 1.
+            .source_address = "b475:3424:de03:a090:a086:b5ff:3c12:b453",
+            .dest_address = "b475:3424:de03:a090:a086:b5ff:3c12:b456",
+            .source_port = 457,
+            .dest_port = 457,
+            .protocol = bpf::CROS_PROTOCOL_UDP,
+            .expected = "1:0bk6xBJMSDtsXhLKWuSD1waPfOg="},
+        // Same port but dest address has a smaller IP address.
+        CommunityHashTestParam{
+            // idx 2.
+            .source_address = "b475:3424:de03:a090:a086:b5ff:3c12:b456",
+            .dest_address = "b475:3424:de03:a090:a086:b5ff:3c12:b453",
+            .source_port = 457,
+            .dest_port = 457,
+            .protocol = bpf::CROS_PROTOCOL_UDP,
+            .expected = "1:0bk6xBJMSDtsXhLKWuSD1waPfOg="},
+        // Same ip addr but different port.
+        CommunityHashTestParam{// idx 3.
+                               .source_address = "192.168.0.1",
+                               .dest_address = "192.168.0.1",
+                               .source_port = 456,
+                               .dest_port = 457,
+                               .protocol = bpf::CROS_PROTOCOL_TCP,
+                               .expected = "1:wtrJ3294c/p34IEHKppjTVgTvmY="},
+        // Same port but source address has a smaller IP address.
+        CommunityHashTestParam{// idx 4.
+                               .source_address = "192.168.0.0",
+                               .dest_address = "192.168.0.1",
+                               .source_port = 457,
+                               .dest_port = 457,
+                               .protocol = bpf::CROS_PROTOCOL_TCP,
+                               .expected = "1:fxjiNC2ogHm2gNZIiJssJkyUiGE="},
+        // Same port but dest address has a smaller IP address.
+        CommunityHashTestParam{// idx 5.
+                               .source_address = "192.168.0.1",
+                               .dest_address = "192.168.0.0",
+                               .source_port = 457,
+                               .dest_port = 457,
+                               .protocol = bpf::CROS_PROTOCOL_TCP,
+                               .expected = "1:fxjiNC2ogHm2gNZIiJssJkyUiGE="}),
+    [](::testing::TestParamInfo<CommunityHashTestParam> p) -> std::string {
+      switch (p.index) {
+        case 0:
+          return "IPv6SameAddrDifferentPorts";
+        case 1:
+          return "IPv6SourceAddressSmaller";
+        case 2:
+          return "IPv6DestAddrSmaller";
+        case 3:
+          return "IPv4SameAddrDifferentPorts";
+        case 4:
+          return "IPv4SourceAddressSmaller";
+        case 5:
+          return "IPv4DestAddrSmaller";
+        default:
+          return absl::StrFormat("MysteryTestCase%d", p.index);
+      }
+    });
+
+TEST_P(CommunityHashingTestFixture, CommunityFlowIDHash) {
+  auto i = GetParam();
+  auto ipv4_source = TryIPv4StringToNBOBuffer(i.source_address);
+  auto ipv4_dest = TryIPv4StringToNBOBuffer(i.dest_address);
+  auto ipv6_source = TryIPv6StringToNBOBuffer(i.source_address);
+  auto ipv6_dest = TryIPv6StringToNBOBuffer(i.dest_address);
+  absl::Span<const uint8_t> source, dest;
+  if (ipv4_source.ok()) {
+    source = absl::MakeSpan(ipv4_source.value());
+  } else if (ipv6_source.ok()) {
+    source = absl::MakeSpan(ipv6_source.value());
+  }
+
+  if (ipv4_dest.ok()) {
+    dest = absl::MakeSpan(ipv4_dest.value());
+  } else if (ipv6_dest.ok()) {
+    dest = absl::MakeSpan(ipv6_dest.value());
+  }
+  auto result = NetworkPlugin::ComputeCommunityHashv1(
+      source, dest, i.source_port, i.dest_port, i.protocol);
+  EXPECT_EQ(result, i.expected);
 }
 }  // namespace secagentd::testing

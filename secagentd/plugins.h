@@ -191,6 +191,18 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
 
   std::string GetName() const override;
 
+  /* Given a set of addresses (in network byte order)
+   * ,a set of ports and a protocol ID compute the
+   * community flow ID hash.
+   */
+  static std::string ComputeCommunityHashv1(
+      const absl::Span<const uint8_t>& saddr_in,
+      const absl::Span<const uint8_t>& daddr_in,
+      uint16_t sport,
+      uint16_t dport,
+      uint8_t proto,
+      uint16_t seed = 0);
+
  private:
   void EnqueueBatchedEvent(
       std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>

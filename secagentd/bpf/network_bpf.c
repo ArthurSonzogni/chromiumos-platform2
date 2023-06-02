@@ -67,12 +67,6 @@ struct {
   __uint(max_entries, 1);
 } heap_cros_network_common_map SEC(".maps");
 
-// http://www.iana.org/assignments/protocol-numbers
-#define CROS_IANA_HOPOPT (0)
-#define CROS_IANA_ICMP (1)
-#define CROS_IANA_TCP (6)
-#define CROS_IANA_UDP (17)
-
 static int __attribute__((always_inline))
 determine_protocol(int family, int socket_type, int protocol) {
   if (protocol == CROS_IANA_HOPOPT) {  // generic ip protocol.
@@ -96,6 +90,8 @@ determine_protocol(int family, int socket_type, int protocol) {
     return CROS_PROTOCOL_UDP;
   } else if (socket_type == SOCK_RAW) {
     return CROS_PROTOCOL_RAW;
+  } else if (socket_type == CROS_IANA_ICMP6) {
+    return CROS_PROTOCOL_ICMP6;
   }
   // The socket type is dgram or stream but the protocol isn't one we recognize.
   return CROS_PROTOCOL_UNKNOWN;

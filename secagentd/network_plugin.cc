@@ -5,14 +5,18 @@
 #include "secagentd/plugins.h"
 
 #include <arpa/inet.h>
+#include <algorithm>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
 #include "absl/hash/hash.h"
 #include "absl/strings/str_format.h"
 #include "absl/types/span.h"
+#include "base/base64.h"
 #include "base/hash/hash.h"
+#include "base/hash/sha1.h"
 #include "base/strings/string_util.h"
+#include "base/sys_byteorder.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
@@ -77,6 +81,7 @@ pb::NetworkProtocol BpfProtocolToPbProtocol(
   pb::NetworkProtocol rv;
   switch (protocol) {
     case bpf::CROS_PROTOCOL_ICMP:
+    case bpf::CROS_PROTOCOL_ICMP6:
       rv = pb::NetworkProtocol::ICMP;
       break;
     case bpf::CROS_PROTOCOL_RAW:
@@ -94,8 +99,80 @@ pb::NetworkProtocol BpfProtocolToPbProtocol(
   }
   return rv;
 }
-
 }  // namespace
+
+std::string NetworkPlugin::ComputeCommunityHashv1(
+    const absl::Span<const uint8_t>& source_address_in,
+    const absl::Span<const uint8_t>& destination_address_in,
+    uint16_t source_port,
+    uint16_t destination_port,
+    uint8_t proto,
+    uint16_t seed) {
+  std::vector<uint8_t> source_address(source_address_in.begin(),
+                                      source_address_in.end());
+  std::vector<uint8_t> destination_address(destination_address_in.begin(),
+                                           destination_address_in.end());
+  // Check to make sure the IP addresses are the correct length for
+  // ipv4 or ipv6 and that dest and source are the same size.
+  if ((destination_address.size() != source_address.size()) ||
+      (destination_address.size() != 16 && destination_address.size() != 4)) {
+    return "";
+  }
+  CHECK(destination_address.size() == source_address.size());
+  CHECK(source_address.size() == 16 || source_address.size() == 4);
+  std::vector<uint8_t> buff_to_hash;
+  auto push_short = [&buff_to_hash](uint16_t s) {
+    uint16_t nbo = base::HostToNet16(s);
+    buff_to_hash.push_back(0xFF & (nbo >> 8));
+    buff_to_hash.push_back(0xFF & nbo);
+  };
+  buff_to_hash.push_back(0);
+  buff_to_hash.push_back(0);
+  source_port = base::HostToNet16(source_port);
+  destination_port = base::HostToNet16(destination_port);
+  auto append_addr_port =
+      [&buff_to_hash, &proto, &push_short](
+          const std::vector<uint8_t>& first_addr, uint16_t first_port,
+          const std::vector<uint8_t>& second_addr, uint16_t second_port) {
+        buff_to_hash.insert(buff_to_hash.end(), first_addr.begin(),
+                            first_addr.end());
+        buff_to_hash.insert(buff_to_hash.end(), second_addr.begin(),
+                            second_addr.end());
+        buff_to_hash.push_back(proto);
+        buff_to_hash.push_back(0);
+        push_short(first_port);
+        push_short(second_port);
+      };
+
+  // Order it so that the smaller IP:port tuple comes first in the
+  // buffer to hash.
+  // The addresses are in network byte order so most significant
+  // byte is index 0.
+  for (int idx = 0; idx < source_address.size(); idx++) {
+    if (source_address[idx] < destination_address[idx]) {
+      append_addr_port(source_address, source_port, destination_address,
+                       destination_port);
+      break;
+    } else if (source_address[idx] > destination_address[idx]) {
+      append_addr_port(destination_address, destination_port, source_address,
+                       source_port);
+      break;
+    } else if (idx == source_address.size() - 1) {
+      // IP addresses are identical.
+      if (source_port < destination_port) {
+        append_addr_port(source_address, source_port, destination_address,
+                         destination_port);
+      } else {
+        append_addr_port(destination_address, destination_port, source_address,
+                         source_port);
+      }
+    }
+  }
+  auto digest = base::SHA1HashSpan(buff_to_hash);
+  std::string community_hash{"1:"};
+  base::Base64EncodeAppend(digest, &community_hash);
+  return community_hash;
+}
 
 std::string NetworkPlugin::GetName() const {
   return "Network";
@@ -212,9 +289,28 @@ NetworkPlugin::MakeFlowEvent(
   int af = AF_INET;
   std::array<char, INET6_ADDRSTRLEN> buff;
   if (five_tuple.family == bpf::CROS_FAMILY_AF_INET6) {
+    // ipv6
     af = AF_INET6;
     src_addr_ptr = &five_tuple.source_addr.addr6;
     dest_addr_ptr = &five_tuple.dest_addr.addr6;
+    auto src = absl::MakeSpan(five_tuple.source_addr.addr6,
+                              sizeof(five_tuple.source_addr.addr6));
+    auto dest = absl::MakeSpan(five_tuple.dest_addr.addr6,
+                               sizeof(five_tuple.dest_addr.addr6));
+    flow->set_community_id_v1(
+        ComputeCommunityHashv1(src, dest, five_tuple.source_port,
+                               five_tuple.dest_port, five_tuple.protocol));
+  } else {
+    // ipv4
+    auto src = absl::MakeSpan(
+        reinterpret_cast<const uint8_t*>(&five_tuple.source_addr.addr4),
+        sizeof(five_tuple.source_addr.addr4));
+    auto dest = absl::MakeSpan(
+        reinterpret_cast<const uint8_t*>(&five_tuple.dest_addr.addr4),
+        sizeof(five_tuple.dest_addr.addr4));
+    flow->set_community_id_v1(
+        ComputeCommunityHashv1(src, dest, five_tuple.source_port,
+                               five_tuple.dest_port, five_tuple.protocol));
   }
   if (inet_ntop(af, src_addr_ptr, buff.data(), buff.size()) != nullptr) {
     flow->set_local_ip(buff.data());

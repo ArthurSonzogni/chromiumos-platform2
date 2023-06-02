@@ -138,12 +138,20 @@ struct cros_process_event {
   } data;
 };
 
+// http://www.iana.org/assignments/protocol-numbers
+#define CROS_IANA_HOPOPT (0)
+#define CROS_IANA_ICMP (1)
+#define CROS_IANA_TCP (6)
+#define CROS_IANA_UDP (17)
+#define CROS_IANA_ICMP6 (58)
+
 enum cros_network_protocol {
-  CROS_PROTOCOL_TCP,
-  CROS_PROTOCOL_UDP,
-  CROS_PROTOCOL_ICMP,
-  CROS_PROTOCOL_RAW,
-  CROS_PROTOCOL_UNKNOWN
+  CROS_PROTOCOL_TCP = CROS_IANA_TCP,
+  CROS_PROTOCOL_UDP = CROS_IANA_UDP,
+  CROS_PROTOCOL_ICMP = CROS_IANA_ICMP,
+  CROS_PROTOCOL_ICMP6 = CROS_IANA_ICMP6,
+  CROS_PROTOCOL_RAW = 251,     // Unassigned IANA number. Not a protocol.
+  CROS_PROTOCOL_UNKNOWN = 252  // Unassigned IANA number. Not a protocol.
 };
 
 // AF_INET, AF_INET6 are not found in vmlinux.h so use our own
