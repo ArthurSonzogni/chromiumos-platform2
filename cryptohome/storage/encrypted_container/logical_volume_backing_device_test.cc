@@ -47,8 +47,8 @@ class LogicalVolumeBackingDeviceTest : public ::testing::Test {
 
   void ExpectLogicalVolume() {
     std::vector<std::string> thinpool_display = {
-        "/sbin/lvdisplay", "-S",   "pool_lv!=\"\"",           "-C",
-        "--reportformat",  "json", "stateful/" + config_.name};
+        "/sbin/lvs",      "-S",   "pool_lv!=\"\"",
+        "--reportformat", "json", "stateful/" + config_.name};
     EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(thinpool_display, _))
         .WillOnce(DoAll(SetArgPointee<1>(std::string(kLogicalVolumeReport)),
                         Return(true)));
