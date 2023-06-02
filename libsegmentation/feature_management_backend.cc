@@ -171,7 +171,6 @@ std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
                                       DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
     device_info.set_scope_level(HwComplianceVersionToScopeLevel(false));
   }
-
   return device_info;
 }
 
@@ -240,7 +239,8 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
   // stateful partition for subsequent boots.
   std::optional<libsegmentation::DeviceInfo> device_info_result =
       FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file);
-  if (!device_info_result) {
+  if (!device_info_result ||
+      device_info_result->cached_version_hash() != current_version_hash_) {
     device_info_result = GetDeviceInfoFromGSC();
     if (!device_info_result) {
       LOG(ERROR) << "Failed to get device info from the hardware id";
@@ -249,6 +249,7 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
 
     // Persist the device info read from "gsctool" via "vpd" or to a regular
     // file for testing. If we fail to write it then don't cache it.
+    device_info_result->set_cached_version_hash(current_version_hash_);
     if (persist_via_vpd_) {
       if (!WriteToVpd(device_info_result.value())) {
         LOG(ERROR) << "Failed to persist device info via vpd";

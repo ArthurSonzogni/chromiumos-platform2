@@ -64,6 +64,9 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
 
   // Cache valid device information read from the stateful partition.
   std::optional<libsegmentation::DeviceInfo> cached_device_info_;
+
+  // Hashed version of the current chromeos version (CHROMEOS_RELEASE_VERSION)
+  uint32_t current_version_hash_;
 #endif
 };
 

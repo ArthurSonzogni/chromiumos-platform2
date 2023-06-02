@@ -16,4 +16,7 @@ message DeviceInfo {
     SCOPE_LEVEL_1 = 2;
   }
   ScopeLevel scope_level = 2;
+
+  // Hashed CHROMEOS_RELEASE_VERSION at time of checking.
+  uint32 cached_version_hash = 3;
 }

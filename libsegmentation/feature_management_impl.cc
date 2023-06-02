@@ -10,8 +10,10 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/hash/hash.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <base/system/sys_info.h>
 #include <brillo/data_encoding.h>
 
 #include "libsegmentation/device_info.pb.h"
@@ -65,6 +67,18 @@ FeatureManagementImpl::FeatureManagementImpl(
   std::string decoded_pb;
   brillo::data_encoding::Base64Decode(feature_db, &decoded_pb);
   bundle_.ParseFromString(decoded_pb);
+
+#if USE_FEATURE_MANAGEMENT
+  std::string version;
+  if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version)) {
+    current_version_hash_ = base::FastHash(version);
+  } else {
+    /* Set a default value for testing. */
+    current_version_hash_ = 0;
+    LOG(ERROR) << "Failed to retrieve CHROMEOS_RELEASE_VERSION"
+               << current_version_hash_;
+  }
+#endif
 }
 
 bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
