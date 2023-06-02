@@ -83,6 +83,7 @@
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
+#include <spaced/dbus-proxies.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
@@ -1497,7 +1498,8 @@ bool Service::Init() {
                           weak_ptr_factory_.GetWeakPtr()));
 
   // Setup D-Bus proxy for spaced.
-  disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(bus_);
+  disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
+      std::make_unique<org::chromium::SpacedProxy>(bus_));
   disk_usage_proxy_->AddObserver(this);
   disk_usage_proxy_->StartMonitoring();
 

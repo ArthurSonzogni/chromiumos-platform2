@@ -27,7 +27,8 @@ class BRILLO_EXPORT SpacedObserverInterface : public base::CheckedObserver {
 
 class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
  public:
-  explicit DiskUsageProxy(const scoped_refptr<dbus::Bus>& bus);
+  explicit DiskUsageProxy(
+      std::unique_ptr<org::chromium::SpacedProxyInterface> spaced_proxy);
   ~DiskUsageProxy() override = default;
 
   static std::unique_ptr<DiskUsageProxy> Generate();
@@ -44,7 +45,7 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
   void StartMonitoring();
 
  private:
-  std::unique_ptr<org::chromium::SpacedProxy> spaced_proxy_;
+  std::unique_ptr<org::chromium::SpacedProxyInterface> spaced_proxy_;
   base::ObserverList<SpacedObserverInterface> observer_list_;
 };
 

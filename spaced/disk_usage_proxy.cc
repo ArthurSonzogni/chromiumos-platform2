@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 
@@ -22,8 +23,9 @@ void LogOnSignalConnected(const std::string& interface_name,
 
 }  // namespace
 
-DiskUsageProxy::DiskUsageProxy(const scoped_refptr<dbus::Bus>& bus)
-    : spaced_proxy_(std::make_unique<org::chromium::SpacedProxy>(bus)) {}
+DiskUsageProxy::DiskUsageProxy(
+    std::unique_ptr<org::chromium::SpacedProxyInterface> spaced_proxy)
+    : spaced_proxy_(std::move(spaced_proxy)) {}
 
 std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
   dbus::Bus::Options options;
@@ -34,7 +36,10 @@ std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
     return nullptr;
   }
 
-  return std::make_unique<DiskUsageProxy>(bus);
+  auto spaced_proxy = std::make_unique<org::chromium::SpacedProxy>(bus);
+
+  return std::make_unique<DiskUsageProxy>(
+      std::make_unique<org::chromium::SpacedProxy>(bus));
 }
 
 int64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {
