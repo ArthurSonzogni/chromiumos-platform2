@@ -36,14 +36,13 @@ pub fn lv_path(volume_group: &str, name: &str) -> PathBuf {
 
 /// Get the volume group name for the stateful block device.
 pub fn get_vg_name(blockdev: &str) -> Result<String> {
-    let output = checked_command_output(Command::new("/sbin/pvdisplay").args([
-        "-C",
+    let output = checked_command_output(Command::new("/sbin/pvs").args([
         "--noheadings",
         "-o",
         "vg_name",
         blockdev,
     ]))
-    .context("Cannot run pvdisplay to get volume group name")?;
+    .context("Cannot run pvs to get volume group name")?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
@@ -51,7 +50,7 @@ pub fn get_vg_name(blockdev: &str) -> Result<String> {
 /// Determine if the given logical volume exists.
 pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
     let volume = full_lv_name(volume_group, name);
-    let output = Command::new("/sbin/lvdisplay")
+    let output = Command::new("/sbin/lvs")
         .arg(&volume)
         .output()
         .context("Failed to get output for child process")?;
@@ -60,8 +59,7 @@ pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
 
 /// Enumerate all logical volumes in a volume group.
 pub fn get_lvs(volume_group: &str) -> Result<Vec<String>> {
-    let output = checked_command_output(Command::new("/sbin/lvdisplay").args([
-        "-C",
+    let output = checked_command_output(Command::new("/sbin/lvs").args([
         "--options=name",
         "--noheadings",
         volume_group,
@@ -142,8 +140,7 @@ pub fn lv_remove(volume_group: &str, name: &str) -> Result<()> {
 pub fn get_free_thinpool_space(volume_group: &str) -> Result<u64> {
     let volume = full_lv_name(volume_group, "thinpool");
 
-    let out = checked_command_output(Command::new("/sbin/lvdisplay").args([
-        "-C",
+    let out = checked_command_output(Command::new("/sbin/lvs").args([
         "--noheadings",
         "--units",
         "b",
@@ -168,8 +165,7 @@ pub fn get_free_thinpool_space(volume_group: &str) -> Result<u64> {
 pub fn get_thin_volume_usage_percent(volume_group: &str, name: &str) -> Result<u8> {
     let volume = full_lv_name(volume_group, name);
 
-    let out = checked_command_output(Command::new("/sbin/lvdisplay").args([
-        "-C",
+    let out = checked_command_output(Command::new("/sbin/lvs").args([
         "--noheadings",
         "-o",
         "data_percent",

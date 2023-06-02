@@ -21,7 +21,7 @@ hiberman (hibernate service).
     * Login as a user *root*, password *test0000*.
     * Run the command:
       ```
-      (dut)# /sbin/pvdisplay
+      (dut)# /sbin/pvs
       ```
       If output result is empty, go to Setup step no.3. Otherwise, continue.
     * Plug the Taeko to the lab network and obtain it's DUT_IP address
