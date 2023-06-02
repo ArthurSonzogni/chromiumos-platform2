@@ -677,6 +677,10 @@ Metrics::WiFiLinkQualityReport WiFiLinkStatistics::ConvertLinkStatsReport(
   report.tx_retries = stats.tx_retries;
   report.tx_failures = stats.tx_failed;
   report.rx_drops = stats.rx_drop_misc;
+  report.beacons_received = stats.beacons;
+  report.beacons_lost = stats.beacon_losses;
+  report.expected_throughput = stats.expected_throughput;
+  report.beacon_signal_avg = stats.beacon_signal_avg;
   report.width = ConvertChannelWidth(stats.width);
   report.rx = ConvertRxTxStats(stats.rx);
   report.tx = ConvertRxTxStats(stats.tx);
