@@ -21,6 +21,8 @@ namespace shill {
 
 class WiFiLinkStatistics {
  public:
+  static const int32_t kDefaultSignalValue = 9999;
+
   // Enum corresponding to various network layer events defined in the
   // base Device class. This enum is used for labelling link statistics obtained
   // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
@@ -124,14 +126,15 @@ class WiFiLinkStatistics {
     uint32_t frequency = UINT_MAX;
     uint64_t rx_drop_misc = ULLONG_MAX;
     uint64_t beacons = ULLONG_MAX;
-    int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
-    int32_t noise = 9999;
-    int32_t signal_avg = 9999;
-    int32_t beacon_signal_avg = 9999;
-    int32_t ack_signal_avg = 9999;
-    int32_t last_ack_signal = 9999;
-    int32_t center_frequency1 = 9999;
-    int32_t center_frequency2 = 9999;
+    int32_t signal = kDefaultSignalValue;  // wpa_supplicant uses int32_t value,
+                                           // default 9999.
+    int32_t noise = kDefaultSignalValue;
+    int32_t signal_avg = kDefaultSignalValue;
+    int32_t beacon_signal_avg = kDefaultSignalValue;
+    int32_t ack_signal_avg = kDefaultSignalValue;
+    int32_t last_ack_signal = kDefaultSignalValue;
+    int32_t center_frequency1 = kDefaultSignalValue;
+    int32_t center_frequency2 = kDefaultSignalValue;
     ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
     RxTxStats rx;
     RxTxStats tx;

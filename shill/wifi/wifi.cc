@@ -3910,8 +3910,19 @@ void WiFi::HandleUpdatedLinkStatistics() {
     return;
   }
   WiFiEndpointRefPtr endpoint(endpoint_it->second);
-  endpoint->UpdateSignalStrength(
-      static_cast<signed char>(station_stats_.signal));
+  // Update the signal strength.  Prefer the average signal strength, then the
+  // average beacon strength, then the signal strength from the last packet.
+  if (station_stats_.signal_avg != WiFiLinkStatistics::kDefaultSignalValue) {
+    endpoint->UpdateSignalStrength(
+        static_cast<signed char>(station_stats_.signal_avg));
+  } else if (station_stats_.beacon_signal_avg !=
+             WiFiLinkStatistics::kDefaultSignalValue) {
+    endpoint->UpdateSignalStrength(
+        static_cast<signed char>(station_stats_.beacon_signal_avg));
+  } else {
+    endpoint->UpdateSignalStrength(
+        static_cast<signed char>(station_stats_.signal));
+  }
 
   // Update telemetry and Service link speed properties.
   if (station_stats_.tx.bitrate != UINT_MAX) {

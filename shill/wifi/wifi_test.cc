@@ -2740,6 +2740,11 @@ TEST_F(WiFiMainTest, StopDisconnectReason) {
 
 TEST_F(WiFiMainTest, SignalChanged) {
   StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
 
   KeyValueStore props;
   props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
@@ -2747,10 +2752,61 @@ TEST_F(WiFiMainTest, SignalChanged) {
   properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
 
   PropertiesChanged(properties);
-  StopWiFi();
   event_dispatcher_->DispatchPendingEvents();
 
   EXPECT_EQ(GetStationStats().signal, -70);
+  EXPECT_EQ(endpoint->signal_strength(), -70);
+
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, SignalChangedBeaconAverage) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+
+  KeyValueStore props;
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageBeaconRSSI,
+                     -60);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  PropertiesChanged(properties);
+  event_dispatcher_->DispatchPendingEvents();
+
+  EXPECT_EQ(GetStationStats().signal, -70);
+  EXPECT_EQ(endpoint->signal_strength(), -60);
+
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, SignalChangedAverage) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+
+  KeyValueStore props;
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -65);
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageBeaconRSSI,
+                     -60);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  PropertiesChanged(properties);
+  event_dispatcher_->DispatchPendingEvents();
+
+  EXPECT_EQ(GetStationStats().signal, -70);
+  EXPECT_EQ(endpoint->signal_strength(), -65);
+
+  StopWiFi();
 }
 
 TEST_F(WiFiMainTest, UpdateLinkSpeed) {
@@ -4385,12 +4441,12 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
                               "40 MHz");
 
-  EXPECT_NE(kSignalValue, endpoint->signal_strength());
+  EXPECT_NE(kSignalAvgValue, endpoint->signal_strength());
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricWifiTxBitrate, kBitrate / 10));
   SignalChanged(properties);
-  EXPECT_EQ(kSignalValue, endpoint->signal_strength());
+  EXPECT_EQ(kSignalAvgValue, endpoint->signal_strength());
 
   link_statistics = GetLinkStatistics();
   ASSERT_FALSE(link_statistics.IsEmpty());
