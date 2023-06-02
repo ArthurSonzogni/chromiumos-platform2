@@ -25,6 +25,7 @@
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
+#include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/rtnl_client.h"
@@ -260,6 +261,8 @@ class Manager {
   std::unique_ptr<GuestIPv6Service> ipv6_svc_;
   // Traffic counter service.
   std::unique_ptr<CountersService> counters_svc_;
+  // Multicast packet counter service.
+  std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
   // L2 neighbor monitor service.
   std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
 

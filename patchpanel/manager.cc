@@ -50,8 +50,11 @@ Manager::Manager(const base::FilePath& cmd_path,
 
   routing_svc_ = std::make_unique<RoutingService>();
   counters_svc_ = std::make_unique<CountersService>(datapath_.get());
-
+  multicast_counters_svc_ =
+      std::make_unique<MulticastCountersService>(datapath_.get());
   datapath_->Start();
+
+  multicast_counters_svc_->Start();
 
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
@@ -108,6 +111,7 @@ Manager::~Manager() {
     OnLifelineFdClosed(fdkey);
   }
 
+  multicast_counters_svc_->Stop();
   datapath_->Stop();
 }
 
@@ -238,6 +242,7 @@ void Manager::OnShillDevicesChanged(
 
   for (const auto& device : added) {
     counters_svc_->OnPhysicalDeviceAdded(device.ifname);
+    multicast_counters_svc_->OnPhysicalDeviceAdded(device);
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != device.ifname) {
         continue;

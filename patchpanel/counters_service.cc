@@ -106,6 +106,12 @@ bool ParseOutput(const std::string& output,
     if (!devices.empty() && devices.find(ifname) == devices.end())
       continue;
 
+    // Skips if this chain is for multicast traffic counting.
+    if (ifname.find("mdns") != std::string::npos ||
+        ifname.find("ssdp") != std::string::npos) {
+      continue;
+    }
+
     // Skips the chain name line and the header line.
     if (lines.cend() - it <= 2) {
       LOG(ERROR) << "Invalid iptables output for " << direction << "_"

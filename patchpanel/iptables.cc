@@ -28,6 +28,8 @@ std::string Iptables::CommandName(Iptables::Command command) {
   switch (command) {
     case Command::kA:
       return "-A";
+    case Command::kC:
+      return "-C";
     case Command::kD:
       return "-D";
     case Command::kF:

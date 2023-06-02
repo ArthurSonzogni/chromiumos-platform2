@@ -27,6 +27,8 @@ class Iptables {
   enum class Command {
     // Append
     kA,
+    // Check if chain exists
+    kC,
     // Delete
     kD,
     // Flush

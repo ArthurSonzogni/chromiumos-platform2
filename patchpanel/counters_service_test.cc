@@ -76,6 +76,7 @@ Chain INPUT (policy ACCEPT 4421 packets, 2461233 bytes)
     pkts      bytes target     prot opt in     out     source               destination
   312491 1767147156 rx_eth0  all  --  eth0   *     0.0.0.0/0             0.0.0.0/0
        0        0 rx_wlan0  all  --  wlan0  *     0.0.0.0/0             0.0.0.0/0
+    8870   805689 rx_mdns    udp  --  *      *     0.0.0.0/0            224.0.0.251          udp dpt:5353
 
 Chain FORWARD (policy ACCEPT 18194 packets, 133612816 bytes)
     pkts      bytes target     prot opt in     out     source               destination
@@ -89,6 +90,17 @@ Chain POSTROUTING (policy ACCEPT 22811 packets, 136518827 bytes)
     pkts      bytes target     prot opt in     out     source               destination
   202160 1807550291 tx_eth0  all  --  *    eth0    0.0.0.0/0             0.0.0.0/0             owner socket exists
        2       96 tx_wlan0  all  --  *    wlan0   0.0.0.0/0             0.0.0.0/0             owner socket exists
+
+Chain rx_wifi_mdns (1 references)
+    pkts      bytes target     prot opt in     out     source               destination         
+
+Chain rx_ethernet_mdns (1 references)
+    pkts      bytes target     prot opt in     out     source               destination         
+
+Chain rx_mdns (1 references)
+    pkts      bytes target     prot opt in     out     source               destination         
+    8867   805299 rx_ethernet_mdns  all  --  eth0   *       0.0.0.0/0            0.0.0.0/0           
+       0        0 rx_wifi_mdns  all  --  wlan0  *       0.0.0.0/0            0.0.0.0/0    
 
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
