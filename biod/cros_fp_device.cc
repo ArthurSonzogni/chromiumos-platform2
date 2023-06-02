@@ -29,6 +29,7 @@ using ec::EcCmdVersionSupportStatus;
 using ec::EcCommand;
 using ec::EcCommandAsync;
 using ec::EmptyParam;
+using ec::FlashProtectCommand;
 using ec::FlashProtectCommand_v1;
 using ec::FpMode;
 using ec::FpSensorErrors;
@@ -477,15 +478,13 @@ bool CrosFpDevice::Init() {
     LOG(ERROR) << "Unable to read flash protect state";
   } else {
     LOG(INFO) << "Flash Protect Flags : 0x" << std::hex << fp_resp->GetFlags()
-              << "\t: "
-              << FlashProtectCommand_v1::ParseFlags(fp_resp->GetFlags());
+              << "\t: " << FlashProtectCommand::ParseFlags(fp_resp->GetFlags());
     LOG(INFO) << "Valid Flags         : 0x" << std::hex
               << fp_resp->GetValidFlags() << "\t: "
-              << FlashProtectCommand_v1::ParseFlags(fp_resp->GetValidFlags());
+              << FlashProtectCommand::ParseFlags(fp_resp->GetValidFlags());
     LOG(INFO) << "writable flags      : 0x" << std::hex
               << fp_resp->GetValidFlags() << "\t: "
-              << FlashProtectCommand_v1::ParseFlags(
-                     fp_resp->GetWritableFlags());
+              << FlashProtectCommand::ParseFlags(fp_resp->GetWritableFlags());
   }
 
   watcher_ = base::FileDescriptorWatcher::WatchReadable(

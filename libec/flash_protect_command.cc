@@ -27,7 +27,7 @@ FlashProtectCommand_v1::FlashProtectCommand_v1(flash_protect::Flags flags,
 /**
  * @return string names of set flags
  */
-std::string FlashProtectCommand_v1::ParseFlags(flash_protect::Flags flags) {
+std::string FlashProtectCommand::ParseFlags(flash_protect::Flags flags) {
   std::string output;
   if ((flags & flash_protect::Flags::kGpioAsserted) !=
       flash_protect::Flags::kNone) {
@@ -75,6 +75,12 @@ std::string FlashProtectCommand_v1::ParseFlags(flash_protect::Flags flags) {
     output += " UNKNOWN_ERROR";
   }
   return output;
+}
+
+// TODO(b/287461836): Remove FlashProtectCommand_v1::ParseFlags after
+// crrev.com/c/4599343 lands.
+std::string FlashProtectCommand_v1::ParseFlags(flash_protect::Flags flags) {
+  return FlashProtectCommand::ParseFlags(flags);
 }
 
 flash_protect::Flags FlashProtectCommand_v1::GetFlags() const {
