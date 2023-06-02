@@ -102,10 +102,10 @@ void SandboxedWorker::SetCredentials(const worker::Credentials& credentials) {
   }
 }
 
-bool SandboxedWorker::SetListeningAddress(const std::vector<uint8_t>& addr,
+bool SandboxedWorker::SetListeningAddress(const net_base::IPv4Address& addr,
                                           int port) {
   worker::SocketAddress address;
-  address.set_addr(addr.data(), addr.size());
+  address.set_addr(addr.ToByteString());
   address.set_port(port);
   worker::WorkerConfigs configs;
   *configs.mutable_listening_address() = address;
@@ -114,8 +114,8 @@ bool SandboxedWorker::SetListeningAddress(const std::vector<uint8_t>& addr,
     LOG(ERROR) << "Failed to set local proxy address for worker " << pid_;
     return false;
   }
-  local_proxy_host_and_port_ = base::StringPrintf(
-      "%s:%d", patchpanel::IPv4AddressToString(addr).c_str(), port);
+  local_proxy_host_and_port_ =
+      base::StringPrintf("%s:%d", addr.ToString().c_str(), port);
   LOG(INFO) << "Set proxy address " << local_proxy_host_and_port_
             << " for worker " << pid_;
   return true;

@@ -52,6 +52,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libminijail",
+    "libnet-base",
     "libpatchpanel-client",
     "libpatchpanel-util",
 

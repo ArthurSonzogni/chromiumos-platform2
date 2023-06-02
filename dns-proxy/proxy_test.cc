@@ -489,7 +489,7 @@ TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
 TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   auto pp = PatchpanelClient();
   patchpanel::Client::ConnectedNamespace resp;
-  resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+  resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
   pp->SetConnectNamespaceResult(make_fd(), resp);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient(), MessageDispatcher());
@@ -1146,7 +1146,7 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1205,7 +1205,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1276,7 +1276,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1354,7 +1354,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1449,7 +1449,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1634,7 +1634,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1672,7 +1672,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1715,7 +1715,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1752,7 +1752,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
                          bool forward_user_traffic, bool route_on_vpn,
                          patchpanel::Client::TrafficSource traffic_source) {
         patchpanel::Client::ConnectedNamespace resp;
-        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
+        resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 

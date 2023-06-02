@@ -16,6 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/scoped_minijail.h>
+#include <net-base/ipv4_address.h>
 
 #include "bindings/worker_common.pb.h"
 
@@ -46,7 +47,7 @@ class SandboxedWorker {
 
   // Sends the listening address and port to the worker via communication
   // pipes and sets |local_proxy_host_and_port_|.
-  bool SetListeningAddress(const std::vector<uint8_t>& addr, int port);
+  bool SetListeningAddress(const net_base::IPv4Address& addr, int port);
 
   // Sends a request to clear the user credentials to the worker via
   // communication pipes.

@@ -22,6 +22,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
+#include <net-base/ipv4_address.h>
 
 namespace org {
 namespace chromium {
@@ -115,9 +116,9 @@ class BRILLO_EXPORT Client {
   struct ConnectedNamespace {
     IPv4Subnet ipv4_subnet;
     std::string peer_ifname;
-    std::vector<uint8_t> peer_ipv4_address;
+    net_base::IPv4Address peer_ipv4_address;
     std::string host_ifname;
-    std::vector<uint8_t> host_ipv4_address;
+    net_base::IPv4Address host_ipv4_address;
     std::string netns_name;
   };
 

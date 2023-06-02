@@ -280,10 +280,9 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       return;
   }
 
-  const auto& peer_addr =
-      sa_family == AF_INET6
-          ? ns_peer_ipv6_address_
-          : patchpanel::IPv4AddressToString(ns_.peer_ipv4_address);
+  const auto& peer_addr = sa_family == AF_INET6
+                              ? ns_peer_ipv6_address_
+                              : ns_.peer_ipv4_address.ToString();
   auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
                                      ns_.host_ifname);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
@@ -362,9 +361,8 @@ void Proxy::OnShillReset(bool reset) {
 
     // If applicable, restore the address of the system proxy.
     if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
-      SetShillDNSProxyAddresses(
-          patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-          ns_peer_ipv6_address_);
+      SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(),
+                                ns_peer_ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
       StartDnsRedirection("" /* ifname */, AF_INET);
@@ -399,12 +397,10 @@ void Proxy::Enable() {
     return;
 
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-        ns_peer_ipv6_address_);
-    SendIPAddressesToController(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-        ns_peer_ipv6_address_);
+    SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(),
+                              ns_peer_ipv6_address_);
+    SendIPAddressesToController(ns_.peer_ipv4_address.ToString(),
+                                ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection("" /* ifname */, AF_INET);
@@ -538,12 +534,10 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // receiving DNS traffic on success. But if this fails, we don't have much
   // choice but to just crash out and try again.
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-        ns_peer_ipv6_address_, true /* die_on_failure */);
-    SendIPAddressesToController(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-        ns_peer_ipv6_address_);
+    SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(),
+                              ns_peer_ipv6_address_, true /* die_on_failure */);
+    SendIPAddressesToController(ns_.peer_ipv4_address.ToString(),
+                                ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection("" /* ifname */, AF_INET);
@@ -971,12 +965,10 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         StartGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-            ns_peer_ipv6_address_);
-        SendIPAddressesToController(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
-            ns_peer_ipv6_address_);
+        SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(),
+                                  ns_peer_ipv6_address_);
+        SendIPAddressesToController(ns_.peer_ipv4_address.ToString(),
+                                    ns_peer_ipv6_address_);
         StartDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;
@@ -990,10 +982,8 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         StopGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address), "");
-        SendIPAddressesToController(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address), "");
+        SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(), "");
+        SendIPAddressesToController(ns_.peer_ipv4_address.ToString(), "");
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;

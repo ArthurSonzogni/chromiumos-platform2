@@ -229,8 +229,8 @@ TEST_F(ClientTest, ConnectNamespace_Fail) {
   EXPECT_FALSE(result.first.is_valid());
   EXPECT_TRUE(result.second.peer_ifname.empty());
   EXPECT_TRUE(result.second.host_ifname.empty());
-  EXPECT_EQ("", IPv4AddressToString(result.second.peer_ipv4_address));
-  EXPECT_EQ("", IPv4AddressToString(result.second.host_ipv4_address));
+  EXPECT_TRUE(result.second.peer_ipv4_address.IsZero());
+  EXPECT_TRUE(result.second.host_ipv4_address.IsZero());
   EXPECT_EQ("", IPv4AddressToString(result.second.ipv4_subnet.base_addr));
   EXPECT_EQ(0, result.second.ipv4_subnet.prefix_len);
 }
@@ -238,12 +238,14 @@ TEST_F(ClientTest, ConnectNamespace_Fail) {
 TEST_F(ClientTest, ConnectNamespace) {
   const pid_t pid = 3456;
   const std::string outbound_ifname = "test_ifname";
+  const net_base::IPv4Address host_ipv4_addr(100, 115, 92, 129);
+  const net_base::IPv4Address peer_ipv4_addr(100, 115, 92, 130);
 
   ConnectNamespaceResponse response_proto;
   response_proto.set_peer_ifname("veth0");
   response_proto.set_host_ifname("arc_ns0");
-  response_proto.set_peer_ipv4_address(Ipv4Addr(100, 115, 92, 130));
-  response_proto.set_host_ipv4_address(Ipv4Addr(100, 115, 92, 129));
+  response_proto.set_host_ipv4_address(host_ipv4_addr.ToInAddr().s_addr);
+  response_proto.set_peer_ipv4_address(peer_ipv4_addr.ToInAddr().s_addr);
   auto* response_subnet = response_proto.mutable_ipv4_subnet();
   response_subnet->set_prefix_len(30);
   response_subnet->set_addr(std::vector<uint8_t>{100, 115, 92, 128}.data(), 4);
@@ -265,10 +267,8 @@ TEST_F(ClientTest, ConnectNamespace) {
   EXPECT_EQ(30, result.second.ipv4_subnet.prefix_len);
   EXPECT_EQ("100.115.92.128",
             IPv4AddressToString(result.second.ipv4_subnet.base_addr));
-  EXPECT_EQ("100.115.92.129",
-            IPv4AddressToString(result.second.host_ipv4_address));
-  EXPECT_EQ("100.115.92.130",
-            IPv4AddressToString(result.second.peer_ipv4_address));
+  EXPECT_EQ(host_ipv4_addr, result.second.host_ipv4_address);
+  EXPECT_EQ(peer_ipv4_addr, result.second.peer_ipv4_address);
 }
 
 TEST_F(ClientTest, RegisterNeighborEventHandler) {

@@ -305,9 +305,9 @@ Client::ConnectedNamespace ConvertConnectedNamespace(
   Client::ConnectedNamespace out;
   out.ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
   out.peer_ifname = in.peer_ifname();
-  out.peer_ipv4_address = ConvertIPv4Addr(in.peer_ipv4_address());
+  out.peer_ipv4_address = ConvertUint32ToIPv4Address(in.peer_ipv4_address());
   out.host_ifname = in.host_ifname();
-  out.host_ipv4_address = ConvertIPv4Addr(in.host_ipv4_address());
+  out.host_ipv4_address = ConvertUint32ToIPv4Address(in.host_ipv4_address());
   out.netns_name = in.netns_name();
   return out;
 }
@@ -955,17 +955,14 @@ ClientImpl::ConnectNamespace(pid_t pid,
     return {};
   }
 
-  auto connected_ns = ConvertConnectedNamespace(response);
-
+  const auto connected_ns = ConvertConnectedNamespace(response);
   std::string subnet_info = IPv4AddressToCidrString(
       connected_ns.ipv4_subnet.base_addr, connected_ns.ipv4_subnet.prefix_len);
   LOG(INFO) << "ConnectNamespace for netns pid " << pid
             << " succeeded: peer_ifname=" << connected_ns.peer_ifname
-            << " peer_ipv4_address="
-            << IPv4AddressToString(connected_ns.peer_ipv4_address)
+            << " peer_ipv4_address=" << connected_ns.peer_ipv4_address
             << " host_ifname=" << connected_ns.host_ifname
-            << " host_ipv4_address="
-            << IPv4AddressToString(connected_ns.host_ipv4_address)
+            << " host_ipv4_address=" << connected_ns.host_ipv4_address
             << " subnet=" << subnet_info;
 
   return std::make_pair(std::move(fd_local), std::move(connected_ns));
