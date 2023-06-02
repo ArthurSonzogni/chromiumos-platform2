@@ -117,9 +117,21 @@ class WiFiLinkStatistics {
     uint32_t inactive_time = UINT_MAX;
     uint32_t tx_retries = UINT_MAX;
     uint32_t tx_failed = UINT_MAX;
+    uint32_t beacon_losses = UINT_MAX;
+    uint32_t expected_throughput = UINT_MAX;
+    uint32_t fcs_errors = UINT_MAX;
+    uint32_t rx_mpdus = UINT_MAX;
+    uint32_t frequency = UINT_MAX;
     uint64_t rx_drop_misc = ULLONG_MAX;
+    uint64_t beacons = ULLONG_MAX;
     int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
+    int32_t noise = 9999;
     int32_t signal_avg = 9999;
+    int32_t beacon_signal_avg = 9999;
+    int32_t ack_signal_avg = 9999;
+    int32_t last_ack_signal = 9999;
+    int32_t center_frequency1 = 9999;
+    int32_t center_frequency2 = 9999;
     ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
     RxTxStats rx;
     RxTxStats tx;
@@ -127,9 +139,18 @@ class WiFiLinkStatistics {
     bool operator==(const StationStats& that) const {
       return inactive_time == that.inactive_time &&
              tx_retries == that.tx_retries && tx_failed == that.tx_failed &&
-             rx_drop_misc == that.rx_drop_misc && signal == that.signal &&
-             signal_avg == that.signal_avg && width == that.width &&
-             rx == that.rx && tx == that.tx;
+             beacon_losses == that.beacon_losses &&
+             expected_throughput == that.expected_throughput &&
+             fcs_errors == that.fcs_errors && rx_mpdus == that.rx_mpdus &&
+             frequency == that.frequency && rx_drop_misc == that.rx_drop_misc &&
+             beacons == that.beacons && signal == that.signal &&
+             noise == that.noise && signal_avg == that.signal_avg &&
+             beacon_signal_avg == that.beacon_signal_avg &&
+             ack_signal_avg == that.ack_signal_avg &&
+             last_ack_signal == that.last_ack_signal &&
+             center_frequency1 == that.center_frequency1 &&
+             center_frequency2 == that.center_frequency2 &&
+             width == that.width && rx == that.rx && tx == that.tx;
     }
   };
 

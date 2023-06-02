@@ -346,11 +346,24 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
   constexpr int64_t kNotHandledYet = 31;
 
   WiFiLinkStatistics::StationStats stats = {
+      .inactive_time = kNotHandledYet,
       .tx_retries = 50,
       .tx_failed = 3,
+      .beacon_losses = kNotHandledYet,
+      .expected_throughput = kNotHandledYet,
+      .fcs_errors = kNotHandledYet,
+      .rx_mpdus = kNotHandledYet,
+      .frequency = kNotHandledYet,
       .rx_drop_misc = 5,
+      .beacons = kNotHandledYet,
       .signal = kNotHandledYet,
+      .noise = kNotHandledYet,
       .signal_avg = kNotHandledYet,
+      .beacon_signal_avg = kNotHandledYet,
+      .ack_signal_avg = kNotHandledYet,
+      .last_ack_signal = kNotHandledYet,
+      .center_frequency1 = kNotHandledYet,
+      .center_frequency2 = kNotHandledYet,
       .rx =
           {
               .packets = 1500,
@@ -483,6 +496,16 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
   KeyValueStore properties;
   properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
   properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -62);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyLastAckRSSI, -90);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageBeaconRSSI,
+                          -50);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageAckRSSI,
+                          -65);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyNoise, 11);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyCenterFreq1,
+                          6200);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyCenterFreq2,
+                          6000);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries, 400UL);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
                            10UL);
@@ -494,6 +517,16 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
                            86600UL);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
                            50000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyInactiveTime,
+                           150000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyBeaconLosses,
+                           25UL);
+  properties.Set<uint32_t>(
+      WPASupplicant::kSignalChangePropertyExpectedThroughput, 2400UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyFCSErrors, 2UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxMPDUS, 15UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyChannelFrequency,
+                           65299UL);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxHENSS, 8UL);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxHENSS, 6UL);
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxHEMCS, 15UL);
@@ -504,6 +537,8 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
                            8000ULL);
   properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyTxBytes,
                            10000ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyBeacons,
+                           1000ULL);
   properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
                               "160 MHz");
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxDCM, 0);
@@ -512,11 +547,24 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
   properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxGI, 4);
 
   WiFiLinkStatistics::StationStats expected = {
+      .inactive_time = 150000UL,
       .tx_retries = 400UL,
       .tx_failed = 10UL,
+      .beacon_losses = 25UL,
+      .expected_throughput = 2400UL,
+      .fcs_errors = 2UL,
+      .rx_mpdus = 15UL,
+      .frequency = 65299UL,
       .rx_drop_misc = 40ULL,
+      .beacons = 1000ULL,
       .signal = -70,
+      .noise = 11,
       .signal_avg = -62,
+      .beacon_signal_avg = -50,
+      .ack_signal_avg = -65,
+      .last_ack_signal = -90,
+      .center_frequency1 = 6200,
+      .center_frequency2 = 6000,
       .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
       .rx =
           {

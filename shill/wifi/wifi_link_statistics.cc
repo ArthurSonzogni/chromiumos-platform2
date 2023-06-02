@@ -411,10 +411,25 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
   StationStats stats;
   stats.signal =
       properties.Get<int32_t>(WPASupplicant::kSignalChangePropertyRSSI);
-  if (properties.Contains<int32_t>(
-          WPASupplicant::kSignalChangePropertyAverageRSSI)) {
-    stats.signal_avg = properties.Get<int32_t>(
-        WPASupplicant::kSignalChangePropertyAverageRSSI);
+
+  const std::vector<std::pair<std::string, int32_t*>> signal_properties_s32 = {
+      {WPASupplicant::kSignalChangePropertyAverageRSSI, &stats.signal_avg},
+      {WPASupplicant::kSignalChangePropertyLastAckRSSI, &stats.last_ack_signal},
+      {WPASupplicant::kSignalChangePropertyAverageBeaconRSSI,
+       &stats.beacon_signal_avg},
+      {WPASupplicant::kSignalChangePropertyAverageAckRSSI,
+       &stats.ack_signal_avg},
+      {WPASupplicant::kSignalChangePropertyNoise, &stats.noise},
+      {WPASupplicant::kSignalChangePropertyCenterFreq1,
+       &stats.center_frequency1},
+      {WPASupplicant::kSignalChangePropertyCenterFreq2,
+       &stats.center_frequency2},
+  };
+
+  for (const auto& kv : signal_properties_s32) {
+    if (properties.Contains<int32_t>(kv.first)) {
+      *kv.second = properties.Get<int32_t>(kv.first);
+    }
   }
 
   const std::vector<std::pair<std::string, uint32_t*>> signal_properties_u32 = {
@@ -425,6 +440,12 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
       {WPASupplicant::kSignalChangePropertyRxSpeed, &stats.rx.bitrate},
       {WPASupplicant::kSignalChangePropertyTxSpeed, &stats.tx.bitrate},
       {WPASupplicant::kSignalChangePropertyInactiveTime, &stats.inactive_time},
+      {WPASupplicant::kSignalChangePropertyBeaconLosses, &stats.beacon_losses},
+      {WPASupplicant::kSignalChangePropertyExpectedThroughput,
+       &stats.expected_throughput},
+      {WPASupplicant::kSignalChangePropertyFCSErrors, &stats.fcs_errors},
+      {WPASupplicant::kSignalChangePropertyRxMPDUS, &stats.rx_mpdus},
+      {WPASupplicant::kSignalChangePropertyChannelFrequency, &stats.frequency},
   };
 
   for (const auto& kv : signal_properties_u32) {
@@ -479,6 +500,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
       {WPASupplicant::kSignalChangePropertyRxDropMisc, &stats.rx_drop_misc},
       {WPASupplicant::kSignalChangePropertyRxBytes, &stats.rx.bytes},
       {WPASupplicant::kSignalChangePropertyTxBytes, &stats.tx.bytes},
+      {WPASupplicant::kSignalChangePropertyBeacons, &stats.beacons},
   };
 
   for (const auto& kv : signal_properties_u64) {
