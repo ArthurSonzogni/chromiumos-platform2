@@ -136,6 +136,7 @@ class ServiceAdaptorInterface {
   virtual void EmitUint16sChanged(const std::string& name,
                                   const Uint16s& value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
+  virtual void EmitUint64Changed(const std::string& name, uint64_t value) = 0;
   virtual void EmitIntChanged(const std::string& name, int value) = 0;
   virtual void EmitRpcIdentifierChanged(const std::string& name,
                                         const RpcIdentifier& value) = 0;

@@ -44,6 +44,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
   void EmitUint16sChanged(const std::string& name,
                           const Uint16s& value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
+  void EmitUint64Changed(const std::string& name, uint64_t value) override;
   void EmitIntChanged(const std::string& name, int value) override;
   void EmitRpcIdentifierChanged(const std::string& name,
                                 const RpcIdentifier& value) override;

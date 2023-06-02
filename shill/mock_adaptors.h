@@ -213,6 +213,11 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
               EmitUintChanged,
               (const std::string&, uint32_t),
               (override));
+  MOCK_METHOD(void,
+              EmitUint64Changed,
+              (const std::string&, uint64_t),
+              (override));
+
   MOCK_METHOD(void, EmitIntChanged, (const std::string&, int), (override));
   MOCK_METHOD(void,
               EmitRpcIdentifierChanged,

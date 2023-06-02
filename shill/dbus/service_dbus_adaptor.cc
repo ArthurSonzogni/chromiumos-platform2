@@ -4,6 +4,7 @@
 
 #include "shill/dbus/service_dbus_adaptor.h"
 
+#include <cstdint>
 #include <utility>
 
 #include <base/logging.h>
@@ -69,6 +70,12 @@ void ServiceDBusAdaptor::EmitUint16sChanged(const std::string& name,
 
 void ServiceDBusAdaptor::EmitUintChanged(const std::string& name,
                                          uint32_t value) {
+  SLOG(this, 2) << __func__ << ": " << name;
+  SendPropertyChangedSignal(name, brillo::Any(value));
+}
+
+void ServiceDBusAdaptor::EmitUint64Changed(const std::string& name,
+                                           uint64_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
