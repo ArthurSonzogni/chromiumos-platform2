@@ -8,18 +8,22 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <dbus/bus.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/mojom/executor.mojom.h"
 
+namespace org::chromium::lorgnette {
+class ManagerProxyInterface;
+}  // namespace org::chromium::lorgnette
+
 namespace printscanmgr {
 
 enum PrintscanFilePaths {
   PRINTSCAN_CUPS_FILEPATH,
   PRINTSCAN_IPPUSB_FILEPATH,
-  PRINTSCAN_LORGNETTE_FILEPATH,
 };
 
 // This tool is used to create debug flag files for printing and scanning
@@ -31,13 +35,22 @@ class PrintscanTool {
   PrintscanTool& operator=(const PrintscanTool&) = delete;
   ~PrintscanTool() = default;
 
+  // Initializes the D-Bus functionality of `PrintscanTool`. Must be called
+  // before `DebugSetCategories`.
+  void Init(std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
+                lorgnette_proxy);
+
   // Set categories to debug.
   PrintscanDebugSetCategoriesResponse DebugSetCategories(
       const PrintscanDebugSetCategoriesRequest& request);
 
-  // Create a PrintscanTool with the given root path. Only for unit testing.
-  static std::unique_ptr<PrintscanTool> CreateForTesting(
-      mojo::PendingRemote<mojom::Executor> remote, const base::FilePath& path);
+  // Creates and initializes a PrintscanTool with the given root path. Only for
+  // unit testing.
+  static std::unique_ptr<PrintscanTool> CreateAndInitForTesting(
+      mojo::PendingRemote<mojom::Executor> remote,
+      const base::FilePath& path,
+      std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
+          lorgnette_proxy_mock);
 
  private:
   // Creates an empty file at the given path from `root_path_`.
@@ -55,15 +68,16 @@ class PrintscanTool {
   // Creates or deletes Lorgnette debug flag files.
   bool ToggleLorgnette(bool enable);
 
-  // Restarts cupsd and lorgnette.
+  // Restarts cupsd.
   bool RestartServices();
 
-  // For testing only.
   PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
                 const base::FilePath& root_path);
 
   const base::FilePath root_path_;
   mojo::Remote<mojom::Executor> remote_;
+  std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
+      lorgnette_proxy_;
 };
 
 }  // namespace printscanmgr

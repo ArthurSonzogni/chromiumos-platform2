@@ -12,6 +12,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/files/file_util.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+#include <lorgnette-client/lorgnette/dbus-proxies.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 namespace printscanmgr {
@@ -22,8 +24,6 @@ const base::FilePath kCupsFilePath =
     base::FilePath("run/cups/debug/debug-flag");
 const base::FilePath kIppusbFilePath =
     base::FilePath("run/ippusb/debug/debug-flag");
-const base::FilePath kLorgnetteFilePath =
-    base::FilePath("run/lorgnette/debug/debug-flag");
 
 }  // namespace
 
@@ -34,6 +34,13 @@ PrintscanTool::PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
                              const base::FilePath& root_path)
     : root_path_(root_path) {
   remote_.Bind(std::move(remote));
+}
+
+void PrintscanTool::Init(
+    std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
+        lorgnette_proxy) {
+  DCHECK(lorgnette_proxy);
+  lorgnette_proxy_ = std::move(lorgnette_proxy);
 }
 
 PrintscanDebugSetCategoriesResponse PrintscanTool::DebugSetCategories(
@@ -87,10 +94,15 @@ PrintscanDebugSetCategoriesResponse PrintscanTool::DebugSetCategories(
 }
 
 // static
-std::unique_ptr<PrintscanTool> PrintscanTool::CreateForTesting(
-    mojo::PendingRemote<mojom::Executor> remote, const base::FilePath& path) {
-  return std::unique_ptr<PrintscanTool>(
+std::unique_ptr<PrintscanTool> PrintscanTool::CreateAndInitForTesting(
+    mojo::PendingRemote<mojom::Executor> remote,
+    const base::FilePath& path,
+    std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
+        lorgnette_proxy_mock) {
+  std::unique_ptr<PrintscanTool> printscan_tool(
       new PrintscanTool(std::move(remote), path));
+  printscan_tool->Init(std::move(lorgnette_proxy_mock));
+  return printscan_tool;
 }
 
 // Create an empty file at the given path from root_path_.
@@ -102,9 +114,6 @@ bool PrintscanTool::CreateEmptyFile(PrintscanFilePaths path) {
       break;
     case PRINTSCAN_IPPUSB_FILEPATH:
       full_path = root_path_.Append(kIppusbFilePath);
-      break;
-    case PRINTSCAN_LORGNETTE_FILEPATH:
-      full_path = root_path_.Append(kLorgnetteFilePath);
       break;
   }
   return base::WriteFile(full_path, "", 0) == 0;
@@ -119,9 +128,6 @@ bool PrintscanTool::DeleteFile(PrintscanFilePaths path) {
       break;
     case PRINTSCAN_IPPUSB_FILEPATH:
       full_path = root_path_.Append(kIppusbFilePath);
-      break;
-    case PRINTSCAN_LORGNETTE_FILEPATH:
-      full_path = root_path_.Append(kLorgnetteFilePath);
       break;
   }
   return brillo::DeleteFile(full_path);
@@ -168,52 +174,46 @@ bool PrintscanTool::ToggleIppusb(bool enable) {
 // Enable Lorgnette debug logs if `enable` is set, otherwise disable the logs.
 // Return true on success.
 bool PrintscanTool::ToggleLorgnette(bool enable) {
+  DCHECK(lorgnette_proxy_);
+
+  lorgnette::SetDebugConfigRequest request;
+  request.set_enabled(enable);
+  lorgnette::SetDebugConfigResponse response;
+  brillo::ErrorPtr error;
+  if (!lorgnette_proxy_->SetDebugConfig(request, &response, &error)) {
+    LOG(ERROR) << "Failed to call SetDebugConfig: " << error->GetMessage();
+  }
+
+  if (!response.success()) {
+    return false;
+  }
+
   if (enable) {
-    if (!CreateEmptyFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      LOG(ERROR) << "Failed to create lorgnette debug-flag.";
-      return false;
-    }
     LOG(INFO) << "Advanced lorgnette logging enabled.";
   } else {
-    if (!DeleteFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      LOG(ERROR) << "Failed to delete lorgnette debug-flag.";
-      return false;
-    }
     LOG(INFO) << "Advanced lorgnette logging disabled.";
   }
+
   return true;
 }
 
-// Restart cups and lorgnette.
+// Restart cupsd.
 bool PrintscanTool::RestartServices() {
   // cupsd is intended to have the same lifetime as the ui, so we need to
   // fully restart it.
   std::string error;
-  bool cups_success;
-  if (!remote_->RestartUpstartJob(mojom::UpstartJob::kCupsd, &cups_success,
+  bool success;
+  if (!remote_->RestartUpstartJob(mojom::UpstartJob::kCupsd, &success,
                                   &error)) {
     LOG(ERROR)
         << "Error calling executor mojo method RestartUpstartJob for cupsd.";
   }
-  if (!cups_success) {
+  if (!success) {
     LOG(ERROR) << "Executor mojo method RestartUpstartJob for cupsd failed: "
                << error;
   }
 
-  // lorgnette will be restarted when the next d-bus call happens, so it
-  // can simply be shut down.
-  bool lorgnette_success;
-  if (!remote_->StopUpstartJob(mojom::UpstartJob::kLorgnette,
-                               &lorgnette_success, &error)) {
-    LOG(ERROR)
-        << "Error calling executor mojo method StopUpstartJob for lorgnette.";
-  }
-  if (!lorgnette_success) {
-    LOG(ERROR) << "Executor mojo method StopUpstartJob for lorgnette failed: "
-               << error;
-  }
-
-  return cups_success && lorgnette_success;
+  return success;
 }
 
 }  // namespace printscanmgr

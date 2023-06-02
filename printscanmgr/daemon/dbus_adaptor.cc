@@ -10,6 +10,8 @@
 #include <base/notreached.h>
 #include <dbus/object_path.h>
 #include <dbus/printscanmgr/dbus-constants.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+#include <lorgnette-client/lorgnette/dbus-proxies.h>
 
 namespace printscanmgr {
 
@@ -24,6 +26,8 @@ void DbusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
         completion_action) {
   DCHECK(bus);
+  printscan_tool_.Init(
+      std::make_unique<org::chromium::lorgnette::ManagerProxy>(bus));
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       /*object_manager=*/nullptr, bus,
       dbus::ObjectPath(kPrintscanmgrServicePath));
