@@ -69,7 +69,14 @@ do_upgrade() {
   dpkg --configure -a || true
 
   # Upgrade everything.
-  apt-get ${APT_OPTIONS} update -y --allow-releaseinfo-change
+  # --allow-releaseinfo-change was only added in buster, so if it fails try
+  # again without the argument in case we're on stretch.  We try this way
+  # instead of checking lsb-release or similar in case a failed upgrade leaves
+  # them with modified release info but old apt. They'll probably hit other
+  # issues if that's the case, but might as well try.
+  if ! apt-get ${APT_OPTIONS} update -y --allow-releaseinfo-change; then
+    apt-get ${APT_OPTIONS} update -y
+  fi
   apt-get ${APT_OPTIONS} upgrade -y
   apt-get ${APT_OPTIONS} dist-upgrade -y
 }
