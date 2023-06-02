@@ -12,7 +12,7 @@
 get_volume_group() {
   local physical_volume="$1"
 
-  pvdisplay -C --quiet --readonly --noheadings --separator '|' \
+  pvs --quiet --readonly --noheadings --separator '|' \
     -o vg_name "${physical_volume}" | tr -d '[:space:]'
 }
 
@@ -42,7 +42,7 @@ generate_random_vg_name() {
     vg_name="$(generate_random_label)"
     # If there is no volume group on the device with the generated vg name
     # return.
-    if ! vgdisplay "${vg_name}" >/dev/null; then
+    if ! vgs "${vg_name}" >/dev/null; then
       # shellcheck disable=SC2059
       printf "${vg_name}"
       return
