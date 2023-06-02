@@ -14,81 +14,81 @@ namespace {
 
 using ::testing::StrEq;
 
-TEST(FlashProtectCommand, FlashProtectCommand) {
+TEST(FlashProtectCommand_v1, FlashProtectCommand_v1) {
   flash_protect::Flags flags =
       flash_protect::Flags::kRollbackAtBoot | flash_protect::Flags::kRoAtBoot;
   flash_protect::Flags mask = flash_protect::Flags::kNone;
-  FlashProtectCommand cmd(flags, mask);
+  FlashProtectCommand_v1 cmd(flags, mask);
   EXPECT_EQ(cmd.Version(), EC_VER_FLASH_PROTECT);
   EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
   EXPECT_EQ(cmd.Req()->flags, base::to_underlying(flags));
   EXPECT_EQ(cmd.Req()->mask, base::to_underlying(mask));
 }
 
-TEST(FlashProtectCommand, ParseFlags) {
+TEST(FlashProtectCommand_v1, ParseFlags) {
   std::string result;
 
   // test each flag string individually
   flash_protect::Flags flags = flash_protect::Flags::kNone;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(""));
 
   flags = flash_protect::Flags::kRoAtBoot;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" ro_at_boot"));
 
   flags = flash_protect::Flags::kRoNow;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" ro_now"));
 
   flags = flash_protect::Flags::kAllNow;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" all_now"));
 
   flags = flash_protect::Flags::kGpioAsserted;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" wp_gpio_asserted"));
 
   flags = flash_protect::Flags::kErrorStuck;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" STUCK"));
 
   flags = flash_protect::Flags::kErrorInconsistent;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" INCONSISTENT"));
 
   flags = flash_protect::Flags::kAllAtBoot;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" all_at_boot"));
 
   flags = flash_protect::Flags::kRwAtBoot;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" rw_at_boot"));
 
   flags = flash_protect::Flags::kRwNow;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" rw_now"));
 
   flags = flash_protect::Flags::kRollbackAtBoot;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" rollback_at_boot"));
 
   flags = flash_protect::Flags::kRollbackNow;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" rollback_now"));
 
   flags = flash_protect::Flags::kErrorUnknown;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" UNKNOWN_ERROR"));
 
   // test a combination of flags
   flags = flash_protect::Flags::kRoAtBoot | flash_protect::Flags::kRoNow |
           flash_protect::Flags::kGpioAsserted;
-  result = FlashProtectCommand::ParseFlags(flags);
+  result = FlashProtectCommand_v1::ParseFlags(flags);
   EXPECT_THAT(result, StrEq(" wp_gpio_asserted ro_at_boot ro_now"));
 }
 
-TEST(FlashProtectCommand, Enum) {
+TEST(FlashProtectCommand_v1, Enum) {
   EXPECT_EQ(base::to_underlying(flash_protect::Flags::kNone), 0);
   EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRoAtBoot), 1);
   EXPECT_EQ(base::to_underlying(flash_protect::Flags::kRoNow), 2);

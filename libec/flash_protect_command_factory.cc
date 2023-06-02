@@ -15,7 +15,7 @@ std::unique_ptr<EcCommandInterface> FlashProtectCommandFactory::Create(
     return std::make_unique<ec::FlashProtectCommand_v2>(flags, mask);
   }
 
-  return std::make_unique<ec::FlashProtectCommand>(flags, mask);
+  return std::make_unique<ec::FlashProtectCommand_v1>(flags, mask);
 }
 
 }  // namespace ec

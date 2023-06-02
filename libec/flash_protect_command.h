@@ -36,12 +36,12 @@ BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
                                        flash_protect::Flags r);
 }  // namespace flash_protect
 
-class BRILLO_EXPORT FlashProtectCommand
+class BRILLO_EXPORT FlashProtectCommand_v1
     : public EcCommand<struct ec_params_flash_protect,
                        struct ec_response_flash_protect> {
  public:
-  FlashProtectCommand(flash_protect::Flags flags, flash_protect::Flags mask);
-  ~FlashProtectCommand() override = default;
+  FlashProtectCommand_v1(flash_protect::Flags flags, flash_protect::Flags mask);
+  ~FlashProtectCommand_v1() override = default;
 
   static std::string ParseFlags(flash_protect::Flags flags);
 
@@ -49,6 +49,8 @@ class BRILLO_EXPORT FlashProtectCommand
   flash_protect::Flags GetValidFlags() const;
   flash_protect::Flags GetWritableFlags() const;
 };
+
+using FlashProtectCommand = FlashProtectCommand_v1;
 
 class BRILLO_EXPORT FlashProtectCommand_v2
     : public EcCommandAsync<struct ec_params_flash_protect_v2,

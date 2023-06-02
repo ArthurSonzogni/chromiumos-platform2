@@ -17,9 +17,9 @@ std::unique_ptr<EcCommandInterface> EcCommandFactory::FpContextCommand(
   return FpContextCommandFactory::Create(cros_fp, user_id);
 }
 
-std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
+std::unique_ptr<FlashProtectCommand_v1> EcCommandFactory::FlashProtectCommand(
     flash_protect::Flags flags, flash_protect::Flags mask) {
-  return std::make_unique<ec::FlashProtectCommand>(flags, mask);
+  return std::make_unique<ec::FlashProtectCommand_v1>(flags, mask);
 }
 
 std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand() {

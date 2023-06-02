@@ -17,8 +17,8 @@ std::ostream& operator<<(std::ostream& os, flash_protect::Flags r) {
 }
 }  // namespace flash_protect
 
-FlashProtectCommand::FlashProtectCommand(flash_protect::Flags flags,
-                                         flash_protect::Flags mask)
+FlashProtectCommand_v1::FlashProtectCommand_v1(flash_protect::Flags flags,
+                                               flash_protect::Flags mask)
     : EcCommand(EC_CMD_FLASH_PROTECT, EC_VER_FLASH_PROTECT) {
   Req()->flags = base::to_underlying(flags);
   Req()->mask = base::to_underlying(mask);
@@ -27,7 +27,7 @@ FlashProtectCommand::FlashProtectCommand(flash_protect::Flags flags,
 /**
  * @return string names of set flags
  */
-std::string FlashProtectCommand::ParseFlags(flash_protect::Flags flags) {
+std::string FlashProtectCommand_v1::ParseFlags(flash_protect::Flags flags) {
   std::string output;
   if ((flags & flash_protect::Flags::kGpioAsserted) !=
       flash_protect::Flags::kNone) {
@@ -77,15 +77,15 @@ std::string FlashProtectCommand::ParseFlags(flash_protect::Flags flags) {
   return output;
 }
 
-flash_protect::Flags FlashProtectCommand::GetFlags() const {
+flash_protect::Flags FlashProtectCommand_v1::GetFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->flags);
 }
 
-flash_protect::Flags FlashProtectCommand::GetValidFlags() const {
+flash_protect::Flags FlashProtectCommand_v1::GetValidFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->valid_flags);
 }
 
-flash_protect::Flags FlashProtectCommand::GetWritableFlags() const {
+flash_protect::Flags FlashProtectCommand_v1::GetWritableFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->writable_flags);
 }
 

@@ -39,7 +39,7 @@ bool EcUtilsImpl::SetEcSoftwareWriteProtection(bool enable) {
                                   ec::flash_protect::Flags::kRoAtBoot;
   ec::flash_protect::Flags flags =
       enable ? mask : ec::flash_protect::Flags::kNone;
-  auto flashprotect_cmd = ec::FlashProtectCommand(flags, mask);
+  auto flashprotect_cmd = ec::FlashProtectCommand_v1(flags, mask);
   return flashprotect_cmd.Run(ec_fd.get());
 }
 
@@ -58,7 +58,7 @@ bool EcUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
   }
 
   ec::flash_protect::Flags flags = ec::flash_protect::Flags::kNone;
-  auto flashprotect_cmd = ec::FlashProtectCommand(flags, flags);
+  auto flashprotect_cmd = ec::FlashProtectCommand_v1(flags, flags);
   if (!flashprotect_cmd.Run(ec_fd.get())) {
     LOG(ERROR) << "Failed to run EC WP status command";
     return false;
