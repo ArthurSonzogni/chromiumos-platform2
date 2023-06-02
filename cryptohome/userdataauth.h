@@ -888,12 +888,7 @@ class UserDataAuth {
 
   CryptohomeStatus CreatePersistentUserImpl(const std::string& auth_session_id);
 
-  // =============== USS Experiment Related Methods ===============
-
-  // Called on Mount thread. This creates a dbus proxy for flimflam::Manager
-  // and connects to signals. It fetches the experiment config from gstatic when
-  // network is ready.
-  void CreateUssExperimentConfigFetcher();
+  // =============== Feature Experiment Related Methods ===============
 
   // Called on Mount thread. This initializes feature library and sets it's
   // value in AuthSession manager.
