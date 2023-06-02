@@ -228,6 +228,18 @@ TEST(IPv4CIDR, GetNetmask) {
   EXPECT_FALSE(IPv4CIDR::GetNetmask(33));
 }
 
+TEST(IPv4CIDR, GetPrefixLength) {
+  // GetPrefixLength() should convert the result from GetNetmask().
+  for (int prefix_length = 0; prefix_length <= 32; ++prefix_length) {
+    const auto netmask = *IPv4CIDR::GetNetmask(prefix_length);
+    EXPECT_EQ(IPv4CIDR::GetPrefixLength(netmask), prefix_length);
+  }
+
+  // GetPrefixLength() with invalid netmask should return std::nullopt.
+  EXPECT_EQ(IPv4CIDR::GetPrefixLength({0, 0, 0, 255}), std::nullopt);
+  EXPECT_EQ(IPv4CIDR::GetPrefixLength({192, 168, 10, 255}), std::nullopt);
+}
+
 TEST(IPv4CIDR, ToNetmask) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/0");
   EXPECT_EQ(cidr1.ToNetmask(), IPv4Address(0, 0, 0, 0));

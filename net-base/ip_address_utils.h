@@ -6,6 +6,7 @@
 #define NET_BASE_IP_ADDRESS_UTILS_H_
 
 #include <algorithm>
+#include <bitset>
 #include <memory>
 #include <optional>
 #include <string>
@@ -60,6 +61,33 @@ class NET_BASE_EXPORT CIDR {
     data[idx] = static_cast<uint8_t>(~((1 << (kBitsPerByte - bits)) - 1));
 
     return Address(data);
+  }
+
+  // Returns the prefix length given a netmask address. Returns std::nullopt if
+  // |netmask| is not a valid netmask.
+  static std::optional<int> GetPrefixLength(const Address& netmask) {
+    bool saw_zero_bit = false;
+    int prefix_length = 0;
+
+    for (const uint8_t byte : netmask.data()) {
+      const std::bitset<8> bits(byte);
+      const auto count = bits.count();
+
+      // The 1 bits should be continuously at the left side.
+      if ((bits << count) != 0) {
+        return std::nullopt;
+      }
+      if (saw_zero_bit && count != 0) {
+        return std::nullopt;
+      }
+
+      if (count != 8) {
+        saw_zero_bit = true;
+      }
+      prefix_length += count;
+    }
+
+    return prefix_length;
   }
 
   // Creates the CIDR from the CIDR notation.
