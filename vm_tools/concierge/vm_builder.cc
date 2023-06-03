@@ -86,6 +86,11 @@ VmBuilder& VmBuilder::SetBalloonBias(const std::string& balloon_bias_mib) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableWorkingSetReporting(bool enable) {
+  enable_working_set_reporting_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetSyslogTag(const std::string& syslog_tag) {
   syslog_tag_ = syslog_tag;
   return *this;
@@ -344,6 +349,9 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (!balloon_bias_mib_.empty())
     args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
+
+  if (enable_working_set_reporting_)
+    args.emplace_back("--balloon-wss-reporting", "");
 
   for (const auto& tap_fd : tap_fds_)
     args.emplace_back("--net", "tap-fd=" + std::to_string(tap_fd.get()));

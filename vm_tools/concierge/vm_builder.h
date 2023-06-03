@@ -53,6 +53,7 @@ class VmBuilder {
   VmBuilder& AppendDisks(std::vector<Disk> disks);
   VmBuilder& SetMemory(const std::string& memory_in_mb);
   VmBuilder& SetBalloonBias(const std::string& balloon_bias_mib);
+  VmBuilder& EnableWorkingSetReporting(bool enable);
 
   VmBuilder& SetSyslogTag(const std::string& syslog_tag);
   VmBuilder& SetSocketPath(const std::string& socket_path);
@@ -157,6 +158,7 @@ class VmBuilder {
   std::optional<bool> enable_smt_ = false;
   bool enable_delay_rt_ = false;
   bool enable_per_vm_core_scheduling_ = false;
+  bool enable_working_set_reporting_ = false;
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;

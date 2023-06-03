@@ -170,6 +170,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
+  if (classification_ == VmId::Type::BOREALIS) {
+    vm_builder.EnableWorkingSetReporting(true);
+  }
+
   if (!network_device_.ipv4_subnet) {
     LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
     return false;
