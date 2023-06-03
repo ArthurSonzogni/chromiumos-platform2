@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/events/crash_events.h"
 
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -205,20 +206,7 @@ void CrashEvents::HandleUploadedCrashGetFileInfoResult(
     return;
   }
 
-  context_->executor()->ReadFile(
-      mojom::Executor::File::kCrashLog,
-      base::BindOnce(&CrashEvents::HandleUploadedCrashReadFileResult,
-                     weak_ptr_factory_.GetWeakPtr(), file_info->creation_time));
-}
-
-void CrashEvents::HandleUploadedCrashReadFileResult(
-    base::Time creation_time, const std::optional<std::string>& log) {
-  if (!log.has_value()) {
-    LOG(ERROR) << "Failed to read uploads.log.";
-    return;
-  }
-
-  if (creation_time != uploads_log_info_.creation_time) {
+  if (file_info->creation_time != uploads_log_info_.creation_time) {
     // New log file.
     //
     // Why do we keep past crashes here?
@@ -255,25 +243,35 @@ void CrashEvents::HandleUploadedCrashReadFileResult(
     // the actual creation time.
     uploads_log_info_.byte_location = 0u;
     uploads_log_info_.offset = 0u;
-    uploads_log_info_.creation_time = creation_time;
+    uploads_log_info_.creation_time = file_info->creation_time;
   }
 
-  if (log.value().size() < uploads_log_info_.byte_location) {
-    LOG(ERROR) << "Content read from uploads.log is too short.";
+  context_->executor()->ReadFilePart(
+      mojom::Executor::File::kCrashLog,
+      /*begin=*/uploads_log_info_.byte_location,
+      /*size=*/std::nullopt,
+      base::BindOnce(&CrashEvents::HandleUploadedCrashReadFileResult,
+                     weak_ptr_factory_.GetWeakPtr(), file_info->creation_time));
+}
+
+void CrashEvents::HandleUploadedCrashReadFileResult(
+    base::Time creation_time, const std::optional<std::string>& log) {
+  if (!log.has_value()) {
+    LOG(ERROR) << "Failed to read uploads.log.";
     return;
   }
 
-  if (log.value().size() == uploads_log_info_.byte_location) {
+  if (log.value().empty()) {
     // No new log content was added to uploads.log since last read.
     return;
   }
 
   uint64_t parsed_bytes;
-  std::vector<mojom::CrashEventInfoPtr> results = ParseUploadsLog(
-      log.value().substr(uploads_log_info_.byte_location), /*is_uploaded=*/true,
-      /*creation_time=*/uploads_log_info_.creation_time,
-      /*init_offset=*/uploads_log_info_.offset,
-      /*parsed_bytes=*/&parsed_bytes);
+  std::vector<mojom::CrashEventInfoPtr> results =
+      ParseUploadsLog(log.value(), /*is_uploaded=*/true,
+                      /*creation_time=*/uploads_log_info_.creation_time,
+                      /*init_offset=*/uploads_log_info_.offset,
+                      /*parsed_bytes=*/&parsed_bytes);
 
   if (results.empty()) {
     // No valid log lines. One possibility is that a new line is partly written

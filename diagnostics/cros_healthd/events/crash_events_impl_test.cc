@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/events/crash_events.h"
 
+#include <optional>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -28,6 +29,7 @@ namespace {
 
 namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
+using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::NiceMock;
 
@@ -410,25 +412,35 @@ class CrashEventsTest : public testing::Test {
   }
 
   // Sets mock executor's reading and getting info from uploads.log.
-  void SetExecutorFileNormalResponse(const std::string& response,
+  // |uploads_log| is the content of uploads.log to mock. If |begin| is larger
+  // than the size of |uploads_log|, file reading returns std::nullopt.
+  void SetExecutorFileNormalResponse(base::StringPiece uploads_log,
+                                     uint64_t begin = 0u,
                                      base::Time creation_time = base::Time()) {
-    EXPECT_CALL(*mock_executor(), ReadFile(mojom::Executor::File::kCrashLog, _))
-        .WillOnce(base::test::RunOnceCallback<1>(response));
+    EXPECT_CALL(*mock_executor(), ReadFilePart(mojom::Executor::File::kCrashLog,
+                                               begin, Eq(std::nullopt), _))
+        .WillOnce(base::test::RunOnceCallback<3>(
+            (begin < uploads_log.size())
+                ? std::optional<std::string>(uploads_log.substr(begin))
+                : std::nullopt));
 
-    EXPECT_CALL(*mock_executor(),
-                GetFileInfo(mojom::Executor::File::kCrashLog, _))
-        .WillOnce(base::test::RunOnceCallback<1>(mojom::FileInfo::New(
-            /*creation_time=*/creation_time)));
+    SetExecutorGetFileInfoResponse(
+        mojom::FileInfo::New(/*creation_time=*/creation_time));
   }
 
   // Sets mock executor's reading empty content from uploads.log.
-  void SetExecutorFileEmptyResponse() { SetExecutorFileNormalResponse(""); }
+  void SetExecutorFileEmptyResponse() {
+    EXPECT_CALL(*mock_executor(), ReadFilePart(mojom::Executor::File::kCrashLog,
+                                               _, Eq(std::nullopt), _))
+        .WillOnce(base::test::RunOnceCallback<3>(std::string()));
+
+    SetExecutorGetFileInfoResponse(
+        mojom::FileInfo::New(/*creation_time=*/base::Time()));
+  }
 
   // Sets mock executor's failure of getting file info from uploads.log.
   void SetExecutorFileFailureResponse() {
-    EXPECT_CALL(*mock_executor(),
-                GetFileInfo(mojom::Executor::File::kCrashLog, _))
-        .WillOnce(base::test::RunOnceCallback<1>(nullptr));
+    SetExecutorGetFileInfoResponse(nullptr);
   }
 
   // Expects the received event.
@@ -454,6 +466,13 @@ class CrashEventsTest : public testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
  private:
+  // Sets mock executor's response of |GetFileInfo|.
+  void SetExecutorGetFileInfoResponse(mojom::FileInfoPtr response) {
+    EXPECT_CALL(*mock_executor(),
+                GetFileInfo(mojom::Executor::File::kCrashLog, _))
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(response)));
+  }
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
@@ -548,7 +567,8 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeNewEvent) {
 
   // Second time, should only receive the second event.
   SetExecutorFileNormalResponse(
-      base::StrCat({kUninterestingValidLogLine, "\n", kValidLogLine}));
+      base::StrCat({kUninterestingValidLogLine, "\n", kValidLogLine}),
+      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   AdvanceClockByOnePeriod();
   auto expected_result = kExpectedUploadedResultForValidLogLine.Clone();
@@ -564,7 +584,9 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeNoNewEvent) {
   SkipEvent();  // The first event, skip it as it is not interesting here.
 
   // Second time, should receive no event.
-  SetExecutorFileNormalResponse(kUninterestingValidLogLine);
+  SetExecutorFileNormalResponse(
+      kUninterestingValidLogLine,
+      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   ExpectNoEvent();
   AdvanceClockByOnePeriod();
@@ -580,8 +602,9 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeAbnormallyShortUploadsLog) {
   // Second time, should receive no event. The system should continue working as
   // normal.
   SetExecutorFileNormalResponse(
-      std::string(base::StringPiece(kUninterestingValidLogLine))
-          .substr(0, std::size(kUninterestingValidLogLine) / 2));
+      base::StringPiece(kUninterestingValidLogLine)
+          .substr(0u, std::size(kUninterestingValidLogLine) / 2),
+      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   ExpectNoEvent();
   AdvanceClockByOnePeriod();
@@ -600,7 +623,9 @@ TEST_F(CrashEventsTest, PeriodicUploadedFirstTimePartialLineSecondTimeParsed) {
   SkipEvent();  // The first event, skip it as it is not interesting here.
 
   // Second time, should receive the second event.
-  SetExecutorFileNormalResponse(kCompleteUploadsLog);
+  SetExecutorFileNormalResponse(
+      kCompleteUploadsLog,
+      /*begin=*/base::StrCat({kUninterestingValidLogLine, "\n"}).size());
   SetExecutorCrashSenderEmptyResponse();
   AdvanceClockByOnePeriod();
   auto expected_result = kExpectedUploadedResultForValidLogLine.Clone();
@@ -623,13 +648,15 @@ class CrashEventsUploadsLogRecreatedTest
 
 TEST_P(CrashEventsUploadsLogRecreatedTest, PeriodicUploaded) {
   AddObserver();
-  SetExecutorFileNormalResponse(kValidLogLine, kCurrentCreationTime);
+  SetExecutorFileNormalResponse(kValidLogLine, /*begin=*/0u,
+                                /*creation_time=*/kCurrentCreationTime);
   SetExecutorCrashSenderEmptyResponse();
   AdvanceClockByOnePeriod();
   SkipEvent();  // The first event, skip it as it is not interesting here.
 
   // Uploads.log recreated, should receive the same event.
-  SetExecutorFileNormalResponse(kValidLogLine, creation_time());
+  SetExecutorFileNormalResponse(kValidLogLine, /*begin=*/0u,
+                                /*creation_time=*/creation_time());
   SetExecutorCrashSenderEmptyResponse();
   AdvanceClockByOnePeriod();
   auto expected_result = kExpectedUploadedResultForValidLogLine.Clone();
