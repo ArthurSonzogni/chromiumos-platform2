@@ -529,6 +529,7 @@ type cros_run_daemon_store, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dhcpcd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dns_proxy, file_type, cros_file_type, cros_run_file_type;
+type cros_run_featured_active, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_seed, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_test, file_type, cros_file_type, cros_run_file_type;
 type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;

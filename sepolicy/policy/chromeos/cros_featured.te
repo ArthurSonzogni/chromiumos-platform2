@@ -14,6 +14,9 @@ r_dir_file(cros_featured, cros_featured_file)
 create_dir_file(cros_featured, cros_var_lib_featured)
 create_dir_file(cros_featured, debugfs_tracing_instances)
 
+# For writing active trial files for early-boot experiments.
+create_dir_file(cros_featured, cros_run_featured_active)
+
 # SafeFD requires traversing from /
 allow cros_featured rootfs:dir { r_dir_perms };
 allow cros_featured cros_run:dir { r_dir_perms };
