@@ -95,15 +95,6 @@ const std::vector<ShillClient::Device> ShillClient::GetDevices() const {
   return devices;
 }
 
-bool ShillClient::has_interface(const std::string& ifname) const {
-  for (const auto& [_, device] : devices_) {
-    if (device.ifname == ifname) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void ShillClient::ScanDevices() {
   brillo::VariantDictionary props;
   if (!manager_proxy_->GetProperties(&props, nullptr)) {

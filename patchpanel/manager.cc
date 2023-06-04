@@ -143,7 +143,7 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     }
     StopForwarding(prev_device.ifname, nsinfo.host_ifname,
                    ForwardingSet{.ipv6 = true});
-    nsinfo.tracked_outbound_ifname = new_device.ifname;
+    nsinfo.current_outbound_device = new_device;
     StartForwarding(new_device.ifname, nsinfo.host_ifname,
                     ForwardingSet{.ipv6 = true});
 
@@ -176,7 +176,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
     }
     StopForwarding(prev_device.ifname, nsinfo.host_ifname,
                    ForwardingSet{.ipv6 = true});
-    nsinfo.tracked_outbound_ifname = new_device.ifname;
+    nsinfo.current_outbound_device = new_device;
     StartForwarding(new_device.ifname, nsinfo.host_ifname,
                     ForwardingSet{.ipv6 = true});
 
@@ -561,11 +561,21 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     }
   }
 
+  // Get the ConnectedNamespace outbound shill Device.
   const std::string& outbound_ifname = request.outbound_physical_device();
-  if (!outbound_ifname.empty() &&
-      !shill_client_->has_interface(outbound_ifname)) {
-    LOG(ERROR) << "Invalid outbound ifname " << outbound_ifname;
-    return response;
+  ShillClient::Device current_outbound_device;
+  if (!outbound_ifname.empty()) {
+    auto* shill_device = shill_client_->GetDevice(outbound_ifname);
+    if (!shill_device) {
+      LOG(ERROR) << __func__ << ": no shill Device for upstream ifname "
+                 << outbound_ifname;
+      return response;
+    }
+    current_outbound_device = *shill_device;
+  } else if (request.route_on_vpn()) {
+    current_outbound_device = shill_client_->default_logical_device();
+  } else {
+    current_outbound_device = shill_client_->default_physical_device();
   }
 
   std::unique_ptr<Subnet> subnet =
@@ -588,7 +598,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   nsinfo.source = ProtoToTrafficSource(request.traffic_source());
   if (nsinfo.source == TrafficSource::kUnknown)
     nsinfo.source = TrafficSource::kSystem;
-  nsinfo.outbound_ifname = request.outbound_physical_device();
+  nsinfo.outbound_ifname = outbound_ifname;
   nsinfo.route_on_vpn = request.route_on_vpn();
   nsinfo.host_ifname = "arc_ns" + ifname_id;
   nsinfo.peer_ifname = "veth" + ifname_id;
@@ -599,11 +609,13 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     LOG(ERROR) << "Failed to generate unique MAC address for connected "
                   "namespace host and peer interface";
   }
+  nsinfo.current_outbound_device = current_outbound_device;
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
-    if (!DeleteLifelineFd(local_client_fd.release()))
+    if (!DeleteLifelineFd(local_client_fd.release())) {
       LOG(ERROR) << "Failed to delete lifeline fd";
+    }
     return response;
   }
 
@@ -625,19 +637,8 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
 
   LOG(INFO) << "Connected network namespace " << nsinfo;
 
-  // Get the ConnectedNamespace outbound interface name.
-  nsinfo.tracked_outbound_ifname = nsinfo.outbound_ifname;
-  if (nsinfo.outbound_ifname.empty()) {
-    if (nsinfo.route_on_vpn) {
-      nsinfo.tracked_outbound_ifname =
-          shill_client_->default_logical_device().ifname;
-    } else {
-      nsinfo.tracked_outbound_ifname =
-          shill_client_->default_physical_device().ifname;
-    }
-  }
   // Start forwarding for IPv6.
-  StartForwarding(nsinfo.tracked_outbound_ifname, nsinfo.host_ifname,
+  StartForwarding(nsinfo.current_outbound_device.ifname, nsinfo.host_ifname,
                   ForwardingSet{.ipv6 = true});
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -723,9 +724,10 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   // Remove the rules tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
-    StopForwarding(connected_namespace_it->second.tracked_outbound_ifname,
-                   connected_namespace_it->second.host_ifname,
-                   ForwardingSet{.ipv6 = true});
+    StopForwarding(
+        connected_namespace_it->second.current_outbound_device.ifname,
+        connected_namespace_it->second.host_ifname,
+        ForwardingSet{.ipv6 = true});
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
               << connected_namespace_it->second;

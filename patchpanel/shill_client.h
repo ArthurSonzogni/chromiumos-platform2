@@ -163,12 +163,6 @@ class ShillClient {
   virtual const Device& default_physical_device() const;
   // Returns interface names of all known shill physical Devices.
   const std::vector<Device> GetDevices() const;
-  // Returns true if |ifname| is the interface name of a known shill physical
-  // Device.
-  // TODO(b/273741099): Migrate caller to use a Device reference or a Device
-  // Dbus path because the interface name becomes ambiguous for multiplexed
-  // Cellular interfaces.
-  bool has_interface(const std::string& ifname) const;
 
  protected:
   void OnManagerPropertyChangeRegistration(const std::string& interface,

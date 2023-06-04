@@ -76,10 +76,11 @@ struct ConnectedNamespace {
   MacAddress host_mac_addr;
   // MAC address of the "remote" veth interface.
   MacAddress peer_mac_addr;
-  // Interface name of the shill device for routing outbound traffic from the
-  // client namespace. This will be filled to keep track of the upstream
-  // interface if |outbound_ifname| is empty.
-  std::string tracked_outbound_ifname;
+  // shill Device for routing outbound traffic from the client namespace. The
+  // Device selected matches |outbound_ifname| if it is defined in the original
+  // request, otherwise it matches the default logical or physical Device
+  // depending on |route_on_vpn|.
+  ShillClient::Device current_outbound_device;
 };
 
 // Describes a DNS DNAT redirection rule issued by dns-proxy.
