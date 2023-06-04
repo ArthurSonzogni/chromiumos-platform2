@@ -12,6 +12,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 
@@ -124,13 +125,14 @@ class Device {
   };
 
   // |type| the type of guest associated with this virtual device created by
-  // patchpanel. |phys_ifname| corresponds either to the physical interface
-  // provided by shill or a placeholder for a guest-specific control interface
-  // (e.g. arc0). |host_ifname| identifies the name of the virtual (bridge)
-  // interface. |guest_ifname|, if specified, identifies the name of the
-  // interface used inside the guest.
+  // patchpanel. |phys_ifname| corresponds to the physical interface managed by
+  // shill if the virtual Device tracks that physical interface (ARC or ARCVM).
+  // |host_ifname| identifies the name of the virtual (bridge)
+  // interface (all ARC virtual interfaces) or of the tap device (all non-ARC
+  // virtual interfaces). |guest_ifname|, if specified, identifies the name of
+  // the interface used inside the guest.
   Device(Type type,
-         const std::string& phys_ifname,
+         std::optional<std::string> phys_ifname,
          const std::string& host_ifname,
          const std::string& guest_ifname,
          std::unique_ptr<Config> config);
@@ -140,7 +142,7 @@ class Device {
   ~Device() = default;
 
   Type type() const { return type_; }
-  const std::string& phys_ifname() const { return phys_ifname_; }
+  const std::optional<std::string>& phys_ifname() const { return phys_ifname_; }
   const std::string& host_ifname() const { return host_ifname_; }
   const std::string& guest_ifname() const { return guest_ifname_; }
   Config& config() const;
@@ -150,11 +152,8 @@ class Device {
   // The type of virtual device setup and guest.
   Type type_;
   // The physical interface managed by shill that this virtual device is
-  // attached to. Only defined for ARC and ARCVM. Otherwise:
-  //   - for ARC0, |phys_ifname_| is set to a fixed constant ("arc0"),
-  //   - for virtual devices used by other crosvm guests, |phys_ifname_| is the
-  //   same as |host_ifname_|.
-  std::string phys_ifname_;
+  // attached to. Only defined for ARC and ARCVM.
+  std::optional<std::string> phys_ifname_;
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // all ARC virtual devices, |host_ifname_| corresponds to the virtual bridge

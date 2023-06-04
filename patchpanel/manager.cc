@@ -311,7 +311,7 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
   if (virtual_device.type() == Device::Type::kARC0) {
     return;
   }
-  const std::string& upstream_device = virtual_device.phys_ifname();
+  const std::string& upstream_device = shill_device.ifname;
   if (event == Device::ChangeEvent::kAdded) {
     // Only start forwarding multicast traffic if ARC is in an interactive
     // state.
@@ -975,14 +975,20 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   // start/stop forwarding multiple times, also wifi multicast lock should
   // only affect multicast traffic on wireless device.
   for (const auto* device : arc_svc_->GetDevices()) {
-    if (!Manager::IsWifiInterface(device->phys_ifname())) {
+    const auto& upstream_device = device->phys_ifname();
+    if (upstream_device.has_value()) {
+      LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
+                 << device;
+      continue;
+    }
+    if (!Manager::IsWifiInterface(upstream_device.value())) {
       continue;
     }
     if (android_wifi_multicast_lock_held_) {
-      StartForwarding(device->phys_ifname(), device->host_ifname(),
+      StartForwarding(upstream_device.value(), device->host_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(device->phys_ifname(), device->host_ifname(),
+      StopForwarding(upstream_device.value(), device->host_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }
@@ -1003,15 +1009,21 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
   // interfaces when they were in enabled state (multicast lock held).
   is_arc_interactive_ = is_interactive;
   for (const auto* device : arc_svc_->GetDevices()) {
-    if (Manager::IsWifiInterface(device->phys_ifname()) &&
+    const auto& upstream_device = device->phys_ifname();
+    if (upstream_device.has_value()) {
+      LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
+                 << device;
+      continue;
+    }
+    if (Manager::IsWifiInterface(upstream_device.value()) &&
         !android_wifi_multicast_lock_held_) {
       continue;
     }
     if (is_arc_interactive_) {
-      StartForwarding(device->phys_ifname(), device->host_ifname(),
+      StartForwarding(upstream_device.value(), device->host_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(device->phys_ifname(), device->host_ifname(),
+      StopForwarding(upstream_device.value(), device->host_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }

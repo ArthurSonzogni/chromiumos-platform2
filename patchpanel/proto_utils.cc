@@ -4,12 +4,16 @@
 
 #include "patchpanel/proto_utils.h"
 
+#include "patchpanel/arc_service.h"
+
 namespace patchpanel {
 
 void FillDeviceProto(const Device& virtual_device,
                      patchpanel::NetworkDevice* output) {
   output->set_ifname(virtual_device.host_ifname());
-  output->set_phys_ifname(virtual_device.phys_ifname());
+  if (virtual_device.phys_ifname()) {
+    output->set_phys_ifname(*virtual_device.phys_ifname());
+  }
   output->set_guest_ifname(virtual_device.guest_ifname());
   output->set_ipv4_addr(
       virtual_device.config().guest_ipv4_addr().ToInAddr().s_addr);
@@ -22,6 +26,7 @@ void FillDeviceProto(const Device& virtual_device,
       // However the "arc0" legacy device is exposed in the ArcVmStartupResponse
       // proto sent back to a "ArcVmStartup" method call. In this latter case
       // the |guest_type| field is left empty.
+      output->set_phys_ifname(kArc0Ifname);
       break;
     case Device::Type::kARCContainer:
       output->set_guest_type(NetworkDevice::ARC);
@@ -30,9 +35,11 @@ void FillDeviceProto(const Device& virtual_device,
       output->set_guest_type(NetworkDevice::ARCVM);
       break;
     case Device::Type::kTerminaVM:
+      output->set_phys_ifname(virtual_device.host_ifname());
       output->set_guest_type(NetworkDevice::TERMINA_VM);
       break;
     case Device::Type::kParallelsVM:
+      output->set_phys_ifname(virtual_device.host_ifname());
       output->set_guest_type(NetworkDevice::PARALLELS_VM);
       break;
   }

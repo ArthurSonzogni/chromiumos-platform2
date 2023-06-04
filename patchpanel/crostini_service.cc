@@ -5,6 +5,7 @@
 #include "patchpanel/crostini_service.h"
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <utility>
 
@@ -95,7 +96,7 @@ const Device* CrostiniService::Start(uint64_t vm_id,
                                 TrafficSourceFromVMType(vm_type),
                                 /*route_on_vpn=*/true);
   if (adb_sideloading_enabled_) {
-    StartAdbPortForwarding(tap->phys_ifname());
+    StartAdbPortForwarding(tap->host_ifname());
   }
   LOG(INFO) << __func__ << " " << vm_info
             << ": Crostini network service started on " << tap->host_ifname();
@@ -210,10 +211,11 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
   // The crosvm virtual devices used for non ARC guests are isolated TAP
   // devices without any bridge setup. They are not associated to any specific
   // physical network and instead follows the current default logical network,
-  // therefore |phys_ifname| is set to a placeholder value. |guest_ifname| is
+  // therefore |phys_ifname| is undefined. |guest_ifname| is
   // not used inside the crosvm guest and is left empty.
-  return std::make_unique<Device>(VirtualDeviceTypeFromVMType(vm_type), tap,
-                                  tap, "", std::move(config));
+  return std::make_unique<Device>(VirtualDeviceTypeFromVMType(vm_type),
+                                  /*phys_ifname=*/std::nullopt, tap,
+                                  /*guest_ifname=*/"", std::move(config));
 }
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
@@ -278,7 +280,7 @@ void CrostiniService::CheckAdbSideloadingStatus() {
   // If ADB sideloading is enabled, start ADB forwarding on all configured
   // Crostini's TAP interfaces.
   for (const auto& tap : taps_) {
-    StartAdbPortForwarding(tap.second->phys_ifname());
+    StartAdbPortForwarding(tap.second->host_ifname());
   }
 }
 

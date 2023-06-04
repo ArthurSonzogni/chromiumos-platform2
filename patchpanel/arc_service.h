@@ -23,7 +23,8 @@
 
 namespace patchpanel {
 
-constexpr char kArcBridge[] = "arcbr0";
+constexpr char kArcbr0Ifname[] = "arcbr0";
+constexpr char kArc0Ifname[] = "arc0";
 
 class ArcService {
  public:

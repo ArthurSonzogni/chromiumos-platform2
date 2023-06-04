@@ -1677,8 +1677,8 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.
-  if (vpn_ifname != kArcBridge) {
-    StartRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/{},
+  if (vpn_ifname != kArcbr0Ifname) {
+    StartRoutingDevice(vpn_ifname, kArcbr0Ifname, /*int_ipv4_addr=*/{},
                        TrafficSource::kArc, /*route_on_vpn=*/true);
   }
   if (!ModifyRedirectDnsJumpRule(
@@ -1706,8 +1706,8 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain)) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   }
-  if (vpn_ifname != kArcBridge) {
-    StopRoutingDevice(vpn_ifname, kArcBridge, TrafficSource::kArc,
+  if (vpn_ifname != kArcbr0Ifname) {
+    StopRoutingDevice(vpn_ifname, kArcbr0Ifname, TrafficSource::kArc,
                       /*route_on_vpn=*/false);
   }
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle,

@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/utsname.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -36,7 +37,6 @@ namespace {
 const int32_t kAndroidRootUid = 655360;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
-constexpr char kArcIfname[] = "arc0";
 constexpr char kArcVmIfnamePrefix[] = "eth";
 
 void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
@@ -181,10 +181,10 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
 
   // The "arc0" virtual device is either attached on demand to host VPNs or is
   // used to forward host traffic into an Android VPN. Therefore, |phys_ifname|
-  // is not meaningful for the "arc0" virtual device and is set to a placeholder
-  // value.
-  return std::make_unique<Device>(Device::Type::kARC0, kArcIfname, kArcBridge,
-                                  kArcIfname, std::move(config));
+  // is not meaningful for the "arc0" virtual device and is undefined.
+  return std::make_unique<Device>(Device::Type::kARC0,
+                                  /*phys_ifname=*/std::nullopt, kArcbr0Ifname,
+                                  kArc0Ifname, std::move(config));
 }
 }  // namespace
 
@@ -363,8 +363,7 @@ bool ArcService::Start(uint32_t id) {
             pid, kArcNetnsName, arc_device_ifname, arc_device_->guest_ifname(),
             arc_device_->config().mac_addr(), guest_cidr,
             /*remote_multicast_flag=*/false)) {
-      LOG(ERROR) << "Cannot create virtual link for shill Device "
-                 << arc_device_->phys_ifname();
+      LOG(ERROR) << "Cannot create virtual link for " << kArc0Ifname;
       return false;
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
@@ -379,14 +378,14 @@ bool ArcService::Start(uint32_t id) {
   const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       arc_device_->config().host_ipv4_addr(), 30);
   // Create the bridge for the management device arc0.
-  if (!datapath_->AddBridge(kArcBridge, cidr)) {
-    LOG(ERROR) << "Failed to setup bridge " << kArcBridge;
+  if (!datapath_->AddBridge(kArcbr0Ifname, cidr)) {
+    LOG(ERROR) << "Failed to setup bridge " << kArcbr0Ifname;
     return false;
   }
 
-  if (!datapath_->AddToBridge(kArcBridge, arc_device_ifname)) {
+  if (!datapath_->AddToBridge(kArcbr0Ifname, arc_device_ifname)) {
     LOG(ERROR) << "Failed to bridge ARC Device " << arc_device_ifname << " to "
-               << kArcBridge;
+               << kArcbr0Ifname;
     return false;
   }
   LOG(INFO) << "Started ARC management Device " << *arc_device_.get();
@@ -437,7 +436,7 @@ void ArcService::Stop(uint32_t id) {
 
   // Stop the bridge for the management interface arc0.
   if (arc_type_ == ArcType::kContainer) {
-    datapath_->RemoveInterface(ArcVethHostName(arc_device_->phys_ifname()));
+    datapath_->RemoveInterface(ArcVethHostName(kArc0Ifname));
     if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
       LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
     }
@@ -453,7 +452,7 @@ void ArcService::Stop(uint32_t id) {
   }
   arcvm_guest_ifnames_.clear();
 
-  datapath_->RemoveBridge(kArcBridge);
+  datapath_->RemoveBridge(kArcbr0Ifname);
   LOG(INFO) << "Stopped ARC management Device " << *arc_device_.get();
   id_ = kInvalidId;
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
@@ -514,10 +513,10 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     return;
   }
 
-  datapath_->StartRoutingDevice(device->phys_ifname(), device->host_ifname(),
+  datapath_->StartRoutingDevice(shill_device.ifname, device->host_ifname(),
                                 device->config().guest_ipv4_addr(),
                                 TrafficSource::kArc, /*route_on_vpn=*/false);
-  datapath_->AddInboundIPv4DNAT(AutoDnatTarget::kArc, device->phys_ifname(),
+  datapath_->AddInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device.ifname,
                                 device->config().guest_ipv4_addr());
 
   std::string virtual_device_ifname;
@@ -540,7 +539,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
             device->config().mac_addr(), guest_cidr,
-            IsMulticastInterface(device->phys_ifname()))) {
+            IsMulticastInterface(shill_device.ifname))) {
       LOG(ERROR) << "Cannot create veth link for device " << *device;
       return;
     }
@@ -586,11 +585,11 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
   if (arc_type_ == ArcType::kContainer)
-    datapath_->RemoveInterface(ArcVethHostName(device->phys_ifname()));
+    datapath_->RemoveInterface(ArcVethHostName(shill_device.ifname));
 
-  datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),
+  datapath_->StopRoutingDevice(shill_device.ifname, device->host_ifname(),
                                TrafficSource::kArc, /*route_on_vpn=*/false);
-  datapath_->RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, device->phys_ifname(),
+  datapath_->RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device.ifname,
                                    device->config().guest_ipv4_addr());
   datapath_->RemoveBridge(device->host_ifname());
 

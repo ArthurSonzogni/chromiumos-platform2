@@ -5,6 +5,7 @@
 #include "patchpanel/proto_utils.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -44,7 +45,7 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr), std::move(lxd_subnet));
-  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, "vmtap0",
+  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
                                          "vmtap0", "", std::move(config));
 
   NetworkDevice proto_device;
@@ -83,8 +84,9 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kParallelsVM, "vmtap1",
-                                         "vmtap1", "", std::move(config));
+  auto device =
+      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
+                               "vmtap1", "", std::move(config));
 
   NetworkDevice proto_device;
   FillDeviceProto(*device, &proto_device);
@@ -199,8 +201,8 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kARC0, "arc0", "arcbr0",
-                                         "arc0", std::move(config));
+  auto device = std::make_unique<Device>(Device::Type::kARC0, std::nullopt,
+                                         "arcbr0", "arc0", std::move(config));
 
   NetworkDevice proto_device;
   FillDeviceProto(*device, &proto_device);
@@ -241,8 +243,8 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kARC0, "arc0", "arcbr0",
-                                         "arc0", std::move(config));
+  auto device = std::make_unique<Device>(Device::Type::kARC0, std::nullopt,
+                                         "arcbr0", "arc0", std::move(config));
 
   NetworkDevice proto_device;
   FillDeviceProto(*device, &proto_device);

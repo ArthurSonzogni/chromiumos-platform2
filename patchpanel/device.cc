@@ -31,7 +31,7 @@ Device::Config::Config(const MacAddress& mac_addr,
       lxd_ipv4_subnet_(std::move(lxd_ipv4_subnet)) {}
 
 Device::Device(Device::Type type,
-               const std::string& phys_ifname,
+               std::optional<std::string> phys_ifname,
                const std::string& host_ifname,
                const std::string& guest_ifname,
                std::unique_ptr<Device::Config> config)
@@ -69,8 +69,11 @@ std::unique_ptr<Device::Config> Device::release_config() {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Device& device) {
-  stream << "{ type: " << device.type() << ", ifname: " << device.phys_ifname()
-         << ", bridge_ifname: " << device.host_ifname()
+  stream << "{ type: " << device.type();
+  if (device.phys_ifname().has_value()) {
+    stream << ", shill_ifname: " << device.phys_ifname().value();
+  }
+  stream << ", bridge_ifname: " << device.host_ifname()
          << ", bridge_ipv4_addr: "
          << device.config().host_ipv4_subnet_addr()->cidr().ToString()
          << ", guest_ifname: " << device.guest_ifname() << ", guest_ipv4_addr: "
