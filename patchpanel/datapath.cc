@@ -1802,6 +1802,11 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
 
+  if (!info.upstream_device) {
+    LOG(ERROR) << __func__ << " " << info << ": no upstream Device defined";
+    return false;
+  }
+
   // TODO(b/239559602) Clarify which service, shill or networking, is in charge
   // of IFF_UP and MAC address configuration.
   if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
@@ -1842,7 +1847,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
 
   // int_ipv4_addr is not necessary if route_on_vpn == false
   const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StartRoutingDevice(info.upstream_ifname, info.downstream_ifname,
+  StartRoutingDevice(info.upstream_device->ifname, info.downstream_ifname,
                      /*int_ipv4_addr=*/{}, source,
                      /*route_on_vpn=*/false);
   return true;
@@ -1857,7 +1862,8 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // Skip unconfiguring the downstream interface: shill will either destroy it
   // or flip it back to client mode and restart a Network on top.
   const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StopRoutingDevice(info.upstream_ifname, info.downstream_ifname, source,
+  StopRoutingDevice(info.upstream_device->ifname, info.downstream_ifname,
+                    source,
                     /*route_on_vpn=*/false);
   FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
              kAcceptDownstreamNetworkChain);
@@ -2248,12 +2254,13 @@ bool Datapath::ModifyPortRule(
 }
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
-    const TetheredNetworkRequest& request) {
+    const TetheredNetworkRequest& request,
+    const ShillClient::Device& shill_device) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
 
   info->topology = DownstreamNetworkTopology::kTethering;
   info->enable_ipv6 = request.enable_ipv6();
-  info->upstream_ifname = request.upstream_ifname();
+  info->upstream_device = shill_device;
   info->downstream_ifname = request.ifname();
   if (request.has_mtu()) {
     info->mtu = request.mtu();
@@ -2335,6 +2342,7 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   info->topology = DownstreamNetworkTopology::kLocalOnly;
   // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
   info->enable_ipv6 = false;
+  info->upstream_device = std::nullopt;
   info->downstream_ifname = request.ifname();
   // TODO(b/239559602) Copy IPv4 configuration if any.
   // TODO(b/239559602) Copy IPv6 configuration if any.
@@ -2387,8 +2395,12 @@ std::ostream& operator<<(std::ostream& stream,
   stream << "{ topology: ";
   switch (info.topology) {
     case DownstreamNetworkTopology::kTethering:
-      stream << "Tethering";
-      stream << ", upstream: " << info.upstream_ifname;
+      stream << "Tethering, upstream: ";
+      if (info.upstream_device) {
+        stream << *info.upstream_device;
+      } else {
+        stream << "nullopt";
+      }
       break;
     case DownstreamNetworkTopology::kLocalOnly:
       stream << "LocalOnlyNetwork";

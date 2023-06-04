@@ -19,6 +19,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -28,6 +29,7 @@
 #include "patchpanel/iptables.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/shill_client.h"
 
 using net_base::IPv4Address;
 using net_base::IPv4CIDR;
@@ -216,6 +218,8 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 }  // namespace
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
+  ShillClient::Device wwan0_dev;
+  wwan0_dev.ifname = "wwan0";
   const auto ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
   const auto subnet_ip = ipv4_cidr.GetPrefixAddress();
   const IPv4Address start_ip = IPv4Address(192, 168, 3, 50);
@@ -256,10 +260,11 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   request.set_enable_ipv6(true);
   request.set_mtu(mtu);
 
-  const auto info = DownstreamNetworkInfo::Create(request);
+  const auto info = DownstreamNetworkInfo::Create(request, wwan0_dev);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
-  EXPECT_EQ(info->upstream_ifname, "wwan0");
+  EXPECT_TRUE(info->upstream_device.has_value());
+  EXPECT_EQ(info->upstream_device->ifname, "wwan0");
   EXPECT_EQ(info->downstream_ifname, "wlan1");
   EXPECT_EQ(info->ipv4_cidr, ipv4_cidr);
   EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
@@ -273,8 +278,11 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
 
 TEST(DatapathTest,
      DownstreamNetworkInfo_CreateFromTetheredNetworkRequestRandom) {
+  ShillClient::Device wwan0_dev;
+  wwan0_dev.ifname = "wwan0";
   TetheredNetworkRequest request;
-  const auto info = DownstreamNetworkInfo::Create(request);
+  request.set_upstream_ifname("wwan0");
+  const auto info = DownstreamNetworkInfo::Create(request, wwan0_dev);
   ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly
@@ -1000,7 +1008,8 @@ TEST(DatapathTest, StartDownstreamTetheredNetwork) {
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
-  info.upstream_ifname = "wwan0";
+  info.upstream_device = ShillClient::Device();
+  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
@@ -1019,7 +1028,8 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
-  info.upstream_ifname = "wwan0";
+  info.upstream_device = ShillClient::Device();
+  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
@@ -1048,7 +1058,8 @@ TEST(DatapathTest, StopDownstreamTetheredNetwork) {
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
-  info.upstream_ifname = "wwan0";
+  info.upstream_device = ShillClient::Device();
+  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
@@ -1067,7 +1078,8 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
-  info.upstream_ifname = "wwan0";
+  info.upstream_device = ShillClient::Device();
+  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;

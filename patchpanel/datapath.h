@@ -28,6 +28,7 @@
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
+#include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
 
@@ -101,9 +102,9 @@ enum class DownstreamNetworkTopology {
 // Describes a CreateNetwork request issued by shill.
 struct DownstreamNetworkInfo {
   DownstreamNetworkTopology topology;
-  // The upstream interface is only defined for Tethering. It is empty for
-  // LocalOnlyNetwork.
-  std::string upstream_ifname;
+  // The upstream interface is only defined for Tethering. It is left undefined
+  // for LocalOnlyNetwork.
+  std::optional<ShillClient::Device> upstream_device;
   std::string downstream_ifname;
   // IPv4 CIDR of the DUT on the downstream network. This is the effective
   // gateway address for clients connected on the network.
@@ -132,7 +133,8 @@ struct DownstreamNetworkInfo {
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(
-      const TetheredNetworkRequest& request);
+      const TetheredNetworkRequest& request,
+      const ShillClient::Device& shill_device);
   // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(
       const LocalOnlyNetworkRequest& request);

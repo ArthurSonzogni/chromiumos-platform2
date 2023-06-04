@@ -493,7 +493,13 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   using shill::IPAddress;
 
-  const auto info = DownstreamNetworkInfo::Create(request);
+  const auto* shill_device =
+      shill_client_->GetDevice(request.upstream_ifname());
+  if (!shill_device) {
+    LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+  }
+  const auto info = DownstreamNetworkInfo::Create(request, *shill_device);
   if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
@@ -696,8 +702,8 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   if (downstream_network_it != downstream_networks_.end()) {
     const auto& info = downstream_network_it->second;
     // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
-    if (info.enable_ipv6) {
-      StopForwarding(info.upstream_ifname, info.downstream_ifname,
+    if (info.enable_ipv6 && info.upstream_device) {
+      StopForwarding(info.upstream_device->ifname, info.downstream_ifname,
                      ForwardingSet{.ipv6 = true});
     }
 
@@ -873,8 +879,8 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   // TODO(b/278966909) Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
-  if (info.enable_ipv6) {
-    StartForwarding(info.upstream_ifname, info.downstream_ifname,
+  if (info.enable_ipv6 && info.upstream_device) {
+    StartForwarding(info.upstream_device->ifname, info.downstream_ifname,
                     ForwardingSet{.ipv6 = true}, info.mtu);
   }
 
