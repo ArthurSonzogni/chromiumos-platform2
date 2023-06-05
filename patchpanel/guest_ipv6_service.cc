@@ -141,12 +141,8 @@ std::string GuestIPv6Service::IPAddressTo64BitPrefix(
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
                                    Datapath* datapath,
-                                   ShillClient* shill_client,
                                    System* system)
-    : nd_proxy_(nd_proxy),
-      datapath_(datapath),
-      shill_client_(shill_client),
-      system_(system) {}
+    : nd_proxy_(nd_proxy), datapath_(datapath), system_(system) {}
 
 void GuestIPv6Service::Start() {
   nd_proxy_->RegisterFeedbackMessageHandler(base::BindRepeating(
@@ -154,12 +150,14 @@ void GuestIPv6Service::Start() {
   nd_proxy_->Listen();
 }
 
-void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
-                                       const std::string& ifname_downlink,
-                                       const std::optional<int>& mtu,
-                                       bool downlink_is_tethering) {
-  LOG(INFO) << "Starting IPv6 forwarding between uplink: " << ifname_uplink
-            << ", downlink: " << ifname_downlink;
+void GuestIPv6Service::StartForwarding(
+    const ShillClient::Device& upstream_shill_device,
+    const std::string& ifname_downlink,
+    const std::optional<int>& mtu,
+    bool downlink_is_tethering) {
+  LOG(INFO) << "Starting IPv6 forwarding between uplink: "
+            << upstream_shill_device << ", downlink: " << ifname_downlink;
+  const std::string& ifname_uplink = upstream_shill_device.ifname;
   int if_id_uplink = system_->IfNametoindex(ifname_uplink);
   if (if_id_uplink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_uplink;
@@ -185,8 +183,6 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
     forward_record_[ifname_uplink] = {
         forward_method, {ifname_downlink}, std::nullopt};
   } else {
-    ShillClient::Device upstream_shill_device;
-    shill_client_->GetDeviceProperties(ifname_uplink, &upstream_shill_device);
     forward_method = GetForwardMethodByDeviceType(upstream_shill_device.type);
 
     if (forward_method == ForwardMethod::kMethodUnknown) {
@@ -262,11 +258,13 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
   }
 }
 
-void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
-                                      const std::string& ifname_downlink) {
-  LOG(INFO) << "Stopping IPv6 forwarding between uplink: " << ifname_uplink
-            << ", downlink: " << ifname_downlink;
+void GuestIPv6Service::StopForwarding(
+    const ShillClient::Device& upstream_shill_device,
+    const std::string& ifname_downlink) {
+  LOG(INFO) << "Stopping IPv6 forwarding between uplink: "
+            << upstream_shill_device << ", downlink: " << ifname_downlink;
 
+  const std::string& ifname_uplink = upstream_shill_device.ifname;
   const auto it = forward_record_.find(ifname_uplink);
   if (it == forward_record_.end()) {
     return;
@@ -319,9 +317,12 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
 }
 
-void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
-  LOG(INFO) << "Stopping all IPv6 forwarding with uplink: " << ifname_uplink;
+void GuestIPv6Service::StopUplink(
+    const ShillClient::Device& upstream_shill_device) {
+  LOG(INFO) << "Stopping all IPv6 forwarding with uplink: "
+            << upstream_shill_device;
 
+  const std::string& ifname_uplink = upstream_shill_device.ifname;
   if (forward_record_.find(ifname_uplink) == forward_record_.end()) {
     return;
   }
@@ -373,13 +374,15 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
   forward_record_.erase(ifname_uplink);
 }
 
-void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
-                                           const std::string& uplink_ip) {
-  VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {" << uplink_ips_[ifname]
-          << "} to {" << uplink_ip << "}";
+void GuestIPv6Service::OnUplinkIPv6Changed(
+    const ShillClient::Device& upstream_shill_device) {
+  const std::string& ifname = upstream_shill_device.ifname;
+  const std::string& uplink_ip = upstream_shill_device.ipconfig.ipv6_address;
   if (uplink_ips_[ifname] == uplink_ip) {
     return;
   }
+  VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {" << uplink_ips_[ifname]
+          << "} to {" << uplink_ip << "}";
 
   if (forward_record_.find(ifname) != forward_record_.end()) {
     // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
@@ -442,14 +445,17 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
 }
 
 void GuestIPv6Service::UpdateUplinkIPv6DNS(
-    const std::string& ifname, const std::vector<std::string>& dns_addresses) {
+    const ShillClient::Device& upstream_shill_device) {
+  const std::string& ifname = upstream_shill_device.ifname;
   const auto& old_dns = uplink_dns_[ifname];
   VLOG(1) << __func__ << ": " << ifname << ", {"
           << base::JoinString(old_dns, ",") << "} to {"
-          << base::JoinString(dns_addresses, ",") << "}";
+          << base::JoinString(upstream_shill_device.ipconfig.ipv6_dns_addresses,
+                              ",")
+          << "}";
 
   // Check if the new dns list is identical with the old one.
-  auto sorted_dns = dns_addresses;
+  auto sorted_dns = upstream_shill_device.ipconfig.ipv6_dns_addresses;
   std::sort(sorted_dns.begin(), sorted_dns.end());
   bool identical = true;
   if (old_dns.size() == sorted_dns.size()) {
@@ -499,19 +505,19 @@ void GuestIPv6Service::StopLocalHotspot(
   NOTIMPLEMENTED();
 }
 
-void GuestIPv6Service::SetForwardMethod(const std::string& ifname_uplink,
-                                        ForwardMethod method) {
-  forward_method_override_[ifname_uplink] = method;
+void GuestIPv6Service::SetForwardMethod(
+    const ShillClient::Device& upstream_shill_device, ForwardMethod method) {
+  forward_method_override_[upstream_shill_device.ifname] = method;
 
-  const auto it = forward_record_.find(ifname_uplink);
+  const auto it = forward_record_.find(upstream_shill_device.ifname);
   if (it != forward_record_.end()) {
     // Need a copy here since StopUplink() will modify the record
     auto downlinks = it->second.downstream_ifnames;
     auto mtu = it->second.mtu;
 
-    StopUplink(ifname_uplink);
+    StopUplink(upstream_shill_device);
     for (const auto& downlink : downlinks) {
-      StartForwarding(ifname_uplink, downlink, mtu);
+      StartForwarding(upstream_shill_device, downlink, mtu);
     }
   }
 }

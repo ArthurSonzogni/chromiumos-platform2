@@ -36,7 +36,6 @@ class GuestIPv6Service {
 
   GuestIPv6Service(SubprocessController* nd_proxy,
                    Datapath* datapath,
-                   ShillClient* shill_client,
                    System* system);
   GuestIPv6Service(const GuestIPv6Service&) = delete;
   GuestIPv6Service& operator=(const GuestIPv6Service&) = delete;
@@ -44,28 +43,26 @@ class GuestIPv6Service {
 
   void Start();
 
-  // Starts forwarding from the upstream interface |ifname_uplink| to the
-  // downstream interface |ifname_downlink|. |mtu| is the MTU of the upstream.
-  // If |mtu| has value, then store it into |forward_record_|. Otherwise, use
-  // the value which is previously stored at |forward_record_|.
+  // Starts forwarding from the upstream shill Device |upstream_shill_device| to
+  // the downstream interface |ifname_downlink|. |mtu| is the MTU of the
+  // upstream. If |mtu| has value, then store it into |forward_record_|.
+  // Otherwise, use the value which is previously stored at |forward_record_|.
   //
   // Note: the MTU value is only used when the forwarding method is RA server.
   // If there is no stored MTU value, RA server does not announce MTU value.
-  void StartForwarding(const std::string& ifname_uplink,
+  void StartForwarding(const ShillClient::Device& upstream_shill_device,
                        const std::string& ifname_downlink,
                        const std::optional<int>& mtu = std::nullopt,
                        bool downlink_is_tethering = false);
 
-  void StopForwarding(const std::string& ifname_uplink,
+  void StopForwarding(const ShillClient::Device& upstream_shill_device,
                       const std::string& ifname_downlink);
 
-  void StopUplink(const std::string& ifname_uplink);
+  void StopUplink(const ShillClient::Device& upstream_shill_device);
 
-  void OnUplinkIPv6Changed(const std::string& ifname,
-                           const std::string& ipv6_address);
+  void OnUplinkIPv6Changed(const ShillClient::Device& upstream_shill_device);
 
-  void UpdateUplinkIPv6DNS(const std::string& ifname,
-                           const std::vector<std::string>& dns_addresses);
+  void UpdateUplinkIPv6DNS(const ShillClient::Device& upstream_shill_device);
 
   // For local hotspot there is no uplink. We need to first start the RA
   // server on the tethering link with the provided prefix info.
@@ -81,7 +78,8 @@ class GuestIPv6Service {
 
   // Allow manually set a uplink to use NDProxy or RA server for test
   // purpose. This will be exposed by Manager through dbus for tast.
-  void SetForwardMethod(const std::string& ifname_uplink, ForwardMethod method);
+  void SetForwardMethod(const ShillClient::Device& upstream_shill_device,
+                        ForwardMethod method);
 
   // Notify GuestIPv6Service that a certain (global) IPv6 address |ip| is
   // configured on a cartain downstream neighbor, connected through
@@ -123,8 +121,6 @@ class GuestIPv6Service {
   SubprocessController* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.
   Datapath* datapath_;
-  // Shill Dbus client. Owned by Manager.
-  ShillClient* shill_client_;
   // Owned by Manager
   System* system_;
 

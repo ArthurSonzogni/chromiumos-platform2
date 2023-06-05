@@ -75,8 +75,8 @@ Manager::Manager(const base::FilePath& cmd_path,
       shill_client_.get(),
       base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
                           weak_factory_.GetWeakPtr()));
-  ipv6_svc_ = std::make_unique<GuestIPv6Service>(
-      nd_proxy_.get(), datapath_.get(), shill_client_.get(), system);
+  ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
+                                                 datapath_.get(), system);
 
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
@@ -267,8 +267,7 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
     datapath_->AddRedirectDnsRule(
         shill_device.ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
   }
-  ipv6_svc_->UpdateUplinkIPv6DNS(shill_device.ifname,
-                                 shill_device.ipconfig.ipv6_dns_addresses);
+  ipv6_svc_->UpdateUplinkIPv6DNS(shill_device);
 
   // Update local copies of the ShillClient::Device to keep IP configuration
   // properties in sync.
@@ -297,7 +296,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
     return;
   }
 
-  ipv6_svc_->OnUplinkIPv6Changed(shill_device.ifname, ipv6_address);
+  ipv6_svc_->OnUplinkIPv6Changed(shill_device);
 
   for (auto& [_, nsinfo] : connected_namespaces_) {
     if (nsinfo.outbound_ifname != shill_device.ifname) {
@@ -954,7 +953,7 @@ void Manager::StartForwarding(const ShillClient::Device& shill_device,
     return;
 
   if (fs.ipv6) {
-    ipv6_svc_->StartForwarding(shill_device.ifname, ifname_virtual, mtu);
+    ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu);
   }
 
   if (fs.multicast && IsMulticastInterface(shill_device.ifname)) {
@@ -977,9 +976,9 @@ void Manager::StopForwarding(const ShillClient::Device& shill_device,
 
   if (fs.ipv6) {
     if (ifname_virtual.empty()) {
-      ipv6_svc_->StopUplink(shill_device.ifname);
+      ipv6_svc_->StopUplink(shill_device);
     } else {
-      ipv6_svc_->StopForwarding(shill_device.ifname, ifname_virtual);
+      ipv6_svc_->StopForwarding(shill_device, ifname_virtual);
     }
   }
 
