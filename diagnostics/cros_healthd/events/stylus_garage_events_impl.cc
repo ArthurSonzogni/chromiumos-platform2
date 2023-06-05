@@ -34,7 +34,7 @@ void StylusGarageEventsImpl::AddObserver(
 
 void StylusGarageEventsImpl::OnInsert() {
   mojom::StylusGarageEventInfo info;
-  info.state = mojom::StylusGarageEventInfo::State::kInsert;
+  info.state = mojom::StylusGarageEventInfo::State::kInserted;
 
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewStylusGarageEventInfo(info.Clone()));
@@ -42,7 +42,7 @@ void StylusGarageEventsImpl::OnInsert() {
 
 void StylusGarageEventsImpl::OnRemove() {
   mojom::StylusGarageEventInfo info;
-  info.state = mojom::StylusGarageEventInfo::State::kRemove;
+  info.state = mojom::StylusGarageEventInfo::State::kRemoved;
 
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewStylusGarageEventInfo(info.Clone()));

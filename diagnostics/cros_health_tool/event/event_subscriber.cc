@@ -171,9 +171,9 @@ std::string EnumToString(mojom::StylusGarageEventInfo::State state) {
     case mojom::StylusGarageEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
       return "UnmappedEnumField";
-    case mojom::StylusGarageEventInfo::State::kInsert:
+    case mojom::StylusGarageEventInfo::State::kInserted:
       return "Insert";
-    case mojom::StylusGarageEventInfo::State::kRemove:
+    case mojom::StylusGarageEventInfo::State::kRemoved:
       return "Remove";
   }
 }

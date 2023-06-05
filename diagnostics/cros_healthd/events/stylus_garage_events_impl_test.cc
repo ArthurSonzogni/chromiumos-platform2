@@ -62,7 +62,7 @@ TEST_F(StylusGarageEventsImplTest, StylusGarageInsertEvent) {
   ASSERT_TRUE(info->is_stylus_garage_event_info());
   const auto& stylus_garage_event_info = info->get_stylus_garage_event_info();
   EXPECT_EQ(stylus_garage_event_info->state,
-            mojom::StylusGarageEventInfo::State::kInsert);
+            mojom::StylusGarageEventInfo::State::kInserted);
 }
 
 // Test that we can receive stylus garage remove events.
@@ -73,7 +73,7 @@ TEST_F(StylusGarageEventsImplTest, StylusGarageRemoveEvent) {
   ASSERT_TRUE(info->is_stylus_garage_event_info());
   const auto& stylus_garage_event_info = info->get_stylus_garage_event_info();
   EXPECT_EQ(stylus_garage_event_info->state,
-            mojom::StylusGarageEventInfo::State::kRemove);
+            mojom::StylusGarageEventInfo::State::kRemoved);
 }
 
 }  // namespace
