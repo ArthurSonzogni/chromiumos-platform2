@@ -12,6 +12,7 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
+#include "patchpanel/shill_client.h"
 
 namespace patchpanel {
 
@@ -107,13 +108,13 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(void,
               AddInboundIPv4DNAT,
               (AutoDnatTarget auto_dnat_target,
-               const std::string& ifname,
+               const ShillClient::Device& shill_device,
                const net_base::IPv4Address& ipv4_addr),
               (override));
   MOCK_METHOD(void,
               RemoveInboundIPv4DNAT,
               (AutoDnatTarget auto_dnat_target,
-               const std::string& ifname,
+               const ShillClient::Device& shill_device,
                const net_base::IPv4Address& ipv4_addr),
               (override));
   MOCK_METHOD(bool,

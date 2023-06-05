@@ -1404,8 +1404,11 @@ TEST(DatapathTest, AddInboundIPv4DNATArc) {
                   "nat -A apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0",
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1423,8 +1426,11 @@ TEST(DatapathTest, RemoveInboundIPv4DNATArc) {
                   "nat -D apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0",
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 
@@ -1442,8 +1448,11 @@ TEST(DatapathTest, AddInboundIPv4DNATCrostini) {
                   "nat -A apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0",
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1461,8 +1470,11 @@ TEST(DatapathTest, RemoveInboundIPv4DNATCrostini) {
                   "nat -D apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0",
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kCrostini, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 
@@ -1480,8 +1492,11 @@ TEST(DatapathTest, AddInboundIPv4DNATParallelsVm) {
                   "nat -A apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0",
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1499,8 +1514,11 @@ TEST(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
                   "nat -D apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0",
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kParallels, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 

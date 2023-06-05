@@ -1340,52 +1340,55 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
 }
 
 void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
-                                  const std::string& ifname,
+                                  const ShillClient::Device& shill_device,
                                   const IPv4Address& ipv4_addr) {
   const std::string ipv4_addr_str = ipv4_addr.ToString();
   const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
-  if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
-                                {chain, "-i", ifname, "-m", "socket",
-                                 "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
+  if (process_runner_->iptables(
+          Iptables::Table::kNat, Iptables::Command::kA,
+          {chain, "-i", shill_device.ifname, "-m", "socket", "--nowildcard",
+           "-j", "ACCEPT", "-w"}) != 0) {
     success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
-  if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
-                                {chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                                 "--to-destination", ipv4_addr_str, "-w"}) !=
-      0) {
+  if (process_runner_->iptables(
+          Iptables::Table::kNat, Iptables::Command::kA,
+          {chain, "-i", shill_device.ifname, "-p", "tcp", "-j", "DNAT",
+           "--to-destination", ipv4_addr_str, "-w"}) != 0) {
     success = false;
   }
-  if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
-                                {chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
-                                 "--to-destination", ipv4_addr_str, "-w"}) !=
-      0) {
+  if (process_runner_->iptables(
+          Iptables::Table::kNat, Iptables::Command::kA,
+          {chain, "-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",
+           "--to-destination", ipv4_addr_str, "-w"}) != 0) {
     success = false;
   }
 
   if (!success) {
-    LOG(ERROR) << "Failed to configure ingress DNAT rules on " << ifname
-               << " to " << ipv4_addr_str;
-    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr);
+    LOG(ERROR) << "Failed to configure ingress DNAT rules on "
+               << shill_device.ifname << " to " << ipv4_addr_str;
+    RemoveInboundIPv4DNAT(auto_dnat_target, shill_device, ipv4_addr);
   }
 }
 
 void Datapath::RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
-                                     const std::string& ifname,
+                                     const ShillClient::Device& shill_device,
                                      const IPv4Address& ipv4_addr) {
   const std::string ipv4_addr_str = ipv4_addr.ToString();
   const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
+  process_runner_->iptables(
+      Iptables::Table::kNat, Iptables::Command::kD,
+      {chain, "-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",
+       "--to-destination", ipv4_addr_str, "-w"});
+  process_runner_->iptables(
+      Iptables::Table::kNat, Iptables::Command::kD,
+      {chain, "-i", shill_device.ifname, "-p", "tcp", "-j", "DNAT",
+       "--to-destination", ipv4_addr_str, "-w"});
   process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
-                            {chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
-                             "--to-destination", ipv4_addr_str, "-w"});
-  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
-                            {chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                             "--to-destination", ipv4_addr_str, "-w"});
-  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
-                            {chain, "-i", ifname, "-m", "socket",
+                            {chain, "-i", shill_device.ifname, "-m", "socket",
                              "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 

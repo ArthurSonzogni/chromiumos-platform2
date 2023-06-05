@@ -405,10 +405,10 @@ class Datapath {
   // to transparently reach Android Apps listening on a network port inside ARC
   // or Linux binaries listening on a network port inside Crostini.
   virtual void AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
-                                  const std::string& ifname,
+                                  const ShillClient::Device& shill_device,
                                   const net_base::IPv4Address& ipv4_addr);
   virtual void RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
-                                     const std::string& ifname,
+                                     const ShillClient::Device& shill_device,
                                      const net_base::IPv4Address& ipv4_addr);
 
   // Create (or delete) DNAT rules for redirecting DNS queries from system
