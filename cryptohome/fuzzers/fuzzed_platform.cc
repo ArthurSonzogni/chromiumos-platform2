@@ -40,9 +40,9 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/fuzzers/blob_mutator.h>
+#include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
 #include "cryptohome/dircrypto_util.h"
-#include "cryptohome/fuzzers/fuzzed_proto_generator.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -51,6 +51,7 @@ using ::brillo::Blob;
 using ::brillo::BlobFromString;
 using ::brillo::BlobToString;
 using ::brillo::SecureBlob;
+using ::hwsec_foundation::FuzzedProtoGenerator;
 using ::hwsec_foundation::MutateBlob;
 
 namespace {

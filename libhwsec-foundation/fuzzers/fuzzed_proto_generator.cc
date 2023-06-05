@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fuzzers/fuzzed_proto_generator.h"
+#include "libhwsec-foundation/fuzzers/fuzzed_proto_generator.h"
 
 #include <stdint.h>
 
@@ -37,6 +37,8 @@ Blob SerializeProtobufUnknownFieldSet(
 }
 
 }  // namespace
+
+namespace hwsec_foundation {
 
 FuzzedProtoGenerator::FuzzedProtoGenerator(FuzzedDataProvider& provider)
     : provider_(provider) {}
@@ -125,3 +127,5 @@ bool FuzzedProtoGenerator::GenerateAndAddField(
   NOTREACHED();
   return false;
 }
+
+}  // namespace hwsec_foundation

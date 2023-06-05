@@ -71,7 +71,10 @@ shared_library("libhwsec-foundation") {
     "vpd_reader/vpd_reader_impl.cc",
   ]
   if (use.fuzzer) {
-    sources += [ "fuzzers/blob_mutator.cc" ]
+    sources += [
+      "fuzzers/blob_mutator.cc",
+      "fuzzers/fuzzed_proto_generator.cc",
+    ]
   }
   pkg_deps = [
     "libmetrics",

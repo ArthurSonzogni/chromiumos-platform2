@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_FUZZERS_FUZZED_PROTO_GENERATOR_H_
-#define CRYPTOHOME_FUZZERS_FUZZED_PROTO_GENERATOR_H_
+#ifndef LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_
+#define LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_
 
 #include <vector>
 
@@ -11,10 +11,14 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <google/protobuf/unknown_field_set.h>
 
+#include "libhwsec-foundation/hwsec-foundation_export.h"
+
+namespace hwsec_foundation {
+
 // Generates a fuzzed protobuf buffer: the result is either a valid
 // serialization (of protobuf that corresponds to *some* schema) or a
 // "corrupted" value that might be close to a valid one to some degree.
-class FuzzedProtoGenerator final {
+class HWSEC_FOUNDATION_EXPORT FuzzedProtoGenerator final {
  public:
   // `provider` is used to generate the resulting protobuf; it must outlive this
   // instance.
@@ -46,4 +50,6 @@ class FuzzedProtoGenerator final {
   const std::vector<brillo::Blob> byte_breadcrumbs_;
 };
 
-#endif  // CRYPTOHOME_FUZZERS_FUZZED_PROTO_GENERATOR_H_
+}  // namespace hwsec_foundation
+
+#endif  // LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_

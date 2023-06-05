@@ -498,10 +498,7 @@ if (use.test) {
 
 if (use.fuzzer) {
   static_library("fuzz-helpers") {
-    sources = [
-      "fuzzers/fuzzed_platform.cc",
-      "fuzzers/fuzzed_proto_generator.cc",
-    ]
+    sources = [ "fuzzers/fuzzed_platform.cc" ]
     configs += [ ":target_defaults" ]
     libs = [ "hwsec-foundation" ]
     pkg_deps = [

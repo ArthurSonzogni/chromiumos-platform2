@@ -38,10 +38,10 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/logging.h>
 #include <libhwsec/factory/fuzzed_factory.h>
+#include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_platform.h"
-#include "cryptohome/fuzzers/fuzzed_proto_generator.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -59,6 +59,7 @@ namespace {
 
 using ::brillo::Blob;
 using ::brillo::BlobFromString;
+using ::hwsec_foundation::FuzzedProtoGenerator;
 using ::testing::_;
 using ::testing::NiceMock;
 
