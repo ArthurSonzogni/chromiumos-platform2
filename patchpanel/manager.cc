@@ -520,8 +520,9 @@ patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
   return HandleDownstreamNetworkInfo(client_fd, *info);
 }
 
-std::optional<DownstreamNetworkInfo> Manager::GetDownstreamNetworkInfo(
-    const std::string& downstream_ifname) const {
+std::optional<
+    std::pair<DownstreamNetworkInfo, std::vector<DownstreamClientInfo>>>
+Manager::GetDownstreamNetworkInfo(const std::string& downstream_ifname) const {
   auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
     return kv.second.downstream_ifname == downstream_ifname;
   };
@@ -532,7 +533,10 @@ std::optional<DownstreamNetworkInfo> Manager::GetDownstreamNetworkInfo(
   if (it == downstream_networks_.end()) {
     return std::nullopt;
   }
-  return it->second;
+
+  // TODO(b/239559602) Get clients' information.
+  const std::vector<DownstreamClientInfo> client_infos = {};
+  return std::make_pair(it->second, std::move(client_infos));
 }
 
 void Manager::OnNeighborReachabilityEvent(

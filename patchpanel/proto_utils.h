@@ -34,5 +34,8 @@ void FillDownstreamNetworkProto(
     const DownstreamNetworkInfo& downstream_network_info,
     DownstreamNetwork* output);
 
+void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
+                                NetworkClientInfo* output);
+
 }  // namespace patchpanel
 #endif  // PATCHPANEL_PROTO_UTILS_H_

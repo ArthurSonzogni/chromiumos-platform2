@@ -124,8 +124,9 @@ class Manager {
 
   // Provides L3 and DHCP client information about clients connected to a
   // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.
-  std::optional<DownstreamNetworkInfo> GetDownstreamNetworkInfo(
-      const std::string& downstream_ifname) const;
+  std::optional<
+      std::pair<DownstreamNetworkInfo, std::vector<DownstreamClientInfo>>>
+  GetDownstreamNetworkInfo(const std::string& downstream_ifname) const;
 
   // Start/Stop forwarding multicast traffic to ARC when ARC power state
   // changes.

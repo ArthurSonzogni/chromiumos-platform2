@@ -146,20 +146,22 @@ GetDownstreamNetworkInfoResponse PatchpanelAdaptor::GetDownstreamNetworkInfo(
   RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfo);
 
   const auto& downstream_ifname = request.downstream_ifname();
-  const auto downstream_network =
+  const auto downstream_info =
       manager_->GetDownstreamNetworkInfo(downstream_ifname);
-  if (!downstream_network) {
+  if (!downstream_info) {
     LOG(ERROR) << __func__ << ": no DownstreamNetwork for interface "
                << downstream_ifname;
     return {};
   }
 
   RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfoSuccess);
-  // TODO(b/239559602) Get and copy clients' information into |output|.
   GetDownstreamNetworkInfoResponse response;
   response.set_success(true);
-  FillDownstreamNetworkProto(*downstream_network,
+  FillDownstreamNetworkProto(downstream_info->first,
                              response.mutable_downstream_network());
+  for (const auto& info : downstream_info->second) {
+    FillNetworkClientInfoProto(info, response.add_clients_info());
+  }
   return response;
 }
 

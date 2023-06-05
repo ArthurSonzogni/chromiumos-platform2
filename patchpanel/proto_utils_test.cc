@@ -268,4 +268,31 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::UNKNOWN, proto_device.guest_type());
 }
+
+TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
+  DownstreamClientInfo info;
+  info.mac_addr = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+  info.ipv4_addr = net_base::IPv4Address(127, 0, 0, 1);
+  info.ipv6_addresses.push_back(
+      *net_base::IPv6Address::CreateFromString("fe80::1"));
+  info.ipv6_addresses.push_back(
+      *net_base::IPv6Address::CreateFromString("fe80::3"));
+  info.hostname = "test_host";
+  info.vendor_class = "test_vendor_class";
+
+  NetworkClientInfo proto;
+  FillNetworkClientInfoProto(info, &proto);
+
+  EXPECT_EQ(proto.mac_addr(),
+            std::string({0x11, 0x22, 0x33, 0x44, 0x55, 0x66}));
+  EXPECT_EQ(proto.ipv4_addr(), std::string({127, 0, 0, 1}));
+  EXPECT_EQ(proto.ipv6_addresses().size(), 2);
+  EXPECT_EQ(proto.ipv6_addresses()[0],
+            net_base::IPv6Address::CreateFromString("fe80::1")->ToByteString());
+  EXPECT_EQ(proto.ipv6_addresses()[1],
+            net_base::IPv6Address::CreateFromString("fe80::3")->ToByteString());
+  EXPECT_EQ(proto.hostname(), "test_host");
+  EXPECT_EQ(proto.vendor_class(), "test_vendor_class");
+}
+
 }  // namespace patchpanel

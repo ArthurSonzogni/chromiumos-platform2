@@ -18,6 +18,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dhcp_server_controller.h"
@@ -142,6 +143,16 @@ struct DownstreamNetworkInfo {
 
   // Creates the configuration of the DHCPServerController.
   std::optional<DHCPServerController::Config> ToDHCPServerConfig() const;
+};
+
+// Describes a downstream client's information. See NetworkClientInfo in
+// patchpanel_service.proto.
+struct DownstreamClientInfo {
+  MacAddress mac_addr;
+  net_base::IPv4Address ipv4_addr;
+  std::vector<net_base::IPv6Address> ipv6_addresses;
+  std::string hostname;
+  std::string vendor_class;
 };
 
 std::ostream& operator<<(std::ostream& stream,

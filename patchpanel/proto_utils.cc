@@ -82,4 +82,16 @@ void FillDownstreamNetworkProto(
                   output->mutable_ipv4_subnet());
 }
 
+void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
+                                NetworkClientInfo* output) {
+  output->set_mac_addr(network_client_info.mac_addr.data(),
+                       network_client_info.mac_addr.size());
+  output->set_ipv4_addr(network_client_info.ipv4_addr.ToByteString());
+  for (const auto& ipv6_addr : network_client_info.ipv6_addresses) {
+    output->add_ipv6_addresses(ipv6_addr.ToByteString());
+  }
+  output->set_hostname(network_client_info.hostname);
+  output->set_vendor_class(network_client_info.vendor_class);
+}
+
 }  // namespace patchpanel
