@@ -1773,7 +1773,7 @@ def _build_hardware_properties(hw_topology):
     ):
         result["has-audio-jack"] = True
 
-    if hw_topology.sd_reader is not None:
+    if hw_topology.HasField("sd_reader"):
         result["has-sd-reader"] = True
 
     sensors = hw_topology.accelerometer_gyroscope_magnetometer.hardware_feature
