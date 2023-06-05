@@ -72,8 +72,8 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice("", "vmtap0", _, TrafficSource::kCrosVM, true,
-                                 IPv4Address()));
+              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kCrosVM,
+                                       Eq(std::nullopt)));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -116,8 +116,8 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice("", "vmtap0", _, TrafficSource::kParallelsVM,
-                                 true, IPv4Address()));
+              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kParallelsVM,
+                                       Eq(std::nullopt)));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -165,14 +165,14 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       .WillOnce(Return("vmtap2"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice("", "vmtap0", _, TrafficSource::kCrosVM, true,
-                                 IPv4Address()));
+              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kCrosVM,
+                                       Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice("", "vmtap1", _, TrafficSource::kParallelsVM,
-                                 true, IPv4Address()));
+              StartRoutingDeviceAsUser("vmtap1", _, TrafficSource::kParallelsVM,
+                                       Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice("", "vmtap2", _, TrafficSource::kCrosVM, true,
-                                 IPv4Address()));
+              StartRoutingDeviceAsUser("vmtap2", _, TrafficSource::kCrosVM,
+                                       Eq(std::nullopt)));
 
   // There should be no virtual device before any VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));

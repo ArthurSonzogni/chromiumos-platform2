@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_MOCK_DATAPATH_H_
 #define PATCHPANEL_MOCK_DATAPATH_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -68,17 +69,22 @@ class MockDatapath : public Datapath {
               StartRoutingDevice,
               (const std::string& ext_ifname,
                const std::string& int_ifname,
+               TrafficSource source),
+              (override));
+  MOCK_METHOD(void,
+              StartRoutingDeviceAsSystem,
+              (const std::string& int_ifname, TrafficSource source),
+              (override));
+  MOCK_METHOD(void,
+              StartRoutingDeviceAsUser,
+              (const std::string& int_ifname,
                const net_base::IPv4Address& int_ipv4_addr,
                TrafficSource source,
-               bool route_on_vpn,
-               const net_base::IPv4Address& peer_ipv4_addr),
+               std::optional<net_base::IPv4Address> peer_ipv4_addr),
               (override));
   MOCK_METHOD(void,
               StopRoutingDevice,
-              (const std::string& ext_ifname,
-               const std::string& int_ifname,
-               TrafficSource source,
-               bool route_on_vpn),
+              (const std::string& int_ifname),
               (override));
   MOCK_METHOD(bool,
               MaskInterfaceFlags,

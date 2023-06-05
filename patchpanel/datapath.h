@@ -280,31 +280,40 @@ class Datapath {
   void StopDnsRedirection(const DnsRedirectionRule& rule);
 
   // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
-  // downstream network interface |int_ifname| associated to |source|. if
-  // |ext_ifname| is empty, traffic from the downstream interface is implicitly
-  // routed through the highest priority physical network when |route_on_vpn| is
-  // false, or through the highest priority logical network when |route_on_vpn|
-  // is true. If |ext_ifname| is defined, traffic from the downstream interface
-  // is routed to |ext_ifname| and |route_on_vpn| is ignored. If |int_ifname| is
-  // associated to a connected namespace and a VPN is connected, an additional
-  // IPv4 VPN fwmark tagging bypass rule is needed to allow return traffic to
-  // reach to the IPv4 local source. |peer_ipv4_addr| is the address of the
-  // interface inside the connected namespace needed to create this rule. If
-  // |peer_ipv4_addr| is zero, no additional rule will be added.
-  virtual void StartRoutingDevice(
-      const std::string& ext_ifname,
+  // downstream network interface |int_ifname| associated to |source|. Traffic
+  // from the downstream interface is routed to |ext_ifname| regardless of the
+  // current default network selection.
+  virtual void StartRoutingDevice(const std::string& ext_ifname,
+                                  const std::string& int_ifname,
+                                  TrafficSource source);
+
+  // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
+  // downstream network interface |int_ifname| associated to |source|.
+  // Traffic from that downstream interface is implicitly routed through the
+  // highest priority physical network, follows "system traffic" semantics, and
+  // ignores VPN connections.
+  virtual void StartRoutingDeviceAsSystem(const std::string& int_ifname,
+                                          TrafficSource source);
+
+  // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
+  // downstream network interface |int_ifname| associated to |source|.
+  // Traffic from the downstream interface follows "user traffic" semantics and
+  // is implicitly routed through the highest priority logical network which can
+  // be a VPN connection or the highest priority physical network. If
+  // |int_ifname| is associated to a connected namespace and a VPN is connected,
+  // an additional IPv4 VPN fwmark tagging bypass rule is needed to allow return
+  // traffic to reach to the IPv4 local source. |peer_ipv4_addr| is the address
+  // of the interface inside the connected namespace needed to create this rule.
+  // If |peer_ipv4_addr| is undefined, no additional rule will be added.
+  virtual void StartRoutingDeviceAsUser(
       const std::string& int_ifname,
       const net_base::IPv4Address& int_ipv4_addr,
       TrafficSource source,
-      bool route_on_vpn,
-      const net_base::IPv4Address& peer_ipv4_addr = {});
+      std::optional<net_base::IPv4Address> peer_ipv4_addr = std::nullopt);
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
   // given downstream network interface |int_ifname|.
-  virtual void StopRoutingDevice(const std::string& ext_ifname,
-                                 const std::string& int_ifname,
-                                 TrafficSource source,
-                                 bool route_on_vpn);
+  virtual void StopRoutingDevice(const std::string& int_ifname);
 
   // Starts or stops marking conntrack entries routed to |shill_device| with its
   // associated fwmark routing tag. Once a conntrack entry is marked with the
@@ -474,6 +483,13 @@ class Datapath {
                           bool enable_multicast);
   // Sets the link status.
   bool ToggleInterface(const std::string& ifname, bool up);
+
+  // Creates the base FORWARD filter rules and PREROUTING mangle rules for
+  // any downstream network interface (ARC, Crostini, ConnectNamespace,
+  // Tethering, LocalOnlyNetwork).
+  void AddDownstreamInterfaceRules(const std::string& int_ifname,
+                                   TrafficSource source);
+
   bool ModifyChromeDnsRedirect(IpFamily family,
                                const DnsRedirectionRule& rule,
                                Iptables::Command command);

@@ -1114,7 +1114,7 @@ TEST(DatapathTest, StartRoutingNewNamespace) {
   datapath.StartRoutingNamespace(nsinfo);
 }
 
-TEST(DatapathTest, StartRoutingDevice_Arc) {
+TEST(DatapathTest, StartRoutingDevice) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1138,11 +1138,10 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
                   "0x03ea0000/0xffff0000 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDevice("eth0", "arc_eth0", IPv4Address(1, 2, 3, 4),
-                              TrafficSource::kArc, false);
+  datapath.StartRoutingDevice("eth0", "arc_eth0", TrafficSource::kArc);
 }
 
-TEST(DatapathTest, StartRoutingDevice_CrosVM) {
+TEST(DatapathTest, StartRoutingDeviceAsUser) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1169,11 +1168,11 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDevice("", "vmtap0", IPv4Address(1, 2, 3, 4),
-                              TrafficSource::kCrosVM, true);
+  datapath.StartRoutingDeviceAsUser("vmtap0", IPv4Address(1, 2, 3, 4),
+                                    TrafficSource::kCrosVM);
 }
 
-TEST(DatapathTest, StopRoutingDevice_Arc) {
+TEST(DatapathTest, StopRoutingDevice) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1187,10 +1186,10 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_arc_eth0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("eth0", "arc_eth0", TrafficSource::kArc, true);
+  datapath.StopRoutingDevice("arc_eth0");
 }
 
-TEST(DatapathTest, StopRoutingDevice_CrosVM) {
+TEST(DatapathTest, StopRoutingDeviceAsUser) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1204,7 +1203,7 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("", "vmtap0", TrafficSource::kCrosVM, true);
+  datapath.StopRoutingDevice("vmtap0");
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {

@@ -151,6 +151,12 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
   }
 }
 
+// Returns the conventional name for the PREROUTING mangle subchain
+// pertaining to the downstream interface |int_ifname|.
+std::string PreroutingSubChainName(const std::string& int_ifname) {
+  return "PREROUTING_" + int_ifname;
+}
+
 }  // namespace
 
 std::string ArcVethHostName(const std::string& ifname) {
@@ -955,15 +961,20 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
-                     peer_cidr->address(), nsinfo.source, nsinfo.route_on_vpn,
-                     remote_cidr->address());
+  if (!nsinfo.outbound_ifname.empty()) {
+    StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
+                       nsinfo.source);
+  } else if (!nsinfo.route_on_vpn) {
+    StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source);
+  } else {
+    StartRoutingDeviceAsUser(nsinfo.host_ifname, peer_cidr->address(),
+                             nsinfo.source, remote_cidr->address());
+  }
   return true;
 }
 
 void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
-  StopRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname, nsinfo.source,
-                    nsinfo.route_on_vpn);
+  StopRoutingDevice(nsinfo.host_ifname);
   RemoveInterface(nsinfo.host_ifname);
 
   const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
@@ -1214,25 +1225,21 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
   }
 }
 
-void Datapath::StartRoutingDevice(const std::string& ext_ifname,
-                                  const std::string& int_ifname,
-                                  const IPv4Address& int_ipv4_addr,
-                                  TrafficSource source,
-                                  bool route_on_vpn,
-                                  const IPv4Address& peer_ipv4_addr) {
+void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
+                                           TrafficSource source) {
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                       int_ifname)) {
-    LOG(ERROR) << "Failed to enable IP forwarding from " << ext_ifname;
+    LOG(ERROR) << "Failed to enable IP forwarding from " << int_ifname;
   }
 
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
                       /*oif=*/"")) {
-    LOG(ERROR) << "Failed to enable IP forwarding to " << ext_ifname;
+    LOG(ERROR) << "Failed to enable IP forwarding to " << int_ifname;
   }
 
-  std::string subchain = "PREROUTING_" + int_ifname;
+  std::string subchain = PreroutingSubChainName(int_ifname);
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |int_ifname| was previously deleted.
   if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain))
@@ -1258,72 +1265,93 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     LOG(ERROR) << "Failed to add fwmark tagging rule for source " << source
                << " in " << subchain;
   }
+}
 
-  if (!ext_ifname.empty()) {
-    // If |ext_ifname| is not null, mark egress traffic with the
-    // fwmark routing tag corresponding to |ext_ifname|.
-    int ifindex = system_->IfNametoindex(ext_ifname);
-    if (ifindex == 0) {
-      LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
-      return;
-    }
-    auto routing_mark = Fwmark::FromIfIndex(ifindex);
-    if (!routing_mark.has_value()) {
-      LOG(ERROR) << "Failed to compute fwmark value of interface " << ext_ifname
-                 << " with index " << ifindex;
-      return;
-    }
-    if (!ModifyFwmarkRoutingTag(subchain, Iptables::Command::kA,
-                                routing_mark.value())) {
-      LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname
-                 << "<-" << int_ifname << " in " << subchain;
-    }
-  } else {
-    // Otherwise if ext_ifname is null, set up a CONNMARK restore rule in
-    // PREROUTING to apply any fwmark routing tag saved for the current
-    // connection, and rely on implicit routing to the default logical network
-    // otherwise.
-    if (!ModifyConnmarkRestore(IpFamily::kDual, subchain, Iptables::Command::kA,
-                               /*iif=*/"", kFwmarkRoutingMask)) {
-      LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
-    }
-
-    // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
-    // connected namespace. This allows the return traffic to reach the local
-    // source. Connected namespace interface can be identified by checking if
-    // the value of |peer_ipv4_addr| is not zero.
-    if (route_on_vpn && !peer_ipv4_addr.IsZero() &&
-        process_runner_->iptables(
-            Iptables::Table::kMangle, Iptables::Command::kA,
-            {subchain, "-s", peer_ipv4_addr.ToString(), "-d",
-             int_ipv4_addr.ToString(), "-j", "ACCEPT", "-w"}) != 0) {
-      LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
-    }
-
-    // The jump rule below should not be applied for traffic from a
-    // ConnectNamespace traffic that needs DNS to go to the VPN
-    // (ConnectNamespace of the DNS default instance).
-    if (route_on_vpn && peer_ipv4_addr.IsZero() &&
-        !ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
-                        Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
-                        /*iif=*/"", /*oif=*/"")) {
-      LOG(ERROR) << "Failed to add jump rule to DNS proxy VPN chain for "
-                 << int_ifname;
-    }
-
-    // Forwarded traffic from downstream interfaces routed to the system
-    // default network is eligible to be routed through a VPN if |route_on_vpn|
-    // is true.
-    if (route_on_vpn &&
-        !ModifyFwmarkVpnJumpRule(subchain, Iptables::Command::kA, {}, {}))
-      LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
+void Datapath::StartRoutingDevice(const std::string& ext_ifname,
+                                  const std::string& int_ifname,
+                                  TrafficSource source) {
+  AddDownstreamInterfaceRules(int_ifname, source);
+  // If |ext_ifname| is not null, mark egress traffic with the
+  // fwmark routing tag corresponding to |ext_ifname|.
+  int ifindex = system_->IfNametoindex(ext_ifname);
+  if (ifindex == 0) {
+    LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
+    return;
+  }
+  auto routing_mark = Fwmark::FromIfIndex(ifindex);
+  if (!routing_mark.has_value()) {
+    LOG(ERROR) << "Failed to compute fwmark value of interface " << ext_ifname
+               << " with index " << ifindex;
+    return;
+  }
+  std::string subchain = PreroutingSubChainName(int_ifname);
+  if (!ModifyFwmarkRoutingTag(subchain, Iptables::Command::kA,
+                              routing_mark.value())) {
+    LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname << "<-"
+               << int_ifname << " in " << subchain;
   }
 }
 
-void Datapath::StopRoutingDevice(const std::string& ext_ifname,
-                                 const std::string& int_ifname,
-                                 TrafficSource source,
-                                 bool route_on_vpn) {
+void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
+                                          TrafficSource source) {
+  AddDownstreamInterfaceRules(int_ifname, source);
+
+  // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
+  // tag saved for the current connection, and rely on implicit routing to the
+  // default physical network otherwise.
+  std::string subchain = PreroutingSubChainName(int_ifname);
+  if (!ModifyConnmarkRestore(IpFamily::kDual, subchain, Iptables::Command::kA,
+                             /*iif=*/"", kFwmarkRoutingMask)) {
+    LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
+  }
+}
+
+void Datapath::StartRoutingDeviceAsUser(
+    const std::string& int_ifname,
+    const IPv4Address& int_ipv4_addr,
+    TrafficSource source,
+    std::optional<net_base::IPv4Address> peer_ipv4_addr) {
+  AddDownstreamInterfaceRules(int_ifname, source);
+
+  // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
+  // tag saved for the current connection, and rely on implicit routing to the
+  // default logical network otherwise.
+  std::string subchain = PreroutingSubChainName(int_ifname);
+  if (!ModifyConnmarkRestore(IpFamily::kDual, subchain, Iptables::Command::kA,
+                             /*iif=*/"", kFwmarkRoutingMask)) {
+    LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
+  }
+
+  // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
+  // connected namespace. This allows the return traffic to reach the local
+  // source. Connected namespace interface can be identified by checking if
+  // the value of |peer_ipv4_addr| is not zero.
+  if (peer_ipv4_addr &&
+      process_runner_->iptables(
+          Iptables::Table::kMangle, Iptables::Command::kA,
+          {subchain, "-s", peer_ipv4_addr->ToString(), "-d",
+           int_ipv4_addr.ToString(), "-j", "ACCEPT", "-w"}) != 0) {
+    LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
+  }
+
+  // The jump rule below should not be applied for traffic from a
+  // ConnectNamespace traffic that needs DNS to go to the VPN
+  // (ConnectNamespace of the DNS default instance).
+  if (!peer_ipv4_addr &&
+      !ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
+                      Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
+                      /*iif=*/"", /*oif=*/"")) {
+    LOG(ERROR) << "Failed to add jump rule to DNS proxy VPN chain for "
+               << int_ifname;
+  }
+
+  // Forwarded traffic from downstream interfaces routed to the logical
+  // default network is eligible to be routed through a VPN.
+  if (!ModifyFwmarkVpnJumpRule(subchain, Iptables::Command::kA, {}, {}))
+    LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
+}
+
+void Datapath::StopRoutingDevice(const std::string& int_ifname) {
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
                  int_ifname);
@@ -1331,7 +1359,7 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
                  /*oif=*/"");
 
-  std::string subchain = "PREROUTING_" + int_ifname;
+  std::string subchain = PreroutingSubChainName(int_ifname);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "PREROUTING", subchain, int_ifname,
                  /*oif=*/"");
@@ -1678,8 +1706,7 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.
   if (vpn_ifname != kArcbr0Ifname) {
-    StartRoutingDevice(vpn_ifname, kArcbr0Ifname, /*int_ipv4_addr=*/{},
-                       TrafficSource::kArc, /*route_on_vpn=*/true);
+    StartRoutingDevice(vpn_ifname, kArcbr0Ifname, TrafficSource::kArc);
   }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::kIPv4, Iptables::Command::kA, "OUTPUT",
@@ -1708,8 +1735,7 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   }
   if (vpn_ifname != kArcbr0Ifname) {
-    StopRoutingDevice(vpn_ifname, kArcbr0Ifname, TrafficSource::kArc,
-                      /*route_on_vpn=*/false);
+    StopRoutingDevice(kArcbr0Ifname);
   }
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
                   kApplyVpnMarkChain)) {
@@ -1852,8 +1878,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // int_ipv4_addr is not necessary if route_on_vpn == false
   const auto source = DownstreamNetworkInfoTrafficSource(info);
   StartRoutingDevice(info.upstream_device->ifname, info.downstream_ifname,
-                     /*int_ipv4_addr=*/{}, source,
-                     /*route_on_vpn=*/false);
+                     source);
   return true;
 }
 
@@ -1865,10 +1890,7 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
 
   // Skip unconfiguring the downstream interface: shill will either destroy it
   // or flip it back to client mode and restart a Network on top.
-  const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StopRoutingDevice(info.upstream_device->ifname, info.downstream_ifname,
-                    source,
-                    /*route_on_vpn=*/false);
+  StopRoutingDevice(info.downstream_ifname);
   FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
              kAcceptDownstreamNetworkChain);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,

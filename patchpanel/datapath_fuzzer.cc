@@ -132,10 +132,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.AddBridge(ifname, cidr);
   datapath.RemoveBridge(ifname);
   datapath.AddToBridge(ifname, ifname2);
-  datapath.StartRoutingDevice(ifname, ifname2, ipv4_addr,
-                              TrafficSource::kUnknown, route_on_vpn);
-  datapath.StopRoutingDevice(ifname, ifname2, TrafficSource::kUnknown,
-                             route_on_vpn);
+  datapath.StartRoutingDevice(ifname, ifname2, TrafficSource::kUnknown);
+  datapath.StartRoutingDeviceAsSystem(ifname2, TrafficSource::kUnknown);
+  datapath.StartRoutingDeviceAsUser(ifname2, ipv4_addr,
+                                    TrafficSource::kUnknown);
+  datapath.StopRoutingDevice(ifname2);
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);
   datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, cidr,

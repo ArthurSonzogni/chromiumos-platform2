@@ -91,10 +91,9 @@ const Device* CrostiniService::Start(uint64_t vm_id,
     return nullptr;
   }
 
-  datapath_->StartRoutingDevice("", tap->host_ifname(),
-                                tap->config().host_ipv4_addr(),
-                                TrafficSourceFromVMType(vm_type),
-                                /*route_on_vpn=*/true);
+  datapath_->StartRoutingDeviceAsUser(tap->host_ifname(),
+                                      tap->config().host_ipv4_addr(),
+                                      TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(tap->host_ifname());
   }
@@ -122,9 +121,7 @@ void CrostiniService::Stop(uint64_t vm_id) {
 
   device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved);
   const std::string tap_ifname = it->second->host_ifname();
-  datapath_->StopRoutingDevice("", tap_ifname,
-                               TrafficSourceFromVMType(*vm_type),
-                               /*route_on_vpn=*/true);
+  datapath_->StopRoutingDevice(tap_ifname);
   if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(tap_ifname);
   }
