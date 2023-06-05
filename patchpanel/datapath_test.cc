@@ -1248,6 +1248,9 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   FakeSystem system;
   Datapath datapath(runner, firewall, &system);
 
+  ShillClient::Device vpn_device;
+  vpn_device.ifname = "arcbr0";
+
   // Setup
   EXPECT_CALL(system, IfNametoindex("arcbr0")).WillRepeatedly(Return(5));
   Verify_iptables(*runner, IpFamily::kDual, "mangle -N POSTROUTING_arcbr0 -w");
@@ -1277,7 +1280,7 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(*runner, IpFamily::kDual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
-  datapath.StartVpnRouting("arcbr0");
+  datapath.StartVpnRouting(vpn_device);
   Mock::VerifyAndClearExpectations(runner);
 
   // Teardown
@@ -1295,7 +1298,7 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, IpFamily::kDual, "filter -F vpn_accept -w");
-  datapath.StopVpnRouting("arcbr0");
+  datapath.StopVpnRouting(vpn_device);
 }
 
 TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
@@ -1303,6 +1306,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   auto firewall = new MockFirewall();
   FakeSystem system;
   Datapath datapath(runner, firewall, &system);
+
+  ShillClient::Device vpn_device;
+  vpn_device.ifname = "tun0";
 
   // Setup
   EXPECT_CALL(system, IfNametoindex("tun0")).WillRepeatedly(Return(5));
@@ -1351,7 +1357,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(*runner, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
-  datapath.StartVpnRouting("tun0");
+  datapath.StartVpnRouting(vpn_device);
   Mock::VerifyAndClearExpectations(runner);
 
   // Teardown
@@ -1378,7 +1384,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
   Verify_iptables(*runner, IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_arcbr0 -w");
-  datapath.StopVpnRouting("tun0");
+  datapath.StopVpnRouting(vpn_device);
 }
 
 TEST(DatapathTest, AddInboundIPv4DNATArc) {

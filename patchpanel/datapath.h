@@ -320,8 +320,8 @@ class Datapath {
   //    in routing_service.h
   //  - Forwarded traffic from downstream network interfaces tracking the
   //  default network.
-  virtual void StartVpnRouting(const std::string& vpn_ifname);
-  virtual void StopVpnRouting(const std::string& vpn_ifname);
+  virtual void StartVpnRouting(const ShillClient::Device& vpn_device);
+  virtual void StopVpnRouting(const ShillClient::Device& vpn_device);
 
   // Starts and stops VPN lockdown mode. When patchpanel VPN lockdown is enabled
   // and no VPN connection exists, any non-ARC traffic that would be routed to a

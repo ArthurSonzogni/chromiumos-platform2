@@ -1630,7 +1630,8 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
   }
 }
 
-void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
+void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
+  const std::string& vpn_ifname = vpn_device.ifname;
   int ifindex = system_->IfNametoindex(vpn_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
@@ -1693,7 +1694,8 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   }
 }
 
-void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
+void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
+  const std::string& vpn_ifname = vpn_device.ifname;
   LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain)) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;

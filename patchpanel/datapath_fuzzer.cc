@@ -25,6 +25,7 @@
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
 
@@ -114,6 +115,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   nsinfo.peer_subnet = std::make_unique<Subnet>(cidr, base::DoNothing());
   nsinfo.peer_mac_addr = mac;
 
+  ShillClient::Device shill_device;
+  shill_device.ifname = ifname;
+  shill_device.type = ShillClient::Device::Type::kWifi;
+  shill_device.service_path = provider.ConsumeRandomLengthString(10);
+  shill_device.ifindex = provider.ConsumeIntegral<int32_t>();
+
   auto runner = new FakeProcessRunner();
   auto firewall = new Firewall();
   NoopSystem system;
@@ -142,8 +149,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       ConvertUint32ToIPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
   datapath.StartConnectionPinning(ifname);
   datapath.StopConnectionPinning(ifname);
-  datapath.StartVpnRouting(ifname);
-  datapath.StopVpnRouting(ifname);
+  datapath.StartVpnRouting(shill_device);
+  datapath.StopVpnRouting(shill_device);
   datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),
                               provider.ConsumeIntegral<uint16_t>());
   datapath.AddIPv6HostRoute(ifname, ipv6_cidr);
