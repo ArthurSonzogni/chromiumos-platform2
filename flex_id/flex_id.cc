@@ -11,6 +11,7 @@
 
 #include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
@@ -246,7 +247,8 @@ std::optional<std::string> FlexIdGenerator::TryUuid() {
 bool FlexIdGenerator::WriteFlexId(const std::string& flex_id) {
   const base::FilePath flex_id_file_path = base_path_.Append(kFlexIdFile);
   if (base::CreateDirectory(flex_id_file_path.DirName())) {
-    return base::WriteFile(flex_id_file_path, flex_id + "\n");
+    return base::ImportantFileWriter::WriteFileAtomically(flex_id_file_path,
+                                                          flex_id + "\n");
   }
   return false;
 }
