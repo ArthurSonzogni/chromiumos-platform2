@@ -31,17 +31,8 @@ constexpr int kMaxFieldNumber = 1000;
 
 Blob SerializeProtobufUnknownFieldSet(
     const google::protobuf::UnknownFieldSet& field_set) {
-  // TODO(emaxx): Replace all this code with
-  // `UnknownFieldSet::SerializeToString()` once protobuf is upreved to
-  // >=3.20.0.
   std::string serialized;
-  google::protobuf::io::StringOutputStream string_stream(&serialized);
-  google::protobuf::io::CodedOutputStream output_stream(&string_stream);
-  google::protobuf::internal::WireFormat::SerializeUnknownFields(
-      field_set, &output_stream);
-  // Drop the extra bytes that the stream might've allocated at the end of the
-  // buffer.
-  output_stream.Trim();
+  field_set.SerializeToString(&serialized);
   return BlobFromString(serialized);
 }
 
