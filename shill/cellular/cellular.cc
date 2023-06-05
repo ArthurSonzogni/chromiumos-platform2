@@ -938,6 +938,11 @@ void Cellular::HandleNewRegistrationState() {
   CHECK(capability_);
   if (!capability_->IsRegistered()) {
     if (!explicit_disconnect_ && StateIsConnected() && service_.get()) {
+      // TODO(b/200584652): Remove after January 2024
+      if (capability_->GetNetworkTechnologyString() == "")
+        LOG(INFO) << LoggingTag() << ": Logging Drop connection on unknown "
+                  << "cellular technology";
+
       metrics()->NotifyCellularDeviceDrop(
           capability_->GetNetworkTechnologyString(), service_->strength());
     }
