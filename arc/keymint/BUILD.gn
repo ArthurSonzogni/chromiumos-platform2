@@ -23,6 +23,7 @@ group("all") {
   deps = [ ":arc-keymintd" ]
   if (use.keymint) {
     deps += [
+      ":arc_keymint_feature_query",
       ":install_arc_keymintd_policy",
       ":install_dbus_config",
       ":install_init",
@@ -57,6 +58,15 @@ executable("arc-keymintd") {
     ":liblog",
   ]
 
+  if (use.keymint) {
+    install_path = "sbin"
+  }
+}
+
+executable("arc_keymint_feature_query") {
+  sources = [ "arc_keymint_feature_query.cc" ]
+  configs += [ "//featured:target_defaults" ]
+  deps = [ "//featured:libfeatures" ]
   if (use.keymint) {
     install_path = "sbin"
   }
