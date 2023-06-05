@@ -37,8 +37,9 @@ FutilityUtilsImpl::FutilityUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
 bool FutilityUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
   std::string futility_output;
   // Get WP status output string.
-  if (!cmd_utils_->GetOutput({kFutilityCmd, "flash", "--wp-status"},
-                             &futility_output)) {
+  if (!cmd_utils_->GetOutput(
+          {kFutilityCmd, "flash", "--wp-status", "--ignore-hw"},
+          &futility_output)) {
     return false;
   }
 
