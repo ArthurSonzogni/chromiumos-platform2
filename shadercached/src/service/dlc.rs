@@ -157,8 +157,15 @@ pub async fn periodic_dlc_handler(
             continue;
         }
         if let Err(e) = uninstall_shader_cache_dlc(steam_app_id, conn.clone()).await {
-            warn!("Failed to uninstall dlc: {}", e);
-            failed_uninstalls.insert(steam_app_id);
+            // DLC uninstallation can fail if DLC is missing or transient
+            // failures.
+            // TODO(b/285965527): Retry shader dlc uninstallation on dlc missing
+            // failure
+            warn!("Failed to uninstall DLC");
+            debug!(
+                "Failed to uninstall DLC: {}, not attempting to uninstall",
+                e
+            );
             continue;
         }
     }
