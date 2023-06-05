@@ -60,7 +60,8 @@ bool IsMigrationAllowed(base::Environment& env) {
   }
 
   // For updates, only allow migration on certain channels.
-  if (channel == "testimage-channel" || channel == "canary-channel") {
+  if (channel == "testimage-channel" || channel == "canary-channel" ||
+      channel == "dev-channel") {
     return true;
   }
 

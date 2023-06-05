@@ -35,7 +35,7 @@ The migration in more detail:
 
 To limit the initial scope of testing, the migration will be run for all
 fresh installs, but not for all updates. In particular, only test images
-and images on the canary channel will run the migration on update. That
+and images on the canary/dev channels will run the migration on update. That
 means fresh installations will always have 64MiB kernel partitions, but
 upgraded installations may still have 16MiB kernel partitions for
 now. Once we're confident that this is working well, we'll expand the
