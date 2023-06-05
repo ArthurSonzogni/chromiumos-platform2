@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <libcrossystem/crossystem.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <openssl/rand.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/fuzzed_command_transceiver.h>
@@ -22,6 +23,7 @@
 
 #include "libhwsec/backend/mock_backend.h"
 #include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/fuzzed/basic_objects.h"
 #include "libhwsec/fuzzed/config.h"
 #include "libhwsec/fuzzed/da_mitigation.h"
@@ -253,15 +255,82 @@ void FuzzMain(FuzzedDataProvider& data_provider) {
   }
 }
 
+FuzzedDataProvider* g_data_provider;
+std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g_engine;
+
+enum class RandByteType {
+  kQuick,
+  kConsume,
+  kZero,
+  kOne,
+  kMaxValue = kOne,
+};
+
+int FuzzRandBytes(unsigned char* buf, int num) {
+  if (g_data_provider == nullptr) {
+    return 0;
+  }
+
+  switch (g_data_provider->ConsumeEnum<RandByteType>()) {
+    case RandByteType::kQuick: {
+      std::generate(buf, buf + num, std::ref(g_engine));
+      break;
+    }
+    case RandByteType::kConsume:
+      g_data_provider->ConsumeData(buf, num);
+      break;
+    case RandByteType::kZero:
+      memset(buf, 0, num);
+      break;
+    case RandByteType::kOne:
+      memset(buf, 0xff, num);
+      break;
+  }
+
+  return 1;
+}
+
+int FuzzRandAdd(const void* buf, int num, double randomness) {
+  return 1;
+}
+
+int FuzzRandSeed(const void* buf, int num) {
+  return 1;
+}
+
+int FuzzRandStatus(void) {
+  return g_data_provider != nullptr;
+}
+
+bool StaticInit() {
+  static RAND_METHOD rand_method = {
+      .seed = FuzzRandSeed,
+      .bytes = FuzzRandBytes,
+      .cleanup = nullptr,
+      .add = FuzzRandAdd,
+      .pseudorand = FuzzRandBytes,
+      .status = FuzzRandStatus,
+  };
+
+  base::CommandLine::Init(0, nullptr);
+
+  CHECK(RAND_set_rand_method(&rand_method));
+
+  // Suppress log spam from the code-under-test.
+  logging::SetMinLogLevel(logging::LOGGING_FATAL);
+  return true;
+}
+
+[[maybe_unused]] bool static_init = StaticInit();
+
 }  // namespace
 }  // namespace hwsec
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  base::CommandLine::Init(0, nullptr);
-  // Suppress log spam from the code-under-test.
-  logging::SetMinLogLevel(logging::LOGGING_FATAL);
-
   FuzzedDataProvider data_provider(data, size);
+  hwsec::g_data_provider = &data_provider;
+  hwsec::g_engine.seed(0);
+
   hwsec::FuzzMain(data_provider);
   return 0;
 }
