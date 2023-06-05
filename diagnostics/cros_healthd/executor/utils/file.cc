@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 
 #include <algorithm>
+#include <limits>
 
 #include <base/check.h>
 #include <base/files/file.h>
@@ -49,7 +50,7 @@ bool GetCreationTime(const base::FilePath& file_path, base::Time& out) {
 
 std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
                                         uint64_t begin,
-                                        uint64_t size) {
+                                        std::optional<uint64_t> size) {
   base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
     PLOG(ERROR) << "Failed to open file " << file_path;
@@ -75,7 +76,19 @@ std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
 
   const int read_size = std::min(
       base::checked_cast<int>(info.size) - base::checked_cast<int>(begin),
-      base::checked_cast<int>(size));
+      // We treat the absence of `size` as reading until EOF. Ideally, this
+      // should be done by letting the caller pass in
+      // `std::numeric_limits<uint64_t>::max()`. However, due to the casting
+      // logic here, it may not be safely cast to `int`. Treating it as a
+      // special value creates confusing behavior:
+      // `std::numeric_limits<uint64_t>::max()` indicates reading until EOF,
+      // while `std::numeric_limits<uint64_t>::max() - 1` causes cast error.
+      //
+      // Changing the type of `size` to `int` does not work either, because a
+      // mojom function can only specify a fixed size integer and some cast
+      // logic is inevitable.
+      size.has_value() ? base::checked_cast<int>(size.value())
+                       : std::numeric_limits<int>::max());
   if (read_size == 0) {
     // No need to actually do the IO and read the file.
     return "";
@@ -84,7 +97,7 @@ std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
   if (file.Read(base::checked_cast<int64_t>(begin), content.data(),
                 read_size) != read_size) {
     PLOG(ERROR) << "Failed to read file " << file_path << " from " << begin
-                << " for size " << size;
+                << " for size " << read_size;
     return std::nullopt;
   }
   return content;

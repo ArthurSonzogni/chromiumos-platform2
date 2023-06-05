@@ -17,7 +17,7 @@ namespace diagnostics {
 // are logged. |file_path| must not be a directory.
 std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
                                         uint64_t begin,
-                                        uint64_t size);
+                                        std::optional<uint64_t> size);
 
 // Gets the creation time of a given file. The file path must be absolute.
 //

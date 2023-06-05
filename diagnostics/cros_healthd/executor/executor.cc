@@ -283,7 +283,7 @@ void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
 
 void Executor::ReadFilePart(File file_enum,
                             uint64_t begin,
-                            uint64_t size,
+                            std::optional<uint64_t> size,
                             ReadFilePartCallback callback) {
   std::move(callback).Run(
       diagnostics::ReadFilePart(FileEnumToFilePath(file_enum), begin, size));

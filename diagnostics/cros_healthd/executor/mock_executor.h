@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <gmock/gmock.h>
+#include <optional>
 #include <vector>
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -29,7 +30,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
   MOCK_METHOD(void, ReadFile, (File, ReadFileCallback), (override));
   MOCK_METHOD(void,
               ReadFilePart,
-              (File, uint64_t, uint64_t, ReadFilePartCallback),
+              (File, uint64_t, std::optional<uint64_t>, ReadFilePartCallback),
               (override));
   MOCK_METHOD(void, GetFileInfo, (File, GetFileInfoCallback), (override));
   MOCK_METHOD(void, GetFanSpeed, (GetFanSpeedCallback), (override));

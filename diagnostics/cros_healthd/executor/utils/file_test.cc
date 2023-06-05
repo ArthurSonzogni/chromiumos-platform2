@@ -81,6 +81,13 @@ TEST_F(ReadFilePartUtilsTest, ReadBeyondEOFReturnContentUntilEOF) {
             kFileContent);
 }
 
+TEST_F(ReadFilePartUtilsTest, DontProvideSizeReturnContentUntilEOF) {
+  constexpr base::StringPiece kFileContent = "0123456789";
+
+  ASSERT_TRUE(base::WriteFile(temp_file_path(), kFileContent));
+  EXPECT_EQ(ReadFilePart(temp_file_path(), 0u, std::nullopt), kFileContent);
+}
+
 TEST_F(ReadFilePartUtilsTest, ReadZeroSizeReturnEmpty) {
   ASSERT_TRUE(base::WriteFile(temp_file_path(), "0123456789"));
   EXPECT_EQ(ReadFilePart(temp_file_path(), 0u, 0u), "");

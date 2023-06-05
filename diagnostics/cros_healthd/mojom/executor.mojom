@@ -172,8 +172,9 @@ interface Executor {
   ReadFile(File file_enum) => (string? content);
   // Reads part of a file for |size| bytes starting from location |begin|.
   // Returns the content or null if failed. If reaches EOF before reading |size|
-  // bytes, then returns the part between |begin| and EOF.
-  ReadFilePart(File file_enum, uint64 begin, uint64 size) => (string? content);
+  // bytes, or does not provide |size|, then returns the part between |begin|
+  // and EOF.
+  ReadFilePart(File file_enum, uint64 begin, uint64? size) => (string? content);
   // Gets file info. Returns the file info or null if failed.
   GetFileInfo(File file_enum) => (FileInfo? info);
 
