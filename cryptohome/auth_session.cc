@@ -517,7 +517,6 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       continue;
     }
     user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-    user_data_auth::StatusInfo status_info;
     *auth_factor_with_status.mutable_auth_factor() =
         std::move(*auth_factor_proto);
     auto supported_intents = GetSupportedIntents(
@@ -529,12 +528,9 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
 
     auto delay = driver.GetFactorDelay(obfuscated_username_, auth_factor);
     if (delay.ok()) {
-      if (delay->is_max()) {
-        status_info.set_time_available_in(std::numeric_limits<uint64_t>::max());
-      } else {
-        status_info.set_time_available_in(delay->InMilliseconds());
-      }
-      *auth_factor_with_status.mutable_status_info() = status_info;
+      auth_factor_with_status.mutable_status_info()->set_time_available_in(
+          delay->is_max() ? std::numeric_limits<uint64_t>::max()
+                          : delay->InMilliseconds());
       auth_factor_status_update_callback_.Run(auth_factor_with_status,
                                               serialized_public_token_);
       if (delay->is_zero()) {

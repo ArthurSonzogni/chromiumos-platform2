@@ -5,6 +5,7 @@
 #include "cryptohome/userdataauth.h"
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <set>
@@ -2245,7 +2246,7 @@ void UserDataAuth::StartAuthSession(
   for (AuthFactorMap::ValueView stored_auth_factor :
        auth_session->auth_factor_map()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
-    const AuthFactorDriver& factor_driver =
+    AuthFactorDriver& factor_driver =
         auth_factor_driver_manager_->GetDriver(auth_factor.type());
 
     std::optional<user_data_auth::AuthFactor> proto_factor =
@@ -2278,6 +2279,13 @@ void UserDataAuth::StartAuthSession(
         if (requested_intent && auth_intent == requested_intent) {
           *reply.add_auth_factors() = std::move(proto_factor.value());
         }
+      }
+      auto delay = factor_driver.GetFactorDelay(
+          auth_session->obfuscated_username(), auth_factor);
+      if (delay.ok()) {
+        auth_factor_with_status.mutable_status_info()->set_time_available_in(
+            delay->is_max() ? std::numeric_limits<uint64_t>::max()
+                            : delay->InMilliseconds());
       }
       *reply.add_configured_auth_factors_with_status() =
           std::move(auth_factor_with_status);
