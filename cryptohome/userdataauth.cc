@@ -4,6 +4,7 @@
 
 #include "cryptohome/userdataauth.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <set>
@@ -2260,14 +2261,26 @@ void UserDataAuth::StartAuthSession(
 
       // Only populate reply with AuthFactors that support the intended form of
       // authentication.
+      // AuthFactorWithStatus is populated irresptive of what is available or
+      // not.
       auto supported_intents =
           GetSupportedIntents(auth_session->obfuscated_username(), auth_factor,
                               *auth_factor_driver_manager_);
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
-      if (requested_intent && supported_intents.contains(*requested_intent)) {
-        *reply.add_auth_factors() = std::move(proto_factor.value());
+      user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+      auth_factor_with_status.mutable_auth_factor()->CopyFrom(
+          proto_factor.value());
+
+      for (const auto& auth_intent : supported_intents) {
+        auth_factor_with_status.add_available_for_intents(
+            AuthIntentToProto(auth_intent));
+        if (requested_intent && auth_intent == requested_intent) {
+          *reply.add_auth_factors() = std::move(proto_factor.value());
+        }
       }
+      *reply.add_configured_auth_factors_with_status() =
+          std::move(auth_factor_with_status);
     }
   }
 
@@ -2292,7 +2305,14 @@ void UserDataAuth::StartAuthSession(
           auto [unused, was_inserted] =
               listed_auth_factor_labels.insert(verifier->auth_factor_label());
           if (was_inserted) {
+            user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+            auth_factor_with_status.mutable_auth_factor()->CopyFrom(
+                *proto_factor);
+            auth_factor_with_status.add_available_for_intents(
+                AuthIntentToProto(AuthIntent::kVerifyOnly));
             *reply.add_auth_factors() = std::move(*proto_factor);
+            *reply.add_configured_auth_factors_with_status() =
+                std::move(auth_factor_with_status);
           }
         }
       }

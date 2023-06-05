@@ -3109,6 +3109,25 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
               kFakeLabel);
   EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .label(),
+              kFakeLabel);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                                   user_data_auth::AUTH_INTENT_DECRYPT,
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
@@ -3161,6 +3180,24 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
               kFakeLabel);
   EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .label(),
+              kFakeLabel);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                                   user_data_auth::AUTH_INTENT_DECRYPT,
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
@@ -3194,6 +3231,23 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
               "password-verifier-label");
   EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .label(),
+              "password-verifier-label");
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
