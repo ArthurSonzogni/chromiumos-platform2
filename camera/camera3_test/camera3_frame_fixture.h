@@ -18,6 +18,7 @@ class Camera3FrameFixture : public Camera3StreamFixture {
  public:
   // "kDefaultTimeoutMs" is matched with CTS "WAIT_FOR_RESULT_TIMEOUT_MS"
   const uint32_t kDefaultTimeoutMs = 3000;
+  const uint32_t kSWPrivacyRetryTimeIntervalMs = 33;
   static const uint32_t kARGBPixelWidth = 4;
 
   explicit Camera3FrameFixture(int cam_id)

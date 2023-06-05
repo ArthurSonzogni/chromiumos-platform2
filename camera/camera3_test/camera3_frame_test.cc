@@ -1607,6 +1607,49 @@ TEST_P(Camera3FrameContentTest, SWPrivacySwitch) {
   };
   EXPECT_TRUE(IsBlack(i420_image))
       << "Non black frame when the SW privacy switch is ON";
+
+  GetCrosCameraHal()->set_privacy_switch_state(false);
+  auto test_pattern_modes = GetAvailableColorBarsTestPatternModes();
+
+  UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(), 1,
+                 &metadata);
+  Camera3FrameFixture::ScopedImage capture_image;
+  const int MAX_RETRY_COUNT = 30;
+  uint32_t sensor_pixel_array_width;
+  uint32_t sensor_pixel_array_height;
+  ASSERT_EQ(0, cam_device_.GetStaticInfo()->GetSensorPixelArraySize(
+                   &sensor_pixel_array_width, &sensor_pixel_array_height));
+  for (int i = 0; i < MAX_RETRY_COUNT; ++i) {
+    ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
+        << "Creating capture request fails";
+    WaitShutterAndCaptureResult(timeout);
+    ASSERT_NE(nullptr, buffer_handle_) << "Failed to get frame buffer";
+    capture_image = ConvertToImage(std::move(buffer_handle_), width_, height_,
+                                   ImageFormat::IMAGE_FORMAT_I420);
+    ASSERT_NE(nullptr, capture_image);
+
+    for (const auto& it : color_bars_test_patterns_) {
+      auto pattern_image = GenerateColorBarsPattern(
+          width_, height_, it, test_pattern_modes.front(),
+          sensor_pixel_array_width, sensor_pixel_array_height);
+      ASSERT_NE(nullptr, pattern_image);
+
+      if (ComputeSsim(*capture_image, *pattern_image) >
+          kContentTestSsimThreshold) {
+        return;
+      }
+    }
+    if (i != MAX_RETRY_COUNT - 1) {
+      LOGF(INFO) << "The frame content is corrupted, retry capture...";
+      usleep(kSWPrivacyRetryTimeIntervalMs * 1000);
+    }
+  }
+
+  std::stringstream ss;
+  ss << "/tmp/sw_privacy_switch_test_0x" << std::hex << format_ << "_"
+     << std::dec << width_ << "x" << height_;
+  capture_image->SaveToFile(ss.str());
+  ADD_FAILURE() << "The frame content is corrupted";
 }
 
 // Test parameters:
