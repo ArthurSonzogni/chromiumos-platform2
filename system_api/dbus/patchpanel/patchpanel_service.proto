@@ -688,10 +688,10 @@ message LocalOnlyNetworkResponse {
   DownstreamNetworkResult response_code = 1;
 }
 
-// DownstreamNetworkInfo request object to obtain the IP configuration of a
+// GetDownstreamNetworkInfo request object to obtain the IP configuration of a
 // network created with CreateLocalOnlyNetwork or CreateTetheredNetwork and
 // to obtain available IP information of all connected clients.
-message DownstreamNetworkInfoRequest {
+message GetDownstreamNetworkInfoRequest {
   // Required. Interface name on which a network was created with
   // CreateTetheredNetwork or with CreateLocalOnlyNetwork call.
   string downstream_ifname = 1;
@@ -722,8 +722,8 @@ message NetworkClientInfo {
   string vendor_class = 5;
 }
 
-// Response to a DownstreamNetworkInfo call.
-message DownstreamNetworkInfoResponse {
+// Response to a GetDownstreamNetworkInfo call.
+message GetDownstreamNetworkInfoResponse {
   // True if the request was valid and completed successfully.
   bool success = 1;
 

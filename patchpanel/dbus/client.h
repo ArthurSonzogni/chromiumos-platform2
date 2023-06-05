@@ -207,7 +207,7 @@ class BRILLO_EXPORT Client {
       base::OnceCallback<void(base::ScopedFD)>;
   using CreateLocalOnlyNetworkCallback =
       base::OnceCallback<void(base::ScopedFD)>;
-  using DownstreamNetworkInfoCallback =
+  using GetDownstreamNetworkInfoCallback =
       base::OnceCallback<void(bool success,
                               const DownstreamNetwork& downstream_network,
                               const std::vector<NetworkClientInfo>& clients)>;
@@ -362,7 +362,7 @@ class BRILLO_EXPORT Client {
   // and all its connected clients. Returns true if the request was successfully
   // sent, false otherwise. |callback| is ran after the request has completed.
   virtual bool GetDownstreamNetworkInfo(
-      const std::string& ifname, DownstreamNetworkInfoCallback callback) = 0;
+      const std::string& ifname, GetDownstreamNetworkInfoCallback callback) = 0;
 
  protected:
   Client() = default;

@@ -121,16 +121,16 @@
       </arg>
     </method>
 
-    <method name="DownstreamNetworkInfo">
+    <method name="GetDownstreamNetworkInfo">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <annotation name="org.chromium.DBus.Method.Const" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::DownstreamNetworkInfoRequest" />
+                    value="patchpanel::GetDownstreamNetworkInfoRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::DownstreamNetworkInfoResponse" />
+                    value="patchpanel::GetDownstreamNetworkInfoResponse" />
       </arg>
     </method>
 

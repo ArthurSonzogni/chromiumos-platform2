@@ -62,8 +62,8 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const base::ScopedFD& client_fd) override;
   GetDevicesResponse GetDevices(
       const GetDevicesRequest& request) const override;
-  DownstreamNetworkInfoResponse DownstreamNetworkInfo(
-      const DownstreamNetworkInfoRequest& request) const override;
+  GetDownstreamNetworkInfoResponse GetDownstreamNetworkInfo(
+      const GetDownstreamNetworkInfoRequest& request) const override;
   TrafficCountersResponse GetTrafficCounters(
       const TrafficCountersRequest& request) const override;
   ModifyPortRuleResponse ModifyPortRule(

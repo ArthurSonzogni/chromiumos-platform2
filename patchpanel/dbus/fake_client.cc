@@ -144,7 +144,7 @@ bool FakeClient::CreateLocalOnlyNetwork(
 }
 
 bool FakeClient::GetDownstreamNetworkInfo(
-    const std::string& ifname, DownstreamNetworkInfoCallback callback) {
+    const std::string& ifname, GetDownstreamNetworkInfoCallback callback) {
   // TODO(b/239559602) Run synchronously or schedule |callback| to run if
   // necessary for unit tests.
   return true;

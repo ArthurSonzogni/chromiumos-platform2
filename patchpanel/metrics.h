@@ -49,8 +49,8 @@ enum class DbusUmaEvent {
   kCreateLocalOnlyNetworkSuccess = 32,
   kCreateTetheredNetwork = 33,
   kCreateTetheredNetworkSuccess = 34,
-  kDownstreamNetworkInfo = 35,
-  kDownstreamNetworkInfoSuccess = 36,
+  kGetDownstreamNetworkInfo = 35,
+  kGetDownstreamNetworkInfoSuccess = 36,
 
   kMaxValue,
 };

@@ -141,22 +141,22 @@ GetDevicesResponse PatchpanelAdaptor::GetDevices(
   return manager_->GetDevices();
 }
 
-DownstreamNetworkInfoResponse PatchpanelAdaptor::DownstreamNetworkInfo(
-    const DownstreamNetworkInfoRequest& request) const {
-  RecordDbusEvent(DbusUmaEvent::kDownstreamNetworkInfo);
+GetDownstreamNetworkInfoResponse PatchpanelAdaptor::GetDownstreamNetworkInfo(
+    const GetDownstreamNetworkInfoRequest& request) const {
+  RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfo);
 
   const auto& downstream_ifname = request.downstream_ifname();
   const auto downstream_network =
       manager_->GetDownstreamNetworkInfo(downstream_ifname);
   if (!downstream_network) {
-    LOG(ERROR) << kDownstreamNetworkInfoMethod
-               << ": no DownstreamNetwork for interface " << downstream_ifname;
+    LOG(ERROR) << __func__ << ": no DownstreamNetwork for interface "
+               << downstream_ifname;
     return {};
   }
 
-  RecordDbusEvent(DbusUmaEvent::kDownstreamNetworkInfoSuccess);
+  RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfoSuccess);
   // TODO(b/239559602) Get and copy clients' information into |output|.
-  DownstreamNetworkInfoResponse response;
+  GetDownstreamNetworkInfoResponse response;
   response.set_success(true);
   FillDownstreamNetworkProto(*downstream_network,
                              response.mutable_downstream_network());

@@ -147,20 +147,21 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
-              DownstreamNetworkInfo,
-              (const DownstreamNetworkInfoRequest&,
-               DownstreamNetworkInfoResponse*,
+              GetDownstreamNetworkInfo,
+              (const GetDownstreamNetworkInfoRequest&,
+               GetDownstreamNetworkInfoResponse*,
                brillo::ErrorPtr*,
                int),
               (override));
 
-  MOCK_METHOD(void,
-              DownstreamNetworkInfoAsync,
-              (const DownstreamNetworkInfoRequest&,
-               base::OnceCallback<void(const DownstreamNetworkInfoResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
+  MOCK_METHOD(
+      void,
+      GetDownstreamNetworkInfoAsync,
+      (const GetDownstreamNetworkInfoRequest&,
+       base::OnceCallback<void(const GetDownstreamNetworkInfoResponse&)>,
+       base::OnceCallback<void(brillo::Error*)>,
+       int),
+      (override));
 
   MOCK_METHOD(bool,
               GetTrafficCounters,

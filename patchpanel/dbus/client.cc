@@ -464,10 +464,10 @@ void OnLocalOnlyNetworkError(Client::CreateLocalOnlyNetworkCallback callback,
   std::move(callback).Run({});
 }
 
-// Helper static function to process answers to DownstreamNetworkInfo calls.
-void OnDownstreamNetworkInfoResponse(
-    Client::DownstreamNetworkInfoCallback callback,
-    const DownstreamNetworkInfoResponse& response) {
+// Helper static function to process answers to GetDownstreamNetworkInfo calls.
+void OnGetDownstreamNetworkInfoResponse(
+    Client::GetDownstreamNetworkInfoCallback callback,
+    const GetDownstreamNetworkInfoResponse& response) {
   auto downstream_network =
       ConvertDownstreamNetwork(response.downstream_network());
 
@@ -479,8 +479,8 @@ void OnDownstreamNetworkInfoResponse(
   std::move(callback).Run(true, downstream_network, clients_info);
 }
 
-void OnDownstreamNetworkInfoError(
-    Client::DownstreamNetworkInfoCallback callback, brillo::Error* error) {
+void OnGetDownstreamNetworkInfoError(
+    Client::GetDownstreamNetworkInfoCallback callback, brillo::Error* error) {
   LOG(ERROR) << __func__ << "(): " << error->GetMessage();
   std::move(callback).Run(false, {}, {});
 }
@@ -571,7 +571,7 @@ class ClientImpl : public Client {
 
   bool GetDownstreamNetworkInfo(
       const std::string& ifname,
-      DownstreamNetworkInfoCallback callback) override;
+      GetDownstreamNetworkInfoCallback callback) override;
 
  private:
   // Runs the |task| on the DBus thread synchronously.
@@ -1228,20 +1228,20 @@ bool ClientImpl::CreateLocalOnlyNetwork(
 }
 
 bool ClientImpl::GetDownstreamNetworkInfo(
-    const std::string& ifname, DownstreamNetworkInfoCallback callback) {
-  DownstreamNetworkInfoRequest request;
+    const std::string& ifname, GetDownstreamNetworkInfoCallback callback) {
+  GetDownstreamNetworkInfoRequest request;
   request.set_downstream_ifname(ifname);
 
   RunOnDBusThreadAsync(base::BindOnce(
       [](PatchPanelProxyInterface* proxy,
-         const DownstreamNetworkInfoRequest& request,
-         DownstreamNetworkInfoCallback callback) {
+         const GetDownstreamNetworkInfoRequest& request,
+         GetDownstreamNetworkInfoCallback callback) {
         auto split_callback = SplitOnceCallback(std::move(callback));
-        proxy->DownstreamNetworkInfoAsync(
+        proxy->GetDownstreamNetworkInfoAsync(
             request,
-            base::BindOnce(&OnDownstreamNetworkInfoResponse,
+            base::BindOnce(&OnGetDownstreamNetworkInfoResponse,
                            std::move(split_callback.first)),
-            base::BindOnce(&OnDownstreamNetworkInfoError,
+            base::BindOnce(&OnGetDownstreamNetworkInfoError,
                            std::move(split_callback.second)));
       },
       proxy_.get(), request,

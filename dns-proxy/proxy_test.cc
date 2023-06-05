@@ -242,7 +242,7 @@ class MockPatchpanelClient : public patchpanel::Client {
   MOCK_METHOD(bool,
               GetDownstreamNetworkInfo,
               (const std::string&,
-               patchpanel::Client::DownstreamNetworkInfoCallback));
+               patchpanel::Client::GetDownstreamNetworkInfoCallback));
 };
 
 class MockResolver : public Resolver {
