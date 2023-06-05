@@ -173,6 +173,10 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveEccKey(const KeyTpm2& key_data,
           key_data.key_handle, in_point, session.delegate, &z_point)))
       .WithStatus<TPMError>("Failed to ECDH ZGen");
 
+  if (z_point.point.x.size > sizeof(z_point.point.x.buffer)) {
+    return MakeStatus<TPMError>("Z point overflow", TPMRetryAction::kNoRetry);
+  }
+
   return Sha256(SecureBlob(StringFrom_TPM2B_ECC_PARAMETER(z_point.point.x)));
 }
 

@@ -46,6 +46,9 @@ namespace {
 constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
 constexpr uint32_t kDefaultTpmPublicExponent = 0x10001;
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
+constexpr uint32_t kMaxPasswordLength = sizeof(trunks::TPMU_HA);
+constexpr uint32_t kMaxRsaPublicKeySize = 256;
+constexpr uint32_t kMaxRsaPrivateKeySize = 128;
 
 // Min and max supported RSA modulus sizes (in bytes).
 constexpr uint32_t kMinModulusSize = 128;
@@ -202,6 +205,11 @@ StatusOr<brillo::SecureBlob> GetEndorsementPassword(
                                 TPMRetryAction::kLater);
   }
 
+  if (password.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Endorsement password too large",
+                                TPMRetryAction::kLater);
+  }
+
   return password;
 }
 
@@ -325,6 +333,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
   base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
 
+  if (auth_value.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
+  }
+
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
 
@@ -359,10 +371,15 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     const LoadKeyOptions& load_key_options) {
+  uint32_t key_bits = options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits);
+  if (key_bits > kMaxModulusSize * 8) {
+    return MakeStatus<TPMError>("Modulus bits too big",
+                                TPMRetryAction::kNoRetry);
+  }
+
   brillo::SecureBlob n;
   brillo::SecureBlob p;
-  if (!hwsec_foundation::CreateRsaKey(
-          options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits), &n, &p)) {
+  if (!hwsec_foundation::CreateRsaKey(key_bits, &n, &p)) {
     return MakeStatus<TPMError>("Failed to creating software RSA key",
                                 TPMRetryAction::kNoRetry);
   }
@@ -391,6 +408,16 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
 
+  if (public_modulus.size() > kMaxRsaPublicKeySize) {
+    return MakeStatus<TPMError>("RSA public key too large",
+                                TPMRetryAction::kLater);
+  }
+
+  if (private_prime_factor.size() > kMaxRsaPrivateKeySize) {
+    return MakeStatus<TPMError>("RSA private key too large",
+                                TPMRetryAction::kLater);
+  }
+
   std::string prime_factor = private_prime_factor.to_string();
 
   std::string auth_value;
@@ -403,6 +430,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
       brillo::SecureClearContainer<std::string>, std::ref(prime_factor)));
   base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
+
+  if (auth_value.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
+  }
 
   uint32_t exponent = kDefaultTpmPublicExponent;
   if (options.rsa_exponent.has_value()) {
@@ -452,6 +483,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapECCKey(
                                 TPMRetryAction::kNoRetry);
   }
 
+  if (public_point_x.size() > MAX_ECC_KEY_BYTES ||
+      public_point_y.size() > MAX_ECC_KEY_BYTES ||
+      private_value.size() > MAX_ECC_KEY_BYTES) {
+    return MakeStatus<TPMError>("ECC key too large", TPMRetryAction::kNoRetry);
+  }
+
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
@@ -464,6 +501,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapECCKey(
   // Cleanup the data from secure blob.
   base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
+
+  if (auth_value.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
+  }
 
   trunks::TPMI_ECC_CURVE curve = kDefaultTpmCurveId;
 
@@ -528,15 +569,19 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     auth_value = policy.permission.auth_value.value().to_string();
   }
 
+  // Cleanup the data from secure blob.
+  base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
+      brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
+
+  if (auth_value.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
+  }
+
   trunks::TPMI_ECC_CURVE curve = kDefaultTpmCurveId;
 
   if (options.ecc_nid.has_value()) {
     ASSIGN_OR_RETURN(curve, ConvertNIDToTrunksCurveID(options.ecc_nid.value()));
   }
-
-  // Cleanup the data from secure blob.
-  base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
-      brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
 
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
@@ -796,6 +841,21 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
       MakeStatus<TPM2Error>(
           context_.GetTpmUtility().GetKeyPublicArea(key_handle, &public_area)))
       .WithStatus<TPMError>("Failed to Get key public area");
+
+  if (public_area.type == trunks::TPM_ALG_RSA) {
+    if (public_area.unique.rsa.size > sizeof(public_area.unique.rsa.buffer)) {
+      return MakeStatus<TPMError>("RSA pubkey overflow",
+                                  TPMRetryAction::kNoRetry);
+    }
+  } else if (public_area.type == trunks::TPM_ALG_ECC) {
+    if (public_area.unique.ecc.x.size >
+            sizeof(public_area.unique.ecc.x.buffer) ||
+        public_area.unique.ecc.y.size >
+            sizeof(public_area.unique.ecc.y.buffer)) {
+      return MakeStatus<TPMError>("ECC pubkey overflow",
+                                  TPMRetryAction::kNoRetry);
+    }
+  }
 
   KeyToken token = current_token_++;
   key_map_.emplace(token, KeyTpm2{

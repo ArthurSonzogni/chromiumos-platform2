@@ -22,6 +22,11 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec_foundation::status::MakeStatus;
 
+namespace {
+constexpr uint32_t kMaxPasswordLength = sizeof(trunks::TPMU_HA);
+constexpr uint32_t kMaxDataLength = MAX_SYM_DATA;
+}  // namespace
+
 namespace hwsec {
 
 StatusOr<bool> SealingTpm2::IsSupported() {
@@ -31,6 +36,11 @@ StatusOr<bool> SealingTpm2::IsSupported() {
 StatusOr<brillo::Blob> SealingTpm2::Seal(
     const OperationPolicySetting& policy,
     const brillo::SecureBlob& unsealed_data) {
+  if (unsealed_data.size() > kMaxDataLength) {
+    return MakeStatus<TPMError>("Data to seal is too large",
+                                TPMRetryAction::kNoRetry);
+  }
+
   bool use_only_policy_authorization = false;
 
   ASSIGN_OR_RETURN(const std::string& policy_digest,
@@ -66,6 +76,10 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
   base::ScopedClosureRunner cleanup_plaintext(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(plaintext)));
+
+  if (auth_value.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
+  }
 
   std::string sealed_str;
   RETURN_IF_ERROR(

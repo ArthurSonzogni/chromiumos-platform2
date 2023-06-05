@@ -158,6 +158,11 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::Reset(
     uint32_t bits_per_level, uint32_t length_labels) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
+  if (bits_per_level == 0) {
+    return MakeStatus<TPMError>("Bits per level cannot be zero",
+                                TPMRetryAction::kNoRetry);
+  }
+
   uint32_t pinweaver_status = 0;
   std::string root;
 

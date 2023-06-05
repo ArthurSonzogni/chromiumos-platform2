@@ -61,6 +61,11 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
 
+  if (plaintext.size() > MAX_RSA_KEY_BYTES) {
+    return MakeStatus<TPMError>("Plaintext too large",
+                                TPMRetryAction::kNoRetry);
+  }
+
   std::string data = plaintext.to_string();
 
   // Cleanup the data from secure blob.
@@ -89,6 +94,11 @@ StatusOr<brillo::SecureBlob> EncryptionTpm2::Decrypt(
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
+
+  if (ciphertext.size() > MAX_RSA_KEY_BYTES) {
+    return MakeStatus<TPMError>("Ciphertext too large",
+                                TPMRetryAction::kNoRetry);
+  }
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,

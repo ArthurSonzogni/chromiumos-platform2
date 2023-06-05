@@ -87,6 +87,11 @@ StatusOr<attestation::Quote> AttestationTpm2::Quote(
   ASSIGN_OR_RETURN(const std::string& sig,
                    SerializeFromTpmSignature(signature));
   quote.set_quote(sig);
+
+  if (quoted_struct.size > sizeof(quoted_struct.attestation_data)) {
+    return MakeStatus<TPMError>("Quoted struct overflow",
+                                TPMRetryAction::kNoRetry);
+  }
   quote.set_quoted_data(StringFrom_TPM2B_ATTEST(quoted_struct));
 
   return quote;

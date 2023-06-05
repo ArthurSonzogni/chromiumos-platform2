@@ -78,8 +78,20 @@ StatusOr<std::string> SerializeFromTpmSignature(
     const trunks::TPMT_SIGNATURE& signature) {
   switch (signature.sig_alg) {
     case trunks::TPM_ALG_RSASSA:
+      if (signature.signature.rsassa.sig.size >
+          sizeof(signature.signature.rsassa.sig.buffer)) {
+        return MakeStatus<TPMError>("RSASSA signature overflow",
+                                    TPMRetryAction::kNoRetry);
+      }
       return StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
     case trunks::TPM_ALG_ECDSA: {
+      if (signature.signature.ecdsa.signature_r.size >
+              sizeof(signature.signature.ecdsa.signature_r.buffer) ||
+          signature.signature.ecdsa.signature_s.size >
+              sizeof(signature.signature.ecdsa.signature_s.buffer)) {
+        return MakeStatus<TPMError>("ECDSA signature overflow",
+                                    TPMRetryAction::kNoRetry);
+      }
       ASSIGN_OR_RETURN(
           crypto::ScopedECDSA_SIG sig,
           CreateEcdsaSigFromRS(StringFrom_TPM2B_ECC_PARAMETER(
