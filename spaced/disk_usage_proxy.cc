@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 
 namespace spaced {
@@ -54,6 +56,20 @@ int64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {
   }
 
   return free_disk_space;
+}
+
+void DiskUsageProxy::GetFreeDiskSpaceAsync(
+    const base::FilePath& path, base::OnceCallback<void(int64_t)> callback) {
+  auto splitted_callbacks = base::SplitOnceCallback(std::move(callback));
+  spaced_proxy_->GetFreeDiskSpaceAsync(
+      path.value(), std::move(splitted_callbacks.first),
+      base::BindOnce(
+          [](base::OnceCallback<void(int64_t)> callback, brillo::Error* error) {
+            LOG(ERROR) << "Failed to GetFreeDiskSpaceAsync: "
+                       << error->GetMessage();
+            std::move(callback).Run(-1);
+          },
+          std::move(splitted_callbacks.second)));
 }
 
 int64_t DiskUsageProxy::GetTotalDiskSpace(const base::FilePath& path) {
