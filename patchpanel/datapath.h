@@ -332,10 +332,13 @@ class Datapath {
   // Start, stop and update IPv6 prefix enforcement on cellular network, so the
   // egress traffic using a source address not in current assigned prefix
   // (usually a leftover address from previous connection) will be dropped.
-  virtual void StartSourceIPv6PrefixEnforcement(const std::string& ifname);
-  virtual void StopSourceIPv6PrefixEnforcement(const std::string& ifname);
+  virtual void StartSourceIPv6PrefixEnforcement(
+      const ShillClient::Device& shill_device);
+  virtual void StopSourceIPv6PrefixEnforcement(
+      const ShillClient::Device& shill_device);
   virtual void UpdateSourceEnforcementIPv6Prefix(
-      const std::string& ifname, const std::optional<std::string>& prefix);
+      const ShillClient::Device& shill_device,
+      const std::optional<std::string>& prefix);
 
   // Configures IPv4 interface parameters, IP forwarding rules, and traffic
   // marking for the downstream network interface specified in |info|. Exact

@@ -157,6 +157,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.RemoveIPv6HostRoute(ipv6_cidr);
   datapath.AddIPv6Address(ifname, ipv6_addr_str);
   datapath.RemoveIPv6Address(ifname, ipv6_addr_str);
+  datapath.StartSourceIPv6PrefixEnforcement(shill_device);
+  datapath.StopSourceIPv6PrefixEnforcement(shill_device);
+  datapath.UpdateSourceEnforcementIPv6Prefix(shill_device, ipv6_addr_str);
 
   return 0;
 }

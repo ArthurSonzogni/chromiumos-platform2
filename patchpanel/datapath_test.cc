@@ -2060,12 +2060,14 @@ TEST(DatapathTest, PrefixEnforcement) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
-
   Datapath datapath(runner, firewall, &system);
+
+  ShillClient::Device cell_device;
+  cell_device.ifname = "wwan0";
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -I OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath.StartSourceIPv6PrefixEnforcement("wwan0");
+  datapath.StartSourceIPv6PrefixEnforcement(cell_device);
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -F enforce_ipv6_src_prefix -w");
@@ -2076,7 +2078,7 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", "2001:db8:1:1::");
+  datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, "2001:db8:1:1::");
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -F enforce_ipv6_src_prefix -w");
@@ -2084,7 +2086,7 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", std::nullopt);
+  datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -F enforce_ipv6_src_prefix -w");
@@ -2095,7 +2097,7 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", "2001:db8:1:2::");
+  datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, "2001:db8:1:2::");
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -D OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
@@ -2105,7 +2107,7 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.StopSourceIPv6PrefixEnforcement("wwan0");
+  datapath.StopSourceIPv6PrefixEnforcement(cell_device);
 }
 
 TEST(DatapathTest, SetRouteLocalnet) {

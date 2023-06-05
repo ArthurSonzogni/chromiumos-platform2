@@ -1741,27 +1741,30 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
   }
 }
 
-void Datapath::StartSourceIPv6PrefixEnforcement(const std::string& ifname) {
-  VLOG(2) << __func__ << ": " << ifname;
+void Datapath::StartSourceIPv6PrefixEnforcement(
+    const ShillClient::Device& shill_device) {
+  VLOG(2) << __func__ << ": " << shill_device;
   ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
                  Iptables::Command::kI, "OUTPUT", kEnforceSourcePrefixChain,
-                 /*iif=*/"", /*oif=*/ifname);
+                 /*iif=*/"", /*oif=*/shill_device.ifname);
 }
 
-void Datapath::StopSourceIPv6PrefixEnforcement(const std::string& ifname) {
-  VLOG(2) << __func__ << ": " << ifname;
+void Datapath::StopSourceIPv6PrefixEnforcement(
+    const ShillClient::Device& shill_device) {
+  VLOG(2) << __func__ << ": " << shill_device;
   if (ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
                      Iptables::Command::kD, "OUTPUT", kEnforceSourcePrefixChain,
-                     /*iif=*/"", /*oif=*/ifname)) {
+                     /*iif=*/"", /*oif=*/shill_device.ifname)) {
     // if we removed the jump rule, also clear the prefix RETURN rule in the
     // chain to prepare for the next time when that jump rule will be added.
-    UpdateSourceEnforcementIPv6Prefix(ifname, std::nullopt);
+    UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
   }
 }
 
 void Datapath::UpdateSourceEnforcementIPv6Prefix(
-    const std::string& ifname, const std::optional<std::string>& prefix) {
-  VLOG(2) << __func__ << ": " << ifname << ", {"
+    const ShillClient::Device& shill_device,
+    const std::optional<std::string>& prefix) {
+  VLOG(2) << __func__ << ": " << shill_device << ", {"
           << (prefix ? prefix.value() : "") << "}";
   if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter,
                   kEnforceSourcePrefixChain)) {

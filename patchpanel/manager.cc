@@ -229,7 +229,7 @@ void Manager::OnShillDevicesChanged(
     // matching |ifname| with existing rules.
     // TODO(hugobenichi): fix the above problem now that the full Device
     // information is  available.
-    datapath_->StopSourceIPv6PrefixEnforcement(device.ifname);
+    datapath_->StopSourceIPv6PrefixEnforcement(device);
   }
 
   for (const auto& device : added) {
@@ -255,7 +255,7 @@ void Manager::OnShillDevicesChanged(
     arc_svc_->AddDevice(device);
 
     if (device.type == ShillClient::Device::Type::kCellular) {
-      datapath_->StartSourceIPv6PrefixEnforcement(device.ifname);
+      datapath_->StartSourceIPv6PrefixEnforcement(device);
     }
   }
 }
@@ -290,8 +290,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   const std::string& ipv6_address = shill_device.ipconfig.ipv6_address;
   if (ipv6_address.empty()) {
     if (shill_device.type == ShillClient::Device::Type::kCellular) {
-      datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device.ifname,
-                                                   /*prefix=*/std::nullopt);
+      datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
     }
     return;
   }
@@ -316,7 +315,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
                  << "\"";
       return;
     }
-    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device.ifname, prefix);
+    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
   }
 }
 
