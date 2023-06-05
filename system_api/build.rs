@@ -82,6 +82,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "system_api/dbus/cryptohome/auth_factor.proto",
     ),
     (
+        "battery_saver",
+        "system_api/dbus/power_manager/battery_saver.proto",
+    ),
+    (
         "concierge_service",
         "system_api/dbus/vm_concierge/concierge_service.proto",
     ),

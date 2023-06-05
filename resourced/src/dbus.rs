@@ -19,6 +19,7 @@ use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
 use dbus_tokio::connection;
 use libchromeos::sys::error;
 use log::LevelFilter;
+use system_api::battery_saver::BatterySaverModeState;
 
 #[cfg(target_arch = "x86_64")]
 use crate::gpu_freq_scaling;
@@ -33,6 +34,8 @@ const PATH_NAME: &str = "/org/chromium/ResourceManager";
 const INTERFACE_NAME: &str = SERVICE_NAME;
 
 const VMCONCIEGE_INTERFACE_NAME: &str = "org.chromium.VmConcierge";
+const POWERD_INTERFACE_NAME: &str = "org.chromium.PowerManager";
+const POWERD_PATH_NAME: &str = "/org/chromium/PowerManager";
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -436,6 +439,39 @@ fn set_vm_boot_mode(context: DbusContext, mode: common::VmBootMode) -> Result<()
     Ok(())
 }
 
+fn on_battery_saver_mode_change(context: DbusContext, raw_bytes: Vec<u8>) -> Result<()> {
+    let bsm_state: BatterySaverModeState = protobuf::Message::parse_from_bytes(&raw_bytes)?;
+
+    let mode = if bsm_state.enabled() {
+        common::BatterySaverMode::Active
+    } else {
+        common::BatterySaverMode::Inactive
+    };
+
+    common::on_battery_saver_mode_change(context.power_preferences_manager.as_ref(), mode)
+        .map_err(|e| {
+            error!("on_battery_saver_mode_change failed: {:#}", e);
+            MethodErr::failed("Failed to set battery saver mode")
+        })?;
+
+    Ok(())
+}
+
+async fn init_battery_saver_mode(context: DbusContext, conn: Arc<SyncConnection>) -> Result<()> {
+    let powerd_proxy = Proxy::new(
+        POWERD_INTERFACE_NAME,
+        POWERD_PATH_NAME,
+        Duration::from_millis(1000),
+        conn,
+    );
+
+    let (powerd_response,): (Vec<u8>,) = powerd_proxy
+        .method_call(POWERD_INTERFACE_NAME, "GetBatterySaverModeState", ())
+        .await?;
+
+    on_battery_saver_mode_change(context.clone(), powerd_response)
+}
+
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let context = DbusContext {
@@ -508,10 +544,11 @@ pub async fn service_main() -> Result<()> {
             MatchRule::new_signal(VMCONCIEGE_INTERFACE_NAME, "VmGuestUserlandReadySignal");
         conn.add_match_no_cb(&vm_complete_boot_rule.match_str())
             .await?;
+        let cb_context = context.clone();
         conn.start_receive(
             vm_complete_boot_rule,
             Box::new(move |_, _| {
-                match set_vm_boot_mode(context.clone(), common::VmBootMode::Inactive) {
+                match set_vm_boot_mode(cb_context.clone(), common::VmBootMode::Inactive) {
                     Ok(_) => true,
                     Err(e) => {
                         error!("Failed to stop VM boot boosting. {}", e);
@@ -521,6 +558,35 @@ pub async fn service_main() -> Result<()> {
             }),
         );
     }
+
+    init_battery_saver_mode(context.clone(), conn.clone()).await?;
+
+    // Registers callbacks for `BatterySaverModeStateChanged` from powerd.
+    const BATTERY_SAVER_MODE_EVENT: &str = "BatterySaverModeStateChanged";
+    let battery_saver_mode_rule =
+        MatchRule::new_signal(POWERD_INTERFACE_NAME, BATTERY_SAVER_MODE_EVENT);
+    conn.add_match_no_cb(&battery_saver_mode_rule.match_str())
+        .await?;
+
+    conn.start_receive(
+        battery_saver_mode_rule,
+        Box::new(move |msg, _| match msg.read1() {
+            Ok(bytes) => match on_battery_saver_mode_change(context.clone(), bytes) {
+                Ok(()) => true,
+                Err(e) => {
+                    error!("error handling Battery Saver Mode change. {}", e);
+                    false
+                }
+            },
+            Err(e) => {
+                error!(
+                    "error reading D-Bus message {}. {}",
+                    BATTERY_SAVER_MODE_EVENT, e
+                );
+                false
+            }
+        }),
+    );
 
     conn.start_receive(
         MatchRule::new_method_call(),

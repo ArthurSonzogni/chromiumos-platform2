@@ -11,7 +11,7 @@ use glob::glob;
 use libchromeos::sys::{error, info};
 
 use crate::common;
-use crate::common::{FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
+use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
 use crate::config;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
@@ -150,6 +150,7 @@ pub trait PowerPreferencesManager {
         fullscreen: common::FullscreenVideo,
         game: common::GameMode,
         vmboot: common::VmBootMode,
+        batterysaver: common::BatterySaverMode,
     ) -> Result<()>;
 }
 
@@ -304,12 +305,15 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         fullscreen: FullscreenVideo,
         game: GameMode,
         vmboot: VmBootMode,
+        batterysaver: BatterySaverMode,
     ) -> Result<()> {
         let mut preferences: Option<config::PowerPreferences> = None;
 
         let power_source = self.power_source_provider.get_power_source()?;
 
         info!("Power source {:?}", power_source);
+
+        info!("Battery saver mode {:?}", batterysaver);
 
         if game == GameMode::Borealis {
             preferences = self.config_provider.read_power_preferences(
@@ -764,6 +768,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         // We shouldn't have written anything.
@@ -800,6 +805,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -847,6 +853,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -894,6 +901,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -940,6 +948,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -985,6 +994,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1050,6 +1060,7 @@ mod tests {
                 test.1,
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
             )?;
 
             let epp = read_epp(root.path())?;
@@ -1094,6 +1105,7 @@ mod tests {
             common::FullscreenVideo::Active,
             common::GameMode::Off,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1139,6 +1151,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Borealis,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1184,6 +1197,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Arc,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1240,6 +1254,7 @@ mod tests {
             common::FullscreenVideo::Inactive,
             common::GameMode::Arc,
             common::VmBootMode::Inactive,
+            common::BatterySaverMode::Inactive,
         )?;
         check_per_policy_scaling_governor(root, ondemand);
         check_per_policy_powersave_bias(root, CONFIG_POWERSAVE_BIAS);
@@ -1311,6 +1326,7 @@ mod tests {
                 common::FullscreenVideo::Inactive,
                 common::GameMode::Arc,
                 common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
             )?;
 
             check_per_policy_scaling_governor(root, governor);

@@ -10,7 +10,7 @@ pub(crate) mod tests {
     use std::path::PathBuf;
     use std::str;
 
-    use crate::common::{FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
+    use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
     use crate::power;
 
     const MOCK_NUM_CPU: i32 = 16;
@@ -33,6 +33,7 @@ pub(crate) mod tests {
             _fullscreen: FullscreenVideo,
             _game: GameMode,
             _vmboot: VmBootMode,
+            _batterysaver: BatterySaverMode,
         ) -> Result<()> {
             Ok(())
         }

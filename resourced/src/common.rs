@@ -225,6 +225,28 @@ pub fn is_vm_boot_mode_enabled() -> bool {
     return false;
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum BatterySaverMode {
+    // Battery saver mode is not active.
+    Inactive = 0,
+    // Battery saver mode is active.
+    Active = 1,
+}
+static BATTERY_SAVER_MODE: Lazy<Mutex<BatterySaverMode>> =
+    Lazy::new(|| Mutex::new(BatterySaverMode::Inactive));
+
+impl TryFrom<u8> for BatterySaverMode {
+    type Error = anyhow::Error;
+
+    fn try_from(active_raw: u8) -> Result<BatterySaverMode> {
+        Ok(match active_raw {
+            0 => BatterySaverMode::Inactive,
+            1 => BatterySaverMode::Active,
+            _ => bail!("Unsupported battery saver mode value"),
+        })
+    }
+}
+
 pub fn update_power_preferences(
     power_preference_manager: &dyn power::PowerPreferencesManager,
 ) -> Result<()> {
@@ -234,8 +256,12 @@ pub fn update_power_preferences(
         Ok(rtc_data) => match FULLSCREEN_VIDEO.lock() {
             Ok(fsv_data) => match GAME_MODE.lock() {
                 Ok(game_data) => match VMBOOT_MODE.lock() {
-                    Ok(boot_data) => power_preference_manager
-                        .update_power_preferences(*rtc_data, *fsv_data, *game_data, *boot_data)?,
+                    Ok(boot_data) => match BATTERY_SAVER_MODE.lock() {
+                        Ok(bsm_data) => power_preference_manager.update_power_preferences(
+                            *rtc_data, *fsv_data, *game_data, *boot_data, *bsm_data,
+                        )?,
+                        Err(_) => bail!("Failed to get battery saver mode"),
+                    },
                     Err(_) => bail!("Failed to get VM boot mode"),
                 },
                 Err(_) => bail!("Failed to get game mode"),
@@ -300,6 +326,21 @@ pub fn get_fullscreen_video() -> Result<FullscreenVideo> {
         Ok(data) => Ok(*data),
         Err(_) => bail!("Failed to get full screen video activity"),
     }
+}
+
+pub fn on_battery_saver_mode_change(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+    mode: BatterySaverMode,
+) -> Result<()> {
+    match BATTERY_SAVER_MODE.lock() {
+        Ok(mut data) => {
+            *data = mode;
+        }
+        Err(_) => bail!("Failed to set Battery saver mode activity"),
+    }
+    update_power_preferences(power_preference_manager)?;
+
+    Ok(())
 }
 
 pub fn set_vm_boot_mode(
