@@ -840,8 +840,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     OnFrameStarted(*stream_context);
 
     if (result_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
-      LOGF(ERROR) << "EffectsStreamManipulator received failed buffer: "
-                  << result.frame_number();
+      VLOGF(1) << "EffectsStreamManipulator received failed buffer: "
+               << result.frame_number();
       metrics_.RecordError(CameraEffectError::kReceivedFailedBuffer);
       // Even though the buffer status is not OK, we still need to send a
       // response to the client to let them know their request was handled.
