@@ -43,20 +43,22 @@ constexpr char kPluginVmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/plugin-vcpus";
 
 class PluginVm final : public VmBaseImpl {
  public:
-  static std::unique_ptr<PluginVm> Create(
-      const VmId id,
-      base::FilePath stateful_dir,
-      base::FilePath iso_dir,
-      base::FilePath root_dir,
-      base::FilePath runtime_dir,
-      std::unique_ptr<patchpanel::Client> network_client,
-      int subnet_index,
-      bool enable_vnet_hdr,
-      scoped_refptr<dbus::Bus> bus,
-      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-      dbus::ObjectProxy* vm_permission_service_proxy,
-      dbus::ObjectProxy* vmplugin_service_proxy,
-      VmBuilder vm_builder);
+  struct Config {
+    const VmId id;
+    base::FilePath stateful_dir;
+    base::FilePath iso_dir;
+    base::FilePath root_dir;
+    base::FilePath runtime_dir;
+    std::unique_ptr<patchpanel::Client> network_client;
+    int subnet_index;
+    bool enable_vnet_hdr;
+    scoped_refptr<dbus::Bus> bus;
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    dbus::ObjectProxy* vm_permission_service_proxy;
+    dbus::ObjectProxy* vmplugin_service_proxy;
+    VmBuilder vm_builder;
+  };
+  static std::unique_ptr<PluginVm> Create(Config config);
   ~PluginVm() override;
 
   // VmBaseImpl overrides.
@@ -115,15 +117,7 @@ class PluginVm final : public VmBaseImpl {
   }
 
  private:
-  PluginVm(const VmId id,
-           std::unique_ptr<patchpanel::Client> network_client,
-           scoped_refptr<dbus::Bus> bus,
-           std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-           dbus::ObjectProxy* vm_permission_service_proxy,
-           dbus::ObjectProxy* vmplugin_service_proxy,
-           base::FilePath iso_dir,
-           base::FilePath root_dir,
-           base::FilePath runtime_dir);
+  explicit PluginVm(Config config);
   PluginVm(const PluginVm&) = delete;
   PluginVm& operator=(const PluginVm&) = delete;
 

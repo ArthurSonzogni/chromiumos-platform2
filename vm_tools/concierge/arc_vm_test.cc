@@ -838,12 +838,20 @@ class ArcVmTest : public ::testing::Test {
     swap_state_monitor_timer_ = new base::MockRepeatingTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
-    vm_ = std::unique_ptr<ArcVm>(new ArcVm(
-        vsock_cid, std::make_unique<patchpanel::FakeClient>(), nullptr,
-        vmm_swap_tbw_policy_, temp_dir_.GetPath(), base::FilePath("dummy"), {},
-        std::unique_ptr<base::OneShotTimer>(swap_policy_timer_),
-        std::unique_ptr<base::RepeatingTimer>(swap_state_monitor_timer_),
-        std::unique_ptr<base::RepeatingTimer>(aggressive_balloon_timer_)));
+    vm_ = std::unique_ptr<ArcVm>(new ArcVm(ArcVm::Config{
+        .vsock_cid = vsock_cid,
+        .network_client = std::make_unique<patchpanel::FakeClient>(),
+        .seneschal_server_proxy = nullptr,
+        .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
+        .runtime_dir = temp_dir_.GetPath(),
+        .data_disk_path = base::FilePath("dummy"),
+        .features = {},
+        .swap_policy_timer =
+            std::unique_ptr<base::OneShotTimer>(swap_policy_timer_),
+        .swap_state_monitor_timer =
+            std::unique_ptr<base::RepeatingTimer>(swap_state_monitor_timer_),
+        .aggressive_balloon_timer =
+            std::unique_ptr<base::RepeatingTimer>(aggressive_balloon_timer_)}));
 
     // The more than 28days enabled log unblocks the VmmSwapUsagePolicy.
     // We don't add OnDisabled log here because adding OnDisabled log at 50days

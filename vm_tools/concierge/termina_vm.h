@@ -50,6 +50,9 @@ constexpr char kBorealisGpuServerCpusetCgroup[] =
 // belong to.
 constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/termina";
 
+// Name of the control socket used for controlling crosvm.
+constexpr char kTerminaCrosvmSocket[] = "crosvm.sock";
+
 struct VmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
@@ -94,23 +97,27 @@ class TerminaVm final : public VmBaseImpl {
     SHRINK,
   };
 
+  struct Config {
+    uint32_t vsock_cid;
+    std::unique_ptr<patchpanel::Client> network_client;
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    std::string cros_vm_socket{kTerminaCrosvmSocket};
+    base::FilePath runtime_dir;
+    base::FilePath log_path;
+    std::string stateful_device;
+    uint64_t stateful_size;
+    VmFeatures features;
+    dbus::ObjectProxy* vm_permission_service_proxy;
+    scoped_refptr<dbus::Bus> bus;
+    VmId id;
+    VmId::Type classification;
+    VmBuilder vm_builder;
+    std::unique_ptr<ScopedWlSocket> socket;
+  };
+
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
-  static std::unique_ptr<TerminaVm> Create(
-      uint32_t vsock_cid,
-      std::unique_ptr<patchpanel::Client> network_client,
-      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-      base::FilePath runtime_dir,
-      base::FilePath log_path,
-      std::string stateful_device,
-      uint64_t stateful_size,
-      VmFeatures features,
-      dbus::ObjectProxy* vm_permission_service_proxy,
-      scoped_refptr<dbus::Bus> bus,
-      VmId id,
-      VmId::Type classification,
-      VmBuilder vm_builder,
-      std::unique_ptr<ScopedWlSocket> socket);
+  static std::unique_ptr<TerminaVm> Create(Config config);
   ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
@@ -251,29 +258,8 @@ class TerminaVm final : public VmBaseImpl {
       VmBuilder vm_builder);
 
  private:
-  TerminaVm(uint32_t vsock_cid,
-            std::unique_ptr<patchpanel::Client> network_client,
-            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-            base::FilePath runtime_dir,
-            base::FilePath log_path,
-            std::string stateful_device,
-            uint64_t stateful_size,
-            VmFeatures features,
-            dbus::ObjectProxy* vm_permission_service_proxy,
-            scoped_refptr<dbus::Bus> bus,
-            VmId id,
-            VmId::Type classification,
-            std::unique_ptr<ScopedWlSocket> socket);
+  explicit TerminaVm(Config config);
 
-  // Constructor for testing only.
-  TerminaVm(std::unique_ptr<patchpanel::Subnet> subnet,
-            uint32_t vsock_cid,
-            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-            base::FilePath runtime_dir,
-            base::FilePath log_path,
-            std::string stateful_device,
-            uint64_t stateful_size,
-            VmFeatures features);
   TerminaVm(const TerminaVm&) = delete;
   TerminaVm& operator=(const TerminaVm&) = delete;
 

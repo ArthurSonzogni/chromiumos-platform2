@@ -2111,11 +2111,21 @@ StartVmResponse Service::StartVmInternal(
   // layout.
   SetVmCpuArgs(cpus, vm_builder);
 
-  auto vm = TerminaVm::Create(
-      vsock_cid, std::move(network_client), std::move(server_proxy),
-      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
-      std::move(stateful_size), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder), std::move(socket));
+  auto vm = TerminaVm::Create(TerminaVm::Config{
+      .vsock_cid = vsock_cid,
+      .network_client = std::move(network_client),
+      .seneschal_server_proxy = std::move(server_proxy),
+      .runtime_dir = std::move(runtime_dir),
+      .log_path = std::move(log_path),
+      .stateful_device = std::move(stateful_device),
+      .stateful_size = static_cast<uint64_t>(std::move(stateful_size)),
+      .features = features,
+      .vm_permission_service_proxy = vm_permission_service_proxy_,
+      .bus = bus_,
+      .id = vm_id,
+      .classification = classification,
+      .vm_builder = std::move(vm_builder),
+      .socket = std::move(socket)});
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

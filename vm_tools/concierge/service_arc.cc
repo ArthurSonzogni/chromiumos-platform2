@@ -573,9 +573,15 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   auto vm = ArcVm::Create(
-      base::FilePath(kKernelPath), vsock_cid, std::move(network_client),
-      std::move(server_proxy), vmm_swap_tbw_policy_, std::move(runtime_dir),
-      std::move(data_disk_path), features, std::move(vm_builder));
+      ArcVm::Config{.kernel = base::FilePath(kKernelPath),
+                    .vsock_cid = vsock_cid,
+                    .network_client = std::move(network_client),
+                    .seneschal_server_proxy = std::move(server_proxy),
+                    .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
+                    .runtime_dir = std::move(runtime_dir),
+                    .data_disk_path = std::move(data_disk_path),
+                    .features = features,
+                    .vm_builder = std::move(vm_builder)});
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

@@ -59,9 +59,6 @@ namespace {
 constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {
     StartTerminaRequest::LXD_4_LTS};
 
-// Name of the control socket used for controlling crosvm.
-constexpr char kCrosvmSocket[] = "crosvm.sock";
-
 // How long to wait before timing out on shutdown RPCs.
 constexpr int64_t kShutdownTimeoutSeconds = 30;
 
@@ -113,86 +110,31 @@ std::unique_ptr<patchpanel::Subnet> MakeSubnet(
 
 }  // namespace
 
-TerminaVm::TerminaVm(
-    uint32_t vsock_cid,
-    std::unique_ptr<patchpanel::Client> network_client,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    base::FilePath runtime_dir,
-    base::FilePath log_path,
-    std::string stateful_device,
-    uint64_t stateful_size,
-    VmFeatures features,
-    dbus::ObjectProxy* vm_permission_service_proxy,
-    scoped_refptr<dbus::Bus> bus,
-    VmId id,
-    VmId::Type classification,
-    std::unique_ptr<ScopedWlSocket> socket)
-    : VmBaseImpl(std::move(network_client),
-                 vsock_cid,
-                 std::move(seneschal_server_proxy),
-                 kCrosvmSocket,
-                 std::move(runtime_dir)),
-      features_(features),
-      stateful_device_(stateful_device),
-      stateful_size_(stateful_size),
+TerminaVm::TerminaVm(Config config)
+    : VmBaseImpl(std::move(config.network_client),
+                 config.vsock_cid,
+                 std::move(config.seneschal_server_proxy),
+                 config.cros_vm_socket,
+                 std::move(config.runtime_dir)),
+      features_(config.features),
+      stateful_device_(config.stateful_device),
+      stateful_size_(config.stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
-      log_path_(std::move(log_path)),
-      id_(id),
-      bus_(bus),
-      vm_permission_service_proxy_(vm_permission_service_proxy),
-      classification_(classification),
-      socket_(std::move(socket)) {}
-
-// For testing.
-TerminaVm::TerminaVm(
-    std::unique_ptr<patchpanel::Subnet> subnet,
-    uint32_t vsock_cid,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    base::FilePath runtime_dir,
-    base::FilePath log_path,
-    std::string stateful_device,
-    uint64_t stateful_size,
-    VmFeatures features)
-    : VmBaseImpl(nullptr /* network_client */,
-                 vsock_cid,
-                 std::move(seneschal_server_proxy),
-                 "" /* cros_vm_socket */,
-                 std::move(runtime_dir)),
-      subnet_(std::move(subnet)),
-      features_(features),
-      stateful_device_(stateful_device),
-      stateful_size_(stateful_size),
-      stateful_resize_type_(DiskResizeType::NONE),
-      log_path_(std::move(log_path)),
-      id_(VmId("foo", "bar")),
-      classification_(VmId::Type::UNKNOWN) {
-  CHECK(subnet_);
-}
+      log_path_(std::move(config.log_path)),
+      id_(config.id),
+      bus_(config.bus),
+      vm_permission_service_proxy_(config.vm_permission_service_proxy),
+      classification_(config.classification),
+      socket_(std::move(config.socket)) {}
 
 TerminaVm::~TerminaVm() {
   Shutdown();
 }
 
-std::unique_ptr<TerminaVm> TerminaVm::Create(
-    uint32_t vsock_cid,
-    std::unique_ptr<patchpanel::Client> network_client,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    base::FilePath runtime_dir,
-    base::FilePath log_path,
-    std::string stateful_device,
-    uint64_t stateful_size,
-    VmFeatures features,
-    dbus::ObjectProxy* vm_permission_service_proxy,
-    scoped_refptr<dbus::Bus> bus,
-    VmId id,
-    VmId::Type classification,
-    VmBuilder vm_builder,
-    std::unique_ptr<ScopedWlSocket> socket) {
-  auto vm = base::WrapUnique(new TerminaVm(
-      vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
-      std::move(stateful_size), features, vm_permission_service_proxy,
-      std::move(bus), std::move(id), classification, std::move(socket)));
+std::unique_ptr<TerminaVm> TerminaVm::Create(Config config) {
+  auto vm_builder = std::move(config.vm_builder);
+
+  auto vm = base::WrapUnique(new TerminaVm(std::move(config)));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -1154,12 +1096,19 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
       .audio_capture = false,
   };
   auto vm = base::WrapUnique(new TerminaVm(
-      std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
-      std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      features));
+      TerminaVm::Config{.vsock_cid = vsock_cid,
+                        .seneschal_server_proxy = nullptr,
+                        .cros_vm_socket = "",
+                        .runtime_dir = std::move(runtime_dir),
+                        .log_path = std::move(log_path),
+                        .stateful_device = std::move(stateful_device),
+                        .stateful_size = std::move(stateful_size),
+                        .features = features,
+                        .id = VmId("foo", "bar"),
+                        .classification = VmId::Type::UNKNOWN}));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
-
+  vm->subnet_ = std::move(subnet);
   return vm;
 }
 

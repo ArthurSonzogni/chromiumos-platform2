@@ -242,12 +242,20 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
     vm_builder.AppendCustomParam(std::string("--params=") + param, "");
   }
 
-  auto vm = PluginVm::Create(
-      vm_id, std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
-      runtime_dir.Take(), std::move(network_client), request.subnet_index(),
-      request.net_options().enable_vnet_hdr(), bus_,
-      std::move(seneschal_server_proxy), vm_permission_service_proxy_,
-      vmplugin_service_proxy_, std::move(vm_builder));
+  auto vm = PluginVm::Create(PluginVm::Config{
+      .id = vm_id,
+      .stateful_dir = std::move(stateful_dir),
+      .iso_dir = std::move(iso_dir),
+      .root_dir = root_dir.Take(),
+      .runtime_dir = runtime_dir.Take(),
+      .network_client = std::move(network_client),
+      .subnet_index = static_cast<int>(request.subnet_index()),
+      .enable_vnet_hdr = request.net_options().enable_vnet_hdr(),
+      .bus = bus_,
+      .seneschal_server_proxy = std::move(seneschal_server_proxy),
+      .vm_permission_service_proxy = vm_permission_service_proxy_,
+      .vmplugin_service_proxy = vmplugin_service_proxy_,
+      .vm_builder = std::move(vm_builder)});
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");

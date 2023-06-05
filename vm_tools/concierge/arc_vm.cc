@@ -265,47 +265,29 @@ std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
       .to_string();
 }
 
-ArcVm::ArcVm(int32_t vsock_cid,
-             std::unique_ptr<patchpanel::Client> network_client,
-             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
-             base::FilePath runtime_dir,
-             base::FilePath data_disk_path,
-             ArcVmFeatures features,
-             std::unique_ptr<base::OneShotTimer> swap_policy_timer,
-             std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer,
-             std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer)
-    : VmBaseImpl(std::move(network_client),
-                 vsock_cid,
-                 std::move(seneschal_server_proxy),
+ArcVm::ArcVm(Config config)
+    : VmBaseImpl(std::move(config.network_client),
+                 config.vsock_cid,
+                 std::move(config.seneschal_server_proxy),
                  kCrosvmSocket,
-                 std::move(runtime_dir)),
-      data_disk_path_(data_disk_path),
-      features_(features),
+                 std::move(config.runtime_dir)),
+      data_disk_path_(config.data_disk_path),
+      features_(config.features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
-      swap_policy_timer_(std::move(swap_policy_timer)),
-      swap_state_monitor_timer_(std::move(swap_state_monitor_timer)),
-      vmm_swap_tbw_policy_(vmm_swap_tbw_policy),
-      aggressive_balloon_timer_(std::move(aggressive_balloon_timer)) {}
+      swap_policy_timer_(std::move(config.swap_policy_timer)),
+      swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
+      vmm_swap_tbw_policy_(std::move(config.vmm_swap_tbw_policy)),
+      aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {}
 
 ArcVm::~ArcVm() {
   Shutdown();
 }
 
-std::unique_ptr<ArcVm> ArcVm::Create(
-    base::FilePath kernel,
-    uint32_t vsock_cid,
-    std::unique_ptr<patchpanel::Client> network_client,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
-    base::FilePath runtime_dir,
-    base::FilePath data_image_path,
-    ArcVmFeatures features,
-    VmBuilder vm_builder) {
-  auto vm = base::WrapUnique(new ArcVm(
-      vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(vmm_swap_tbw_policy), std::move(runtime_dir),
-      std::move(data_image_path), features));
+std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
+  auto kernel = std::move(config.kernel);
+  auto vm_builder = std::move(config.vm_builder);
+
+  auto vm = base::WrapUnique(new ArcVm(std::move(config)));
 
   if (!vm->SetupLmkdVsock()) {
     vm.reset();

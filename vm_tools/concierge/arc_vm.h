@@ -70,18 +70,27 @@ std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid);
 // Represents a single instance of a running termina VM.
 class ArcVm final : public VmBaseImpl {
  public:
+  struct Config {
+    base::FilePath kernel;
+    uint32_t vsock_cid;
+    std::unique_ptr<patchpanel::Client> network_client;
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
+    base::FilePath runtime_dir;
+    base::FilePath data_disk_path;
+    ArcVmFeatures features;
+    std::unique_ptr<base::OneShotTimer> swap_policy_timer{
+        new base::OneShotTimer()};
+    std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer{
+        new base::RepeatingTimer()};
+    std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer{
+        new base::RepeatingTimer()};
+    VmBuilder vm_builder;
+  };
+
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
-  static std::unique_ptr<ArcVm> Create(
-      base::FilePath kernel,
-      uint32_t vsock_cid,
-      std::unique_ptr<patchpanel::Client> network_client,
-      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-      std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
-      base::FilePath runtime_dir,
-      base::FilePath data_disk_path,
-      ArcVmFeatures features,
-      VmBuilder vm_builder);
+  static std::unique_ptr<ArcVm> Create(Config config);
   ~ArcVm() override;
 
   // TODO(b/256052459): ArcVmTest access the constructor of ArcVm directly
@@ -164,19 +173,8 @@ class ArcVm final : public VmBaseImpl {
                                   int quota);
 
  private:
-  ArcVm(int32_t vsock_cid,
-        std::unique_ptr<patchpanel::Client> network_client,
-        std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-        std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
-        base::FilePath runtime_dir,
-        base::FilePath data_disk_path,
-        ArcVmFeatures features,
-        std::unique_ptr<base::OneShotTimer> swap_policy_timer =
-            std::make_unique<base::OneShotTimer>(),
-        std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer =
-            std::make_unique<base::RepeatingTimer>(),
-        std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer =
-            std::make_unique<base::RepeatingTimer>());
+  explicit ArcVm(Config config);
+
   ArcVm(const ArcVm&) = delete;
   ArcVm& operator=(const ArcVm&) = delete;
 

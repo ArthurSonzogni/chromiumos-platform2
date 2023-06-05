@@ -110,25 +110,13 @@ void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
 }  // namespace
 
 // static
-std::unique_ptr<PluginVm> PluginVm::Create(
-    VmId id,
-    base::FilePath stateful_dir,
-    base::FilePath iso_dir,
-    base::FilePath root_dir,
-    base::FilePath runtime_dir,
-    std::unique_ptr<patchpanel::Client> network_client,
-    int subnet_index,
-    bool enable_vnet_hdr,
-    scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    dbus::ObjectProxy* vm_permission_service_proxy,
-    dbus::ObjectProxy* vmplugin_service_proxy,
-    VmBuilder vm_builder) {
-  auto vm = base::WrapUnique(new PluginVm(
-      std::move(id), std::move(network_client), std::move(bus),
-      std::move(seneschal_server_proxy), vm_permission_service_proxy,
-      vmplugin_service_proxy, std::move(iso_dir), std::move(root_dir),
-      std::move(runtime_dir)));
+std::unique_ptr<PluginVm> PluginVm::Create(Config config) {
+  auto stateful_dir = std::move(config.stateful_dir);
+  auto subnet_index = std::move(config.subnet_index);
+  auto enable_vnet_hdr = std::move(config.enable_vnet_hdr);
+  auto vm_builder = std::move(config.vm_builder);
+
+  auto vm = base::WrapUnique(new PluginVm(std::move(config)));
 
   if (!vm->CreateUsbListeningSocket() ||
       !vm->Start(std::move(stateful_dir), subnet_index, enable_vnet_hdr,
@@ -629,31 +617,23 @@ void PluginVm::VmToolsStateChanged(bool running) {
     pvm::helper::CleanUpAfterInstall(id_, iso_dir_);
 }
 
-PluginVm::PluginVm(VmId id,
-                   std::unique_ptr<patchpanel::Client> network_client,
-                   scoped_refptr<dbus::Bus> bus,
-                   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-                   dbus::ObjectProxy* vm_permission_service_proxy,
-                   dbus::ObjectProxy* vmplugin_service_proxy,
-                   base::FilePath iso_dir,
-                   base::FilePath root_dir,
-                   base::FilePath runtime_dir)
-    : VmBaseImpl(std::move(network_client),
-                 std::move(seneschal_server_proxy),
-                 std::move(runtime_dir)),
-      id_(std::move(id)),
-      iso_dir_(std::move(iso_dir)),
-      bus_(std::move(bus)),
-      vm_permission_service_proxy_(vm_permission_service_proxy),
-      vmplugin_service_proxy_(vmplugin_service_proxy),
+PluginVm::PluginVm(Config config)
+    : VmBaseImpl(std::move(config.network_client),
+                 std::move(config.seneschal_server_proxy),
+                 std::move(config.runtime_dir)),
+      id_(std::move(config.id)),
+      iso_dir_(std::move(config.iso_dir)),
+      bus_(std::move(config.bus)),
+      vm_permission_service_proxy_(config.vm_permission_service_proxy),
+      vmplugin_service_proxy_(config.vmplugin_service_proxy),
       usb_last_handle_(0) {
   CHECK(vm_permission_service_proxy_);
   CHECK(vmplugin_service_proxy_);
   CHECK(base::DirectoryExists(iso_dir_));
-  CHECK(base::DirectoryExists(root_dir));
+  CHECK(base::DirectoryExists(config.root_dir));
 
   // Take ownership of the root and runtime directories.
-  CHECK(root_dir_.Set(root_dir));
+  CHECK(root_dir_.Set(config.root_dir));
 
   std::ostringstream oss;
   oss << id_;
