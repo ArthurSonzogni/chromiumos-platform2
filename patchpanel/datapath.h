@@ -417,9 +417,9 @@ class Datapath {
   // services to resolve hostnames even if a VPN application configures DNS
   // addresses only routable through the VPN (b/178331695).
   // TODO(b/171157837) Replaces these rules with the system DNS proxy.
-  bool AddRedirectDnsRule(const std::string& ifname,
+  bool AddRedirectDnsRule(const ShillClient::Device& shill_device,
                           const std::string dns_ipv4_addr);
-  bool RemoveRedirectDnsRule(const std::string& ifname);
+  bool RemoveRedirectDnsRule(const ShillClient::Device& shill_device);
 
   // Add, remove, or flush chain |chain| in table |table|.
   bool AddChain(IpFamily family,

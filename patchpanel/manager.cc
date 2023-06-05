@@ -220,7 +220,7 @@ void Manager::OnShillDevicesChanged(
     }
     StopForwarding(device, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(device);
-    datapath_->RemoveRedirectDnsRule(device.ifname);
+    datapath_->RemoveRedirectDnsRule(device);
     arc_svc_->RemoveDevice(device);
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
 
@@ -248,7 +248,7 @@ void Manager::OnShillDevicesChanged(
     datapath_->StartConnectionPinning(device);
 
     if (!device.ipconfig.ipv4_dns_addresses.empty()) {
-      datapath_->AddRedirectDnsRule(device.ifname,
+      datapath_->AddRedirectDnsRule(device,
                                     device.ipconfig.ipv4_dns_addresses.front());
     }
 
@@ -262,10 +262,10 @@ void Manager::OnShillDevicesChanged(
 
 void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   if (shill_device.ipconfig.ipv4_dns_addresses.empty()) {
-    datapath_->RemoveRedirectDnsRule(shill_device.ifname);
+    datapath_->RemoveRedirectDnsRule(shill_device);
   } else {
     datapath_->AddRedirectDnsRule(
-        shill_device.ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
+        shill_device, shill_device.ipconfig.ipv4_dns_addresses.front());
   }
   ipv6_svc_->UpdateUplinkIPv6DNS(shill_device);
 

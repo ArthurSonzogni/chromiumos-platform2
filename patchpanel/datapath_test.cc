@@ -1580,6 +1580,11 @@ TEST(DatapathTest, RedirectDnsRules) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+  ShillClient::Device wlan_device;
+  wlan_device.ifname = "wlan0";
+
   Verify_iptables(*runner, IpFamily::kIPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
@@ -1618,13 +1623,13 @@ TEST(DatapathTest, RedirectDnsRules) {
                   "--to-destination 8.8.8.8 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveRedirectDnsRule("wlan0");
-  datapath.RemoveRedirectDnsRule("unknown");
-  datapath.AddRedirectDnsRule("eth0", "192.168.1.1");
-  datapath.AddRedirectDnsRule("wlan0", "1.1.1.1");
-  datapath.AddRedirectDnsRule("wlan0", "8.8.8.8");
-  datapath.RemoveRedirectDnsRule("eth0");
-  datapath.RemoveRedirectDnsRule("wlan0");
+  datapath.RemoveRedirectDnsRule(wlan_device);
+  datapath.RemoveRedirectDnsRule(ShillClient::Device());
+  datapath.AddRedirectDnsRule(eth_device, "192.168.1.1");
+  datapath.AddRedirectDnsRule(wlan_device, "1.1.1.1");
+  datapath.AddRedirectDnsRule(wlan_device, "8.8.8.8");
+  datapath.RemoveRedirectDnsRule(eth_device);
+  datapath.RemoveRedirectDnsRule(wlan_device);
 }
 
 TEST(DatapathTest, DumpIptables) {

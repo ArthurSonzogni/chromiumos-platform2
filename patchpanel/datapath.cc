@@ -1392,10 +1392,11 @@ void Datapath::RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                              "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
-bool Datapath::AddRedirectDnsRule(const std::string& ifname,
+bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
                                   const std::string dns_ipv4_addr) {
+  const std::string& ifname = shill_device.ifname;
   bool success = true;
-  success &= RemoveRedirectDnsRule(ifname);
+  success &= RemoveRedirectDnsRule(shill_device);
   // Use Insert operation to ensure that the new DNS address is used first.
   success &= ModifyRedirectDnsDNATRule(Iptables::Command::kI, "tcp", ifname,
                                        dns_ipv4_addr);
@@ -1405,7 +1406,8 @@ bool Datapath::AddRedirectDnsRule(const std::string& ifname,
   return success;
 }
 
-bool Datapath::RemoveRedirectDnsRule(const std::string& ifname) {
+bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
+  const std::string& ifname = shill_device.ifname;
   const auto it = physical_dns_addresses_.find(ifname);
   if (it == physical_dns_addresses_.end())
     return true;
