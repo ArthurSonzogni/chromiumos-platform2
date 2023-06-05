@@ -4,11 +4,12 @@
 
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
+#include <base/memory/ptr_util.h>
+
 namespace vm_tools::concierge {
 
 void FakeCrosvmControl::Init() {
-  CrosvmControl::SetInstance(
-      std::unique_ptr<CrosvmControl>(new FakeCrosvmControl()));
+  CrosvmControl::SetInstance(base::WrapUnique(new FakeCrosvmControl()));
 }
 
 FakeCrosvmControl* FakeCrosvmControl::Get() {

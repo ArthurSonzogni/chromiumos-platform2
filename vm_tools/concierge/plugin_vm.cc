@@ -124,7 +124,7 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     dbus::ObjectProxy* vm_permission_service_proxy,
     dbus::ObjectProxy* vmplugin_service_proxy,
     VmBuilder vm_builder) {
-  auto vm = std::unique_ptr<PluginVm>(new PluginVm(
+  auto vm = base::WrapUnique(new PluginVm(
       std::move(id), std::move(network_client), std::move(bus),
       std::move(seneschal_server_proxy), vm_permission_service_proxy,
       vmplugin_service_proxy, std::move(iso_dir), std::move(root_dir),

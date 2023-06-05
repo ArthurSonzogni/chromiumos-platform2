@@ -302,7 +302,7 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     base::FilePath data_image_path,
     ArcVmFeatures features,
     VmBuilder vm_builder) {
-  auto vm = std::unique_ptr<ArcVm>(new ArcVm(
+  auto vm = base::WrapUnique(new ArcVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(vmm_swap_tbw_policy), std::move(runtime_dir),
       std::move(data_image_path), features));

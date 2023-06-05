@@ -4,12 +4,14 @@
 
 #include "vm_tools/concierge/crosvm_control_impl.h"
 
+#include <base/memory/ptr_util.h>
+
 #include <memory>
 
 namespace vm_tools::concierge {
 
 void CrosvmControlImpl::Init() {
-  SetInstance(std::unique_ptr<CrosvmControlImpl>(new CrosvmControlImpl()));
+  SetInstance(base::WrapUnique(new CrosvmControlImpl()));
 }
 
 bool CrosvmControlImpl::StopVm(const char* socket_path) {

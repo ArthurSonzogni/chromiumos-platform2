@@ -12,6 +12,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 
 namespace vm_tools {
@@ -32,7 +33,7 @@ class FileLock final {
       return nullptr;
     }
 
-    return std::unique_ptr<FileLock>(new FileLock(std::move(file)));
+    return base::WrapUnique(new FileLock(std::move(file)));
   }
 
   ~FileLock() {
