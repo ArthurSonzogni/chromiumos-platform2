@@ -148,6 +148,7 @@ const char WiFiService::kStoragePasspointCredentials[] =
 const char WiFiService::kStoragePasspointMatchPriority[] =
     "WiFi.PasspointMatchPriority";
 const char WiFiService::kStorageBSSIDAllowlist[] = "WiFi.BSSIDAllowlist";
+const char WiFiService::kStorageBSSIDRequested[] = "WiFi.BSSIDRequested";
 
 bool WiFiService::logged_signal_warning = false;
 // Clock for time-related events.
@@ -232,6 +233,9 @@ WiFiService::WiFiService(Manager* manager,
   HelpRegisterDerivedStrings(kWifiBSSIDAllowlist,
                              &WiFiService::GetBSSIDAllowlist,
                              &WiFiService::SetBSSIDAllowlist);
+  HelpRegisterDerivedString(kWifiBSSIDRequested,
+                            &WiFiService::GetBSSIDRequested,
+                            &WiFiService::SetBSSIDRequested);
 
   SetEapCredentials(new EapCredentials());
   SetSecurityProperties();
@@ -715,6 +719,11 @@ bool WiFiService::Load(const StoreInterface* storage) {
     return false;
   }
 
+  std::string bssid_requested;
+  if (storage->GetString(id, kStorageBSSIDRequested, &bssid_requested)) {
+    bssid_requested_ = bssid_requested;
+  }
+
   return true;
 }
 
@@ -775,6 +784,7 @@ bool WiFiService::Save(StoreInterface* storage) {
   Error unused_error;
   storage->SetStringList(id, kStorageBSSIDAllowlist,
                          GetBSSIDAllowlist(&unused_error));
+  storage->SetString(id, kStorageBSSIDRequested, bssid_requested_);
 
   return true;
 }
@@ -802,6 +812,7 @@ bool WiFiService::Unload() {
   PasspointCredentialsRefPtr creds = parent_credentials_;
   parent_credentials_ = nullptr;
   bssid_allowlist_.clear();
+  bssid_requested_.clear();
   return provider_->OnServiceUnloaded(this, creds);
 }
 
@@ -1323,6 +1334,11 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   if (!bssid_allowlist.empty()) {
     params.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
                             base::JoinString(bssid_allowlist, " "));
+  }
+
+  if (!bssid_requested_.empty()) {
+    params.Set<std::string>(WPASupplicant::kNetworkPropertyBSSID,
+                            bssid_requested_);
   }
 
   return params;
@@ -2061,21 +2077,44 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
   return true;
 }
 
-int WiFiService::GetBSSIDConnectableEndpointCount() const {
-  switch (GetBSSIDAllowlistPolicy(bssid_allowlist_)) {
-    case BSSIDAllowlistPolicy::kNoneAllowed:
-      return 0;
-    case BSSIDAllowlistPolicy::kAllAllowed:
-      return endpoints_.size();
-    case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      int connectable_endpoints = 0;
-      for (const auto& endpoint : endpoints_) {
-        if (IsBSSIDConnectable(endpoint)) {
-          connectable_endpoints++;
-        }
-      }
-      return connectable_endpoints;
+std::string WiFiService::GetBSSIDRequested(Error* /*error*/) {
+  return bssid_requested_;
+}
+
+bool WiFiService::SetBSSIDRequested(const std::string& bssid_requested,
+                                    Error* error) {
+  if (bssid_requested_ == bssid_requested) {
+    return false;
   }
+
+  if (!bssid_requested.empty()) {
+    const ByteArray bssid_bytes =
+        Device::MakeHardwareAddressFromString(bssid_requested);
+    if (bssid_bytes.empty()) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            base::StringPrintf("Invalid BSSID '%s' requested",
+                                               bssid_requested.c_str()));
+      return false;
+    }
+  }
+
+  bssid_requested_ = bssid_requested;
+  return true;
+}
+
+int WiFiService::GetBSSIDConnectableEndpointCount() const {
+  if (GetBSSIDAllowlistPolicy(bssid_allowlist_) ==
+      BSSIDAllowlistPolicy::kNoneAllowed) {
+    return 0;
+  }
+
+  int connectable_endpoints = 0;
+  for (const auto& endpoint : endpoints_) {
+    if (IsBSSIDConnectable(endpoint)) {
+      connectable_endpoints++;
+    }
+  }
+  return connectable_endpoints;
 }
 
 bool WiFiService::HasBSSIDConnectableEndpoints() const {
@@ -2092,10 +2131,16 @@ bool WiFiService::IsBSSIDConnectable(
   switch (GetBSSIDAllowlistPolicy(bssid_allowlist_)) {
     case BSSIDAllowlistPolicy::kNoneAllowed:
       return false;
-    case BSSIDAllowlistPolicy::kAllAllowed:
-      return true;
     case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      return base::Contains(bssid_allowlist_, endpoint->bssid());
+      if (!base::Contains(bssid_allowlist_, endpoint->bssid())) {
+        return false;
+      }
+      [[fallthrough]];
+    case BSSIDAllowlistPolicy::kAllAllowed:
+      // If there was a specific BSSID requested, then only that one endpoint
+      // is considered connectable.
+      return bssid_requested_.empty() ||
+             bssid_requested_ == endpoint->bssid_string();
   }
 }
 

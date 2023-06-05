@@ -124,6 +124,7 @@ class WPASupplicant {
   static constexpr char kNetworkModeMesh[] = "mesh";
   static constexpr char kNetworkModeP2P[] = "p2p";
   static constexpr char kNetworkPropertyBgscan[] = "bgscan";
+  static constexpr char kNetworkPropertyBSSID[] = "bssid";
   static constexpr char kNetworkPropertyBSSIDAccept[] = "bssid_accept";
   static constexpr char kNetworkPropertyCaPath[] = "ca_path";
   static constexpr char kNetworkPropertyDisableVHT[] = "disable_vht";

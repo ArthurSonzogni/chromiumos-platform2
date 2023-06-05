@@ -2161,3 +2161,13 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			"00:00:00:00:00:00" shouldn't be a part of any other
 			list of values, otherwise an error will be
 			returned.
+
+		string WiFi.BSSIDRequested [readwrite]
+
+			(WiFi only) A BSSID of an AP that should be connected
+			to. If an AP with the requested BSSID is not in range or
+			not connectable, the Service will not fallback to a
+			different BSSID and will be seen as unconnectable.
+
+			The BSSID should be formatted as colon-separated octets
+			(e.g. "00:01:02:03:04:05").

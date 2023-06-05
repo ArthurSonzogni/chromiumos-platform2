@@ -253,6 +253,7 @@ constexpr char kWifiRoamStateProperty[] = "WiFi.RoamState";
 constexpr char kWifiVendorInformationProperty[] = "WiFi.VendorInformation";
 constexpr char kWifiSignalStrengthRssiProperty[] = "WiFi.SignalStrengthRssi";
 constexpr char kWifiBSSIDAllowlist[] = "WiFi.BSSIDAllowlist";
+constexpr char kWifiBSSIDRequested[] = "WiFi.BSSIDRequested";
 
 // Base VPN Service property names.
 constexpr char kHostProperty[] = "Host";

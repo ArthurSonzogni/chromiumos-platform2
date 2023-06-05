@@ -3063,4 +3063,118 @@ TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 }
 
+TEST_F(WiFiServiceTest, SetBSSIDRequested) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  Error error;
+
+  // Default value
+  EXPECT_EQ("", service->GetBSSIDRequested(&error));
+
+  // Set arbitrary value
+  EXPECT_TRUE(service->SetBSSIDRequested("00:00:00:00:00:00", &error));
+  EXPECT_EQ("00:00:00:00:00:00", service->GetBSSIDRequested(&error));
+
+  // Set same value
+  EXPECT_FALSE(service->SetBSSIDRequested("00:00:00:00:00:00", &error));
+
+  // Unparsable hardware address
+  EXPECT_FALSE(service->SetBSSIDRequested("foo", &error));
+  EXPECT_TRUE(error.type() == Error::kInvalidArguments);
+
+  // Empty string
+  EXPECT_TRUE(service->SetBSSIDRequested("", &error));
+}
+
+TEST_F(WiFiServiceTest, BSSIDRequestedToSupplicant) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+
+  // If not set, the requested BSSID won't be set in the supplicant params
+  KeyValueStore params = service->GetSupplicantConfigurationParameters();
+  EXPECT_FALSE(
+      params.Contains<std::string>(WPASupplicant::kNetworkPropertyBSSID));
+
+  // Non-empty values should be present though
+  Error unused_error;
+  service->SetBSSIDRequested("00:00:00:00:00:01", &unused_error);
+  params = service->GetSupplicantConfigurationParameters();
+  EXPECT_TRUE(
+      params.Contains<std::string>(WPASupplicant::kNetworkPropertyBSSID));
+}
+
+TEST_F(WiFiServiceTest, BSSIDRequestedConnectableEndpoints) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  Error error;
+
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+  service->AddEndpoint(endpoint);
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
+
+  // Request specific BSSID that's also in |endpoints|
+  EXPECT_TRUE(service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error));
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
+
+  // Request specific BSSID that's not in |endpoints|
+  EXPECT_TRUE(service->SetBSSIDRequested("00:00:00:00:00:01", &error));
+
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
+}
+
+TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  Error error;
+
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+  service->AddEndpoint(endpoint);
+
+  // |endpoint| is requested and in the allowlist
+  EXPECT_TRUE(service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error));
+  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
+
+  // |endpoint| is requested, but not in the allowlist
+  service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error);
+  bssid_allowlist = {"00:00:00:00:00:01"};
+  service->SetBSSIDAllowlist(bssid_allowlist, &error);
+
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
+
+  // |endpoint| is in the allowlist, but not requested
+  service->SetBSSIDRequested("00:00:00:00:00:01", &error);
+  bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  service->SetBSSIDAllowlist(bssid_allowlist, &error);
+
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
+
+  // |endpoint| is requested, but allowlist is all zeroes (i.e. nothing is
+  // connectable)
+  service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error);
+  bssid_allowlist = {"00:00:00:00:00:00"};
+  service->SetBSSIDAllowlist(bssid_allowlist, &error);
+
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
+}
+
 }  // namespace shill

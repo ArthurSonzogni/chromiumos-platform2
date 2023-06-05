@@ -48,6 +48,7 @@ class WiFiService : public Service {
   static const char kStoragePasspointCredentials[];
   static const char kStoragePasspointMatchPriority[];
   static const char kStorageBSSIDAllowlist[];
+  static const char kStorageBSSIDRequested[];
 
   // Default signal level value without any endpoint.
   static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
@@ -313,6 +314,9 @@ class WiFiService : public Service {
   Strings GetBSSIDAllowlistConst(Error* error) const;
   bool SetBSSIDAllowlist(const Strings& bssid_allowlist, Error* error);
 
+  std::string GetBSSIDRequested(Error* error);
+  bool SetBSSIDRequested(const std::string& bssid_requested, Error* error);
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
@@ -567,6 +571,7 @@ class WiFiService : public Service {
   std::string hex_ssid_;
   std::string storage_identifier_;
   std::string bssid_;
+  std::string bssid_requested_;
   std::set<ByteArray> bssid_allowlist_;
   Stringmap vendor_information_;
   // The country code reported by the current endpoint.
