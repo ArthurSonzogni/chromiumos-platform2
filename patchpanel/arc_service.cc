@@ -180,10 +180,10 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
 
   // The "arc0" virtual device is either attached on demand to host VPNs or is
-  // used to forward host traffic into an Android VPN. Therefore, |phys_ifname|
+  // used to forward host traffic into an Android VPN. Therefore, |shill_device|
   // is not meaningful for the "arc0" virtual device and is undefined.
   return std::make_unique<Device>(Device::Type::kARC0,
-                                  /*phys_ifname=*/std::nullopt, kArcbr0Ifname,
+                                  /*shill_device=*/std::nullopt, kArcbr0Ifname,
                                   kArc0Ifname, std::move(config));
 }
 }  // namespace
@@ -499,7 +499,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
 
   auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
                                                : Device::Type::kARCContainer;
-  auto device = std::make_unique<Device>(device_type, shill_device.ifname,
+  auto device = std::make_unique<Device>(device_type, shill_device,
                                          ArcBridgeName(shill_device.ifname),
                                          guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;

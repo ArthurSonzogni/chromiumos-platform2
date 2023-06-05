@@ -85,7 +85,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   Mock::VerifyAndClearExpectations(datapath_.get());
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->phys_ifname());
+  ASSERT_EQ(std::nullopt, device->shill_device());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
@@ -128,7 +128,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
                                  /*subnet_index=*/1);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->phys_ifname());
+  ASSERT_EQ(std::nullopt, device->shill_device());
   Mock::VerifyAndClearExpectations(datapath_.get());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
@@ -185,7 +185,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                                  /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->phys_ifname());
+  ASSERT_EQ(std::nullopt, device->shill_device());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
@@ -199,7 +199,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap1", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->phys_ifname());
+  ASSERT_EQ(std::nullopt, device->shill_device());
   it = guest_devices_.find("vmtap1");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
@@ -213,7 +213,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap2", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->phys_ifname());
+  ASSERT_EQ(std::nullopt, device->shill_device());
   it = guest_devices_.find("vmtap2");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
@@ -226,7 +226,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   auto devices = crostini->GetDevices();
   ASSERT_FALSE(devices.empty());
   for (const auto* dev : devices) {
-    ASSERT_EQ(std::nullopt, dev->phys_ifname());
+    ASSERT_EQ(std::nullopt, dev->shill_device());
     ASSERT_EQ("", dev->guest_ifname());
     if (dev->host_ifname() == "vmtap0") {
       ASSERT_EQ(Device::Type::kTerminaVM, dev->type());

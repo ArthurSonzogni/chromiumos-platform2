@@ -31,12 +31,12 @@ Device::Config::Config(const MacAddress& mac_addr,
       lxd_ipv4_subnet_(std::move(lxd_ipv4_subnet)) {}
 
 Device::Device(Device::Type type,
-               std::optional<std::string> phys_ifname,
+               std::optional<ShillClient::Device> shill_device,
                const std::string& host_ifname,
                const std::string& guest_ifname,
                std::unique_ptr<Device::Config> config)
     : type_(type),
-      phys_ifname_(phys_ifname),
+      shill_device_(shill_device),
       host_ifname_(host_ifname),
       guest_ifname_(guest_ifname),
       config_(std::move(config)) {
@@ -70,8 +70,8 @@ std::unique_ptr<Device::Config> Device::release_config() {
 
 std::ostream& operator<<(std::ostream& stream, const Device& device) {
   stream << "{ type: " << device.type();
-  if (device.phys_ifname().has_value()) {
-    stream << ", shill_ifname: " << device.phys_ifname().value();
+  if (device.shill_device().has_value()) {
+    stream << ", shill_ifname: " << device.shill_device()->ifname;
   }
   stream << ", bridge_ifname: " << device.host_ifname()
          << ", bridge_ipv4_addr: "

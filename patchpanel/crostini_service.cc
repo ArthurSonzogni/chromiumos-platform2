@@ -214,7 +214,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
   // therefore |phys_ifname| is undefined. |guest_ifname| is
   // not used inside the crosvm guest and is left empty.
   return std::make_unique<Device>(VirtualDeviceTypeFromVMType(vm_type),
-                                  /*phys_ifname=*/std::nullopt, tap,
+                                  /*shill_device=*/std::nullopt, tap,
                                   /*guest_ifname=*/"", std::move(config));
 }
 

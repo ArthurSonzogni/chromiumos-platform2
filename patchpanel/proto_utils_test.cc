@@ -120,11 +120,13 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ShillClient::Device shill_device;
+  shill_device.ifname = "wlan0";
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
   auto device =
-      std::make_unique<Device>(Device::Type::kARCContainer, "wlan0",
+      std::make_unique<Device>(Device::Type::kARCContainer, shill_device,
                                "arc_wlan0", "wlan0", std::move(config));
 
   NetworkDevice proto_device;
@@ -160,11 +162,14 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ShillClient::Device shill_device;
+  shill_device.ifname = "wlan0";
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(
-      Device::Type::kARCVM, "wlan0", "arc_wlan0", "eth3", std::move(config));
+  auto device =
+      std::make_unique<Device>(Device::Type::kARCVM, shill_device, "arc_wlan0",
+                               "eth3", std::move(config));
 
   NetworkDevice proto_device;
   FillDeviceProto(*device, &proto_device);

@@ -11,8 +11,8 @@ namespace patchpanel {
 void FillDeviceProto(const Device& virtual_device,
                      patchpanel::NetworkDevice* output) {
   output->set_ifname(virtual_device.host_ifname());
-  if (virtual_device.phys_ifname()) {
-    output->set_phys_ifname(*virtual_device.phys_ifname());
+  if (virtual_device.shill_device()) {
+    output->set_phys_ifname(virtual_device.shill_device()->ifname);
   }
   output->set_guest_ifname(virtual_device.guest_ifname());
   output->set_ipv4_addr(

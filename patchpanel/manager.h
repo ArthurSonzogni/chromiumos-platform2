@@ -156,9 +156,6 @@ class Manager {
     bool multicast;
   };
 
-  // Helper function used to check if a given interface is a wifi interface.
-  bool IsWifiInterface(const std::string& ifname);
-
   // Callbacks from |shill_client_|.
   void OnShillDefaultLogicalDeviceChanged(
       const ShillClient::Device& new_device,

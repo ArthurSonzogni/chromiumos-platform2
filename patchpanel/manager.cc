@@ -1022,20 +1022,20 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   // start/stop forwarding multiple times, also wifi multicast lock should
   // only affect multicast traffic on wireless device.
   for (const auto* device : arc_svc_->GetDevices()) {
-    const auto& upstream_device = device->phys_ifname();
+    const auto& upstream_device = device->shill_device();
     if (upstream_device.has_value()) {
       LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
                  << device;
       continue;
     }
-    if (!Manager::IsWifiInterface(upstream_device.value())) {
+    if (upstream_device->type != ShillClient::Device::Type::kWifi) {
       continue;
     }
     if (android_wifi_multicast_lock_held_) {
-      StartForwarding(upstream_device.value(), device->host_ifname(),
+      StartForwarding(upstream_device->ifname, device->host_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(upstream_device.value(), device->host_ifname(),
+      StopForwarding(upstream_device->ifname, device->host_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }
@@ -1056,32 +1056,23 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
   // interfaces when they were in enabled state (multicast lock held).
   is_arc_interactive_ = is_interactive;
   for (const auto* device : arc_svc_->GetDevices()) {
-    const auto& upstream_device = device->phys_ifname();
+    const auto& upstream_device = device->shill_device();
     if (upstream_device.has_value()) {
       LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
                  << device;
       continue;
     }
-    if (Manager::IsWifiInterface(upstream_device.value()) &&
+    if (upstream_device->type == ShillClient::Device::Type::kWifi &&
         !android_wifi_multicast_lock_held_) {
       continue;
     }
     if (is_arc_interactive_) {
-      StartForwarding(upstream_device.value(), device->host_ifname(),
+      StartForwarding(upstream_device->ifname, device->host_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(upstream_device.value(), device->host_ifname(),
+      StopForwarding(upstream_device->ifname, device->host_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }
-}
-
-bool Manager::IsWifiInterface(const std::string& ifname) {
-  ShillClient::Device shill_device;
-  if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
-    LOG(ERROR) << "Failed to get shill device for interface: " << ifname;
-    return false;
-  }
-  return shill_device.type == ShillClient::Device::Type::kWifi;
 }
 }  // namespace patchpanel

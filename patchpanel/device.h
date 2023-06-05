@@ -22,6 +22,7 @@
 #include <net-base/ipv4_address.h>
 
 #include "patchpanel/mac_address_generator.h"
+#include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 
 namespace patchpanel {
@@ -125,14 +126,16 @@ class Device {
   };
 
   // |type| the type of guest associated with this virtual device created by
-  // patchpanel. |phys_ifname| corresponds to the physical interface managed by
-  // shill if the virtual Device tracks that physical interface (ARC or ARCVM).
-  // |host_ifname| identifies the name of the virtual (bridge)
-  // interface (all ARC virtual interfaces) or of the tap device (all non-ARC
-  // virtual interfaces). |guest_ifname|, if specified, identifies the name of
-  // the interface used inside the guest.
+  // patchpanel.
+  // |shill_device| corresponds to the shill Device tracked by this virtual
+  // Device. Only defined for ARC or ARCVM devices tracking physical devices.
+  // Even when a host VPN is connected, |shill_device| is not defined for the
+  // legacy "arc0" Device. |host_ifname| identifies the name of the virtual
+  // (bridge) interface (all ARC virtual interfaces) or of the tap device (all
+  // non-ARC virtual interfaces). |guest_ifname|, if specified, identifies the
+  // name of the interface used inside the guest.
   Device(Type type,
-         std::optional<std::string> phys_ifname,
+         std::optional<ShillClient::Device> shill_device,
          const std::string& host_ifname,
          const std::string& guest_ifname,
          std::unique_ptr<Config> config);
@@ -142,7 +145,9 @@ class Device {
   ~Device() = default;
 
   Type type() const { return type_; }
-  const std::optional<std::string>& phys_ifname() const { return phys_ifname_; }
+  const std::optional<ShillClient::Device>& shill_device() const {
+    return shill_device_;
+  }
   const std::string& host_ifname() const { return host_ifname_; }
   const std::string& guest_ifname() const { return guest_ifname_; }
   Config& config() const;
@@ -151,9 +156,12 @@ class Device {
  private:
   // The type of virtual device setup and guest.
   Type type_;
-  // The physical interface managed by shill that this virtual device is
-  // attached to. Only defined for ARC and ARCVM.
-  std::optional<std::string> phys_ifname_;
+  // The physical shill Device that this virtual device is attached to. Only
+  // defined for ARC and ARCVM. This member variable is set at creation time and
+  // is not updated after that. The owner of instances of this class must ensure
+  // that instances are regenarated when the IP configurations of the shill
+  // Devices change if accurate properties are needed.
+  std::optional<ShillClient::Device> shill_device_;
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // all ARC virtual devices, |host_ifname_| corresponds to the virtual bridge
