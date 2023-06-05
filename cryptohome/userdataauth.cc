@@ -138,7 +138,6 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     return std::nullopt;
   }
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-  user_data_auth::StatusInfo status_info;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
   auto supported_intents =
@@ -147,17 +146,12 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
   }
-
   auto delay = factor_driver.GetFactorDelay(username, auth_factor);
   if (delay.ok()) {
-    if (delay->is_max()) {
-      status_info.set_time_available_in(std::numeric_limits<uint64_t>::max());
-    } else {
-      status_info.set_time_available_in(delay->InMilliseconds());
-    }
-    *auth_factor_with_status.mutable_status_info() = status_info;
+    auth_factor_with_status.mutable_status_info()->set_time_available_in(
+        delay->is_max() ? std::numeric_limits<uint64_t>::max()
+                        : delay->InMilliseconds());
   }
-
   return auth_factor_with_status;
 }
 
