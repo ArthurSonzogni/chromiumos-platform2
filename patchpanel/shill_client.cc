@@ -438,19 +438,6 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
   return ipconfig;
 }
 
-// TODO(b/273741099) Migrate callers to use the DBus path of the Device because
-// the interface name becomes ambiguous for multiplexed Cellular interfaces.
-bool ShillClient::GetDeviceProperties(const std::string& ifname,
-                                      Device* output) {
-  DCHECK(output);
-  for (const auto& [device_path, device] : devices_) {
-    if (device.ifname == ifname) {
-      return GetDeviceProperties(device_path, output);
-    }
-  }
-  return false;
-}
-
 bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
                                       Device* output) {
   DCHECK(output);

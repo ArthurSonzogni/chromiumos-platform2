@@ -138,16 +138,6 @@ class ShillClient {
 
   void ScanDevices();
 
-  // Fetches Device dbus properties via dbus for the shill Device with interface
-  // name |ifname|. Returns false if an error occurs. Notes that this method
-  // will block the current thread.
-  // TODO(b/273741099): Migrate callers to use the overload taking the Device
-  // DBus path as an argument because the interface name becomes ambiguous for
-  // multiplexed Cellular interfaces.
-  virtual bool GetDeviceProperties(const std::string& ifname, Device* output);
-  virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
-                                   Device* output);
-
   // Finds the shill physical or VPN Device whose "Interface" property matches
   // |shill_device_ifname|. This function is meant for associating a shill
   // Device to an interface name argument passed directly to patchpanel DBus
@@ -178,6 +168,12 @@ class ShillClient {
   void OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                               const std::string& property_name,
                               const brillo::Any& property_value);
+
+  // Fetches Device dbus properties via dbus for the shill Device identified
+  // by |device_path|. Returns false if an error occurs. Notes that this method
+  // will block the current thread.
+  virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
+                                   Device* output);
 
   // Returns the current default logical and physical shill Device for the
   // system, or an empty pair of shill Device result when the system has no

@@ -74,10 +74,6 @@ class FakeShillClient : public ShillClient {
     OnDevicePropertyChange(device_path, name, value);
   }
 
-  bool GetDeviceProperties(const std::string& ifname, Device* output) override {
-    return GetDeviceProperties(dbus::ObjectPath("/device/" + ifname), output);
-  }
-
   bool GetDeviceProperties(const dbus::ObjectPath& device_path,
                            Device* output) override {
     get_device_properties_calls_.insert(device_path);
