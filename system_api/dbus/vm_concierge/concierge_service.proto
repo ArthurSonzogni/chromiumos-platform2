@@ -1396,6 +1396,15 @@ enum SwapOperation {
   FORCE_ENABLE = 3;
 }
 
+// Vmm swap state.
+enum SwappingState {
+  // Swapping out means the vm memory is swapping out to the disk.
+  SWAPPING_OUT = 0;
+
+  // Swapping in means the vm memory is swapping in from the disk.
+  SWAPPING_IN = 1;
+}
+
 // Request sent to vm_concierge for executing vmm swap operation on a VM.
 message SwapVmRequest {
   // The name of the VM.
@@ -1417,13 +1426,16 @@ message SwapVmResponse {
   string failure_reason = 2;
 }
 
-// Message used in the signal for when a VM enabled vmm swap.
+// Message used in the signal for notify a VM experiencing vmm swap IN/OUT.
 message VmSwappingSignal {
   // The name of the VM.
   string name = 1;
 
   // The owner of the VM.
   string owner_id = 2;
+
+  // The state of vmm swap.
+  SwappingState state = 3;
 }
 
 // Installs Pflash associated with VM |vm_name| owned by |owner_id|. Requires
