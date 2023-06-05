@@ -17,6 +17,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <trousers/scoped_tss_type.h>
@@ -1032,20 +1033,11 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   }
 
   // DER encode.
-  int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
-  if (der_length < 0) {
+  *public_key_der = hwsec_foundation::RSAPublicKeyToString(rsa);
+  if (public_key_der->empty()) {
     LOG(ERROR) << "Failed to DER-encode public key.";
     return false;
   }
-  public_key_der->resize(der_length);
-  unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(std::data(*public_key_der));
-  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
-  if (der_length < 0) {
-    LOG(ERROR) << "Failed to DER-encode public key.";
-    return false;
-  }
-  public_key_der->resize(der_length);
   return true;
 }
 

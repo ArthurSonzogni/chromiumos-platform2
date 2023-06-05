@@ -8,6 +8,7 @@
 
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/error/tpm2_error.h"
@@ -18,23 +19,6 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 namespace {
-
-template <typename OpenSSLType, auto openssl_func>
-StatusOr<std::string> OpenSSLObjectToString(OpenSSLType* object) {
-  if (object == nullptr) {
-    return MakeStatus<TPMError>("Object is null", TPMRetryAction::kNoRetry);
-  }
-
-  unsigned char* openssl_buffer = nullptr;
-  int size = openssl_func(object, &openssl_buffer);
-  if (size < 0) {
-    return MakeStatus<TPMError>("Failed to call openssl_func",
-                                TPMRetryAction::kNoRetry);
-  }
-  crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
-
-  return std::string(openssl_buffer, openssl_buffer + size);
-}
 
 StatusOr<crypto::ScopedBIGNUM> StringToBignum(const std::string& big_integer) {
   if (big_integer.empty()) {
@@ -99,7 +83,12 @@ StatusOr<std::string> SerializeFromTpmSignature(
                                StringFrom_TPM2B_ECC_PARAMETER(
                                    signature.signature.ecdsa.signature_s)),
           _.WithStatus<TPMError>("Failed to create ECDSA SIG"));
-      return OpenSSLObjectToString<ECDSA_SIG, i2d_ECDSA_SIG>(sig.get());
+      std::string result = hwsec_foundation::ECDSASignatureToString(sig);
+      if (result.empty()) {
+        return MakeStatus<TPMError>("Failed to convert ECDSA signature",
+                                    TPMRetryAction::kNoRetry);
+      }
+      return result;
     }
     default:
       return MakeStatus<TPMError>("Unkown TPM 2.0 signature type",

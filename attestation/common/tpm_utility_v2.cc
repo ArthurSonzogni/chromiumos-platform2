@@ -16,6 +16,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -40,15 +41,6 @@ constexpr size_t kRandomCertifiedKeyPasswordLength = 32;
 // TODO(crbug/916023): move these utility functions to shared library.
 inline const uint8_t* StringToByteBuffer(const char* str) {
   return reinterpret_cast<const uint8_t*>(str);
-}
-
-inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
-  return std::string(bytes.begin(), bytes.end());
-}
-
-inline std::string BytesToString(
-    const std::optional<std::vector<uint8_t>>& maybe_bytes) {
-  return BytesToString(maybe_bytes.value_or(std::vector<uint8_t>()));
 }
 
 bool StringToBignum(const std::string& big_integer, BIGNUM* b) {
@@ -157,41 +149,6 @@ crypto::ScopedEC_KEY GetEccPublicKeyFromTpmPublicArea(
   return key;
 }
 
-template <typename OpenSSLType>
-std::optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
-    int (*i2d_convert_function)(OpenSSLType*, unsigned char**),
-    typename std::remove_const<OpenSSLType>::type* type) {
-  if (type == nullptr) {
-    return std::nullopt;
-  }
-
-  unsigned char* openssl_buffer = nullptr;
-
-  int size = i2d_convert_function(type, &openssl_buffer);
-  if (size < 0) {
-    return std::nullopt;
-  }
-
-  crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
-  return std::vector<uint8_t>(openssl_buffer, openssl_buffer + size);
-}
-
-// TODO(menghuan): consider use EVP_PKEY and related APIs
-// Return RSAPublicKey DER encoded string
-std::string RSAPublicKeyToString(const crypto::ScopedRSA& key) {
-  return BytesToString(OpenSSLObjectToBytes(i2d_RSAPublicKey, key.get()));
-}
-
-// Return SubjectPublicKeyInfo DER encoded string for RSA key.
-std::string RsaSubjectPublicKeyInfoToString(const crypto::ScopedRSA& key) {
-  return BytesToString(OpenSSLObjectToBytes(i2d_RSA_PUBKEY, key.get()));
-}
-
-// Return SubjectPublicKeyInfo DER encoded string for ECC key.
-std::string EccSubjectPublicKeyInfoToString(const crypto::ScopedEC_KEY& key) {
-  return BytesToString(OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get()));
-}
-
 crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
   crypto::ScopedBIGNUM r_bn(BN_new()), s_bn(BN_new());
@@ -224,7 +181,7 @@ std::optional<std::string> SerializeFromTpmSignature(
           StringFrom_TPM2B_ECC_PARAMETER(
               signature.signature.ecdsa.signature_s));
 
-      return BytesToString(OpenSSLObjectToBytes(i2d_ECDSA_SIG, sig.get()));
+      return hwsec_foundation::ECDSASignatureToString(sig);
     }
     default:
       LOG(ERROR) << __func__
@@ -498,11 +455,11 @@ bool TpmUtilityV2::CreateCertifiedKey(
 
   switch (key_type) {
     case KEY_TYPE_RSA:
-      *public_key_der =
-          RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+      *public_key_der = hwsec_foundation::RSAPublicKeyToString(
+          GetRsaPublicKeyFromTpmPublicArea(public_area));
       break;
     case KEY_TYPE_ECC:
-      *public_key_der = EccSubjectPublicKeyInfoToString(
+      *public_key_der = hwsec_foundation::ECCSubjectPublicKeyInfoToString(
           GetEccPublicKeyFromTpmPublicArea(public_area));
       break;
   }
@@ -589,11 +546,11 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
 
   switch (key_type) {
     case KEY_TYPE_RSA:
-      *public_key_der = RsaSubjectPublicKeyInfoToString(
+      *public_key_der = hwsec_foundation::RSASubjectPublicKeyInfoToString(
           GetRsaPublicKeyFromTpmPublicArea(public_area));
       break;
     case KEY_TYPE_ECC:
-      *public_key_der = EccSubjectPublicKeyInfoToString(
+      *public_key_der = hwsec_foundation::ECCSubjectPublicKeyInfoToString(
           GetEccPublicKeyFromTpmPublicArea(public_area));
       break;
   }
@@ -745,11 +702,11 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
 
   switch (key_type) {
     case KEY_TYPE_RSA:
-      *public_key_der = RSAPublicKeyToString(
+      *public_key_der = hwsec_foundation::RSAPublicKeyToString(
           GetRsaPublicKeyFromTpmPublicArea(public_info.public_area));
       break;
     case KEY_TYPE_ECC:
-      *public_key_der = EccSubjectPublicKeyInfoToString(
+      *public_key_der = hwsec_foundation::ECCSubjectPublicKeyInfoToString(
           GetEccPublicKeyFromTpmPublicArea(public_info.public_area));
       break;
   }

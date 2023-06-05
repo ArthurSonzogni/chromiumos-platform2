@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -33,28 +34,7 @@ using std::stringstream;
 using std::vector;
 using ScopedASN1_OCTET_STRING =
     crypto::ScopedOpenSSL<ASN1_OCTET_STRING, ASN1_OCTET_STRING_free>;
-
-namespace {
-
-template <typename OpenSSLType, auto openssl_func>
-string ConvertOpenSSLObjectToString(OpenSSLType* type) {
-  string output;
-
-  int expected_size = openssl_func(type, nullptr);
-  if (expected_size < 0) {
-    return string();
-  }
-
-  output.resize(expected_size, '\0');
-
-  unsigned char* buf = chaps::ConvertStringToByteBuffer(output.data());
-  int real_size = openssl_func(type, &buf);
-  CHECK_EQ(expected_size, real_size);
-
-  return output;
-}
-
-}  // namespace
+using hwsec_foundation::OpenSSLObjectToString;
 
 namespace chaps {
 
@@ -891,7 +871,7 @@ crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
 }
 
 string GetECParametersAsString(const EC_KEY* key) {
-  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(
+  return OpenSSLObjectToString<EC_KEY, i2d_ECParameters>(
       const_cast<EC_KEY*>(key));
 }
 
@@ -904,7 +884,7 @@ string GetECParametersAsString(const EC_KEY* key) {
 string GetECPointAsString(const EC_KEY* key) {
   // Convert EC_KEY* to OCT_STRING
   const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(
+      OpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(
           const_cast<EC_KEY*>(key));
   if (oct_string.empty())
     return string();
@@ -920,7 +900,7 @@ string GetECPointAsString(const EC_KEY* key) {
                         oct_string.size());
 
   // DER encode ASN1_OCTET_STRING
-  return ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
+  return OpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
       os.get());
 }
 

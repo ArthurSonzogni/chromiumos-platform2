@@ -31,6 +31,7 @@
 #include <brillo/syslog_logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
@@ -297,23 +298,6 @@ string asn1integer2bin(ASN1_INTEGER* serial_number) {
   return bin;
 }
 
-template <typename OpenSSLType, auto openssl_func>
-string ConvertOpenSSLObjectToString(OpenSSLType* object) {
-  string output;
-
-  int expected_size = openssl_func(object, nullptr);
-  if (expected_size < 0)
-    return string();
-
-  output.resize(expected_size, '\0');
-
-  unsigned char* buf = ConvertStringToByteBuffer(output.data());
-  int real_size = openssl_func(object, &buf);
-  CHECK_EQ(expected_size, real_size);
-
-  return output;
-}
-
 string ecparameters2bin(EC_KEY* key) {
   string bin;
   bin.resize(i2d_ECParameters(key, nullptr));
@@ -325,7 +309,8 @@ string ecparameters2bin(EC_KEY* key) {
 string ecpoint2bin(EC_KEY* key) {
   // Convert EC_KEY* to OCT_STRING
   const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(key);
+      hwsec_foundation::OpenSSLObjectToString<EC_KEY,
+                                              chaps::i2o_ECPublicKey_nc>(key);
 
   // Put OCT_STRING to ASN1_OCTET_STRING
   ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
@@ -334,8 +319,8 @@ string ecpoint2bin(EC_KEY* key) {
 
   // DER encode ASN1_OCTET_STRING
   const string der_encoded =
-      ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
-          os.get());
+      hwsec_foundation::OpenSSLObjectToString<ASN1_OCTET_STRING,
+                                              i2d_ASN1_OCTET_STRING>(os.get());
 
   return der_encoded;
 }
