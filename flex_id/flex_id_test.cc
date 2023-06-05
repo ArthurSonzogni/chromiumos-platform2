@@ -13,6 +13,7 @@ namespace flex_id {
 
 namespace {
 
+constexpr char kGoodFlexId[] = "good_example_flex_id";
 constexpr char kClientId[] = "reven-client_id";
 constexpr char kLegacyClientId[] = "CloudReady-aa:aa:aa:11:22:33";
 constexpr char kUuid[] = "fc71ace7-5fbb-4108-a2f5-b48a98635aeb";
@@ -74,6 +75,12 @@ class FlexIdTest : public ::testing::Test {
     base::FilePath uuid_path = test_path_.Append("proc/sys/kernel/random");
     CHECK(base::CreateDirectory(uuid_path));
     CHECK(base::WriteFile(uuid_path.Append("uuid"), kUuid));
+  }
+
+  void CreateFlexId(const std::string& flex_id) {
+    base::FilePath flex_id_path = test_path_.Append("var/lib/flex_id");
+    CHECK(base::CreateDirectory(flex_id_path));
+    CHECK(base::WriteFile(flex_id_path.Append("flex_id"), flex_id));
   }
 
   void DeleteFlexId() {
@@ -145,6 +152,22 @@ TEST_F(FlexIdTest, Uuid) {
 
   CreateUuid();
   EXPECT_EQ(flex_id_generator_->TryUuid(), kUuid);
+}
+
+TEST_F(FlexIdTest, FlexId) {
+  // no flex_id should return false
+  DeleteFlexId();
+  EXPECT_FALSE(flex_id_generator_->ReadFlexId());
+
+  // a blank flex_id should return false
+  DeleteFlexId();
+  CreateFlexId("");
+  EXPECT_FALSE(flex_id_generator_->ReadFlexId());
+
+  // a valid flex_id should be used if present
+  DeleteFlexId();
+  CreateFlexId(kGoodFlexId);
+  EXPECT_EQ(flex_id_generator_->ReadFlexId(), kGoodFlexId);
 }
 
 TEST_F(FlexIdTest, GenerateAndSaveFlexId) {

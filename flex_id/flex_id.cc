@@ -114,9 +114,19 @@ std::optional<std::string> FlexIdGenerator::AddFlexIdPrefix(
 }
 
 std::optional<std::string> FlexIdGenerator::ReadFlexId() {
+  std::optional<std::string> flex_id;
   const base::FilePath flex_id_path = base_path_.Append(kFlexIdFile);
 
-  return ReadAndTrimFile(flex_id_path);
+  if (!(flex_id = ReadAndTrimFile(flex_id_path))) {
+    LOG(WARNING) << "Couldn't read flex_id file.";
+    return std::nullopt;
+  }
+  if (flex_id.value().empty()) {
+    LOG(WARNING) << "Read a blank flex_id file.";
+    return std::nullopt;
+  }
+
+  return flex_id;
 }
 
 std::optional<std::string> FlexIdGenerator::TryClientId() {
