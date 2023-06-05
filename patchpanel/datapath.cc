@@ -1557,7 +1557,8 @@ void Datapath::RemoveIPv6Address(const std::string& ifname,
   process_runner_->ip6("addr", "del", {ipv6_addr, "dev", ifname});
 }
 
-void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
+void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
+  const std::string& ext_ifname = shill_device.ifname;
   int ifindex = system_->IfNametoindex(ext_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
@@ -1614,7 +1615,8 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   }
 }
 
-void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
+void Datapath::StopConnectionPinning(const ShillClient::Device& shill_device) {
+  const std::string& ext_ifname = shill_device.ifname;
   std::string subchain = "POSTROUTING_" + ext_ifname;
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "POSTROUTING", subchain, /*iif=*/"",
@@ -1652,7 +1654,7 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
                       /*iif=*/"", vpn_ifname)) {
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
   }
-  StartConnectionPinning(vpn_ifname);
+  StartConnectionPinning(vpn_device);
 
   // Any traffic that already has a routing tag applied is accepted.
   if (!ModifyIptables(
@@ -1708,7 +1710,7 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
                   kApplyVpnMarkChain)) {
     LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
   }
-  StopConnectionPinning(vpn_ifname);
+  StopConnectionPinning(vpn_device);
   if (!ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat,
                       Iptables::Command::kD, "POSTROUTING", "MASQUERADE",
                       /*iif=*/"", vpn_ifname)) {

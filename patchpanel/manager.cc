@@ -219,7 +219,7 @@ void Manager::OnShillDevicesChanged(
       }
     }
     StopForwarding(device, /*ifname_virtual=*/"");
-    datapath_->StopConnectionPinning(device.ifname);
+    datapath_->StopConnectionPinning(device);
     datapath_->RemoveRedirectDnsRule(device.ifname);
     arc_svc_->RemoveDevice(device);
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
@@ -245,7 +245,7 @@ void Manager::OnShillDevicesChanged(
                          nsinfo.netns_name),
           base::Milliseconds(kIPv6RestartDelayMs));
     }
-    datapath_->StartConnectionPinning(device.ifname);
+    datapath_->StartConnectionPinning(device);
 
     if (!device.ipconfig.ipv4_dns_addresses.empty()) {
       datapath_->AddRedirectDnsRule(device.ifname,

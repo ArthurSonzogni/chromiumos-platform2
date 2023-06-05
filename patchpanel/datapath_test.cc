@@ -1213,6 +1213,9 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   FakeSystem system;
   Datapath datapath(runner, firewall, &system);
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   // Setup
   EXPECT_CALL(system, IfNametoindex("eth0")).WillRepeatedly(Return(3));
   Verify_iptables(*runner, IpFamily::kDual, "mangle -N POSTROUTING_eth0 -w");
@@ -1228,7 +1231,7 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   Verify_iptables(*runner, IpFamily::kDual,
                   "mangle -A PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  datapath.StartConnectionPinning("eth0");
+  datapath.StartConnectionPinning(eth_device);
   Mock::VerifyAndClearExpectations(runner);
 
   // Teardown
@@ -1239,7 +1242,7 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   Verify_iptables(*runner, IpFamily::kDual,
                   "mangle -D PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  datapath.StopConnectionPinning("eth0");
+  datapath.StopConnectionPinning(eth_device);
 }
 
 TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {

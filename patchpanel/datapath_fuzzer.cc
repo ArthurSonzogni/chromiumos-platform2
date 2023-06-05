@@ -147,8 +147,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       ConvertUint32ToIPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
   datapath.DeleteIPv4Route(
       ConvertUint32ToIPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
-  datapath.StartConnectionPinning(ifname);
-  datapath.StopConnectionPinning(ifname);
+  datapath.StartConnectionPinning(shill_device);
+  datapath.StopConnectionPinning(shill_device);
   datapath.StartVpnRouting(shill_device);
   datapath.StopVpnRouting(shill_device);
   datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),

@@ -306,13 +306,13 @@ class Datapath {
                                  TrafficSource source,
                                  bool route_on_vpn);
 
-  // Starts or stops marking conntrack entries routed to |ext_ifname| with its
+  // Starts or stops marking conntrack entries routed to |shill_device| with its
   // associated fwmark routing tag. Once a conntrack entry is marked with the
   // fwmark routing tag of an upstream network interface, the connection will be
   // pinned to that network interface if conntrack fwmark restore is set for the
   // source.
-  virtual void StartConnectionPinning(const std::string& ext_ifname);
-  virtual void StopConnectionPinning(const std::string& ext_ifname);
+  virtual void StartConnectionPinning(const ShillClient::Device& shill_device);
+  virtual void StopConnectionPinning(const ShillClient::Device& shill_device);
   // Starts or stops VPN routing for:
   //  - Local traffic from sockets of binaries running under uids eligible to be
   //  routed
