@@ -26,13 +26,13 @@
 
 #if USE_FUZZER
 #include <fuzzer/FuzzedDataProvider.h>
-#include "libhwsec/fuzzed/attestation.h"
 #include "libhwsec/fuzzed/basic_objects.h"
 #include "libhwsec/fuzzed/config.h"
 #include "libhwsec/fuzzed/hwsec_objects.h"
 #include "libhwsec/fuzzed/key_management.h"
 #include "libhwsec/fuzzed/middleware.h"
 #include "libhwsec/fuzzed/pinweaver.h"
+#include "libhwsec/fuzzed/protobuf.h"
 #include "libhwsec/fuzzed/recovery_crypto.h"
 #include "libhwsec/fuzzed/signature_sealing.h"
 #include "libhwsec/fuzzed/storage.h"
