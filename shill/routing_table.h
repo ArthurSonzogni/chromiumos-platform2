@@ -143,14 +143,6 @@ class RoutingTable {
 
   static uint32_t GetInterfaceTableId(int interface_index);
 
-  // Allocates a routing table, and returns the ID.  If no IDs are available,
-  // returns RT_TABLE_UNSPEC. This should *not* be used to allocate a per-Device
-  // table, which is not explicitly allocated and freed, but is instead
-  // retrieved using GetInterfaceTableId.
-  virtual uint32_t RequestAdditionalTableId();
-  // Frees routing table |id| that was obtained from RequestAdditionalTableId().
-  virtual void FreeAdditionalTableId(uint32_t id);
-
   // Returns the user traffic uids.
   const std::vector<uint32_t>& GetUserTrafficUids();
 
@@ -211,9 +203,6 @@ class RoutingTable {
 
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
-
-  // A list of unused routing table IDs.
-  std::vector<uint32_t> available_table_ids_;
 
   // "User traffic" refers to traffic from processes that run under one of the
   // unix users enumered in |kUserTrafficUsernames| constant in

@@ -194,17 +194,12 @@ void RoutingTable::Start() {
                                            base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
-
-  for (uint32_t i = RT_TABLE_COMPAT - 1; i > RT_TABLE_UNSPEC; i--) {
-    available_table_ids_.push_back(i);
-  }
 }
 
 void RoutingTable::Stop() {
   SLOG(2) << __func__;
 
   managed_interfaces_.clear();
-  available_table_ids_.clear();
   route_listener_.reset();
 }
 
@@ -906,45 +901,6 @@ void RoutingTable::FlushRules(int interface_index) {
 // static
 uint32_t RoutingTable::GetInterfaceTableId(int interface_index) {
   return static_cast<uint32_t>(interface_index + kInterfaceTableIdIncrement);
-}
-
-uint32_t RoutingTable::RequestAdditionalTableId() {
-  if (available_table_ids_.empty()) {
-    return RT_TABLE_UNSPEC;
-  }
-
-  uint32_t table_id = available_table_ids_.back();
-  CHECK(RT_TABLE_UNSPEC < table_id && table_id < RT_TABLE_COMPAT);
-  available_table_ids_.pop_back();
-
-  // Flush any entries currently in this table before letting the caller
-  // use it.
-  for (auto& table : tables_) {
-    for (auto nent = table.second.begin(); nent != table.second.end();) {
-      if (nent->table == table_id) {
-        RemoveRouteFromKernelTable(table.first, *nent);
-        nent = table.second.erase(nent);
-      } else {
-        ++nent;
-      }
-    }
-  }
-  return table_id;
-}
-
-void RoutingTable::FreeAdditionalTableId(uint32_t id) {
-  if (id >= RT_TABLE_COMPAT) {
-    LOG(WARNING) << "Attempted to free table id " << id
-                 << " that was not received from RequestAdditionalTableId";
-    return;
-  }
-
-  if (id == RT_TABLE_UNSPEC) {
-    LOG(WARNING) << "Attempted to free RT_TABLE_UNSPEC";
-    return;
-  }
-
-  available_table_ids_.push_back(id);
 }
 
 const std::vector<uint32_t>& RoutingTable::GetUserTrafficUids() {

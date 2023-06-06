@@ -384,13 +384,6 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 
-  uint32_t table0 = routing_table_->RequestAdditionalTableId();
-  uint32_t table1 = routing_table_->RequestAdditionalTableId();
-  uint32_t table2 = routing_table_->RequestAdditionalTableId();
-  EXPECT_GT(table0, 0);
-  EXPECT_NE(table0, table1);
-  EXPECT_NE(table0, table2);
-
   const int iface_id0 = 3;
   const int iface_id1 = 4;
 
@@ -398,7 +391,7 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   EXPECT_TRUE(routing_table_->AddRule(
       iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                      .SetPriority(100)
-                     .SetTable(table0)
+                     .SetTable(1001)
                      .SetUidRange({1000, 2000})));
   EXPECT_EQ(CountRoutingPolicyEntries(), 1);
 
@@ -406,7 +399,7 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   EXPECT_TRUE(routing_table_->AddRule(
       iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                      .SetPriority(101)
-                     .SetTable(table1)
+                     .SetTable(1002)
                      .SetIif("arcbr0")));
   EXPECT_EQ(CountRoutingPolicyEntries(), 2);
 
@@ -414,7 +407,7 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   EXPECT_TRUE(routing_table_->AddRule(
       iface_id1, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                      .SetPriority(102)
-                     .SetTable(table2)
+                     .SetTable(1003)
                      .SetUidRange({100, 101})));
   EXPECT_EQ(CountRoutingPolicyEntries(), 3);
 
@@ -427,10 +420,6 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
   routing_table_->FlushRules(iface_id1);
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
-
-  routing_table_->FreeAdditionalTableId(table2);
-  routing_table_->FreeAdditionalTableId(table1);
-  routing_table_->FreeAdditionalTableId(table0);
 }
 
 TEST_F(RoutingTableTest, LowestMetricDefault) {
