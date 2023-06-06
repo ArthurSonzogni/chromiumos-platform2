@@ -42,6 +42,13 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
                              base::OnceCallback<void(int64_t)> callback);
   int64_t GetTotalDiskSpace(const base::FilePath& path) override;
   int64_t GetRootDeviceSize() override;
+  bool IsQuotaSupported(const base::FilePath& path) override;
+  int64_t GetQuotaCurrentSpaceForUid(const base::FilePath& path,
+                                     uint32_t uid) override;
+  int64_t GetQuotaCurrentSpaceForGid(const base::FilePath& path,
+                                     uint32_t gid) override;
+  int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
+                                           uint32_t project_id) override;
 
   void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& space);
 

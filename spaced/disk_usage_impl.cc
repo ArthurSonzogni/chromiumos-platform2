@@ -12,23 +12,38 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/quota.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
+#include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <rootdev/rootdev.h>
 
 namespace spaced {
+
 DiskUsageUtilImpl::DiskUsageUtilImpl(const base::FilePath& rootdev,
                                      std::optional<brillo::Thinpool> thinpool)
     : rootdev_(rootdev), thinpool_(thinpool) {}
 
 int DiskUsageUtilImpl::StatVFS(const base::FilePath& path, struct statvfs* st) {
   return HANDLE_EINTR(statvfs(path.value().c_str(), st));
+}
+
+int DiskUsageUtilImpl::QuotaCtl(int cmd,
+                                const base::FilePath& device,
+                                int id,
+                                struct dqblk* dq) {
+  return quotactl(cmd, device.value().c_str(), id, reinterpret_cast<char*>(dq));
+}
+
+base::FilePath DiskUsageUtilImpl::GetDevice(const base::FilePath& path) {
+  return brillo::GetBackingLogicalDeviceForFile(path);
 }
 
 int64_t DiskUsageUtilImpl::GetFreeDiskSpace(const base::FilePath& path) {
@@ -89,6 +104,46 @@ int64_t DiskUsageUtilImpl::GetRootDeviceSize() {
   }
 
   return GetBlockDeviceSize(rootdev_);
+}
+
+bool DiskUsageUtilImpl::IsQuotaSupported(const base::FilePath& path) {
+  return GetQuotaCurrentSpaceForUid(path, 0) >= 0;
+}
+
+int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForUid(
+    const base::FilePath& path, uint32_t uid) {
+  return GetQuotaCurrentSpaceForId(path, uid, USRQUOTA);
+}
+
+int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForGid(
+    const base::FilePath& path, uint32_t gid) {
+  return GetQuotaCurrentSpaceForId(path, gid, GRPQUOTA);
+}
+
+int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForProjectId(
+    const base::FilePath& path, uint32_t project_id) {
+  return GetQuotaCurrentSpaceForId(path, project_id, PRJQUOTA);
+}
+
+int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForId(const base::FilePath& path,
+                                                     uint32_t id,
+                                                     int quota_type) {
+  DCHECK(0 <= quota_type && quota_type < MAXQUOTAS)
+      << "Invalid quota_type: " << quota_type;
+
+  const base::FilePath device = GetDevice(path);
+  if (device.empty()) {
+    LOG(ERROR) << "Failed to find logical device for home directory";
+    return -1;
+  }
+
+  struct dqblk dq = {};
+  if (QuotaCtl(QCMD(Q_GETQUOTA, quota_type), device, id, &dq) != 0) {
+    PLOG(ERROR) << "quotactl failed: quota_type=" << quota_type << ", id=" << id
+                << ", device=" << device.value();
+    return -1;
+  }
+  return dq.dqb_curspace;
 }
 
 }  // namespace spaced

@@ -4,6 +4,7 @@
 
 #include <spaced/disk_usage_impl.h>
 
+#include <sys/quota.h>
 #include <sys/statvfs.h>
 
 #include <optional>
@@ -27,6 +28,8 @@ namespace {
 constexpr const char kSampleReport[] =
     "0 32768 thin-pool 3 1/24 8/256 - rw discard_passdown "
     "queue_if_no_space - 1024";
+
+constexpr char kQuotaSamplePath[] = "/home/user/chronos";
 }  // namespace
 
 class DiskUsageUtilMock : public DiskUsageUtilImpl {
@@ -174,6 +177,93 @@ TEST(DiskUsageUtilTest, RootDeviceSizeTest) {
   DiskUsageRootdevMock disk_usage_mock(500, base::FilePath("/dev/foo"));
 
   EXPECT_EQ(disk_usage_mock.GetRootDeviceSize(), 500);
+}
+
+class DiskUsageQuotaMock : public DiskUsageUtilImpl {
+ public:
+  explicit DiskUsageQuotaMock(const base::FilePath& home_device)
+      : DiskUsageUtilImpl(base::FilePath("/dev/foo"), std::nullopt),
+        home_device_(home_device) {}
+
+  void set_current_space_for_uid(uint32_t uid, uint64_t space) {
+    uid_to_current_space_[uid] = space;
+  }
+  void set_current_space_for_gid(uint32_t gid, uint64_t space) {
+    gid_to_current_space_[gid] = space;
+  }
+  void set_current_space_for_project_id(uint32_t project_id, uint64_t space) {
+    project_id_to_current_space_[project_id] = space;
+  }
+
+ protected:
+  base::FilePath GetDevice(const base::FilePath& path) override {
+    return home_device_;
+  }
+
+  int QuotaCtl(int cmd,
+               const base::FilePath& device,
+               int id,
+               struct dqblk* dq) override {
+    dq->dqb_curspace = 0;
+    std::map<uint32_t, uint64_t>* current_space_map;
+    if (cmd == QCMD(Q_GETQUOTA, USRQUOTA)) {
+      current_space_map = &uid_to_current_space_;
+    } else if (cmd == QCMD(Q_GETQUOTA, GRPQUOTA)) {
+      current_space_map = &gid_to_current_space_;
+    } else if (cmd == QCMD(Q_GETQUOTA, PRJQUOTA)) {
+      current_space_map = &project_id_to_current_space_;
+    } else {
+      return -1;
+    }
+    auto iter = current_space_map->find(id);
+    if (iter == current_space_map->end()) {
+      return -1;
+    }
+    dq->dqb_curspace = iter->second;
+    return 0;
+  }
+
+ private:
+  base::FilePath home_device_;
+  std::map<uint32_t, uint64_t> uid_to_current_space_;
+  std::map<uint32_t, uint64_t> gid_to_current_space_;
+  std::map<uint32_t, uint64_t> project_id_to_current_space_;
+};
+
+TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMounted) {
+  DiskUsageQuotaMock disk_usage_mock(base::FilePath(""));
+  base::FilePath path(kQuotaSamplePath);
+
+  EXPECT_FALSE(disk_usage_mock.IsQuotaSupported(path));
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForUid(path, 0), -1);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForUid(path, 1), -1);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 2), -1);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 3), -1);
+}
+
+TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMountedWithQuotaOption) {
+  DiskUsageQuotaMock disk_usage_mock(base::FilePath("/dev/bar"));
+  base::FilePath path(kQuotaSamplePath);
+
+  // Current disk space for UID 0 is undefined.
+  EXPECT_FALSE(disk_usage_mock.IsQuotaSupported(path));
+}
+
+TEST(DiskUsageUtilTest, QuotaSupported) {
+  DiskUsageQuotaMock disk_usage_mock(base::FilePath("/dev/bar"));
+  base::FilePath path(kQuotaSamplePath);
+  disk_usage_mock.set_current_space_for_uid(0, 1);
+  disk_usage_mock.set_current_space_for_uid(1, 10);
+  disk_usage_mock.set_current_space_for_gid(10, 20);
+  disk_usage_mock.set_current_space_for_project_id(100, 30);
+
+  EXPECT_TRUE(disk_usage_mock.IsQuotaSupported(path));
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForUid(path, 1), 10);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForUid(path, 2), -1);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 10), 20);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 11), -1);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 100), 30);
+  EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 101), -1);
 }
 
 }  // namespace spaced

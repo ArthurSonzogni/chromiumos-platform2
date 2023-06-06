@@ -63,6 +63,7 @@ pipe2: 1
 poll: 1
 pread64: 1
 prlimit64: 1
+quotactl: 1
 read: 1
 readlink: 1
 recvmsg: 1

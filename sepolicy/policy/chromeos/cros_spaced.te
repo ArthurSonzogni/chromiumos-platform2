@@ -35,6 +35,13 @@ allow cros_spaced cros_system_bus_socket:sock_file write;
 
 allow cros_spaced tmpfs:file { getattr open read write };
 
+# Needed for getting the backing logical device for /home/chronos/user (for
+# quota-related operations for ARC).
+allow cros_spaced cros_home_shadow_uid_user:dir { getattr };
+
+# Needed for quota-related D-Bus methods.
+allow cros_spaced labeledfs:filesystem { quotaget };
+
 # Spaced/LVM iterates through /dev and will try to access the following devices.
 dontaudit cros_spaced {
   audio_device

@@ -15,6 +15,11 @@ const char kSpacedServiceName[] = "org.chromium.Spaced";
 const char kGetFreeDiskSpaceMethod[] = "GetFreeDiskSpace";
 const char kGetTotalDiskSpaceMethod[] = "GetTotalDiskSpace";
 const char kGetRootDeviceSizeMethod[] = "GetRootDeviceSize";
+const char kIsQuotaSupported[] = "IsQuotaSupported";
+const char kGetQuotaCurrentSpaceForUidMethod[] = "GetQuotaCurrentSpaceForUid";
+const char kGetQuotaCurrentSpaceForGidMethod[] = "GetQuotaCurrentSpaceForGid";
+const char kGetQuotaCurrentSpaceForProjectIdMethod[] =
+    "GetQuotaCurrentSpaceForProjectId";
 
 // Signals.
 const char kStatefulDiskSpaceUpdate[] = "StatefulDiskSpaceUpdate";

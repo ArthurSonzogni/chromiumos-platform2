@@ -47,7 +47,7 @@ std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
 int64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {
   int64_t free_disk_space;
   brillo::ErrorPtr error;
-  // Return false if call fails.
+  // Return -1 if call fails.
   if (!spaced_proxy_->GetFreeDiskSpace(path.value(), &free_disk_space,
                                        &error)) {
     LOG(ERROR) << "Failed to call GetFreeDiskSpace, error: "
@@ -75,7 +75,7 @@ void DiskUsageProxy::GetFreeDiskSpaceAsync(
 int64_t DiskUsageProxy::GetTotalDiskSpace(const base::FilePath& path) {
   int64_t total_disk_space;
   brillo::ErrorPtr error;
-  // Return false if call fails.
+  // Return -1 if call fails.
   if (!spaced_proxy_->GetTotalDiskSpace(path.value(), &total_disk_space,
                                         &error)) {
     LOG(ERROR) << "Failed to call GetTotalDiskSpace, error: "
@@ -90,7 +90,7 @@ int64_t DiskUsageProxy::GetRootDeviceSize() {
   int64_t root_device_size;
 
   brillo::ErrorPtr error;
-  // Return false if call fails.
+  // Return -1 if call fails.
   if (!spaced_proxy_->GetRootDeviceSize(&root_device_size, &error)) {
     LOG(ERROR) << "Failed to call GetRootDeviceSize, error: "
                << error->GetMessage();
@@ -98,6 +98,60 @@ int64_t DiskUsageProxy::GetRootDeviceSize() {
   }
 
   return root_device_size;
+}
+
+bool DiskUsageProxy::IsQuotaSupported(const base::FilePath& path) {
+  bool is_supported = false;
+  brillo::ErrorPtr error;
+  // Return false if call fails.
+  if (!spaced_proxy_->IsQuotaSupported(path.value(), &is_supported, &error)) {
+    LOG(ERROR) << "Failed to call IsQuotaSupported, error: "
+               << error->GetMessage();
+    return false;
+  }
+  return is_supported;
+}
+
+int64_t DiskUsageProxy::GetQuotaCurrentSpaceForUid(const base::FilePath& path,
+                                                   uint32_t uid) {
+  int64_t current_space = 0;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetQuotaCurrentSpaceForUid(path.value(), uid,
+                                                 &current_space, &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaCurrentSpaceForUid, error: "
+               << error->GetMessage();
+    return -1;
+  }
+  return current_space;
+}
+
+int64_t DiskUsageProxy::GetQuotaCurrentSpaceForGid(const base::FilePath& path,
+                                                   uint32_t gid) {
+  int64_t current_space = 0;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetQuotaCurrentSpaceForGid(path.value(), gid,
+                                                 &current_space, &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaCurrentSpaceForGid, error: "
+               << error->GetMessage();
+    return -1;
+  }
+  return current_space;
+}
+
+int64_t DiskUsageProxy::GetQuotaCurrentSpaceForProjectId(
+    const base::FilePath& path, uint32_t project_id) {
+  int64_t current_space = 0;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetQuotaCurrentSpaceForGid(path.value(), project_id,
+                                                 &current_space, &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaCurrentSpaceForProjectId, error: "
+               << error->GetMessage();
+    return -1;
+  }
+  return current_space;
 }
 
 void DiskUsageProxy::OnStatefulDiskSpaceUpdate(

@@ -40,5 +40,41 @@
                   value="spaced::StatefulDiskSpaceUpdate"/>
       </arg>
     </signal>
+
+    <method name="IsQuotaSupported">
+      <tp:docstring>
+        Returns whether the given path is mounted with quota option enabled.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetQuotaCurrentSpaceForUid">
+      <tp:docstring>
+        Returns the disk space currently used by the given UID.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="uid" type="u" direction="in"/>
+      <arg name="reply" type="x" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetQuotaCurrentSpaceForGid">
+      <tp:docstring>
+        Returns the disk space currently used by the given GID.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="gid" type="u" direction="in"/>
+      <arg name="reply" type="x" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetQuotaCurrentSpaceForProjectId">
+      <tp:docstring>
+        Returns the disk space currently used by the given project ID.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="project_id" type="u" direction="in"/>
+      <arg name="reply" type="x" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

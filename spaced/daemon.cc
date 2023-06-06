@@ -110,6 +110,28 @@ int64_t DBusAdaptor::GetRootDeviceSize() {
   return disk_usage_util_->GetRootDeviceSize();
 }
 
+bool DBusAdaptor::IsQuotaSupported(const std::string& path) {
+  return disk_usage_util_->IsQuotaSupported(base::FilePath(path));
+}
+
+int64_t DBusAdaptor::GetQuotaCurrentSpaceForUid(const std::string& path,
+                                                uint32_t uid) {
+  return disk_usage_util_->GetQuotaCurrentSpaceForUid(base::FilePath(path),
+                                                      uid);
+}
+
+int64_t DBusAdaptor::GetQuotaCurrentSpaceForGid(const std::string& path,
+                                                uint32_t gid) {
+  return disk_usage_util_->GetQuotaCurrentSpaceForGid(base::FilePath(path),
+                                                      gid);
+}
+
+int64_t DBusAdaptor::GetQuotaCurrentSpaceForProjectId(const std::string& path,
+                                                      uint32_t project_id) {
+  return disk_usage_util_->GetQuotaCurrentSpaceForProjectId(
+      base::FilePath(path), project_id);
+}
+
 void DBusAdaptor::StatefulDiskSpaceUpdateCallback(
     const StatefulDiskSpaceUpdate& state) {
   SendStatefulDiskSpaceUpdateSignal(state);

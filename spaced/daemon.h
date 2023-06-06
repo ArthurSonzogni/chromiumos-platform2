@@ -36,6 +36,14 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
   int64_t GetTotalDiskSpace(const std::string& path) override;
   int64_t GetRootDeviceSize() override;
 
+  bool IsQuotaSupported(const std::string& path) override;
+  int64_t GetQuotaCurrentSpaceForUid(const std::string& path,
+                                     uint32_t uid) override;
+  int64_t GetQuotaCurrentSpaceForGid(const std::string& path,
+                                     uint32_t gid) override;
+  int64_t GetQuotaCurrentSpaceForProjectId(const std::string& path,
+                                           uint32_t project_id) override;
+
   void StatefulDiskSpaceUpdateCallback(const StatefulDiskSpaceUpdate& state);
 
  private:
