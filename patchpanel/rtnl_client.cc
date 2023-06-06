@@ -18,7 +18,7 @@ namespace {
 
 template <typename Address, unsigned char ip_family>
 std::map<Address, MacAddress> GetNeighborMacTable(
-    const base::ScopedFD& rtnl_fd) {
+    const base::ScopedFD& rtnl_fd, const std::optional<int>& ifindex) {
   sockaddr_nl kernel;
   memset(&kernel, 0, sizeof(kernel));
   kernel.nl_family = AF_NETLINK;
@@ -87,6 +87,10 @@ std::map<Address, MacAddress> GetNeighborMacTable(
 
           size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
           ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
+          if (ifindex && nd_msg->ndm_ifindex != *ifindex) {
+            continue;
+          }
+
           rtattr* rt_attr = reinterpret_cast<rtattr*>(RTM_RTA(nd_msg));
           for (; RTA_OK(rt_attr, rt_attr_len);
                rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
@@ -145,14 +149,15 @@ std::unique_ptr<RTNLClient> RTNLClient::Create() {
 RTNLClient::RTNLClient(base::ScopedFD rtnl_fd) : rtnl_fd_(std::move(rtnl_fd)) {}
 RTNLClient::~RTNLClient() = default;
 
-std::map<net_base::IPv4Address, MacAddress>
-RTNLClient::GetIPv4NeighborMacTable() const {
-  return GetNeighborMacTable<net_base::IPv4Address, AF_INET>(rtnl_fd_);
+std::map<net_base::IPv4Address, MacAddress> RTNLClient::GetIPv4NeighborMacTable(
+    const std::optional<int>& ifindex) const {
+  return GetNeighborMacTable<net_base::IPv4Address, AF_INET>(rtnl_fd_, ifindex);
 }
 
-std::map<net_base::IPv6Address, MacAddress>
-RTNLClient::GetIPv6NeighborMacTable() const {
-  return GetNeighborMacTable<net_base::IPv6Address, AF_INET6>(rtnl_fd_);
+std::map<net_base::IPv6Address, MacAddress> RTNLClient::GetIPv6NeighborMacTable(
+    const std::optional<int>& ifindex) const {
+  return GetNeighborMacTable<net_base::IPv6Address, AF_INET6>(rtnl_fd_,
+                                                              ifindex);
 }
 
 }  // namespace patchpanel

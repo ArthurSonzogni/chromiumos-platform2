@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <base/files/scoped_file.h>
 #include <net-base/ipv4_address.h>
@@ -23,13 +24,15 @@ class RTNLClient {
 
   ~RTNLClient();
 
-  // Queries the MAC address of IPv4 neighbors. Returns the mapping from the
-  // IPv4 address to the MAC address.
-  std::map<net_base::IPv4Address, MacAddress> GetIPv4NeighborMacTable() const;
-
-  // Queries the MAC address of IPv6 neighbors. Returns the mapping from the
-  // IPv6 address to the MAC address.
-  std::map<net_base::IPv6Address, MacAddress> GetIPv6NeighborMacTable() const;
+  // Queries the MAC address of IPv4 or IPv6 neighbors. Returns the mapping from
+  // the IP address to the MAC address.
+  // If |ifindex| is not nullopt, then only returns the neighbors for this
+  // network interface. The value of the |ifindex| could be retrieved by
+  // System::IfNametoindex().
+  std::map<net_base::IPv4Address, MacAddress> GetIPv4NeighborMacTable(
+      const std::optional<int>& ifindex = std::nullopt) const;
+  std::map<net_base::IPv6Address, MacAddress> GetIPv6NeighborMacTable(
+      const std::optional<int>& ifindex = std::nullopt) const;
 
  private:
   explicit RTNLClient(base::ScopedFD rtnl_fd);
