@@ -13,6 +13,7 @@ use libchromeos::sys::info;
 use once_cell::sync::Lazy;
 
 use crate::common;
+use crate::cpu_utils;
 
 #[cfg(feature = "chromeos")]
 use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
@@ -122,86 +123,6 @@ fn get_scheduler_tune_cpuset_nonurgent(root: &Path) -> Result<Option<String>> {
     Ok(Some(std::fs::read_to_string(scheduler_tune_path)?))
 }
 
-fn get_cpuset_all_cpus(root: &Path) -> Result<String> {
-    const ROOT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/cpus";
-    let root_cpuset_cpus = root.join(ROOT_CPUSET_CPUS);
-    std::fs::read_to_string(root_cpuset_cpus).context("Failed to get root cpuset cpus")
-}
-
-fn is_big_little_supported(root: &Path) -> Result<bool> {
-    const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
-    let reader = BufReader::new(std::fs::File::open(root.join(UI_USE_FLAGS_PATH))?);
-    for line in reader.lines() {
-        if line? == "big_little" {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-// Returns cpus string containing cpus with the minimal value of the property.
-// The properties are read from /sys/bus/cpu/devices/cpu*/{property name}.
-// E.g., this function returns "0,1" for the following cpu properties.
-// | cpu # | property value |
-// |-------|----------------|
-// |   0   |       512      |
-// |   1   |       512      |
-// |   2   |      1024      |
-// |   3   |      1024      |
-fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<String> {
-    let cpu_pattern = root
-        .join("sys/bus/cpu/devices/cpu*")
-        .to_str()
-        .context("Failed to construct cpu pattern string")?
-        .to_owned();
-    let cpu_pattern_prefix = root
-        .join("sys/bus/cpu/devices/cpu")
-        .to_str()
-        .context("Failed to construct cpu path prefix")?
-        .to_owned();
-
-    let cpu_properties = glob(&cpu_pattern)?
-        .map(|cpu_dir| {
-            let cpu_dir = cpu_dir?;
-            let cpu_number: u64 = cpu_dir
-                .to_str()
-                .context("Failed to convert cpu path to string")?
-                .strip_prefix(&cpu_pattern_prefix)
-                .context("Failed to strip prefix")?
-                .parse()?;
-            let property_path = Path::new(&cpu_dir).join(property);
-            Ok((cpu_number, common::read_file_to_u64(property_path)?))
-        })
-        .collect::<Result<Vec<(u64, u64)>, anyhow::Error>>()?;
-    let min_property = cpu_properties
-        .iter()
-        .map(|(_, prop)| prop)
-        .min()
-        .context("cpu properties vector is empty")?;
-    let cpus = cpu_properties
-        .iter()
-        .filter(|(_, prop)| prop == min_property)
-        .map(|(cpu, _)| cpu.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
-    Ok(cpus)
-}
-
-fn get_little_cores(root: &Path) -> Result<String> {
-    if !is_big_little_supported(root)? {
-        return get_cpuset_all_cpus(root);
-    }
-
-    let cpu0_capacity = root.join("sys/bus/cpu/devices/cpu0/cpu_capacity");
-
-    if cpu0_capacity.exists() {
-        // If cpu0/cpu_capacity exists, all cpus should have the cpu_capacity file.
-        get_cpus_with_min_property(root, "cpu_capacity")
-    } else {
-        get_cpus_with_min_property(root, "cpufreq/cpuinfo_max_freq")
-    }
-}
-
 fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
     let cpuset_path = root.join(CGROUP_CPUSET_NONURGENT);
 
@@ -210,10 +131,10 @@ fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
             std::fs::write(cpuset_path, cpusets)?;
         }
         Ok(None) => {
-            std::fs::write(cpuset_path, get_little_cores(root)?)?;
+            std::fs::write(cpuset_path, cpu_utils::get_little_cores(root)?)?;
         }
         Err(e) => {
-            std::fs::write(cpuset_path, get_cpuset_all_cpus(root)?)?;
+            std::fs::write(cpuset_path, cpu_utils::get_cpuset_all_cpus(root)?)?;
             bail!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
         }
     }
@@ -227,7 +148,7 @@ fn write_default_cpusets(root: &Path) -> Result<()> {
     write_default_nonurgent_cpusets(root)?;
 
     // Other cpusets
-    let all_cpus = get_cpuset_all_cpus(root)?;
+    let all_cpus = cpu_utils::get_cpuset_all_cpus(root)?;
 
     for cpus in CGROUP_CPUSET_NO_LIMIT {
         let cpus_path = root.join(cpus);
@@ -411,6 +332,7 @@ pub fn media_dynamic_cgroup(action: MediaDynamicCgroupAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_utils::tests::*;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -480,10 +402,6 @@ mod tests {
         Ok(())
     }
 
-    fn test_create_parent_dir(path: &Path) {
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    }
-
     #[test]
     fn test_power_get_intel_hybrid_core_num() -> Result<()> {
         let root = TempDir::new().unwrap();
@@ -522,12 +440,6 @@ mod tests {
         Ok(())
     }
 
-    fn test_write_cpuset_root_cpus(root: &Path, cpus: &str) {
-        let root_cpuset_cpus = root.join("sys/fs/cgroup/cpuset/cpus");
-        test_create_parent_dir(&root_cpuset_cpus);
-        std::fs::write(root_cpuset_cpus, cpus).unwrap();
-    }
-
     fn test_write_cpusets(root: &Path, cpus_content: &str) {
         for cpus in CGROUP_CPUSET_ALL.iter() {
             let cpuset_cpus = root.join(cpus);
@@ -548,25 +460,10 @@ mod tests {
         assert_eq!(file_content, content);
     }
 
-    fn test_write_ui_use_flags(root: &Path, use_flags: &str) {
-        let use_flags_path = root.join("etc/ui_use_flags.txt");
-        test_create_parent_dir(&use_flags_path);
-        std::fs::write(use_flags_path, use_flags).unwrap();
-    }
-
     fn test_write_cpu_capacity(root: &Path, cpu_num: u32, capacity: u32) {
         let cpu_cap_path = root.join(format!("sys/bus/cpu/devices/cpu{}/cpu_capacity", cpu_num));
         test_create_parent_dir(&cpu_cap_path);
         std::fs::write(cpu_cap_path, capacity.to_string()).unwrap();
-    }
-
-    fn test_write_cpu_max_freq(root: &Path, cpu_num: u32, max_freq: u32) {
-        let cpu_max_path = root.join(format!(
-            "sys/bus/cpu/devices/cpu{}/cpufreq/cpuinfo_max_freq",
-            cpu_num
-        ));
-        test_create_parent_dir(&cpu_max_path);
-        std::fs::write(cpu_max_path, max_freq.to_string()).unwrap();
     }
 
     #[test]

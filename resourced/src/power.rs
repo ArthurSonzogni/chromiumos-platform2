@@ -6,7 +6,7 @@ use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use glob::glob;
 use libchromeos::sys::{error, info};
 
@@ -154,20 +154,34 @@ pub trait PowerPreferencesManager {
     ) -> Result<()>;
 }
 
-fn write_to_path_patterns(pattern: &str, new_value: &str) -> Result<()> {
-    for entry in glob(pattern)? {
+fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
+    let mut applied: bool = false;
+    let entries: Vec<_> = glob(pattern)?.collect();
+
+    if entries.is_empty() {
+        applied = true;
+    }
+
+    for entry in entries {
         let path = entry?;
-        let current_value = read_to_string(&path)
-            .with_context(|| format!("Error reading attribute from {}", path.display()))?;
-        if current_value.trim_end_matches('\n') != new_value {
-            std::fs::write(&path, new_value).with_context(|| {
-                format!(
-                    "Failed to set attribute to {}, new value: {}",
-                    path.display(),
-                    new_value
-                )
-            })?;
+        // Allow read fail due to CPU may be offlined.
+        if let Ok(current_value) = read_to_string(&path) {
+            if current_value.trim_end_matches('\n') != new_value {
+                std::fs::write(&path, new_value).with_context(|| {
+                    format!(
+                        "Failed to set attribute to {}, new value: {}",
+                        path.display(),
+                        new_value
+                    )
+                })?;
+            }
+            applied = true;
         }
+    }
+
+    // Fail if there are entries in the pattern but nothing is applied
+    if !applied {
+        bail!("Failed to read any of the pattern {}", pattern);
     }
 
     Ok(())
@@ -217,7 +231,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
             .to_str()
             .context("Cannot convert ondemand path to string")?
             .to_owned();
-        write_to_path_patterns(&pattern, &value.to_string())
+        write_to_cpu_policy_patterns(&pattern, &value.to_string())
     }
 
     fn set_scaling_governor(&self, new_governor: &str) -> Result<()> {
@@ -229,7 +243,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
             .context("Cannot convert scaling_governor path to string")?
             .to_owned();
 
-        write_to_path_patterns(&pattern, new_governor)
+        write_to_cpu_policy_patterns(&pattern, new_governor)
     }
 
     fn apply_governor_preferences(&self, governor: config::Governor) -> Result<()> {
@@ -272,6 +286,18 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         Ok(())
     }
 
+    fn has_epp(&self) -> Result<bool> {
+        const CPU0_EPP_PATH: &str =
+            "sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference";
+        let pattern = self
+            .root
+            .join(CPU0_EPP_PATH)
+            .to_str()
+            .context("Cannot convert cpu0 epp path to string")?
+            .to_owned();
+        Ok(Path::new(&pattern).exists())
+    }
+
     fn set_epp(&self, epp: config::EnergyPerformancePreference) -> Result<()> {
         const EPP_PATTERN: &str =
             "sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
@@ -281,7 +307,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
             .to_str()
             .context("Cannot convert epp path to string")?
             .to_owned();
-        write_to_path_patterns(&pattern, epp.to_name())
+        write_to_cpu_policy_patterns(&pattern, epp.to_name())
     }
 
     fn apply_power_preferences(&self, preferences: config::PowerPreferences) -> Result<()> {
@@ -313,9 +339,19 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
 
         info!("Power source {:?}", power_source);
 
-        info!("Battery saver mode {:?}", batterysaver);
-
-        if game == GameMode::Borealis {
+        if batterysaver == BatterySaverMode::Active {
+            preferences = if self.has_epp()? {
+                Some(config::PowerPreferences {
+                    governor: None,
+                    epp: Some(config::EnergyPerformancePreference::BalancePower),
+                })
+            } else {
+                Some(config::PowerPreferences {
+                    governor: Some(config::Governor::Conservative),
+                    epp: None,
+                })
+            };
+        } else if game == GameMode::Borealis {
             preferences = self.config_provider.read_power_preferences(
                 power_source,
                 config::PowerPreferencesType::BorealisGaming,
@@ -354,7 +390,9 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             self.apply_power_preferences(preferences)?
         }
 
-        if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
+        if batterysaver == BatterySaverMode::Active {
+            return Ok(());
+        } else if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
             if let Err(err) = self.set_epp(config::EnergyPerformancePreference::BalancePower) {
                 error!("Failed to set energy performance preference: {:#}", err);
             }
@@ -975,6 +1013,77 @@ mod tests {
 
         let sampling_rate = read_global_sampling_rate(root.path())?;
         assert_eq!(sampling_rate, "16000");
+
+        Ok(())
+    }
+
+    #[test]
+    /// Tests default battery saver mode
+    fn test_power_update_power_preferences_battery_saver_active() -> Result<()> {
+        let temp_dir = tempdir()?;
+        let root = temp_dir.path();
+
+        let power_source_provider = FakePowerSourceProvider {
+            power_source: config::PowerSourceType::AC,
+        };
+
+        let config_provider = FakeConfigProvider {
+            arcvm_gaming_power_preferences: |_| {
+                Ok(Some(config::PowerPreferences {
+                    governor: Some(config::Governor::Schedutil),
+                    epp: None,
+                }))
+            },
+            ..Default::default()
+        };
+
+        let manager = DirectoryPowerPreferencesManager {
+            root: root.to_path_buf(),
+            config_provider,
+            power_source_provider,
+        };
+
+        let tests = [
+            (
+                BatterySaverMode::Active,
+                "balance_power",
+                config::Governor::Conservative,
+            ),
+            (
+                BatterySaverMode::Inactive,
+                "balance_performance",
+                config::Governor::Schedutil,
+            ),
+        ];
+
+        // Test device without EPP path
+        write_per_policy_scaling_governor(root, config::Governor::Performance);
+        for test in tests {
+            manager.update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Arc,
+                common::VmBootMode::Inactive,
+                test.0,
+            )?;
+
+            check_per_policy_scaling_governor(root, test.2);
+        }
+
+        // Test device with EPP path
+        write_epp(root, "balance_performance")?;
+        for test in tests {
+            manager.update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Arc,
+                common::VmBootMode::Inactive,
+                test.0,
+            )?;
+
+            let epp = read_epp(root)?;
+            assert_eq!(epp, test.1);
+        }
 
         Ok(())
     }

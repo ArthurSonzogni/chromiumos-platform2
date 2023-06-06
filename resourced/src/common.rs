@@ -25,6 +25,8 @@ use crate::gpu_freq_scaling::intel_device;
 #[cfg(target_arch = "x86_64")]
 use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
 
+use crate::cpu_utils::{hotplug_cpus, HotplugCpuAction};
+
 // Extract the parsing function for unittest.
 fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
     let first_line = reader.lines().next().context("No content in buffer")??;
@@ -338,6 +340,14 @@ pub fn on_battery_saver_mode_change(
         }
         Err(_) => bail!("Failed to set Battery saver mode activity"),
     }
+
+    if mode == BatterySaverMode::Inactive {
+        hotplug_cpus(HotplugCpuAction::OnlineAll)?;
+    } else {
+        hotplug_cpus(HotplugCpuAction::OfflineHalf)?;
+    }
+
+    // Governor/EPP setting
     update_power_preferences(power_preference_manager)?;
 
     Ok(())

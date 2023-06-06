@@ -4,6 +4,7 @@
 
 mod common;
 mod config;
+mod cpu_utils;
 mod dbus;
 mod memory;
 mod power;

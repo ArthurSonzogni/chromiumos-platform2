@@ -39,6 +39,31 @@ pub(crate) mod tests {
         }
     }
 
+    pub fn test_create_parent_dir(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    pub fn test_write_ui_use_flags(root: &Path, use_flags: &str) {
+        let use_flags_path = root.join("etc/ui_use_flags.txt");
+        test_create_parent_dir(&use_flags_path);
+        std::fs::write(use_flags_path, use_flags).unwrap();
+    }
+
+    pub fn test_write_cpuset_root_cpus(root: &Path, cpus: &str) {
+        let root_cpuset_cpus = root.join("sys/fs/cgroup/cpuset/cpus");
+        test_create_parent_dir(&root_cpuset_cpus);
+        std::fs::write(root_cpuset_cpus, cpus).unwrap();
+    }
+
+    pub fn test_write_cpu_max_freq(root: &Path, cpu_num: u32, max_freq: u32) {
+        let cpu_max_path = root.join(format!(
+            "sys/bus/cpu/devices/cpu{}/cpufreq/cpuinfo_max_freq",
+            cpu_num
+        ));
+        test_create_parent_dir(&cpu_max_path);
+        std::fs::write(cpu_max_path, max_freq.to_string()).unwrap();
+    }
+
     pub fn write_mock_pl0(root: &Path, value: u64) -> Result<()> {
         std::fs::write(
             root.join(DEVICE_POWER_LIMIT_PATH)
