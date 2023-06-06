@@ -731,6 +731,7 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
   if (!libmbim->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
+    // modem_mbim will be nullptr on fuzzer tests
     if (modem_mbim) {
       // We've likely encountered b/230851574. Set flag that closes the channel,
       // and restores the slot.
@@ -739,7 +740,7 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
     }
     return false;
   }
-  if (!modem_mbim->libmbim_->MbimMessageMsUiccLowLevelAccessApduResponseParse(
+  if (!libmbim->MbimMessageMsUiccLowLevelAccessApduResponseParse(
           response, &status, &response_size, &out_response, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
     return false;
