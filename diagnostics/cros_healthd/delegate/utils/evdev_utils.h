@@ -37,6 +37,29 @@ class EvdevUtil {
     virtual void ReportProperties(LibevdevWrapper* dev) = 0;
   };
 
+  // This class manages the life cycle of an opened evdev node.
+  class EvdevDevice {
+   public:
+    EvdevDevice(base::ScopedFD fd, std::unique_ptr<LibevdevWrapper> dev);
+    EvdevDevice(const EvdevDevice& device) = delete;
+    EvdevDevice(EvdevDevice&& device) = delete;
+    virtual ~EvdevDevice();
+
+    // Starts watching the readable state of |fd_| and calls |on_evdev_event|
+    // when |fd_| is readable. Returns whether the monitoring starts
+    // successfully.
+    bool StarWatchingEvents(
+        base::RepeatingCallback<void(LibevdevWrapper*)> on_evdev_event);
+
+   private:
+    // The fd of opened evdev node.
+    base::ScopedFD fd_;
+    // The libevdev device object.
+    std::unique_ptr<LibevdevWrapper> dev_;
+    // The watcher to monitor if the |fd_| is readable.
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+  };
+
   using LibevdevWrapperFactoryMethod =
       base::RepeatingCallback<std::unique_ptr<LibevdevWrapper>(int fd)>;
 
@@ -53,16 +76,12 @@ class EvdevUtil {
   bool Initialize(const base::FilePath& path,
                   LibevdevWrapperFactoryMethod factory_method);
 
-  // When |fd_| is readable, it reads event from it and tries to fire event
-  // through |FireEvent|.
-  void OnEvdevEvent();
+  // Called when the fd of a targeted evdev device |dev| is readable. It reads
+  // events from the fd and fires events through |FireEvent|.
+  void OnEvdevEvent(LibevdevWrapper* dev);
 
-  // The fd of opened evdev node.
-  base::ScopedFD fd_;
-  // The watcher to monitor if the |fd_| is readable.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-  // The libevdev device object.
-  std::unique_ptr<LibevdevWrapper> dev_;
+  // The evdev device object.
+  std::unique_ptr<EvdevDevice> dev_;
   // Delegate to implement dedicated behaviors for different evdev devices.
   std::unique_ptr<Delegate> delegate_;
 };

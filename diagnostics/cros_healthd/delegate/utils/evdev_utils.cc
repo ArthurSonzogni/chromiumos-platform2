@@ -85,6 +85,19 @@ std::vector<mojom::TouchPointInfoPtr> FetchTouchPoints(LibevdevWrapper* dev) {
 
 }  // namespace
 
+EvdevUtil::EvdevDevice::EvdevDevice(base::ScopedFD fd,
+                                    std::unique_ptr<LibevdevWrapper> dev)
+    : fd_(std::move(fd)), dev_(std::move(dev)) {}
+
+EvdevUtil::EvdevDevice::~EvdevDevice() = default;
+
+bool EvdevUtil::EvdevDevice::StarWatchingEvents(
+    base::RepeatingCallback<void(LibevdevWrapper*)> on_evdev_event) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(), base::BindRepeating(on_evdev_event, dev_.get()));
+  return !!watcher_;
+}
+
 EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate)
     : EvdevUtil(std::move(delegate),
                 base::BindRepeating(&LibevdevWrapperImpl::Create)) {}
@@ -128,34 +141,33 @@ bool EvdevUtil::Initialize(const base::FilePath& path,
     return false;
   }
 
-  dev_ = std::move(dev);
-  fd_ = std::move(fd);
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd_.get(),
-      base::BindRepeating(&EvdevUtil::OnEvdevEvent, base::Unretained(this)));
+  LibevdevWrapper* const libevdev_ptr = dev.get();
 
-  if (!watcher_) {
+  auto evdev_device =
+      std::make_unique<EvdevDevice>(std::move(fd), std::move(dev));
+  if (!evdev_device->StarWatchingEvents(base::BindRepeating(
+          &EvdevUtil::OnEvdevEvent, base::Unretained(this)))) {
     LOG(ERROR) << "Fail to monitor evdev node: " << path;
-    dev_.reset();
-    fd_.reset();
     return false;
   }
 
+  dev_ = std::move(evdev_device);
+
   LOG(INFO) << "Connected to evdev node: " << path
-            << ", device name: " << dev_->GetName();
-  delegate_->ReportProperties(dev_.get());
+            << ", device name: " << libevdev_ptr->GetName();
+  delegate_->ReportProperties(libevdev_ptr);
   return true;
 }
 
-void EvdevUtil::OnEvdevEvent() {
+void EvdevUtil::OnEvdevEvent(LibevdevWrapper* dev) {
   input_event ev;
   int rc = 0;
 
   do {
-    rc = dev_->NextEvent(
-        LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &ev);
+    rc = dev->NextEvent(LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING,
+                        &ev);
     if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-      delegate_->FireEvent(ev, dev_.get());
+      delegate_->FireEvent(ev, dev);
     }
   } while (rc == LIBEVDEV_READ_STATUS_SUCCESS ||
            rc == LIBEVDEV_READ_STATUS_SYNC);
