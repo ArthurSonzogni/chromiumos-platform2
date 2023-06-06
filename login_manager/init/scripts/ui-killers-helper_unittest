@@ -139,7 +139,7 @@ main() {
   # This is needed when doing out of tree builds.
   TMPDIR="${T:-.}"
 
-  . ./killers
+  . "$(dirname "$0")/ui-killers-helper" || return 1
   LOGPATH="${TMPDIR}/${LOGPATH##*/}"
   . /usr/bin/shunit2
 }

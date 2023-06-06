@@ -8,8 +8,8 @@ JOB=$(basename "$0")
 
 bootstat ui-post-stop
 set +e
-# shellcheck source=/dev/null
-. /sbin/killers
+# shellcheck source=./ui-killers-helper
+. /usr/share/cros/init/ui-killers-helper
 
 # Terminate PKCS #11 services.
 cryptohome --action=pkcs11_terminate
