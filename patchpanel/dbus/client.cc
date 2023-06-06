@@ -224,18 +224,31 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
   return out;
 }
 
-Client::NetworkClientInfo ConvertNetworkClientInfo(
+std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
-  Client::NetworkClientInfo out;
+  auto out = std::make_optional<Client::NetworkClientInfo>();
   std::copy(in.mac_addr().begin(), in.mac_addr().end(),
-            std::back_inserter(out.mac_addr));
-  std::copy(in.ipv4_addr().begin(), in.ipv4_addr().end(),
-            std::back_inserter(out.ipv4_addr));
-  for (const auto& ipv6_addr : in.ipv6_addresses()) {
-    out.ipv6_addresses.emplace_back(ipv6_addr.begin(), ipv6_addr.end());
+            std::back_inserter(out->mac_addr));
+  const auto ipv4_addr = net_base::IPv4Address::CreateFromBytes(
+      in.ipv4_addr().data(), in.ipv4_addr().size());
+  if (!ipv4_addr) {
+    LOG(ERROR) << "Failed to convert protobuf bytes to IPv4Address. size="
+               << in.ipv4_addr().size();
+    return std::nullopt;
   }
-  out.hostname = in.hostname();
-  out.vendor_class = in.vendor_class();
+  out->ipv4_addr = *ipv4_addr;
+  for (const auto& in_ipv6_addr : in.ipv6_addresses()) {
+    const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(
+        in_ipv6_addr.data(), in_ipv6_addr.size());
+    if (!ipv6_addr) {
+      LOG(ERROR) << "Failed to convert protobuf bytes to IPv6Address. size="
+                 << in_ipv6_addr.size();
+      return std::nullopt;
+    }
+    out->ipv6_addresses.push_back(*ipv6_addr);
+  }
+  out->hostname = in.hostname();
+  out->vendor_class = in.vendor_class();
   return out;
 }
 
@@ -473,7 +486,10 @@ void OnGetDownstreamNetworkInfoResponse(
 
   std::vector<Client::NetworkClientInfo> clients_info;
   for (const auto& ci : response.clients_info()) {
-    clients_info.push_back(ConvertNetworkClientInfo(ci));
+    const auto info = ConvertNetworkClientInfo(ci);
+    if (info) {
+      clients_info.push_back(*info);
+    }
   }
 
   std::move(callback).Run(true, downstream_network, clients_info);

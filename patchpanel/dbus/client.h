@@ -23,6 +23,7 @@
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
 #include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 namespace org {
 namespace chromium {
@@ -132,8 +133,8 @@ class BRILLO_EXPORT Client {
   // See NetworkClientInfo in patchpanel_service.proto.
   struct NetworkClientInfo {
     std::vector<uint8_t> mac_addr;
-    std::vector<uint8_t> ipv4_addr;
-    std::vector<std::vector<uint8_t>> ipv6_addresses;
+    net_base::IPv4Address ipv4_addr;
+    std::vector<net_base::IPv6Address> ipv6_addresses;
     std::string hostname;
     std::string vendor_class;
   };
