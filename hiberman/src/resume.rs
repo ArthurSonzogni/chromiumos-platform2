@@ -44,7 +44,7 @@ use crate::metrics::read_and_send_metrics;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
-use crate::resume_dbus::{wait_for_resume_dbus_event, DBusEvent};
+use crate::resume_dbus::{DBusEvent, DBusServer};
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -127,12 +127,25 @@ impl ResumeConductor {
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
     fn resume_inner(&mut self) -> Result<()> {
-        let mut volume_manager = VolumeManager::new()?;
+        let mut dbus_server = DBusServer::new();
 
-        // If resume succeeds, resume_inner doesn't return. Leaving resume_inner indicates resume
-        // failure or resume abortion. The D-Bus method waits on completion_receiver until
-        // resume_inner returns and _completion_sender is dropped.
-        let (_completion_sender, completion_receiver) = crossbeam_channel::bounded::<()>(0);
+        // Wait for the user to authenticate or a message that hibernate is
+        // not supported.
+        let user_key = match dbus_server.wait_for_event()? {
+            DBusEvent::UserAuthWithAccountId { account_id } => {
+                cryptohome::get_user_key_for_account(&account_id)?
+            }
+            DBusEvent::UserAuthWithSessionId { session_id } => {
+                cryptohome::get_user_key_for_session(&session_id)?
+            }
+            DBusEvent::AbortRequest { reason } => {
+                // Abort resume.
+                info!("Aborting resume: {:?}", reason);
+                return Ok(());
+            }
+        };
+
+        let mut volume_manager = VolumeManager::new()?;
 
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate
@@ -145,7 +158,7 @@ impl ResumeConductor {
             volume_manager.teardown_hiberimage()?;
 
             // Set up the snapshot device for future hibernates
-            self.setup_snapshot_device(true, completion_receiver)?;
+            self.setup_snapshot_device(true, user_key)?;
 
             volume_manager.lockdown_hiberimage()?;
 
@@ -160,7 +173,7 @@ impl ResumeConductor {
         let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
         // Set up the snapshot device for resuming
-        self.setup_snapshot_device(false, completion_receiver)?;
+        self.setup_snapshot_device(false, user_key)?;
 
         debug!("Opening hiberimage");
         let hiber_image_file = OpenOptions::new()
@@ -304,27 +317,9 @@ impl ResumeConductor {
     /// * `new_hiberimage` - Indicates whether to create a new hiberimage or
     ///                      use an existing one (for resuming).
     /// * `completion_receiver` - Used to wait for resume completion.
-    fn setup_snapshot_device(
-        &mut self,
-        new_hiberimage: bool,
-        completion_receiver: crossbeam_channel::Receiver<()>,
-    ) -> Result<()> {
+    fn setup_snapshot_device(&mut self, new_hiberimage: bool, user_key: SecureBlob) -> Result<()> {
         // Load the TPM derived key.
         let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
-
-        let user_key = match wait_for_resume_dbus_event(completion_receiver)? {
-            DBusEvent::UserAuthWithAccountId { account_id } => {
-                cryptohome::get_user_key_for_account(&account_id)?
-            }
-            DBusEvent::UserAuthWithSessionId { session_id } => {
-                cryptohome::get_user_key_for_session(&session_id)?
-            }
-            DBusEvent::AbortRequest { reason } => {
-                // Abort resume.
-                info!("Aborting resume: {:?}", reason);
-                return Ok(());
-            }
-        };
 
         self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
 
