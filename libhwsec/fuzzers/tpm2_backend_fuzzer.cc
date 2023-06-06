@@ -18,6 +18,11 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/fuzzed_command_transceiver.h>
+#include <trunks/hmac_session_impl.h>
+#include <trunks/password_authorization_delegate.h>
+#include <trunks/policy_session_impl.h>
+#include <trunks/session_manager_impl.h>
+#include <trunks/tpm_state_impl.h>
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
 
@@ -45,6 +50,7 @@
 #include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/platform/mock_platform.h"
 #include "libhwsec/structures/threading_mode.h"
+#include "trunks/tpm_generated.h"
 
 using testing::_;
 using testing::DoAll;
@@ -55,18 +61,230 @@ namespace hwsec {
 namespace {
 
 constexpr int kMaxCommandCount = 10;
+constexpr uint32_t kVendorIdGsc = 0x43524f53;
+
+template <typename Origin>
+class FuzzedAuthorizationDelegate : public Origin {
+ public:
+  template <typename... Args>
+  FuzzedAuthorizationDelegate(FuzzedDataProvider& data_provider, Args&&... args)
+      : Origin(std::forward<Args>(args)...), data_provider_(data_provider) {}
+
+  bool GetCommandAuthorization(const std::string& command_hash,
+                               bool is_command_parameter_encryption_possible,
+                               bool is_response_parameter_encryption_possible,
+                               std::string* authorization) override {
+    if (data_provider_.ConsumeBool()) {
+      return data_provider_.ConsumeBool();
+    }
+
+    return Origin::GetCommandAuthorization(
+        command_hash, is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible, authorization);
+  }
+
+  bool CheckResponseAuthorization(const std::string& response_hash,
+                                  const std::string& authorization) override {
+    if (data_provider_.ConsumeBool()) {
+      return data_provider_.ConsumeBool();
+    }
+
+    return Origin::CheckResponseAuthorization(response_hash, authorization);
+  }
+
+  bool EncryptCommandParameter(std::string* parameter) override {
+    if (data_provider_.ConsumeBool()) {
+      return data_provider_.ConsumeBool();
+    }
+
+    return Origin::EncryptCommandParameter(parameter);
+  }
+
+  bool DecryptResponseParameter(std::string* parameter) override {
+    if (data_provider_.ConsumeBool()) {
+      return data_provider_.ConsumeBool();
+    }
+
+    return Origin::DecryptResponseParameter(parameter);
+  }
+
+ private:
+  FuzzedDataProvider& data_provider_;
+};
+
+template <typename Origin>
+class FuzzedSession : public Origin {
+ public:
+  template <typename... Args>
+  FuzzedSession(FuzzedDataProvider& data_provider, Args&&... args)
+      : Origin(std::forward<Args>(args)...),
+        data_provider_(data_provider),
+        delegate_(data_provider, "") {}
+
+  trunks::TPM_RC StartBoundSession(trunks::TPMI_DH_ENTITY bind_entity,
+                                   const std::string& bind_authorization_value,
+                                   bool salted,
+                                   bool enable_encryption) override {
+    if (data_provider_.ConsumeBool()) {
+      return trunks::TPM_RC_SUCCESS;
+    }
+
+    return Origin::StartBoundSession(bind_entity, bind_authorization_value,
+                                     salted, enable_encryption);
+  }
+
+  trunks::TPM_RC StartUnboundSession(bool salted,
+                                     bool enable_encryption) override {
+    if (data_provider_.ConsumeBool()) {
+      return trunks::TPM_RC_SUCCESS;
+    }
+
+    return Origin::StartUnboundSession(salted, enable_encryption);
+  }
+
+  trunks::AuthorizationDelegate* GetDelegate() override {
+    if (data_provider_.ConsumeBool()) {
+      return &delegate_;
+    }
+
+    return Origin::GetDelegate();
+  }
+
+ private:
+  FuzzedDataProvider& data_provider_;
+  FuzzedAuthorizationDelegate<trunks::PasswordAuthorizationDelegate> delegate_;
+};
+
+class FuzzedTpmState : public trunks::TpmStateImpl {
+ public:
+  FuzzedTpmState(FuzzedDataProvider& data_provider,
+                 const trunks::TrunksFactory& factory)
+      : trunks::TpmStateImpl(factory), data_provider_(data_provider) {}
+  trunks::TPM_RC Initialize() override {
+    if (!use_real_.has_value()) {
+      use_real_ = data_provider_.ConsumeBool();
+    }
+    if (*use_real_) {
+      return trunks::TpmStateImpl::Initialize();
+    }
+    return trunks::TPM_RC_SUCCESS;
+  }
+
+#define FUZZED_COMMAND(type, command)            \
+  type command() override {                      \
+    CHECK(use_real_.has_value());                \
+    if (*use_real_) {                            \
+      return trunks::TpmStateImpl::command();    \
+    }                                            \
+    return FuzzedObject<type>()(data_provider_); \
+  }
+
+  FUZZED_COMMAND(bool, IsOwnerPasswordSet);
+  FUZZED_COMMAND(bool, IsEndorsementPasswordSet);
+  FUZZED_COMMAND(bool, IsLockoutPasswordSet);
+  FUZZED_COMMAND(bool, IsOwned);
+  FUZZED_COMMAND(bool, IsInLockout);
+  FUZZED_COMMAND(bool, IsPlatformHierarchyEnabled);
+  FUZZED_COMMAND(bool, IsStorageHierarchyEnabled);
+  FUZZED_COMMAND(bool, IsEndorsementHierarchyEnabled);
+  FUZZED_COMMAND(bool, IsEnabled);
+  FUZZED_COMMAND(bool, WasShutdownOrderly);
+  FUZZED_COMMAND(bool, IsRSASupported);
+  FUZZED_COMMAND(bool, IsECCSupported);
+  FUZZED_COMMAND(uint32_t, GetLockoutCounter);
+  FUZZED_COMMAND(uint32_t, GetLockoutThreshold);
+  FUZZED_COMMAND(uint32_t, GetLockoutInterval);
+  FUZZED_COMMAND(uint32_t, GetLockoutRecovery);
+  FUZZED_COMMAND(uint32_t, GetMaxNVSize);
+  FUZZED_COMMAND(uint32_t, GetTpmFamily);
+  FUZZED_COMMAND(uint32_t, GetSpecificationLevel);
+  FUZZED_COMMAND(uint32_t, GetSpecificationRevision);
+  FUZZED_COMMAND(uint32_t, GetManufacturer);
+  FUZZED_COMMAND(uint32_t, GetTpmModel);
+  FUZZED_COMMAND(uint64_t, GetFirmwareVersion);
+  FUZZED_COMMAND(std::string, GetVendorIDString);
+
+#undef FUZZED_COMMAND
+
+  bool GetTpmProperty(trunks::TPM_PT property, uint32_t* value) override {
+    CHECK(use_real_.has_value());
+    if (*use_real_) {
+      return trunks::TpmStateImpl::GetTpmProperty(property, value);
+    }
+    if (value) {
+      if (property == trunks::TPM_PT_MANUFACTURER &&
+          data_provider_.ConsumeBool()) {
+        *value = kVendorIdGsc;
+        return true;
+      }
+      *value = data_provider_.ConsumeIntegral<uint32_t>();
+    }
+    return true;
+  }
+
+  bool GetAlgorithmProperties(trunks::TPM_ALG_ID algorithm,
+                              trunks::TPMA_ALGORITHM* properties) override {
+    CHECK(use_real_.has_value());
+    if (*use_real_) {
+      return trunks::TpmStateImpl::GetAlgorithmProperties(algorithm,
+                                                          properties);
+    }
+    if (properties) {
+      *properties = data_provider_.ConsumeIntegral<trunks::TPMA_ALGORITHM>();
+    }
+    return true;
+  }
+
+ private:
+  FuzzedDataProvider& data_provider_;
+  std::optional<bool> use_real_;
+};
+
+class FuzzedTrunksFactory : public trunks::TrunksFactoryImpl {
+ public:
+  FuzzedTrunksFactory(FuzzedDataProvider& data_provider,
+                      trunks::CommandTransceiver* transceiver)
+      : trunks::TrunksFactoryImpl(transceiver), data_provider_(data_provider) {
+    CHECK(Initialize());
+  }
+
+  std::unique_ptr<trunks::TpmState> GetTpmState() const override {
+    return std::make_unique<FuzzedTpmState>(data_provider_, *this);
+  }
+
+  std::unique_ptr<trunks::AuthorizationDelegate> GetPasswordAuthorization(
+      const std::string& password) const override {
+    return std::make_unique<
+        FuzzedAuthorizationDelegate<trunks::PasswordAuthorizationDelegate>>(
+        data_provider_, password);
+  }
+
+  std::unique_ptr<trunks::HmacSession> GetHmacSession() const override {
+    return std::make_unique<FuzzedSession<trunks::HmacSessionImpl>>(
+        data_provider_, *this);
+  }
+
+  std::unique_ptr<trunks::PolicySession> GetPolicySession() const override {
+    return std::make_unique<FuzzedSession<trunks::PolicySessionImpl>>(
+        data_provider_, *this, trunks::TPM_SE_POLICY);
+  }
+
+  std::unique_ptr<trunks::PolicySession> GetTrialSession() const override {
+    return std::make_unique<FuzzedSession<trunks::PolicySessionImpl>>(
+        data_provider_, *this, trunks::TPM_SE_TRIAL);
+  }
+
+ private:
+  FuzzedDataProvider& data_provider_;
+};
 
 class Tpm2BackendFuzzerProxy : public Proxy {
  public:
   explicit Tpm2BackendFuzzerProxy(FuzzedDataProvider& data_provider)
       : data_provider_(data_provider),
         command_transceiver_(&data_provider_, 2048),
-        trunks_factory_(&command_transceiver_),
+        trunks_factory_(data_provider_, &command_transceiver_),
         crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()) {
-    if (!trunks_factory_.Initialize()) {
-      LOG(ERROR) << "Failed to initialize TrunksFactory.";
-    }
-
     auto fuzzed_result = [this](auto&&, auto* reply, auto&&, auto&&) {
       using ReplyType = std::remove_pointer_t<decltype(reply)>;
       *reply = FuzzedObject<ReplyType>()(data_provider_);
@@ -121,7 +339,7 @@ class Tpm2BackendFuzzerProxy : public Proxy {
  private:
   FuzzedDataProvider& data_provider_;
   trunks::FuzzedCommandTransceiver command_transceiver_;
-  trunks::TrunksFactoryImpl trunks_factory_;
+  FuzzedTrunksFactory trunks_factory_;
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
   testing::NiceMock<org::chromium::TpmNvramProxyMock> tpm_nvram_;
   crossystem::Crossystem crossystem_;
