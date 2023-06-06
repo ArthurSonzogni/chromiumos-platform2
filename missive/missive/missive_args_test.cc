@@ -263,14 +263,16 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  ASSERT_THAT(storage.ValueOrDie().compression_enabled,
+  EXPECT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
+  EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
+  EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
-  ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
               Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+  EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+              Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
 
 TEST_F(MissiveArgsTest, ExplicitStorageValues) {
@@ -291,6 +293,9 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
                                    MissiveArgs::kLegacyStorageEnabledParameter,
                                    "False");
+  fake_platform_features->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kSignatureVerificationDevEnabledParameter, "True");
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       fake_platform_features.get());
@@ -299,10 +304,11 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  ASSERT_FALSE(storage.ValueOrDie().compression_enabled);
-  ASSERT_FALSE(storage.ValueOrDie().encryption_enabled);
-  ASSERT_TRUE(storage.ValueOrDie().controlled_degradation);
-  ASSERT_FALSE(storage.ValueOrDie().legacy_storage_enabled);
+  EXPECT_FALSE(storage.ValueOrDie().compression_enabled);
+  EXPECT_FALSE(storage.ValueOrDie().encryption_enabled);
+  EXPECT_TRUE(storage.ValueOrDie().controlled_degradation);
+  EXPECT_FALSE(storage.ValueOrDie().legacy_storage_enabled);
+  EXPECT_TRUE(storage.ValueOrDie().signature_verification_dev_enabled);
 }
 
 TEST_F(MissiveArgsTest, BadStorageValues) {
@@ -321,6 +327,9 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
                                    MissiveArgs::kLegacyStorageEnabledParameter,
                                    "BadValue");
+  fake_platform_features->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kSignatureVerificationDevEnabledParameter, "BadValue");
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
@@ -330,14 +339,16 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  ASSERT_THAT(storage.ValueOrDie().compression_enabled,
+  EXPECT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
+  EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
+  EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
-  ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
               Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+  EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+              Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
 
 TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
@@ -357,14 +368,16 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   {
     const auto& storage = get_storage.result();
     ASSERT_OK(storage) << storage.status();
-    ASSERT_THAT(storage.ValueOrDie().compression_enabled,
+    EXPECT_THAT(storage.ValueOrDie().compression_enabled,
                 Eq(MissiveArgs::kCompressionEnabledDefault));
-    ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
+    EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
                 Eq(MissiveArgs::kEncryptionEnabledDefault));
-    ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
+    EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
                 Eq(MissiveArgs::kControlledDegradationDefault));
-    ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+    EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
                 Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+    EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+                Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
   }
 
   // Register update callback.
@@ -390,16 +403,20 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kLegacyStorageEnabledParameter, "False");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kSignatureVerificationDevEnabledParameter, "True");
 
   // Fetch the updated feature flag values.
   fake_platform_features_ptr->TriggerRefetchSignal();
 
   {
     const auto& storage = update_storage.result();
-    ASSERT_FALSE(storage.compression_enabled);
-    ASSERT_FALSE(storage.encryption_enabled);
-    ASSERT_TRUE(storage.controlled_degradation);
-    ASSERT_FALSE(storage.legacy_storage_enabled);
+    EXPECT_FALSE(storage.compression_enabled);
+    EXPECT_FALSE(storage.encryption_enabled);
+    EXPECT_TRUE(storage.controlled_degradation);
+    EXPECT_FALSE(storage.legacy_storage_enabled);
+    EXPECT_TRUE(storage.signature_verification_dev_enabled);
   }
 }
 }  // namespace reporting

@@ -30,6 +30,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/memory/scoped_refptr.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -40,6 +41,7 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/encryption/testing_primitives.h"
+#include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -903,7 +905,10 @@ class LegacyStorageTest
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+        base::MakeRefCounted<test::TestCompressionModule>(),
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false),
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -975,7 +980,10 @@ class LegacyStorageTest
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+        base::MakeRefCounted<test::TestCompressionModule>(),
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false),
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -1648,7 +1656,7 @@ TEST_P(LegacyStorageTest, WriteAndUploadWithBadConfirmation) {
   test::TestEvent<Status> c;
   SequenceInformation seq_info;
   seq_info.set_priority(FAST_BATCH);
-  seq_info.set_sequencing_id(/*sequencing_id=*/0);
+  seq_info.set_sequencing_id(0);
   // Do not set generation!
   LOG(ERROR) << "Bad confirm priority=" << seq_info.priority()
              << " seq=" << seq_info.sequencing_id();

@@ -921,7 +921,10 @@ class NewStorageTest
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+        base::MakeRefCounted<test::TestCompressionModule>(),
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false),
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -993,7 +996,10 @@ class NewStorageTest
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+        base::MakeRefCounted<test::TestCompressionModule>(),
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false),
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -1718,7 +1724,7 @@ TEST_P(NewStorageTest, WriteAndUploadWithBadConfirmation) {
   test::TestEvent<Status> c;
   SequenceInformation seq_info;
   seq_info.set_priority(FAST_BATCH);
-  seq_info.set_sequencing_id(/*sequencing_id=*/0);
+  seq_info.set_sequencing_id(0);
   // Do not set generation!
   LOG(ERROR) << "Bad confirm priority=" << seq_info.priority()
              << " seq=" << seq_info.sequencing_id();

@@ -59,6 +59,9 @@ class MissiveArgs {
   static constexpr bool kLegacyStorageEnabledDefault = true;
   static constexpr char kLegacyStorageEnabledParameter[] =
       "legacy_storage_enabled";
+  static constexpr bool kSignatureVerificationDevEnabledDefault = false;
+  static constexpr char kSignatureVerificationDevEnabledParameter[] =
+      "signature_verification_dev_enabled";
   static constexpr VariationsFeature kStorageFeature{
       "CrOSLateBootMissiveStorage", FEATURE_ENABLED_BY_DEFAULT};
   struct StorageParameters {
@@ -66,6 +69,8 @@ class MissiveArgs {
     bool encryption_enabled = kEncryptionEnabledDefault;
     bool controlled_degradation = kControlledDegradationDefault;
     bool legacy_storage_enabled = kLegacyStorageEnabledDefault;
+    bool signature_verification_dev_enabled =
+        kSignatureVerificationDevEnabledDefault;
   };
 
   explicit MissiveArgs(feature::PlatformFeaturesInterface* feature_lib);

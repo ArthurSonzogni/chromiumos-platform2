@@ -21,6 +21,7 @@
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/encryption/verification.h"
 #include "missive/missive/missive_args.h"
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
@@ -185,6 +186,8 @@ class MissiveImpl : public MissiveService {
   scoped_refptr<CompressionModule> compression_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<EncryptionModuleInterface> encryption_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   bool is_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = true;

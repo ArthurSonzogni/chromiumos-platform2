@@ -15,6 +15,7 @@
 #include "base/functional/callback_forward.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage.h"
@@ -37,6 +38,8 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
       scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
+      scoped_refptr<SignatureVerificationDevFlag>
+          signature_verification_dev_flag,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 

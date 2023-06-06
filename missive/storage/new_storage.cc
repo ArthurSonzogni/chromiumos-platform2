@@ -157,6 +157,7 @@ void NewStorage::Create(
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
+    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
         completion_cb) {
   // Initializes NewStorage object and populates all the queues by reading the
@@ -295,9 +296,9 @@ void NewStorage::Create(
   // Create NewStorage object.
   // Cannot use base::MakeRefCounted<NewStorage>, because constructor is
   // private.
-  scoped_refptr<NewStorage> storage = base::WrapRefCounted(
-      new NewStorage(options, queues_container, encryption_module,
-                     compression_module, std::move(async_start_upload_cb)));
+  scoped_refptr<NewStorage> storage = base::WrapRefCounted(new NewStorage(
+      options, queues_container, encryption_module, compression_module,
+      signature_verification_dev_flag, std::move(async_start_upload_cb)));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(std::move(storage), std::move(completion_cb));
@@ -308,6 +309,7 @@ NewStorage::NewStorage(
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
+    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
       sequenced_task_runner_(queues_container->sequenced_task_runner()),
@@ -317,7 +319,9 @@ NewStorage::NewStorage(
           KeyDelivery::Create(encryption_module, async_start_upload_cb)),
       compression_module_(compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
-          options.signature_verification_public_key(), options.directory())),
+          options.signature_verification_public_key(),
+          signature_verification_dev_flag,
+          options.directory())),
       async_start_upload_cb_(async_start_upload_cb) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }

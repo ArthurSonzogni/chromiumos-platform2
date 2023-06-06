@@ -24,6 +24,7 @@
 #include "base/time/time.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_base.h"
@@ -66,6 +67,8 @@ class NewStorage : public StorageInterface {
       scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
+      scoped_refptr<SignatureVerificationDevFlag>
+          signature_verification_dev_flag,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
           completion_cb);
 
@@ -138,6 +141,8 @@ class NewStorage : public StorageInterface {
              scoped_refptr<QueuesContainer> queues_container,
              scoped_refptr<EncryptionModuleInterface> encryption_module,
              scoped_refptr<CompressionModule> compression_module,
+             scoped_refptr<SignatureVerificationDevFlag>
+                 signature_verification_dev_flag,
              UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
 
   // Initializes the object by adding all queues for all priorities.

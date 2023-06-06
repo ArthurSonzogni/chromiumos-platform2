@@ -269,6 +269,8 @@ class KeyDelivery {
 class KeyInStorage {
  public:
   KeyInStorage(base::StringPiece signature_verification_public_key,
+               scoped_refptr<SignatureVerificationDevFlag>
+                   signature_verification_dev_flag,
                const base::FilePath& directory);
   ~KeyInStorage();
 

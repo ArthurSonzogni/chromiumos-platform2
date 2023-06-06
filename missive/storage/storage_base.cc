@@ -402,9 +402,13 @@ void KeyDelivery::EncryptionKeyReceiverReady(
   uploader_result.ValueOrDie()->Completed(Status::StatusOK());
 }
 
-KeyInStorage::KeyInStorage(base::StringPiece signature_verification_public_key,
-                           const base::FilePath& directory)
-    : verifier_(signature_verification_public_key), directory_(directory) {}
+KeyInStorage::KeyInStorage(
+    base::StringPiece signature_verification_public_key,
+    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
+    const base::FilePath& directory)
+    : verifier_(signature_verification_public_key,
+                signature_verification_dev_flag),
+      directory_(directory) {}
 
 KeyInStorage::~KeyInStorage() = default;
 

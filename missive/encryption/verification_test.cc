@@ -4,16 +4,24 @@
 
 #include "missive/encryption/verification.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 
-#include "missive/encryption/primitives.h"
-#include "missive/encryption/testing_primitives.h"
+#include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using ::testing::Eq;
-using ::testing::HasSubstr;
-using ::testing::Ne;
+#include "missive/encryption/primitives.h"
+#include "missive/encryption/testing_primitives.h"
+#include "missive/util/status.h"
+
+using testing::Eq;
+using testing::HasSubstr;
+using testing::Ne;
+using testing::TestParamInfo;
+using testing::TestWithParam;
+using testing::ValuesIn;
 
 namespace reporting {
 namespace {
@@ -24,10 +32,15 @@ class VerificationTest : public ::testing::Test {
   void SetUp() override {
     // Generate new pair of private key and public value.
     test::GenerateSigningKeyPair(private_key_, public_value_);
+    signature_verification_dev_flag_ =
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false);
   }
 
   uint8_t public_value_[kKeySize];
   uint8_t private_key_[kSignKeySize];
+
+  scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag_;
 };
 
 TEST_F(VerificationTest, SignAndVerify) {
@@ -39,7 +52,8 @@ TEST_F(VerificationTest, SignAndVerify) {
 
   // Verify the signature.
   SignatureVerifier verifier(
-      std::string(reinterpret_cast<const char*>(public_value_), kKeySize));
+      std::string(reinterpret_cast<const char*>(public_value_), kKeySize),
+      signature_verification_dev_flag_);
   EXPECT_OK(verifier.Verify(
       std::string(message, strlen(message)),
       std::string(reinterpret_cast<const char*>(signature), kSignatureSize)));
@@ -54,7 +68,8 @@ TEST_F(VerificationTest, SignAndFailBadSignature) {
 
   // Verify the signature - wrong length.
   SignatureVerifier verifier(
-      std::string(reinterpret_cast<const char*>(public_value_), kKeySize));
+      std::string(reinterpret_cast<const char*>(public_value_), kKeySize),
+      signature_verification_dev_flag_);
   Status status =
       verifier.Verify(std::string(message, strlen(message)),
                       std::string(reinterpret_cast<const char*>(signature),
@@ -80,7 +95,8 @@ TEST_F(VerificationTest, SignAndFailBadPublicKey) {
 
   // Verify the public key - wrong length.
   SignatureVerifier verifier(
-      std::string(reinterpret_cast<const char*>(public_value_), kKeySize - 1));
+      std::string(reinterpret_cast<const char*>(public_value_), kKeySize - 1),
+      signature_verification_dev_flag_);
   Status status = verifier.Verify(
       std::string(message, strlen(message)),
       std::string(reinterpret_cast<const char*>(signature), kSignatureSize));
@@ -90,7 +106,8 @@ TEST_F(VerificationTest, SignAndFailBadPublicKey) {
   // Verify the public key - mismatch.
   public_value_[0] = ~public_value_[0];
   SignatureVerifier verifier2(
-      std::string(reinterpret_cast<const char*>(public_value_), kKeySize));
+      std::string(reinterpret_cast<const char*>(public_value_), kKeySize),
+      signature_verification_dev_flag_);
   status = verifier2.Verify(
       std::string(message, strlen(message)),
       std::string(reinterpret_cast<const char*>(signature), kSignatureSize));
@@ -113,15 +130,6 @@ TEST_F(VerificationTest, ValidateFixedKey) {
       0x61, 0x32, 0x6C, 0x06, 0x29, 0xBF, 0x30, 0x4E, 0x88, 0x72, 0xAB,
       0xE3, 0x60, 0xDA, 0xF0, 0x37, 0xEB, 0x56, 0x28, 0x0B};
 
-  // Validate the signature using known DEV public key.
-  SignatureVerifier dev_verifier(SignatureVerifier::VerificationKeyDev());
-  const auto dev_result = dev_verifier.Verify(
-      std::string(reinterpret_cast<const char*>(dev_data_to_sign),
-                  sizeof(dev_data_to_sign)),
-      std::string(reinterpret_cast<const char*>(dev_server_signature),
-                  kSignatureSize));
-  EXPECT_OK(dev_result) << dev_result;
-
   // |prod_data_to_sign| is signed on PROD server, producing
   // |prod_server_signature|.
   static constexpr uint8_t prod_data_to_sign[] = {
@@ -136,14 +144,44 @@ TEST_F(VerificationTest, ValidateFixedKey) {
       0x38, 0x91, 0x90, 0x2C, 0xBC, 0xB9, 0x76, 0x3C, 0xFF, 0x6F, 0x84,
       0xEC, 0x2D, 0x1E, 0x73, 0x43, 0x1B, 0x75, 0x5E, 0x0E};
 
-  // Validate the signature using known PROD public key.
-  SignatureVerifier prod_verifier(SignatureVerifier::VerificationKey());
-  const auto prod_result = prod_verifier.Verify(
+  std::string dev_data_string =
+      std::string(reinterpret_cast<const char*>(dev_data_to_sign),
+                  sizeof(dev_data_to_sign));
+  std::string prod_data_string =
       std::string(reinterpret_cast<const char*>(prod_data_to_sign),
-                  sizeof(prod_data_to_sign)),
-      std::string(reinterpret_cast<const char*>(prod_server_signature),
-                  kSignatureSize));
-  EXPECT_OK(prod_result) << prod_result;
+                  sizeof(prod_data_to_sign));
+  std::string dev_signature_string = std::string(
+      reinterpret_cast<const char*>(dev_server_signature), kSignatureSize);
+  std::string prod_signature_string = std::string(
+      reinterpret_cast<const char*>(prod_server_signature), kSignatureSize);
+
+  SignatureVerifier verifier(SignatureVerifier::VerificationKey(),
+                             signature_verification_dev_flag_);
+
+  Status status = verifier.Verify(dev_data_string, dev_signature_string);
+
+  // Dev disabled, dev signed data should fail verification.
+  EXPECT_THAT(status.code(), Eq(error::INVALID_ARGUMENT));
+  EXPECT_THAT(status.message(), HasSubstr("Verification failed"));
+
+  status = verifier.Verify(prod_data_string, prod_signature_string);
+
+  // Dev disabled, prod signed data should pass verification.
+  EXPECT_OK(status) << status;
+
+  // Flip flag.
+  signature_verification_dev_flag_->SetValue(/*is_enabled=*/true);
+
+  status = verifier.Verify(dev_data_string, dev_signature_string);
+
+  // Dev enabled, dev signed data should pass verification.
+  EXPECT_OK(status) << status;
+
+  status = verifier.Verify(prod_data_string, prod_signature_string);
+
+  // Dev enabled, prod signed data should fail verification.
+  EXPECT_THAT(status.code(), Eq(error::INVALID_ARGUMENT));
+  EXPECT_THAT(status.message(), HasSubstr("Verification failed"));
 }
 
 }  // namespace

@@ -700,6 +700,8 @@ class NewStorageDegradationTest
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/is_degradation_enabled()),
         encryption_module, base::MakeRefCounted<test::TestCompressionModule>(),
+        base::MakeRefCounted<SignatureVerificationDevFlag>(
+            /*is_enabled=*/false),
         e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;

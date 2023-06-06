@@ -196,6 +196,9 @@ void MissiveImpl::OnStorageParameters(
       QueuesContainer::Create(parameters.controlled_degradation);
   compression_module_ = std::move(compression_module_factory_).Run(parameters);
   encryption_module_ = std::move(encryption_module_factory_).Run(parameters);
+  signature_verification_dev_flag_ =
+      base::MakeRefCounted<SignatureVerificationDevFlag>(
+          parameters.signature_verification_dev_enabled);
   args_->AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
       .WithArgs(base::BindPostTaskToCurrentDefault(base::BindRepeating(
                     &MissiveImpl::OnStorageParametersUpdate, GetWeakPtr())),
@@ -219,12 +222,12 @@ void MissiveImpl::CreateStorage(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Create `Storage`.
-  StorageModule::Create(std::move(storage_options),
-                        parameters.legacy_storage_enabled,
-                        base::BindPostTaskToCurrentDefault(base::BindRepeating(
-                            &MissiveImpl::AsyncStartUpload, GetWeakPtr())),
-                        queues_container_, encryption_module_,
-                        compression_module_, std::move(callback));
+  StorageModule::Create(
+      std::move(storage_options), parameters.legacy_storage_enabled,
+      base::BindPostTaskToCurrentDefault(
+          base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
+      queues_container_, encryption_module_, compression_module_,
+      signature_verification_dev_flag_, std::move(callback));
 }
 
 // static
@@ -444,6 +447,8 @@ void MissiveImpl::OnStorageParametersUpdate(
   compression_module_->SetValue(storage_parameters.compression_enabled);
   encryption_module_->SetValue(storage_parameters.encryption_enabled);
   storage_module_->SetValue(storage_parameters.legacy_storage_enabled);
+  signature_verification_dev_flag_->SetValue(
+      storage_parameters.signature_verification_dev_enabled);
 }
 
 base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {

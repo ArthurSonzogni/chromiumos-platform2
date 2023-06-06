@@ -11,6 +11,7 @@
 
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module.h"
+#include "missive/encryption/verification.h"
 #include "missive/util/test_support_callbacks.h"
 
 namespace reporting {
@@ -34,6 +35,7 @@ TEST_F(StorageModuleTest, NewStorageTest) {
       CompressionModule::Create(
           /*is_enabled=*/true, /*compression_threshold=*/0,
           /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
+      base::MakeRefCounted<SignatureVerificationDevFlag>(/*is_enabled=*/false),
       module_event.cb());
   const auto res = module_event.result();
   ASSERT_OK(res);
@@ -51,6 +53,7 @@ TEST_F(StorageModuleTest, LegacyStorageTest) {
       CompressionModule::Create(
           /*is_enabled=*/true, /*compression_threshold=*/0,
           /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
+      base::MakeRefCounted<SignatureVerificationDevFlag>(/*is_enabled=*/false),
       module_event.cb());
   const auto res = module_event.result();
   ASSERT_OK(res);

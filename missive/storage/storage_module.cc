@@ -67,6 +67,7 @@ void StorageModule::Create(
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
+    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   scoped_refptr<StorageModule> instance =
       // Cannot use `base::MakeRefCounted`, since constructor is protected.
@@ -86,10 +87,11 @@ void StorageModule::Create(
   if (instance->legacy_storage_enabled()) {
     Storage::Create(options, async_start_upload_cb, queues_container,
                     encryption_module, compression_module,
-                    std::move(completion_cb));
+                    signature_verification_dev_flag, std::move(completion_cb));
   } else {
     NewStorage::Create(options, async_start_upload_cb, queues_container,
                        encryption_module, compression_module,
+                       signature_verification_dev_flag,
                        std::move(completion_cb));
   }
 }

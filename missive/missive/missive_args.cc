@@ -203,6 +203,7 @@ void MissiveArgs::UpdateParameters(
   {
     std::string compression_enabled;
     std::string encryption_enabled;
+    std::string signature_verification_dev_enabled;
     std::string controlled_degradation;
     std::string legacy_storage_enabled;
     auto it = result.find(kStorageFeature.name);
@@ -215,15 +216,25 @@ void MissiveArgs::UpdateParameters(
           FindValueOrEmpty(kControlledDegradationParameter, it->second.params);
       legacy_storage_enabled =
           FindValueOrEmpty(kLegacyStorageEnabledParameter, it->second.params);
+      signature_verification_dev_enabled = FindValueOrEmpty(
+          kSignatureVerificationDevEnabledParameter, it->second.params);
     }
-    storage_parameters_.compression_enabled = BoolParameterValue(
-        kCompressionEnabledParameter, compression_enabled, true);
-    storage_parameters_.encryption_enabled = BoolParameterValue(
-        kEncryptionEnabledParameter, encryption_enabled, true);
+    storage_parameters_.compression_enabled =
+        BoolParameterValue(kCompressionEnabledParameter, compression_enabled,
+                           kCompressionEnabledDefault);
+    storage_parameters_.encryption_enabled =
+        BoolParameterValue(kEncryptionEnabledParameter, encryption_enabled,
+                           kEncryptionEnabledDefault);
     storage_parameters_.controlled_degradation = BoolParameterValue(
-        kControlledDegradationParameter, controlled_degradation, false);
+        kControlledDegradationParameter, controlled_degradation,
+        kControlledDegradationDefault);
     storage_parameters_.legacy_storage_enabled = BoolParameterValue(
-        kLegacyStorageEnabledParameter, legacy_storage_enabled, true);
+        kLegacyStorageEnabledParameter, legacy_storage_enabled,
+        kLegacyStorageEnabledDefault);
+    storage_parameters_.signature_verification_dev_enabled =
+        BoolParameterValue(kSignatureVerificationDevEnabledParameter,
+                           signature_verification_dev_enabled,
+                           kSignatureVerificationDevEnabledDefault);
   }
 }
 
