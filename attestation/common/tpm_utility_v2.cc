@@ -17,6 +17,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/openssl.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -27,6 +28,9 @@
 
 namespace {
 
+using brillo::BlobFromString;
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::kWellKnownExponent;
 using trunks::AuthorizationDelegate;
 using trunks::HmacSession;
 using trunks::MultipleAuthorizations;
@@ -34,7 +38,6 @@ using trunks::TPM_HANDLE;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
-const unsigned int kWellKnownExponent = 65537;
 constexpr size_t kEccKeyCoordinateByteLength = 32;
 constexpr size_t kRandomCertifiedKeyPasswordLength = 32;
 
@@ -51,29 +54,6 @@ bool StringToBignum(const std::string& big_integer, BIGNUM* b) {
                    b);
 }
 
-crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
-                                          size_t modulus_size) {
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
-  if (!rsa || !e || !n) {
-    LOG(ERROR) << __func__ << ": Failed to allocate RSA or BIGNUMs.";
-    return nullptr;
-  }
-
-  if (!BN_set_word(e.get(), kWellKnownExponent) ||
-      !BN_bin2bn(modulus_buffer, modulus_size, n.get())) {
-    LOG(ERROR) << __func__ << ": Failed to generate exponent or modulus.";
-    return nullptr;
-  }
-
-  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
-    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
-    return nullptr;
-  }
-
-  return rsa;
-}
-
 // Convert TPMT_PUBLIC TPM public area |public_area| of RSA key to a OpenSSL RSA
 // key.
 crypto::ScopedRSA GetRsaPublicKeyFromTpmPublicArea(
@@ -81,8 +61,9 @@ crypto::ScopedRSA GetRsaPublicKeyFromTpmPublicArea(
   if (public_area.type != trunks::TPM_ALG_RSA) {
     return nullptr;
   }
-  crypto::ScopedRSA key = CreateRSAFromRawModulus(public_area.unique.rsa.buffer,
-                                                  public_area.unique.rsa.size);
+  brillo::Blob modulus =
+      BlobFromString(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_area.unique.rsa));
+  crypto::ScopedRSA key = CreateRSAFromNumber(modulus, kWellKnownExponent);
   if (key == nullptr) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return nullptr;

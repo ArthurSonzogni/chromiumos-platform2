@@ -18,6 +18,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/openssl.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <trousers/scoped_tss_type.h>
@@ -35,11 +36,14 @@
   LOG(severity) << "TPM error 0x" << std::hex << result << " (" \
                 << Trspi_Error_String(result) << "): "
 
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::kWellKnownExponent;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
 using trousers::ScopedTssPcrs;
 using trousers::ScopedTssPolicy;
+
 namespace {
 
 using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
@@ -48,7 +52,6 @@ using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
 constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
 constexpr unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
-constexpr unsigned int kWellKnownExponent = 65537;
 constexpr unsigned char kSha256DigestInfo[] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
@@ -1004,31 +1007,19 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
     return false;
   }
   ScopedByteArray scoped_exponent(parms.exponent);
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
-  if (!rsa || !e || !n) {
-    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
-    return false;
-  }
-  // Get the public exponent.
+
+  crypto::ScopedRSA rsa = nullptr;
+  brillo::Blob modulus(parsed.pubKey.key,
+                       parsed.pubKey.key + parsed.pubKey.keyLength);
   if (parms.exponentSize == 0) {
-    if (!BN_set_word(e.get(), kWellKnownExponent)) {
-      LOG(ERROR) << "Failed to set exponent to WellKnownExponent.";
-      return false;
-    }
+    rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
   } else {
-    if (!BN_bin2bn(parms.exponent, parms.exponentSize, e.get())) {
-      LOG(ERROR) << "Failed to convert exponent to BIGNUM.";
-      return false;
-    }
+    rsa = CreateRSAFromNumber(
+        modulus,
+        brillo::Blob(parms.exponent, parms.exponent + parms.exponentSize));
   }
-  // Get the modulus.
-  if (!BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, n.get())) {
-    LOG(ERROR) << "Failed to convert public key to BIGNUM.";
-    return false;
-  }
-  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
-    LOG(ERROR) << ": Failed to set exponent or modulus.";
+  if (rsa == nullptr) {
+    LOG(ERROR) << "Failed to create RSA public key.";
     return false;
   }
 

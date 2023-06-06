@@ -29,6 +29,7 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using hwsec_foundation::CreateRSAFromNumber;
 using hwsec_foundation::FillRsaPrivateKeyFromSecretPrime;
 using hwsec_foundation::kWellKnownExponent;
 using hwsec_foundation::RsaOaepDecrypt;
@@ -338,34 +339,18 @@ StatusOr<crypto::ScopedRSA> ParseRsaFromTpmPubkeyBlob(
         TPMRetryAction::kNoRetry);
   }
 
-  // Get the public exponent.
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
-  if (!rsa || !e || !n) {
-    return MakeStatus<TPMError>("Failed to create RSA or BIGNUM",
-                                TPMRetryAction::kNoRetry);
-  }
-  if (!parms.exponentSize) {
-    if (!BN_set_word(e.get(), kWellKnownExponent)) {
-      return MakeStatus<TPMError>(
-          "Failed to set BN exponent to WellKnownExponent",
-          TPMRetryAction::kNoRetry);
-    }
+  crypto::ScopedRSA rsa = nullptr;
+  brillo::Blob modulus(parsed.pubKey.key,
+                       parsed.pubKey.key + parsed.pubKey.keyLength);
+  if (parms.exponentSize == 0) {
+    rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
   } else {
-    if (!BN_bin2bn(parms.exponent, parms.exponentSize, e.get())) {
-      return MakeStatus<TPMError>("Failed to load BN exponent from TPM_PUBKEY",
-                                  TPMRetryAction::kNoRetry);
-    }
+    rsa = CreateRSAFromNumber(
+        modulus,
+        brillo::Blob(parms.exponent, parms.exponent + parms.exponentSize));
   }
-
-  // Get the modulus.
-  if (!BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, n.get())) {
-    return MakeStatus<TPMError>("Failed to load BN modulus from TPM_PUBKEY",
-                                TPMRetryAction::kNoRetry);
-  }
-
-  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
-    return MakeStatus<TPMError>("Failed to set parameters for RSA",
+  if (rsa == nullptr) {
+    return MakeStatus<TPMError>("Failed to create RSA",
                                 TPMRetryAction::kNoRetry);
   }
 

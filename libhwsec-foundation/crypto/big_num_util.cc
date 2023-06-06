@@ -67,4 +67,18 @@ bool BigNumToSecureBlob(const BIGNUM& bn,
   return true;
 }
 
+crypto::ScopedBIGNUM BlobToBigNum(const brillo::Blob& blob) {
+  crypto::ScopedBIGNUM result(BN_new());
+  if (!result) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (!BN_bin2bn(blob.data(), blob.size(), result.get())) {
+    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM: "
+               << GetOpenSSLErrors();
+    return nullptr;
+  }
+  return result;
+}
+
 }  // namespace hwsec_foundation

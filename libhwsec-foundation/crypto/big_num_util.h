@@ -42,6 +42,12 @@ bool HWSEC_FOUNDATION_EXPORT BigNumToSecureBlob(const BIGNUM& bn,
                                                 int result_len,
                                                 brillo::SecureBlob* result);
 
+// Converts Blob to BIGNUM. Returns nullptr if error occurred.
+// Empty Blob is interpreted as zero.
+// The input Blob is expected to be in big-endian encoding.
+crypto::ScopedBIGNUM HWSEC_FOUNDATION_EXPORT
+BlobToBigNum(const brillo::Blob& blob);
+
 }  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_CRYPTO_BIG_NUM_UTIL_H_

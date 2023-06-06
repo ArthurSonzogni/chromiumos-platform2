@@ -23,6 +23,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
@@ -37,6 +38,10 @@
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory_impl.h"
+
+using brillo::BlobFromString;
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::kWellKnownExponent;
 
 namespace {
 
@@ -1289,17 +1294,11 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
     LOG(ERROR) << __func__ << GetErrorString(result);
     return false;
   }
-  // Copied from cryptohome::PublicAreaToPublicKeyDER
-  crypto::ScopedRSA rsa(RSA_new());
+
+  brillo::Blob modulus =
+      BlobFromString(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_area.unique.rsa));
+  crypto::ScopedRSA rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
   CHECK(rsa);
-  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
-  CHECK(e);
-  CHECK(n);
-  CHECK(BN_set_word(e.get(), 0x10001)) << "Error setting exponent for RSA.";
-  CHECK(BN_bin2bn(public_area.unique.rsa.buffer, public_area.unique.rsa.size,
-                  n.get()))
-      << "Error setting modulus for RSA.";
-  CHECK(RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr));
 
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {

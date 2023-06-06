@@ -6,6 +6,7 @@
 #define LIBHWSEC_FOUNDATION_CRYPTO_RSA_H_
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
@@ -90,6 +91,13 @@ bool HWSEC_FOUNDATION_EXPORT TpmCompatibleOAEPEncrypt(
 // modulus has a discrete logarithm modulus small primes). See research paper
 // for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
 bool HWSEC_FOUNDATION_EXPORT TestRocaVulnerable(const BIGNUM* rsa_modulus);
+
+// Creates an RSA key whose modulus is |modulus| and exponent is |exponent|.
+// Returns the RSA key if the creation is successful else nullptr.
+crypto::ScopedRSA HWSEC_FOUNDATION_EXPORT
+CreateRSAFromNumber(const brillo::Blob& modulus, const brillo::Blob& exponent);
+crypto::ScopedRSA HWSEC_FOUNDATION_EXPORT
+CreateRSAFromNumber(const brillo::Blob& modulus, unsigned int exponent);
 
 }  // namespace hwsec_foundation
 

@@ -502,19 +502,10 @@ result_code Tpm::TakeOwnership() {
     return RESULT_FAIL_FATAL;
   }
 
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
-  if (!rsa || !e || !n) {
-    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
-    return RESULT_FAIL_FATAL;
-  }
-  if (!BN_set_word(e.get(), public_exponent) ||
-      !BN_bin2bn(modulus, modulus_size, n.get())) {
-    LOG(ERROR) << "Failed to convert BIGNUM for RSA.";
-    return RESULT_FAIL_FATAL;
-  }
-  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
-    LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+  crypto::ScopedRSA rsa = hwsec_foundation::CreateRSAFromNumber(
+      brillo::Blob(modulus, modulus + modulus_size), public_exponent);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to create RSA.";
     return RESULT_FAIL_FATAL;
   }
 

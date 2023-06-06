@@ -18,6 +18,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/utility/crypto.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -34,9 +35,11 @@
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_utility.h"
 
-namespace {
+using brillo::BlobFromString;
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::kWellKnownExponent;
 
-constexpr size_t kWellKnownExponent = 0x10001;
+namespace {
 
 // The required attributes for the salting key.
 constexpr uint32_t kGoodSaltingKeyAttribute = trunks::kSensitiveDataOrigin |
@@ -157,22 +160,13 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 
-  crypto::ScopedRSA salting_key_rsa(RSA_new());
-  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
-  if (!salting_key_rsa || !n || !e) {
-    LOG(ERROR) << "Failed to allocate RSA or BIGNUM: "
+  brillo::Blob modulus =
+      BlobFromString(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_area.unique.rsa));
+  crypto::ScopedRSA salting_key_rsa =
+      CreateRSAFromNumber(modulus, kWellKnownExponent);
+  if (!salting_key_rsa) {
+    LOG(ERROR) << "Failed to create RSA: "
                << hwsec_foundation::utility::GetOpensslError();
-    return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
-  }
-
-  if (!BN_set_word(e.get(), kWellKnownExponent) ||
-      !BN_bin2bn(public_area.unique.rsa.buffer, rsa_key_size, n.get())) {
-    LOG(ERROR) << "Error setting public area of rsa key: "
-               << hwsec_foundation::utility::GetOpensslError();
-    return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
-  }
-  if (!RSA_set0_key(salting_key_rsa.get(), n.release(), e.release(), nullptr)) {
-    LOG(ERROR) << "Failed to set exponent or modulus.";
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 

@@ -14,6 +14,7 @@
 #include <crypto/scoped_openssl_types.h>
 
 #include "libhwsec-foundation/crypto/aes.h"
+#include "libhwsec-foundation/crypto/big_num_util.h"
 #include "libhwsec-foundation/crypto/sha.h"
 
 namespace hwsec_foundation {
@@ -341,6 +342,48 @@ bool TestRocaVulnerable(const BIGNUM* rsa_modulus) {
   // Discrete logarithms exist for all small primes -> vulnerable with
   // negligible chance of false positive result.
   return true;
+}
+
+crypto::ScopedRSA CreateRSAFromNumber(const brillo::Blob& modulus,
+                                      const brillo::Blob& exponent) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa) {
+    LOG(ERROR) << __func__ << ": Failed to allocate RSA.";
+    return nullptr;
+  }
+  crypto::ScopedBIGNUM n = BlobToBigNum(modulus);
+  crypto::ScopedBIGNUM e = BlobToBigNum(exponent);
+  if (!e || !n) {
+    LOG(ERROR) << __func__ << ": Failed to create exponent or modulus.";
+    return nullptr;
+  }
+
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
+    return nullptr;
+  }
+  return rsa;
+}
+
+crypto::ScopedRSA CreateRSAFromNumber(const brillo::Blob& modulus,
+                                      unsigned int exponent) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa) {
+    LOG(ERROR) << __func__ << ": Failed to allocate RSA.";
+    return nullptr;
+  }
+  crypto::ScopedBIGNUM n = BlobToBigNum(modulus);
+  crypto::ScopedBIGNUM e = BigNumFromValue(exponent);
+  if (!e || !n) {
+    LOG(ERROR) << __func__ << ": Failed to create exponent or modulus.";
+    return nullptr;
+  }
+
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
+    return nullptr;
+  }
+  return rsa;
 }
 
 }  // namespace hwsec_foundation

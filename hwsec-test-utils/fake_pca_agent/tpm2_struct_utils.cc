@@ -6,8 +6,10 @@
 
 #include <string>
 
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
 
@@ -16,12 +18,14 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 
+using brillo::BlobFromString;
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::kWellKnownExponent;
+
 namespace hwsec_test_utils {
 namespace fake_pca_agent {
 
 namespace {
-
-constexpr int kWellKnownExponent = 65537;
 
 crypto::ScopedBIGNUM StringToBignum(const std::string& s) {
   crypto::ScopedBIGNUM bn(BN_bin2bn(
@@ -38,31 +42,14 @@ crypto::ScopedEVP_PKEY TpmtPublicToRsaKey(
     const trunks::TPMT_PUBLIC& tpmt_public) {
   CHECK_EQ(tpmt_public.type, trunks::TPM_ALG_RSA);
 
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new());
-  if (!rsa || !e) {
-    LOG(ERROR) << __func__
-               << ": Failed to allocate RSA or BIGNUMs: " << GetOpenSSLError();
-    return nullptr;
-  }
-
-  if (BN_set_word(e.get(), kWellKnownExponent) != 1) {
-    LOG(ERROR) << __func__ << ": Failed to create BIGNUM of exponent: "
-               << GetOpenSSLError();
-    return nullptr;
-  }
-
-  crypto::ScopedBIGNUM n = StringToBignum(
+  brillo::Blob modulus = BlobFromString(
       trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(tpmt_public.unique.rsa));
-  if (!n) {
-    LOG(ERROR) << __func__ << ": Failed to create BIGNUM of modulus.";
+  crypto::ScopedRSA rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
+  if (!rsa) {
+    LOG(ERROR) << __func__ << ": Failed to create RSA.";
     return nullptr;
   }
 
-  if (RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr) != 1) {
-    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
-    return nullptr;
-  }
   crypto::ScopedEVP_PKEY key(EVP_PKEY_new());
   if (!key) {
     LOG(ERROR) << __func__

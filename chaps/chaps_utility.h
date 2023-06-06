@@ -323,11 +323,6 @@ EXPORT_SPEC bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
 EXPORT_SPEC bool ConvertBlobToBIGNUM(const brillo::Blob& big_integer,
                                      BIGNUM* b);
 
-// Convert the public key consisting of |modulus| and |exponent| to an RSA
-// object and return it on success, otherwise, return nullptr.
-EXPORT_SPEC crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
-                                                const std::string& exponent);
-
 //
 // OpenSSL type <--> DER-encoded string
 //
