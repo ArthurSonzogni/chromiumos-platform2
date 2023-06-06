@@ -269,6 +269,55 @@ if (use.test || use.fuzzer) {
 }
 
 if (use.test) {
+  static_library("test_utils-static") {
+    sources = [
+      "challenge_credentials/challenge_credentials_test_utils.cc",
+      "challenge_credentials/signature_sealing_test_utils.cc",
+      "cleanup/mock_disk_cleanup.cc",
+      "cleanup/mock_disk_cleanup_routines.cc",
+      "cryptorecovery/fake_recovery_mediator_crypto.cc",
+      "cryptorecovery/inclusion_proof_test_util.cc",
+      "data_migrator/fake_migration_helper_delegate.cc",
+      "mock_cryptohome_key_loader.cc",
+      "mock_cryptohome_keys_manager.cc",
+      "mock_firmware_management_parameters.cc",
+      "mock_install_attributes.cc",
+      "mock_key_challenge_service.cc",
+      "mock_lockbox.cc",
+      "mock_pkcs11_init.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":local_print_proto_include",
+      ":target_defaults",
+    ]
+    libs = [
+      "chaps",
+      "hwsec_test",
+      "keyutils",
+      "policy",
+      "pthread",
+    ]
+
+    deps = [
+      "libs:libcrostpm",
+      "libs:libcryptohome",
+      "libs:libfido",
+    ]
+
+    pkg_deps = [
+      "dbus-1",
+      "libattestation-client",
+      "libattestation-client-test",
+      "libbrillo-test",
+      "libchrome-test",
+      "libecryptfs",
+      "libmetrics",
+      "libuser_data_auth-client",
+      "libuser_data_auth-client-test",
+    ]
+  }
+
   executable("cryptohome_testrunner") {
     sources = [
       "auth_blocks/auth_block_state_unittest.cc",
@@ -313,26 +362,19 @@ if (use.test) {
       "auth_session_tpm_simulator_unittest.cc",
       "auth_session_unittest.cc",
       "challenge_credentials/challenge_credentials_helper_impl_unittest.cc",
-      "challenge_credentials/challenge_credentials_test_utils.cc",
       "challenge_credentials/fido_utils_unittest.cc",
-      "challenge_credentials/signature_sealing_test_utils.cc",
       "cleanup/disk_cleanup_routines_unittest.cc",
       "cleanup/disk_cleanup_unittest.cc",
       "cleanup/low_disk_space_handler_unittest.cc",
-      "cleanup/mock_disk_cleanup.cc",
-      "cleanup/mock_disk_cleanup_routines.cc",
       "cleanup/user_oldest_activity_timestamp_manager_unittest.cc",
       "crc_unittest.cc",
       "credential_verifier_unittest.cc",
       "crypto_unittest.cc",
       "cryptohome_key_loader_unittest.cc",
       "cryptohome_keys_manager_unittest.cc",
-      "cryptorecovery/fake_recovery_mediator_crypto.cc",
-      "cryptorecovery/inclusion_proof_test_util.cc",
       "cryptorecovery/inclusion_proof_unittest.cc",
       "cryptorecovery/recovery_crypto_hsm_cbor_serialization_unittest.cc",
       "cryptorecovery/recovery_crypto_unittest.cc",
-      "data_migrator/fake_migration_helper_delegate.cc",
       "data_migrator/migration_helper_unittest.cc",
       "error/converter_test.cc",
       "error/cryptohome_crypto_error_test.cc",
@@ -353,13 +395,6 @@ if (use.test) {
       "le_credential_manager_impl_unittest.cc",
       "lockbox-cache-unittest.cc",
       "lockbox_unittest.cc",
-      "mock_cryptohome_key_loader.cc",
-      "mock_cryptohome_keys_manager.cc",
-      "mock_firmware_management_parameters.cc",
-      "mock_install_attributes.cc",
-      "mock_key_challenge_service.cc",
-      "mock_lockbox.cc",
-      "mock_pkcs11_init.cc",
       "persistent_lookup_table_unittest.cc",
       "platform_unittest.cc",
       "sign_in_hash_tree_unittest.cc",
@@ -405,6 +440,7 @@ if (use.test) {
     deps = [
       ":fake_platform-static",
       ":print_proto_library",
+      ":test_utils-static",
       "libs:cryptohome-proto",
       "libs:libcrostpm",
       "libs:libcryptohome",
