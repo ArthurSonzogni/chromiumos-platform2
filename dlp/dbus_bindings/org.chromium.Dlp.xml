@@ -33,6 +33,19 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
+    <method name="AddFiles">
+      <tp:docstring>
+        Adds files together with their sources to the database.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        Serialized AddFilesRequest message.
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        Serialized AddFilesResponse message.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
     <method name="RequestFileAccess">
       <tp:docstring>
         Requests access to the file to be copied/uploaded to the given destination.

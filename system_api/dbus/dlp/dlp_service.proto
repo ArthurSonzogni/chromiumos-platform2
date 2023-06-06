@@ -130,7 +130,18 @@ message AddFileRequest {
   optional string referrer_url = 3;
 }
 
+message AddFilesRequest {
+  // List of AddFileRequest messages corresponding to files to add to the
+  // daemon.
+  repeated AddFileRequest add_file_requests = 1;
+}
+
 message AddFileResponse {
+  // Error message, empty if no error occurred.
+  optional string error_message = 1;
+}
+
+message AddFilesResponse {
   // Error message, empty if no error occurred.
   optional string error_message = 1;
 }

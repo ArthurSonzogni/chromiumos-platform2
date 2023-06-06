@@ -221,6 +221,64 @@ void DlpAdaptor::AddFile(
                      std::move(response), request.file_path(), inode));
 }
 
+void DlpAdaptor::AddFiles(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    const std::vector<uint8_t>& request_blob) {
+  AddFilesRequest request;
+
+  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
+  if (!parse_error.empty()) {
+    ReplyOnAddFiles(std::move(response),
+                    "Failed to parse AddFile request: " + parse_error);
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
+    return;
+  }
+
+  if (request.add_file_requests().empty()) {
+    ReplyOnAddFiles(std::move(response), std::string());
+    return;
+  }
+
+  LOG(INFO) << "Adding " << request.add_file_requests().size()
+            << " files to the database.";
+
+  std::vector<FileEntry> files_to_add;
+  std::vector<base::FilePath> files_paths;
+  std::vector<ino_t> files_inodes;
+  for (const AddFileRequest& add_file_request : request.add_file_requests()) {
+    LOG(INFO) << "Adding file to the database: "
+              << add_file_request.file_path();
+
+    const ino_t inode = GetInodeValue(add_file_request.file_path());
+    if (!inode) {
+      ReplyOnAddFiles(std::move(response), "Failed to get inode");
+      dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
+      return;
+    }
+
+    FileEntry file_entry = ConvertToFileEntry(inode, add_file_request);
+    files_to_add.push_back(file_entry);
+    files_paths.emplace_back(add_file_request.file_path());
+    files_inodes.emplace_back(inode);
+  }
+
+  if (!db_) {
+    LOG(WARNING) << "Database is not ready, pending addition of the file";
+    pending_files_to_add_.insert(pending_files_to_add_.end(),
+                                 files_to_add.begin(), files_to_add.end());
+    ReplyOnAddFiles(std::move(response), std::string());
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
+    return;
+  }
+
+  db_->InsertFileEntries(
+      files_to_add,
+      base::BindOnce(&DlpAdaptor::OnFilesInserted, base::Unretained(this),
+                     std::move(response), std::move(files_paths),
+                     std::move(files_inodes)));
+}
+
 void DlpAdaptor::RequestFileAccess(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
                                                            base::ScopedFD>>
@@ -472,7 +530,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     files_being_added.swap(pending_files_to_add_);
     db_ptr->InsertFileEntries(
         files_being_added,
-        base::BindOnce(&DlpAdaptor::OnDatabaseInitialized,
+        base::BindOnce(&DlpAdaptor::OnPendingFilesInserted,
                        base::Unretained(this), std::move(init_callback),
                        std::move(db), database_path, db_status));
     return;
@@ -494,6 +552,19 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     OnDatabaseCleaned(std::move(db), std::move(init_callback),
                       /*success=*/true);
   }
+}
+
+void DlpAdaptor::OnPendingFilesInserted(base::OnceClosure init_callback,
+                                        std::unique_ptr<DlpDatabase> db,
+                                        const base::FilePath& database_path,
+                                        int db_status,
+                                        bool success) {
+  if (!success) {
+    LOG(ERROR) << "Error while adding pending files.";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);
+  }
+  OnDatabaseInitialized(std::move(init_callback), std::move(db), database_path,
+                        db_status);
 }
 
 void DlpAdaptor::AddPerFileWatch(
@@ -723,11 +794,41 @@ void DlpAdaptor::OnFileInserted(
   }
 }
 
+void DlpAdaptor::OnFilesInserted(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::vector<base::FilePath> files_paths,
+    std::vector<ino_t> files_inodes,
+    bool success) {
+  CHECK(files_paths.size() == files_inodes.size());
+  if (success) {
+    for (size_t i = 0; i < files_paths.size(); ++i) {
+      AddPerFileWatch({std::make_pair(files_paths[i], files_inodes[i])});
+    }
+    ReplyOnAddFile(std::move(response), std::string());
+  } else {
+    ReplyOnAddFile(std::move(response), "Failed to add entries to database");
+  }
+}
+
 void DlpAdaptor::ReplyOnAddFile(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     std::string error_message) {
   AddFileResponse response_proto;
+  if (!error_message.empty()) {
+    LOG(ERROR) << "Error while adding file: " << error_message;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);
+    response_proto.set_error_message(error_message);
+  }
+  response->Return(SerializeProto(response_proto));
+}
+
+void DlpAdaptor::ReplyOnAddFiles(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::string error_message) {
+  AddFilesResponse response_proto;
   if (!error_message.empty()) {
     LOG(ERROR) << "Error while adding file: " << error_message;
     dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);

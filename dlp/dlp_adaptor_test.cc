@@ -106,14 +106,21 @@ class DlpAdaptorTest : public ::testing::Test {
     return helper_.mock_dlp_files_policy_service_proxy();
   }
 
-  std::vector<uint8_t> CreateSerializedAddFileRequest(
-      const std::string& file,
-      const std::string& source,
-      const std::string& referrer) {
+  AddFileRequest CreateAddFileRequest(const base::FilePath& path,
+                                      const std::string& source,
+                                      const std::string& referrer) {
     AddFileRequest request;
-    request.set_file_path(file);
+    request.set_file_path(path.value());
     request.set_source_url(source);
     request.set_referrer_url(referrer);
+    return request;
+  }
+
+  std::vector<uint8_t> CreateSerializedAddFilesRequest(
+      std::vector<AddFileRequest> add_file_requests) {
+    AddFilesRequest request;
+    *request.mutable_add_file_requests() = {add_file_requests.begin(),
+                                            add_file_requests.end()};
 
     std::vector<uint8_t> proto_blob(request.ByteSizeLong());
     request.SerializeToArray(proto_blob.data(), proto_blob.size());
@@ -192,10 +199,8 @@ class DlpAdaptorTest : public ::testing::Test {
     std::move(*response_callback).Run(response.get());
   }
 
-  void AddFileAndCheck(const base::FilePath& file_path,
-                       const std::string& source,
-                       const std::string& referrer,
-                       bool expected_result) {
+  void AddFilesAndCheck(const std::vector<AddFileRequest>& add_file_requests,
+                        bool expected_result) {
     bool success;
     std::unique_ptr<
         brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
@@ -206,14 +211,15 @@ class DlpAdaptorTest : public ::testing::Test {
     response->set_return_callback(base::BindOnce(
         [](bool* success, base::RunLoop* run_loop,
            const std::vector<uint8_t>& proto_blob) {
-          AddFileResponse response = ParseResponse<AddFileResponse>(proto_blob);
+          AddFilesResponse response =
+              ParseResponse<AddFilesResponse>(proto_blob);
           *success = response.error_message().empty();
           run_loop->Quit();
         },
         &success, &run_loop));
-    GetDlpAdaptor()->AddFile(
+    GetDlpAdaptor()->AddFiles(
         std::move(response),
-        CreateSerializedAddFileRequest(file_path.value(), source, referrer));
+        CreateSerializedAddFilesRequest(add_file_requests));
     run_loop.Run();
     EXPECT_EQ(expected_result, success);
   }
@@ -280,7 +286,8 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
@@ -305,7 +312,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
@@ -338,8 +346,9 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, "source", "referrer", /*success=*/true);
-  AddFileAndCheck(file_path2, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, "source", "referrer"),
+                    CreateAddFileRequest(file_path2, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -408,7 +417,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
   const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the files to the database.
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   FileMetadata file_metadata;
@@ -485,7 +495,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
   const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the files to the database.
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   FileMetadata file_metadata;
@@ -558,7 +569,8 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
   const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
 
   // Add only first file to the database.
-  AddFileAndCheck(file_path1, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -672,7 +684,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the file to the database.
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   FileMetadata file_metadata;
@@ -735,7 +748,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the file to the database.
-  AddFileAndCheck(file_path, "source", "referrer", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -836,8 +850,9 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
   const std::string source2 = "source2";
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2, 123456});
 
@@ -866,8 +881,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
 
   // Add the files to the database. The addition will be pending, so success
   // is returned.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
 
@@ -919,8 +935,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   const std::string source2 = "source2";
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   // Delete one of the files.
   base::DeleteFile(file_path2);
@@ -964,8 +981,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   const std::string source2 = "source2";
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   // Delete one of the files.
   base::DeleteFile(file_path2);
@@ -1010,8 +1028,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   const std::string source2 = "source2";
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   // Delete one of the files.
   base::DeleteFile(file_path2);
@@ -1084,8 +1103,9 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
   const std::string source2 = "source2";
 
   // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   files_restrictions_.clear();
@@ -1131,6 +1151,10 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
     EXPECT_EQ(restricted_files_paths.size(), 1u);
     EXPECT_EQ(restricted_files_paths[0], file_path1.value());
   }
+}
+
+TEST_F(DlpAdaptorTest, AddZeroFilesToTheDaemon) {
+  AddFilesAndCheck({}, /*expected_result=*/true);
 }
 
 }  // namespace dlp

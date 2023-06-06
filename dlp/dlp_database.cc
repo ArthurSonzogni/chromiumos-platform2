@@ -95,7 +95,7 @@ class DlpDatabase::Core {
   // Implements the functionality from main class.
   int Init();
   bool InsertFileEntry(const FileEntry& file_entry);
-  void InsertFileEntries(const std::vector<FileEntry>& file_entries);
+  bool InsertFileEntries(const std::vector<FileEntry>& file_entries);
   std::map<ino64_t, FileEntry> GetFileEntriesByInodes(
       std::vector<ino64_t> inodes) const;
   bool DeleteFileEntryByInode(int64_t inode);
@@ -228,11 +228,11 @@ bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
   return true;
 }
 
-void DlpDatabase::Core::InsertFileEntries(
+bool DlpDatabase::Core::InsertFileEntries(
     const std::vector<FileEntry>& file_entries) {
   if (!IsOpen()) {
     LOG(ERROR) << "Failed to insert file entries because database is not open";
-    return;
+    return false;
   }
 
   std::string sql =
@@ -254,8 +254,9 @@ void DlpDatabase::Core::InsertFileEntries(
     LOG(ERROR) << "Failed to insert file entries: (" << result.code << ") "
                << result.error_msg;
     ForwardUMAErrorToParentThread(DatabaseError::kInsertIntoTableError);
-    return;
+    return false;
   }
+  return true;
 }
 
 std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
@@ -414,9 +415,9 @@ void DlpDatabase::InsertFileEntry(const FileEntry& file_entry,
 }
 
 void DlpDatabase::InsertFileEntries(const std::vector<FileEntry>& file_entries,
-                                    base::OnceCallback<void()> callback) {
+                                    base::OnceCallback<void(bool)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
-  task_runner_->PostTaskAndReply(
+  task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::InsertFileEntries,
                      base::Unretained(core_.get()), file_entries),
