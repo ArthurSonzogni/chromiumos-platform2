@@ -616,6 +616,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
       .vmm_swap_usage_path = vmm_swap_usage_path,
       .vm_swapping_notify_callback = std::move(vm_swapping_notify_callback),
+      .virtio_blk_metrics = std::make_unique<VirtioBlkMetrics>(
+          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
       .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),

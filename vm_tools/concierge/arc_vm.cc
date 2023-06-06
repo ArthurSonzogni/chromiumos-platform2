@@ -278,6 +278,7 @@ ArcVm::ArcVm(Config config)
       vm_swapping_notify_callback_(
           std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
+      virtio_blk_metrics_(std::move(config.virtio_blk_metrics)),
       weak_ptr_factory_(this) {
   if (config.is_vmm_swap_enabled) {
     vmm_swap_usage_policy_.Init();
@@ -685,8 +686,12 @@ void ArcVm::HandleSuspendDone() {
 }
 
 void ArcVm::HandleUserlandReady() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   // Create the RT v-Cpu for the VM now that boot is complete.
   MakeRtVcpu();
+
+  virtio_blk_metrics_->ReportBootMetrics(apps::VmType::ARCVM, vsock_cid_);
 }
 
 // static
