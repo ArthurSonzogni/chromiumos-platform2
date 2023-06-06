@@ -617,15 +617,14 @@ std::string SharedDataParam::to_string() const {
   return result;
 }
 
-std::string CreateFontsSharedDataParam() {
+SharedDataParam CreateFontsSharedDataParam() {
   return SharedDataParam{.data_dir = base::FilePath(kFontsSharedDir),
                          .tag = kFontsSharedDirTag,
                          .uid_map = kAndroidUidMap,
                          .gid_map = kAndroidGidMap,
                          .enable_caches = SharedDataParam::Cache::kAlways,
                          .ascii_casefold = false,
-                         .posix_acl = true}
-      .to_string();
+                         .posix_acl = true};
 }
 
 void ArcVmCPUTopology::CreateAffinity(void) {

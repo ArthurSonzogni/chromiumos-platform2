@@ -62,7 +62,7 @@ class VmBuilder {
   VmBuilder& AppendAudioDevice(const AudioDeviceType type,
                                const std::string& params);
   VmBuilder& AppendSerialDevice(const std::string& device);
-  VmBuilder& AppendSharedDir(const std::string& shared_dir);
+  VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
   VmBuilder& AppendCustomParam(const std::string& key,
                                const std::string& value);
 
@@ -170,7 +170,7 @@ class VmBuilder {
   std::vector<AudioDevice> audio_devices_;
   std::vector<std::string> serial_devices_;
   std::vector<std::string> wayland_sockets_;
-  std::vector<std::string> shared_dirs_;
+  std::vector<SharedDataParam> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
 
   base::FilePath vmm_swap_dir_;

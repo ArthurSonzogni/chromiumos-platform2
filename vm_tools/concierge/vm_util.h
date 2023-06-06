@@ -251,7 +251,7 @@ struct SharedDataParam {
 };
 
 // Creates the font-specific shared data parameter for crosvm.
-std::string CreateFontsSharedDataParam();
+SharedDataParam CreateFontsSharedDataParam();
 
 class ArcVmCPUTopology {
  public:

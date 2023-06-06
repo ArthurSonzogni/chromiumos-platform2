@@ -145,8 +145,8 @@ VmBuilder& VmBuilder::AddExtraWaylandSocket(const std::string& socket) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendSharedDir(const std::string& shared_dir) {
-  shared_dirs_.push_back(shared_dir);
+VmBuilder& VmBuilder::AppendSharedDir(SharedDataParam shared_dir) {
+  shared_dirs_.push_back(std::move(shared_dir));
   return *this;
 }
 
@@ -478,7 +478,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.emplace_back("--battery", "type=goldfish");
 
   for (const auto& shared_dir : shared_dirs_)
-    args.emplace_back("--shared-dir", shared_dir);
+    args.emplace_back("--shared-dir", shared_dir.to_string());
 
   for (const auto& custom_param : custom_params_)
     args.emplace_back(custom_param.first, custom_param.second);

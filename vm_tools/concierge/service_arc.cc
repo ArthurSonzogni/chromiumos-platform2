@@ -447,38 +447,33 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   SendVmStartingUpSignal(vm_id, *vm_info);
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
-  std::string shared_data =
-      SharedDataParam{.data_dir = data_dir,
-                      .tag = "_data",
-                      .uid_map = kAndroidUidMap,
-                      .gid_map = kAndroidGidMap,
-                      .enable_caches = SharedDataParam::Cache::kAlways,
-                      .ascii_casefold = false,
-                      .posix_acl = true,
-                      .privileged_quota_uids = privileged_quota_uids}
-          .to_string();
-  std::string shared_data_media =
-      SharedDataParam{.data_dir = data_dir,
-                      .tag = "_data_media",
-                      .uid_map = kAndroidUidMap,
-                      .gid_map = kAndroidGidMap,
-                      .enable_caches = SharedDataParam::Cache::kAlways,
-                      .ascii_casefold = true,
-                      .posix_acl = true,
-                      .privileged_quota_uids = privileged_quota_uids}
-          .to_string();
+  SharedDataParam shared_data{.data_dir = data_dir,
+                              .tag = "_data",
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
+                              .enable_caches = SharedDataParam::Cache::kAlways,
+                              .ascii_casefold = false,
+                              .posix_acl = true,
+                              .privileged_quota_uids = privileged_quota_uids};
+  SharedDataParam shared_data_media{
+      .data_dir = data_dir,
+      .tag = "_data_media",
+      .uid_map = kAndroidUidMap,
+      .gid_map = kAndroidGidMap,
+      .enable_caches = SharedDataParam::Cache::kAlways,
+      .ascii_casefold = true,
+      .posix_acl = true,
+      .privileged_quota_uids = privileged_quota_uids};
 
   const base::FilePath stub_dir(kStubVolumeSharedDir);
-  std::string shared_stub =
-      SharedDataParam{.data_dir = stub_dir,
-                      .tag = "stub",
-                      .uid_map = kAndroidUidMap,
-                      .gid_map = kAndroidGidMap,
-                      .enable_caches = SharedDataParam::Cache::kAlways,
-                      .ascii_casefold = true,
-                      .posix_acl = false,
-                      .privileged_quota_uids = privileged_quota_uids}
-          .to_string();
+  SharedDataParam shared_stub{.data_dir = stub_dir,
+                              .tag = "stub",
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
+                              .enable_caches = SharedDataParam::Cache::kAlways,
+                              .ascii_casefold = true,
+                              .posix_acl = false,
+                              .privileged_quota_uids = privileged_quota_uids};
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.

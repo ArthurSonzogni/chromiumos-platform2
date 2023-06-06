@@ -13,6 +13,8 @@
 #include <dbus/scoped_dbus_error.h>
 #include <dbus/shadercached/dbus-constants.h>
 
+#include "vm_tools/concierge/vm_util.h"
+
 namespace vm_tools::concierge {
 
 namespace {

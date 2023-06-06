@@ -814,7 +814,8 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
       GetOemEtcSharedDataParam(299 /* uid */,
                                // gid is usually 299 but use a different value
                                // from UID for ease of testing.
-                               300 /* gid */),
+                               300 /* gid */)
+          .to_string(),
       "/run/arcvm/host_generated/oem/etc"
       ":oem_etc:type=fs:cache=always:uidmap=0 299 1, 5000 600 50:gidmap=0 300 "
       "1, 5000 600 "
