@@ -192,7 +192,7 @@ class BRILLO_EXPORT Client {
   //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
   //    network.
   struct DHCPOptions {
-    std::vector<std::array<uint8_t, 4>> dns_server_addresses;
+    std::vector<net_base::IPv4Address> dns_server_addresses;
     std::vector<std::string> domain_search_list;
     bool is_android_metered = false;
   };

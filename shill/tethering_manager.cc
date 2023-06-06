@@ -20,6 +20,7 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/device.h"
@@ -101,14 +102,9 @@ std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
   // Fill the DNS servers.
   for (const auto& dns_server : ipconfig->properties().dns_servers) {
     const auto dns_server_ip =
-        IPAddress::CreateFromString(dns_server, IPAddress::kFamilyIPv4);
+        net_base::IPv4Address::CreateFromString(dns_server);
     if (dns_server_ip) {
-      std::array<uint8_t, 4> ip_bytes;
-      for (size_t i = 0; i < 4; ++i) {
-        ip_bytes[i] =
-            static_cast<uint8_t>(*(dns_server_ip->GetConstData() + i));
-      }
-      options.dns_server_addresses.push_back(ip_bytes);
+      options.dns_server_addresses.push_back(*dns_server_ip);
     }
   }
 

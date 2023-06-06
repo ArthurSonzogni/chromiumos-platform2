@@ -1152,7 +1152,7 @@ bool ClientImpl::CreateTetheredNetwork(
     auto* ipv4_config = request.mutable_ipv4_config();
     ipv4_config->set_use_dhcp(true);
     for (const auto& dns_server : dhcp_options->dns_server_addresses) {
-      ipv4_config->add_dns_servers(dns_server.data(), dns_server.size());
+      ipv4_config->add_dns_servers(dns_server.ToByteString());
     }
     for (const auto& domain_search : dhcp_options->domain_search_list) {
       ipv4_config->add_domain_searches(domain_search);
