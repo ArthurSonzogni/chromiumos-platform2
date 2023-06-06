@@ -492,6 +492,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       PLOG(WARNING) << "Failed to read from " << stateful_update_file.value();
       return true;
     }
+    // The file often ends with a new line.
+    base::TrimString(stateful_update_args, "\n", &stateful_update_args);
   }
 
   // To remain compatible with the prior update_stateful tarballs, expect
