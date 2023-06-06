@@ -2590,23 +2590,6 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
   return response;
 }
 
-// Performs necessary steps to complete the boot of the VM.
-// Returns true on success, or false if the VM does not exist.
-bool Service::OnVmBootComplete(const std::string& owner_id,
-                               const std::string& name) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto iter = FindVm(owner_id, name);
-  if (iter == vms_.end()) {
-    return false;
-  }
-
-  // Create the RT v-Cpu for the VM now that boot is complete
-  auto& vm = iter->second;
-  vm->MakeRtVcpu();
-
-  return true;
-}
-
 ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
     const ArcVmCompleteBootRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
@@ -2619,15 +2602,20 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
     return response;
   }
 
-  if (!OnVmBootComplete(request.owner_id(), kArcVmName)) {
+  VmId vm_id(request.owner_id(), kArcVmName);
+
+  auto iter = FindVm(vm_id.owner_id(), vm_id.name());
+  if (iter == vms_.end()) {
     LOG(ERROR) << "Unable to locate ArcVm instance";
     response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);
     return response;
   }
 
-  // Notify the VM guest userland ready
-  VmId vm_id(request.owner_id(), kArcVmName);
+  // Create the RT v-Cpu for the VM now that boot is complete
+  auto& vm = iter->second;
+  vm->MakeRtVcpu();
 
+  // Notify the VM guest userland ready
   SendVmGuestUserlandReadySignal(vm_id,
                                  GuestUserlandReady::ARC_BRIDGE_CONNECTED);
 
