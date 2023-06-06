@@ -251,6 +251,31 @@ int PrimeSearchV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(PrimeSearch);
 }
 
+int VolumeButtonMain(int argc, char** argv) {
+  DEFINE_string(button_type, "", "The volume button to test: [up, down].");
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to listen for the power button events. "
+                "Range: [1, 600].");
+  COMMON_V2_ROUTINE_FLAGS("Volume button routine");
+
+  auto argument = mojom::VolumeButtonRoutineArgument::New();
+
+  if (FLAGS_button_type == "up") {
+    argument->type = mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp;
+  } else if (FLAGS_button_type == "down") {
+    argument->type =
+        mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeDown;
+  } else {
+    std::cout << "Unknown volume button type: " << FLAGS_button_type
+              << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  argument->timeout = base::Seconds(FLAGS_length_seconds);
+
+  COMMON_V2_ROUTINE_MAIN(VolumeButton);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -787,6 +812,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"cpu_cache_v2", CpuCacheV2Main},
     {"disk_read_v2", DiskReadV2Main},
     {"prime_search_v2", PrimeSearchV2Main},
+    {"volume_button", VolumeButtonMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

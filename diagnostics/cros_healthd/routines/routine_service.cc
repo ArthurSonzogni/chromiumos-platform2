@@ -13,6 +13,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
+#include "diagnostics/cros_healthd/routines/volume_button/volume_button.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {
@@ -70,6 +71,11 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kCpuCache:
       AddRoutine(std::make_unique<CpuCacheRoutineV2>(
                      context_, routine_arg->get_cpu_cache()),
+                 std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kVolumeButton:
+      AddRoutine(std::make_unique<VolumeButtonRoutine>(
+                     context_, routine_arg->get_volume_button()),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

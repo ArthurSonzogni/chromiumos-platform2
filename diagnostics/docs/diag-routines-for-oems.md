@@ -1625,3 +1625,40 @@ Errors:
 - `Timeout is not in range [1, 600]`
 - `Routine failed. No power button event observed.`
 - `Routine error. Unable to listen for power button events.`
+
+### Volume Button
+
+Check the volume button is working by listening to the volume button event for
+a period of time. For the routine to pass, user must tap the specified volume
+button before timeout. Otherwise, the routine fails.
+
+Parameters:
+-   `--button_type` - The volume button to test. That is, volume_up button or
+    volume_down button.
+    Type: `string`. Default: `""`. Allowable values: `[up|down]`
+-   `--length_seconds` - Number of seconds to listen for the volume button
+    events. Range: [1, 600].
+    Type: `uint32_t`. Default: `10`.
+
+To run the volume button routine that listens to events for 10 seconds.
+
+From crosh:
+```bash
+crosh> diag volume_button --button_type=up
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag volume_button --button_type=up
+```
+
+Sample output:
+```bash
+Running Progress: 100
+Status: Passed
+```
+
+Errors:
+- `Timeout must be positive.`
+- `Timeout cannot be longer than 600 seconds.`
+- `Unable to listen for volume button events.`

@@ -204,6 +204,10 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
 
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     }
+    // TODO(b/272217292): Check cros_config to see if the device has volume
+    // buttons.
+    case mojom::RoutineArgument::Tag::kVolumeButton:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
   }
 }
 

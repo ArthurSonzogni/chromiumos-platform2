@@ -113,6 +113,7 @@ source_set("libdiag_routine") {
     "storage/disk_read_v2.cc",
     "storage/ufs_lifetime.cc",
     "subproc_routine.cc",
+    "volume_button/volume_button.cc",
   ]
 }
 
@@ -192,6 +193,7 @@ if (use.test) {
       "storage/disk_read_v2_test.cc",
       "storage/ufs_lifetime_test.cc",
       "subproc_routine_test.cc",
+      "volume_button/volume_button_test.cc",
     ]
     configs += [ ":libroutine_test_pkg_deps" ]
     deps = [
