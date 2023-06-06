@@ -261,7 +261,7 @@ std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
                          .tag = kOemEtcSharedDirTag,
                          .uid_map = oem_etc_uid_map,
                          .gid_map = oem_etc_gid_map,
-                         .enable_caches = true}
+                         .enable_caches = SharedDataParam::Cache::kAlways}
       .to_string();
 }
 
@@ -393,7 +393,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kTestHarnessSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -402,7 +402,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kApkCacheSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -412,7 +412,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kLibSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -421,7 +421,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kUsrLibSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -430,7 +430,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kSbinSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -439,7 +439,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kUsrBinSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -448,7 +448,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .tag = kJemallocSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
-                          .enable_caches = true,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true}
               .to_string())
@@ -494,20 +494,21 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
     if (base::PathExists(usr_local_bin_dir)) {
       vm_builder
-          .AppendSharedDir(SharedDataParam{.data_dir = usr_local_bin_dir,
-                                           .tag = kUsrLocalBinSharedDirTag,
-                                           .uid_map = kAndroidUidMap,
-                                           .gid_map = kAndroidGidMap,
-                                           .enable_caches = true,
-                                           .ascii_casefold = false,
-                                           .posix_acl = true}
-                               .to_string())
+          .AppendSharedDir(
+              SharedDataParam{.data_dir = usr_local_bin_dir,
+                              .tag = kUsrLocalBinSharedDirTag,
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
+                              .enable_caches = SharedDataParam::Cache::kAlways,
+                              .ascii_casefold = false,
+                              .posix_acl = true}
+                  .to_string())
           .AppendSharedDir(
               SharedDataParam{.data_dir = base::FilePath(kUsrLocalLibSharedDir),
                               .tag = kUsrLocalLibSharedDirTag,
                               .uid_map = kAndroidUidMap,
                               .gid_map = kAndroidGidMap,
-                              .enable_caches = true,
+                              .enable_caches = SharedDataParam::Cache::kAlways,
                               .ascii_casefold = false,
                               .posix_acl = true}
                   .to_string());

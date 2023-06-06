@@ -2083,7 +2083,8 @@ StartVmResponse Service::StartVmInternal(
           base::FilePath(prepare_result.value().precompiled_cache_path());
       vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list))
           .SetPrecompiledCachePath(precompiled_cache_path)
-          .AppendSharedDir(CreateShaderSharedDataParam(precompiled_cache_path));
+          .AppendSharedDir(
+              CreateShaderSharedDataParam(precompiled_cache_path).to_string());
     } else {
       LOG(ERROR) << "Unable to initialize shader cache: "
                  << prepare_result.error();

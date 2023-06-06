@@ -594,16 +594,17 @@ std::string SharedDataParam::to_string() const {
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
 
-  std::string result =
-      base::StrCat({data_dir.value(), ":", tag,
-                    ":type=fs:cache=", enable_caches ? "always" : "auto",
-                    ":uidmap=", uid_map, ":gidmap=", gid_map,
-                    ":timeout=", enable_caches ? "3600" : "1",
-                    ":rewrite-"
-                    "security-xattrs=true:ascii_casefold=",
-                    ascii_casefold ? "true" : "false",
-                    ":writeback=", enable_caches ? "true" : "false",
-                    ":posix_acl=", posix_acl ? "true" : "false"});
+  std::string result = base::StrCat(
+      {data_dir.value(), ":", tag, ":type=fs:cache=",
+       (enable_caches == SharedDataParam::Cache::kAlways)  ? "always"
+       : (enable_caches == SharedDataParam::Cache::kNever) ? "never"
+                                                           : "auto",
+       ":uidmap=", uid_map, ":gidmap=", gid_map, ":timeout=",
+       (enable_caches == SharedDataParam::Cache::kAlways) ? "3600" : "1",
+       ":rewrite-security-xattrs=", rewrite_security_xattrs ? "true" : "false",
+       ":ascii_casefold=", ascii_casefold ? "true" : "false", ":writeback=",
+       (enable_caches == SharedDataParam::Cache::kAlways) ? "true" : "false",
+       ":posix_acl=", posix_acl ? "true" : "false"});
 
   if (!privileged_quota_uids.empty()) {
     result += ":privileged_quota_uids=";
@@ -621,7 +622,7 @@ std::string CreateFontsSharedDataParam() {
                          .tag = kFontsSharedDirTag,
                          .uid_map = kAndroidUidMap,
                          .gid_map = kAndroidGidMap,
-                         .enable_caches = true,
+                         .enable_caches = SharedDataParam::Cache::kAlways,
                          .ascii_casefold = false,
                          .posix_acl = true}
       .to_string();

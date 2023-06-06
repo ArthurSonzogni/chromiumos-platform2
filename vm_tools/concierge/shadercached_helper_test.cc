@@ -11,11 +11,11 @@ namespace {
 
 TEST(ShadercachedHelper, CreateShaderSharedDataParamTest) {
   ASSERT_EQ(
-      "/:precompiled_gpu_cache:uidmap=0 65534 1,1000 333 1:gidmap=0 65534 "
-      "1,1000 333 "
-      "1:type=fs:cache=never:timeout=1:rewrite-security-xattrs=false:writeback="
-      "false:ascii_casefold=false",
-      CreateShaderSharedDataParam(base::FilePath("/")));
+      "/:precompiled_gpu_cache:type=fs:cache=never:uidmap=0 65534 1,1000 333 "
+      "1:gidmap=0 65534 1,1000 333 "
+      "1:timeout=1:rewrite-security-xattrs=false:ascii_casefold=false:"
+      "writeback=false:posix_acl=true",
+      CreateShaderSharedDataParam(base::FilePath("/")).to_string());
 }
 
 }  // anonymous namespace

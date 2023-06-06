@@ -232,13 +232,19 @@ constexpr char kAndroidGidMap[] =
 
 // Shared data parameter for crosvm.
 struct SharedDataParam {
+  enum class Cache {
+    kAuto,
+    kAlways,
+    kNever,
+  };
   std::string to_string() const;
 
   base::FilePath data_dir;
   std::string tag;
   std::string uid_map;
   std::string gid_map;
-  bool enable_caches;
+  Cache enable_caches;
+  bool rewrite_security_xattrs{true};
   bool ascii_casefold;
   bool posix_acl;
   std::vector<uid_t> privileged_quota_uids;

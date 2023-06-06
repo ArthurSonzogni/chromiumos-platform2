@@ -13,10 +13,12 @@
 #include "dbus/shadercached/dbus-constants.h"
 #include "shadercached/proto_bindings/shadercached.pb.h"
 
+#include "vm_tools/concierge/vm_util.h"
+
 namespace vm_tools::concierge {
 
 // Creates the shader-cache-specific shared data parameter for crosvm.
-std::string CreateShaderSharedDataParam(base::FilePath data_dir);
+SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir);
 
 base::expected<shadercached::PrepareShaderCacheResponse, std::string>
 PrepareShaderCache(const std::string& owner_id,

@@ -28,14 +28,18 @@ constexpr char kShaderSharedDirTag[] = "precompiled_gpu_cache";
 
 }  // namespace
 
-std::string CreateShaderSharedDataParam(base::FilePath data_dir) {
+SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir) {
   // Write performance is not a concern, we only need to make sure if a write
   // happens from the guest side, it is guaranteed to be persisted in the host.
-  return base::StrCat({data_dir.value(), ":", kShaderSharedDirTag, ":uidmap=",
-                       kShadercachedUidMap, ":gidmap=", kShadercachedGidMap,
-                       ":type=fs", ":cache=never", ":timeout=1",
-                       ":rewrite-security-xattrs=false", ":writeback=false",
-                       ":ascii_casefold=false"});
+  return SharedDataParam{
+      .data_dir = data_dir,
+      .tag = kShaderSharedDirTag,
+      .uid_map = kShadercachedUidMap,
+      .gid_map = kShadercachedGidMap,
+      .enable_caches = SharedDataParam::Cache::kNever,
+      .rewrite_security_xattrs = false,
+      .posix_acl = true,
+  };
 }
 
 base::expected<shadercached::PrepareShaderCacheResponse, std::string>

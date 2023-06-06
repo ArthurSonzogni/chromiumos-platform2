@@ -536,7 +536,7 @@ TEST(VMUtilTest, SharedDataParamSimple) {
                         .tag = "usr_local_bin",
                         .uid_map = kAndroidUidMap,
                         .gid_map = kAndroidGidMap,
-                        .enable_caches = true,
+                        .enable_caches = SharedDataParam::Cache::kAlways,
                         .ascii_casefold = false,
                         .posix_acl = true};
   ASSERT_EQ(param.to_string(),
@@ -553,7 +553,7 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
                         .tag = "usr_local_bin",
                         .uid_map = kAndroidUidMap,
                         .gid_map = kAndroidGidMap,
-                        .enable_caches = true,
+                        .enable_caches = SharedDataParam::Cache::kAlways,
                         .ascii_casefold = false,
                         .posix_acl = true,
                         .privileged_quota_uids = {0}};
