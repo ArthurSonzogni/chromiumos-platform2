@@ -272,28 +272,28 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         Ok(())
     }
 
+    fn set_epp(&self, epp: config::EnergyPerformancePreference) -> Result<()> {
+        const EPP_PATTERN: &str =
+            "sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
+        let pattern = self
+            .root
+            .join(EPP_PATTERN)
+            .to_str()
+            .context("Cannot convert epp path to string")?
+            .to_owned();
+        write_to_path_patterns(&pattern, epp.to_name())
+    }
+
     fn apply_power_preferences(&self, preferences: config::PowerPreferences) -> Result<()> {
+        if let Some(epp) = preferences.epp {
+            self.set_epp(epp)?
+        }
         if let Some(governor) = preferences.governor {
             self.apply_governor_preferences(governor)?
         }
 
         Ok(())
     }
-}
-
-// Set EPP value in sysfs for Intel devices with X86_FEATURE_HWP_EPP support.
-// On !X86_FEATURE_HWP_EPP Intel devices, an integer write to the sysfs node
-// will fail with -EINVAL.
-fn set_epp(root_path: &str, value: &str) -> Result<()> {
-    let pattern = root_path.to_owned()
-        + "/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
-
-    for entry in glob(&pattern)? {
-        std::fs::write(entry?, value)
-            .with_context(|| format!("Failed to set EPP sysfs value to {}!", value))?;
-    }
-
-    Ok(())
 }
 
 impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
@@ -354,16 +354,13 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             self.apply_power_preferences(preferences)?
         }
 
-        if let Some(root) = self.root.to_str() {
-            if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
-                if let Err(err) = set_epp(root, "balance_power") {
-                    error!("Failed to set energy performance preference: {:#}", err);
-                }
-            } else if rtc != RTCAudioActive::Active && fullscreen != FullscreenVideo::Active {
-                set_epp(root, "balance_performance")?; // Default EPP
+        if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
+            if let Err(err) = self.set_epp(config::EnergyPerformancePreference::BalancePower) {
+                error!("Failed to set energy performance preference: {:#}", err);
             }
         } else {
-            info!("Converting root path failed: {}", self.root.display());
+            self.set_epp(config::EnergyPerformancePreference::BalancePerformance)?;
+            // Default EPP
         }
 
         Ok(())
@@ -391,7 +388,7 @@ mod tests {
     use anyhow::bail;
     use std::fs;
     use std::path::Path;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::tempdir;
 
     #[test]
     fn test_parse_power_supply_status() -> anyhow::Result<()> {
@@ -420,35 +417,6 @@ mod tests {
         assert!(PowerSupplyStatus::from_str("abc").is_err());
 
         Ok(())
-    }
-
-    #[test]
-    fn test_set_epp() {
-        let dir = TempDir::new().unwrap();
-
-        // Create the fake sysfs paths in temp directory
-        let mut tpb0 = dir.path().to_owned();
-        tpb0.push("sys/devices/system/cpu/cpufreq/policy0/");
-        // let dirpath_str0 = tpb0.clone().into_os_string().into_string().unwrap();
-        fs::create_dir_all(&tpb0).unwrap();
-
-        let mut tpb1 = dir.path().to_owned();
-        tpb1.push("sys/devices/system/cpu/cpufreq/policy1/");
-        fs::create_dir_all(&tpb1).unwrap();
-
-        tpb0.push("energy_performance_preference");
-        tpb1.push("energy_performance_preference");
-
-        // Create energy_performance_preference files.
-        fs::write(&tpb0, "balance_performance").unwrap();
-        fs::write(&tpb1, "balance_performance").unwrap();
-
-        // Set the EPP
-        set_epp(dir.path().to_str().unwrap(), "179").unwrap();
-
-        // Verify that files were written
-        assert_eq!(fs::read_to_string(&tpb0).unwrap(), "179".to_string());
-        assert_eq!(fs::read_to_string(&tpb1).unwrap(), "179".to_string());
     }
 
     #[test]
@@ -752,6 +720,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: None,
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -837,6 +806,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -885,6 +855,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: None,
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -931,6 +902,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(4000),
                     }),
+                    epp: None,
                 }))
             },
             web_rtc_power_preferences: |_| Ok(None),
@@ -978,6 +950,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -1089,6 +1062,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -1135,6 +1109,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -1181,6 +1156,7 @@ mod tests {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -1238,6 +1214,7 @@ mod tests {
                         powersave_bias: CONFIG_POWERSAVE_BIAS,
                         sampling_rate: Some(CONFIG_SAMPLING_RATE),
                     }),
+                    epp: None,
                 }))
             },
             ..Default::default()
@@ -1313,6 +1290,7 @@ mod tests {
             let config_provider = ArcvmGamingConfigProvider {
                 arcvm_gaming_power_preferences: config::PowerPreferences {
                     governor: Some(governor),
+                    epp: None,
                 },
             };
             let manager = DirectoryPowerPreferencesManager {

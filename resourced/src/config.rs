@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fs::DirEntry;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -17,6 +18,14 @@ pub trait ConfigProvider {
         power_source_type: PowerSourceType,
         power_preference_type: PowerPreferencesType,
     ) -> Result<Option<PowerPreferences>>;
+}
+
+pub trait FromDir {
+    // The return type is Result<Option<Self>> so parse_config_from_path() don't have to
+    // parse the result.
+    fn from_dir(dir: DirEntry) -> Result<Option<Self>>
+    where
+        Self: Sized;
 }
 
 /* TODO: Can we use `rust-protobuf` to generate all the structs? */
@@ -50,10 +59,60 @@ impl Governor {
     }
 }
 
+impl FromDir for Governor {
+    fn from_dir(dir: DirEntry) -> Result<Option<Governor>> {
+        match dir.file_name().to_str() {
+            Some("conservative") => Ok(Some(Governor::Conservative)),
+            Some("ondemand") => Ok(Some(parse_ondemand_governor(&dir.path())?)),
+            Some("performance") => Ok(Some(Governor::Performance)),
+            Some("powersave") => Ok(Some(Governor::Powersave)),
+            Some("schedutil") => Ok(Some(Governor::Schedutil)),
+            Some("userspace") => Ok(Some(Governor::Userspace)),
+            _ => bail!("Unknown governor {:?}!", dir.file_name()),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EnergyPerformancePreference {
+    Default,
+    Performance,
+    BalancePerformance,
+    BalancePower,
+    Power,
+}
+
+impl EnergyPerformancePreference {
+    pub fn to_name(self) -> &'static str {
+        match self {
+            EnergyPerformancePreference::Default => "default",
+            EnergyPerformancePreference::Performance => "performance",
+            EnergyPerformancePreference::BalancePerformance => "balance_performance",
+            EnergyPerformancePreference::BalancePower => "balance_power",
+            EnergyPerformancePreference::Power => "power",
+        }
+    }
+}
+
+impl FromDir for EnergyPerformancePreference {
+    fn from_dir(dir: DirEntry) -> Result<Option<EnergyPerformancePreference>> {
+        match dir.file_name().to_str() {
+            Some("default") => Ok(Some(EnergyPerformancePreference::Default)),
+            Some("performance") => Ok(Some(EnergyPerformancePreference::Performance)),
+            Some("balance_performance") => {
+                Ok(Some(EnergyPerformancePreference::BalancePerformance))
+            }
+            Some("balance_power") => Ok(Some(EnergyPerformancePreference::BalancePower)),
+            Some("power") => Ok(Some(EnergyPerformancePreference::Power)),
+            _ => bail!("Unknown epp {:?}!", dir.file_name()),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PowerPreferences {
     pub governor: Option<Governor>,
-    /* TODO: Add Intel EPP settings */
+    pub epp: Option<EnergyPerformancePreference>,
 }
 
 #[derive(Copy, Clone)]
@@ -136,7 +195,7 @@ fn parse_ondemand_governor(path: &Path) -> Result<Governor> {
 // Returns Ok(None) when there is no sub directory in path.
 // Returns error when there are multiple sub directories in path or when the
 // sub directory name is not a supported governor.
-fn parse_governor(path: &Path) -> Result<Option<Governor>> {
+fn parse_config_from_path<T: FromDir>(path: &Path) -> Result<Option<T>> {
     let mut dirs = path
         .read_dir()
         .with_context(|| format!("Failed to read governors from {}", path.display()))?;
@@ -150,15 +209,7 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
         bail!("Multiple governors detected in {}", path.display());
     }
 
-    match first_dir.file_name().to_str() {
-        Some("conservative") => Ok(Some(Governor::Conservative)),
-        Some("ondemand") => Ok(Some(parse_ondemand_governor(&first_dir.path())?)),
-        Some("performance") => Ok(Some(Governor::Performance)),
-        Some("powersave") => Ok(Some(Governor::Powersave)),
-        Some("schedutil") => Ok(Some(Governor::Schedutil)),
-        Some("userspace") => Ok(Some(Governor::Userspace)),
-        _ => bail!("Unknown governor {:?}!", first_dir.file_name()),
-    }
+    T::from_dir(first_dir)
 }
 
 /* Expects to find a directory tree as follows:
@@ -195,11 +246,19 @@ impl ConfigProvider for DirectoryConfigProvider {
             return Ok(None);
         }
 
-        let mut preferences: PowerPreferences = PowerPreferences { governor: None };
+        let mut preferences: PowerPreferences = PowerPreferences {
+            governor: None,
+            epp: None,
+        };
 
         let governor_path = path.join("governor");
         if governor_path.exists() {
-            preferences.governor = parse_governor(&governor_path)?;
+            preferences.governor = parse_config_from_path::<Governor>(&governor_path)?;
+        }
+
+        let epp_path = path.join("epp");
+        if epp_path.exists() {
+            preferences.epp = parse_config_from_path::<EnergyPerformancePreference>(&epp_path)?;
         }
 
         Ok(Some(preferences))
@@ -256,6 +315,36 @@ mod tests {
     }
 
     #[test]
+    fn test_config_provider_epp() -> Result<()> {
+        let power_source = (PowerSourceType::AC, "ac");
+        let preference = (PowerPreferencesType::WebRTC, "web-rtc-power-preferences");
+        let root = tempdir()?;
+        let ondemand_path = root
+            .path()
+            .join(RESOURCED_CONFIG_PATH)
+            .join(power_source.1)
+            .join(preference.1)
+            .join("epp")
+            .join("balance_performance");
+        fs::create_dir_all(ondemand_path)?;
+
+        let provider = DirectoryConfigProvider {
+            root: root.path().to_path_buf(),
+        };
+
+        let actual = provider.read_power_preferences(power_source.0, preference.0)?;
+
+        let expected = PowerPreferences {
+            governor: None,
+            epp: Some(EnergyPerformancePreference::BalancePerformance),
+        };
+
+        assert_eq!(expected, actual.unwrap());
+
+        Ok(())
+    }
+
+    #[test]
     fn test_config_provider_ondemand_all_types() -> Result<()> {
         let power_source_params = [(PowerSourceType::AC, "ac"), (PowerSourceType::DC, "dc")];
 
@@ -303,6 +392,7 @@ mod tests {
                         powersave_bias: 340,
                         sampling_rate: None,
                     }),
+                    epp: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());
@@ -319,6 +409,7 @@ mod tests {
                         powersave_bias: 340,
                         sampling_rate: None,
                     }),
+                    epp: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());
@@ -335,6 +426,7 @@ mod tests {
                         powersave_bias: 340,
                         sampling_rate: Some(16000),
                     }),
+                    epp: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());
