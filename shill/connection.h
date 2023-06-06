@@ -15,6 +15,7 @@
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/network_priority.h"
+#include "shill/routing_policy_service.h"
 #include "shill/routing_table.h"
 #include "shill/technology.h"
 
@@ -83,15 +84,15 @@ class Connection {
   // rules and sent out of the wrong interface, but the routes added to
   // |table_id| will not be ignored.
   static constexpr uint32_t kDstRulePriority =
-      RoutingTable::kRulePriorityMain - 3;
+      RoutingPolicyService::kRulePriorityMain - 3;
   // Priority for VPN rules routing traffic or specific uids with the routing
   // table of a VPN connection.
   static constexpr uint32_t kVpnUidRulePriority =
-      RoutingTable::kRulePriorityMain - 2;
+      RoutingPolicyService::kRulePriorityMain - 2;
   // Priority for the rule sending any remaining traffic to the default physical
   // interface.
   static constexpr uint32_t kCatchallPriority =
-      RoutingTable::kRulePriorityMain - 1;
+      RoutingPolicyService::kRulePriorityMain - 1;
 
   friend class ConnectionTest;
 
@@ -156,6 +157,7 @@ class Connection {
 
   // Store cached copies of singletons for speed/ease of testing
   RoutingTable* routing_table_;
+  RoutingPolicyService* rule_table_;
   RTNLHandler* rtnl_handler_;
 };
 

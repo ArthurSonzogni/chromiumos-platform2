@@ -1,0 +1,107 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/routing_policy_service.h"
+
+#include <linux/rtnetlink.h>
+#include <sys/socket.h>
+
+#include "shill/logging.h"
+#include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/rtnl_message.h"
+
+using testing::_;
+using testing::Field;
+using testing::Invoke;
+using testing::Return;
+using testing::StrictMock;
+using testing::Test;
+using testing::WithArg;
+
+namespace shill {
+
+class RoutingPolicyServiceTest : public Test {
+ public:
+  RoutingPolicyServiceTest() : rule_table_(new RoutingPolicyService()) {}
+
+  void SetUp() override {
+    rule_table_->rtnl_handler_ = &rtnl_handler_;
+    ON_CALL(rtnl_handler_, DoSendMessage(_, _)).WillByDefault(Return(true));
+  }
+
+  void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
+
+  void Start();
+
+  int CountRoutingPolicyEntries();
+
+ protected:
+  std::unique_ptr<RoutingPolicyService> rule_table_;
+  StrictMock<MockRTNLHandler> rtnl_handler_;
+};
+
+int RoutingPolicyServiceTest::CountRoutingPolicyEntries() {
+  int count = 0;
+  for (const auto& table : rule_table_->policy_tables_) {
+    for (auto nent = table.second.begin(); nent != table.second.end(); nent++) {
+      count++;
+    }
+  }
+  return count;
+}
+
+void RoutingPolicyServiceTest::Start() {
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRule));
+  rule_table_->Start();
+}
+
+TEST_F(RoutingPolicyServiceTest, Start) {
+  Start();
+}
+
+TEST_F(RoutingPolicyServiceTest, PolicyRuleAddFlush) {
+  Start();
+
+  // Expect the tables to be empty by default.
+  EXPECT_EQ(CountRoutingPolicyEntries(), 0);
+
+  const int iface_id0 = 3;
+  const int iface_id1 = 4;
+
+  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
+  EXPECT_TRUE(rule_table_->AddRule(
+      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(100)
+                     .SetTable(1001)
+                     .SetUidRange({1000, 2000})));
+  EXPECT_EQ(CountRoutingPolicyEntries(), 1);
+
+  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
+  EXPECT_TRUE(rule_table_->AddRule(
+      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(101)
+                     .SetTable(1002)
+                     .SetIif("arcbr0")));
+  EXPECT_EQ(CountRoutingPolicyEntries(), 2);
+
+  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
+  EXPECT_TRUE(rule_table_->AddRule(
+      iface_id1, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(102)
+                     .SetTable(1003)
+                     .SetUidRange({100, 101})));
+  EXPECT_EQ(CountRoutingPolicyEntries(), 3);
+
+  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  rule_table_->FlushRules(iface_id0);
+  EXPECT_EQ(CountRoutingPolicyEntries(), 1);
+
+  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
+  rule_table_->FlushRules(iface_id1);
+  EXPECT_EQ(CountRoutingPolicyEntries(), 0);
+}
+
+}  // namespace shill

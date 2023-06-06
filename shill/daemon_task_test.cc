@@ -20,6 +20,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_routing_policy_service.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mojom/mock_mojo_service_provider.h"
 #include "shill/net/io_handler.h"
@@ -80,6 +81,7 @@ class DaemonTaskTest : public Test {
     // Tests initialization done by the daemon's constructor
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
+    daemon_.rule_table_ = &rule_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;
     daemon_.process_manager_ = &process_manager_;
     daemon_.metrics_.reset(metrics_);        // Passes ownership
@@ -108,6 +110,7 @@ class DaemonTaskTest : public Test {
   DaemonTaskForTest daemon_;
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
+  MockRoutingPolicyService rule_table_;
   MockDHCPProvider dhcp_provider_;
   MockProcessManager process_manager_;
   EventDispatcherForTest* dispatcher_;

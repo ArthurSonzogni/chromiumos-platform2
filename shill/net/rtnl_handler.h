@@ -147,6 +147,7 @@ class SHILL_EXPORT RTNLHandler {
   friend class RTNLHandlerFuzz;
   friend class RTNLListenerTest;
   friend class RoutingTableTest;
+  friend class RoutingPolicyServiceTest;
 
   FRIEND_TEST(RTNLHandlerTest, SendMessageInferredErrorMasks);
   FRIEND_TEST(RTNLListenerTest, NoRun);

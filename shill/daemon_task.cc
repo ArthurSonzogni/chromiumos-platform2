@@ -26,6 +26,7 @@
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/routing_policy_service.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
 
@@ -40,6 +41,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
       config_(config),
       rtnl_handler_(nullptr),
       routing_table_(nullptr),
+      rule_table_(nullptr),
       dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
       process_manager_(nullptr) {}
@@ -72,6 +74,7 @@ void DaemonTask::Init() {
   metrics_.reset(new Metrics());
   rtnl_handler_ = RTNLHandler::GetInstance();
   routing_table_ = RoutingTable::GetInstance();
+  rule_table_ = RoutingPolicyService::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = ProcessManager::GetInstance();
   netlink_manager_ = NetlinkManager::GetInstance();
@@ -126,6 +129,7 @@ void DaemonTask::Start() {
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
                        RTMGRP_ND_USEROPT);
   routing_table_->Start();
+  rule_table_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init();
   // Note that NetlinkManager initialization is not necessarily

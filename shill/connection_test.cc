@@ -18,6 +18,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_routing_policy_service.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/routing_policy_entry.h"
@@ -182,7 +183,7 @@ class ConnectionTest : public Test {
     EXPECT_CALL(routing_table_, FlushRoutes(connection_->interface_index_));
     EXPECT_CALL(routing_table_,
                 FlushRoutesWithTag(connection_->interface_index_));
-    EXPECT_CALL(routing_table_, FlushRules(connection_->interface_index_));
+    EXPECT_CALL(rule_table_, FlushRules(connection_->interface_index_));
   }
 
   void AddIncludedRoutes(const std::vector<std::string>& included_routes) {
@@ -238,14 +239,14 @@ class ConnectionTest : public Test {
 
   void AddNonPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
                                                uint32_t priority) {
-    EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
+    EXPECT_CALL(rule_table_, FlushRules(device->interface_index()));
 
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv4, priority,
                                        device->link_name())))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv6, priority,
                                        device->link_name())))
@@ -256,12 +257,12 @@ class ConnectionTest : public Test {
     RoutingPolicyEntry::FwMark routing_fwmark;
     routing_fwmark.value = (1000 + device->interface_index()) << 16;
     routing_fwmark.mask = 0xffff0000;
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidFwMarkRule(IPAddress::kFamilyIPv4, priority,
                                           routing_fwmark)))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidFwMarkRule(IPAddress::kFamilyIPv6, priority,
                                           routing_fwmark)))
@@ -271,11 +272,11 @@ class ConnectionTest : public Test {
   void AddPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
                                             uint32_t priority,
                                             bool is_primary_physical) {
-    EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
+    EXPECT_CALL(rule_table_, FlushRules(device->interface_index()));
 
     // Verify dst rules for DHCP classless static routes.
     for (const auto& dst : dhcp_classless_static_route_dsts_) {
-      EXPECT_CALL(routing_table_,
+      EXPECT_CALL(rule_table_,
                   AddRule(device->interface_index(),
                           IsValidDstRule(dst.family(),
                                          Connection::kDstRulePriority, dst)));
@@ -286,21 +287,21 @@ class ConnectionTest : public Test {
     // IPv4 and v6.
     if (is_primary_physical) {
       EXPECT_CALL(
-          routing_table_,
+          rule_table_,
           AddRule(-1, IsValidRoutingRule(IPAddress::kFamilyIPv4,
                                          Connection::kPhysicalPriorityOffset)))
           .WillOnce(Return(true));
       EXPECT_CALL(
-          routing_table_,
+          rule_table_,
           AddRule(-1, IsValidRoutingRule(IPAddress::kFamilyIPv6,
                                          Connection::kPhysicalPriorityOffset)))
           .WillOnce(Return(true));
-      EXPECT_CALL(routing_table_,
+      EXPECT_CALL(rule_table_,
                   AddRule(device->interface_index(),
                           IsValidRoutingRule(IPAddress::kFamilyIPv4,
                                              Connection::kCatchallPriority)))
           .WillOnce(Return(true));
-      EXPECT_CALL(routing_table_,
+      EXPECT_CALL(rule_table_,
                   AddRule(device->interface_index(),
                           IsValidRoutingRule(IPAddress::kFamilyIPv6,
                                              Connection::kCatchallPriority)))
@@ -308,7 +309,7 @@ class ConnectionTest : public Test {
     }
 
     for (const auto& address : GetAddresses()) {
-      EXPECT_CALL(routing_table_,
+      EXPECT_CALL(rule_table_,
                   AddRule(device->interface_index(),
                           IsValidRoutingRule(
                               address.family(),
@@ -319,28 +320,28 @@ class ConnectionTest : public Test {
     // Physical interfaces will have both iif and oif rules to send to the
     // per-interface table if the interface name matches.
     EXPECT_CALL(
-        routing_table_,
+        rule_table_,
         AddRule(device->interface_index(),
                 IsValidIifRule(IPAddress::kFamilyIPv4,
                                Connection::kPhysicalPriorityOffset + priority,
                                device->link_name())))
         .WillOnce(Return(true));
     EXPECT_CALL(
-        routing_table_,
+        rule_table_,
         AddRule(device->interface_index(),
                 IsValidIifRule(IPAddress::kFamilyIPv6,
                                Connection::kPhysicalPriorityOffset + priority,
                                device->link_name())))
         .WillOnce(Return(true));
     EXPECT_CALL(
-        routing_table_,
+        rule_table_,
         AddRule(device->interface_index(),
                 IsValidOifRule(IPAddress::kFamilyIPv4,
                                Connection::kPhysicalPriorityOffset + priority,
                                device->link_name())))
         .WillOnce(Return(true));
     EXPECT_CALL(
-        routing_table_,
+        rule_table_,
         AddRule(device->interface_index(),
                 IsValidOifRule(IPAddress::kFamilyIPv6,
                                Connection::kPhysicalPriorityOffset + priority,
@@ -352,14 +353,14 @@ class ConnectionTest : public Test {
     RoutingPolicyEntry::FwMark routing_fwmark;
     routing_fwmark.value = (1000 + device->interface_index()) << 16;
     routing_fwmark.mask = 0xffff0000;
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidFwMarkRule(
                             IPAddress::kFamilyIPv4,
                             Connection::kPhysicalPriorityOffset + priority,
                             routing_fwmark)))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
+    EXPECT_CALL(rule_table_,
                 AddRule(device->interface_index(),
                         IsValidFwMarkRule(
                             IPAddress::kFamilyIPv6,
@@ -374,6 +375,7 @@ class ConnectionTest : public Test {
         device->interface_index(), device->link_name(), fixed_ip_params,
         device->technology());
     connection->routing_table_ = &routing_table_;
+    connection->rule_table_ = &rule_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
     connection->addresses_for_routing_policy_ = GetAddresses();
     return connection;
@@ -392,6 +394,7 @@ class ConnectionTest : public Test {
   const IPAddress local_ipv6_address_;
   std::vector<IPAddress> dhcp_classless_static_route_dsts_;
   StrictMock<MockRoutingTable> routing_table_;
+  StrictMock<MockRoutingPolicyService> rule_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
@@ -853,8 +856,8 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   ipv4_properties_.blackhole_ipv6 = true;
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
-  EXPECT_CALL(routing_table_, FlushRules(_));
-  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rule_table_, FlushRules(_));
+  EXPECT_CALL(rule_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_,
               CreateBlackholeRoute(device->interface_index(),
                                    IPAddress::kFamilyIPv6, 0, table_id))
@@ -880,8 +883,8 @@ TEST_F(ConnectionTest, PointToPointNetwork) {
   properties.address = kLocal;
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, IsDefaultAddress(), _));
-  EXPECT_CALL(routing_table_, FlushRules(_));
-  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rule_table_, FlushRules(_));
+  EXPECT_CALL(rule_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(properties);
@@ -997,8 +1000,8 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id));
-  EXPECT_CALL(routing_table_, FlushRules(_));
-  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rule_table_, FlushRules(_));
+  EXPECT_CALL(rule_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
@@ -1011,8 +1014,8 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
       .Times(0);
-  EXPECT_CALL(routing_table_, FlushRules(_));
-  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rule_table_, FlushRules(_));
+  EXPECT_CALL(rule_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
@@ -1026,8 +1029,8 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
       .Times(0);
-  EXPECT_CALL(routing_table_, FlushRules(_));
-  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rule_table_, FlushRules(_));
+  EXPECT_CALL(rule_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);

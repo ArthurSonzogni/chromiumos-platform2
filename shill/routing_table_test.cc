@@ -68,8 +68,6 @@ class RoutingTableTest : public Test {
 
   void Start();
 
-  int CountRoutingPolicyEntries();
-
   bool SetSequenceForMessage(uint32_t* seq) {
     *seq = RoutingTableTest::kTestRequestSeq;
     return true;
@@ -219,18 +217,7 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
 
 void RoutingTableTest::Start() {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRoute));
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRule));
   routing_table_->Start();
-}
-
-int RoutingTableTest::CountRoutingPolicyEntries() {
-  int count = 0;
-  for (const auto& table : routing_table_->policy_tables_) {
-    for (auto nent = table.second.begin(); nent != table.second.end(); nent++) {
-      count++;
-    }
-  }
-  return count;
 }
 
 TEST_F(RoutingTableTest, Start) {
@@ -376,50 +363,6 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(1, GetRoutingTables()->size());
   routing_table_->ResetTable(kTestDeviceIndex0);
   EXPECT_EQ(0, GetRoutingTables()->size());
-}
-
-TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
-  Start();
-
-  // Expect the tables to be empty by default.
-  EXPECT_EQ(CountRoutingPolicyEntries(), 0);
-
-  const int iface_id0 = 3;
-  const int iface_id1 = 4;
-
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(
-      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(100)
-                     .SetTable(1001)
-                     .SetUidRange({1000, 2000})));
-  EXPECT_EQ(CountRoutingPolicyEntries(), 1);
-
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(
-      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(101)
-                     .SetTable(1002)
-                     .SetIif("arcbr0")));
-  EXPECT_EQ(CountRoutingPolicyEntries(), 2);
-
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(
-      iface_id1, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(102)
-                     .SetTable(1003)
-                     .SetUidRange({100, 101})));
-  EXPECT_EQ(CountRoutingPolicyEntries(), 3);
-
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  routing_table_->FlushRules(iface_id0);
-  EXPECT_EQ(CountRoutingPolicyEntries(), 1);
-
-  EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  routing_table_->FlushRules(iface_id1);
-  EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 }
 
 TEST_F(RoutingTableTest, LowestMetricDefault) {

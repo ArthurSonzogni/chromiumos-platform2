@@ -62,6 +62,7 @@ Connection::Connection(int interface_index,
       local_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       gateway_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       routing_table_(RoutingTable::GetInstance()),
+      rule_table_(RoutingPolicyService::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", " << interface_name
                 << ", " << technology << ")";
@@ -77,7 +78,7 @@ Connection::~Connection() {
       rtnl_handler_->RemoveInterfaceAddress(interface_index_, addr);
     }
   }
-  routing_table_->FlushRules(interface_index_);
+  rule_table_->FlushRules(interface_index_);
 }
 
 bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
@@ -329,7 +330,7 @@ void Connection::UpdateRoutingPolicy() {
   uint32_t rule_priority =
       kDefaultPriority + priority_.ranking_order * kPriorityStep;
   bool is_primary_physical = priority_.is_primary_physical;
-  routing_table_->FlushRules(interface_index_);
+  rule_table_->FlushRules(interface_index_);
 
   // b/180521518: IPv6 routing rules are always omitted for a Cellular
   // connection that is not the primary physical connection. This prevents
@@ -353,13 +354,13 @@ void Connection::UpdateRoutingPolicy() {
   // address selection algorithm that ignores iptables fwmark tagging rules, and
   // the actual routing of packets that have been tagged in iptables PREROUTING.
   if (technology_ == Technology::kVPN) {
-    for (const auto& uid : routing_table_->GetUserTrafficUids()) {
+    for (const auto& uid : rule_table_->GetUserTrafficUids()) {
       auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                        .SetPriority(kVpnUidRulePriority)
                        .SetTable(table_id_)
                        .SetUid(uid);
-      routing_table_->AddRule(interface_index_, entry);
-      routing_table_->AddRule(interface_index_, entry.FlipFamily());
+      rule_table_->AddRule(interface_index_, entry);
+      rule_table_->AddRule(interface_index_, entry.FlipFamily());
     }
   }
 
@@ -375,16 +376,16 @@ void Connection::UpdateRoutingPolicy() {
     auto main_table_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                                .SetPriority(kPhysicalPriorityOffset)
                                .SetTable(RT_TABLE_MAIN);
-    routing_table_->AddRule(-1, main_table_rule);
-    routing_table_->AddRule(-1, main_table_rule.FlipFamily());
+    rule_table_->AddRule(-1, main_table_rule);
+    rule_table_->AddRule(-1, main_table_rule.FlipFamily());
     // Add a default routing rule to use the primary interface if there is
     // nothing better.
     // TODO(crbug.com/999589) Remove this rule.
     auto catch_all_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                               .SetTable(table_id_)
                               .SetPriority(kCatchallPriority);
-    routing_table_->AddRule(interface_index_, catch_all_rule);
-    routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
+    rule_table_->AddRule(interface_index_, catch_all_rule);
+    rule_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
   }
 }
 
@@ -405,7 +406,7 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
     if (dst_address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
       dst_addr_rule.SetUid(shill_uid);
     }
-    routing_table_->AddRule(interface_index_, dst_addr_rule);
+    rule_table_->AddRule(interface_index_, dst_addr_rule);
   }
 
   // Always set a rule for matching traffic tagged with the fwmark routing tag
@@ -415,11 +416,11 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
           .SetPriority(base_priority)
           .SetTable(table_id)
           .SetFwMark(GetFwmarkRoutingTag(interface_index_));
-  routing_table_->AddRule(interface_index_, fwmark_routing_entry);
+  rule_table_->AddRule(interface_index_, fwmark_routing_entry);
   if (no_ipv6) {
     fwmark_routing_entry.SetUid(shill_uid);
   }
-  routing_table_->AddRule(interface_index_, fwmark_routing_entry.FlipFamily());
+  rule_table_->AddRule(interface_index_, fwmark_routing_entry.FlipFamily());
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
@@ -427,11 +428,11 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
                       .SetTable(table_id)
                       .SetPriority(base_priority)
                       .SetOif(interface_name_);
-  routing_table_->AddRule(interface_index_, oif_rule);
+  rule_table_->AddRule(interface_index_, oif_rule);
   if (no_ipv6) {
     oif_rule.SetUid(shill_uid);
   }
-  routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
+  rule_table_->AddRule(interface_index_, oif_rule.FlipFamily());
 
   // TODO(b/264963034): kUnknown here is to adapt to legacy test code where
   // kUnknown instead of kVPN is used as test case for non-physical interfaces.
@@ -446,17 +447,17 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
       if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
         if_addr_rule.SetUid(shill_uid);
       }
-      routing_table_->AddRule(interface_index_, if_addr_rule);
+      rule_table_->AddRule(interface_index_, if_addr_rule);
     }
     auto iif_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                         .SetTable(table_id)
                         .SetPriority(base_priority)
                         .SetIif(interface_name_);
-    routing_table_->AddRule(interface_index_, iif_rule);
+    rule_table_->AddRule(interface_index_, iif_rule);
     if (no_ipv6) {
       iif_rule.SetUid(shill_uid);
     }
-    routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
+    rule_table_->AddRule(interface_index_, iif_rule.FlipFamily());
   }
 }
 

@@ -24,6 +24,7 @@ class Metrics;
 class MojoServiceProvider;
 class NetlinkManager;
 class ProcessManager;
+class RoutingPolicyService;
 class RoutingTable;
 class RTNLHandler;
 
@@ -86,6 +87,7 @@ class DaemonTask {
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
+  RoutingPolicyService* rule_table_;
   DHCPProvider* dhcp_provider_;
   NetlinkManager* netlink_manager_;
   ProcessManager* process_manager_;
