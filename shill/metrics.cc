@@ -94,6 +94,20 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
   }
 }
 
+// Converts APN types to strings used in a metric name.
+std::string ApnTypeToMetricString(ApnList::ApnType type) {
+  switch (type) {
+    case ApnList::ApnType::kDefault:
+      return "DEFAULT";
+    case ApnList::ApnType::kDun:
+      return "DUN";
+    case ApnList::ApnType::kAttach:
+      return "IA";
+  }
+  NOTREACHED();
+  return "";
+}
+
 // Converts VPN types to strings used in a metric name.
 std::string VPNTypeToMetricString(VPNType type) {
   switch (type) {
@@ -138,6 +152,17 @@ Metrics::~Metrics() = default;
 
 void Metrics::SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample) {
   library_->SendEnumToUMA(metric.n.name, sample, metric.max);
+}
+
+void Metrics::SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
+                            ApnList::ApnType type,
+                            int sample) {
+  // Using the format Network.Shill.Cellular.{MetricName}.{ApnType} to make it
+  // easier to find the metrics using autocomplete in UMA.
+  const std::string name =
+      base::StringPrintf("%s.Cellular.%s.%s", kMetricPrefix, metric.n.name,
+                         ApnTypeToMetricString(type).c_str());
+  library_->SendEnumToUMA(name, sample, metric.max);
 }
 
 void Metrics::SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
@@ -960,12 +985,15 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
   SendToUMA(kMetricCellularSignalStrengthBeforeDrop, signal_strength);
 }
 
-void Metrics::NotifyCellularConnectionResult(Error::Type error) {
+void Metrics::NotifyCellularConnectionResult(Error::Type error,
+                                             ApnList::ApnType apn_type) {
   SLOG(2) << __func__ << ": " << error;
-
+  DCHECK(apn_type != ApnList::ApnType::kAttach)
+      << "shill should not send this metric for Attach APNs";
   CellularConnectResult connect_result =
       ConvertErrorToCellularConnectResult(error);
-  SendEnumToUMA(kMetricCellularConnectResult, static_cast<int>(connect_result));
+  SendEnumToUMA(kMetricCellularConnectResult, apn_type,
+                static_cast<int>(connect_result));
 }
 
 int64_t Metrics::HashApn(const std::string& uuid,

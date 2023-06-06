@@ -724,30 +724,58 @@ TEST_F(MetricsTest, CellularDrop) {
   }
 }
 
-TEST_F(MetricsTest, NotifyCellularConnectionResult_Valid) {
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Valid) {
   Error::Type error = Error::Type::kOperationFailed;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricCellularConnectResult.n.name,
+          "Network.Shill.Cellular.ConnectResult.DEFAULT",
           static_cast<int>(Metrics::CellularConnectResult::
                                kCellularConnectResultOperationFailed),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(error);
+  metrics_.NotifyCellularConnectionResult(error, ApnList::ApnType::kDefault);
 }
 
-TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Unknown) {
   Error::Type invalid_error = Error::Type::kNumErrors;
   EXPECT_CALL(
       library_,
       SendEnumToUMA(
-          Metrics::kMetricCellularConnectResult.n.name,
+          "Network.Shill.Cellular.ConnectResult.DEFAULT",
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultUnknown),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(invalid_error);
+  metrics_.NotifyCellularConnectionResult(invalid_error,
+                                          ApnList::ApnType::kDefault);
+}
+
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Valid) {
+  Error::Type error = Error::Type::kOperationFailed;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          "Network.Shill.Cellular.ConnectResult.DUN",
+          static_cast<int>(Metrics::CellularConnectResult::
+                               kCellularConnectResultOperationFailed),
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultMax)));
+  metrics_.NotifyCellularConnectionResult(error, ApnList::ApnType::kDun);
+}
+
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Unknown) {
+  Error::Type invalid_error = Error::Type::kNumErrors;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          "Network.Shill.Cellular.ConnectResult.DUN",
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultUnknown),
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultMax)));
+  metrics_.NotifyCellularConnectionResult(invalid_error,
+                                          ApnList::ApnType::kDun);
 }
 
 TEST_F(MetricsTest, IntGid1) {

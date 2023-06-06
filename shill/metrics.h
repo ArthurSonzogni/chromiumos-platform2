@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/cellular/apn_list.h"
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
 #include "shill/net/ieee80211.h"
@@ -90,6 +91,15 @@ class Metrics : public DefaultServiceObserver {
     const char* name;
     // Necessary for testing.
     bool operator==(const FixedName& that) const {
+      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
+    }
+  };
+
+  // Represents a UMA metric name by APN type.
+  struct NameByApnType {
+    const char* name;
+    // Necessary for testing.
+    bool operator==(const NameByApnType& that) const {
       return strncmp(name, that.name, kMaxMetricNameLen) == 0;
     }
   };
@@ -574,8 +584,9 @@ class Metrics : public DefaultServiceObserver {
     kCellularConnectResultInternalError = 11,
     kCellularConnectResultMax
   };
-  static constexpr EnumMetric<FixedName> kMetricCellularConnectResult = {
-      .n = FixedName{"Network.Shill.Cellular.ConnectResult"},
+
+  static constexpr EnumMetric<NameByApnType> kMetricCellularConnectResult = {
+      .n = NameByApnType{"ConnectResult"},
       .max = static_cast<int>(CellularConnectResult::kCellularConnectResultMax),
   };
 
@@ -1784,7 +1795,8 @@ class Metrics : public DefaultServiceObserver {
                                 uint16_t signal_strength);
 
   // Notifies this object of the resulting status of a cellular connection
-  void NotifyCellularConnectionResult(Error::Type error);
+  void NotifyCellularConnectionResult(Error::Type error,
+                                      ApnList::ApnType apn_type);
 
   // Notifies this object of the entitlement check result
   virtual void NotifyCellularEntitlementCheckResult(
@@ -2169,6 +2181,11 @@ class Metrics : public DefaultServiceObserver {
 
   // Sends linear histogram data to UMA for a metric with a fixed name.
   virtual void SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample);
+
+  // Sends linear histogram data to UMA for a metric split by APN type.
+  virtual void SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
+                             ApnList::ApnType type,
+                             int sample);
 
   // Sends linear histogram data to UMA for a metric split by shill
   // Technology.

@@ -1160,7 +1160,8 @@ bool Cellular::GetConnectable(CellularService* service) const {
 
 void Cellular::NotifyCellularConnectionResult(const Error& error,
                                               const std::string& iccid,
-                                              bool is_user_triggered) {
+                                              bool is_user_triggered,
+                                              ApnList::ApnType apn_type) {
   SLOG(3) << LoggingTag() << ": " << __func__ << ": Result: " << error.type();
   // Don't report successive failures on the same SIM when the `Connect` is
   // triggered by `AutoConnect`, and the failures are the same.
@@ -1172,7 +1173,7 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
             << error.message();
     return;
   }
-  metrics()->NotifyCellularConnectionResult(error.type());
+  metrics()->NotifyCellularConnectionResult(error.type(), apn_type);
   last_cellular_connection_results_[iccid] = error.type();
   if (error.IsSuccess()) {
     return;
@@ -1269,11 +1270,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
   CHECK(service);
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << service->log_name();
 
+  const ApnList::ApnType apn_type = ApnList::ApnType::kDefault;
   if (!capability_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Modem not available.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
@@ -1281,7 +1283,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Inhibited.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
@@ -1290,7 +1292,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error error_temp = Error(Error::kWrongState, "Connect already pending.");
     LOG(WARNING) << LoggingTag() << ": " << error_temp.message();
     NotifyCellularConnectionResult(error_temp, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
@@ -1307,7 +1309,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "Connect Failed: ICCID not available.");
       NotifyCellularConnectionResult(*error, service->iccid(),
-                                     service->is_in_user_connect());
+                                     service->is_in_user_connect(), apn_type);
     }
     return;
   }
@@ -1324,7 +1326,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Connect Failed: Modem not started.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
@@ -1332,7 +1334,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
@@ -1349,11 +1351,11 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Connect Failed: Modem not registered.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     // If using an attach APN, send detailed metrics since |kNotRegistered| is
     // a very common error when using Attach APNs.
     if (service->GetLastAttachApn())
-      NotifyDetailedCellularConnectionResult(*error, ApnList::ApnType::kDefault,
+      NotifyDetailedCellularConnectionResult(*error, apn_type,
                                              *service->GetLastAttachApn());
     return;
   }
@@ -1362,13 +1364,13 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Connect Failed: Roaming disallowed.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service->is_in_user_connect());
+                                   service->is_in_user_connect(), apn_type);
     return;
   }
 
   OnConnecting();
   capability_->Connect(
-      ApnList::ApnType::kDefault,
+      apn_type,
       base::BindOnce(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
                      service->iccid(), service->is_in_user_connect()));
 
@@ -1380,7 +1382,8 @@ void Cellular::Connect(CellularService* service, Error* error) {
 void Cellular::OnConnectReply(std::string iccid,
                               bool is_user_triggered,
                               const Error& error) {
-  NotifyCellularConnectionResult(error, iccid, is_user_triggered);
+  NotifyCellularConnectionResult(error, iccid, is_user_triggered,
+                                 ApnList::ApnType::kDefault);
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Failed: " << error;
     if (service_ && service_->iccid() == iccid) {
@@ -2232,7 +2235,8 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
         break;
     }
     NotifyCellularConnectionResult(std::move(error), connect_pending_iccid_,
-                                   is_user_triggered);
+                                   is_user_triggered,
+                                   ApnList::ApnType::kDefault);
   }
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();

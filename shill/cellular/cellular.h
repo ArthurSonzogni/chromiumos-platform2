@@ -513,7 +513,8 @@ class Cellular : public Device,
   void OnDisconnectFailed();
   void NotifyCellularConnectionResult(const Error& error,
                                       const std::string& iccid,
-                                      bool is_user_triggered);
+                                      bool is_user_triggered,
+                                      ApnList::ApnType apn_type);
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
