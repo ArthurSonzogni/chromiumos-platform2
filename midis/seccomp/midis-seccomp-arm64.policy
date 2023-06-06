@@ -18,6 +18,7 @@ epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
 eventfd2: 1
+exit_group: 1
 fcntl: 1
 fstat: 1
 newfstatat: 1
