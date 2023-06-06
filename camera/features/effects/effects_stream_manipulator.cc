@@ -221,6 +221,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
     StreamContext* stream_context = nullptr;
     uint32_t frame_number = 0;
+    buffer_handle_t yuv_result_buffer = nullptr;
     std::optional<CameraBufferPool::Buffer> yuv_buffer;
     bool yuv_stream_appended = false;
     bool blob_result_pending = false;
@@ -267,7 +268,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
     CaptureResultCallback result_callback;
     uint32_t frame_number = 0;
-    bool result_buffer_appended = false;
+    bool return_result_buffer_on_deletion = true;
     Camera3StreamBuffer result_buffer;
     std::vector<Camera3StreamBuffer> copy_buffers;
     SharedImage yuv_image;
@@ -362,7 +363,7 @@ EffectsStreamManipulatorImpl::ProcessContext::~ProcessContext() {
 
   Camera3CaptureDescriptor result(
       camera3_capture_result_t{.frame_number = frame_number});
-  if (!result_buffer_appended) {
+  if (return_result_buffer_on_deletion) {
     result.AppendOutputBuffer(std::move(result_buffer));
   }
   for (auto& copy_buffer : copy_buffers) {
@@ -863,6 +864,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     // If this buffer is appended by us as the YUV input for a blob stream, we
     // will not return it to the client.
     StreamContext* blob_stream_context = nullptr;
+    CaptureContext* blob_capture_context = nullptr;
     for (auto& s : stream_contexts_) {
       if (s->yuv_stream_for_blob == result_buffer.stream()) {
         blob_stream_context = s.get();
@@ -871,11 +873,13 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     }
     bool yuv_stream_appended = false;
     if (blob_stream_context) {
-      if (CaptureContext* blob_capture_context =
-              blob_stream_context->GetCaptureContext(result.frame_number())) {
+      blob_capture_context =
+          blob_stream_context->GetCaptureContext(result.frame_number());
+      if (blob_capture_context) {
         yuv_stream_appended = blob_capture_context->yuv_stream_appended;
         if (!last_set_effect_config_.HasEnabledEffects() &&
             blob_capture_context->blob_intermediate_yuv_pending) {
+          blob_capture_context->yuv_result_buffer = *result_buffer.buffer();
           still_capture_processor_->QueuePendingYuvImage(
               result.frame_number(), *result_buffer.buffer(), base::ScopedFD());
           blob_capture_context->blob_intermediate_yuv_pending = false;
@@ -887,7 +891,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         process_contexts.emplace(size, std::make_unique<ProcessContext>());
     it->second->result_callback = callbacks_.result_callback,
     it->second->frame_number = result.frame_number(),
-    it->second->result_buffer_appended = yuv_stream_appended,
+    it->second->return_result_buffer_on_deletion =
+        !blob_capture_context && !yuv_stream_appended,
     it->second->result_buffer = std::move(result_buffer),
     it->second->processing_time_start = processing_time_start,
     ++num_processed_streams;
@@ -1102,6 +1107,7 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
             blob_stream_context->GetCaptureContext(
                 process_context->frame_number)) {
       if (blob_capture_context->blob_intermediate_yuv_pending) {
+        blob_capture_context->yuv_result_buffer = *result_buffer.buffer;
         still_capture_processor_->QueuePendingYuvImage(
             process_context->frame_number, *result_buffer.buffer,
             base::ScopedFD());
@@ -1126,6 +1132,16 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
         continue;
       CaptureContext& capture_context =
           *stream_context->GetCaptureContext(result.frame_number());
+      if (!capture_context.yuv_stream_appended) {
+        result.AppendOutputBuffer(
+            Camera3StreamBuffer::MakeResultOutput(camera3_stream_buffer_t{
+                .stream = stream_context->yuv_stream_for_blob,
+                .buffer = &capture_context.yuv_result_buffer,
+                .status = CAMERA3_BUFFER_STATUS_OK,
+                .acquire_fence = -1,
+                .release_fence = -1,
+            }));
+      }
       capture_context.yuv_buffer = {};
       capture_context.still_capture_processor_pending = false;
       OnFrameCompleted(*stream_context);
