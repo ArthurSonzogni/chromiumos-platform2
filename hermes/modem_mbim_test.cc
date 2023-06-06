@@ -104,6 +104,15 @@ class FakeLibmbim : public LibmbimInterface {
     return mbim_message_new(nullptr, 0);
   }
 
+  gboolean MbimMessageValidate(const MbimMessage* self,
+                               GError** error) override {
+    return TRUE;
+  }
+
+  MbimMessageType MbimMessageGetMessageType(const MbimMessage* self) override {
+    return MBIM_MESSAGE_TYPE_COMMAND_DONE;
+  };
+
   gboolean MbimMessageResponseGetResult(const MbimMessage* self,
                                         MbimMessageType expected,
                                         GError** error) override {

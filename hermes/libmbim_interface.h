@@ -31,6 +31,10 @@ class LibmbimInterface {
   virtual MbimMessage* MbimDeviceCommandFinish(MbimDevice* self,
                                                GAsyncResult* res,
                                                GError** error) = 0;
+  virtual MbimMessageType MbimMessageGetMessageType(
+      const MbimMessage* self) = 0;
+  virtual gboolean MbimMessageValidate(const MbimMessage* self,
+                                       GError** error) = 0;
   virtual gboolean MbimMessageResponseGetResult(const MbimMessage* self,
                                                 MbimMessageType expected,
                                                 GError** error) = 0;

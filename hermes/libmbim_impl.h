@@ -34,6 +34,9 @@ class LibmbimImpl : public LibmbimInterface {
   MbimMessage* MbimDeviceCommandFinish(MbimDevice* self,
                                        GAsyncResult* res,
                                        GError** error) override;
+  gboolean MbimMessageValidate(const MbimMessage* self,
+                               GError** error) override;
+  MbimMessageType MbimMessageGetMessageType(const MbimMessage* self) override;
   gboolean MbimMessageResponseGetResult(const MbimMessage* self,
                                         MbimMessageType expected,
                                         GError** error) override;

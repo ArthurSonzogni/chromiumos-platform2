@@ -35,6 +35,14 @@ MbimMessage* LibmbimImpl::MbimDeviceCommandFinish(MbimDevice* self,
                                                   GError** error) {
   return mbim_device_command_finish(self, res, error);
 }
+gboolean LibmbimImpl::MbimMessageValidate(const MbimMessage* self,
+                                          GError** error) {
+  return mbim_message_validate(self, error);
+}
+MbimMessageType LibmbimImpl::MbimMessageGetMessageType(
+    const MbimMessage* self) {
+  return mbim_message_get_message_type(self);
+}
 gboolean LibmbimImpl::MbimMessageResponseGetResult(const MbimMessage* self,
                                                    MbimMessageType expected,
                                                    GError** error) {

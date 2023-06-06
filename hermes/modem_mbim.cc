@@ -1364,6 +1364,17 @@ bool ModemMbim::ParseEidApduResponseForTesting(
     const MbimMessage* response,
     std::string* eid,
     std::unique_ptr<LibmbimInterface> libmbim) {
+  // Message validation is implicitly done by the MbimDevice, replicate it here.
+  g_autoptr(GError) error = NULL;
+  if (!libmbim->MbimMessageValidate(response, &error))
+    return false;
+
+  // Message type is implicitly ensured to be COMMAND_DONE by the MbimDevice,
+  // replicate it here.
+  if (libmbim->MbimMessageGetMessageType(response) !=
+      MBIM_MESSAGE_TYPE_COMMAND_DONE)
+    return false;
+
   return ParseEidApduResponse(response, eid, nullptr, libmbim.get());
 }
 
