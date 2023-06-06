@@ -159,6 +159,25 @@ interface PowerButtonObserver {
   OnEvent(ButtonState button_state);
 };
 
+// Implemented by clients who desire volume button notifications.
+interface VolumeButtonObserver {
+  enum Button {
+    // The volume up button.
+    kVolumeUp,
+    // The volume down button.
+    kVolumeDown,
+  };
+  enum ButtonState {
+    // The button is up.
+    kUp,
+    // The button is down.
+    kDown,
+    // The button is hold down.
+    kRepeat,
+  };
+  OnEvent(Button button, ButtonState button_state);
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -422,4 +441,12 @@ interface Executor {
   // * |result| - Whether the routine has passed successfully.
   RunPrimeSearch(uint32 duration_sec, uint64 max_num,
                   pending_receiver<ProcessControl> process_control) => (bool passed);
+
+  // Monitor volume button events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  // * |process_control| - Used to stop the monitor process.
+  MonitorVolumeButton(pending_remote<VolumeButtonObserver> observer,
+                      pending_receiver<ProcessControl> process_control);
 };

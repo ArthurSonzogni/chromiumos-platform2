@@ -508,4 +508,13 @@ void DelegateImpl::RunPrimeSearch(uint32_t duration_sec,
   std::move(callback).Run(true);
 }
 
+void DelegateImpl::MonitorVolumeButton(
+    mojo::PendingRemote<mojom::VolumeButtonObserver> observer) {
+  auto delegate =
+      std::make_unique<EvdevVolumeButtonObserver>(std::move(observer));
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
+}
+
 }  // namespace diagnostics

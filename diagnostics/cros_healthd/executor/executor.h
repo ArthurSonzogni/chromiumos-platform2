@@ -136,6 +136,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver,
       RunPrimeSearchCallback callback) override;
+  void MonitorVolumeButton(
+      mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
+          observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

@@ -197,6 +197,23 @@ class EvdevPowerButtonObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::PowerButtonObserver> observer_;
 };
 
+class EvdevVolumeButtonObserver final : public EvdevUtil::Delegate {
+ public:
+  explicit EvdevVolumeButtonObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
+          observer);
+
+  // EvdevUtil::Delegate overrides.
+  bool IsTarget(LibevdevWrapper* dev) override;
+  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
+  void InitializationFail(uint32_t custom_reason,
+                          const std::string& description) override;
+  void ReportProperties(LibevdevWrapper* dev) override;
+
+ private:
+  mojo::Remote<ash::cros_healthd::mojom::VolumeButtonObserver> observer_;
+};
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_

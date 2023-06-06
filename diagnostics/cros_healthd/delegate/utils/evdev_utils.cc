@@ -414,4 +414,49 @@ void EvdevPowerButtonObserver::InitializationFail(
 
 void EvdevPowerButtonObserver::ReportProperties(LibevdevWrapper* dev) {}
 
+EvdevVolumeButtonObserver::EvdevVolumeButtonObserver(
+    mojo::PendingRemote<mojom::VolumeButtonObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevVolumeButtonObserver::IsTarget(LibevdevWrapper* dev) {
+  return dev->HasEventCode(EV_KEY, KEY_VOLUMEDOWN) &&
+         dev->HasEventCode(EV_KEY, KEY_VOLUMEUP);
+}
+
+void EvdevVolumeButtonObserver::FireEvent(const input_event& ev,
+                                          LibevdevWrapper* dev) {
+  if (ev.type != EV_KEY) {
+    return;
+  }
+
+  mojom::VolumeButtonObserver::Button button;
+  if (ev.code == KEY_VOLUMEUP) {
+    button = mojom::VolumeButtonObserver::Button::kVolumeUp;
+  } else if (ev.code == KEY_VOLUMEDOWN) {
+    button = mojom::VolumeButtonObserver::Button::kVolumeDown;
+  } else {
+    return;
+  }
+
+  mojom::VolumeButtonObserver::ButtonState button_state;
+  if (ev.value == 0) {
+    button_state = mojom::VolumeButtonObserver::ButtonState::kUp;
+  } else if (ev.value == 1) {
+    button_state = mojom::VolumeButtonObserver::ButtonState::kDown;
+  } else if (ev.value == 2) {
+    button_state = mojom::VolumeButtonObserver::ButtonState::kRepeat;
+  } else {
+    return;
+  }
+
+  observer_->OnEvent(button, button_state);
+}
+
+void EvdevVolumeButtonObserver::InitializationFail(
+    uint32_t custom_reason, const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
+}
+
+void EvdevVolumeButtonObserver::ReportProperties(LibevdevWrapper* dev) {}
+
 }  // namespace diagnostics

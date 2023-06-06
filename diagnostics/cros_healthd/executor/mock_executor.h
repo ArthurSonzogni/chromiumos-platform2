@@ -168,6 +168,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                    process_control_receiver,
                RunPrimeSearchCallback callback),
               (override));
+  MOCK_METHOD(void,
+              MonitorVolumeButton,
+              (mojo::PendingRemote<
+                   ash::cros_healthd::mojom::VolumeButtonObserver> observer,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control),
+              (override));
 };
 
 }  // namespace diagnostics

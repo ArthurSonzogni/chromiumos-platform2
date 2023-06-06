@@ -61,6 +61,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void RunPrimeSearch(uint32_t duration_sec,
                       uint64_t max_num,
                       RunPrimeSearchCallback callback) override;
+  void MonitorVolumeButton(
+      mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
+          observer) override;
 };
 
 }  // namespace diagnostics

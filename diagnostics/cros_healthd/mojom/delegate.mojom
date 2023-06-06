@@ -142,4 +142,10 @@ interface Delegate {
   // The response:
   // * |passed| - Whether the routine has passed.
   RunPrimeSearch(uint32 duration_sec, uint64 max_num) => (bool passed);
+
+  // Monitor volume button events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorVolumeButton(pending_remote<VolumeButtonObserver> observer);
 };
