@@ -150,6 +150,10 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
     // context in crbug.com/1229376
     minijail_namespace_pids(jail.get());
     minijail_namespace_vfs(jail.get());
+    // Allow changes in parent mount namespace to propagate in.
+    // This is needed for DLC to become visible in child subprocesses
+    // if the DLC is mounted after the child process starts.
+    minijail_remount_mode(jail.get(), MS_SLAVE);
   }
 
   // This is the file descriptor used to bootstrap mojo connection between
@@ -299,6 +303,7 @@ void Process::WorkerProcessRun() {
     const std::string seccomp_policy_path = GetSeccompPolicyPath(model_name_);
     minijail_parse_seccomp_filters(jail.get(), seccomp_policy_path.c_str());
     minijail_use_seccomp_filter(jail.get());
+    minijail_remount_mode(jail.get(), MS_SLAVE);
     minijail_enter(jail.get());
   }
   message_loop.Run();
