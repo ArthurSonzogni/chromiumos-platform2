@@ -272,9 +272,9 @@ ArcVm::ArcVm(int32_t vsock_cid,
              base::FilePath runtime_dir,
              base::FilePath data_disk_path,
              ArcVmFeatures features,
-             base::OneShotTimer* swap_policy_timer,
-             base::RepeatingTimer* swap_state_monitor_timer,
-             base::RepeatingTimer* aggressive_balloon_timer)
+             std::unique_ptr<base::OneShotTimer> swap_policy_timer,
+             std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer,
+             std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -283,10 +283,10 @@ ArcVm::ArcVm(int32_t vsock_cid,
       data_disk_path_(data_disk_path),
       features_(features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
-      swap_policy_timer_(swap_policy_timer),
-      swap_state_monitor_timer_(swap_state_monitor_timer),
+      swap_policy_timer_(std::move(swap_policy_timer)),
+      swap_state_monitor_timer_(std::move(swap_state_monitor_timer)),
       vmm_swap_tbw_policy_(vmm_swap_tbw_policy),
-      aggressive_balloon_timer_(aggressive_balloon_timer) {}
+      aggressive_balloon_timer_(std::move(aggressive_balloon_timer)) {}
 
 ArcVm::~ArcVm() {
   Shutdown();

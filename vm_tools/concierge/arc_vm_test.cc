@@ -833,15 +833,17 @@ class ArcVmTest : public ::testing::Test {
 
     vmm_swap_tbw_policy_->SetTargetTbwPerDay(4096);
 
+    // The following owned and destroyed by ArcVm class unique_ptr destructor.
     swap_policy_timer_ = new base::MockOneShotTimer();
     swap_state_monitor_timer_ = new base::MockRepeatingTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
-    vm_ = std::unique_ptr<ArcVm>(
-        new ArcVm(vsock_cid, std::make_unique<patchpanel::FakeClient>(),
-                  nullptr, vmm_swap_tbw_policy_, temp_dir_.GetPath(),
-                  base::FilePath("dummy"), {}, swap_policy_timer_,
-                  swap_state_monitor_timer_, aggressive_balloon_timer_));
+    vm_ = std::unique_ptr<ArcVm>(new ArcVm(
+        vsock_cid, std::make_unique<patchpanel::FakeClient>(), nullptr,
+        vmm_swap_tbw_policy_, temp_dir_.GetPath(), base::FilePath("dummy"), {},
+        std::unique_ptr<base::OneShotTimer>(swap_policy_timer_),
+        std::unique_ptr<base::RepeatingTimer>(swap_state_monitor_timer_),
+        std::unique_ptr<base::RepeatingTimer>(aggressive_balloon_timer_)));
 
     // The more than 28days enabled log unblocks the VmmSwapUsagePolicy.
     // We don't add OnDisabled log here because adding OnDisabled log at 50days
@@ -895,9 +897,9 @@ class ArcVmTest : public ::testing::Test {
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
 
-  raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
-  raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
-  raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
+  base::MockOneShotTimer* swap_policy_timer_;
+  base::MockRepeatingTimer* swap_state_monitor_timer_;
+  base::MockRepeatingTimer* aggressive_balloon_timer_;
 
   std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
       std::make_shared<VmmSwapTbwPolicy>();

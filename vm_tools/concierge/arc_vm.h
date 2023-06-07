@@ -171,11 +171,12 @@ class ArcVm final : public VmBaseImpl {
         base::FilePath runtime_dir,
         base::FilePath data_disk_path,
         ArcVmFeatures features,
-        base::OneShotTimer* swap_policy_timer = new base::OneShotTimer(),
-        base::RepeatingTimer* swap_state_monitor_timer =
-            new base::RepeatingTimer(),
-        base::RepeatingTimer* aggressive_balloon_timer =
-            new base::RepeatingTimer());
+        std::unique_ptr<base::OneShotTimer> swap_policy_timer =
+            std::make_unique<base::OneShotTimer>(),
+        std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer =
+            std::make_unique<base::RepeatingTimer>(),
+        std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer =
+            std::make_unique<base::RepeatingTimer>());
   ArcVm(const ArcVm&) = delete;
   ArcVm& operator=(const ArcVm&) = delete;
 
