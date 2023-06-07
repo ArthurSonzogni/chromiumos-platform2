@@ -6,8 +6,10 @@ mod common;
 mod config;
 mod cpu_utils;
 mod dbus;
+mod feature;
 mod memory;
 mod power;
+mod psi;
 
 #[cfg(test)]
 mod test_utils;
@@ -42,6 +44,10 @@ fn main() -> Result<()> {
     }
 
     info!("Starting resourced");
+
+    if let Err(err) = feature::init() {
+        error!("Failed to initialize feature: {}", err);
+    }
 
     #[cfg(target_arch = "x86_64")]
     cgroup_x86_64::init()?;
