@@ -260,7 +260,8 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
   std::string response_hash(32, 0);
   hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
+    if (!authorization_delegate)
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     if (!authorization_delegate->CheckResponseAuthorization(
             response_hash, authorization_section_bytes))
       return TRUNKS_RC_AUTHORIZATION_FAILED;
