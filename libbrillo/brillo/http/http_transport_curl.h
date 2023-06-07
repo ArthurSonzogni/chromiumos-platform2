@@ -70,6 +70,12 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetDnsServers(const std::vector<std::string>& dns_servers) override;
 
+  void SetDnsInterface(const std::string& dns_interface) override;
+
+  void SetDnsLocalIPv4Address(const std::string& dns_ipv4_addr) override;
+
+  void SetDnsLocalIPv6Address(const std::string& dns_ipv6_addr) override;
+
   void UseDefaultCertificate() override;
 
   void UseCustomCertificate(Certificate cert) override;
@@ -150,6 +156,9 @@ class BRILLO_EXPORT Transport : public http::Transport {
   base::TimeDelta connection_timeout_;
   std::string ip_address_;
   std::vector<std::string> dns_servers_;
+  std::string dns_interface_;
+  std::string dns_ipv4_addr_;
+  std::string dns_ipv6_addr_;
   base::FilePath certificate_path_;
   curl_slist* host_list_{nullptr};
   std::optional<int> buffer_size_;

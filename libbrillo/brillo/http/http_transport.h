@@ -109,6 +109,17 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the list of DNS servers to be used instead of the system default.
   virtual void SetDnsServers(const std::vector<std::string>& dns_servers) = 0;
 
+  // Set the name of the network interface that the DNS resolver should bind to.
+  // Note: this method needs CAP_NET_ADMIN permission or root because it
+  // eventually calls setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE).
+  virtual void SetDnsInterface(const std::string& dns_interface) = 0;
+
+  // Set the local IPv4 address that the DNS resolver should bind to.
+  virtual void SetDnsLocalIPv4Address(const std::string& dns_ipv4_addr) = 0;
+
+  // Set the local IPv6 address that the DNS resolver should bind to.
+  virtual void SetDnsLocalIPv6Address(const std::string& dns_ipv6_addr) = 0;
+
   // Use the default CA certificate for certificate verification. This
   // means that clients are only allowed to communicate with Google services.
   virtual void UseDefaultCertificate() {}

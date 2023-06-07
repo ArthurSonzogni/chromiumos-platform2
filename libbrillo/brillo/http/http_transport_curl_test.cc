@@ -451,6 +451,68 @@ TEST_F(HttpCurlTransportTest, SetDnsServers) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, SetDnsInterface) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_DNS_INTERFACE, "eth0"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetDnsInterface("eth0");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
+TEST_F(HttpCurlTransportTest, SetDnsLocalIPv4Address) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_DNS_LOCAL_IP4, "192.168.0.14"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetDnsLocalIPv4Address("192.168.0.14");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
+TEST_F(HttpCurlTransportTest, SetDnsLocalIPv6Address) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_DNS_LOCAL_IP6,
+                                        "fe80::a9ff:fe46:b619"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetDnsLocalIPv6Address("fe80::a9ff:fe46:b619");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 }  // namespace curl
 }  // namespace http
 }  // namespace brillo

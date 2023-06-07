@@ -47,6 +47,9 @@ class MockTransport : public Transport {
               SetDnsServers,
               (const std::vector<std::string>&),
               (override));
+  MOCK_METHOD(void, SetDnsInterface, (const std::string&), (override));
+  MOCK_METHOD(void, SetDnsLocalIPv4Address, (const std::string&), (override));
+  MOCK_METHOD(void, SetDnsLocalIPv6Address, (const std::string&), (override));
   MOCK_METHOD(void, UseDefaultCertificate, (), (override));
   MOCK_METHOD(void, UseCustomCertificate, (Certificate), (override));
   MOCK_METHOD(void,

@@ -208,6 +208,18 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
         curl_handle, CURLOPT_DNS_SERVERS,
         base::JoinString(dns_servers_, ",").c_str());
   }
+  if (code == CURLE_OK && !dns_interface_.empty()) {
+    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_DNS_INTERFACE,
+                                          dns_interface_);
+  }
+  if (code == CURLE_OK && !dns_ipv4_addr_.empty()) {
+    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_DNS_LOCAL_IP4,
+                                          dns_ipv4_addr_);
+  }
+  if (code == CURLE_OK && !dns_ipv6_addr_.empty()) {
+    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_DNS_LOCAL_IP6,
+                                          dns_ipv6_addr_);
+  }
   if (code == CURLE_OK && host_list_) {
     code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_RESOLVE,
                                           host_list_);
@@ -339,6 +351,18 @@ void Transport::SetLocalIpAddress(const std::string& ip_address) {
 
 void Transport::SetDnsServers(const std::vector<std::string>& dns_servers) {
   dns_servers_ = dns_servers;
+}
+
+void Transport::SetDnsInterface(const std::string& dns_interface) {
+  dns_interface_ = dns_interface;
+}
+
+void Transport::SetDnsLocalIPv4Address(const std::string& dns_ipv4_addr) {
+  dns_ipv4_addr_ = dns_ipv4_addr;
+}
+
+void Transport::SetDnsLocalIPv6Address(const std::string& dns_ipv6_addr) {
+  dns_ipv6_addr_ = dns_ipv6_addr;
 }
 
 void Transport::UseDefaultCertificate() {
