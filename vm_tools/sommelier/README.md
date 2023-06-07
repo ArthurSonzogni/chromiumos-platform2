@@ -231,6 +231,10 @@ compositor instead of being sent to gedit:
 sommelier --accelerators="<Alt>Bracketright,<Alt>Bracketleft" gedit
 ```
 
+## Gamepad Support
+
+See [GAMING.md](GAMING.md).
+
 ## Writing unit tests
 
 See [TESTING.md](TESTING.md).
