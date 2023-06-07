@@ -314,8 +314,26 @@ class Tpm2BackendFuzzerProxy : public Proxy {
     ON_CALL(tpm_nvram_, WriteSpace(_, _, _, _)).WillByDefault(fuzzed_result);
     ON_CALL(tpm_nvram_, ReadSpace(_, _, _, _)).WillByDefault(fuzzed_result);
     ON_CALL(tpm_nvram_, LockSpace(_, _, _, _)).WillByDefault(fuzzed_result);
-    ON_CALL(tpm_nvram_, ListSpaces(_, _, _, _)).WillByDefault(fuzzed_result);
     ON_CALL(tpm_nvram_, GetSpaceInfo(_, _, _, _)).WillByDefault(fuzzed_result);
+    ON_CALL(tpm_nvram_, ListSpaces(_, _, _, _))
+        .WillByDefault([this](auto&&, auto* reply, auto&&, auto&&) {
+          using ReplyType = std::remove_pointer_t<decltype(reply)>;
+
+          if (data_provider_.ConsumeBool()) {
+            *reply = FuzzedObject<ReplyType>()(data_provider_);
+            return FuzzedObject<bool>()(data_provider_);
+          }
+
+          *reply = ReplyType();
+          reply->set_result(tpm_manager::NvramResult::NVRAM_RESULT_SUCCESS);
+          for (uint32_t index :
+               {0x100a, 0x9da5b0, 0x800004, 0x9da5b2, 0x800006, 0x100e}) {
+            if (data_provider_.ConsumeBool()) {
+              reply->add_index_list(index);
+            }
+          }
+          return true;
+        });
 
     ON_CALL(platform_, ReadFileToString(_, _))
         .WillByDefault([this](auto&&, std::string* result) {
