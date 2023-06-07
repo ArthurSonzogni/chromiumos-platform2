@@ -602,9 +602,9 @@ std::string SharedDataParam::to_string() const {
        ":uidmap=", uid_map, ":gidmap=", gid_map, ":timeout=",
        (enable_caches == SharedDataParam::Cache::kAlways) ? "3600" : "1",
        ":rewrite-security-xattrs=", rewrite_security_xattrs ? "true" : "false",
-       ":ascii_casefold=", ascii_casefold ? "true" : "false", ":writeback=",
+       ascii_casefold ? ":ascii_casefold=true" : "", ":writeback=",
        (enable_caches == SharedDataParam::Cache::kAlways) ? "true" : "false",
-       ":posix_acl=", posix_acl ? "true" : "false"});
+       posix_acl ? "" : ":posix_acl=false"});
 
   if (!privileged_quota_uids.empty()) {
     result += ":privileged_quota_uids=";

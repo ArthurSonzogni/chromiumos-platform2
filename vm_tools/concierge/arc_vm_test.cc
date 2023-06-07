@@ -816,11 +816,10 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
                                // from UID for ease of testing.
                                300 /* gid */)
           .to_string(),
-      "/run/arcvm/host_generated/oem/etc"
-      ":oem_etc:type=fs:cache=always:uidmap=0 299 1, 5000 600 50:gidmap=0 300 "
-      "1, 5000 600 "
-      "50:timeout=3600:rewrite-security-xattrs=true:ascii_casefold=false:"
-      "writeback=true:posix_acl=false");
+      "/run/arcvm/host_generated/oem/etc:oem_etc:type=fs:cache=always:uidmap=0 "
+      "299 1, 5000 600 50:gidmap=0 300 1, 5000 600 "
+      "50:timeout=3600:rewrite-security-xattrs=true:writeback=true:posix_acl="
+      "false");
 }
 
 // Test fixture for actually testing the ArcVm functionality.
