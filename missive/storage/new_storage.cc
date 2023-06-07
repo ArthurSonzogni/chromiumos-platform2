@@ -252,7 +252,7 @@ void NewStorage::Create(
         Start<CreateQueueContext>(
             // Don't transfer ownership of  `storage_` via std::move() since
             // we need to return `storage_` in the response
-            priority, storage_->options_.ProduceQueuesOptions(priority),
+            priority, storage_->options_.ProduceQueueOptions(priority),
             storage_, generation_guid,
             base::BindPostTaskToCurrentDefault(
                 base::BindOnce(&StorageInitContext::RespondIfAllQueuesCreated,
@@ -416,7 +416,7 @@ void NewStorage::Write(Priority priority,
               // create one, and then let the context execute the write
               // via `call_async_get_queue`.
               Start<CreateQueueContext>(
-                  priority, self->options_.ProduceQueuesOptions(priority), self,
+                  priority, self->options_.ProduceQueueOptions(priority), self,
                   generation_guid_result.ValueOrDie(),
                   std::move(call_async_get_queue));
               return;

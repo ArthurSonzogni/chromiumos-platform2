@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
@@ -140,18 +141,9 @@ static constexpr size_t kDebugDataPrintSize = 16uL;
 // Storage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
  public:
-  TestStorageOptions() = default;
-
-  QueuesOptionsList ProduceQueuesOptionsList() const override {
-    // Call base class method.
-    auto queues_options = StorageOptions::ProduceQueuesOptionsList();
-    for (auto& queue_options : queues_options) {
-      // Disable upload retry.
-      queue_options.second.set_upload_retry_delay(upload_retry_delay_);
-    }
-    // Make adjustments.
-    return queues_options;
-  }
+  TestStorageOptions()
+      : StorageOptions(base::BindRepeating(
+            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {}
 
   // Prepare options adjustment.
   // Must be called before the options are used by Storage::Create().
@@ -160,6 +152,11 @@ class TestStorageOptions : public StorageOptions {
   }
 
  private:
+  void ModifyQueueOptions(Priority /*priority*/,
+                          QueueOptions& queue_options) const {
+    queue_options.set_upload_retry_delay(upload_retry_delay_);
+  }
+
   base::TimeDelta upload_retry_delay_{
       base::TimeDelta()};  // no retry by default
 };

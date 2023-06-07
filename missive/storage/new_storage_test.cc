@@ -139,24 +139,22 @@ std::atomic<int64_t> next_uploader_id{0};
 // NewStorage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
  public:
-  TestStorageOptions() = default;
-
-  QueueOptions ProduceQueuesOptions(Priority priority) const override {
-    // Call base class method.
-    auto queue_options = StorageOptions::ProduceQueuesOptions(priority);
-    // Disable upload retry.
-    queue_options.set_upload_retry_delay(upload_retry_delay_);
-    // Make adjustments.
-    return queue_options;
-  }
+  TestStorageOptions()
+      : StorageOptions(base::BindRepeating(
+            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {}
 
   // Prepare options adjustment.
-  // Must be called before the options are used by NewStorage::Create().
+  // Must be called before the options are used by Storage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
 
  private:
+  void ModifyQueueOptions(Priority /*priority*/,
+                          QueueOptions& queue_options) const {
+    queue_options.set_upload_retry_delay(upload_retry_delay_);
+  }
+
   base::TimeDelta upload_retry_delay_{
       base::TimeDelta()};  // no retry by default
 };

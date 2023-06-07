@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback_forward.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
@@ -46,7 +47,11 @@ class StorageOptions {
 
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
-  StorageOptions();
+  // Constructor. `modify_queue_options_for_tests` callback allows to adjust
+  // queue options (used in tests only, Set to DoNothing in prod).
+  explicit StorageOptions(base::RepeatingCallback<void(Priority, QueueOptions&)>
+                              modify_queue_options_for_tests =
+                                  base::DoNothing());
   StorageOptions(const StorageOptions& options);
   StorageOptions& operator=(const StorageOptions& options) = delete;
   virtual ~StorageOptions();
@@ -55,12 +60,13 @@ class StorageOptions {
     return *this;
   }
 
-  // Generates queue options based on a given priority
-  // Can be overridden by tests to modify queues options.
-  virtual QueueOptions ProduceQueuesOptions(Priority priority) const;
+  // Generates queue options based on a given priority.
+  // Calls `modify_queue_options_for_tests_` before returning (for tests only).
+  QueueOptions ProduceQueueOptions(Priority priority) const;
 
-  // Generates list queue options. One QueueOption for each priority.
-  virtual QueuesOptionsList ProduceQueuesOptionsList() const;
+  // Generates list queue options. One QueueOption for each priority, in order
+  // of priorities. Used for legacy storage only.
+  QueuesOptionsList ProduceQueuesOptionsList() const;
 
   // Exposes priorities in order.
   static base::span<const Priority> GetPrioritiesOrder();
@@ -112,6 +118,9 @@ class StorageOptions {
   base::TimeDelta key_check_period() const { return key_check_period_; }
 
  private:
+  // Populates queue options for the given priority.
+  QueueOptions PopulateQueueOptions(Priority priority) const;
+
   // Subdirectory of the location assigned for this Storage.
   base::FilePath directory_;
 
@@ -129,6 +138,10 @@ class StorageOptions {
   // Resources managements.
   scoped_refptr<ResourceManager> memory_resource_;
   scoped_refptr<ResourceManager> disk_space_resource_;
+
+  // Callback that can adjust queue options (used in tests only).
+  const base::RepeatingCallback<void(Priority, QueueOptions&)>
+      modify_queue_options_for_tests_;
 };
 
 // Single queue options class allowing to set parameters individually, e.g.:

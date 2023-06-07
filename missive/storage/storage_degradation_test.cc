@@ -52,8 +52,6 @@
 using ::testing::_;
 using ::testing::AnyOf;
 using ::testing::Args;
-using ::testing::AtLeast;
-using ::testing::AtMost;
 using ::testing::Between;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -128,17 +126,13 @@ static constexpr size_t kDebugDataPrintSize = 16uL;
 // Storage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
  public:
-  TestStorageOptions() = default;
-
-  QueuesOptionsList ProduceQueuesOptionsList() const override {
-    // Call base class method.
-    auto queues_options = StorageOptions::ProduceQueuesOptionsList();
-    for (auto& queue_options : queues_options) {
-      // Disable upload retry.
-      queue_options.second.set_upload_retry_delay(upload_retry_delay_);
-    }
-    // Make adjustments.
-    return queues_options;
+  TestStorageOptions()
+      : StorageOptions(base::BindRepeating(
+            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {
+    // Extend total memory size to accommodate all big records:
+    // We do not want the degradation tests to fail because of insufficient
+    // memory - only insufficient disk space is expected.
+    set_max_total_memory_size(32u * 1024uLL * 1024uLL);  // 32 MiB
   }
 
   // Prepare options adjustment.
@@ -148,6 +142,11 @@ class TestStorageOptions : public StorageOptions {
   }
 
  private:
+  void ModifyQueueOptions(Priority /*priority*/,
+                          QueueOptions& queue_options) const {
+    queue_options.set_upload_retry_delay(upload_retry_delay_);
+  }
+
   base::TimeDelta upload_retry_delay_{
       base::TimeDelta()};  // no retry by default
 };
@@ -341,16 +340,19 @@ class LegacyStorageDegradationTest
               std::make_tuple(sequence_information.priority(),
                               sequence_information.sequencing_id() - 1,
                               sequence_information.generation_id()));
-          ASSERT_TRUE(it != last_record_digest_map_->end());
-          // Previous record has been seen, last record digest must match it.
-          if (it->second != wrapped_record.last_record_digest()) {
-            DoUploadRecordFailure(
-                uploader_id_, sequence_information.priority(),
-                sequence_information.sequencing_id(),
-                sequence_information.generation_id(),
-                Status(error::DATA_LOSS, "Last record digest mismatch"),
-                std::move(processed_cb));
-            return;
+          // If previous record has been seen, last record digest must match it.
+          // Otherwise ignore digest - previous record might have been erased
+          // during degradation.
+          if (it != last_record_digest_map_->end()) {
+            if (it->second != wrapped_record.last_record_digest()) {
+              DoUploadRecordFailure(
+                  uploader_id_, sequence_information.priority(),
+                  sequence_information.sequencing_id(),
+                  sequence_information.generation_id(),
+                  Status(error::DATA_LOSS, "Last record digest mismatch"),
+                  std::move(processed_cb));
+              return;
+            }
           }
         }
         last_record_digest_map_->emplace(

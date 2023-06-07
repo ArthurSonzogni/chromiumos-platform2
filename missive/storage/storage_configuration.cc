@@ -54,17 +54,19 @@ constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
 
 }  // namespace
 
-StorageOptions::StorageOptions()
+StorageOptions::StorageOptions(
+    base::RepeatingCallback<void(Priority, QueueOptions&)>
+        modify_queue_options_for_tests)
     : key_check_period_(kDefaultKeyCheckPeriod),  // 1 second by default
       memory_resource_(base::MakeRefCounted<ResourceManager>(
           4u * 1024uLL * 1024uLL)),  // 4 MiB by default
       disk_space_resource_(base::MakeRefCounted<ResourceManager>(
-          64u * 1024uLL * 1024uLL))  // 64 MiB by default.
-{}
+          64u * 1024uLL * 1024uLL)),  // 64 MiB by default.
+      modify_queue_options_for_tests_(modify_queue_options_for_tests) {}
 StorageOptions::StorageOptions(const StorageOptions& options) = default;
 StorageOptions::~StorageOptions() = default;
 
-QueueOptions StorageOptions::ProduceQueuesOptions(Priority priority) const {
+QueueOptions StorageOptions::PopulateQueueOptions(Priority priority) const {
   switch (priority) {
     case MANUAL_BATCH_LACROS:
       return QueueOptions(*this)
@@ -107,8 +109,13 @@ QueueOptions StorageOptions::ProduceQueuesOptions(Priority priority) const {
     case UNDEFINED_PRIORITY:
       NOTREACHED() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
       return QueueOptions(*this);
-      break;
   }
+}
+
+QueueOptions StorageOptions::ProduceQueueOptions(Priority priority) const {
+  QueueOptions queue_options(PopulateQueueOptions(priority));
+  modify_queue_options_for_tests_.Run(priority, queue_options);
+  return queue_options;
 }
 
 StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
@@ -116,7 +123,7 @@ StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
   QueuesOptionsList queue_options_list;
   // Create queue option for each priority and add to the list
   for (const auto priority : kPriorityOrder) {
-    queue_options_list.emplace_back(priority, ProduceQueuesOptions(priority));
+    queue_options_list.emplace_back(priority, ProduceQueueOptions(priority));
   }
   return queue_options_list;
 }
