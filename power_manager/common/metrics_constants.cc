@@ -79,6 +79,9 @@ const int kBatteryDischargeRateWhileSuspendedMax = 5000;
 const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend =
     base::Minutes(10);
 
+const char kBatteryPercentageAtHibernateSuspendName[] =
+    "Power.BatteryPercentageAtHibernateSuspend";  // %
+
 const char kBatteryLifeName[] = "Power.BatteryLife";  // minute
 const int kBatteryLifeMin = 1;
 const int kBatteryLifeMax = 48 * 60;

@@ -115,6 +115,7 @@ class MetricsCollectorTest : public TestEnvironment {
     IgnoreMetric(kBatteryDischargeRateName);
     IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
+    IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix);
     IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
@@ -745,7 +746,61 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
                kBatteryDischargeRateWhileSuspendedMin,
                kBatteryDischargeRateWhileSuspendedMax,
                kDefaultDischargeBuckets);
+  IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
   collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, BatteryPercentageAtHibernateSuspend) {
+  const int kPercentageBeforeSuspend = 30;
+
+  metrics_to_test_.insert(kBatteryPercentageAtHibernateSuspendName);
+
+  power_status_.line_power_on = false;
+  power_status_.battery_percentage = kPercentageBeforeSuspend;
+  Init();
+
+  // We shouldn't send a sample if we haven't suspended.
+  IgnoreHandlePowerStatusUpdateMetrics();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // Ditto if the system is on AC before suspending...
+  power_status_.line_power_on = true;
+  power_status_.battery_percentage = kPercentageBeforeSuspend;
+  IgnoreHandlePowerStatusUpdateMetrics();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
+  ExpectMetric(kHibernateAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
+               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
+  collector_.HandleResume(1, true);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // Ditto if the suspend wasn't a hibernate...
+  power_status_.line_power_on = false;
+  power_status_.battery_percentage = kPercentageBeforeSuspend;
+  IgnoreHandlePowerStatusUpdateMetrics();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
+               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  collector_.HandleResume(1, false);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // The sample should be reported if the suspend was a hibernate and
+  // the system was on battery.
+  power_status_.line_power_on = false;
+  power_status_.battery_percentage = kPercentageBeforeSuspend;
+  IgnoreHandlePowerStatusUpdateMetrics();
+  collector_.HandlePowerStatusUpdate(power_status_);
+  collector_.PrepareForSuspend();
+  ExpectMetric(kHibernateAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
+               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  ExpectEnumMetric(kBatteryPercentageAtHibernateSuspendName,
+                   kPercentageBeforeSuspend, kMaxPercent);
+  IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
+  collector_.HandleResume(1, true);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageAndPower) {

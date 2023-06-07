@@ -410,6 +410,8 @@ void MetricsCollector::HandlePrivacyScreenStateChange(
 
 void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
+  battery_percent_before_suspend_ =
+      static_cast<int>(round(last_power_status_.battery_percentage)),
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentBootTime();
   for (auto& tracker : residency_trackers_)
@@ -423,6 +425,9 @@ void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
                         : kSuspendAttemptsBeforeSuccessName,
              num_suspend_attempts, kSuspendAttemptsMin, kSuspendAttemptsMax,
              kSuspendAttemptsBuckets);
+
+  GenerateBatteryPercentageAtHibernateSuspendMetric();
+
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
@@ -698,6 +703,14 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
                              discharge_rate_watts)),
       kBatteryLifeWhileSuspendedMin, kBatteryLifeWhileSuspendedMax,
       kDefaultDischargeBuckets);
+}
+
+void MetricsCollector::GenerateBatteryPercentageAtHibernateSuspendMetric() {
+  if (!last_suspend_was_hibernate_ || on_line_power_before_suspend_)
+    return;
+
+  SendEnumMetric(kBatteryPercentageAtHibernateSuspendName,
+                 battery_percent_before_suspend_, kMaxPercent);
 }
 
 void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(

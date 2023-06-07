@@ -293,6 +293,11 @@ class MetricsCollector {
   // GenerateMetricsOnPowerEvent().  Returns true if the sample was sent.
   void GenerateBatteryDischargeRateWhileSuspendedMetric();
 
+  // Generates a UMA metric sample with the battery percentage at the time
+  // the system was suspended if the system was on battery power before
+  // suspending and the last suspend was a hibernate.
+  void GenerateBatteryPercentageAtHibernateSuspendMetric();
+
   // Increments the number of user sessions that have been active on the
   // current battery charge.
   void IncrementNumOfSessionsPerChargeMetric();
@@ -380,6 +385,7 @@ class MetricsCollector {
   // which is identical to CLOCK_MONOTONIC, but includes any time spent in
   // suspend.
   double battery_energy_before_suspend_ = 0.0;
+  int battery_percent_before_suspend_ = 0;
   bool on_line_power_before_suspend_ = false;
   base::TimeTicks time_before_suspend_;
 
