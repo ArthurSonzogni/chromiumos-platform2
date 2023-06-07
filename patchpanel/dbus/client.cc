@@ -252,12 +252,19 @@ std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
   return out;
 }
 
-Client::DownstreamNetwork ConvertDownstreamNetwork(
+std::optional<Client::DownstreamNetwork> ConvertDownstreamNetwork(
     const DownstreamNetwork& in) {
-  Client::DownstreamNetwork out;
-  out.ifname = in.downstream_ifname();
-  out.ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  CopyBytes(in.ipv4_gateway_addr(), &out.ipv4_gateway_addr);
+  auto out = std::make_optional<Client::DownstreamNetwork>();
+  out->ifname = in.downstream_ifname();
+  out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  const auto ipv4_gateway_addr = net_base::IPv4Address::CreateFromBytes(
+      in.ipv4_gateway_addr().data(), in.ipv4_gateway_addr().size());
+  if (!ipv4_gateway_addr) {
+    LOG(ERROR) << "Failed to create IPv4Address for gateway address: size="
+               << in.ipv4_gateway_addr().size();
+    return std::nullopt;
+  }
+  out->ipv4_gateway_addr = *ipv4_gateway_addr;
   return out;
 }
 
@@ -483,6 +490,10 @@ void OnGetDownstreamNetworkInfoResponse(
     const GetDownstreamNetworkInfoResponse& response) {
   auto downstream_network =
       ConvertDownstreamNetwork(response.downstream_network());
+  if (!downstream_network) {
+    std::move(callback).Run(false, {}, {});
+    return;
+  }
 
   std::vector<Client::NetworkClientInfo> clients_info;
   for (const auto& ci : response.clients_info()) {
@@ -492,7 +503,7 @@ void OnGetDownstreamNetworkInfoResponse(
     }
   }
 
-  std::move(callback).Run(true, downstream_network, clients_info);
+  std::move(callback).Run(true, *downstream_network, clients_info);
 }
 
 void OnGetDownstreamNetworkInfoError(

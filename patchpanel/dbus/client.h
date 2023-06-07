@@ -127,7 +127,7 @@ class BRILLO_EXPORT Client {
   struct DownstreamNetwork {
     std::string ifname;
     IPv4Subnet ipv4_subnet;
-    std::vector<uint8_t> ipv4_gateway_addr;
+    net_base::IPv4Address ipv4_gateway_addr;
   };
 
   // See NetworkClientInfo in patchpanel_service.proto.
