@@ -32,61 +32,65 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
 }
 
-libec_sources = [
-  "add_entropy_command.cc",
-  "charge_current_limit_set_command.cc",
-  "device_event_command.cc",
-  "display_soc_command.cc",
-  "ec_command_factory.cc",
-  "ec_panicinfo.cc",
-  "ec_usb_device_monitor.cc",
-  "ec_usb_endpoint.cc",
-  "fingerprint/fp_context_command.cc",
-  "fingerprint/fp_context_command_factory.cc",
-  "fingerprint/fp_encryption_status_command.cc",
-  "fingerprint/fp_frame_command.cc",
-  "fingerprint/fp_info_command.cc",
-  "fingerprint/fp_mode.cc",
-  "fingerprint/fp_mode_command.cc",
-  "fingerprint/fp_read_match_secret_command.cc",
-  "fingerprint/fp_seed_command.cc",
-  "fingerprint/fp_stats_command.cc",
-  "fingerprint/fp_template_command.cc",
-  "flash_info_command.cc",
-  "flash_info_params.cc",
-  "flash_protect_command.cc",
-  "flash_protect_command_factory.cc",
-  "flash_spi_info_command.cc",
-  "get_chip_info_command.cc",
-  "get_comms_status_command.cc",
-  "get_features_command.cc",
-  "get_mkbp_wake_mask_command.cc",
-  "get_protocol_info_command.cc",
-  "get_version_command.cc",
-  "hello_command.cc",
-  "i2c_passthru_command.cc",
-  "i2c_read_command.cc",
-  "led_control_command.cc",
-  "mkbp_event.cc",
-  "motion_sense_command_lid_angle.cc",
-  "rand_num_command.cc",
-  "reboot_ec_command.cc",
-  "rollback_info_command.cc",
-  "set_force_lid_open_command.cc",
-  "set_mkbp_wake_mask_command.cc",
-  "smart_discharge_command.cc",
-  "versions_command.cc",
-]
+source_set("libec_common") {
+  sources = [
+    "add_entropy_command.cc",
+    "charge_current_limit_set_command.cc",
+    "device_event_command.cc",
+    "display_soc_command.cc",
+    "ec_command_factory.cc",
+    "ec_panicinfo.cc",
+    "ec_usb_device_monitor.cc",
+    "ec_usb_endpoint.cc",
+    "fingerprint/fp_context_command.cc",
+    "fingerprint/fp_context_command_factory.cc",
+    "fingerprint/fp_encryption_status_command.cc",
+    "fingerprint/fp_frame_command.cc",
+    "fingerprint/fp_info_command.cc",
+    "fingerprint/fp_mode.cc",
+    "fingerprint/fp_mode_command.cc",
+    "fingerprint/fp_read_match_secret_command.cc",
+    "fingerprint/fp_seed_command.cc",
+    "fingerprint/fp_stats_command.cc",
+    "fingerprint/fp_template_command.cc",
+    "flash_info_command.cc",
+    "flash_info_params.cc",
+    "flash_protect_command.cc",
+    "flash_protect_command_factory.cc",
+    "flash_spi_info_command.cc",
+    "get_chip_info_command.cc",
+    "get_comms_status_command.cc",
+    "get_features_command.cc",
+    "get_mkbp_wake_mask_command.cc",
+    "get_protocol_info_command.cc",
+    "get_version_command.cc",
+    "hello_command.cc",
+    "i2c_passthru_command.cc",
+    "i2c_read_command.cc",
+    "led_control_command.cc",
+    "mkbp_event.cc",
+    "motion_sense_command_lid_angle.cc",
+    "rand_num_command.cc",
+    "reboot_ec_command.cc",
+    "rollback_info_command.cc",
+    "set_force_lid_open_command.cc",
+    "set_mkbp_wake_mask_command.cc",
+    "smart_discharge_command.cc",
+    "versions_command.cc",
+  ]
+  configs += [
+    ":target_defaults_pkg_deps",
+    "//common-mk:pic",
+  ]
+}
 
 static_library("libec_static") {
-  sources = libec_sources
-  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ ":libec_common" ]
   install_path = "lib"
 }
 
 shared_library("libec") {
-  sources = libec_sources
-  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ ":libec_common" ]
   install_path = "lib"
 }
 
