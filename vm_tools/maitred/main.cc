@@ -62,18 +62,19 @@ constexpr char kMaitredPortParam[] = "maitred.listen_port=";
 constexpr char kMaitredPortParamFmt[] = "maitred.listen_port=%d";
 constexpr char kMaitredStartProcessesParam[] = "maitred.no_startup_processes";
 
-// File descriptor that points to /dev/kmsg.  Needs to be a global variable
-// because logging::LogMessageHandlerFunction is just a function pointer so we
-// can't bind any variables to it via base::Bind*.
-int g_kmsg_fd = -1;
+// File descriptor for log messages. Defaults to stderr.
+// Needs to be a global variable because logging::LogMessageHandlerFunction is
+// just a function pointer so we can't bind any variables to it via
+// base::Bind*.
+int g_log_fd = STDERR_FILENO;
+// Prefix for log messages. Default is empty.
+const char* g_log_prefix = "";
 
-bool LogToKmsg(logging::LogSeverity severity,
-               const char* file,
-               int line,
-               size_t message_start,
-               const string& message) {
-  DCHECK_NE(g_kmsg_fd, -1);
-
+bool LogHandler(logging::LogSeverity severity,
+                const char* file,
+                int line,
+                size_t message_start,
+                const string& message) {
   const char* priority = nullptr;
   switch (severity) {
     case logging::LOGGING_VERBOSE:
@@ -102,8 +103,8 @@ bool LogToKmsg(logging::LogSeverity severity,
           .iov_len = strlen(priority),
       },
       {
-          .iov_base = static_cast<void*>(const_cast<char*>(kLogPrefix)),
-          .iov_len = sizeof(kLogPrefix) - 1,
+          .iov_base = static_cast<void*>(const_cast<char*>(g_log_prefix)),
+          .iov_len = strlen(g_log_prefix),
       },
       {
           .iov_base = static_cast<void*>(
@@ -117,8 +118,8 @@ bool LogToKmsg(logging::LogSeverity severity,
     count += iov.iov_len;
   }
 
-  ssize_t ret = HANDLE_EINTR(
-      writev(g_kmsg_fd, iovs, sizeof(iovs) / sizeof(struct iovec)));
+  ssize_t ret =
+      HANDLE_EINTR(writev(g_log_fd, iovs, sizeof(iovs) / sizeof(struct iovec)));
 
   // Even if the write wasn't successful, we can't log anything here because
   // this _is_ the logging function.  Just return whether the write succeeded.
@@ -151,9 +152,11 @@ int main(int argc, char** argv) {
 
   // Set up logging to /dev/kmsg if maitred is PID 1.
   if (maitred_is_pid1) {
-    g_kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
-    logging::SetLogMessageHandler(LogToKmsg);
+    g_log_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
+    CHECK_GE(g_log_fd, 0);
+    g_log_prefix = kLogPrefix;
   }
+  logging::SetLogMessageHandler(LogHandler);
 
   std::unique_ptr<vm_tools::maitred::Init> init;
   init = vm_tools::maitred::Init::Create(maitred_is_pid1);
