@@ -349,11 +349,6 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
     return;
   }
 
-  if (psr_res.log_state == diagnostics::psr::LogState::kNotStarted) {
-    std::move(callback).Run(std::move(result), "PSR has not been started.");
-    return;
-  }
-
   if (psr_res.psr_version.major != psr::kPsrVersionMajor ||
       psr_res.psr_version.minor != psr::kPsrVersionMinor) {
     std::move(callback).Run(std::move(result), "Requires PSR 2.0 version.");

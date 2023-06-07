@@ -154,7 +154,7 @@ bool PsrCmd::GetPlatformServiceRecord(PsrHeciResp& psr_blob) {
     LOG(ERROR) << "Buffer is too small while invokes MEI request: "
                << strerror(err);
     return false;
-  } else if (status > 0) {
+  } else if (status > kSuccess) {
     LOG(ERROR) << "Get PSR status error: " << status;
     return false;
   }
