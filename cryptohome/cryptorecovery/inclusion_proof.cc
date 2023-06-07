@@ -25,6 +25,7 @@
 #include <openssl/ec.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/cryptorecovery/inclusion_proof_util.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
@@ -32,13 +33,6 @@ namespace cryptorecovery {
 
 namespace {
 
-constexpr char kSigSplit[] = "\n\n";
-constexpr char kNewline[] = "\n";
-constexpr char kSigPrefix[] = "— ";
-constexpr char kSigNameSplit[] = " ";
-
-constexpr int kLeafHashPrefix = 0;
-constexpr int kNodeHashPrefix = 1;
 // The number of checkpoint note fields should be 2: the signaute and the text.
 constexpr int kCheckpointNoteSize = 2;
 // The number of checkpoint fields should be 3: origin, size, hash.
@@ -48,16 +42,6 @@ constexpr int kCheckpointSize = 3;
 constexpr int kSignatureHashSize = 4;
 // This value is reflecting to the value from the server side.
 constexpr int kMaxSignatureNumber = 100;
-
-// Checkpoint represents a minimal log checkpoint (STH).
-struct Checkpoint {
-  // Origin is the string identifying the log which issued this checkpoint.
-  std::string origin;
-  // Size is the number of entries in the log at this checkpoint.
-  int64_t size;
-  // Hash is the hash which commits to the contents of the entire log.
-  brillo::Blob hash;
-};
 
 struct Signature {
   std::string name;
@@ -94,33 +78,23 @@ int CalculateInnerProofSize(int index, int size) {
   return bits_number;
 }
 
-// HashLeaf computes the hash of a leaf that exists.
-brillo::Blob HashLeaf(const brillo::Blob& leaf_text) {
-  brillo::Blob prefix;
-  prefix.push_back(kLeafHashPrefix);
-  return hwsec_foundation::Sha256(brillo::CombineBlobs({prefix, leaf_text}));
-}
-
-// HashChildren computes interior nodes.
-brillo::Blob HashChildren(const brillo::Blob& left, const brillo::Blob& right) {
-  brillo::Blob prefix;
-  prefix.push_back(kNodeHashPrefix);
-  return hwsec_foundation::Sha256(brillo::CombineBlobs({prefix, left, right}));
-}
-
 bool ReadSignatures(const std::string& text,
                     const std::string& signatures,
                     EC_KEY* ledger_key,
                     std::vector<Signature>* out_signatures) {
-  base::StringTokenizer tokenizer(signatures, kNewline);
+  base::StringTokenizer tokenizer(signatures, kInclusionProofNewline);
   tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
 
   int num_sig = 0;
   while (tokenizer.GetNext()) {
-    // `signature_line` has the format: "{signature_name} {base64_signature}".
+    // `signature_line` has the format:
+    // "{prefix}{signature_name}{name_split}{base64_signature}".
+    // Where:
+    // - prefix = kInclusionProofSigPrefix,
+    // - name_split = kInclusionProofSigNameSplit.
     std::string signature_line = tokenizer.token();
-    // Verify that the signature indeed ends with kNewline.
-    if (!tokenizer.GetNext() || tokenizer.token() != kNewline) {
+    // Verify that the signature indeed ends with kInclusionProofNewline.
+    if (!tokenizer.GetNext() || tokenizer.token() != kInclusionProofNewline) {
       LOG(ERROR) << "Failed to pull out one signature";
       return false;
     }
@@ -130,18 +104,20 @@ bool ReadSignatures(const std::string& text,
     if (num_sig > kMaxSignatureNumber)
       return false;
 
-    if (!base::StartsWith(signature_line, kSigPrefix,
+    if (!base::StartsWith(signature_line, kInclusionProofSigPrefix,
                           base::CompareCase::SENSITIVE)) {
       LOG(ERROR) << "No signature prefix is found.";
       return false;
     }
 
     // The ledger's name (signature_tokens[0]) could be parsed out with
-    // separator of kSigNameSplit. And the signature and the key hash
-    // (signature_tokens[1]) is located after kSigNameSplit.
+    // separator of kInclusionProofSigNameSplit. And the signature and the key
+    // hash (signature_tokens[1]) is located after kInclusionProofSigNameSplit.
     std::vector<std::string> signature_tokens = base::SplitString(
-        signature_line.substr(strlen(kSigPrefix), signature_line.length()),
-        kSigNameSplit, base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+        signature_line.substr(strlen(kInclusionProofSigPrefix),
+                              signature_line.length()),
+        kInclusionProofSigNameSplit, base::KEEP_WHITESPACE,
+        base::SPLIT_WANT_ALL);
     if (signature_tokens.size() != 2) {
       LOG(ERROR) << "No signature name split is found.";
       return false;
@@ -164,8 +140,8 @@ bool ReadSignatures(const std::string& text,
             signature_str.substr(0, kSignatureHashSize).c_str()),
         &key_hash);
 
-    brillo::SecureBlob text_hash =
-        hwsec_foundation::Sha256(brillo::SecureBlob(text + kSigSplit[0]));
+    brillo::SecureBlob text_hash = hwsec_foundation::Sha256(
+        brillo::SecureBlob(text + kInclusionProofSigSplit[0]));
     signature_str = signature_str.substr(kSignatureHashSize);
 
     // Verify the signature and the hash.
@@ -252,9 +228,10 @@ bool VerifySignature(const std::string& text,
 bool ParseCheckPoint(std::string checkpoint_note_str,
                      const LedgerInfo& ledger_info,
                      Checkpoint* check_point) {
-  // `checkpoint_note_str` has the format: "{text}{kSigSplit}{signatures}".
+  // `checkpoint_note_str` has the format:
+  // "{text}{kInclusionProofSigSplit}{signatures}".
   std::vector<std::string> checkpoint_note_fields = brillo::string_utils::Split(
-      checkpoint_note_str, kSigSplit, /*trim_whitespaces=*/false,
+      checkpoint_note_str, kInclusionProofSigSplit, /*trim_whitespaces=*/false,
       /*purge_empty_strings=*/false);
   if (checkpoint_note_fields.size() != kCheckpointNoteSize) {
     LOG(ERROR) << "Checkpoint note is not valid.";
@@ -270,7 +247,7 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
   // The ledger has signed this checkpoint. It is now safe to parse.
   // `checkpoint_fields` has the format: "{origin}\n{size}\n{base64_hash}".
   std::vector<std::string> checkpoint_fields =
-      brillo::string_utils::Split(text, kNewline);
+      brillo::string_utils::Split(text, kInclusionProofNewline);
   if (checkpoint_fields.size() != kCheckpointSize) {
     LOG(ERROR) << "Checkpoint is not valid.";
     return false;
@@ -296,9 +273,9 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
 }
 
 // CalculateRootHash calculates the expected root hash for a tree of the
-// given size, provided a leaf index and leaf hash with the corresponding
+// given size, provided a leaf index and leaf content with the corresponding
 // inclusion proof. Requires 0 <= `leaf_index` < `size`.
-bool CalculateRootHash(const brillo::Blob& leaf_hash,
+bool CalculateRootHash(const brillo::Blob& leaf,
                        const std::vector<brillo::Blob>& inclusion_proof,
                        int64_t leaf_index,
                        int64_t size,
@@ -315,7 +292,7 @@ bool CalculateRootHash(const brillo::Blob& leaf_hash,
     return false;
   }
 
-  brillo::Blob seed = leaf_hash;
+  brillo::Blob seed = HashLeaf(leaf);
   while (index < inner_proof_size) {
     if (((leaf_index >> index) & 1) == 0) {
       seed = HashChildren(seed, inclusion_proof[index]);
@@ -350,11 +327,10 @@ bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
 
   // Calculate tree root.
   brillo::Blob calculated_root_hash;
-  if (!CalculateRootHash(
-          HashLeaf(ledger_signed_proof.logged_record.public_ledger_entry),
-          ledger_signed_proof.inclusion_proof,
-          ledger_signed_proof.logged_record.leaf_index, check_point.size,
-          &calculated_root_hash)) {
+  if (!CalculateRootHash(ledger_signed_proof.logged_record.public_ledger_entry,
+                         ledger_signed_proof.inclusion_proof,
+                         ledger_signed_proof.logged_record.leaf_index,
+                         check_point.size, &calculated_root_hash)) {
     LOG(ERROR) << "Failed to calculate root hash.";
     return false;
   }

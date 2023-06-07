@@ -330,6 +330,8 @@ if (use.test) {
       "cryptohome_key_loader_unittest.cc",
       "cryptohome_keys_manager_unittest.cc",
       "cryptorecovery/fake_recovery_mediator_crypto.cc",
+      "cryptorecovery/inclusion_proof_test_util.cc",
+      "cryptorecovery/inclusion_proof_unittest.cc",
       "cryptorecovery/recovery_crypto_hsm_cbor_serialization_unittest.cc",
       "cryptorecovery/recovery_crypto_unittest.cc",
       "data_migrator/fake_migration_helper_delegate.cc",
