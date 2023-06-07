@@ -408,6 +408,7 @@ static_library("libcrosplatform") {
     "../auth_factor/auth_factor_manager.cc",
     "../cryptohome_metrics.cc",
     "../filesystem_layout.cc",
+    "../flatbuffer_file.cc",
     "../storage/encrypted_container/backing_device_factory.cc",
     "../storage/encrypted_container/dmcrypt_container.cc",
     "../storage/encrypted_container/ecryptfs_container.cc",

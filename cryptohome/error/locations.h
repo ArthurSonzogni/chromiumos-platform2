@@ -1277,6 +1277,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kGetDelayInSecondsFailedInPinDriverGetDelayInMilliseconds = 725,
   /* =Obsolete= */
   kGetDelayInSecondsFailedInPinDriverGetNextSignalDelayInSeconds = 726,
+  /* ./flatbuffer_file.cc */
+  kLocStoreFileFailedInFlatbufferFile = 727,
+  /* ./flatbuffer_file.cc */
+  kLocLoadFileFailedInFlatbufferFile = 728,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
