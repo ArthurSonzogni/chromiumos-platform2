@@ -70,10 +70,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
   GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
-  scoped_refptr<base::SequencedTaskRunner> GetTaskRunner() {
-    return task_runner_;
-  }
-
  protected:
   ~ProvisionDeviceStateHandler() override = default;
 

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
@@ -246,12 +245,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     EXPECT_EQ(status_history_.back().error(), expected_error);
   }
 
-  void RunHandlerTaskRunner(
-      scoped_refptr<ProvisionDeviceStateHandler> handler) {
-    handler->GetTaskRunner()->PostTask(FROM_HERE, run_loop_.QuitClosure());
-    run_loop_.Run();
-  }
-
  protected:
   NiceMock<SignalSender> signal_sender_;
   std::vector<ProvisionStatus> status_history_;
@@ -261,7 +254,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC,
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  base::RunLoop run_loop_;
 };
 
 TEST_F(ProvisionDeviceStateHandlerTest, VerifyTestConstant) {
@@ -277,14 +269,14 @@ TEST_F(ProvisionDeviceStateHandlerTest, VerifyTestConstant) {
 TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Succeeded) {
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Succeeded) {
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
   handler->CleanUpState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Succeeded) {
@@ -295,7 +287,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Succeeded) {
   // Run the state handler.
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -330,7 +322,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -369,7 +361,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -412,7 +404,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -448,7 +440,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -477,7 +469,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -518,7 +510,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -551,7 +543,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -568,7 +560,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Set up environment without destination (internal error).
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -582,7 +574,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
   // Set up environment without destination (internal error).
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -621,7 +613,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -638,7 +630,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -655,7 +647,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -677,7 +669,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -692,7 +684,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler({.set_ssfc_success = false});
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -708,7 +700,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateInitializedStateHandler(
       {.set_ssfc_success = false, .hwwp_enabled = true});
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -724,7 +716,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
 
   auto handler = CreateInitializedStateHandler({.set_ssfc_success = false});
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -740,7 +732,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -757,7 +749,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -774,7 +766,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -791,7 +783,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
@@ -810,7 +802,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -832,7 +824,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -855,7 +847,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
@@ -874,7 +866,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
 
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   // No WelcomeScreenState.
   RmadState state;
@@ -891,7 +883,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingArgs) {
 
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 
   auto [error, state_case] = handler->GetNextStateCase(CreateProvisionRequest(
       ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN));

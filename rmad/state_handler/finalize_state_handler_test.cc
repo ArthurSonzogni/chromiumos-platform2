@@ -9,7 +9,6 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
@@ -150,7 +149,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
   // Variables for TaskRunner.
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  base::RunLoop run_loop_;
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Succeeded) {
