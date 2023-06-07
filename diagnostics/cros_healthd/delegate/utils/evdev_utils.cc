@@ -98,13 +98,17 @@ bool EvdevUtil::EvdevDevice::StarWatchingEvents(
   return !!watcher_;
 }
 
-EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate)
+EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate,
+                     bool allow_multiple_devices)
     : EvdevUtil(std::move(delegate),
+                allow_multiple_devices,
                 base::BindRepeating(&LibevdevWrapperImpl::Create)) {}
 
 EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate,
+                     bool allow_multiple_devices,
                      LibevdevWrapperFactoryMethod factory_method)
-    : delegate_(std::move(delegate)) {
+    : allow_multiple_devices_(allow_multiple_devices),
+      delegate_(std::move(delegate)) {
   Initialize(factory_method);
 }
 
@@ -115,14 +119,16 @@ void EvdevUtil::Initialize(LibevdevWrapperFactoryMethod factory_method) {
                                  /*recursive=*/false,
                                  base::FileEnumerator::FILES);
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
-    if (Initialize(path, factory_method)) {
+    if (Initialize(path, factory_method) && !allow_multiple_devices_) {
       return;
     }
   }
 
-  LOG(ERROR) << "EvdevUtil can't find target, initialization fail";
-  delegate_->InitializationFail(/*custom_reason = */ 0,
-                                "EvdevUtil can't find target.");
+  if (devs_.empty()) {
+    LOG(ERROR) << "EvdevUtil can't find target, initialization fail";
+    delegate_->InitializationFail(/*custom_reason = */ 0,
+                                  "EvdevUtil can't find target.");
+  }
 }
 
 bool EvdevUtil::Initialize(const base::FilePath& path,
@@ -151,7 +157,7 @@ bool EvdevUtil::Initialize(const base::FilePath& path,
     return false;
   }
 
-  dev_ = std::move(evdev_device);
+  devs_.push_back(std::move(evdev_device));
 
   LOG(INFO) << "Connected to evdev node: " << path
             << ", device name: " << libevdev_ptr->GetName();

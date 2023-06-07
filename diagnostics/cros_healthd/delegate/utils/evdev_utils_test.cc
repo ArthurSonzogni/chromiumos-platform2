@@ -8,9 +8,10 @@
 #include <string>
 #include <utility>
 
-#include <base/test/test_future.h>
 #include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/mock_callback.h>
+#include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -117,11 +118,37 @@ class EvdevUtilsTest : public ::testing::Test {
     return base::ScopedFD(open(path.value().c_str(), O_RDWR));
   }
 
-  void StartEvdevUtil() {
+  void StartEvdevUtil(bool allow_multiple_devices = false) {
     CHECK(mock_delegate_);
     CHECK(!evdev_util_) << "StartEvdevUtil can only be called once";
     evdev_util_ = std::make_unique<EvdevUtil>(std::move(mock_delegate_),
+                                              allow_multiple_devices,
                                               mock_factory_method_.Get());
+  }
+
+  void ExpectEventFromNode(int fd, input_event fake_event) {
+    auto libevdev_wrapper = std::make_unique<StrictMock<MockLibevdevWrapper>>();
+    // Save the pointer to verify the later accesses are against this instance.
+    LibevdevWrapper* const libevdev_wrapper_ptr = libevdev_wrapper.get();
+    EXPECT_CALL(*libevdev_wrapper, NextEvent)
+        .WillOnce(DoAll(SetArgPointee<1>(fake_event),
+                        Return(LIBEVDEV_READ_STATUS_SUCCESS)))
+        .WillRepeatedly(Return(-EAGAIN));
+
+    EXPECT_CALL(mock_factory_method_, Run)
+        .WillOnce(Return(std::move(libevdev_wrapper)))
+        .RetiresOnSaturation();
+
+    EXPECT_CALL(mock_delegate(), IsTarget(Pointer(libevdev_wrapper_ptr)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mock_delegate(),
+                ReportProperties(Pointer(libevdev_wrapper_ptr)))
+        .Times(1);
+    EXPECT_CALL(mock_delegate(), FireEvent(_, Pointer(libevdev_wrapper_ptr)))
+        .WillOnce(
+            DoAll(WithArg<0>([&](auto event) { event_future.AddValue(event); }),
+                  // Read data to make reading file blocked again.
+                  InvokeWithoutArgs([=]() { ASSERT_TRUE(ReadOneByte(fd)); })));
   }
 
   MockDelegate& mock_delegate() {
@@ -131,6 +158,7 @@ class EvdevUtilsTest : public ::testing::Test {
 
   StrictMock<base::MockCallback<EvdevUtil::LibevdevWrapperFactoryMethod>>
       mock_factory_method_;
+  base::test::RepeatingTestFuture<input_event> event_future;
 
  private:
   // |MainThreadType::IO| is required by FileDescriptorWatcher.
@@ -147,28 +175,7 @@ TEST_F(EvdevUtilsTest, ReceiveEventsSuccessfully) {
   ASSERT_TRUE(scoped_fd.is_valid());
 
   const input_event fake_event{.type = 1, .code = 2, .value = 3};
-  auto libevdev_wrapper = std::make_unique<StrictMock<MockLibevdevWrapper>>();
-  // Save the pointer to verify the later accesses are against this instance.
-  LibevdevWrapper* const libevdev_wrapper_ptr = libevdev_wrapper.get();
-  EXPECT_CALL(*libevdev_wrapper, NextEvent)
-      .WillOnce(DoAll(SetArgPointee<1>(fake_event),
-                      Return(LIBEVDEV_READ_STATUS_SUCCESS)))
-      .WillRepeatedly(Return(-EAGAIN));
-
-  EXPECT_CALL(mock_factory_method_, Run)
-      .WillOnce(Return(std::move(libevdev_wrapper)));
-
-  base::test::TestFuture<input_event> event_future;
-  EXPECT_CALL(mock_delegate(), IsTarget(Pointer(libevdev_wrapper_ptr)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mock_delegate(), ReportProperties(Pointer(libevdev_wrapper_ptr)))
-      .Times(1);
-  EXPECT_CALL(mock_delegate(), FireEvent(_, Pointer(libevdev_wrapper_ptr)))
-      .WillOnce(
-          DoAll(WithArg<0>([&](auto event) { event_future.SetValue(event); }),
-                // Read data to make reading file blocked again.
-                InvokeWithoutArgs(
-                    [&]() { ASSERT_TRUE(ReadOneByte(scoped_fd.get())); })));
+  ExpectEventFromNode(scoped_fd.get(), fake_event);
 
   StartEvdevUtil();
 
@@ -210,6 +217,45 @@ TEST_F(EvdevUtilsTest, InitializationFailIfLibevdevCreationFailed) {
 
   StartEvdevUtil();
 }
+
+class EvdevUtilsAllowMultipleDeviceTest
+    : public EvdevUtilsTest,
+      public ::testing::WithParamInterface<int> {
+ protected:
+  int evdev_node_count() { return GetParam(); }
+};
+
+// Create evdev nodes, set fake events and verify the received events.
+TEST_P(EvdevUtilsAllowMultipleDeviceTest, ReceiveEventsSuccessfully) {
+  std::vector<base::ScopedFD> fds;
+
+  for (int i = 0; i < evdev_node_count(); ++i) {
+    const auto event_file_name = base::StringPrintf("event%d", i);
+    auto scoped_fd = CreateAndOpenFakeEvdevNode(event_file_name);
+    ASSERT_TRUE(scoped_fd.is_valid());
+
+    const input_event fake_event{.type = 1, .code = 2, .value = 3};
+    ExpectEventFromNode(scoped_fd.get(), fake_event);
+    fds.push_back(std::move(scoped_fd));
+  }
+
+  StartEvdevUtil(/*allow_multiple_devices*/ true);
+
+  // Write data to make the file readable without blocking.
+  for (int i = 0; i < evdev_node_count(); ++i) {
+    ASSERT_TRUE(WriteOneByte(fds[i].get()));
+  }
+  for (int i = 0; i < evdev_node_count(); ++i) {
+    auto received_event = event_future.Take();
+    EXPECT_EQ(received_event.type, 1);
+    EXPECT_EQ(received_event.code, 2);
+    EXPECT_EQ(received_event.value, 3);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(DifferentNumberOfEvdevNodes,
+                         EvdevUtilsAllowMultipleDeviceTest,
+                         testing::Values(1, 2, 3));
 
 }  // namespace
 }  // namespace diagnostics

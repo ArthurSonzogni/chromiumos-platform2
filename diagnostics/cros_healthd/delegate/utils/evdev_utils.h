@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
@@ -63,9 +64,14 @@ class EvdevUtil {
   using LibevdevWrapperFactoryMethod =
       base::RepeatingCallback<std::unique_ptr<LibevdevWrapper>(int fd)>;
 
-  explicit EvdevUtil(std::unique_ptr<Delegate> delegate);
+  // If |allow_multiple_devices| is true, all evdev nodes for which
+  // |Delegate::IsTarget| returns true will be monitored. Otherwise, at most one
+  // evdev node will be monitored.
+  EvdevUtil(std::unique_ptr<Delegate> delegate,
+            bool allow_multiple_devices = false);
   // Constructor that overrides |factory_method| is only for testing.
   EvdevUtil(std::unique_ptr<Delegate> delegate,
+            bool allow_multiple_devices,
             LibevdevWrapperFactoryMethod factory_method);
   EvdevUtil(const EvdevUtil& oth) = delete;
   EvdevUtil(EvdevUtil&& oth) = delete;
@@ -80,8 +86,10 @@ class EvdevUtil {
   // events from the fd and fires events through |FireEvent|.
   void OnEvdevEvent(LibevdevWrapper* dev);
 
-  // The evdev device object.
-  std::unique_ptr<EvdevDevice> dev_;
+  // Whether to monitor events from multiple devices.
+  const bool allow_multiple_devices_ = false;
+  // The evdev devices to monitor.
+  std::vector<std::unique_ptr<EvdevDevice>> devs_;
   // Delegate to implement dedicated behaviors for different evdev devices.
   std::unique_ptr<Delegate> delegate_;
 };
