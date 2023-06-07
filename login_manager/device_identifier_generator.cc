@@ -226,8 +226,17 @@ void DeviceIdentifierGenerator::ComputeKeys(
   } else {
     // Can't compute keys, signaled by empty |state_keys| vector.
     LOG(WARNING) << "No device identifiers available, no state keys generated";
-    metrics_->SendStateKeyGenerationStatus(
-        LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS);
+    if (machine_serial_number_.empty() && disk_serial_number_.empty()) {
+      metrics_->SendStateKeyGenerationStatus(
+          LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS);
+    } else if (machine_serial_number_.empty()) {
+      metrics_->SendStateKeyGenerationStatus(
+          LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER);
+    } else {
+      DCHECK(disk_serial_number_.empty());
+      metrics_->SendStateKeyGenerationStatus(
+          LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER);
+    }
   }
 }
 

@@ -234,6 +234,30 @@ TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfoFailure) {
   EXPECT_EQ(0, state_keys_.size());
 }
 
+TEST_F(DeviceIdentifierGeneratorTest, MissingMachineSerialNumber) {
+  std::map<std::string, std::string> params;
+  params["root_disk_serial_number"] = "fake-disk-serial-number";
+  ASSERT_FALSE(generator_.InitMachineInfo(params));
+
+  RequestStateKeys(true);
+
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER,
+            last_state_key_generation_status_);
+  EXPECT_EQ(0, state_keys_.size());
+}
+
+TEST_F(DeviceIdentifierGeneratorTest, MissingDiskSerialNumber) {
+  std::map<std::string, std::string> params;
+  params["serial_number"] = "fake-machine-serial-number";
+  ASSERT_FALSE(generator_.InitMachineInfo(params));
+
+  RequestStateKeys(true);
+
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER,
+            last_state_key_generation_status_);
+  EXPECT_EQ(0, state_keys_.size());
+}
+
 TEST_F(DeviceIdentifierGeneratorTest, ParseMachineInfoSuccess) {
   std::map<std::string, std::string> params;
   EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
