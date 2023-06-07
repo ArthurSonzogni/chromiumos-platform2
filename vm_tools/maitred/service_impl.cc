@@ -50,6 +50,7 @@
 #include <base/system/sys_info.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 
@@ -1088,29 +1089,18 @@ grpc::Status ServiceImpl::SetTime(grpc::ServerContext* ctx,
   return grpc::Status::OK;
 }
 
-grpc::Status ServiceImpl::SetTimezoneSymlink(const std::string& ln_src) {
-  char buf[PATH_MAX] = {};
-  auto buffer_len =
-      readlink(localtime_file_path_.value().c_str(), buf, PATH_MAX);
-
-  // /etc/localtime may be a symlink to other writable file in the VM.
-  std::string ln_dst;
-  if (buffer_len < 1) {
-    ln_dst = localtime_file_path_.value();
-  } else {
-    ln_dst = std::string(buf);
-  }
-
+grpc::Status ServiceImpl::SetTimezoneSymlink(const std::string& zoneinfo) {
   std::error_code ec;
-  if (!base::DeleteFile(base::FilePath(ln_dst))) {
-    LOG(ERROR) << "Failed to delete existing destination symlink: "
-               << ec.message();
+  if (!brillo::DeleteFile(localtime_file_path_)) {
+    LOG(ERROR) << "Failed to delete " << localtime_file_path_
+               << " symlink: " << ec.message();
     return grpc::Status(grpc::INTERNAL, "failed to delete existing symlink");
   }
 
-  LOG(INFO) << "Creating symlink from " << ln_src << " to " << ln_dst;
-  if (!base::CreateSymbolicLink(base::FilePath(ln_src),
-                                base::FilePath(ln_dst))) {
+  LOG(INFO) << "Creating symlink from " << localtime_file_path_ << " to "
+            << zoneinfo;
+  if (!base::CreateSymbolicLink(base::FilePath(zoneinfo),
+                                localtime_file_path_)) {
     return grpc::Status(grpc::INTERNAL, "failed to create symlink");
   }
   return grpc::Status::OK;
