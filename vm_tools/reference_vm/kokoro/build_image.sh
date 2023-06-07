@@ -20,25 +20,27 @@ main() {
   cd "${result_dir}"
 
   image_path="refvm-${suffix}.img"
+  qcow2_path="refvm-${suffix}.qcow2"
   sudo "${src_root}/build.py" \
     --debian-release=bookworm \
     --vg-name="refvm_${suffix}" \
     -o "${image_path}"
 
-  sudo virt-sparsify --in-place --machine-readable "${image_path}"
-
-  zstd --no-progress -16 "${image_path}"
+  sudo qemu-img convert -O qcow2 "${image_path}" "${qcow2_path}"
+  sha256sum "${qcow2_path}" | cut -d ' ' -f 1 > "${qcow2_path}.SHA256"
   sudo rm -f "${image_path}"
+
+  # Level 7 is a good balance of compression ratio and speed. Delete the
+  # uncompressed image.
+  sudo brotli --rm -7 "${qcow2_path}"
 }
 
 install_deps() {
   # If additional dependencies are required, please also note them in README.md.
-  # Googlers: libguestfs-tools depends on qemu-system-x86 which may cause HT/SMT
-  # to be disabled.
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
-    eatmydata fai-setup-storage lvm2 python3-jinja2 python3-requests \
-    python3-yaml libguestfs-tools
+    brotli eatmydata fai-setup-storage lvm2 python3-jinja2 python3-requests \
+    python3-yaml qemu-utils
 
   # TODO(b/280695675): Remove this once the VM image has a newer OS.
   # shellcheck disable=SC2154
