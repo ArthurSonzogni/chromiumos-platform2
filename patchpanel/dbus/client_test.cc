@@ -116,7 +116,7 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
   Client::VirtualDevice device;
-  Client::IPv4Subnet container_subnet;
+  net_base::IPv4CIDR container_subnet;
   const bool result =
       client_->NotifyTerminaVmStartup(cid, &device, &container_subnet);
 
@@ -126,13 +126,11 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
   EXPECT_EQ("not_defined", device.guest_ifname);
   EXPECT_EQ("100.115.92.18", device.ipv4_addr.ToString());
   EXPECT_EQ("100.115.92.17", device.host_ipv4_addr.ToString());
-  EXPECT_EQ("100.115.92.16", IPv4AddressToString(device.ipv4_subnet.base_addr));
-  EXPECT_EQ(30, device.ipv4_subnet.prefix_len);
+  EXPECT_EQ("100.115.92.16/30", device.ipv4_subnet->ToString());
   EXPECT_EQ(Client::GuestType::kTerminaVm, device.guest_type);
   EXPECT_EQ("100.115.93.1", device.dns_proxy_ipv4_addr->ToString());
   EXPECT_EQ("2001:db8::1234:abcd", device.dns_proxy_ipv6_addr->ToString());
-  EXPECT_EQ("100.115.92.128", IPv4AddressToString(container_subnet.base_addr));
-  EXPECT_EQ(24, container_subnet.prefix_len);
+  EXPECT_EQ("100.115.92.128/24", container_subnet.ToString());
 }
 
 TEST_F(ClientTest, NotifyTerminaVmShutdown) {
@@ -187,8 +185,7 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
   EXPECT_EQ("not_defined", device.guest_ifname);
   EXPECT_EQ("100.115.93.34", device.ipv4_addr.ToString());
   EXPECT_EQ("100.115.93.33", device.host_ipv4_addr.ToString());
-  EXPECT_EQ("100.115.93.32", IPv4AddressToString(device.ipv4_subnet.base_addr));
-  EXPECT_EQ(28, device.ipv4_subnet.prefix_len);
+  EXPECT_EQ("100.115.93.32/28", device.ipv4_subnet->ToString());
   EXPECT_EQ(Client::GuestType::kParallelsVm, device.guest_type);
   EXPECT_EQ("100.115.93.5", device.dns_proxy_ipv4_addr->ToString());
   EXPECT_EQ("2001:db8::bfc7:4ad2", device.dns_proxy_ipv6_addr->ToString());
@@ -229,8 +226,7 @@ TEST_F(ClientTest, ConnectNamespace_Fail) {
   EXPECT_TRUE(result.second.host_ifname.empty());
   EXPECT_TRUE(result.second.peer_ipv4_address.IsZero());
   EXPECT_TRUE(result.second.host_ipv4_address.IsZero());
-  EXPECT_EQ("", IPv4AddressToString(result.second.ipv4_subnet.base_addr));
-  EXPECT_EQ(0, result.second.ipv4_subnet.prefix_len);
+  EXPECT_EQ(result.second.ipv4_subnet, net_base::IPv4CIDR());
 }
 
 TEST_F(ClientTest, ConnectNamespace) {
@@ -262,9 +258,7 @@ TEST_F(ClientTest, ConnectNamespace) {
   EXPECT_TRUE(result.first.is_valid());
   EXPECT_EQ("arc_ns0", result.second.host_ifname);
   EXPECT_EQ("veth0", result.second.peer_ifname);
-  EXPECT_EQ(30, result.second.ipv4_subnet.prefix_len);
-  EXPECT_EQ("100.115.92.128",
-            IPv4AddressToString(result.second.ipv4_subnet.base_addr));
+  EXPECT_EQ("100.115.92.128/30", result.second.ipv4_subnet.ToString());
   EXPECT_EQ(host_ipv4_addr, result.second.host_ipv4_address);
   EXPECT_EQ(peer_ipv4_addr, result.second.peer_ipv4_address);
 }

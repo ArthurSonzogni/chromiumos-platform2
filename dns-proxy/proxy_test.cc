@@ -172,7 +172,7 @@ class MockPatchpanelClient : public patchpanel::Client {
               NotifyTerminaVmStartup,
               (uint32_t,
                patchpanel::Client::VirtualDevice*,
-               patchpanel::Client::IPv4Subnet*),
+               net_base::IPv4CIDR*),
               (override));
   MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
   MOCK_METHOD(bool,

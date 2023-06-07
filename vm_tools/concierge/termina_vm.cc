@@ -90,21 +90,6 @@ constexpr char kRenderServerCacheSizeStringBorealis[] = "1000M";
 // operations.
 constexpr int kInvalidDiskIndex = -1;
 
-std::unique_ptr<patchpanel::Subnet> MakeSubnet(
-    const patchpanel::Client::IPv4Subnet& subnet) {
-  const std::optional<net_base::IPv4Address> addr =
-      net_base::IPv4Address::CreateFromBytes(subnet.base_addr);
-  if (!addr) {
-    return nullptr;
-  }
-  const std::optional<net_base::IPv4CIDR> cidr =
-      net_base::IPv4CIDR::CreateFromAddressAndPrefix(*addr, subnet.prefix_len);
-  if (!cidr) {
-    return nullptr;
-  }
-  return std::make_unique<patchpanel::Subnet>(*cidr, base::DoNothing());
-}
-
 }  // namespace
 
 TerminaVm::TerminaVm(Config config)
@@ -158,7 +143,7 @@ std::string TerminaVm::GetCrosVmSerial(std::string hardware,
 
 bool TerminaVm::Start(VmBuilder vm_builder) {
   // Get the network interface.
-  patchpanel::Client::IPv4Subnet container_subnet;
+  net_base::IPv4CIDR container_subnet;
   if (!network_client_->NotifyTerminaVmStartup(vsock_cid_, &network_device_,
                                                &container_subnet)) {
     LOG(ERROR) << "No network devices available";
@@ -186,16 +171,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  subnet_ = MakeSubnet(network_device_.ipv4_subnet);
-  if (!subnet_) {
+  if (!network_device_.ipv4_subnet) {
     LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
     return false;
   }
-  container_subnet_ = MakeSubnet(container_subnet);
-  if (!container_subnet_) {
-    LOG(ERROR) << "Failed to read IPv4 subnet assigned to container guest";
-    return false;
-  }
+  subnet_ = std::make_unique<patchpanel::Subnet>(*network_device_.ipv4_subnet,
+                                                 base::DoNothing());
+  container_subnet_ =
+      std::make_unique<patchpanel::Subnet>(container_subnet, base::DoNothing());
 
   // Open the tap device.
   base::ScopedFD tap_fd = OpenTapDevice(

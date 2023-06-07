@@ -31,7 +31,7 @@ bool FakeClient::NotifyArcVmShutdown(uint32_t cid) {
 
 bool FakeClient::NotifyTerminaVmStartup(uint32_t cid,
                                         Client::VirtualDevice* device,
-                                        Client::IPv4Subnet* container_subnet) {
+                                        net_base::IPv4CIDR* container_subnet) {
   return true;
 }
 

@@ -28,6 +28,12 @@ net_base::IPv4Address ConsumeIPv4Address(FuzzedDataProvider& provider) {
       net_base::IPv4Address());
 }
 
+net_base::IPv4CIDR ConsumeIPv4CIDR(FuzzedDataProvider& provider) {
+  const auto addr = ConsumeIPv4Address(provider);
+  const int prefix_len = provider.ConsumeIntegralInRange(0, 32);
+  return *net_base::IPv4CIDR::CreateFromAddressAndPrefix(addr, prefix_len);
+}
+
 net_base::IPv6Address ConsumeIPv6Address(FuzzedDataProvider& provider) {
   const auto bytes =
       provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
@@ -54,13 +60,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     device.guest_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
     device.ipv4_addr = ConsumeIPv4Address(provider);
     device.host_ipv4_addr = ConsumeIPv4Address(provider);
-    device.ipv4_subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
-    device.ipv4_subnet.prefix_len = provider.ConsumeIntegral<int32_t>();
+    device.ipv4_subnet = ConsumeIPv4CIDR(provider);
     device.dns_proxy_ipv4_addr = ConsumeIPv4Address(provider);
     device.dns_proxy_ipv6_addr = ConsumeIPv6Address(provider);
-    Client::IPv4Subnet subnet;
-    subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
-    subnet.prefix_len = provider.ConsumeIntegral<int32_t>();
+    net_base::IPv4CIDR subnet;
     client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>(),
                                    &device, &subnet);
     client->NotifyTerminaVmShutdown(provider.ConsumeIntegral<uint32_t>());

@@ -32,10 +32,6 @@ namespace {
 
 using org::chromium::PatchPanelProxyInterface;
 
-void CopyBytes(const std::string& from, std::vector<uint8_t>* to) {
-  to->assign(from.begin(), from.end());
-}
-
 patchpanel::TrafficCounter::Source ConvertTrafficSource(
     Client::TrafficSource source) {
   switch (source) {
@@ -153,12 +149,13 @@ ConvertDnsRedirectionRequestType(Client::DnsRedirectionRequestType type) {
   }
 }
 
-Client::IPv4Subnet ConvertIPv4Subnet(const IPv4Subnet& in) {
-  Client::IPv4Subnet out = {};
-  out.base_addr.assign(in.addr().begin(), in.addr().begin());
-  CopyBytes(in.addr(), &out.base_addr);
-  out.prefix_len = static_cast<int>(in.prefix_len());
-  return out;
+std::optional<net_base::IPv4CIDR> ConvertIPv4Subnet(const IPv4Subnet& in) {
+  const auto addr = net_base::IPv4Address::CreateFromBytes(in.addr());
+  if (!addr) {
+    return std::nullopt;
+  }
+  return net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      *addr, static_cast<int>(in.prefix_len()));
 }
 
 std::optional<Client::TrafficCounter> ConvertTrafficCounter(
@@ -251,7 +248,14 @@ std::optional<Client::DownstreamNetwork> ConvertDownstreamNetwork(
     const DownstreamNetwork& in) {
   auto out = std::make_optional<Client::DownstreamNetwork>();
   out->ifname = in.downstream_ifname();
-  out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+
+  const auto ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  if (!ipv4_subnet) {
+    LOG(ERROR) << "Failed to create IPv4CIDR for ipv4_subnet";
+    return std::nullopt;
+  }
+  out->ipv4_subnet = *ipv4_subnet;
+
   const auto ipv4_gateway_addr =
       net_base::IPv4Address::CreateFromBytes(in.ipv4_gateway_addr());
   if (!ipv4_gateway_addr) {
@@ -315,15 +319,22 @@ std::optional<Client::VirtualDeviceEvent> ConvertVirtualDeviceEvent(
   }
 }
 
-Client::ConnectedNamespace ConvertConnectedNamespace(
+std::optional<Client::ConnectedNamespace> ConvertConnectedNamespace(
     const ConnectNamespaceResponse& in) {
-  Client::ConnectedNamespace out;
-  out.ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  out.peer_ifname = in.peer_ifname();
-  out.peer_ipv4_address = ConvertUint32ToIPv4Address(in.peer_ipv4_address());
-  out.host_ifname = in.host_ifname();
-  out.host_ipv4_address = ConvertUint32ToIPv4Address(in.host_ipv4_address());
-  out.netns_name = in.netns_name();
+  auto out = std::make_optional<Client::ConnectedNamespace>();
+
+  const auto ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  if (!ipv4_subnet) {
+    LOG(ERROR) << "Failed to create IPv4CIDR for ipv4_subnet";
+    return std::nullopt;
+  }
+  out->ipv4_subnet = *ipv4_subnet;
+
+  out->peer_ifname = in.peer_ifname();
+  out->peer_ipv4_address = ConvertUint32ToIPv4Address(in.peer_ipv4_address());
+  out->host_ifname = in.host_ifname();
+  out->host_ipv4_address = ConvertUint32ToIPv4Address(in.host_ipv4_address());
+  out->netns_name = in.netns_name();
   return out;
 }
 
@@ -533,7 +544,7 @@ class ClientImpl : public Client {
 
   bool NotifyTerminaVmStartup(uint32_t cid,
                               Client::VirtualDevice* device,
-                              Client::IPv4Subnet* container_subnet) override;
+                              net_base::IPv4CIDR* container_subnet) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
   bool NotifyParallelsVmStartup(uint64_t vm_id,
@@ -776,7 +787,7 @@ bool ClientImpl::NotifyArcVmShutdown(uint32_t cid) {
 
 bool ClientImpl::NotifyTerminaVmStartup(uint32_t cid,
                                         Client::VirtualDevice* device,
-                                        Client::IPv4Subnet* container_subnet) {
+                                        net_base::IPv4CIDR* container_subnet) {
   TerminaVmStartupRequest request;
   request.set_cid(cid);
 
@@ -806,8 +817,11 @@ bool ClientImpl::NotifyTerminaVmStartup(uint32_t cid,
   }
   *device = *response_device;
 
-  if (response.has_container_subnet()) {
-    *container_subnet = ConvertIPv4Subnet(response.container_subnet());
+  const auto subnet = response.has_container_subnet()
+                          ? ConvertIPv4Subnet(response.container_subnet())
+                          : std::nullopt;
+  if (subnet) {
+    *container_subnet = *subnet;
   } else {
     LOG(WARNING) << "No container subnet found";
   }
@@ -978,16 +992,19 @@ ClientImpl::ConnectNamespace(pid_t pid,
   }
 
   const auto connected_ns = ConvertConnectedNamespace(response);
-  std::string subnet_info = IPv4AddressToCidrString(
-      connected_ns.ipv4_subnet.base_addr, connected_ns.ipv4_subnet.prefix_len);
-  LOG(INFO) << "ConnectNamespace for netns pid " << pid
-            << " succeeded: peer_ifname=" << connected_ns.peer_ifname
-            << " peer_ipv4_address=" << connected_ns.peer_ipv4_address
-            << " host_ifname=" << connected_ns.host_ifname
-            << " host_ipv4_address=" << connected_ns.host_ipv4_address
-            << " subnet=" << subnet_info;
+  if (!connected_ns) {
+    LOG(ERROR) << "Failed to convert ConnectedNamespace";
+    return {};
+  }
 
-  return std::make_pair(std::move(fd_local), std::move(connected_ns));
+  LOG(INFO) << "ConnectNamespace for netns pid " << pid
+            << " succeeded: peer_ifname=" << connected_ns->peer_ifname
+            << " peer_ipv4_address=" << connected_ns->peer_ipv4_address
+            << " host_ifname=" << connected_ns->host_ifname
+            << " host_ipv4_address=" << connected_ns->host_ipv4_address
+            << " subnet=" << connected_ns->ipv4_subnet.ToString();
+
+  return std::make_pair(std::move(fd_local), *connected_ns);
 }
 
 void ClientImpl::GetTrafficCounters(const std::set<std::string>& devices,

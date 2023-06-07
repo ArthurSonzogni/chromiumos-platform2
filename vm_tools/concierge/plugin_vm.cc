@@ -51,21 +51,6 @@ constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 // address in the IPv4 subnet assigned to the guest.
 constexpr size_t kGuestAddressOffset = 2;
 
-std::unique_ptr<patchpanel::Subnet> MakeSubnet(
-    const patchpanel::Client::IPv4Subnet& subnet) {
-  const std::optional<net_base::IPv4Address> addr =
-      net_base::IPv4Address::CreateFromBytes(subnet.base_addr);
-  if (!addr) {
-    return nullptr;
-  }
-  const std::optional<net_base::IPv4CIDR> cidr =
-      net_base::IPv4CIDR::CreateFromAddressAndPrefix(*addr, subnet.prefix_len);
-  if (!cidr) {
-    return nullptr;
-  }
-  return std::make_unique<patchpanel::Subnet>(*cidr, base::DoNothing());
-}
-
 void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
                   dbus::ObjectProxy* vmplugin_service_proxy,
                   const VmId& id) {
@@ -665,11 +650,12 @@ bool PluginVm::Start(base::FilePath stateful_dir,
     LOG(ERROR) << "No network devices available";
     return false;
   }
-  subnet_ = MakeSubnet(network_device.ipv4_subnet);
-  if (!subnet_) {
+  if (!network_device.ipv4_subnet) {
     LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
     return false;
   }
+  subnet_ = std::make_unique<patchpanel::Subnet>(*network_device.ipv4_subnet,
+                                                 base::DoNothing());
 
   // Open the tap device.
   base::ScopedFD tap_fd = OpenTapDevice(network_device.ifname, enable_vnet_hdr,

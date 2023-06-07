@@ -36,7 +36,7 @@ class BRILLO_EXPORT FakeClient : public Client {
 
   bool NotifyTerminaVmStartup(uint32_t cid,
                               Client::VirtualDevice* device,
-                              Client::IPv4Subnet* container_subnet) override;
+                              net_base::IPv4CIDR* container_subnet) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
   bool NotifyParallelsVmStartup(uint64_t vm_id,
