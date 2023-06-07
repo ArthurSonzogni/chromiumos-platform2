@@ -12,14 +12,7 @@ use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver; // For start_receive
 use dbus::message::MatchRule;
 use dbus_crossroads::Crossroads;
-use libchromeos::secure_blob::SecureBlob;
 use log::{debug, error};
-use protobuf::Message;
-use system_api::client::OrgChromiumUserDataAuthInterface; // For get_hibernate_secret
-use system_api::rpc::AccountIdentifier;
-use system_api::UserDataAuth::GetHibernateSecretReply;
-use system_api::UserDataAuth::GetHibernateSecretRequest;
-use zeroize::Zeroize;
 
 const HIBERMAN_DBUS_NAME: &str = "org.chromium.Hibernate";
 const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
@@ -159,40 +152,6 @@ pub fn wait_for_resume_dbus_event(
 
 // Define the timeout to connect to the dbus system.
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Ask cryptohome for the hibernate key for the given account. This call only works once, then
-/// cryptohome forgets the key. The return value's type is SecureBlob so its content is zeroed when
-/// no longer needed.
-pub fn get_user_key(account_id: &str, auth_session_id: &[u8]) -> Result<SecureBlob> {
-    const CRYPTOHOME_DBUS_NAME: &str = "org.chromium.UserDataAuth";
-    const CRYPTOHOME_DBUS_PATH: &str = "/org/chromium/UserDataAuth";
-
-    let conn =
-        Connection::new_system().context("Failed to connect to dbus for hibernate secret")?;
-    let proxy = conn.with_proxy(
-        CRYPTOHOME_DBUS_NAME,
-        CRYPTOHOME_DBUS_PATH,
-        DEFAULT_DBUS_TIMEOUT,
-    );
-
-    let mut proto: GetHibernateSecretRequest = Message::new();
-    let mut account_identifier = AccountIdentifier::new();
-    account_identifier.set_account_id(account_id.to_string());
-    proto.account_id = Some(account_identifier).into();
-    proto.auth_session_id = auth_session_id.to_vec();
-    let mut response = proxy
-        .get_hibernate_secret(proto.write_to_bytes().unwrap())
-        .context("Failed to call GetHibernateSecret dbus method")?;
-    let mut reply: GetHibernateSecretReply = Message::parse_from_bytes(&response)
-        .context("Failed to parse GetHibernateSecret dbus response")?;
-    response.zeroize();
-
-    // Copy the key to the output parameter so the reply structure can be zeroed.
-    let mut key_data: Vec<u8> = vec![0; reply.hibernate_secret.len()];
-    key_data.copy_from_slice(&reply.hibernate_secret);
-    reply.hibernate_secret.fill(0);
-    Ok(SecureBlob::from(key_data))
-}
 
 /// Send an abort request over dbus to cancel a pending resume. The hiberman process calling this
 /// function might not be the same as the hiberman process serving the dbus requests. For example,

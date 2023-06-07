@@ -8,6 +8,7 @@ pub mod cookie;
 pub mod hiberlog;
 pub mod metrics;
 
+mod cryptohome;
 mod device_mapper;
 mod files;
 mod hiberutil;

@@ -25,6 +25,7 @@ use crate::cookie::cookie_description;
 use crate::cookie::get_hibernate_cookie;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::cryptohome;
 use crate::device_mapper::DeviceMapper;
 use crate::files::remove_resume_in_progress_file;
 use crate::hiberlog;
@@ -43,7 +44,7 @@ use crate::metrics::read_and_send_metrics;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
-use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, DBusEvent};
+use crate::resume_dbus::{wait_for_resume_dbus_event, DBusEvent};
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -312,8 +313,12 @@ impl ResumeConductor {
         let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
 
         let user_key = match wait_for_resume_dbus_event(completion_receiver)? {
-            DBusEvent::UserAuthWithAccountId { account_id } => get_user_key(&account_id, &[])?,
-            DBusEvent::UserAuthWithSessionId { session_id } => get_user_key("", &session_id)?,
+            DBusEvent::UserAuthWithAccountId { account_id } => {
+                cryptohome::get_user_key(&account_id, &[])?
+            }
+            DBusEvent::UserAuthWithSessionId { session_id } => {
+                cryptohome::get_user_key("", &session_id)?
+            }
             DBusEvent::AbortRequest { reason } => {
                 // Abort resume.
                 info!("Aborting resume: {:?}", reason);
