@@ -11,6 +11,7 @@
 #include <cstring>
 #include <memory>
 
+#include <wayland-client-protocol.h>
 #include <wayland-server.h>
 
 #define errno_assert(rv)                                          \
@@ -136,10 +137,11 @@ struct ForwardRequestHelper<void (C::*)(OutArgs...)> {
   }
 };
 
-// Wraps the function which dispatches a request to the host for use as
-// implementation for sommelier's implementation as a host. If null Wayland
-// resources should be allowed, AllowNullResource::kYes should be set,
-// otherwise the request will be considered invalid and dropped.
+// Wraps a function which forwards a request from a client which is connected to
+// Sommelier to the server Sommelier is connected to.
+//
+// If null Wayland resources should be allowed, AllowNullResource::kYes should
+// be set, otherwise the request will be considered invalid and dropped.
 // Example usage:
 // - ForwardRequest<wl_shell_surface_move>,
 // - ForwardRequest<wl_shell_surface_set_fullscreen, AllowNullResource::kYes>
@@ -169,6 +171,20 @@ template <auto shim_getter,
 void ForwardRequestToShim(InArgs... args) {
   ForwardRequestHelper<decltype(function)>::template Forward<
       shim_getter, function, allow_null>(args...);
+}
+
+// Wraps a function which forwards an event from a server which Sommelier is
+// connected to to a client which is connected to Sommelier.
+//
+// Example usage:
+//  - ForwardEvent<wl_shell_surface_send_ping>
+template <auto wl_function, typename T, typename... InArgs>
+void ForwardEvent(void* data, T* resource, InArgs... args) {
+  using SlType = typename WlToSl<T>::type;
+
+  SlType* host = static_cast<SlType*>(
+      wl_proxy_get_user_data(reinterpret_cast<struct wl_proxy*>(resource)));
+  wl_function(host->resource, args...);
 }
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_

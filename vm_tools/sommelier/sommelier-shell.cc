@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -48,38 +48,10 @@ static const struct wl_shell_surface_interface sl_shell_surface_implementation =
         sl_shell_surface_set_class,
 };
 
-static void sl_shell_surface_ping(void* data,
-                                  struct wl_shell_surface* shell_surface,
-                                  uint32_t serial) {
-  struct sl_host_shell_surface* host = static_cast<sl_host_shell_surface*>(
-      wl_shell_surface_get_user_data(shell_surface));
-
-  wl_shell_surface_send_ping(host->resource, serial);
-}
-
-static void sl_shell_surface_configure(void* data,
-                                       struct wl_shell_surface* shell_surface,
-                                       uint32_t edges,
-                                       int32_t width,
-                                       int32_t height) {
-  TRACE_EVENT("shell", "sl_shell_surface_configure");
-  struct sl_host_shell_surface* host = static_cast<sl_host_shell_surface*>(
-      wl_shell_surface_get_user_data(shell_surface));
-
-  wl_shell_surface_send_configure(host->resource, edges, width, height);
-}
-
-static void sl_shell_surface_popup_done(
-    void* data, struct wl_shell_surface* shell_surface) {
-  struct sl_host_shell_surface* host = static_cast<sl_host_shell_surface*>(
-      wl_shell_surface_get_user_data(shell_surface));
-
-  wl_shell_surface_send_popup_done(host->resource);
-}
-
 static const struct wl_shell_surface_listener sl_shell_surface_listener = {
-    sl_shell_surface_ping, sl_shell_surface_configure,
-    sl_shell_surface_popup_done};
+    ForwardEvent<wl_shell_surface_send_ping>,
+    ForwardEvent<wl_shell_surface_send_configure>,
+    ForwardEvent<wl_shell_surface_send_popup_done>};
 
 static void sl_destroy_host_shell_surface(struct wl_resource* resource) {
   struct sl_host_shell_surface* host =
