@@ -196,11 +196,11 @@ TEST(ReporterTest, FullReport) {
   MaybeMountEntries maybe_mounts =
       ReadMountsFromString(kMounts, MountFilter::kUploadableOnly);
   MaybeProcEntries maybe_procs = MaybeProcEntries(
-      {ProcEntry(1, 0, 4026531836, 4026531836, "init", "/sbin/init", 0b1000),
+      {ProcEntry(1, 0, 4026531836, 4026531836, "init", "/sbin/init", 0b10000),
        ProcEntry(471, 300, 4026531836, 4026531836, "agetty",
-                 "agetty 115200 ttyS0 linux", 0b0000),
+                 "agetty 115200 ttyS0 linux", 0b00000),
        ProcEntry(506, 1, 4026531836, 4026531836, "auditd",
-                 "/sbin/auditd -n -c /etc/audit", 0b0000)});
+                 "/sbin/auditd -n -c /etc/audit", 0b00000)});
 
   MaybeReport report =
       GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);

@@ -70,6 +70,46 @@ std::string GetNextUniquePath(const std::set<base::FilePath>& set,
   return prefix + "_" + std::to_string(num_common_elements);
 }
 
+bool EmitSeccompCoverageUma(const ProcEntries& proc_entries) {
+  size_t total_proc_count = proc_entries.size();
+  size_t seccomp_proc_count = 0;
+  seccomp_proc_count = std::count_if(
+      proc_entries.begin(), proc_entries.end(), [](const ProcEntry& entry) {
+        return entry.sandbox_status()[ProcEntry::kSecCompBit] == 1;
+      });
+  unsigned int seccomp_proc_percentage =
+      static_cast<unsigned int>(round((static_cast<float>(seccomp_proc_count) /
+                                       static_cast<float>(total_proc_count)) *
+                                      100));
+
+  VLOG(1) << "Reporting SecComp coverage UMA metric";
+  if (!SendSecCompCoverageToUMA(seccomp_proc_percentage)) {
+    LOG(WARNING) << "Could not upload SecComp coverage UMA metric";
+    return false;
+  }
+  return true;
+}
+
+bool EmitNonRootProcPercentageUma(const ProcEntries& proc_entries) {
+  size_t total_proc_count = proc_entries.size();
+  size_t nonroot_proc_count = 0;
+  nonroot_proc_count = std::count_if(
+      proc_entries.begin(), proc_entries.end(), [](const ProcEntry& entry) {
+        return entry.sandbox_status()[ProcEntry::kNonRootBit] == 1;
+      });
+  unsigned int nonroot_proc_percentage =
+      static_cast<unsigned int>(round((static_cast<float>(nonroot_proc_count) /
+                                       static_cast<float>(total_proc_count)) *
+                                      100));
+
+  VLOG(1) << "Reporting non-root process percentage UMA metric";
+  if (!SendNonRootProcPercentageToUMA(nonroot_proc_percentage)) {
+    LOG(WARNING) << "Could not upload non-root process percentage UMA metric";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 int Daemon::OnInit() {
@@ -315,29 +355,24 @@ void Daemon::EmitSandboxingUma() {
   // Refresh the login state.
   system_context_->Refresh(/*skip_known_mount_refresh=*/true);
 
-  if (!has_emitted_seccomp_coverage_uma_ && system_context_->IsUserLoggedIn()) {
-    MaybeProcEntries proc_entries =
+  if ((!has_emitted_seccomp_coverage_uma_ ||
+       !has_emitted_nonroot_proc_percentage_uma_) &&
+      system_context_->IsUserLoggedIn()) {
+    MaybeProcEntries maybe_proc_entries =
         ReadProcesses(ProcessFilter::kNoKernelTasks);
-    if (!proc_entries.has_value() || proc_entries.value().size() == 0) {
+    if (!maybe_proc_entries.has_value() ||
+        maybe_proc_entries.value().size() == 0) {
       return;
     }
 
-    size_t total_proc_count = proc_entries.value().size();
-    size_t seccomp_proc_count = 0;
-    seccomp_proc_count = std::count_if(
-        proc_entries->begin(), proc_entries->end(), [](const ProcEntry& entry) {
-          return entry.sandbox_status()[ProcEntry::kSecCompBit] == 1;
-        });
-    unsigned int coverage_percentage = static_cast<unsigned int>(
-        round((static_cast<float>(seccomp_proc_count) /
-               static_cast<float>(total_proc_count)) *
-              100));
+    if (!has_emitted_seccomp_coverage_uma_) {
+      has_emitted_seccomp_coverage_uma_ =
+          EmitSeccompCoverageUma(maybe_proc_entries.value());
+    }
 
-    VLOG(1) << "Reporting SecComp coverage UMA metric";
-    if (!SendSecCompCoverageToUMA(coverage_percentage)) {
-      LOG(WARNING) << "Could not upload SecComp coverage UMA metric";
-    } else {
-      has_emitted_seccomp_coverage_uma_ = true;
+    if (!has_emitted_nonroot_proc_percentage_uma_) {
+      has_emitted_nonroot_proc_percentage_uma_ =
+          EmitNonRootProcPercentageUma(maybe_proc_entries.value());
     }
   }
 }

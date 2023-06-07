@@ -74,6 +74,10 @@ class Daemon : public brillo::DBusDaemon {
   // the logged-in state. We only need a rough percentage.
   bool has_emitted_seccomp_coverage_uma_ = false;
 
+  // The percentage of non-root processes is sent once per execution of
+  // secanomalyd. This is done only when the user is logged-in.
+  bool has_emitted_nonroot_proc_percentage_uma_ = false;
+
   bool generate_reports_ = false;
   bool dev_ = false;
 

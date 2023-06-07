@@ -44,6 +44,8 @@ constexpr char kLandlockEnabledHistogramName[] =
     "ChromeOS.Sandboxing.LandlockEnabled";
 constexpr char kSecCompCoverageHistogramName[] =
     "ChromeOS.Sandboxing.SecCompCoverage";
+constexpr char kNonRootProcPercentageHistogramName[] =
+    "ChromeOS.Sandboxing.NonRootProcPercentage";
 
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
@@ -91,6 +93,12 @@ bool SendSecCompCoverageToUMA(unsigned int coverage_percentage) {
   InitializeMetricsIfNecessary();
   return metrics_library->SendPercentageToUMA(
       kSecCompCoverageHistogramName, static_cast<int>(coverage_percentage));
+}
+
+bool SendNonRootProcPercentageToUMA(unsigned int proc_percentage) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendPercentageToUMA(
+      kNonRootProcPercentageHistogramName, static_cast<int>(proc_percentage));
 }
 
 bool SendAnomalyUploadResultToUMA(bool success) {

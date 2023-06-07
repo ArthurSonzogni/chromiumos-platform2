@@ -149,7 +149,7 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // with a tab: Attribute:\tValue1\tValue2\tValue3\n...
   // See https://man7.org/linux/man-pages/man5/proc.5.html for the list of
   // attributes in this file.
-  // In our case we parse the values of `Name`, `PPid`, `NoNewPrivs` and
+  // In our case we parse the values of `Name`, `PPid`, `Uid`, `NoNewPrivs` and
   // `Seccomp`.
   base::StringTokenizer t(status_file_content, "\n");
   while (t.GetNext()) {
@@ -161,6 +161,17 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
       if (!base::StringToInt(std::string(line.substr(line.rfind("\t") + 1)),
                              &ppid)) {
         ppid = 0;
+      }
+    }
+    if (base::StartsWith(line, "Uid:")) {
+      // The UID field includes real, effective, saved set and filesystem UIDs.
+      // We use the real UID to determine whether the process is running as
+      // root.
+      base::StringPiece all_uids = line.substr(line.find("\t") + 1);
+      size_t real_uid_len =
+          all_uids.length() - all_uids.substr(all_uids.find("\t")).length();
+      if (std::string(all_uids.substr(0, real_uid_len)) != "0") {
+        sandbox_status.set(kNonRootBit);
       }
     }
     if (base::StartsWith(line, "NoNewPrivs:") &&

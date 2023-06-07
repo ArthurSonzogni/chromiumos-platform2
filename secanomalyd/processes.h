@@ -27,11 +27,12 @@ class ProcessesTestFixture;
 class ProcEntry {
  public:
   // A given process can be sandboxed using zero or more mechanisms.
-  using SandboxStatus = std::bitset<4>;
+  using SandboxStatus = std::bitset<5>;
   static constexpr size_t kLandlockBit = 0;  // Least Significant Bit
   static constexpr size_t kSecCompBit = 1;
   static constexpr size_t kSELinuxBit = 2;
   static constexpr size_t kNoNewPrivsBit = 3;
+  static constexpr size_t kNonRootBit = 4;
 
   static std::optional<ProcEntry> CreateFromPath(
       const base::FilePath& pid_path);
