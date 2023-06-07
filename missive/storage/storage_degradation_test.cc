@@ -926,8 +926,169 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   options_.disk_space_resource()->Discard(to_reserve);
 }
 
-// Test Available files to delete in multiple queues
-TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingSuccess) {
+// Test Available files to delete in multiple queues when one is insufficient.
+TEST_P(LegacyStorageDegradationTest,
+       WriteAttemptWithRecordsSheddingMultipleQueues) {
+  // The test will try to write this amount of records.
+  static constexpr size_t kAmountOfBigRecords = 10;
+
+  CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // This writes enough records to create `kAmountOfBigRecords` files in each
+  // queue: FAST_BATCH and MANUAL_BATCH
+  for (size_t i = 0; i < 2 * kAmountOfBigRecords; i++) {
+    WriteStringOrDie(FAST_BATCH, xBigData());
+    WriteStringOrDie(MANUAL_BATCH, kData[0]);
+  }
+
+  // Flush MANUAL queue so that the write file is closed and new one opened,
+  // even thought the records are small.
+  {
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              TestUploader::SetUp uploader(MANUAL_BATCH, &waiter, this);
+              for (size_t i = 0; i < 2 * kAmountOfBigRecords; i++) {
+                uploader.Required(i, kData[0]);
+              }
+              return uploader.Complete();
+            }))
+        .RetiresOnSaturation();
+    // Trigger upload on MANUAL.
+    SetExpectedUploadsCount();
+    FlushOrDie(Priority::MANUAL_BATCH);
+  }
+
+  // Reserve the remaining space to have none available and trigger Records
+  // Shedding
+  const uint64_t temp_used = options_.disk_space_resource()->GetUsed();
+  const uint64_t temp_total = options_.disk_space_resource()->GetTotal();
+  const uint64_t to_reserve = temp_total - temp_used;
+  options_.disk_space_resource()->Reserve(to_reserve);
+
+  // Write records on a higher priority queue to see if records shedding has any
+  // effect.
+  if (is_degradation_enabled()) {
+    LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), Gt(0)))
+        .Times(2)  // Expect 2 sheddings.
+        .WillRepeatedly(Return(true));
+    // Write and expect immediate upload.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                return TestUploader::SetUp(IMMEDIATE, &waiter, this)
+                    .Required(0, xBigData())
+                    .Complete();
+              }))
+          .RetiresOnSaturation();
+      SetExpectedUploadsCount();
+      WriteStringOrDie(IMMEDIATE, xBigData());
+    }
+
+    // Make sure the other queues partially kept their data and can still
+    // upload.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(FAST_BATCH, &waiter, this);
+                // In the higher priority queue at least one record should be
+                // lost.
+                for (size_t i = 1; i < 2 * kAmountOfBigRecords; i++) {
+                  uploader.Possible(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on FAST_BATCH.
+      SetExpectedUploadsCount();
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+
+    // Add one more record, so that the last file is not empty (otherwise upload
+    // may be skipped).
+    WriteStringOrDie(MANUAL_BATCH, kData[0]);
+
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(MANUAL_BATCH, &waiter, this);
+                // In the lower priority queue all initial records should be
+                // lost. Expect the last added record only.
+                uploader.Required(2 * kAmountOfBigRecords, kData[0]);
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on MANUAL.
+      SetExpectedUploadsCount();
+      FlushOrDie(Priority::MANUAL_BATCH);
+    }
+  } else {
+    LOG(ERROR) << "Feature Disabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
+        .Times(0);
+    const Status write_result_immediate = WriteString(IMMEDIATE, kData[2]);
+    ASSERT_FALSE(write_result_immediate.ok());
+
+    // Make sure the other queues kept their data.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(FAST_BATCH, &waiter, this);
+                for (size_t i = 0; i < 2 * kAmountOfBigRecords; i++) {
+                  uploader.Required(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on FAST_BATCH.
+      SetExpectedUploadsCount();
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(MANUAL_BATCH, &waiter, this);
+                for (size_t i = 0; i < 2 * kAmountOfBigRecords; i++) {
+                  uploader.Required(i, kData[0]);
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on MANUAL.
+      SetExpectedUploadsCount();
+      FlushOrDie(Priority::MANUAL_BATCH);
+    }
+  }
+
+  // Discard the space reserved
+  options_.disk_space_resource()->Discard(to_reserve);
+}
+
+// Test Available files to delete in the lowest priority queue out of multiple.
+TEST_P(LegacyStorageDegradationTest,
+       WriteAttemptWithRecordsSheddingLowestQueue) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 10;
 
@@ -956,18 +1117,59 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingSuccess) {
         SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), Gt(0)))
         .WillOnce(Return(true));
     // Write and expect immediate upload.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(IMMEDIATE, &waiter, this)
-                  .Required(0, kData[2])
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
-    SetExpectedUploadsCount();
-    WriteStringOrDie(IMMEDIATE, kData[2]);
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                return TestUploader::SetUp(IMMEDIATE, &waiter, this)
+                    .Required(0, kData[2])
+                    .Complete();
+              }))
+          .RetiresOnSaturation();
+      SetExpectedUploadsCount();
+      WriteStringOrDie(IMMEDIATE, kData[2]);
+    }
+
+    // Make sure the other queues partially kept their data and can still
+    // upload.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(FAST_BATCH, &waiter, this);
+                for (size_t i = 0; i < kAmountOfBigRecords; i++) {
+                  uploader.Possible(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on FAST_BATCH.
+      SetExpectedUploadsCount();
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(MANUAL_BATCH, &waiter, this);
+                // In the lower priority queue at least one record should be
+                // lost.
+                for (size_t i = 1; i < kAmountOfBigRecords; i++) {
+                  uploader.Possible(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on MANUAL.
+      SetExpectedUploadsCount();
+      FlushOrDie(Priority::MANUAL_BATCH);
+    }
   } else {
     LOG(ERROR) << "Feature Disabled >> RecordSheddingSuccessTest";
     EXPECT_CALL(
@@ -976,6 +1178,42 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingSuccess) {
         .Times(0);
     const Status write_result_immediate = WriteString(IMMEDIATE, kData[2]);
     ASSERT_FALSE(write_result_immediate.ok());
+
+    // Make sure the other queues kept their data.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(FAST_BATCH, &waiter, this);
+                for (size_t i = 0; i < kAmountOfBigRecords; i++) {
+                  uploader.Required(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on FAST_BATCH.
+      SetExpectedUploadsCount();
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                TestUploader::SetUp uploader(MANUAL_BATCH, &waiter, this);
+                for (size_t i = 0; i < kAmountOfBigRecords; i++) {
+                  uploader.Required(i, xBigData());
+                }
+                return uploader.Complete();
+              }))
+          .RetiresOnSaturation();
+      // Trigger upload on MANUAL.
+      SetExpectedUploadsCount();
+      FlushOrDie(Priority::MANUAL_BATCH);
+    }
   }
 
   // Discard the space reserved

@@ -2079,6 +2079,7 @@ bool StorageQueue::ShedFiles(size_t space_to_recover) {
         base::Unretained(&total_shed_size)));
     do {
       // Delete the first file and discard reserved space.
+      files_.begin()->second->Close();
       total_shed_size += files_.begin()->second->size();
       files_.begin()->second->DeleteWarnIfFailed();
       files_.erase(files_.begin());

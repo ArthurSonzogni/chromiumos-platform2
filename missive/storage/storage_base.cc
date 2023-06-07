@@ -199,11 +199,11 @@ class QueueComparator {
 
  private:
   static std::array<size_t, Priority_ARRAYSIZE> MapPriorityToOrder() {
-    size_t index = Priority_MAX;
+    size_t index = Priority_MIN;
     std::array<size_t, Priority_ARRAYSIZE> priority_to_order;
     for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
       priority_to_order[priority] = index;
-      --index;
+      ++index;
     }
     return priority_to_order;
   }
@@ -244,7 +244,7 @@ void QueuesContainer::GetDegradationCandidates(
        container->queues_) {
     auto queue_priority = std::get<Priority>(priority_generation_tuple);
     auto queue_pair = std::make_pair(queue_priority, candidate_queue);
-    if (comparator(writing_queue_pair, queue_pair)) {
+    if (comparator(queue_pair, writing_queue_pair)) {
       DCHECK_NE(candidate_queue.get(), queue.get());
       candidate_queues.emplace_back(queue_pair);
     }
