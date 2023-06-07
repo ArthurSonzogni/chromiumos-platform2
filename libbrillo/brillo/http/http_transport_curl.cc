@@ -201,12 +201,11 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   }
   if (code == CURLE_OK && !ip_address_.empty()) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_INTERFACE,
-                                          ip_address_.c_str());
+                                          ip_address_);
   }
   if (code == CURLE_OK && !dns_servers_.empty()) {
-    code = curl_interface_->EasySetOptStr(
-        curl_handle, CURLOPT_DNS_SERVERS,
-        base::JoinString(dns_servers_, ",").c_str());
+    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_DNS_SERVERS,
+                                          base::JoinString(dns_servers_, ","));
   }
   if (code == CURLE_OK && !dns_interface_.empty()) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_DNS_INTERFACE,
