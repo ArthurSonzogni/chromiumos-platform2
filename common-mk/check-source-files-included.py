@@ -165,7 +165,9 @@ def CheckSourceFileIncludedInBuild(commit: str, file_paths: List[str]) -> bool:
         if path not in project_literals.GetLiterals(project):
             print(
                 f"{__file__}: {path} is not included in any "
-                f"*.gn files in {project}.",
+                f"*.gn files in {project}. "
+                "If you believe you have added the file via an intermediate "
+                "variable, please ensure the source is set via source_set().",
                 file=sys.stderr,
             )
             ret = False
