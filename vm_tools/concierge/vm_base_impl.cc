@@ -19,29 +19,14 @@
 namespace vm_tools {
 namespace concierge {
 
-VmBaseImpl::VmBaseImpl(
-    std::unique_ptr<patchpanel::Client> network_client,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    base::FilePath runtime_dir)
-    : VmBaseImpl(std::move(network_client),
-                 0 /* vsock_cid */,
-                 std::move(seneschal_server_proxy),
-                 "",
-                 std::move(runtime_dir)) {}
-
-VmBaseImpl::VmBaseImpl(
-    std::unique_ptr<patchpanel::Client> network_client,
-    uint32_t vsock_cid,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-    std::string cros_vm_socket,
-    base::FilePath runtime_dir)
-    : network_client_(std::move(network_client)),
-      seneschal_server_proxy_(std::move(seneschal_server_proxy)),
-      vsock_cid_(vsock_cid),
-      cros_vm_socket_(std::move(cros_vm_socket)) {
+VmBaseImpl::VmBaseImpl(Config config)
+    : network_client_(std::move(config.network_client)),
+      seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
+      vsock_cid_(config.vsock_cid),
+      cros_vm_socket_(std::move(config.cros_vm_socket)) {
   // Take ownership of the runtime directory.
-  CHECK(base::DirectoryExists(runtime_dir));
-  CHECK(runtime_dir_.Set(runtime_dir));
+  CHECK(base::DirectoryExists(config.runtime_dir));
+  CHECK(runtime_dir_.Set(config.runtime_dir));
 }
 
 std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {

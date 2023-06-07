@@ -38,15 +38,14 @@ typedef uint32_t VmMemoryId;
 // PluginVm and TerminaVm
 class VmBaseImpl {
  public:
-  VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
-             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             base::FilePath runtime_dir);
-
-  VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
-             uint32_t vsock_cid,
-             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             std::string cros_vm_socket,
-             base::FilePath runtime_dir);
+  struct Config {
+    std::unique_ptr<patchpanel::Client> network_client;
+    uint32_t vsock_cid{0};
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    std::string cros_vm_socket{};
+    base::FilePath runtime_dir;
+  };
+  explicit VmBaseImpl(Config config);
 
   VmBaseImpl(const VmBaseImpl&) = delete;
   VmBaseImpl& operator=(const VmBaseImpl&) = delete;

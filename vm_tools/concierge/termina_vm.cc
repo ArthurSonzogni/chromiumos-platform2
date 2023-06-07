@@ -111,11 +111,13 @@ std::unique_ptr<patchpanel::Subnet> MakeSubnet(
 }  // namespace
 
 TerminaVm::TerminaVm(Config config)
-    : VmBaseImpl(std::move(config.network_client),
-                 config.vsock_cid,
-                 std::move(config.seneschal_server_proxy),
-                 config.cros_vm_socket,
-                 std::move(config.runtime_dir)),
+    : VmBaseImpl(VmBaseImpl::Config{
+          .network_client = std::move(config.network_client),
+          .vsock_cid = config.vsock_cid,
+          .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
+          .cros_vm_socket = config.cros_vm_socket,
+          .runtime_dir = std::move(config.runtime_dir),
+      }),
       features_(config.features),
       stateful_device_(config.stateful_device),
       stateful_size_(config.stateful_size),

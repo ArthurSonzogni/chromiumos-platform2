@@ -618,9 +618,11 @@ void PluginVm::VmToolsStateChanged(bool running) {
 }
 
 PluginVm::PluginVm(Config config)
-    : VmBaseImpl(std::move(config.network_client),
-                 std::move(config.seneschal_server_proxy),
-                 std::move(config.runtime_dir)),
+    : VmBaseImpl(VmBaseImpl::Config{
+          .network_client = std::move(config.network_client),
+          .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
+          .runtime_dir = std::move(config.runtime_dir),
+      }),
       id_(std::move(config.id)),
       iso_dir_(std::move(config.iso_dir)),
       bus_(std::move(config.bus)),
