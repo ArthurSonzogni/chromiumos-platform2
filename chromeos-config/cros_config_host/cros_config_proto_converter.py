@@ -1767,8 +1767,8 @@ def _build_hardware_properties(hw_topology):
 
     audio = hw_topology.audio.hardware_feature.audio
     if (
-        audio.headphone_codec is not None and
-        audio.headphone_codec
+        audio.headphone_codec is not None
+        and audio.headphone_codec
         != topology_pb2.HardwareFeatures.Audio.AUDIO_CODEC_UNKNOWN
     ):
         result["has-audio-jack"] = True
@@ -2060,6 +2060,17 @@ class _AudioConfigBuilder:
     def _hw_features(self):
         return self._config.hw_design_config.hardware_features
 
+    @staticmethod
+    def _get_audio_enum_name(
+        audio_enum: topology_pb2.HardwareFeatures.Audio, numeric_value: int
+    ) -> str:
+        """Get name from last underscore."""
+        name = audio_enum.Name(numeric_value)
+        if numeric_value != 0:
+            # skip for unknown type
+            _, _, name = name.rpartition("_")
+        return name
+
     def _build_source_path(self, config_structure, config_path):
         if config_structure == self.AudioConfigStructure.COMMON:
             return pathlib.PurePath("common").joinpath(
@@ -2099,17 +2110,15 @@ class _AudioConfigBuilder:
         wf_mics = self._count_mics(self.Camera.FACING_BACK)
         mic_details = [(uf_mics, "uf"), (wf_mics, "wf")]
         suffix = suffix_format.format(
-            headset_codec=(
-                topology_pb2.HardwareFeatures.Audio.AudioCodec.Name(
-                    self._audio.headphone_codec
-                )
+            headset_codec=self._get_audio_enum_name(
+                topology_pb2.HardwareFeatures.Audio.AudioCodec,
+                self._audio.headphone_codec,
             ).lower()
             if self._audio.headphone_codec
             else "",
-            speaker_amp=(
-                topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
-                    self._audio.speaker_amp
-                )
+            speaker_amp=self._get_audio_enum_name(
+                topology_pb2.HardwareFeatures.Audio.Amplifier,
+                self._audio.speaker_amp,
             ).lower()
             if self._audio.speaker_amp
             else "",
@@ -2185,8 +2194,9 @@ class _AudioConfigBuilder:
         )
 
         if card_init_config_source_path:
-            speaker_amp = topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
-                self._audio.speaker_amp
+            speaker_amp = self._get_audio_enum_name(
+                topology_pb2.HardwareFeatures.Audio.Amplifier,
+                self._audio.speaker_amp,
             )
             sound_card_init_conf = f"{self._design_name}.{speaker_amp}.yaml"
             self._files.append(
