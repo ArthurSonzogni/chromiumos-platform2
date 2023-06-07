@@ -52,7 +52,7 @@ struct {
 struct {
   __uint(type, BPF_MAP_TYPE_LRU_HASH);
   __uint(max_entries, CROS_MAX_SOCKET);
-  __type(key, struct socket*);
+  __type(key, uint64_t);
   __type(value, struct cros_sock_to_process_map_value);
 } process_map SEC(".maps");
 
@@ -152,7 +152,7 @@ static inline __attribute__((always_inline)) void cros_new_flow_entry(
   }
   __builtin_memset(process_value, 0,
                    sizeof(struct cros_sock_to_process_map_value));
-  cros_fill_common(&process_value->common, key_ref->sock);
+  cros_fill_common(&process_value->common, (const struct socket*)key_ref->sock);
   process_value->garbage_collect_me = false;
   bpf_map_update_elem(&process_map, &key_ref->sock, process_value, BPF_NOEXIST);
   struct cros_tuple_list* tuple_list =
@@ -230,8 +230,8 @@ int BPF_PROG(cros_handle_inet_sendmsg_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = sock;
-  cros_fill_network_5_tuple(&key.five_tuple, key.sock);
+  key.sock = (uint64_t)sock;
+  cros_fill_network_5_tuple(&key.five_tuple, (const struct socket*)key.sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {  // entry already exist
     value_ref->tx_bytes = value_ref->tx_bytes + rv;
@@ -261,8 +261,8 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = sock;
-  cros_fill_network_5_tuple(&key.five_tuple, key.sock);
+  key.sock = (uint64_t)sock;
+  cros_fill_network_5_tuple(&key.five_tuple, (const struct socket*)key.sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {  // entry already exist
     value_ref->rx_bytes = value_ref->rx_bytes + rv;
@@ -292,8 +292,8 @@ int BPF_PROG(cros_handle_inet_accept_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = newsock;
-  cros_fill_network_5_tuple(&key.five_tuple, key.sock);
+  key.sock = (uint64_t)newsock;
+  cros_fill_network_5_tuple(&key.five_tuple, (const struct socket*)key.sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {  // entry already exist.. this shouldn't be the case.
     bpf_printk(
@@ -323,8 +323,8 @@ int BPF_PROG(cros_handle_inet_stream_connect_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = sock;
-  cros_fill_network_5_tuple(&key.five_tuple, key.sock);
+  key.sock = (uint64_t)sock;
+  cros_fill_network_5_tuple(&key.five_tuple, (const struct socket*)key.sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {
     value_ref->direction = CROS_SOCKET_DIRECTION_OUT;
@@ -367,7 +367,7 @@ int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
   }
   struct cros_flow_map_key key;
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = sock;
+  key.sock = (uint64_t)sock;
   for (int idx = 0; idx < CROS_ARRAY_SIZE(tuple_list->list); idx++) {
     key.five_tuple = tuple_list->list[idx];
     val = bpf_map_lookup_elem(&cros_network_flow_map, &key);

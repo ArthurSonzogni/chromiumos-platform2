@@ -57,7 +57,7 @@ typedef uint64_t time_ns_t;
 struct cros_timespec {
   int64_t tv_sec;
   int64_t tv_nsec;
-};
+} __attribute__((aligned(8)));
 
 // The image_info struct contains the security metrics
 // of interest for an executable file.
@@ -72,7 +72,7 @@ struct cros_image_info {
   uint16_t mode;
   struct cros_timespec mtime;
   struct cros_timespec ctime;
-};
+} __attribute__((aligned(8)));
 
 // The namespace_info struct contains the namespace information for a process.
 struct cros_namespace_info {
@@ -83,7 +83,7 @@ struct cros_namespace_info {
   uint64_t mnt_ns;
   uint64_t net_ns;
   uint64_t ipc_ns;
-};
+} __attribute__((aligned(8)));
 
 // This is the process information collected when a process starts or exits.
 struct cros_process_task_info {
@@ -95,20 +95,20 @@ struct cros_process_task_info {
   uint32_t commandline_len;  // At most CROS_MAX_REDUCED_ARG_SIZE.
   uint32_t uid;
   uint32_t gid;
-};
+} __attribute__((aligned(8)));
 
 // This is the process information collected when a process starts.
 struct cros_process_start {
   struct cros_process_task_info task_info;
   struct cros_image_info image_info;
   struct cros_namespace_info spawn_namespace;
-};
+} __attribute__((aligned(8)));
 
 // This is the process information collected when a process exits.
 struct cros_process_exit {
   struct cros_process_task_info task_info;
   bool is_leaf;  // True if process has no children.
-};
+} __attribute__((aligned(8)));
 
 struct cros_process_change_namespace {
   // PID and start_time together will form a unique identifier for a process.
@@ -117,7 +117,7 @@ struct cros_process_change_namespace {
   uint32_t pid;
   time_ns_t start_time;
   struct cros_namespace_info new_ns;  // The new namespace.
-};
+} __attribute__((aligned(8)));
 
 // Indicates the type of process event is contained within the
 // event structure.
@@ -136,7 +136,7 @@ struct cros_process_event {
     struct cros_process_exit process_exit;
     struct cros_process_change_namespace process_change_namespace;
   } data;
-};
+} __attribute__((aligned(8)));
 
 // http://www.iana.org/assignments/protocol-numbers
 #define CROS_IANA_HOPOPT (0)
@@ -177,11 +177,12 @@ struct cros_network_common {
   enum cros_network_family family;
   enum cros_network_protocol protocol;
   struct cros_process_task_info process;
-};
+} __attribute__((aligned(8)));
+
 union cros_ip_addr {
   uint32_t addr4;
   uint8_t addr6[16];
-};
+} __attribute__((aligned(8)));
 
 struct cros_network_5_tuple {
   enum cros_network_family family;
@@ -190,7 +191,7 @@ struct cros_network_5_tuple {
   uint16_t source_port;
   union cros_ip_addr dest_addr;
   uint16_t dest_port;
-};
+} __attribute__((aligned(8)));
 
 /* The design idea behind the flow_map is that the BPF will be responsible for
  * creating and updating entries in the map. Each entry corresponds to a socket
@@ -203,8 +204,11 @@ struct cros_network_5_tuple {
  */
 struct cros_flow_map_key {
   struct cros_network_5_tuple five_tuple;
-  const struct socket* sock;
-};
+  uint64_t sock;  // Holds struct socket * but force to 64-bit value
+  // because on ARM64 we have 64-bit kernel and 32-bit userspace
+  // so a pointer in the BPF will be 64-bits while this same pointer would be
+  // 32-bits in userspace. This would cause issues.
+} __attribute__((aligned(8)));
 
 struct cros_flow_map_value {
   enum cros_network_socket_direction direction;
@@ -215,12 +219,12 @@ struct cros_flow_map_value {
   // TODO(b/264550183): add http_host
   // TODO(b/264550183): add sni_host
   bool garbage_collect_me;
-};
+} __attribute__((aligned(8)));
 
 struct cros_sock_to_process_map_value {
   struct cros_network_common common;
   bool garbage_collect_me;
-};
+} __attribute__((aligned(8)));
 
 struct cros_network_socket_listen {
   struct cros_network_common common;
@@ -228,7 +232,7 @@ struct cros_network_socket_listen {
   uint32_t port;
   uint32_t ipv4_addr;
   uint8_t ipv6_addr[16];
-};
+} __attribute__((aligned(8)));
 
 enum cros_network_event_type { kSyntheticNetworkFlow, kNetworkSocketListen };
 
@@ -243,14 +247,15 @@ struct cros_synthetic_network_flow {
   struct cros_flow_map_key flow_map_key;
   struct cros_sock_to_process_map_value process_map_value;
   struct cros_flow_map_value flow_map_value;
-};
+} __attribute__((aligned(8)));
+
 struct cros_network_event {
   enum cros_network_event_type type;
   union {
     struct cros_network_socket_listen socket_listen;
     struct cros_synthetic_network_flow flow;
   } data;
-};
+} __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent };
 
@@ -262,7 +267,7 @@ struct cros_event {
     struct cros_network_event network_event;
   } data;
   enum cros_event_type type;
-};
+} __attribute__((aligned(8)));
 
 // Ensure that the ring-buffer sample that is allocated is large enough.
 _Static_assert(sizeof(struct cros_event) <= CROS_MAX_STRUCT_SIZE,
