@@ -21,6 +21,18 @@ class Environment {
   }
 };
 
+net_base::IPv4Address ConsumeIPv4Address(FuzzedDataProvider& provider) {
+  const auto bytes =
+      provider.ConsumeBytes<uint8_t>(net_base::IPv4Address::kAddressLength);
+  return *net_base::IPv4Address::CreateFromBytes(bytes.data(), bytes.size());
+}
+
+net_base::IPv6Address ConsumeIPv6Address(FuzzedDataProvider& provider) {
+  const auto bytes =
+      provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
+  return *net_base::IPv6Address::CreateFromBytes(bytes.data(), bytes.size());
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   dbus::Bus::Options options;
@@ -38,12 +50,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     device.ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
     device.phys_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
     device.guest_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
-    device.ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
-    device.host_ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
+    device.ipv4_addr = ConsumeIPv4Address(provider);
+    device.host_ipv4_addr = ConsumeIPv4Address(provider);
     device.ipv4_subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
     device.ipv4_subnet.prefix_len = provider.ConsumeIntegral<int32_t>();
-    device.dns_proxy_ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
-    device.dns_proxy_ipv6_addr = provider.ConsumeBytes<uint8_t>(16);
+    device.dns_proxy_ipv4_addr = ConsumeIPv4Address(provider);
+    device.dns_proxy_ipv6_addr = ConsumeIPv6Address(provider);
     Client::IPv4Subnet subnet;
     subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
     subnet.prefix_len = provider.ConsumeIntegral<int32_t>();

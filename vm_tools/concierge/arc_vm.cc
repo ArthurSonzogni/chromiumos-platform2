@@ -38,7 +38,6 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/constants/vm_tools.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -747,14 +746,9 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
 
 uint32_t ArcVm::IPv4Address() const {
   for (const auto& dev : network_devices_) {
-    if (dev.ifname != "arc0") {
-      continue;
+    if (dev.ifname == "arc0") {
+      return dev.ipv4_addr.ToInAddr().s_addr;
     }
-    if (dev.ipv4_addr.size() != 4) {
-      return 0;
-    }
-    return patchpanel::Ipv4Addr(dev.ipv4_addr[0], dev.ipv4_addr[1],
-                                dev.ipv4_addr[2], dev.ipv4_addr[3]);
   }
   return 0;
 }

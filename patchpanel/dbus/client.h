@@ -105,12 +105,12 @@ class BRILLO_EXPORT Client {
     std::string ifname;
     std::string phys_ifname;
     std::string guest_ifname;
-    std::vector<uint8_t> ipv4_addr;
-    std::vector<uint8_t> host_ipv4_addr;
+    net_base::IPv4Address ipv4_addr;
+    net_base::IPv4Address host_ipv4_addr;
     IPv4Subnet ipv4_subnet;
     GuestType guest_type;
-    std::vector<uint8_t> dns_proxy_ipv4_addr;
-    std::vector<uint8_t> dns_proxy_ipv6_addr;
+    std::optional<net_base::IPv4Address> dns_proxy_ipv4_addr;
+    std::optional<net_base::IPv6Address> dns_proxy_ipv6_addr;
   };
 
   // See ConnectNamespaceResponse in patchpanel_service.proto.

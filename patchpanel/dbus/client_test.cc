@@ -124,14 +124,13 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
   EXPECT_EQ("vmtap1", device.ifname);
   EXPECT_EQ("wlan0", device.phys_ifname);
   EXPECT_EQ("not_defined", device.guest_ifname);
-  EXPECT_EQ("100.115.92.18", IPv4AddressToString(device.ipv4_addr));
-  EXPECT_EQ("100.115.92.17", IPv4AddressToString(device.host_ipv4_addr));
+  EXPECT_EQ("100.115.92.18", device.ipv4_addr.ToString());
+  EXPECT_EQ("100.115.92.17", device.host_ipv4_addr.ToString());
   EXPECT_EQ("100.115.92.16", IPv4AddressToString(device.ipv4_subnet.base_addr));
   EXPECT_EQ(30, device.ipv4_subnet.prefix_len);
   EXPECT_EQ(Client::GuestType::kTerminaVm, device.guest_type);
-  EXPECT_EQ("100.115.93.1", IPv4AddressToString(device.dns_proxy_ipv4_addr));
-  EXPECT_EQ("2001:db8::1234:abcd",
-            IPv6AddressToString(device.dns_proxy_ipv6_addr));
+  EXPECT_EQ("100.115.93.1", device.dns_proxy_ipv4_addr->ToString());
+  EXPECT_EQ("2001:db8::1234:abcd", device.dns_proxy_ipv6_addr->ToString());
   EXPECT_EQ("100.115.92.128", IPv4AddressToString(container_subnet.base_addr));
   EXPECT_EQ(24, container_subnet.prefix_len);
 }
@@ -186,14 +185,13 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
   EXPECT_EQ("vmtap2", device.ifname);
   EXPECT_EQ("eth0", device.phys_ifname);
   EXPECT_EQ("not_defined", device.guest_ifname);
-  EXPECT_EQ("100.115.93.34", IPv4AddressToString(device.ipv4_addr));
-  EXPECT_EQ("100.115.93.33", IPv4AddressToString(device.host_ipv4_addr));
+  EXPECT_EQ("100.115.93.34", device.ipv4_addr.ToString());
+  EXPECT_EQ("100.115.93.33", device.host_ipv4_addr.ToString());
   EXPECT_EQ("100.115.93.32", IPv4AddressToString(device.ipv4_subnet.base_addr));
   EXPECT_EQ(28, device.ipv4_subnet.prefix_len);
   EXPECT_EQ(Client::GuestType::kParallelsVm, device.guest_type);
-  EXPECT_EQ("100.115.93.5", IPv4AddressToString(device.dns_proxy_ipv4_addr));
-  EXPECT_EQ("2001:db8::bfc7:4ad2",
-            IPv6AddressToString(device.dns_proxy_ipv6_addr));
+  EXPECT_EQ("100.115.93.5", device.dns_proxy_ipv4_addr->ToString());
+  EXPECT_EQ("2001:db8::bfc7:4ad2", device.dns_proxy_ipv6_addr->ToString());
 }
 
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {

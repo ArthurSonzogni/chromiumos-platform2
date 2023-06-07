@@ -153,13 +153,6 @@ ConvertDnsRedirectionRequestType(Client::DnsRedirectionRequestType type) {
   }
 }
 
-std::vector<uint8_t> ConvertIPv4Addr(uint32_t in) {
-  std::vector<uint8_t> out;
-  out.resize(4);
-  memcpy(out.data(), &in, sizeof(in));
-  return out;
-}
-
 Client::IPv4Subnet ConvertIPv4Subnet(const IPv4Subnet& in) {
   Client::IPv4Subnet out = {};
   out.base_addr.assign(in.addr().begin(), in.addr().begin());
@@ -198,11 +191,15 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
   out->ifname = in.ifname();
   out->phys_ifname = in.phys_ifname();
   out->guest_ifname = in.guest_ifname();
-  out->ipv4_addr = ConvertIPv4Addr(in.ipv4_addr());
-  out->host_ipv4_addr = ConvertIPv4Addr(in.host_ipv4_addr());
+  out->ipv4_addr = ConvertUint32ToIPv4Address(in.ipv4_addr());
+  out->host_ipv4_addr = ConvertUint32ToIPv4Address(in.host_ipv4_addr());
   out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  CopyBytes(in.dns_proxy_ipv4_addr(), &out->dns_proxy_ipv4_addr);
-  CopyBytes(in.dns_proxy_ipv6_addr(), &out->dns_proxy_ipv6_addr);
+
+  out->dns_proxy_ipv4_addr = net_base::IPv4Address::CreateFromBytes(
+      in.dns_proxy_ipv4_addr().data(), in.dns_proxy_ipv4_addr().size());
+  out->dns_proxy_ipv6_addr = net_base::IPv6Address::CreateFromBytes(
+      in.dns_proxy_ipv6_addr().data(), in.dns_proxy_ipv6_addr().size());
+
   switch (in.guest_type()) {
     case patchpanel::NetworkDevice::ARC:
       out->guest_type = Client::GuestType::kArcContainer;
