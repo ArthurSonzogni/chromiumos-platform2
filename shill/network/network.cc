@@ -894,7 +894,12 @@ bool Network::StartPortalDetection(bool reset) {
     return true;
   }
 
-  DCHECK(connection_ != nullptr);
+  if (!local()) {
+    LOG(ERROR) << logging_tag_
+               << ": Cannot start portal detection: No valid IP address";
+    return false;
+  }
+
   portal_detector_ = CreatePortalDetector();
   if (!portal_detector_->Start(interface_name_, *local(), dns_servers(),
                                logging_tag_)) {
@@ -917,7 +922,12 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  DCHECK(connection_ != nullptr);
+  if (!local()) {
+    LOG(ERROR) << logging_tag_
+               << ": Cannot restart portal detection: No valid IP address";
+    return false;
+  }
+
   if (!portal_detector_->Restart(interface_name_, *local(), dns_servers(),
                                  logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
