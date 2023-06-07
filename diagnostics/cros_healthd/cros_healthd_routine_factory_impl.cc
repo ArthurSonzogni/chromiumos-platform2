@@ -25,7 +25,6 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
-#include "diagnostics/cros_healthd/routines/disk_read/disk_read.h"
 #include "diagnostics/cros_healthd/routines/emmc_lifetime/emmc_lifetime.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint_alive/fingerprint_alive.h"
@@ -158,14 +157,6 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
           : NvmeSelfTestRoutine::kRunLongSelfTest;
 
   return std::make_unique<NvmeSelfTestRoutine>(debugd_proxy, type);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeDiskReadRoutine(
-    ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
-    base::TimeDelta exec_duration,
-    uint32_t file_size_mb) {
-  return CreateDiskReadRoutine(type, exec_duration, file_size_mb);
 }
 
 std::unique_ptr<DiagnosticRoutine>

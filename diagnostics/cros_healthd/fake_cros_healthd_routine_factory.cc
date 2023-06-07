@@ -272,14 +272,6 @@ FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeDiskReadRoutine(
-    mojom::DiskReadRoutineTypeEnum type,
-    base::TimeDelta exec_duration,
-    uint32_t file_size_mb) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakePrimeSearchRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);

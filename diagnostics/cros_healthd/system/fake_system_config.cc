@@ -12,10 +12,6 @@ namespace diagnostics {
 FakeSystemConfig::FakeSystemConfig() = default;
 FakeSystemConfig::~FakeSystemConfig() = default;
 
-bool FakeSystemConfig::FioSupported() {
-  return fio_supported_;
-}
-
 bool FakeSystemConfig::HasBacklight() {
   return has_backlight_;
 }
@@ -59,10 +55,6 @@ bool FakeSystemConfig::MmcSupported() {
 
 bool FakeSystemConfig::FingerprintDiagnosticSupported() {
   return fingerprint_diagnostic_supported_;
-}
-
-void FakeSystemConfig::SetFioSupported(bool value) {
-  fio_supported_ = value;
 }
 
 bool FakeSystemConfig::IsWilcoDevice() {

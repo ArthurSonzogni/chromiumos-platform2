@@ -75,7 +75,6 @@ source_set("libdiag_routine") {
     "bluetooth/bluetooth_scanning.cc",
     "diag_process_adapter_impl.cc",
     "diag_routine_with_status.cc",
-    "disk_read/disk_read.cc",
     "emmc_lifetime/emmc_lifetime.cc",
     "fingerprint/fingerprint.cc",
     "fingerprint_alive/fingerprint_alive.cc",

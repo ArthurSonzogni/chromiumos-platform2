@@ -71,12 +71,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) = 0;
-  // Constructs a new instance of the disk read routine. See
-  // diagnostics/routines/disk_read for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeDiskReadRoutine(
-      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
-      base::TimeDelta exec_duration,
-      uint32_t file_size_mb) = 0;
   // Constructs a new instance of the prime search routine. See
   // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakePrimeSearchRoutine(

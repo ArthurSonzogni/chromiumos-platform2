@@ -290,22 +290,13 @@ void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
-  // TODO(b/280384708): Deprecate disk read routine to remove fio on rootfs
-  // after the v2 routine is stable.
-  if (context_->system_config()->FioSupported()) {
-    RunRoutine(routine_factory_->MakeDiskReadRoutine(
-                   type, base::Seconds(length_seconds), file_size_mb),
-               mojom::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
-    return;
-  }
-
-  auto disk_read_routine_v2 =
+  auto disk_read_routine =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
   routine_service_->CreateRoutine(
       mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
           Convert(type), base::Seconds(length_seconds), file_size_mb)),
-      disk_read_routine_v2->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(disk_read_routine_v2),
+      disk_read_routine->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(disk_read_routine),
              mojom::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
 }
 

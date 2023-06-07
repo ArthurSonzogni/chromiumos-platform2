@@ -21,7 +21,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   ~FakeSystemConfig() override;
 
   // SystemConfigInterface overrides.
-  bool FioSupported() override;
   bool HasBacklight() override;
   bool HasBattery() override;
   bool HasSmartBattery() override;
@@ -40,7 +39,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   std::optional<bool> HasSensor(SensorType sensor) override;
 
   // Setters for FakeSystemConfig attributes.
-  void SetFioSupported(bool value);
   void SetHasBacklight(bool value);
   void SetHasBattery(bool value);
   void SetHasSmartBattery(bool value);
@@ -59,7 +57,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetSensor(SensorType sensor, const std::optional<bool>& value);
 
  private:
-  bool fio_supported_ = true;
   bool has_backlight_ = true;
   bool has_battery_ = true;
   bool has_smart_battery_ = true;

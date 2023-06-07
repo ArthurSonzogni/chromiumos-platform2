@@ -124,10 +124,6 @@ SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
 
 SystemConfig::~SystemConfig() = default;
 
-bool SystemConfig::FioSupported() {
-  return base::PathExists(root_dir_.AppendASCII(kFioToolPath));
-}
-
 bool SystemConfig::HasBacklight() {
   std::string has_backlight;
   // Assume that device has a backlight unless otherwise configured.

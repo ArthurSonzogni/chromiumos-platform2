@@ -503,10 +503,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeSelfTestRoutine) {
 // Test that the disk read routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunDiskReadRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kWaiting;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
 
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunDiskReadRoutine(
