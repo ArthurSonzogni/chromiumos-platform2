@@ -34,7 +34,6 @@ pkg_config("target_defaults") {
   # NOSORT
   pkg_deps = [
     "dbus-1",
-    "libbootlockbox-client",
     "libbrillo",
     "libchrome",
     "libsession_manager-client",
@@ -113,7 +112,6 @@ if (use.test) {
   pkg_config("test_helper_config") {
     # NOSORT
     pkg_deps = [
-      "libbootlockbox-client",
       "libbrillo",
       "libbrillo-test",
       "libchrome",
