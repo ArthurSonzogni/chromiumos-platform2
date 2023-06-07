@@ -17,10 +17,29 @@ use zeroize::Zeroize;
 // Define the timeout to connect to the dbus system.
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 
+enum AccountOrSessionId {
+    AccountId(String),
+    SessionId(Vec<u8>),
+}
+
 /// Ask cryptohome for the hibernate key for the given account. This call only works once, then
 /// cryptohome forgets the key. The return value's type is SecureBlob so its content is zeroed when
 /// no longer needed.
-pub fn get_user_key(account_id: &str, auth_session_id: &[u8]) -> Result<SecureBlob> {
+pub fn get_user_key_for_account(account_id: &str) -> Result<SecureBlob> {
+    get_user_key(AccountOrSessionId::AccountId(account_id.to_string()))
+}
+
+/// Ask cryptohome for the hibernate key for the given user session. This call only works once, then
+/// cryptohome forgets the key. The return value's type is SecureBlob so its content is zeroed when
+/// no longer needed.
+pub fn get_user_key_for_session(session_id: &[u8]) -> Result<SecureBlob> {
+    get_user_key(AccountOrSessionId::SessionId(session_id.to_vec()))
+}
+
+/// Ask cryptohome for the hibernate key for the given user session or account. This call only works
+/// once, then cryptohome forgets the key. The return value's type is SecureBlob so its content is
+/// zeroed when no longer needed.
+fn get_user_key(account_or_session_id: AccountOrSessionId) -> Result<SecureBlob> {
     const CRYPTOHOME_DBUS_NAME: &str = "org.chromium.UserDataAuth";
     const CRYPTOHOME_DBUS_PATH: &str = "/org/chromium/UserDataAuth";
 
@@ -33,10 +52,17 @@ pub fn get_user_key(account_id: &str, auth_session_id: &[u8]) -> Result<SecureBl
     );
 
     let mut proto: GetHibernateSecretRequest = Message::new();
-    let mut account_identifier = AccountIdentifier::new();
-    account_identifier.set_account_id(account_id.to_string());
-    proto.account_id = Some(account_identifier).into();
-    proto.auth_session_id = auth_session_id.to_vec();
+
+    match account_or_session_id {
+        AccountOrSessionId::AccountId(account_id) => {
+            let mut account_identifier = AccountIdentifier::new();
+            account_identifier.set_account_id(account_id);
+            proto.account_id = Some(account_identifier).into();
+        }
+
+        AccountOrSessionId::SessionId(session_id) => proto.auth_session_id = session_id,
+    };
+
     let mut response = proxy
         .get_hibernate_secret(proto.write_to_bytes().unwrap())
         .context("Failed to call GetHibernateSecret dbus method")?;

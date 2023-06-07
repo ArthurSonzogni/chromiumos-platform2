@@ -314,10 +314,10 @@ impl ResumeConductor {
 
         let user_key = match wait_for_resume_dbus_event(completion_receiver)? {
             DBusEvent::UserAuthWithAccountId { account_id } => {
-                cryptohome::get_user_key(&account_id, &[])?
+                cryptohome::get_user_key_for_account(&account_id)?
             }
             DBusEvent::UserAuthWithSessionId { session_id } => {
-                cryptohome::get_user_key("", &session_id)?
+                cryptohome::get_user_key_for_session(&session_id)?
             }
             DBusEvent::AbortRequest { reason } => {
                 // Abort resume.
