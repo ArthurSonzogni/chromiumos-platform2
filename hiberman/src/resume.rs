@@ -43,7 +43,7 @@ use crate::metrics::read_and_send_metrics;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
-use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest};
+use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, DBusEvent};
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -312,11 +312,9 @@ impl ResumeConductor {
         let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
 
         let user_key = match wait_for_resume_dbus_event(completion_receiver)? {
-            ResumeRequest::ResumeAccountId { account_id } => get_user_key(&account_id, &[])?,
-            ResumeRequest::ResumeAuthSessionId { auth_session_id } => {
-                get_user_key("", &auth_session_id)?
-            }
-            ResumeRequest::Abort { reason } => {
+            DBusEvent::UserAuthWithAccountId { account_id } => get_user_key(&account_id, &[])?,
+            DBusEvent::UserAuthWithSessionId { session_id } => get_user_key("", &session_id)?,
+            DBusEvent::AbortRequest { reason } => {
                 // Abort resume.
                 info!("Aborting resume: {:?}", reason);
                 return Ok(());

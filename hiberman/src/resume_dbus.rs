@@ -25,20 +25,20 @@ const HIBERMAN_DBUS_NAME: &str = "org.chromium.Hibernate";
 const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
 const HIBERMAN_RESUME_DBUS_INTERFACE: &str = "org.chromium.HibernateResumeInterface";
 
-pub enum ResumeRequest {
-    ResumeAccountId { account_id: String },
-    ResumeAuthSessionId { auth_session_id: Vec<u8> },
-    Abort { reason: String },
+pub enum DBusEvent {
+    UserAuthWithAccountId { account_id: String },
+    UserAuthWithSessionId { session_id: Vec<u8> },
+    AbortRequest { reason: String },
 }
 
-// Returns ResumeRequest when receiving D-Bus resume events.
+// Returns DBusEvent when receiving D-Bus resume events.
 //
 // There are 2 channels for communication between the main thread and the D-Bus server thread. The
 // main thread notifies resume completion to the D-Bus thread via the completion channel
-// (completion_{sender|receiver}). The D-Bus thread sends the resume request to the main thread via
-// the resume request channel (resume_{sender|receiver}).
+// (completion_{sender|receiver}). The D-Bus thread sends the auth events to the main thread via
+// the channels (user_auth_{sender|receiver}) and (user_auth_session{sender|receiver}).
 //
-// The resume request channel's type is std::sync::mpsc::channel (multi producer single consumer
+// The event channel's type is std::sync::mpsc::channel (multi producer single consumer
 // channel) because the sender needs to be cloned for multiple D-Bus methods. The completion
 // channel's type is crossbeam_channel::Receiver (multi producer multi consumer channel) because
 // the receiver needs to be cloned for multiple D-Bus methods.
@@ -47,16 +47,15 @@ pub enum ResumeRequest {
 //   https://github.com/diwic/dbus-rs/tree/master/dbus-crossroads/examples
 pub fn wait_for_resume_dbus_event(
     completion_receiver: crossbeam_channel::Receiver<()>,
-) -> Result<ResumeRequest> {
+) -> Result<DBusEvent> {
     // Clone the completion_receiver for multiple closures. Each closure needs to own its receiver.
     let completion_as_receiver = completion_receiver.clone();
     let completion_abort_receiver = completion_receiver.clone();
 
-    // resume_sender is used by the D-Bus server thread to send the D-Bus resume request to main
-    // thread.
-    let (resume_sender, resume_receiver) = channel();
-    let resume_as_sender = resume_sender.clone();
-    let abort_sender = resume_sender.clone();
+    let (sender, receiver) = channel();
+    let abort_sender = sender.clone();
+    let user_auth_session_sender = sender.clone();
+    let user_auth_sender = sender;
 
     let conn = Connection::new_system().context("Failed to start local dbus connection")?;
     conn.request_name(HIBERMAN_DBUS_NAME, false, false, false)
@@ -70,8 +69,10 @@ pub fn wait_for_resume_dbus_event(
             ("account_id",),
             (),
             move |_, _, (account_id,): (String,)| {
-                // Send the resume request to the main thread.
-                if let Err(e) = resume_sender.send(ResumeRequest::ResumeAccountId { account_id }) {
+                // Send the auth event to the main thread.
+                if let Err(e) =
+                    user_auth_sender.send(DBusEvent::UserAuthWithAccountId { account_id })
+                {
                     error!(
                         "Failed to send resume account id request to the main thread: {:?}",
                         e
@@ -88,10 +89,10 @@ pub fn wait_for_resume_dbus_event(
             "ResumeFromHibernateAS",
             ("auth_session_id",),
             (),
-            move |_, _, (auth_session_id,): (Vec<u8>,)| {
-                // Send the resume request to the main thread.
+            move |_, _, (session_id,): (Vec<u8>,)| {
+                // Send the auth event to the main thread.
                 if let Err(e) =
-                    resume_as_sender.send(ResumeRequest::ResumeAuthSessionId { auth_session_id })
+                    user_auth_session_sender.send(DBusEvent::UserAuthWithSessionId { session_id })
                 {
                     error!(
                         "Failed to send resume auth session id request to the main thread: {:?}",
@@ -110,8 +111,8 @@ pub fn wait_for_resume_dbus_event(
             ("reason",),
             (),
             move |_, _, (reason,): (String,)| {
-                // Send the resume abort request to the main thread.
-                if let Err(e) = abort_sender.send(ResumeRequest::Abort { reason }) {
+                // Send the abort request to the main thread.
+                if let Err(e) = abort_sender.send(DBusEvent::AbortRequest { reason }) {
                     error!(
                         "Failed to send resume abort request to the main thread: {:?}",
                         e
@@ -152,8 +153,8 @@ pub fn wait_for_resume_dbus_event(
         }
     });
 
-    let resume_request = resume_receiver.recv()?;
-    Ok(resume_request)
+    let event = receiver.recv()?;
+    Ok(event)
 }
 
 // Define the timeout to connect to the dbus system.
