@@ -17,6 +17,7 @@ BASE_REQUIRED_SYSCALLS = [
   "clock_getres",
   "clock_gettime",
   "gettimeofday",
+  "exit_group",
 ]
 
 if (getenv("ARCH") == "arm") {

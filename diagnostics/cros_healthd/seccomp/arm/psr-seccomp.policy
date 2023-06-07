@@ -12,3 +12,4 @@ clock_gettime64: 1
 getrandom: arg2 in 0xfffffffd
 connect: 1
 socket: arg0 == AF_UNIX
+exit_group: 1
