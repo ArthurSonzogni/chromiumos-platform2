@@ -172,6 +172,7 @@ if (use.test) {
       "led/led_lit_up_v2_test.cc",
       "memory_and_cpu/cpu_cache_v2_test.cc",
       "memory_and_cpu/cpu_stress_v2_test.cc",
+      "memory_and_cpu/floating_point_v2_test.cc",
       "memory_and_cpu/memory_test.cc",
       "memory_and_cpu/memory_v2_test.cc",
       "memory_and_cpu/prime_number_search.cc",
