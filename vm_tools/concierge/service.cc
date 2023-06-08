@@ -1085,6 +1085,14 @@ void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
 
+  if (vms_.size() == 0) {
+    // If there are no VMs there are no balloon policies to
+    // run. The timer will be restarted when a new VM is launched.
+    balloon_resizing_timer_.Stop();
+    LOG(INFO) << "Stopping balloon resize timer.";
+    return;
+  }
+
   std::optional<MemoryMargins> memory_margins_opt = GetMemoryMargins();
   if (!memory_margins_opt) {
     LOG(ERROR) << "Failed to get ChromeOS memory margins";
@@ -1595,9 +1603,6 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to start memory reclaim thread";
     return false;
   }
-
-  balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
-                                &Service::RunBalloonPolicy);
 
   if (!localtime_watcher_.Watch(
           base::FilePath(kLocaltimePath),
@@ -4105,6 +4110,12 @@ void Service::HandleVmStarted(const VmId& vm_id,
                               vm_tools::concierge::VmStatus status) {
   // TODO(b:254164308) forward the vm started notification to the
   // VmMemoryManagement system once it is landed
+
+  if (!balloon_resizing_timer_.IsRunning()) {
+    LOG(INFO) << "New VM. Starting balloon resize timer.";
+    balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
+                                  &Service::RunBalloonPolicy);
+  }
 
   SendVmStartedSignal(vm_id, vm_info, status);
 }
