@@ -209,9 +209,9 @@ BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
   return BiometricsManager::AuthSession(session_weak_factory_.GetWeakPtr());
 }
 
-std::vector<std::unique_ptr<BiometricsManagerRecord>>
+std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>
 CrosFpBiometricsManager::GetLoadedRecords() {
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
 
   for (const auto& record_id : loaded_records_) {
     records.emplace_back(

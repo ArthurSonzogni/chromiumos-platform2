@@ -87,7 +87,7 @@ BiometricsManagerWrapper::~BiometricsManagerWrapper() {
 
 BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
     BiometricsManagerWrapper* biometrics_manager,
-    std::unique_ptr<BiometricsManagerRecord> record,
+    std::unique_ptr<BiometricsManagerRecordInterface> record,
     ExportedObjectManager* object_manager,
     const ObjectPath& object_path)
     : biometrics_manager_(biometrics_manager),
@@ -429,13 +429,13 @@ void BiometricsManagerWrapper::RefreshRecordObjects() {
     return;
   }
 
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records =
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records =
       biometrics_manager_->GetLoadedRecords();
 
   ExportedObjectManager* object_manager = dbus_object_.GetObjectManager().get();
   std::string records_root_path = object_path_.value() + std::string("/Record");
 
-  for (std::unique_ptr<BiometricsManagerRecord>& record : records) {
+  for (std::unique_ptr<BiometricsManagerRecordInterface>& record : records) {
     ObjectPath record_path(records_root_path + record->GetId());
     records_.emplace_back(std::make_unique<RecordWrapper>(
         this, std::move(record), object_manager, record_path));

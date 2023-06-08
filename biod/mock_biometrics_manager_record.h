@@ -10,11 +10,11 @@
 
 #include <gmock/gmock.h>
 
-#include "biod/biometrics_manager_record.h"
+#include "biod/biometrics_manager_record_interface.h"
 
 namespace biod {
 
-class MockBiometricsManagerRecord : public BiometricsManagerRecord {
+class MockBiometricsManagerRecord : public BiometricsManagerRecordInterface {
  public:
   MockBiometricsManagerRecord() = default;
   ~MockBiometricsManagerRecord() override = default;

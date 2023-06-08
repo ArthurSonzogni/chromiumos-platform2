@@ -21,7 +21,7 @@
 #include <brillo/scoped_umask.h>
 
 #include "biod/biometrics_manager.h"
-#include "biod/biometrics_manager_record.h"
+#include "biod/biometrics_manager_record_interface.h"
 
 namespace biod {
 

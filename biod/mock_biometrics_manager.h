@@ -28,7 +28,7 @@ class MockBiometricsManager : public BiometricsManager {
               (std::string user_id, std::string label),
               (override));
   MOCK_METHOD(AuthSession, StartAuthSession, (), (override));
-  MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecord>>,
+  MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>,
               GetLoadedRecords,
               (),
               (override));

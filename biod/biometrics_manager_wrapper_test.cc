@@ -870,7 +870,7 @@ TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjects) {
   EXPECT_CALL(*record, GetId).WillRepeatedly(ReturnRef(record_id));
   EXPECT_CALL(*record, GetUserId).WillRepeatedly(Return(kUserID));
 
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
   records.emplace_back(std::move(record));
   EXPECT_CALL(*session_manager_, GetPrimaryUser)
       .WillRepeatedly(Return(kUserID));
@@ -900,7 +900,7 @@ TEST_F(BiometricsManagerWrapperTest, TestGetRecordsForUser) {
   EXPECT_CALL(*record, GetId).WillRepeatedly(ReturnRef(record_id));
   EXPECT_CALL(*record, GetUserId).WillRepeatedly(Return(kUserID));
 
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
   records.emplace_back(std::move(record));
   EXPECT_CALL(*session_manager_, GetPrimaryUser)
       .WillRepeatedly(Return(kUserID));
@@ -938,7 +938,7 @@ TEST_F(BiometricsManagerWrapperTest, TestRefreshRecordObjectsClearsRecords) {
       .WillRepeatedly(Return(kUserID));
 
   // Load one record.
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
   records.emplace_back(std::move(record));
   EXPECT_CALL(*bio_manager_, GetLoadedRecords)
       .WillOnce(Return(ByMove(std::move(records))));
@@ -972,7 +972,7 @@ TEST_F(BiometricsManagerWrapperTest,
       .WillRepeatedly(Return(kUserID));
 
   // Load one record.
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
+  std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
   records.emplace_back(std::move(record));
   EXPECT_CALL(*bio_manager_, GetLoadedRecords)
       .WillOnce(Return(ByMove(std::move(records))));

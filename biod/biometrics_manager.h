@@ -17,7 +17,7 @@
 #include <base/strings/string_util.h>
 
 #include "base/time/time.h"
-#include "biod/biometrics_manager_record.h"
+#include "biod/biometrics_manager_record_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
 #include "biod/session.h"
@@ -79,7 +79,7 @@ class BiometricsManager {
   // Records that are invalid, with unsupported version, belongs to different
   // user or not successfully loaded to the biometrics device, are not included
   // in the returned vector.
-  virtual std::vector<std::unique_ptr<BiometricsManagerRecord>>
+  virtual std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>
   GetLoadedRecords() = 0;
 
   // Irreversibly destroys records registered with this BiometricsManager,

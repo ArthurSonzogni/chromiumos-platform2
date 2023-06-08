@@ -1,9 +1,9 @@
-// Copyright 2020 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BIOD_BIOMETRICS_MANAGER_RECORD_H_
-#define BIOD_BIOMETRICS_MANAGER_RECORD_H_
+#ifndef BIOD_BIOMETRICS_MANAGER_RECORD_INTERFACE_H_
+#define BIOD_BIOMETRICS_MANAGER_RECORD_INTERFACE_H_
 
 #include <string>
 #include <vector>
@@ -12,9 +12,9 @@ namespace biod {
 
 // Represents a record previously registered with this BiometricsManager in an
 // EnrollSession. These objects can be retrieved with GetRecords.
-class BiometricsManagerRecord {
+class BiometricsManagerRecordInterface {
  public:
-  virtual ~BiometricsManagerRecord() = default;
+  virtual ~BiometricsManagerRecordInterface() = default;
   virtual const std::string& GetId() const = 0;
   virtual std::string GetUserId() const = 0;
   virtual std::string GetLabel() const = 0;
@@ -29,4 +29,4 @@ class BiometricsManagerRecord {
 
 }  //  namespace biod
 
-#endif  // BIOD_BIOMETRICS_MANAGER_RECORD_H_
+#endif  // BIOD_BIOMETRICS_MANAGER_RECORD_INTERFACE_H_
