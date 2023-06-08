@@ -49,6 +49,7 @@ chromeos {
       }
       path_regexp_excludes: "shill/.*_test\\.cc"
       path_regexp_excludes: "shill/ethernet/.*"
+      path_regexp_excludes: "shill/supplicant/.*"
       path_regexp_excludes: "shill/vpn/.*"
       path_regexp_excludes: "shill/wifi/.*"
     }
