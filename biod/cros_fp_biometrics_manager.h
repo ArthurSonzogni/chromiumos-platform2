@@ -65,15 +65,26 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   bool ResetEntropy(bool factory_init) override;
 
+  // Returns RecordMetadata for given record.
+  virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
+      const std::string& record_id) const;
+
+  // Clear FPMCU context and re-upload all records from storage.
+  bool ReloadAllRecords(std::string user_id);
+
+  // Updates record metadata on disk.
+  bool UpdateRecordMetadata(
+      const BiodStorageInterface::RecordMetadata& record_metadata);
+
+  // Removes record from disk and from FPMCU.
+  bool RemoveRecord(const std::string& id);
+
  protected:
   void EndEnrollSession() override;
   void EndAuthSession() override;
 
   virtual void OnMaintenanceTimerFired();
 
-  // Returns RecordMetadata for given record.
-  virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
-      const std::string& record_id) const;
   // Returns RecordId for given template id.
   virtual std::optional<std::string> GetLoadedRecordId(int id);
 
@@ -97,25 +108,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   friend class CrosFpBiometricsManagerPeer;
 
   using SessionAction = base::RepeatingCallback<void(const uint32_t event)>;
-
-  class Record : public BiometricsManagerRecordInterface {
-   public:
-    Record(const base::WeakPtr<CrosFpBiometricsManager>& biometrics_manager,
-           const std::string& record_id)
-        : biometrics_manager_(biometrics_manager), record_id_(record_id) {}
-
-    // BiometricsManager::Record overrides:
-    const std::string& GetId() const override;
-    std::string GetUserId() const override;
-    std::string GetLabel() const override;
-    std::vector<uint8_t> GetValidationVal() const override;
-    bool SetLabel(std::string label) override;
-    bool Remove() override;
-
-   private:
-    base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
-    std::string record_id_;
-  };
 
   void OnEnrollScanDone(ScanResult result,
                         const BiometricsManager::EnrollStatus& enroll_status);
@@ -144,16 +136,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void KillMcuSession();
 
   void OnTaskComplete();
-
-  // Clear FPMCU context and re-upload all records from storage.
-  bool ReloadAllRecords(std::string user_id);
-
-  // Updates record metadata on disk.
-  bool UpdateRecordMetadata(
-      const BiodStorageInterface::RecordMetadata& record_metadata);
-
-  // Removes record from disk and from FPMCU.
-  bool RemoveRecord(const std::string& id);
 
   BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
   std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;

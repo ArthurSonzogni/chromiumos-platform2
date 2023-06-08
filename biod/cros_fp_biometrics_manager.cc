@@ -27,6 +27,7 @@
 
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
+#include "biod/biometrics_manager_record.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
 #include "libec/fingerprint/cros_fp_device_interface.h"
@@ -80,55 +81,6 @@ std::string EnrollResultToString(int result) {
 namespace biod {
 
 using Mode = ec::FpMode::Mode;
-
-const std::string& CrosFpBiometricsManager::Record::GetId() const {
-  return record_id_;
-}
-
-std::string CrosFpBiometricsManager::Record::GetUserId() const {
-  CHECK(biometrics_manager_);
-  const auto record_metadata =
-      biometrics_manager_->GetRecordMetadata(record_id_);
-  CHECK(record_metadata);
-
-  return record_metadata->user_id;
-}
-
-std::string CrosFpBiometricsManager::Record::GetLabel() const {
-  CHECK(biometrics_manager_);
-  const auto record_metadata =
-      biometrics_manager_->GetRecordMetadata(record_id_);
-  CHECK(record_metadata);
-
-  return record_metadata->label;
-}
-
-std::vector<uint8_t> CrosFpBiometricsManager::Record::GetValidationVal() const {
-  CHECK(biometrics_manager_);
-  const auto record_metadata =
-      biometrics_manager_->GetRecordMetadata(record_id_);
-  CHECK(record_metadata);
-
-  return record_metadata->validation_val;
-}
-
-bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
-  CHECK(biometrics_manager_);
-
-  auto record_metadata = biometrics_manager_->GetRecordMetadata(record_id_);
-  CHECK(record_metadata);
-
-  record_metadata->label = std::move(label);
-
-  return biometrics_manager_->UpdateRecordMetadata(*record_metadata);
-}
-
-bool CrosFpBiometricsManager::Record::Remove() {
-  if (!biometrics_manager_)
-    return false;
-
-  return biometrics_manager_->RemoveRecord(record_id_);
-}
 
 bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
   // Here we need a copy of user_id because the user_id could be part of
@@ -214,8 +166,8 @@ CrosFpBiometricsManager::GetLoadedRecords() {
   std::vector<std::unique_ptr<BiometricsManagerRecordInterface>> records;
 
   for (const auto& record_id : loaded_records_) {
-    records.emplace_back(
-        std::make_unique<Record>(weak_factory_.GetWeakPtr(), record_id));
+    records.emplace_back(std::make_unique<BiometricsManagerRecord>(
+        weak_factory_.GetWeakPtr(), record_id));
   }
 
   return records;
