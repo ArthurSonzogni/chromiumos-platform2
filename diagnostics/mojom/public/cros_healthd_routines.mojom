@@ -71,7 +71,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 10, NextIndex: 10
+// NextMinVersion: 11, NextIndex: 11
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -81,13 +81,13 @@ union RoutineArgument {
   MemoryRoutineArgument memory@1;
   // Arguments to create an audio driver malfunction test routine.
   [MinVersion=2] AudioDriverRoutineArgument audio_driver@2;
-  // Arguments to create a cpu stress routine.
+  // Arguments to create a CPU stress routine.
   [MinVersion=3] CpuStressRoutineArgument cpu_stress@3;
   // Arguments to create a UFS lifetime routine.
   [MinVersion=4] UfsLifetimeRoutineArgument ufs_lifetime@4;
   // Arguments to create a disk read routine.
   [MinVersion=5] DiskReadRoutineArgument disk_read@5;
-  // Arguments to create a cpu cache routine.
+  // Arguments to create a CPU cache routine.
   [MinVersion=6] CpuCacheRoutineArgument cpu_cache@6;
   // Arguments to create a prime search routine.
   [MinVersion=7] PrimeSearchRoutineArgument prime_search@7;
@@ -95,6 +95,8 @@ union RoutineArgument {
   [MinVersion=8] VolumeButtonRoutineArgument volume_button@8;
   // Arguments to create a LED lit up routine.
   [MinVersion=9] LedLitUpRoutineArgument led_lit_up@9;
+  // Arguments to create a floating point routine.
+  [MinVersion=10] FloatingPointRoutineArgument floating_point@10;
 };
 
 // This routine checks whether there is any memory problem by
@@ -160,7 +162,7 @@ struct CpuCacheRoutineArgument {
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 
-// This routine checks whether there is any cpu problem by repeatedly
+// This routine checks whether there is any CPU problem by repeatedly
 // calculating prime numbers.
 //
 // NextMinVersion: 1, NextIndex: 1
@@ -229,6 +231,17 @@ struct LedLitUpRoutineArgument {
   LedColor color@1;
   // A replier to answer whether the actual LED color matches the expected color.
   pending_remote<LedLitUpRoutineReplier> replier@2;
+};
+
+// This routine checks whether there is any CPU problem by repeatedly
+// calculating floating point values.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct FloatingPointRoutineArgument {
+  // `exec_duration` determines how long the prime search test will run. If
+  // the provided value is null, default to running for 1 minute. If the value
+  // is less than 1 second, run for 1 second.
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 
 // Interface exposed to clients for controlling a routine.
@@ -345,6 +358,7 @@ union RoutineDetail {
   PrimeSearchRoutineDetail prime_search;
   VolumeButtonRoutineDetail volume_button;
   LedLitUpRoutineDetail led_lit_up;
+  FloatingPointRoutineDetail floating_point;
 };
 
 // Details regarding memory routine.
@@ -367,7 +381,7 @@ struct AudioDriverRoutineDetail {
   bool audio_devices_succeed_to_open@1;
 };
 
-// Details regarding cpu stress routine.
+// Details regarding CPU stress routine.
 //
 // NextMinVersion: 1, NextIndex: 0
 struct CpuStressRoutineDetail {};
@@ -389,7 +403,7 @@ struct UfsLifetimeRoutineDetail {
 // NextMinVersion: 1, NextIndex: 0
 struct DiskReadRoutineDetail {};
 
-// Details regarding cpu cache routine.
+// Details regarding CPU cache routine.
 //
 // NextMinVersion: 1, NextIndex: 0
 struct CpuCacheRoutineDetail {};
@@ -398,6 +412,12 @@ struct CpuCacheRoutineDetail {};
 //
 // NextMinVersion: 1, NextIndex: 0
 struct PrimeSearchRoutineDetail {};
+
+// Details regarding floating point routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct FloatingPointRoutineDetail {
+};
 
 // Enumeration of each possible memtester test item.
 //

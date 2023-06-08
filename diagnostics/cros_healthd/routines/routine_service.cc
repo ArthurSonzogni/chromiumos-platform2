@@ -14,6 +14,7 @@
 #include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
@@ -53,6 +54,9 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
     case mojom::RoutineArgument::Tag::kPrimeSearch:
       return std::make_unique<PrimeSearchRoutineV2>(
           context_, routine_arg->get_prime_search());
+    case mojom::RoutineArgument::Tag::kFloatingPoint:
+      return std::make_unique<FloatingPointRoutineV2>(
+          context_, routine_arg->get_floating_point());
     case mojom::RoutineArgument::Tag::kMemory:
       return std::make_unique<MemoryRoutineV2>(context_,
                                                routine_arg->get_memory());

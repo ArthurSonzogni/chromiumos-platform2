@@ -180,6 +180,7 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     case mojom::RoutineArgument::Tag::kCpuStress:
     case mojom::RoutineArgument::Tag::kCpuCache:
     case mojom::RoutineArgument::Tag::kPrimeSearch:
+    case mojom::RoutineArgument::Tag::kFloatingPoint:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {

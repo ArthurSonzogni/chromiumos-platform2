@@ -110,6 +110,7 @@ void RoutineObserver::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kPrimeSearch:
         case mojom::RoutineDetail::Tag::kVolumeButton:
         case mojom::RoutineDetail::Tag::kLedLitUp:
+        case mojom::RoutineDetail::Tag::kFloatingPoint:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(finished_state->detail->get_memory()));
