@@ -80,6 +80,8 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
   // Setup the discovering status after changing in HCI level and D-Bus level.
   void SetVerifyDiscoveringCall(bool hci_result_discovering,
                                 bool dbus_result_discovering) {
+    EXPECT_CALL(mock_adapter_proxy_, discovering())
+        .WillOnce(Return(dbus_result_discovering));
     EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
         .WillOnce(WithArg<0>(
             Invoke([=](mojom::Executor::GetHciDeviceConfigCallback callback) {
@@ -91,8 +93,6 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
                 result.out = "\tUP RUNNING PSCAN ISCAN \n";
               std::move(callback).Run(result.Clone());
             })));
-    EXPECT_CALL(mock_adapter_proxy_, discovering())
-        .WillOnce(Return(dbus_result_discovering));
   }
 
   void CheckRoutineUpdate(uint32_t progress_percent,
@@ -373,6 +373,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
         fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
             &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
       })));
+  EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
   // Set error return code.
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
       .WillOnce(WithArg<0>(
@@ -406,6 +407,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
         fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
             &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
       })));
+  EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
   // Set error return code.
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
       .WillOnce(WithArg<0>(

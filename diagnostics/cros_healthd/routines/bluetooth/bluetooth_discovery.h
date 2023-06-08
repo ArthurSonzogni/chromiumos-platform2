@@ -63,10 +63,11 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
   // Handle the response of hciconfig and check the discovering property of
   // adapter in HCI level.
   void HandleHciConfigResponse(
+      bool dbus_discovering,
       ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
   // Verify the discovering property of adapter and store the result.
-  void VerifyAdapterDiscovering(bool is_complete);
+  void VerifyAdapterDiscovering(bool dbus_discovering, bool hci_discovering);
 
   // Routine timeout function.
   void OnTimeoutOccurred();
@@ -86,12 +87,6 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
   };
   TestStep step_ = TestStep::kInitialize;
 
-  // Trigger the callback when the adapter's discovering property is changed.
-  base::OnceClosure on_discovering_changed_;
-  // Current discovering status in HCI level.
-  bool hci_discovering_;
-  // Current discovering status in D-Bus level.
-  bool dbus_discovering_;
   // Details about the routine's execution. Reported in status updates when
   // requested.
   base::Value::Dict output_dict_;

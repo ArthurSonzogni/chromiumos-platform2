@@ -19,7 +19,6 @@
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
-#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
 namespace diagnostics {
 namespace {
@@ -118,19 +117,17 @@ void BluetoothDiscoveryRoutine::RunNextStep() {
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckDiscoveringStatusOn:
+      // Wait for the property changed event in |OnAdapterPropertyChanged|.
       GetAdapter()->StartDiscoveryAsync(
-          base::BindOnce(
-              &BluetoothDiscoveryRoutine::HandleAdapterDiscoverySuccess,
-              weak_ptr_factory_.GetWeakPtr()),
+          base::DoNothing(),
           base::BindOnce(
               &BluetoothDiscoveryRoutine::HandleAdapterDiscoveryError,
               weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckDiscoveringStatusOff:
+      // Wait for the property changed event in |OnAdapterPropertyChanged|.
       GetAdapter()->StopDiscoveryAsync(
-          base::BindOnce(
-              &BluetoothDiscoveryRoutine::HandleAdapterDiscoverySuccess,
-              weak_ptr_factory_.GetWeakPtr()),
+          base::DoNothing(),
           base::BindOnce(
               &BluetoothDiscoveryRoutine::HandleAdapterDiscoveryError,
               weak_ptr_factory_.GetWeakPtr()));
@@ -151,20 +148,6 @@ void BluetoothDiscoveryRoutine::HandleAdapterPoweredOn(bool is_success) {
   RunNextStep();
 }
 
-void BluetoothDiscoveryRoutine::HandleAdapterDiscoverySuccess() {
-  CallbackBarrier barrier{
-      base::BindOnce(&BluetoothDiscoveryRoutine::VerifyAdapterDiscovering,
-                     weak_ptr_factory_.GetWeakPtr())};
-
-  // Check the discovering status in HCI level.
-  context_->executor()->GetHciDeviceConfig(barrier.Depend(
-      base::BindOnce(&BluetoothDiscoveryRoutine::HandleHciConfigResponse,
-                     weak_ptr_factory_.GetWeakPtr())));
-
-  // Observes the adapter discovering changed events in D-Bus level.
-  on_discovering_changed_ = barrier.CreateDependencyClosure();
-}
-
 void BluetoothDiscoveryRoutine::HandleAdapterDiscoveryError(
     brillo::Error* error) {
   if (error) {
@@ -179,15 +162,19 @@ void BluetoothDiscoveryRoutine::OnAdapterPropertyChanged(
     org::bluez::Adapter1ProxyInterface* adapter,
     const std::string& property_name) {
   if (adapter != GetAdapter() || property_name != adapter->DiscoveringName() ||
-      on_discovering_changed_.is_null())
+      (step_ != kCheckDiscoveringStatusOn &&
+       step_ != kCheckDiscoveringStatusOff))
     return;
 
-  dbus_discovering_ = adapter->discovering();
-  std::move(on_discovering_changed_).Run();
+  // Check the discovering status in HCI level.
+  context_->executor()->GetHciDeviceConfig(
+      base::BindOnce(&BluetoothDiscoveryRoutine::HandleHciConfigResponse,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     /*dbus_discovering=*/adapter->discovering()));
 }
 
 void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
-    mojom::ExecutedProcessResultPtr result) {
+    bool dbus_discovering, mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
 
@@ -214,25 +201,21 @@ void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
   //         UP RUNNING PSCAN INQUIRY
   //         <texts>
   const char inquiry_regex[] = R"(UP RUNNING.*INQUIRY)";
-  hci_discovering_ = RE2::PartialMatch(result->out, inquiry_regex);
+  bool hci_discovering = RE2::PartialMatch(result->out, inquiry_regex);
+  VerifyAdapterDiscovering(dbus_discovering, hci_discovering);
 }
 
-void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool is_complete) {
-  if (!is_complete) {
-    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyDiscovering);
-    return;
-  }
-
+void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool dbus_discovering,
+                                                         bool hci_discovering) {
   bool is_passed;
   std::string result_key;
   if (step_ == TestStep::kCheckDiscoveringStatusOn) {
     // The discovering status should be true.
-    is_passed = hci_discovering_ && dbus_discovering_;
+    is_passed = hci_discovering && dbus_discovering;
     result_key = "start_discovery_result";
   } else if (step_ == TestStep::kCheckDiscoveringStatusOff) {
     // The discovering status should be false.
-    is_passed = !hci_discovering_ && !dbus_discovering_;
+    is_passed = !hci_discovering && !dbus_discovering;
     result_key = "stop_discovery_result";
   } else {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
@@ -242,8 +225,8 @@ void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool is_complete) {
 
   // Store the result into output dict.
   base::Value::Dict out_result;
-  out_result.Set("hci_discovering", hci_discovering_);
-  out_result.Set("dbus_discovering", dbus_discovering_);
+  out_result.Set("hci_discovering", hci_discovering);
+  out_result.Set("dbus_discovering", dbus_discovering);
   output_dict_.Set(result_key, std::move(out_result));
 
   // Stop routine if validation is failed.
@@ -269,7 +252,6 @@ void BluetoothDiscoveryRoutine::SetResultAndStop(
   }
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  on_discovering_changed_.Reset();
   UpdateStatus(status, std::move(status_message));
 }
 
