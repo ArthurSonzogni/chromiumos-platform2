@@ -11,8 +11,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_fake_ref_design_2147483647.xml",
-            "system-path": "/etc/hardware_features_fake_ref_design_2147483647.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_9366f171.xml",
+            "system-path": "/etc/hardware_features_9366f171.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -23,8 +23,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_fake_ref_design_2147483647.xml",
-            "system-path": "/etc/media_profiles_fake_ref_design_2147483647.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -320,8 +320,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_fake_ref_design_0.xml",
-            "system-path": "/etc/hardware_features_fake_ref_design_0.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_e09cc17d.xml",
+            "system-path": "/etc/hardware_features_e09cc17d.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -332,8 +332,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_fake_ref_design_0.xml",
-            "system-path": "/etc/media_profiles_fake_ref_design_0.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_255bce6b.xml",
+            "system-path": "/etc/media_profiles_255bce6b.xml"
           }
         },
         "audio": {
@@ -561,8 +561,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_fake_ref_design_1.xml",
-            "system-path": "/etc/hardware_features_fake_ref_design_1.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_76fe2899.xml",
+            "system-path": "/etc/hardware_features_76fe2899.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -573,8 +573,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_fake_ref_design_1.xml",
-            "system-path": "/etc/media_profiles_fake_ref_design_1.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_255bce6b.xml",
+            "system-path": "/etc/media_profiles_255bce6b.xml"
           }
         },
         "audio": {
@@ -805,8 +805,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_a.xml",
-            "system-path": "/etc/hardware_features_project_a.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_92b8cc3d.xml",
+            "system-path": "/etc/hardware_features_92b8cc3d.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -817,8 +817,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_a.xml",
-            "system-path": "/etc/media_profiles_project_a.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -1176,8 +1176,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_b.xml",
-            "system-path": "/etc/hardware_features_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_3d97f2f8.xml",
+            "system-path": "/etc/hardware_features_3d97f2f8.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -1188,8 +1188,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_b.xml",
-            "system-path": "/etc/media_profiles_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_5cec5100.xml",
+            "system-path": "/etc/media_profiles_5cec5100.xml"
           }
         },
         "audio": {
@@ -1392,8 +1392,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_b.xml",
-            "system-path": "/etc/hardware_features_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_3d97f2f8.xml",
+            "system-path": "/etc/hardware_features_3d97f2f8.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2_mainstream.xml",
@@ -1404,8 +1404,8 @@
             "system-path": "/etc/media_codecs_performance_c2_mainstream.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_b.xml",
-            "system-path": "/etc/media_profiles_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_5cec5100.xml",
+            "system-path": "/etc/media_profiles_5cec5100.xml"
           }
         },
         "audio": {
@@ -1638,8 +1638,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_b.xml",
-            "system-path": "/etc/hardware_features_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_3d97f2f8.xml",
+            "system-path": "/etc/hardware_features_3d97f2f8.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -1650,8 +1650,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_b.xml",
-            "system-path": "/etc/media_profiles_project_b.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_5cec5100.xml",
+            "system-path": "/etc/media_profiles_5cec5100.xml"
           }
         },
         "audio": {
@@ -1903,8 +1903,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_c.xml",
-            "system-path": "/etc/hardware_features_project_c.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cca97c87.xml",
+            "system-path": "/etc/hardware_features_cca97c87.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -1915,8 +1915,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_c.xml",
-            "system-path": "/etc/media_profiles_project_c.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -2125,8 +2125,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_d.xml",
-            "system-path": "/etc/hardware_features_project_d.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cca97c87.xml",
+            "system-path": "/etc/hardware_features_cca97c87.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -2137,8 +2137,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_d.xml",
-            "system-path": "/etc/media_profiles_project_d.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -2347,8 +2347,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65536.xml",
-            "system-path": "/etc/hardware_features_project_e_65536.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_4c6b9ba2.xml",
+            "system-path": "/etc/hardware_features_4c6b9ba2.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -2359,8 +2359,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -2563,8 +2563,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65537.xml",
-            "system-path": "/etc/hardware_features_project_e_65537.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -2575,8 +2575,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -2767,8 +2767,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65538.xml",
-            "system-path": "/etc/hardware_features_project_e_65538.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_4c6b9ba2.xml",
+            "system-path": "/etc/hardware_features_4c6b9ba2.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -2779,8 +2779,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -2983,8 +2983,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65539.xml",
-            "system-path": "/etc/hardware_features_project_e_65539.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -2995,8 +2995,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -3187,8 +3187,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65541.xml",
-            "system-path": "/etc/hardware_features_project_e_65541.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -3199,8 +3199,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -3399,8 +3399,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65543.xml",
-            "system-path": "/etc/hardware_features_project_e_65543.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -3411,8 +3411,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -3611,8 +3611,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65536.xml",
-            "system-path": "/etc/hardware_features_project_e_65536.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_4c6b9ba2.xml",
+            "system-path": "/etc/hardware_features_4c6b9ba2.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -3623,8 +3623,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -3828,8 +3828,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65537.xml",
-            "system-path": "/etc/hardware_features_project_e_65537.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -3840,8 +3840,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -4033,8 +4033,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65538.xml",
-            "system-path": "/etc/hardware_features_project_e_65538.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_4c6b9ba2.xml",
+            "system-path": "/etc/hardware_features_4c6b9ba2.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -4045,8 +4045,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -4250,8 +4250,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65539.xml",
-            "system-path": "/etc/hardware_features_project_e_65539.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -4262,8 +4262,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -4455,8 +4455,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65541.xml",
-            "system-path": "/etc/hardware_features_project_e_65541.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -4467,8 +4467,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -4668,8 +4668,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65543.xml",
-            "system-path": "/etc/hardware_features_project_e_65543.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_a08a77e4.xml",
+            "system-path": "/etc/hardware_features_a08a77e4.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -4680,8 +4680,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
-            "system-path": "/etc/media_profiles_project_e.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           }
         },
         "audio": {
@@ -4881,8 +4881,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_wl.xml",
-            "system-path": "/etc/hardware_features_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cf582557.xml",
+            "system-path": "/etc/hardware_features_cf582557.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -4893,8 +4893,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_wl.xml",
-            "system-path": "/etc/media_profiles_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -5097,8 +5097,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_wl.xml",
-            "system-path": "/etc/hardware_features_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cf582557.xml",
+            "system-path": "/etc/hardware_features_cf582557.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -5109,8 +5109,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_wl.xml",
-            "system-path": "/etc/media_profiles_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -5314,8 +5314,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_wl.xml",
-            "system-path": "/etc/hardware_features_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cf582557.xml",
+            "system-path": "/etc/hardware_features_cf582557.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -5326,8 +5326,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_wl.xml",
-            "system-path": "/etc/media_profiles_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -5531,8 +5531,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_wl.xml",
-            "system-path": "/etc/hardware_features_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cf582557.xml",
+            "system-path": "/etc/hardware_features_cf582557.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -5543,8 +5543,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_wl.xml",
-            "system-path": "/etc/media_profiles_project_wl.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -5748,8 +5748,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_rebrand.xml",
-            "system-path": "/etc/hardware_features_project_rebrand.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_cf582557.xml",
+            "system-path": "/etc/hardware_features_cf582557.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -5760,8 +5760,8 @@
             "system-path": "/etc/media_codecs_performance_c2.xml"
           },
           "media-profiles": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_rebrand.xml",
-            "system-path": "/etc/media_profiles_project_rebrand.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_2e9050ac.xml",
+            "system-path": "/etc/media_profiles_2e9050ac.xml"
           },
           "scale": 280
         },
@@ -5950,8 +5950,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_box_128.xml",
-            "system-path": "/etc/hardware_features_project_box_128.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_8740651d.xml",
+            "system-path": "/etc/hardware_features_8740651d.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -6137,8 +6137,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_box_129.xml",
-            "system-path": "/etc/hardware_features_project_box_129.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_8740651d.xml",
+            "system-path": "/etc/hardware_features_8740651d.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",
@@ -6321,8 +6321,8 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_box_130.xml",
-            "system-path": "/etc/hardware_features_project_box_130.xml"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_98c5cb79.xml",
+            "system-path": "/etc/hardware_features_98c5cb79.xml"
           },
           "media-codecs": {
             "build-path": "media_codecs_c2.xml",

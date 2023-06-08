@@ -12,6 +12,7 @@ from collections import namedtuple
 import collections.abc
 import functools
 import glob
+import hashlib
 import itertools
 import json
 import os
@@ -154,11 +155,8 @@ def _build_arc(config, config_files):
     if config.oem:
         build_properties["oem"] = config.oem.name
     result = {"build-properties": build_properties}
-    config_id = _get_formatted_config_id(config.hw_design_config)
-    if config_id in config_files.arc_hw_features:
-        result["hardware-features"] = config_files.arc_hw_features[config_id]
-    if config_id in config_files.arc_media_profiles:
-        result["media-profiles"] = config_files.arc_media_profiles[config_id]
+    _upsert(config_files.arc_hw_features(config), result, "hardware-features")
+    _upsert(config_files.arc_media_profiles(config), result, "media-profiles")
     topology = config.hw_design_config.hardware_topology
     ppi = topology.screen.hardware_feature.screen.panel_properties.pixels_per_in
     # Only set for high resolution displays
@@ -2694,7 +2692,16 @@ def _is_whitelabel(device_brands):
 
 
 def _transform_build_configs(
-    config, config_files=ConfigFiles({}, {}, {}, {}, {}, {}, {})
+    config,
+    config_files=ConfigFiles(
+        arc_hw_features=lambda x: None,
+        arc_media_profiles=lambda x: None,
+        touch_fw={},
+        dptf_map={},
+        camera_map={},
+        wifi_sar_map={},
+        proximity_map={},
+    ),
 ):
     # pylint: disable=too-many-locals,too-many-branches
     partners = {x.id.value: x for x in config.partner_list}
@@ -3253,18 +3260,16 @@ def _generate_arc_media_profiles(hw_features, sw_config, program, dtd_path):
     return XML_DECLARATION + etree.tostring(root, pretty_print=True)
 
 
-def _write_files_by_design_config(
-    configs,
+def _per_config_file_writer(
     output_dir,
     build_dir,
     system_dir,
     file_name_template,
     generate_file_content,
 ):
-    """Writes generated files for each design config.
+    """Writes generated files on demand.
 
     Args:
-        configs: Source ConfigBundle to process.
         output_dir: Path to the generated output.
         build_dir: Path to the config file from portage's perspective.
         system_dir: Path to the config file in the target device.
@@ -3276,62 +3281,35 @@ def _write_files_by_design_config(
         HardwareFeatures and SoftwareConfig proto.
 
     Returns:
-        dict that maps the formatted config id to the correct file.
+        A function mapping from config to its corresponding file entry.
     """
-    # pylint: disable=too-many-arguments,too-many-locals
-    result = {}
-    configs_by_design = {}
-    programs = {x.id.value: x for x in configs.program_list}
-    for hw_design in configs.design_list:
-        program = _lookup(hw_design.program_id, programs)
-        for design_config in hw_design.configs:
-            sw_config = _sw_config(
-                configs.software_configs, design_config.id.value
+    configs_generated = {}
+
+    def _add_config(config):
+        config_content = generate_file_content(
+            config.hw_design_config.hardware_features,
+            config.sw_config,
+            config.program,
+        )
+        if not config_content:
+            return None
+
+        content_hash = hashlib.sha256(config_content).hexdigest()[:8]
+        if content_hash not in configs_generated:
+            file_name = file_name_template.format(content_hash)
+            _write_file(output_dir, file_name, config_content)
+
+            configs_generated[content_hash] = _file_v2(
+                os.path.join(build_dir, file_name),
+                os.path.join(system_dir, file_name),
             )
-            config_content = generate_file_content(
-                design_config.hardware_features, sw_config, program
-            )
-            if not config_content:
-                continue
-            design_name = hw_design.name.lower()
+        return configs_generated[content_hash]
 
-            # Constructs the following map:
-            # design_name -> config -> design_configs
-            # This allows any of the following file naming schemes:
-            # - All configs within a design share config
-            #   (design_name prefix only)
-            # - Nobody shares (full design_name and config id prefix needed)
-            #
-            # Having shared configs when possible makes code reviews easier
-            # around # the configs and makes debugging easier on the platform
-            # side.
-            arc_configs = configs_by_design.get(design_name, {})
-            design_configs = arc_configs.get(config_content, [])
-            design_configs.append(design_config)
-            arc_configs[config_content] = design_configs
-            configs_by_design[design_name] = arc_configs
-
-    for design_name, unique_configs in configs_by_design.items():
-        for file_content, design_configs in unique_configs.items():
-            file_name = file_name_template.format(design_name)
-            if len(unique_configs) == 1:
-                _write_file(output_dir, file_name, file_content)
-
-            for design_config in design_configs:
-                config_id = _get_formatted_config_id(design_config)
-                if len(unique_configs) > 1:
-                    file_name = file_name_template.format(config_id)
-                    _write_file(output_dir, file_name, file_content)
-                result[config_id] = _file_v2(
-                    os.path.join(build_dir, file_name),
-                    os.path.join(system_dir, file_name),
-                )
-    return result
+    return _add_config
 
 
-def _write_arc_hardware_feature_files(configs, output_root_dir, build_root_dir):
-    return _write_files_by_design_config(
-        configs,
+def _arc_hardware_feature_file_writer(output_root_dir, build_root_dir):
+    return _per_config_file_writer(
         os.path.join(output_root_dir, "arc"),
         os.path.join(build_root_dir, "arc"),
         "/etc",
@@ -3340,11 +3318,8 @@ def _write_arc_hardware_feature_files(configs, output_root_dir, build_root_dir):
     )
 
 
-def _write_arc_media_profile_files(
-    configs, output_root_dir, build_root_dir, dtd_path
-):
-    return _write_files_by_design_config(
-        configs,
+def _arc_media_profile_file_writer(output_root_dir, build_root_dir, dtd_path):
+    return _per_config_file_writer(
         os.path.join(output_root_dir, "arc"),
         os.path.join(build_root_dir, "arc"),
         "/etc",
@@ -4106,18 +4081,17 @@ def Main(
     wifi_sar_map = _wifi_sar_map(configs, output_dir, build_root_dir)
     if os.path.exists(TOUCH_PATH):
         touch_fw = _build_touch_file_config(configs, project_name)
-    arc_hw_feature_files = _write_arc_hardware_feature_files(
-        configs, output_dir, build_root_dir
+    arc_hw_feature_file_writer = _arc_hardware_feature_file_writer(
+        output_dir, build_root_dir
     )
-    arc_media_profile_files = _write_arc_media_profile_files(
-        configs=configs,
+    arc_media_profile_file_writer = _arc_media_profile_file_writer(
         output_root_dir=output_dir,
         build_root_dir=build_root_dir,
         dtd_path=dtd_path,
     )
     config_files = ConfigFiles(
-        arc_hw_features=arc_hw_feature_files,
-        arc_media_profiles=arc_media_profile_files,
+        arc_hw_features=arc_hw_feature_file_writer,
+        arc_media_profiles=arc_media_profile_file_writer,
         touch_fw=touch_fw,
         dptf_map=dptf_map,
         camera_map=camera_map,
