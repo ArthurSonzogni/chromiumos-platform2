@@ -28,9 +28,14 @@ Manager::Manager(const base::FilePath& cmd_path,
                  shill::ProcessManager* process_manager,
                  MetricsLibraryInterface* metrics,
                  ClientNotifier* client_notifier,
-                 std::unique_ptr<ShillClient> shill_client)
-    : client_notifier_(client_notifier),
-      shill_client_(std::move(shill_client)) {
+                 std::unique_ptr<ShillClient> shill_client,
+                 std::unique_ptr<RTNLClient> rtnl_client)
+    : system_(system),
+      client_notifier_(client_notifier),
+      shill_client_(std::move(shill_client)),
+      rtnl_client_(std::move(rtnl_client)) {
+  DCHECK(rtnl_client_);
+
   datapath_ = std::make_unique<Datapath>(system);
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
       system, process_manager, cmd_path, "--adb_proxy_fd");
@@ -534,9 +539,36 @@ Manager::GetDownstreamNetworkInfo(const std::string& downstream_ifname) const {
     return std::nullopt;
   }
 
-  // TODO(b/239559602) Get clients' information.
-  const std::vector<DownstreamClientInfo> client_infos = {};
-  return std::make_pair(it->second, std::move(client_infos));
+  return std::make_pair(it->second, GetDownstreamClientInfo(downstream_ifname));
+}
+
+std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
+    const std::string& downstream_ifname) const {
+  const auto ifindex = system_->IfNametoindex(downstream_ifname);
+  if (!ifindex) {
+    LOG(WARNING) << "Failed to get index of the interface:" << downstream_ifname
+                 << ", skip querying the client info";
+    return {};
+  }
+
+  std::map<MacAddress,
+           std::pair<net_base::IPv4Address, std::vector<net_base::IPv6Address>>>
+      mac_to_ip;
+  for (const auto& [ipv4_addr, mac_addr] :
+       rtnl_client_->GetIPv4NeighborMacTable(ifindex)) {
+    mac_to_ip[mac_addr].first = ipv4_addr;
+  }
+  for (const auto& [ipv6_addr, mac_addr] :
+       rtnl_client_->GetIPv6NeighborMacTable(ifindex)) {
+    mac_to_ip[mac_addr].second.push_back(ipv6_addr);
+  }
+
+  std::vector<DownstreamClientInfo> client_infos;
+  for (const auto& [mac_addr, ip] : mac_to_ip) {
+    client_infos.push_back({mac_addr, ip.first, ip.second,
+                            /*hostname=*/"", /*vendor_class=*/""});
+  }
+  return client_infos;
 }
 
 void Manager::OnNeighborReachabilityEvent(

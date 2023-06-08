@@ -120,8 +120,15 @@ void PatchpanelDaemon::RegisterDBusObjectsAsync(
   // Initialize |process_manager_| before creating subprocesses.
   process_manager_->Init();
 
+  auto rtnl_client = RTNLClient::Create();
+  if (!rtnl_client) {
+    LOG(ERROR) << "Failed to create RTNLClient, abort registering the adaptor";
+    return;
+  }
+
   adaptor_ = std::make_unique<PatchpanelAdaptor>(
-      cmd_path_, bus_, system_.get(), process_manager_, metrics_.get());
+      cmd_path_, bus_, system_.get(), process_manager_, metrics_.get(),
+      std::move(rtnl_client));
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }

@@ -27,6 +27,7 @@
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
+#include "patchpanel/rtnl_client.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subprocess_controller.h"
 #include "patchpanel/system.h"
@@ -56,7 +57,8 @@ class Manager {
           shill::ProcessManager* process_manager,
           MetricsLibraryInterface* metrics,
           ClientNotifier* client_notifier,
-          std::unique_ptr<ShillClient> shill_client);
+          std::unique_ptr<ShillClient> shill_client,
+          std::unique_ptr<RTNLClient> rtnl_client);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
   virtual ~Manager();
@@ -220,17 +222,26 @@ class Manager {
   DownstreamNetworkResult HandleDownstreamNetworkInfo(
       const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info);
 
+  std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
+      const std::string& downstream_ifname) const;
+
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);
 
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
+  // patchpanel::System shared for all subsystems.
+  System* system_;
+
   // The client of the Manager.
   ClientNotifier* client_notifier_;
 
   // Shill Dbus client.
   std::unique_ptr<ShillClient> shill_client_;
+
+  // rtnetlink client.
+  std::unique_ptr<RTNLClient> rtnl_client_;
 
   // High level routing and iptables controller service.
   std::unique_ptr<Datapath> datapath_;

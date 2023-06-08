@@ -34,7 +34,8 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
                     scoped_refptr<::dbus::Bus> bus,
                     System* system,
                     shill::ProcessManager* process_manager,
-                    MetricsLibraryInterface* metrics);
+                    MetricsLibraryInterface* metrics,
+                    std::unique_ptr<RTNLClient> rtnl_client);
 
   PatchpanelAdaptor(const PatchpanelAdaptor&) = delete;
   PatchpanelAdaptor& operator=(const PatchpanelAdaptor&) = delete;

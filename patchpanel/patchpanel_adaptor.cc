@@ -15,17 +15,19 @@ PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
                                      scoped_refptr<::dbus::Bus> bus,
                                      System* system,
                                      shill::ProcessManager* process_manager,
-                                     MetricsLibraryInterface* metrics)
+                                     MetricsLibraryInterface* metrics,
+                                     std::unique_ptr<RTNLClient> rtnl_client)
     : org::chromium::PatchPanelAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kPatchPanelServicePath)),
       metrics_(metrics),
-      manager_(std::make_unique<Manager>(
-          cmd_path,
-          system,
-          process_manager,
-          metrics_,
-          this,
-          std::make_unique<ShillClient>(bus, system))) {}
+      manager_(
+          std::make_unique<Manager>(cmd_path,
+                                    system,
+                                    process_manager,
+                                    metrics_,
+                                    this,
+                                    std::make_unique<ShillClient>(bus, system),
+                                    std::move(rtnl_client))) {}
 
 void PatchpanelAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
