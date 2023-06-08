@@ -12,7 +12,10 @@ pkg_config("target_default") {
 }
 
 source_set("routines") {
-  sources = [ "prime_number_search.cc" ]
+  sources = [
+    "floating_point_accuracy.cc",
+    "prime_number_search.cc",
+  ]
   configs += [ ":target_default" ]
   deps = [ "//diagnostics/base" ]
 }
