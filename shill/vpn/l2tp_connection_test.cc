@@ -244,7 +244,7 @@ TEST_F(L2TPConnectionTest, StartXl2tpd) {
                   _, kExpectedProgramPath, _, _,
                   AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                         MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplumentaryGroup(true)),
+                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
                   _))
       .WillOnce(WithArg<3>(
           [&actual_env](const std::map<std::string, std::string>& environment) {

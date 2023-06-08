@@ -83,7 +83,7 @@ MATCHER_P(MinijailOptionsMatchCapMask, capmask, "") {
   return arg.capmask == capmask;
 }
 
-MATCHER_P(MinijailOptionsMatchInheritSupplumentaryGroup,
+MATCHER_P(MinijailOptionsMatchInheritSupplementaryGroup,
           inherit_supplementary_groups,
           "") {
   return arg.inherit_supplementary_groups == inherit_supplementary_groups;

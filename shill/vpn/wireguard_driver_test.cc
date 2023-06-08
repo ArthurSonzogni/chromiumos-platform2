@@ -151,7 +151,7 @@ class WireGuardDriverTest : public testing::Test {
                     std::vector<std::string>{"pubkey"}, _,
                     AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                           MinijailOptionsMatchCapMask(0u),
-                          MinijailOptionsMatchInheritSupplumentaryGroup(true)),
+                          MinijailOptionsMatchInheritSupplementaryGroup(true)),
                     _, _))
         .WillRepeatedly([](const base::Location&, const base::FilePath&,
                            const std::vector<std::string>&,
@@ -192,7 +192,7 @@ class WireGuardDriverTest : public testing::Test {
                     _, base::FilePath("/usr/bin/wg"), _, _,
                     AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                           MinijailOptionsMatchCapMask(kExpectedCapMask),
-                          MinijailOptionsMatchInheritSupplumentaryGroup(true)),
+                          MinijailOptionsMatchInheritSupplementaryGroup(true)),
                     _))
         .WillOnce(
             [this, &args, &fds](
