@@ -1791,6 +1791,46 @@
         Boolean. Is Bluetooth scanning actively?
       </summary>
     </metric>
+    <metric name="FCSErrors" type="int">
+      <summary>
+        FCS Errors (NL80211_STA_INFO_FCS_ERROR_COUNT).
+      </summary>
+    </metric>
+    <metric name="RXMPDUS" type="int">
+      <summary>
+        RX MPDUS (NL80211_STA_INFO_RX_MPDUS).
+      </summary>
+    </metric>
+    <metric name="InactiveTime" type="int">
+      <summary>
+        Inactive time (NL80211_STA_INFO_INACTIVE_TIME).
+      </summary>
+    </metric>
+    <metric name="Noise" type="int">
+      <summary>
+        Noise level of channel (NL80211_SURVEY_INFO_NOISE).
+      </summary>
+    </metric>
+    <metric name="AckSignalAverage" type="int">
+      <summary>
+        Ack Signal Average (NL80211_STA_INFO_ACK_SIGNAL_AVG).
+      </summary>
+    </metric>
+    <metric name="LastAckSignal" type="int">
+      <summary>
+        Last Ack Signal (NL80211_STA_INFO_ACK_SIGNAL).
+      </summary>
+    </metric>
+    <metric name="Signal" type="int">
+      <summary>
+        Signal (NL80211_STA_INFO_SIGNAL).
+      </summary>
+    </metric>
+    <metric name="SignalAverage" type="int">
+      <summary>
+        Signal Average (NL80211_STA_INFO_SIGNAL_AVG).
+      </summary>
+    </metric>
   </event>
 
 </project>
