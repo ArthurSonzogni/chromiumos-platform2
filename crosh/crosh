@@ -265,6 +265,21 @@ cmd_vsh() (
 
 )
 
+# swap_management is the helper function to send dbus message to
+# swap_management. The first argument is the method name (e.g. SwapRestart),
+# followed by method arguments if applicable.
+swap_management() {
+  # Default timeout 30 seconds.
+  local timeout="--reply-timeout=30000"
+  case $1 in
+  --reply-timeout=*) timeout="$1"; shift;;
+  esac
+  local method="$1"; shift
+  dbus-send "${timeout}" --system --print-reply --fixed \
+      --dest=org.chromium.SwapManagement /org/chromium/SwapManagement \
+      "org.chromium.SwapManagement.${method}" "$@"
+}
+
 # shellcheck disable=SC2034
 USAGE_swap='[ enable <size (MB)> | disable | start | stop | status ]'
 # shellcheck disable=SC2034
@@ -316,24 +331,24 @@ cmd_swap() (
   "enable")
     local size="${1:-default}"
     if [ "${size}" = "default" ]; then
-      size=-1
+      size=0
     elif ! is_numeric "${size}"; then
       help "'${size}' is not a valid number"
       return 1
     fi
-    debugd SwapEnable "int32:${size}" "boolean:false"
+    swap_management SwapSetSize "int32:${size}"
     ;;
   "disable")
-    debugd SwapDisable "boolean:false"
+    swap_management SwapSetSize "int32:-1"
     ;;
   "start")
-    debugd SwapStartStop "boolean:true"
+    swap_management SwapRestart
     ;;
   "stop")
-    debugd SwapStartStop "boolean:false"
+    swap_management SwapStop
     ;;
   "status"|"")
-    debugd SwapStatus
+    swap_management SwapStatus
     ;;
   esac
 )
