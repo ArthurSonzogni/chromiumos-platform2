@@ -135,11 +135,13 @@ bool PrintscanTool::ToggleCups(bool enable) {
       LOG(ERROR) << "Failed to create cups debug-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced CUPS logging enabled.";
   } else {
     if (!DeleteFile(PRINTSCAN_CUPS_FILEPATH)) {
       LOG(ERROR) << "Failed to delete cups debug-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced CUPS logging disabled.";
   }
   return true;
 }
@@ -152,11 +154,13 @@ bool PrintscanTool::ToggleIppusb(bool enable) {
       LOG(ERROR) << "Failed to create ippusb debug-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced ippusb logging enabled.";
   } else {
     if (!DeleteFile(PRINTSCAN_IPPUSB_FILEPATH)) {
       LOG(ERROR) << "Failed to delete ippusb delete-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced ippusb logging disabled.";
   }
   return true;
 }
@@ -169,11 +173,13 @@ bool PrintscanTool::ToggleLorgnette(bool enable) {
       LOG(ERROR) << "Failed to create lorgnette debug-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced lorgnette logging enabled.";
   } else {
     if (!DeleteFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
       LOG(ERROR) << "Failed to delete lorgnette debug-flag.";
       return false;
     }
+    LOG(INFO) << "Advanced lorgnette logging disabled.";
   }
   return true;
 }
