@@ -278,6 +278,20 @@ int LedLitUpMain(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(LedLitUp);
 }
 
+int FloatingPointV2Main(int argc, char** argv) {
+  DEFINE_uint32(length_seconds, 60,
+                "Number of seconds to run the routine for.");
+  COMMON_V2_ROUTINE_FLAGS("Floating Point V2 routine")
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  auto argument = mojom::FloatingPointRoutineArgument::New();
+  if (command_line->HasSwitch("length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+  }
+
+  COMMON_V2_ROUTINE_MAIN(FloatingPoint);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -789,6 +803,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"prime_search_v2", PrimeSearchV2Main},
     {"volume_button", VolumeButtonMain},
     {"led_lit_up", LedLitUpMain},
+    {"floating_point_v2", FloatingPointV2Main},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},
