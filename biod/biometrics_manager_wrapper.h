@@ -14,6 +14,7 @@
 #include <dbus/object_path.h>
 
 #include "biod/biometrics_manager.h"
+#include "biod/biometrics_manager_record_wrapper.h"
 #include "biod/session_state_manager.h"
 
 namespace biod {
@@ -38,33 +39,6 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
   void OnUserLoggedIn(const std::string& sanitized_username,
                       bool is_new_login) override;
   void OnUserLoggedOut() override;
-
- private:
-  class RecordWrapper {
-   public:
-    RecordWrapper(BiometricsManagerWrapper* biometrics_manager,
-                  std::unique_ptr<BiometricsManagerRecordInterface> record,
-                  brillo::dbus_utils::ExportedObjectManager* object_manager,
-                  const dbus::ObjectPath& object_path);
-    RecordWrapper(const RecordWrapper&) = delete;
-    RecordWrapper& operator=(const RecordWrapper&) = delete;
-
-    ~RecordWrapper();
-
-    const dbus::ObjectPath& path() const { return object_path_; }
-
-    std::string GetUserId() const { return record_->GetUserId(); }
-
-   private:
-    bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
-    bool Remove(brillo::ErrorPtr* error);
-
-    BiometricsManagerWrapper* biometrics_manager_;
-    std::unique_ptr<BiometricsManagerRecordInterface> record_;
-    brillo::dbus_utils::DBusObject dbus_object_;
-    dbus::ObjectPath object_path_;
-    brillo::dbus_utils::ExportedProperty<std::string> property_label_;
-  };
 
   void FinalizeEnrollSessionObject();
   void FinalizeAuthSessionObject();

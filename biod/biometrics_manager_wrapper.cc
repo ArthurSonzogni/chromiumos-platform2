@@ -85,53 +85,6 @@ BiometricsManagerWrapper::~BiometricsManagerWrapper() {
   session_state_manager_->RemoveObserver(this);
 }
 
-BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
-    BiometricsManagerWrapper* biometrics_manager,
-    std::unique_ptr<BiometricsManagerRecordInterface> record,
-    ExportedObjectManager* object_manager,
-    const ObjectPath& object_path)
-    : biometrics_manager_(biometrics_manager),
-      record_(std::move(record)),
-      dbus_object_(object_manager, object_manager->GetBus(), object_path),
-      object_path_(object_path) {
-  DBusInterface* record_interface =
-      dbus_object_.AddOrGetInterface(kRecordInterface);
-  property_label_.SetValue(record_->GetLabel());
-  record_interface->AddProperty(kRecordLabelProperty, &property_label_);
-  record_interface->AddSimpleMethodHandlerWithError(
-      kRecordSetLabelMethod,
-      base::BindRepeating(&RecordWrapper::SetLabel, base::Unretained(this)));
-  record_interface->AddSimpleMethodHandlerWithError(
-      kRecordRemoveMethod,
-      base::BindRepeating(&RecordWrapper::Remove, base::Unretained(this)));
-  dbus_object_.RegisterAndBlock();
-}
-
-BiometricsManagerWrapper::RecordWrapper::~RecordWrapper() {
-  dbus_object_.UnregisterAndBlock();
-}
-
-bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
-    brillo::ErrorPtr* error, const std::string& new_label) {
-  if (!record_->SetLabel(new_label)) {
-    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   "Failed to set label");
-    return false;
-  }
-  property_label_.SetValue(new_label);
-  return true;
-}
-
-bool BiometricsManagerWrapper::RecordWrapper::Remove(brillo::ErrorPtr* error) {
-  if (!record_->Remove()) {
-    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   "Failed to remove record");
-    return false;
-  }
-  biometrics_manager_->RefreshRecordObjects();
-  return true;
-}
-
 void BiometricsManagerWrapper::FinalizeEnrollSessionObject() {
   enroll_session_owner_.clear();
   enroll_session_dbus_object_->UnregisterAndBlock();
