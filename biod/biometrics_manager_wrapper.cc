@@ -390,7 +390,7 @@ void BiometricsManagerWrapper::RefreshRecordObjects() {
 
   for (std::unique_ptr<BiometricsManagerRecordInterface>& record : records) {
     ObjectPath record_path(records_root_path + record->GetId());
-    records_.emplace_back(std::make_unique<RecordWrapper>(
+    records_.emplace_back(std::make_unique<BiometricsManagerRecordWrapper>(
         this, std::move(record), object_manager, record_path));
   }
 }

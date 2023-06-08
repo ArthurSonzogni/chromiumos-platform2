@@ -15,7 +15,7 @@ using brillo::dbus_utils::DBusInterface;
 using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 
-RecordWrapper::RecordWrapper(
+BiometricsManagerRecordWrapper::BiometricsManagerRecordWrapper(
     BiometricsManagerWrapper* biometrics_manager,
     std::unique_ptr<BiometricsManagerRecordInterface> record,
     ExportedObjectManager* object_manager,
@@ -30,19 +30,21 @@ RecordWrapper::RecordWrapper(
   record_interface->AddProperty(kRecordLabelProperty, &property_label_);
   record_interface->AddSimpleMethodHandlerWithError(
       kRecordSetLabelMethod,
-      base::BindRepeating(&RecordWrapper::SetLabel, base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerRecordWrapper::SetLabel,
+                          base::Unretained(this)));
   record_interface->AddSimpleMethodHandlerWithError(
       kRecordRemoveMethod,
-      base::BindRepeating(&RecordWrapper::Remove, base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerRecordWrapper::Remove,
+                          base::Unretained(this)));
   dbus_object_.RegisterAndBlock();
 }
 
-RecordWrapper::~RecordWrapper() {
+BiometricsManagerRecordWrapper::~BiometricsManagerRecordWrapper() {
   dbus_object_.UnregisterAndBlock();
 }
 
-bool RecordWrapper::SetLabel(brillo::ErrorPtr* error,
-                             const std::string& new_label) {
+bool BiometricsManagerRecordWrapper::SetLabel(brillo::ErrorPtr* error,
+                                              const std::string& new_label) {
   if (!record_->SetLabel(new_label)) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to set label");
@@ -52,7 +54,7 @@ bool RecordWrapper::SetLabel(brillo::ErrorPtr* error,
   return true;
 }
 
-bool RecordWrapper::Remove(brillo::ErrorPtr* error) {
+bool BiometricsManagerRecordWrapper::Remove(brillo::ErrorPtr* error) {
   if (!record_->Remove()) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to remove record");

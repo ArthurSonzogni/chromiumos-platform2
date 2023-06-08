@@ -73,7 +73,7 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ObjectPath object_path_;
   brillo::dbus_utils::ExportedProperty<uint32_t> property_type_;
-  std::vector<std::unique_ptr<RecordWrapper>> records_;
+  std::vector<std::unique_ptr<BiometricsManagerRecordWrapper>> records_;
 
   BiometricsManager::EnrollSession enroll_session_;
   std::string enroll_session_owner_;

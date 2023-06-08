@@ -20,16 +20,19 @@ namespace biod {
 
 class BiometricsManagerWrapper;
 
-class RecordWrapper {
+class BiometricsManagerRecordWrapper {
  public:
-  RecordWrapper(BiometricsManagerWrapper* biometrics_manager,
-                std::unique_ptr<BiometricsManagerRecordInterface> record,
-                brillo::dbus_utils::ExportedObjectManager* object_manager,
-                const dbus::ObjectPath& object_path);
-  RecordWrapper(const RecordWrapper&) = delete;
-  RecordWrapper& operator=(const RecordWrapper&) = delete;
+  BiometricsManagerRecordWrapper(
+      BiometricsManagerWrapper* biometrics_manager,
+      std::unique_ptr<BiometricsManagerRecordInterface> record,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
+      const dbus::ObjectPath& object_path);
+  BiometricsManagerRecordWrapper(const BiometricsManagerRecordWrapper&) =
+      delete;
+  BiometricsManagerRecordWrapper& operator=(
+      const BiometricsManagerRecordWrapper&) = delete;
 
-  ~RecordWrapper();
+  ~BiometricsManagerRecordWrapper();
 
   const dbus::ObjectPath& path() const { return object_path_; }
 
