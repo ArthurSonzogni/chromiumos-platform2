@@ -56,11 +56,13 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 #endif
 
 FeatureManagementImpl::FeatureManagementImpl()
-    : FeatureManagementImpl(base::FilePath(kDeviceInfoFilePath),
-                            protobuf_features) {}
+    : FeatureManagementImpl(
+          base::FilePath(kDeviceInfoFilePath), protobuf_features, "") {}
 
 FeatureManagementImpl::FeatureManagementImpl(
-    const base::FilePath& device_info_file_path, const char* feature_db)
+    const base::FilePath& device_info_file_path,
+    const std::string& feature_db,
+    const std::string& os_version)
     : device_info_file_path_(device_info_file_path) {
   persist_via_vpd_ =
       device_info_file_path_ == base::FilePath(kVpdSysfsFilePath);
@@ -69,14 +71,16 @@ FeatureManagementImpl::FeatureManagementImpl(
   bundle_.ParseFromString(decoded_pb);
 
 #if USE_FEATURE_MANAGEMENT
-  std::string version;
-  if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version)) {
-    current_version_hash_ = base::FastHash(version);
+  std::string version(os_version);
+  if (version.empty()) {
+    base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version);
+  }
+
+  if (!version.empty()) {
+    current_version_hash_ = base::PersistentHash(version);
   } else {
-    /* Set a default value for testing. */
     current_version_hash_ = 0;
-    LOG(ERROR) << "Failed to retrieve CHROMEOS_RELEASE_VERSION"
-               << current_version_hash_;
+    LOG(ERROR) << "Failed to retrieve CHROMEOS_RELEASE_VERSION";
   }
 #endif
 }

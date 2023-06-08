@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/hash/hash.h>
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -96,6 +97,9 @@ features {
 }
 */
 
+constexpr const char kOsVersion[] = "1234.0.0";
+uint32_t kCurrentVersionHash = base::PersistentHash(kOsVersion);
+
 // Test fixture for testing feature management.
 class FeatureManagementImplTest : public ::testing::Test {
  public:
@@ -105,8 +109,8 @@ class FeatureManagementImplTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     device_info_path_ = temp_dir_.GetPath().Append("device_info");
-    auto fake =
-        std::make_unique<FeatureManagementImpl>(device_info_path_, test_proto);
+    auto fake = std::make_unique<FeatureManagementImpl>(device_info_path_,
+                                                        test_proto, kOsVersion);
     feature_management_ = std::make_unique<FeatureManagement>(std::move(fake));
   }
 
@@ -144,6 +148,7 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
   EXPECT_EQ(
@@ -168,6 +173,7 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulScopeLevelTest) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
                                   DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
   EXPECT_EQ(
@@ -191,6 +197,7 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel0) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
 
@@ -203,6 +210,7 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope0) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
 
@@ -217,6 +225,7 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
   device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
                                   DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
+  device_info.set_cached_version_hash(kCurrentVersionHash);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
 

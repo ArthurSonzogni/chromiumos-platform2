@@ -29,7 +29,8 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   FeatureManagementImpl();
 
   FeatureManagementImpl(const base::FilePath& device_info_file_path,
-                        const char* feature_db);
+                        const std::string& feature_db,
+                        const std::string& os_version);
 
   bool IsFeatureEnabled(const std::string& name) override;
 
