@@ -1588,3 +1588,40 @@ Errors:
 - `Bluetooth routine failed to finish pairing.`
 - `Bluetooth routine failed to remove target peripheral.`
 - `Bluetooth routine failed to set target device's alias.`
+
+## Hardware Button Routines
+
+### Power Button
+
+Check the power button is working by listening to the power button event for a
+period of time. For the routine to pass, user must tap the power button before
+timeout. Otherwise, the routine fails.
+
+Parameters:
+-   `--length_seconds` - Number of seconds to listen for the power button
+    events. Range: [1, 600].
+    Type: `uint32_t`. Default: `0`.
+
+To run the power button routine that listens to events for 10 seconds.
+
+From crosh:
+```bash
+crosh> diag power_button --length_seconds=10
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag power_button --length_seconds=10
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message: Routine passed.
+```
+
+Errors:
+- `Timeout is not in range [1, 600]`
+- `Routine failed. No power button event observed.`
+- `Routine error. Unable to listen for power button events.`
