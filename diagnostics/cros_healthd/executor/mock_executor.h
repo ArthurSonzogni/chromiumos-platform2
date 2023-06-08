@@ -158,7 +158,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (override));
   MOCK_METHOD(void,
               RunPrimeSearch,
-              (uint32_t duration_sec,
+              (base::TimeDelta exec_duration,
                uint64_t max_num,
                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                    process_control_receiver,

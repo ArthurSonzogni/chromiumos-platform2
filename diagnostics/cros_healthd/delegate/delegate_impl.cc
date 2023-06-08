@@ -485,11 +485,10 @@ void DelegateImpl::MonitorPowerButton(
   new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
 }
 
-void DelegateImpl::RunPrimeSearch(uint32_t duration_sec,
+void DelegateImpl::RunPrimeSearch(base::TimeDelta exec_duration,
                                   uint64_t max_num,
                                   RunPrimeSearchCallback callback) {
-  base::TimeTicks end_time =
-      base::TimeTicks::Now() + base::Seconds(duration_sec);
+  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
   max_num = std::clamp(max_num, static_cast<uint64_t>(2),
                        PrimeNumberSearchDelegate::kMaxPrimeNumber);
 

@@ -41,12 +41,12 @@ class PrimeSearchRoutineV2TestBase : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunPrimeSearch(_, _, _, _))
         .WillRepeatedly(
-            [=](uint32_t test_seconds, uint64_t max_num,
+            [=](base::TimeDelta exec_duration, uint64_t max_num,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver,
                 Executor::RunPrimeSearchCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
-              received_test_seconds_ = test_seconds;
+              received_exec_duration_ = exec_duration;
               received_max_num_ = max_num;
               received_callback_ = std::move(callback);
             });
@@ -62,7 +62,7 @@ class PrimeSearchRoutineV2TestBase : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
   FakeProcessControl fake_process_control_;
-  uint32_t received_test_seconds_ = 0;
+  base::TimeDelta received_exec_duration_ = base::Seconds(0);
   uint64_t received_max_num_ = 0;
   Executor::RunPrimeSearchCallback received_callback_;
 };
@@ -201,7 +201,7 @@ TEST_F(PrimeSearchRoutineV2AdapterTest, RoutineFailure) {
 // Test that the routine defaults to 60 seconds if no duration isprovided.
 TEST_F(PrimeSearchRoutineV2Test, DefaultTestSeconds) {
   RunRoutineAndWaitForExit(true);
-  EXPECT_EQ(received_test_seconds_, 60);
+  EXPECT_EQ(received_exec_duration_, base::Seconds(60));
 }
 
 // Test that the routine can run with custom time.
@@ -210,7 +210,7 @@ TEST_F(PrimeSearchRoutineV2Test, CustomTestSeconds) {
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit(true);
-  EXPECT_EQ(received_test_seconds_, 20);
+  EXPECT_EQ(received_exec_duration_, base::Seconds(20));
 }
 
 // Test that the routine defaults to minimum running time (1 second) if invalid
@@ -220,7 +220,7 @@ TEST_F(PrimeSearchRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit(true);
-  EXPECT_EQ(received_test_seconds_, 1);
+  EXPECT_EQ(received_exec_duration_, base::Seconds(1));
 }
 
 // Test that the routine have the correct default search paramater.

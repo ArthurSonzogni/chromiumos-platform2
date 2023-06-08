@@ -427,7 +427,7 @@ interface Executor {
   // Run a prime search routine.
   //
   // The request:
-  // * |duration_sec| - The number of seconds this routine can run.
+  // * |exec_duration| - The time duration this routine should run.
   // * |max_num| - The maximum number under which all prime number should be
   //               found.
   // * |process_control| - Used to run and collect status about the running
@@ -435,8 +435,10 @@ interface Executor {
   //
   // The response:
   // * |result| - Whether the routine has passed successfully.
-  RunPrimeSearch(uint32 duration_sec, uint64 max_num,
-                  pending_receiver<ProcessControl> process_control) => (bool passed);
+  RunPrimeSearch(
+      ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
+      uint64 max_num,
+      pending_receiver<ProcessControl> process_control) => (bool passed);
 
   // Monitor volume button events.
   //

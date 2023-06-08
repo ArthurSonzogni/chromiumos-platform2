@@ -162,11 +162,12 @@ struct CpuCacheRoutineArgument {
 
 // This routine checks whether there is any cpu problem by repeatedly
 // calculating prime numbers.
+//
+// NextMinVersion: 1, NextIndex: 1
 struct PrimeSearchRoutineArgument {
   // |exec_duration| determines how long the prime search test will run. If
-  // the provided value is null, default to running for 1 minute. The duration
-  // is rounded to the nearest seconds towards zero (see behaviour of
-  // std::trunc()).
+  // the provided value is null, default to running for 1 minute. If the value
+  // is less than 1 second, run for 1 second.
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 

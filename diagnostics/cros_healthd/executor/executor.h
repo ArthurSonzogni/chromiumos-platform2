@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
@@ -129,7 +130,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
   void RunPrimeSearch(
-      uint32_t duration_sec,
+      base::TimeDelta exec_duration,
       uint64_t max_num,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver,

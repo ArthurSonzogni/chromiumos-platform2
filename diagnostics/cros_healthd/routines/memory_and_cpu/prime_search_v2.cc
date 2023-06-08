@@ -34,8 +34,8 @@ PrimeSearchRoutineV2::PrimeSearchRoutineV2(
 
   if (exec_duration_.InSeconds() < 1) {
     LOG(ERROR)
-        << "Routine run time must be larger than 1 second. Running default "
-           "exec duration instead.";
+        << "Routine run time must be larger than 1 second. Running minimum "
+           "exec duration of 1 second instead.";
     exec_duration_ = base::Seconds(1);
   }
   CHECK(context_);
@@ -75,7 +75,7 @@ void PrimeSearchRoutineV2::Run(
   SetRunningState();
 
   context_->executor()->RunPrimeSearch(
-      exec_duration_.InSeconds(), max_num_,
+      exec_duration_, max_num_,
       scoped_process_control_.BindNewPipeAndPassReceiver(),
       base::BindOnce(&PrimeSearchRoutineV2::OnFinished,
                      weak_ptr_factory_.GetWeakPtr()));

@@ -5,6 +5,7 @@
 module ash.cros_healthd.mojom;
 
 import "diagnostics/cros_healthd/mojom/executor.mojom";
+import "diagnostics/mojom/external/time.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
 import "diagnostics/mojom/public/cros_healthd_routines.mojom";
@@ -126,13 +127,15 @@ interface Delegate {
   // Run a prime search routine.
   //
   // The request:
-  // * |duration_sec| - The number of seconds this routine can run.
+  // * |exec_duration| - The time duration this routine should run.
   // * |max_num| - The maximum number under which all prime number should be
   //               found.
   //
   // The response:
   // * |passed| - Whether the routine has passed.
-  RunPrimeSearch(uint32 duration_sec, uint64 max_num) => (bool passed);
+  RunPrimeSearch(
+      ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
+      uint64 max_num) => (bool passed);
 
   // Monitor volume button events.
   //

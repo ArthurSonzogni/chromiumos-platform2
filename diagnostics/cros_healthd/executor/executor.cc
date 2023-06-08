@@ -823,14 +823,14 @@ void Executor::MonitorPowerButton(
 }
 
 void Executor::RunPrimeSearch(
-    uint32_t duration_sec,
+    base::TimeDelta exec_duration,
     uint64_t max_num,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunPrimeSearchCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kPrimeSearch, SandboxedProcess::Options{});
   delegate->remote()->RunPrimeSearch(
-      duration_sec, max_num,
+      exec_duration, max_num,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);

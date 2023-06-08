@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <string>
+
+#include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
@@ -53,7 +56,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorPowerButton(
       mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
           observer) override;
-  void RunPrimeSearch(uint32_t duration_sec,
+  void RunPrimeSearch(base::TimeDelta exec_duration,
                       uint64_t max_num,
                       RunPrimeSearchCallback callback) override;
   void MonitorVolumeButton(
