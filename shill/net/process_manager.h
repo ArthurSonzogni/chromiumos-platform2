@@ -54,10 +54,10 @@ class SHILL_EXPORT ProcessManager {
     std::string group;
     // Provides the child process with capabilities, which |user| might not have
     // on its own.
-    uint64_t capmask;
+    uint64_t capmask = 0;
     // Allows child process to inherit supplementary groups from uid, equivalent
     // to using '-G' on the minijail command line.
-    bool inherit_supplementary_groups;
+    bool inherit_supplementary_groups = false;
     // Set of non-standard file descriptors to be inherited by the child
     // process.
     base::flat_set<int> preserved_nonstd_fds;
