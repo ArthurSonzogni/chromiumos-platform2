@@ -15,6 +15,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/metrics.h"
+#include "patchpanel/multicast_metrics.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/scoped_ns.h"
 
@@ -54,9 +55,11 @@ Manager::Manager(const base::FilePath& cmd_path,
   counters_svc_ = std::make_unique<CountersService>(datapath_.get());
   multicast_counters_svc_ =
       std::make_unique<MulticastCountersService>(datapath_.get());
-  datapath_->Start();
+  multicast_metrics_ = std::make_unique<MulticastMetrics>();
 
+  datapath_->Start();
   multicast_counters_svc_->Start();
+  multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
@@ -232,6 +235,7 @@ void Manager::OnShillDevicesChanged(
     datapath_->StopConnectionPinning(device);
     datapath_->RemoveRedirectDnsRule(device);
     arc_svc_->RemoveDevice(device);
+    multicast_metrics_->OnPhysicalDeviceRemoved(device);
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
 
     // We have no good way to tell whether the removed Device was cellular now,
@@ -245,6 +249,7 @@ void Manager::OnShillDevicesChanged(
   for (const auto& device : added) {
     counters_svc_->OnPhysicalDeviceAdded(device.ifname);
     multicast_counters_svc_->OnPhysicalDeviceAdded(device);
+    multicast_metrics_->OnPhysicalDeviceAdded(device);
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != device.ifname) {
         continue;
@@ -278,6 +283,7 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
     datapath_->AddRedirectDnsRule(
         shill_device, shill_device.ipconfig.ipv4_dns_addresses.front());
   }
+  multicast_metrics_->OnIPConfigsChanged(shill_device);
   ipv6_svc_->UpdateUplinkIPv6DNS(shill_device);
 
   // Update local copies of the ShillClient::Device to keep IP configuration

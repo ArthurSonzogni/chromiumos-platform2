@@ -26,6 +26,7 @@
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/multicast_counters_service.h"
+#include "patchpanel/multicast_metrics.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/rtnl_client.h"
@@ -308,6 +309,9 @@ class Manager {
   // Whether device is interactive, used to decide whether to start/stop
   // forwarding multicast traffic to ARC on all multicast enabled networks.
   bool is_arc_interactive_ = true;
+
+  // Fetches and reports multicast packet count to UMA metrics.
+  std::unique_ptr<MulticastMetrics> multicast_metrics_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

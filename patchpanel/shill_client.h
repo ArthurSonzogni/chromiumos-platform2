@@ -102,6 +102,10 @@ class ShillClient {
     // Cellular Devices. For Cellular Device not using multiplexing, this value
     // is equivalent to the kInterfaceProperty value.
     std::optional<std::string> primary_multiplexed_interface;
+
+    // Return if the device is connected by checking if IPv4 or IPv6 address is
+    // available.
+    bool IsConnected() const;
   };
 
   // Client callback for learning when shill default logical network changes.

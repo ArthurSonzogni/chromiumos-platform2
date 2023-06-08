@@ -58,6 +58,10 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
 
 }  // namespace
 
+bool ShillClient::Device::IsConnected() const {
+  return ipconfig.ipv4_cidr || ipconfig.ipv6_cidr;
+}
+
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
     : bus_(bus), system_(system) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
