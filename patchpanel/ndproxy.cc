@@ -53,13 +53,13 @@ const unsigned char kAllRoutersMulticastMacAddress[] = {0x33, 0x33, 0,
                                                         0,    0,    0x02};
 const unsigned char kSolicitedNodeMulticastMacAddressPrefix[] = {
     0x33, 0x33, 0xff, 0, 0, 0};
-const struct in6_addr kAllNodesMulticastAddress = {
-    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
-const struct in6_addr kAllRoutersMulticastAddress = {
-    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}}};
-const struct in6_addr kSolicitedNodeMulticastAddressPrefix = {
-    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0, 0}}};
+constexpr net_base::IPv6Address kAllNodesMulticastAddress(
+    0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01);
+constexpr net_base::IPv6Address kAllRoutersMulticastAddress(
+    0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02);
 constexpr int kSolicitedGroupSuffixLength = 3;
+const net_base::IPv6CIDR kSolicitedNodeMulticastCIDR =
+    *net_base::IPv6CIDR::CreateFromCIDRString("ff02::1:ff00:0/104");
 
 // These filter instructions assume that the input is an IPv6 packet and check
 // that the packet is an ICMPv6 packet of whose ICMPv6 type is one of: neighbor
@@ -103,6 +103,17 @@ std::string Icmp6TypeName(uint32_t type) {
   }
 }
 
+std::optional<net_base::IPv6CIDR> NDOptPrefixInfoToCIDR(
+    const nd_opt_prefix_info* info) {
+  if (info == nullptr) {
+    return std::nullopt;
+  }
+
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+      net_base::IPv6Address(info->nd_opt_pi_prefix),
+      info->nd_opt_pi_prefix_len);
+}
+
 [[maybe_unused]] std::string Icmp6ToString(const uint8_t* packet, size_t len) {
   const ip6_hdr* ip6 = reinterpret_cast<const ip6_hdr*>(packet);
   const icmp6_hdr* icmp6 =
@@ -120,14 +131,14 @@ std::string Icmp6TypeName(uint32_t type) {
 
   std::stringstream ss;
   ss << Icmp6TypeName(icmp6->icmp6_type) << " "
-     << IPv6AddressToString(ip6->ip6_src) << " -> "
-     << IPv6AddressToString(ip6->ip6_dst);
+     << net_base::IPv6Address(ip6->ip6_src) << " -> "
+     << net_base::IPv6Address(ip6->ip6_dst);
   switch (icmp6->icmp6_type) {
     case ND_NEIGHBOR_SOLICIT:
     case ND_NEIGHBOR_ADVERT: {
       // NS and NA has same packet format for Target Address
       ss << ", target "
-         << IPv6AddressToString(
+         << net_base::IPv6Address(
                 reinterpret_cast<const nd_neighbor_solicit*>(icmp6)
                     ->nd_ns_target);
       break;
@@ -138,9 +149,9 @@ std::string Icmp6TypeName(uint32_t type) {
     case ND_ROUTER_ADVERT: {
       const nd_opt_prefix_info* prefix_info = NDProxy::GetPrefixInfoOption(
           reinterpret_cast<const uint8_t*>(icmp6), len - sizeof(ip6_hdr));
-      if (prefix_info != nullptr) {
-        ss << ", prefix " << IPv6AddressToString(prefix_info->nd_opt_pi_prefix)
-           << "/" << static_cast<int>(prefix_info->nd_opt_pi_prefix_len);
+      const auto prefix_cidr = NDOptPrefixInfoToCIDR(prefix_info);
+      if (prefix_cidr) {
+        ss << ", prefix " << *prefix_cidr;
       }
       break;
     }
@@ -214,12 +225,13 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
 }
 
 // static
-ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
-                                   size_t packet_len,
-                                   const MacAddress& local_mac_addr,
-                                   const in6_addr* new_src_ip,
-                                   const in6_addr* new_dst_ip,
-                                   uint8_t* out_packet) {
+ssize_t NDProxy::TranslateNDPacket(
+    const uint8_t* in_packet,
+    size_t packet_len,
+    const MacAddress& local_mac_addr,
+    const std::optional<net_base::IPv6Address>& new_src_ip,
+    const std::optional<net_base::IPv6Address>& new_dst_ip,
+    uint8_t* out_packet) {
   if (packet_len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
   }
@@ -273,8 +285,8 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
       return kTranslateErrorNotNDPacket;
   }
 
-  if (new_src_ip != nullptr) {
-    memcpy(&ip6->ip6_src, new_src_ip, sizeof(in6_addr));
+  if (new_src_ip) {
+    ip6->ip6_src = new_src_ip->ToIn6Addr();
 
     // Turn off onlink flag if we are pretending to be the router.
     nd_opt_prefix_info* prefix_info =
@@ -283,8 +295,8 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
       prefix_info->nd_opt_pi_flags_reserved &= ~ND_OPT_PI_FLAG_ONLINK;
     }
   }
-  if (new_dst_ip != nullptr) {
-    memcpy(&ip6->ip6_dst, new_dst_ip, sizeof(in6_addr));
+  if (new_dst_ip) {
+    ip6->ip6_dst = new_dst_ip->ToIn6Addr();
   }
 
   // Recalculate the checksum. We need to clear the old checksum first so
@@ -345,8 +357,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
   if (downlink_link_local_.find(recv_ll_addr.sll_ifindex) !=
           downlink_link_local_.end() &&
-      memcmp(&ip6->ip6_dst, &downlink_link_local_[recv_ll_addr.sll_ifindex],
-             sizeof(in6_addr)) == 0) {
+      downlink_link_local_[recv_ll_addr.sll_ifindex] ==
+          net_base::IPv6Address(ip6->ip6_dst)) {
     // If destination IP is our link local unicast, no need to proxy the packet.
     return;
   }
@@ -372,28 +384,26 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     // is mapped to the local MAC address on the cellular interface. Directly
     // proxying these RAs will cause the guest OS to set up a default route to
     // a next hop that is not reachable for them.
-    const in6_addr* new_src_ip_p = nullptr;
-    in6_addr new_src_ip;
+    std::optional<net_base::IPv6Address> new_src_ip = std::nullopt;
     if (modify_ra_uplinks_.find(recv_ll_addr.sll_ifindex) !=
             modify_ra_uplinks_.end() &&
         icmp6->icmp6_type == ND_ROUTER_ADVERT) {
       if (downlink_link_local_.find(target_if) == downlink_link_local_.end()) {
         continue;
       }
-      memcpy(&new_src_ip, &downlink_link_local_[target_if], sizeof(in6_addr));
-      new_src_ip_p = &new_src_ip;
+      new_src_ip = downlink_link_local_[target_if];
     }
 
     // Always proxy RA to multicast address, so that every guest will accept it
     // therefore saving the total amount of RSs we sent to the network.
     // b/228574659: On L850 only this is a must instead of an optimization.
-    const in6_addr* new_dst_ip_p = nullptr;
+    std::optional<net_base::IPv6Address> new_dst_ip = std::nullopt;
     if (icmp6->icmp6_type == ND_ROUTER_ADVERT) {
-      new_dst_ip_p = &kAllNodesMulticastAddress;
+      new_dst_ip = kAllNodesMulticastAddress;
     }
 
-    ssize_t result = TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p,
-                                       new_dst_ip_p, out_packet);
+    const ssize_t result = TranslateNDPacket(
+        in_packet, len, local_mac, new_src_ip, new_dst_ip, out_packet);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Packet:
@@ -427,10 +437,11 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     };
 
     ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
-    ResolveDestinationMac(new_ip6->ip6_dst, send_ll_addr.sll_addr);
+    const net_base::IPv6Address dst_addr(new_ip6->ip6_dst);
+    ResolveDestinationMac(dst_addr, send_ll_addr.sll_addr);
     if (memcmp(send_ll_addr.sll_addr, &kZeroMacAddress, ETHER_ADDR_LEN) == 0) {
       VLOG(1) << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
-              << " packet dest IP " << IPv6AddressToString(new_ip6->ip6_dst)
+              << " packet dest IP " << dst_addr
               << " into MAC address. In: " << recv_ll_addr.sll_ifindex
               << ", out: " << target_if;
       if (IsGuestInterface(target_if) || !kDropUnresolvableUnicastToUpstream) {
@@ -527,9 +538,8 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
       // Notice that since upstream never reply NA, this DAD never fails.
       // b/266514205: extent this workaround to all technologies as we are
       // observing similar behavior in some wifi APs.
-      uint8_t zerobuf[sizeof(in6_addr)] = {0};
       // Empty source IP indicates DAD
-      if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) == 0) {
+      if (net_base::IPv6Address(ip6->ip6_src).IsZero()) {
         const nd_neighbor_solicit* ns =
             reinterpret_cast<const nd_neighbor_solicit*>(icmp6);
         guest_address = &(ns->nd_ns_target);
@@ -540,9 +550,10 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
   if (guest_address &&
       ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
        (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
-    guest_discovery_handler_.Run(recv_ifindex, *guest_address);
+    const net_base::IPv6Address guest_addr(*guest_address);
+    guest_discovery_handler_.Run(recv_ifindex, guest_addr);
     VLOG(2) << "GuestDiscovery on interface " << recv_ifindex << ": "
-            << IPv6AddressToString(*guest_address);
+            << guest_addr;
   }
 
   // RouterDiscovery event is triggered whenever an RA is received on a uplink.
@@ -550,32 +561,32 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
       IsRouterInterface(recv_ifindex) && !router_discovery_handler_.is_null()) {
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
         reinterpret_cast<const uint8_t*>(icmp6), len - sizeof(ip6_hdr));
-    if (prefix_info != nullptr) {
-      router_discovery_handler_.Run(recv_ifindex, prefix_info->nd_opt_pi_prefix,
-                                    prefix_info->nd_opt_pi_prefix_len);
+    const auto ipv6_cidr = NDOptPrefixInfoToCIDR(prefix_info);
+    if (ipv6_cidr) {
+      router_discovery_handler_.Run(recv_ifindex, *ipv6_cidr);
       VLOG(2) << "RouterDiscovery on interface " << recv_ifindex << ": "
-              << IPv6AddressToString(prefix_info->nd_opt_pi_prefix) << "/"
-              << prefix_info->nd_opt_pi_prefix_len;
+              << *ipv6_cidr;
     }
   }
 }
 
-void NDProxy::ResolveDestinationMac(const in6_addr& dest_ipv6,
+void NDProxy::ResolveDestinationMac(const net_base::IPv6Address& dest_ipv6,
                                     uint8_t* dest_mac) {
-  if (memcmp(&dest_ipv6, &kAllNodesMulticastAddress, sizeof(in6_addr)) == 0) {
+  if (dest_ipv6 == kAllNodesMulticastAddress) {
     memcpy(dest_mac, &kAllNodesMulticastMacAddress, ETHER_ADDR_LEN);
     return;
   }
-  if (memcmp(&dest_ipv6, &kAllRoutersMulticastAddress, sizeof(in6_addr)) == 0) {
+  if (dest_ipv6 == kAllRoutersMulticastAddress) {
     memcpy(dest_mac, &kAllRoutersMulticastMacAddress, ETHER_ADDR_LEN);
     return;
   }
-  if (memcmp(&dest_ipv6, &kSolicitedNodeMulticastAddressPrefix,
-             sizeof(in6_addr) - kSolicitedGroupSuffixLength) == 0) {
+  if (kSolicitedNodeMulticastCIDR.InSameSubnetWith(dest_ipv6)) {
+    const in6_addr dest_in6_addr = dest_ipv6.ToIn6Addr();
     memcpy(dest_mac, &kSolicitedNodeMulticastMacAddressPrefix, ETHER_ADDR_LEN);
-    memcpy(dest_mac + ETHER_ADDR_LEN - kSolicitedGroupSuffixLength,
-           &dest_ipv6.s6_addr[sizeof(in6_addr) - kSolicitedGroupSuffixLength],
-           kSolicitedGroupSuffixLength);
+    memcpy(
+        dest_mac + ETHER_ADDR_LEN - kSolicitedGroupSuffixLength,
+        &dest_in6_addr.s6_addr[sizeof(in6_addr) - kSolicitedGroupSuffixLength],
+        kSolicitedGroupSuffixLength);
     return;
   }
 
@@ -588,15 +599,17 @@ void NDProxy::ResolveDestinationMac(const in6_addr& dest_ipv6,
   memcpy(dest_mac, &kZeroMacAddress, ETHER_ADDR_LEN);
 }
 
-bool NDProxy::GetLinkLocalAddress(int ifindex, in6_addr* link_local) {
-  DCHECK(link_local != nullptr);
+std::optional<net_base::IPv6Address> NDProxy::GetLinkLocalAddress(int ifindex) {
   std::ifstream proc_file("/proc/net/if_inet6");
   std::string line;
   while (std::getline(proc_file, line)) {
     // Line format in /proc/net/if_inet6:
     //   address ifindex prefix_len scope flags ifname
-    auto tokens = base::SplitString(line, " \t", base::TRIM_WHITESPACE,
-                                    base::SPLIT_WANT_NONEMPTY);
+    const auto tokens = base::SplitString(line, " \t", base::TRIM_WHITESPACE,
+                                          base::SPLIT_WANT_NONEMPTY);
+    if (tokens.size() < 4) {
+      continue;
+    }
     if (tokens[3] != "20") {
       // We are only looking for link local address (scope value == "20")
       continue;
@@ -606,15 +619,19 @@ bool NDProxy::GetLinkLocalAddress(int ifindex, in6_addr* link_local) {
         line_if_id != ifindex) {
       continue;
     }
+
     std::vector<uint8_t> line_address;
-    if (!base::HexStringToBytes(tokens[0], &line_address) ||
-        line_address.size() != sizeof(in6_addr)) {
+    if (!base::HexStringToBytes(tokens[0], &line_address)) {
       continue;
     }
-    memcpy(link_local, line_address.data(), sizeof(in6_addr));
-    return true;
+
+    const auto addr = net_base::IPv6Address::CreateFromBytes(
+        line_address.data(), line_address.size());
+    if (addr) {
+      return addr;
+    }
   }
-  return false;
+  return std::nullopt;
 }
 
 bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
@@ -634,11 +651,12 @@ bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
   return true;
 }
 
-bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
+bool NDProxy::GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
+                             MacAddress* mac_addr) {
   DCHECK(rtnl_client_);
 
   const auto neighbor_mac_table = rtnl_client_->GetIPv6NeighborMacTable();
-  const auto it = neighbor_mac_table.find(net_base::IPv6Address(ipv6_addr));
+  const auto it = neighbor_mac_table.find(ipv6_addr);
   if (it == neighbor_mac_table.end()) {
     return false;
   }
@@ -648,12 +666,11 @@ bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
 }
 
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(
-    base::RepeatingCallback<void(int, const in6_addr&)> handler) {
+    GuestIpDiscoveryHandler handler) {
   guest_discovery_handler_ = std::move(handler);
 }
 
-void NDProxy::RegisterOnRouterDiscoveryHandler(
-    base::RepeatingCallback<void(int, const in6_addr&, int)> handler) {
+void NDProxy::RegisterOnRouterDiscoveryHandler(RouterDiscoveryHandler handler) {
   router_discovery_handler_ = std::move(handler);
 }
 
@@ -684,11 +701,14 @@ void NDProxy::StartRSRAProxy(int if_id_upstream,
   if (modify_router_address) {
     modify_ra_uplinks_.insert(if_id_upstream);
   }
-  downlink_link_local_[if_id_downstream] = in6_addr{};
-  if (!GetLinkLocalAddress(if_id_downstream,
-                           &downlink_link_local_[if_id_downstream])) {
+
+  const auto addr = GetLinkLocalAddress(if_id_downstream);
+  if (addr) {
+    downlink_link_local_[if_id_downstream] = *addr;
+  } else {
     LOG(WARNING) << "Cannot find a link local address on interface "
                  << if_id_downstream;
+    downlink_link_local_[if_id_downstream] = net_base::IPv6Address();
   }
 }
 
@@ -847,13 +867,14 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
   }
 }
 
-void NDProxyDaemon::OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
+void NDProxyDaemon::OnGuestIpDiscovery(int if_id,
+                                       const net_base::IPv6Address& ip6addr) {
   if (!msg_dispatcher_) {
     return;
   }
   NeighborDetectedSignal msg;
   msg.set_if_id(if_id);
-  msg.set_ip(&ip6addr, sizeof(in6_addr));
+  msg.set_ip(ip6addr.ToByteString());
   NDProxySignalMessage nm;
   *nm.mutable_neighbor_detected_signal() = msg;
   FeedbackMessage fm;
@@ -864,15 +885,14 @@ void NDProxyDaemon::OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
 }
 
 void NDProxyDaemon::OnRouterDiscovery(int if_id,
-                                      const in6_addr& prefix_addr,
-                                      int prefix_len) {
+                                      const net_base::IPv6CIDR& prefix_cidr) {
   if (!msg_dispatcher_) {
     return;
   }
   RouterDetectedSignal msg;
   msg.set_if_id(if_id);
-  msg.set_ip(&prefix_addr, sizeof(in6_addr));
-  msg.set_prefix_len(prefix_len);
+  msg.set_ip(prefix_cidr.address().ToByteString());
+  msg.set_prefix_len(prefix_cidr.prefix_length());
   NDProxySignalMessage nm;
   *nm.mutable_router_detected_signal() = msg;
   FeedbackMessage fm;

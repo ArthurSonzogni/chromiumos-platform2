@@ -9,20 +9,20 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/ndproxy.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/system.h"
 
 void OnSocketReadReady(patchpanel::NDProxy* proxy, int fd) {
   proxy->ReadAndProcessOnePacket(fd);
 }
 
-void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
+void OnGuestIpDiscovery(int if_id, const net_base::IPv6Address& ip6addr) {
   patchpanel::System system;
-  std::string ifname = system.IfIndextoname(if_id);
-  std::string ip6_str = patchpanel::IPv6AddressToString(ip6addr);
+  const std::string ifname = system.IfIndextoname(if_id);
+  const std::string ip6_str = ip6addr.ToString();
 
   patchpanel::MinijailedProcessRunner runner;
   if (runner.ip6("route", "replace", {ip6_str + "/128", "dev", ifname}) != 0) {

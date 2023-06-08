@@ -21,7 +21,8 @@ class NDProxyForFuzzer : public NDProxy {
     uint8_t opt_type = provider.ConsumeIntegral<uint8_t>();
     uint8_t* buffer = new uint8_t[size];
 
-    TranslateNDPacket(data, size, guest_if_mac, nullptr, nullptr, buffer);
+    TranslateNDPacket(data, size, guest_if_mac, std::nullopt, std::nullopt,
+                      buffer);
 
     memcpy(buffer, data, size);
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(buffer, size);

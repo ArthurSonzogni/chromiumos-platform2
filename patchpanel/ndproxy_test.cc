@@ -298,19 +298,20 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
 // NDProxy with functions interacting with kernel state faked
 class NDProxyUnderTest : public NDProxy {
  public:
-  void RegisterNeighbor(const in6_addr& ipv6_addr, const MacAddress& mac_addr) {
+  void RegisterNeighbor(const net_base::IPv6Address& ipv6_addr,
+                        const MacAddress& mac_addr) {
     neighbor_table_.emplace_back(ipv6_addr, mac_addr);
   }
 
  private:
-  std::vector<std::pair<in6_addr, MacAddress>> neighbor_table_;
+  std::vector<std::pair<net_base::IPv6Address, MacAddress>> neighbor_table_;
 
   bool GetLocalMac(int if_id, MacAddress* mac_addr) override { return false; }
 
-  bool GetNeighborMac(const in6_addr& ipv6_addr,
+  bool GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
                       MacAddress* mac_addr) override {
     for (const auto& neighbor : neighbor_table_) {
-      if (memcmp(&ipv6_addr, &neighbor.first, sizeof(in6_addr)) == 0) {
+      if (ipv6_addr == neighbor.first) {
         memcpy(mac_addr, &neighbor.second, ETHER_ADDR_LEN);
         return true;
       }
@@ -318,8 +319,8 @@ class NDProxyUnderTest : public NDProxy {
     return false;
   }
 
-  bool GetLinkLocalAddress(int if_id, in6_addr* link_local) override {
-    return false;
+  std::optional<net_base::IPv6Address> GetLinkLocalAddress(int if_id) override {
+    return std::nullopt;
   }
 
   FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
@@ -338,8 +339,8 @@ TEST(NDProxyTest, TranslateFrame) {
     const uint8_t* input_frame;
     size_t input_frame_len;
     MacAddress local_mac;
-    in6_addr* src_ip;
-    in6_addr* dst_ip;
+    std::optional<net_base::IPv6Address> src_ip;
+    std::optional<net_base::IPv6Address> dst_ip;
     ssize_t expected_error;
     const uint8_t* expected_output_frame;
     size_t expected_output_frame_len;
@@ -349,8 +350,8 @@ TEST(NDProxyTest, TranslateFrame) {
           tcp_frame,
           sizeof(tcp_frame),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           NDProxy::kTranslateErrorNotICMPv6Packet,
       },
       {
@@ -358,8 +359,8 @@ TEST(NDProxyTest, TranslateFrame) {
           ping_frame,
           sizeof(ping_frame),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           NDProxy::kTranslateErrorNotNDPacket,
       },
       {
@@ -367,8 +368,8 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame_too_large_plen,
           sizeof(rs_frame_too_large_plen),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -376,8 +377,8 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame_too_small_plen,
           sizeof(rs_frame_too_small_plen),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -385,8 +386,8 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame,
           sizeof(rs_frame),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           0,  // no error
           rs_frame_translated,
           sizeof(rs_frame_translated),
@@ -396,8 +397,8 @@ TEST(NDProxyTest, TranslateFrame) {
           ra_frame,
           sizeof(ra_frame),
           guest_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           0,  // no error
           ra_frame_translated,
           sizeof(ra_frame_translated),
@@ -407,8 +408,8 @@ TEST(NDProxyTest, TranslateFrame) {
           ra_frame_option_reordered,
           sizeof(ra_frame_option_reordered),
           guest_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           0,  // no error
           ra_frame_option_reordered_translated,
           sizeof(ra_frame_option_reordered_translated),
@@ -418,8 +419,8 @@ TEST(NDProxyTest, TranslateFrame) {
           ns_frame,
           sizeof(ns_frame),
           physical_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           0,  // no error
           ns_frame_translated,
           sizeof(ns_frame_translated),
@@ -429,8 +430,8 @@ TEST(NDProxyTest, TranslateFrame) {
           na_frame,
           sizeof(na_frame),
           guest_if_mac,
-          nullptr,
-          nullptr,
+          std::nullopt,
+          std::nullopt,
           0,  // no error
           na_frame_translated,
           sizeof(na_frame_translated),
@@ -468,11 +469,12 @@ TEST(NDProxyTest, TranslateFrame) {
 
 TEST(NDProxyTest, ResolveDestinationMac) {
   NDProxyUnderTest ndproxy;
+  ndproxy.RegisterNeighbor(*net_base::IPv6Address::CreateFromString(
+                               "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c"),
+                           {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c});
   ndproxy.RegisterNeighbor(
-      StringToIPv6Address("2a01:db8:abc:f605:5c5e:a5ff:fe32:743c"),
-      {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c});
-  ndproxy.RegisterNeighbor(StringToIPv6Address("ff02::1:ff89:2083"),
-                           {0x33, 0x33, 0xff, 0x89, 0x20, 0x83});
+      *net_base::IPv6Address::CreateFromString("ff02::1:ff89:2083"),
+      {0x33, 0x33, 0xff, 0x89, 0x20, 0x83});
 
   struct {
     std::string name;
@@ -496,7 +498,8 @@ TEST(NDProxyTest, ResolveDestinationMac) {
   for (const auto& test_case : test_cases) {
     LOG(INFO) << test_case.name;
     MacAddress dest_mac;
-    in6_addr dest_ip = StringToIPv6Address(test_case.dest_ip);
+    const auto dest_ip =
+        *net_base::IPv6Address::CreateFromString(test_case.dest_ip);
     ndproxy.ResolveDestinationMac(dest_ip, dest_mac.data());
     const auto expected = MacAddressToString(test_case.dest_mac);
     const auto received = MacAddressToString(dest_mac);
@@ -506,14 +509,9 @@ TEST(NDProxyTest, ResolveDestinationMac) {
 
 class MockCallbackHandler {
  public:
-  MOCK_METHOD(void, OnGuestDiscovery, (int, const in6_addr&));
-  MOCK_METHOD(void, OnRouterDiscovery, (int, const in6_addr&, int));
+  MOCK_METHOD(void, OnGuestDiscovery, (int, const net_base::IPv6Address&));
+  MOCK_METHOD(void, OnRouterDiscovery, (int, const net_base::IPv6CIDR&));
 };
-
-MATCHER_P(EqualsToIpv6Address, ip_str, "") {
-  struct in6_addr addr = StringToIPv6Address(ip_str);
-  return (memcmp(&arg, &addr, sizeof(in6_addr)) == 0);
-}
 
 TEST(NDProxyTest, GuestDiscoveryCallback) {
   uint8_t buffer[IP_MAXPACKET];
@@ -559,9 +557,10 @@ TEST(NDProxyTest, GuestDiscoveryCallback) {
     if (test_case.expect_trigger) {
       EXPECT_CALL(handler,
                   OnGuestDiscovery(test_case.recv_ifindex,
-                                   EqualsToIpv6Address(test_case.expected_ip)));
+                                   *net_base::IPv6Address::CreateFromString(
+                                       test_case.expected_ip)));
     } else {
-      EXPECT_CALL(handler, OnGuestDiscovery(_, _)).Times(0);
+      EXPECT_CALL(handler, OnGuestDiscovery).Times(0);
     }
     ndproxy.NotifyPacketCallbacks(test_case.recv_ifindex, buffer,
                                   test_case.input_packet_len);
@@ -582,21 +581,20 @@ TEST(NDProxyTest, RouterDiscoveryCallback) {
     size_t input_packet_len;
     int recv_ifindex;
     bool expect_trigger;
-    std::string expected_ip;
-    uint8_t expected_prefix_len;
+    std::string expected_cidr;
   } test_cases[] = {
       {"ra_on_upstream", ra_frame + ETHER_HDR_LEN,
-       sizeof(ra_frame) - ETHER_HDR_LEN, 1, true, "2401:fa00:4:2::", 64},
+       sizeof(ra_frame) - ETHER_HDR_LEN, 1, true, "2401:fa00:4:2::/64"},
       {"ra_on_downstream", ra_frame + ETHER_HDR_LEN,
-       sizeof(ra_frame) - ETHER_HDR_LEN, 1001, false, "::", 0},
+       sizeof(ra_frame) - ETHER_HDR_LEN, 1001, false, "::/0"},
       {"ra_on_irrelevant", ra_frame + ETHER_HDR_LEN,
-       sizeof(ra_frame) - ETHER_HDR_LEN, 2, false, "::", 0},
+       sizeof(ra_frame) - ETHER_HDR_LEN, 2, false, "::/0"},
       {"na_on_upstream", na_frame + ETHER_HDR_LEN,
-       sizeof(na_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+       sizeof(na_frame) - ETHER_HDR_LEN, 1, false, "::/0"},
       {"rs_on_upstream", rs_frame + ETHER_HDR_LEN,
-       sizeof(rs_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+       sizeof(rs_frame) - ETHER_HDR_LEN, 1, false, "::/0"},
       {"ns_on_upstream", ns_frame + ETHER_HDR_LEN,
-       sizeof(ns_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+       sizeof(ns_frame) - ETHER_HDR_LEN, 1, false, "::/0"},
   };
 
   for (const auto& test_case : test_cases) {
@@ -607,10 +605,10 @@ TEST(NDProxyTest, RouterDiscoveryCallback) {
     if (test_case.expect_trigger) {
       EXPECT_CALL(handler,
                   OnRouterDiscovery(test_case.recv_ifindex,
-                                    EqualsToIpv6Address(test_case.expected_ip),
-                                    test_case.expected_prefix_len));
+                                    *net_base::IPv6CIDR::CreateFromCIDRString(
+                                        test_case.expected_cidr)));
     } else {
-      EXPECT_CALL(handler, OnRouterDiscovery(_, _, _)).Times(0);
+      EXPECT_CALL(handler, OnRouterDiscovery).Times(0);
     }
     ndproxy.NotifyPacketCallbacks(test_case.recv_ifindex, buffer,
                                   test_case.input_packet_len);

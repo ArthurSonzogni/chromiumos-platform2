@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <linux/if_ether.h>
-#include <linux/in6.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
@@ -23,6 +22,7 @@
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
@@ -43,6 +43,11 @@ class NDProxy {
   static constexpr ssize_t kTranslateErrorInsufficientLength = -3;
   static constexpr ssize_t kTranslateErrorBufferMisaligned = -4;
   static constexpr ssize_t kTranslateErrorMismatchedIp6Length = -5;
+
+  using GuestIpDiscoveryHandler = base::RepeatingCallback<void(
+      int /*if_id*/, const net_base::IPv6Address& /*ip6addr*/)>;
+  using RouterDiscoveryHandler = base::RepeatingCallback<void(
+      int /*if_id*/, const net_base::IPv6CIDR& /*prefix_cidr*/)>;
 
   NDProxy();
   NDProxy(const NDProxy&) = delete;
@@ -74,13 +79,11 @@ class NDProxy {
   // can be triggered by either receiving a unicast NA, or an NS with non-link
   // local source address.
   // Arguments: receiving interface index, neighbor address.
-  void RegisterOnGuestIpDiscoveryHandler(
-      base::RepeatingCallback<void(int, const in6_addr&)> handler);
+  void RegisterOnGuestIpDiscoveryHandler(GuestIpDiscoveryHandler handler);
 
   // Callback upon receiving prefix information from RA frame.
-  // Arguments: receiving interface index, prefix address, prefix length.
-  void RegisterOnRouterDiscoveryHandler(
-      base::RepeatingCallback<void(int, const in6_addr&, int)> handler);
+  // Arguments: receiving interface index, CIDR with prefix address.
+  void RegisterOnRouterDiscoveryHandler(RouterDiscoveryHandler handler);
 
   // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
   // other way around. If |modify_router_address| is true we modify source
@@ -109,18 +112,19 @@ class NDProxy {
   //   packet_len: the length of input IPv6 packet;
   //   local_mac_addr: MAC address of interface that will be used to send the
   //       proxied packet;
-  //   new_src_ip: if not null, address that will be used for the IP header
-  //       source address to send the proxied packet;
-  //   new_dst_ip: if not null, address that will be used for the IP header
-  //       destination address to send the proxied packet;
+  //   new_src_ip: if not std::nullopt, address that will be used for the IP
+  //       header source address to send the proxied packet;
+  //   new_dst_ip: if not std::nullopt, address that will be used for the IP
+  //       header destination address to send the proxied packet;
   //   out_packet: buffer for output IPv6 pacet; should have at least
   //       packet_len space.
-  static ssize_t TranslateNDPacket(const uint8_t* in_packet,
-                                   size_t packet_len,
-                                   const MacAddress& local_mac_addr,
-                                   const in6_addr* new_src_ip,
-                                   const in6_addr* new_dst_ip,
-                                   uint8_t* out_packet);
+  static ssize_t TranslateNDPacket(
+      const uint8_t* in_packet,
+      size_t packet_len,
+      const MacAddress& local_mac_addr,
+      const std::optional<net_base::IPv6Address>& new_src_ip,
+      const std::optional<net_base::IPv6Address>& new_dst_ip,
+      uint8_t* out_packet);
 
   // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
   // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
@@ -137,7 +141,8 @@ class NDProxy {
   // and fill in |dest_mac|. A neighbor table lookup may take place but no NS
   // message will be sent. If the IP cannot be resolved, all-nodes multicast
   // address 33:33:00:00:00:01 will be used as a fallback.
-  void ResolveDestinationMac(const in6_addr& dest_ipv6, uint8_t* dest_mac);
+  void ResolveDestinationMac(const net_base::IPv6Address& dest_ipv6,
+                             uint8_t* dest_mac);
 
   // Trigger the router discovery and neighbor discovery callbacks upon
   // receiving a corresponding packet.
@@ -157,11 +162,12 @@ class NDProxy {
 
   // Query kernel NDP table and get the MAC address of a certain IPv6 neighbor.
   // Returns false when neighbor entry is not found.
-  virtual bool GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr);
+  virtual bool GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
+                              MacAddress* mac_addr);
 
   // Get the link local IPv6 address on a local interface.
-  // Returns false upon failure.
-  virtual bool GetLinkLocalAddress(int if_id, in6_addr* link_local);
+  // Returns std::nullopt upon failure.
+  virtual std::optional<net_base::IPv6Address> GetLinkLocalAddress(int if_id);
 
   interface_mapping* MapForType(uint8_t type);
   bool IsGuestInterface(int ifindex);
@@ -196,11 +202,10 @@ class NDProxy {
   std::set<int> neighbor_monitor_links_;
 
   // Map from downlink interface id to the link local address on it
-  std::map<int, in6_addr> downlink_link_local_;
+  std::map<int, net_base::IPv6Address> downlink_link_local_;
 
-  base::RepeatingCallback<void(int, const in6_addr&)> guest_discovery_handler_;
-  base::RepeatingCallback<void(int, const in6_addr&, int)>
-      router_discovery_handler_;
+  GuestIpDiscoveryHandler guest_discovery_handler_;
+  RouterDiscoveryHandler router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
 };
@@ -225,12 +230,10 @@ class NDProxyDaemon : public brillo::Daemon {
   void OnControlMessage(const SubprocessMessage& msg);
 
   // Callback from NDProxy core when receive NA from guest
-  void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr);
+  void OnGuestIpDiscovery(int if_id, const net_base::IPv6Address& ip6addr);
 
   // Callback from NDProxy core when receive prefix info from router
-  void OnRouterDiscovery(int if_id,
-                         const in6_addr& prefix_addr,
-                         int prefix_len);
+  void OnRouterDiscovery(int if_id, const net_base::IPv6CIDR& prefix_cidr);
 
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher<SubprocessMessage>> msg_dispatcher_;
