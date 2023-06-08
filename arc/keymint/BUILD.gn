@@ -358,6 +358,7 @@ if (use.test) {
   }
   executable("arc-keymintd_testrunner") {
     sources = [
+      "context/arc_keymint_context_test.cc",
       "context/chaps_client_test.cc",
       "context/chaps_crypto_operation_test.cc",
       "context/cros_key_test.cc",
