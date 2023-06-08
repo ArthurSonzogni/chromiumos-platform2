@@ -166,9 +166,11 @@ StatusOr<attestation::Quote> AttestationTpm2::Quote(
       .WithStatus<TPMError>("Failed to quote");
 
   if (device_configs[DeviceConfig::kDeviceModel]) {
-    ASSIGN_OR_RETURN(const std::string& hwid, config_.GetHardwareID(),
-                     _.WithStatus<TPMError>("Failed to get Hardware ID"));
-    quote.set_pcr_source_hint(hwid);
+    if (StatusOr<std::string> hwid = config_.GetHardwareID(); !hwid.ok()) {
+      LOG(WARNING) << "Failed to get Hardware ID: " << hwid.status();
+    } else {
+      quote.set_pcr_source_hint(hwid.value());
+    }
   }
   ASSIGN_OR_RETURN(const std::string& sig,
                    SerializeFromTpmSignature(signature));

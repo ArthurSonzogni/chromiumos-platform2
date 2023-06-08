@@ -101,9 +101,11 @@ StatusOr<attestation::Quote> AttestationTpm1::Quote(
                                    validation.rgbValidationData);
 
   if (device_configs[DeviceConfig::kDeviceModel]) {
-    ASSIGN_OR_RETURN(const std::string& hwid, config_.GetHardwareID(),
-                     _.WithStatus<TPMError>("Failed to get Hardware ID"));
-    quote.set_pcr_source_hint(hwid);
+    if (StatusOr<std::string> hwid = config_.GetHardwareID(); !hwid.ok()) {
+      LOG(WARNING) << "Failed to get Hardware ID: " << hwid.status();
+    } else {
+      quote.set_pcr_source_hint(hwid.value());
+    }
   }
   quote.set_quoted_data(std::string(
       validation.rgbData, validation.rgbData + validation.ulDataLength));
