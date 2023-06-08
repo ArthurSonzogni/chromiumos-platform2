@@ -6,16 +6,16 @@
 
 namespace ec {
 
-std::unique_ptr<EcCommandInterface> FlashProtectCommandFactory::Create(
+std::unique_ptr<FlashProtectCommand> FlashProtectCommandFactory::Create(
     CrosFpDeviceInterface* cros_fp,
     flash_protect::Flags flags,
     flash_protect::Flags mask) {
+  uint32_t version = 1;
   if (cros_fp->EcCmdVersionSupported(EC_CMD_FLASH_PROTECT, 2) ==
       EcCmdVersionSupportStatus::SUPPORTED) {
-    return std::make_unique<ec::FlashProtectCommand_v2>(flags, mask);
+    version = 2;
   }
-
-  return std::make_unique<ec::FlashProtectCommand_v1>(flags, mask);
+  return std::make_unique<ec::FlashProtectCommand>(flags, mask, version);
 }
 
 }  // namespace ec

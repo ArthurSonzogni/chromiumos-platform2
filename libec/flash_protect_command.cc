@@ -77,12 +77,6 @@ std::string FlashProtectCommand::ParseFlags(flash_protect::Flags flags) {
   return output;
 }
 
-// TODO(b/287461836): Remove FlashProtectCommand_v1::ParseFlags after
-// crrev.com/c/4599343 lands.
-std::string FlashProtectCommand_v1::ParseFlags(flash_protect::Flags flags) {
-  return FlashProtectCommand::ParseFlags(flags);
-}
-
 flash_protect::Flags FlashProtectCommand_v1::GetFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->flags);
 }

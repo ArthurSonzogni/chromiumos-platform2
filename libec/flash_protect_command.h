@@ -43,8 +43,6 @@ class BRILLO_EXPORT FlashProtectCommand_v1
   FlashProtectCommand_v1(flash_protect::Flags flags, flash_protect::Flags mask);
   ~FlashProtectCommand_v1() override = default;
 
-  static std::string ParseFlags(flash_protect::Flags flags);
-
   flash_protect::Flags GetFlags() const;
   flash_protect::Flags GetValidFlags() const;
   flash_protect::Flags GetWritableFlags() const;

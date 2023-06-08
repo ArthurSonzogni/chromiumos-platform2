@@ -15,7 +15,7 @@ namespace ec {
 
 class BRILLO_EXPORT FlashProtectCommandFactory {
  public:
-  static std::unique_ptr<EcCommandInterface> Create(
+  static std::unique_ptr<FlashProtectCommand> Create(
       CrosFpDeviceInterface* cros_fp,
       flash_protect::Flags flags,
       flash_protect::Flags mask);
