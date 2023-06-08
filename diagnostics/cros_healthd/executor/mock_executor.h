@@ -171,6 +171,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                    process_control),
               (override));
+  MOCK_METHOD(void,
+              RunFloatingPoint,
+              (base::TimeDelta exec_duration,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control_receiver,
+               RunFloatingPointCallback callback),
+              (override));
 };
 
 }  // namespace diagnostics

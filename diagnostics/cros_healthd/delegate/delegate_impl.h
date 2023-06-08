@@ -62,6 +62,8 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorVolumeButton(
       mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
           observer) override;
+  void RunFloatingPoint(base::TimeDelta exec_duration,
+                        RunFloatingPointCallback callback) override;
 };
 
 }  // namespace diagnostics

@@ -141,6 +141,12 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
 
+  void RunFloatingPoint(
+      base::TimeDelta exec_duration,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver,
+      RunFloatingPointCallback callback) override;
+
  private:
   // Runs the given process and wait for it to die. Does not track the process
   // it launches, so the launched process cannot be cancelled once it is

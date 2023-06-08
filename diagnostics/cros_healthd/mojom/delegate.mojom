@@ -142,4 +142,15 @@ interface Delegate {
   // The request:
   // * |observer| - The observer to notify client.
   MonitorVolumeButton(pending_remote<VolumeButtonObserver> observer);
+
+  // Run a floating point accuracy routine.
+  //
+  // The request:
+  // * |exec_duration| - The time duration this routine should run.
+  //
+  // The response:
+  // * |passed| - Whether the routine has passed.
+  RunFloatingPoint(
+      ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration)
+      => (bool passed);
 };

@@ -32,6 +32,7 @@
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
@@ -512,6 +513,22 @@ void DelegateImpl::MonitorVolumeButton(
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
+}
+
+void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
+                                    RunPrimeSearchCallback callback) {
+  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
+
+  auto floating_point_accuracy =
+      std::make_unique<diagnostics::FloatingPointAccuracyDelegate>();
+
+  while (base::TimeTicks::Now() < end_time) {
+    if (!floating_point_accuracy->Run()) {
+      std::move(callback).Run(false);
+      return;
+    }
+  }
+  std::move(callback).Run(true);
 }
 
 }  // namespace diagnostics

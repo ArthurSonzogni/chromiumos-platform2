@@ -447,4 +447,17 @@ interface Executor {
   // * |process_control| - Used to stop the monitor process.
   MonitorVolumeButton(pending_remote<VolumeButtonObserver> observer,
                       pending_receiver<ProcessControl> process_control);
+
+  // Run a floating point accuracy routine.
+  //
+  // The request:
+  // * |exec_duration| - The time duration this routine should run.
+  // * |process_control| - Used to run and collect status about the running
+  //                       process.
+  //
+  // The response:
+  // * |passed| - Whether the routine has passed.
+  RunFloatingPoint(
+      ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
+      pending_receiver<ProcessControl> process_control) => (bool passed);
 };
