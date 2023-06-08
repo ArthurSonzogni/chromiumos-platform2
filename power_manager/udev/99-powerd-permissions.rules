@@ -16,6 +16,10 @@ ACTION!="remove", SUBSYSTEM=="bluetooth", ENV{DEVTYPE}=="host", \
   TEST=="identity", \
   RUN+="/bin/chown power:power \"$sys/$devpath/identity\""
 
+# Allow powerd to program the RTC wakealarm
+ACTION!="remove", TEST=="wakealarm", SUBSYSTEM=="rtc", \
+  RUN+="/bin/chown power:power \"$sys/$devpath/wakealarm\""
+
 # Make pluggable keyboard backlights writable by powerd.
 ACTION!="remove", SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", \
   RUN+="/lib/udev/chown-sysfs-backlight-dir.sh \"$sys/$devpath\""

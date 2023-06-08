@@ -289,6 +289,8 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleRequestSuspendMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleGetLastWakealarmMethod(
+      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleUserActivityMethod(
@@ -536,6 +538,10 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
+
+  // The last rtc wakealarm value is saved so that it can be returned by the
+  // GetLastWakealarm Dbus method.
+  uint64_t wakealarm_time_;
 };
 
 }  // namespace power_manager

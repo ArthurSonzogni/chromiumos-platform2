@@ -237,6 +237,7 @@ int main(int argc, char* argv[]) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint32(FLAGS_flavor);
   }
+
   std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response) << power_manager::kRequestSuspendMethod << " failed";
@@ -248,6 +249,22 @@ int main(int argc, char* argv[]) {
   }
 
   run_loop.Run();
+
+  if (FLAGS_suspend_for_sec != 0) {
+    dbus::MethodCall method_call2(power_manager::kPowerManagerInterface,
+                                  power_manager::kGetLastWakealarmMethod);
+    std::unique_ptr<dbus::Response> response2(powerd_proxy->CallMethodAndBlock(
+        &method_call2, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+
+    dbus::MessageReader reader2(response2.get());
+    uint64_t wakealarm_time;
+    if (!reader2.PopUint64(&wakealarm_time)) {
+      LOG(ERROR) << "Unable to get wakealarm time";
+      exit(1);
+    } else {
+      std::cout << "rtc wakealarm: " << wakealarm_time << std::endl;
+    }
+  }
 
   return 0;
 }

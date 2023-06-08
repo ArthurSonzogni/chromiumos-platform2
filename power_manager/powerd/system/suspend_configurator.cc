@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include "base/strings/string_number_conversions.h"
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -54,6 +55,9 @@ static constexpr char kECLastResumeResultPath[] =
 // s0ix transition after suspend.  Please look at
 // Documentation/ABI/testing/debugfs-cros-ec kernel documentation for more info.
 static constexpr unsigned kECResumeResultHangBit = 1 << 31;
+
+// path to the node that we can read/write to to program the RTC wakealarm
+static constexpr char kWakealarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
 }  // namespace
 
 const VariationsFeature kSuspendToHibernateFeature{
@@ -74,7 +78,7 @@ void SuspendConfigurator::Init(
 }
 
 // TODO(crbug.com/941298) Move powerd_suspend script here eventually.
-void SuspendConfigurator::PrepareForSuspend(
+uint64_t SuspendConfigurator::PrepareForSuspend(
     const base::TimeDelta& suspend_duration) {
   base::FilePath suspend_mode_path = base::FilePath(kSuspendModePath);
   if (!base::PathExists(GetPrefixedFilePath(suspend_mode_path))) {
@@ -91,13 +95,32 @@ void SuspendConfigurator::PrepareForSuspend(
 
   // Do this at the end so that system spends close to |suspend_duration| in
   // suspend.
-  if (!alarm_) {
-    LOG(ERROR) << "System doesn't support CLOCK_REALTIME_ALARM.";
-    return;
+  if (suspend_duration == base::TimeDelta()) {
+    return 0;
   }
-  if (suspend_duration != base::TimeDelta()) {
-    alarm_->Start(FROM_HERE, suspend_duration, base::DoNothing());
+
+  if (!base::WriteFile(base::FilePath(kWakealarmPath),
+                       std::string("+" + base::NumberToString(
+                                             suspend_duration.InSeconds())))) {
+    LOG(ERROR) << "Couldn't program wakealarm";
+    return 0;
   }
+
+  std::string wakealarm_str;
+  if (!base::ReadFileToString(base::FilePath(kWakealarmPath), &wakealarm_str)) {
+    LOG(ERROR) << "Couldn't read wakealarm";
+    return 0;
+  }
+
+  char* endptr;
+  uint64_t wa_val = std::strtoull(wakealarm_str.c_str(), &endptr, 0);
+  if (wa_val == 0) {
+    // Also the wakealarm should never be zero if properly programmed.
+    LOG(ERROR) << "Invalid wakealarm value: '" << wa_val << "'";
+    return 0;
+  }
+
+  return wa_val;
 }
 
 bool SuspendConfigurator::UndoPrepareForSuspend() {

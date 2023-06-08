@@ -939,7 +939,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     args.push_back("--suspend_to_idle");
   }
 
-  suspend_configurator_->PrepareForSuspend(duration);
+  wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
 
   // Sync filesystems since outstanding operations can significantly delay
   // freeze, causing it to time out.
@@ -1319,6 +1319,7 @@ void Daemon::InitDBus() {
       {kRequestShutdownMethod, &Daemon::HandleRequestShutdownMethod},
       {kRequestRestartMethod, &Daemon::HandleRequestRestartMethod},
       {kRequestSuspendMethod, &Daemon::HandleRequestSuspendMethod},
+      {kGetLastWakealarmMethod, &Daemon::HandleGetLastWakealarmMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
       {kHandleWakeNotificationMethod, &Daemon::HandleWakeNotificationMethod},
@@ -1601,7 +1602,18 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
           external_wakeup_count, duration,
           static_cast<SuspendFlavor>(suspend_flavor));
+
   return nullptr;
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleGetLastWakealarmMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  LOG(INFO) << "have wakealarm time: " << wakealarm_time_ << std::endl;
+  dbus::MessageWriter(response.get()).AppendUint64(wakealarm_time_);
+
+  return response;
 }
 
 void Daemon::SetFullscreenVideoWithTimeout(bool active, int timeout_seconds) {
