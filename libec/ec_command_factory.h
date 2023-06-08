@@ -29,10 +29,12 @@ class EcCommandFactoryInterface {
   virtual std::unique_ptr<EcCommandInterface> FpContextCommand(
       CrosFpDeviceInterface* cros_fp, const std::string& user_id) = 0;
 
-  virtual std::unique_ptr<FlashProtectCommand_v1> FlashProtectCommand(
-      flash_protect::Flags flags, flash_protect::Flags mask) = 0;
+  virtual std::unique_ptr<FlashProtectCommand> FlashProtectCommand(
+      CrosFpDeviceInterface* cros_fp,
+      flash_protect::Flags flags,
+      flash_protect::Flags mask) = 0;
   static_assert(
-      std::is_base_of<EcCommandInterface, ec::FlashProtectCommand_v1>::value,
+      std::is_base_of<EcCommandInterface, ec::FlashProtectCommand>::value,
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
@@ -96,8 +98,10 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   std::unique_ptr<EcCommandInterface> FpContextCommand(
       CrosFpDeviceInterface* cros_fp, const std::string& user_id) override;
 
-  std::unique_ptr<ec::FlashProtectCommand_v1> FlashProtectCommand(
-      flash_protect::Flags flags, flash_protect::Flags mask) override;
+  std::unique_ptr<ec::FlashProtectCommand> FlashProtectCommand(
+      CrosFpDeviceInterface* cros_fp,
+      flash_protect::Flags flags,
+      flash_protect::Flags mask) override;
 
   std::unique_ptr<ec::FpInfoCommand> FpInfoCommand() override;
 

@@ -21,7 +21,7 @@
 #include <libec/add_entropy_command.h>
 #include <libec/ec_command.h>
 #include <libec/ec_command_async.h>
-#include <libec/fingerprint/fp_context_command_factory.h>
+#include <libec/flash_protect_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
 #include <libec/versions_command.h>
 
@@ -30,7 +30,6 @@ using ec::EcCommand;
 using ec::EcCommandAsync;
 using ec::EmptyParam;
 using ec::FlashProtectCommand;
-using ec::FlashProtectCommand_v1;
 using ec::FpMode;
 using ec::FpSensorErrors;
 using ec::VersionsCommand;
@@ -584,10 +583,9 @@ bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
   return true;
 }
 
-std::unique_ptr<ec::FlashProtectCommand_v1> CrosFpDevice::GetFlashProtect()
-    const {
+std::unique_ptr<ec::FlashProtectCommand> CrosFpDevice::GetFlashProtect() {
   auto fp_cmd = ec_command_factory_->FlashProtectCommand(
-      ec::flash_protect::Flags::kNone, ec::flash_protect::Flags::kNone);
+      this, ec::flash_protect::Flags::kNone, ec::flash_protect::Flags::kNone);
 
   if (!fp_cmd) {
     LOG(ERROR) << "Unable to create FP flash protect command";
