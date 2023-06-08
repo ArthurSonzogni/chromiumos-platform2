@@ -21,15 +21,18 @@ enum class DeviceConfig {
   kBootMode,
   kDeviceModel,
   kCurrentUser,
+  kBootCmdline,
 };
 
-constexpr size_t kDeviceConfigArraySize = 3;
+constexpr size_t kDeviceConfigArraySize = 4;
 
 static_assert(static_cast<size_t>(DeviceConfig::kBootMode) <
               kDeviceConfigArraySize);
 static_assert(static_cast<size_t>(DeviceConfig::kDeviceModel) <
               kDeviceConfigArraySize);
 static_assert(static_cast<size_t>(DeviceConfig::kCurrentUser) <
+              kDeviceConfigArraySize);
+static_assert(static_cast<size_t>(DeviceConfig::kBootCmdline) <
               kDeviceConfigArraySize);
 
 class DeviceConfigs : public std::bitset<kDeviceConfigArraySize> {

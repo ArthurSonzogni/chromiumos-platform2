@@ -51,6 +51,9 @@ StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
       return kDeviceModelPcr;
     case DeviceConfig::kCurrentUser:
       return kCurrentUserPcrTpm1;
+    case DeviceConfig::kBootCmdline:
+      // Not supported.
+      break;
   }
   return MakeStatus<TPMError>("Unknown device config",
                               TPMRetryAction::kNoRetry);

@@ -37,11 +37,13 @@ namespace {
 constexpr int kBootModePcr = 0;
 constexpr int kDeviceModelPcr = 1;
 constexpr int kCurrentUserPcr = USE_TPM_DYNAMIC ? 11 : 4;
+constexpr int kBootCmdlinePcr = 13;
 
 constexpr DeviceConfig kSupportConfigs[] = {
     DeviceConfig::kBootMode,
     DeviceConfig::kDeviceModel,
     DeviceConfig::kCurrentUser,
+    DeviceConfig::kBootCmdline,
 };
 
 StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
@@ -52,6 +54,8 @@ StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
       return kDeviceModelPcr;
     case DeviceConfig::kCurrentUser:
       return kCurrentUserPcr;
+    case DeviceConfig::kBootCmdline:
+      return kBootCmdlinePcr;
   }
   return MakeStatus<TPMError>("Unknown device config",
                               TPMRetryAction::kNoRetry);
