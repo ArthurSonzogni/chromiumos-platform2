@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -15,6 +16,7 @@
 #include <base/values.h>
 #include <base/system/sys_info.h>
 #include <brillo/data_encoding.h>
+#include <libcrossystem/crossystem.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"
@@ -57,12 +59,17 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 #endif
 
 FeatureManagementImpl::FeatureManagementImpl()
-    : FeatureManagementImpl(
-          base::FilePath(kDeviceInfoFilePath), protobuf_features, "") {}
+    : FeatureManagementImpl(nullptr,
+                            base::FilePath(kDeviceInfoFilePath),
+                            protobuf_features,
+                            protobuf_devices,
+                            "") {}
 
 FeatureManagementImpl::FeatureManagementImpl(
+    crossystem::Crossystem* crossystem,
     const base::FilePath& device_info_file_path,
     const std::string& feature_db,
+    const std::string& selection_db,
     const std::string& os_version)
     : device_info_file_path_(device_info_file_path),
       temp_device_info_file_path_(kTempDeviceInfoPath) {
@@ -70,7 +77,9 @@ FeatureManagementImpl::FeatureManagementImpl(
       device_info_file_path_ == base::FilePath(kVpdSysfsFilePath);
   std::string decoded_pb;
   brillo::data_encoding::Base64Decode(feature_db, &decoded_pb);
-  bundle_.ParseFromString(decoded_pb);
+  feature_bundle_.ParseFromString(decoded_pb);
+  brillo::data_encoding::Base64Decode(selection_db, &decoded_pb);
+  selection_bundle_.ParseFromString(selection_db);
 
 #if USE_FEATURE_MANAGEMENT
   std::string version(os_version);
@@ -83,6 +92,13 @@ FeatureManagementImpl::FeatureManagementImpl(
   } else {
     current_version_hash_ = 0;
     LOG(ERROR) << "Failed to retrieve CHROMEOS_RELEASE_VERSION";
+  }
+
+  if (crossystem) {
+    crossystem_ = crossystem;
+  } else {
+    crossystem_backend_ = std::make_unique<crossystem::Crossystem>();
+    crossystem_ = crossystem_backend_.get();
   }
 #endif
 }
@@ -105,7 +121,7 @@ bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
   // greater than the DUT feature_level and if its scope array contains
   // the DUT scope_level.
   std::string in_feature = name.substr(prefix_len);
-  for (const auto& feature : bundle_.features()) {
+  for (const auto& feature : feature_bundle_.features()) {
     if (!feature.name().compare(in_feature)) {
       auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
                           scope_level);
@@ -134,7 +150,7 @@ const std::set<std::string> FeatureManagementImpl::ListFeatures(
   // 2. its feature level is equal or greater than the DUT feature_level and
   // 3. its scope array contains the DUT scope_level.
   std::set<std::string> features;
-  for (const auto& feature : bundle_.features()) {
+  for (const auto& feature : feature_bundle_.features()) {
     auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
                         scope_level);
 

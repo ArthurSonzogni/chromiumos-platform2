@@ -26,10 +26,12 @@ group("all") {
 default_pkg_deps = [
   "libbrillo",
   "libchrome",
+  "libcrossystem",
   "protobuf",
 ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
+  libs = [ "rootdev" ]
 }
 
 config("target_defaults") {
@@ -51,7 +53,11 @@ proto_library("internal_protos") {
 proto_library("feature-protos") {
   proto_in_dir = "${sysroot}/build/share/libsegmentation/proto/"
   proto_out_dir = "include/proto"
-  sources = [ "${proto_in_dir}/feature_management.proto" ]
+  sources = [
+    "${proto_in_dir}/device_selection.proto",
+    "${proto_in_dir}/feature_management.proto",
+    "${proto_in_dir}/hwid_feature_requirement.proto",
+  ]
 
   # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
@@ -66,6 +72,7 @@ source_set("libsegmentation_sources") {
   if (use.feature_management) {
     sources += [
       "feature_management_backend.cc",
+      "feature_management_hwid.cc",
       "feature_management_util.cc",
     ]
     deps += [ ":internal_protos" ]
@@ -146,13 +153,17 @@ if (use.test) {
       "feature_management_test.cc",
     ]
     if (use.feature_management) {
-      sources += [ "feature_management_util_test.cc" ]
+      sources += [
+        "feature_management_hwid_test.cc",
+        "feature_management_util_test.cc",
+      ]
     }
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
     run_test = true
+    pkg_deps = [ "libcrossystem-test" ]
     deps = [
       ":libsegmentation-test",
       ":libsegmentation_static",

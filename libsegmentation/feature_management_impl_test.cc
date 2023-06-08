@@ -11,6 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <libcrossystem/crossystem_fake.h>
+
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"
 #include "libsegmentation/feature_management_impl.h"
@@ -27,21 +29,19 @@ using libsegmentation::DeviceInfo_ScopeLevel;
 using ::testing::Return;
 
 // Use made up feature file:
-const char test_proto[] =
+const char test_feature_proto[] =
     "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAQIqAQEKHAoBRRIPCg1nZ0Bnb29nbG"
-    "Uu"
-    "Y29tGAIiAQIqAQIKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQIqAwECAwodCgFDEg8KDWdnQG"
-    "dv"
-    "b2dsZS5jb20YASIBAioCAgEKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQIqAQIKGwoBQRIPCg"
-    "1n"
-    "Z0Bnb29nbGUuY29tIgIBAioBAw==";
+    "UuY29tGAIiAQIqAQIKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQIqAwECAwodCgFDEg8KDWdn"
+    "QGdvb2dsZS5jb20YASIBAioCAgEKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQIqAQIKGwoBQR"
+    "IPCg1nZ0Bnb29nbGUuY29tIgIBAioBAw==";
 
 /*
-  It produce the following bundle.
+  It produces the following bundle.
   Command line:
-     echo "..." base64 -d | protoc -I "src/platform/feature-management/proto" \
-            --decode=chromiumos.feature_management.api.software.FeatureBundle \
-            src/platform/feature-management/proto/feature_management.proto
+     echo "..." | base64 -d |
+     protoc -I "src/platform/feature-management/proto" \
+         --decode=chromiumos.feature_management.api.software.FeatureBundle \
+         feature_management.proto
 features {
   name: "Basic"
   contacts {
@@ -103,6 +103,58 @@ features {
 
 constexpr char kOsVersion[] = "1234.0.0";
 const uint32_t kCurrentVersionHash = base::PersistentHash(kOsVersion);
+const char* test_device_proto =
+    "Cl8IARABGjAKCm1hcmFzb3YtQUESFAoDAwQHEgMwMDASAzAwMRIDMDExEgwKAgUGEgIwMBICMD"
+    "EaJwoKbWFyYXNvdi1BQhIPCgMDBAcSAzAxMBIDMTEwEggKAgcIEgIwMQ==";
+
+/*
+  It produces the following bundle.
+  Command line:
+     echo "..." | base64 -d |
+     protoc -I "src/platform/feature-management/proto" \
+         --decode=chromiumos.feature_management.api.software.SelectionBundle \
+         device_selection.proto
+
+  It produce the following bundle.
+  Command line:
+
+selections {
+  feature_level: 1
+  scope: SCOPE_DEVICES_VALID_OFFSET
+  hwid_profiles {
+    prefixes: "marasov-AA"
+    encoding_requirements {
+      bit_locations: 3
+      bit_locations: 4
+      bit_locations: 7
+      required_values: "000"
+      required_values: "001"
+      required_values: "011"
+    }
+    encoding_requirements {
+      bit_locations: 5
+      bit_locations: 6
+      required_values: "00"
+      required_values: "01"
+    }
+  }
+  hwid_profiles {
+    prefixes: "marasov-AB"
+    encoding_requirements {
+      bit_locations: 3
+      bit_locations: 4
+      bit_locations: 7
+      required_values: "010"
+      required_values: "110"
+    }
+    encoding_requirements {
+      bit_locations: 7
+      bit_locations: 8
+      required_values: "01"
+    }
+  }
+}
+*/
 
 // Test fixture for testing feature management.
 class FeatureManagementImplTest : public ::testing::Test {
@@ -113,8 +165,13 @@ class FeatureManagementImplTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     device_info_path_ = temp_dir_.GetPath().Append("device_info");
-    auto fake = std::make_unique<FeatureManagementImpl>(device_info_path_,
-                                                        test_proto, kOsVersion);
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    cros_system_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+
+    auto fake = std::make_unique<FeatureManagementImpl>(
+        cros_system_.get(), device_info_path_, test_feature_proto,
+        test_device_proto, kOsVersion);
     feature_management_ = std::make_unique<FeatureManagement>(std::move(fake));
   }
 
@@ -124,6 +181,9 @@ class FeatureManagementImplTest : public ::testing::Test {
 
   // File path where device info data will be simulated.
   base::FilePath device_info_path_;
+
+  // Crossytem to inject hwid.
+  std::unique_ptr<crossystem::Crossystem> cros_system_;
 
   // Object to test.
   std::unique_ptr<FeatureManagement> feature_management_;

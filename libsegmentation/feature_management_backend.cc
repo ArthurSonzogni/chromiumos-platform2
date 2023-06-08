@@ -3,17 +3,27 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
+
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+
+#include <linux/fs.h>
 
 #include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/system/sys_info.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
+#include <rootdev/rootdev.h>
 
 #include "libsegmentation/device_info.pb.h"
+#include "libsegmentation/feature_management_hwid.h"
 #include "libsegmentation/feature_management_impl.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
@@ -77,40 +87,14 @@ std::optional<GscToolOutput> ParseGscToolOutput(
   return std::nullopt;
 }
 
-libsegmentation::DeviceInfo_FeatureLevel HwComplianceVersionToFeatureLevel(
-    int32_t hw_compliance_version) {
-  switch (hw_compliance_version) {
-    case 0:
-      return libsegmentation::DeviceInfo_FeatureLevel::
-          DeviceInfo_FeatureLevel_FEATURE_LEVEL_0;
-    case 1:
-      return libsegmentation::DeviceInfo_FeatureLevel::
-          DeviceInfo_FeatureLevel_FEATURE_LEVEL_1;
-    default:
-      return libsegmentation::DeviceInfo_FeatureLevel::
-          DeviceInfo_FeatureLevel_FEATURE_LEVEL_UNKNOWN;
-  }
-}
-
-libsegmentation::DeviceInfo_ScopeLevel HwComplianceVersionToScopeLevel(
-    bool is_chassis_x_branded) {
-  if (is_chassis_x_branded)
-    return libsegmentation::DeviceInfo_ScopeLevel::
-        DeviceInfo_ScopeLevel_SCOPE_LEVEL_1;
-
-  return libsegmentation::DeviceInfo_ScopeLevel::
-      DeviceInfo_ScopeLevel_SCOPE_LEVEL_0;
-}
-
 // Returns the device information parsed from the output of the GSC tool binary
 // on the device.
-std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
+std::optional<GscToolOutput> GetDeviceInfoFromGSC() {
   if (!base::PathExists(base::FilePath(kGscToolBinaryPath))) {
     LOG(ERROR) << "Can't find gsctool binary";
     return std::nullopt;
   }
 
-  libsegmentation::DeviceInfo device_info;
   base::FilePath output_path;
   if (!base::CreateTemporaryFile(&output_path)) {
     LOG(ERROR) << "Failed to open output file";
@@ -147,31 +131,7 @@ std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
     return std::nullopt;
   }
 
-  bool is_chassis_x_branded = gsc_tool_output.value().chassis_x_branded;
-  int32_t hw_compliance_version = gsc_tool_output.value().hw_compliance_version;
-
-  if (is_chassis_x_branded || hw_compliance_version > 0) {
-    if (is_chassis_x_branded) {
-      device_info.set_feature_level(
-          HwComplianceVersionToFeatureLevel(hw_compliance_version));
-      device_info.set_scope_level(
-          HwComplianceVersionToScopeLevel(is_chassis_x_branded));
-    } else {
-      // TODO(abhishekbh): Read from PRODUCT_ALLOWLIST to determine the feature
-      // level.
-      device_info.set_feature_level(
-          libsegmentation::DeviceInfo_FeatureLevel::
-              DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
-      device_info.set_scope_level(HwComplianceVersionToScopeLevel(false));
-    }
-  } else {
-    // TODO(abhishekbh): Read from PRODUCT_COMPONENT_ALLOWLIST to determine the
-    // feature level.
-    device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
-                                      DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
-    device_info.set_scope_level(HwComplianceVersionToScopeLevel(false));
-  }
-  return device_info;
+  return gsc_tool_output;
 }
 
 // Write |device_info| as base64 to the "vpd" binary by spawning a new process.
@@ -250,11 +210,17 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
   // to the VPD for subsequent boots.
   if (!device_info_result ||
       device_info_result->cached_version_hash() != current_version_hash_) {
-    device_info_result = GetDeviceInfoFromGSC();
-    if (!device_info_result) {
+    auto gsc_tool_output = GetDeviceInfoFromGSC();
+    if (!gsc_tool_output) {
       LOG(ERROR) << "Failed to get device info from the hardware id";
       return false;
     }
+
+    FeatureManagementHwid::GetDeviceSelectionFn get_device_callback =
+        [this](bool check) { return this->GetDeviceInfoFromHwid(check); };
+    device_info_result = FeatureManagementHwid::GetDeviceInfo(
+        get_device_callback, gsc_tool_output->chassis_x_branded,
+        gsc_tool_output->hw_compliance_version);
 
     // Persist the device info read from "gsctool" via "vpd" or to a regular
     // file for testing. If we fail to write it then don't cache it.
@@ -264,6 +230,7 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
         LOG(ERROR) << "Failed to persist device info via vpd";
         return false;
       }
+
       // Best effort.
       FeatureManagementUtil::WriteDeviceInfoToFile(device_info_result.value(),
                                                    temp_device_info_file_path_);
@@ -278,6 +245,45 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
 
   // At this point device information is present on stateful. We can cache it.
   cached_device_info_ = device_info_result.value();
+  return true;
+}
+
+std::optional<DeviceSelection> FeatureManagementImpl::GetDeviceInfoFromHwid(
+    bool check_prefix_only) {
+  std::optional<std::string> hwid =
+      crossystem_->VbGetSystemPropertyString("hwid");
+  if (!hwid) {
+    LOG(ERROR) << "Unable to retrieve HWID";
+    return std::nullopt;
+  }
+  std::optional<DeviceSelection> selection =
+      FeatureManagementHwid::GetSelectionFromHWID(
+          selection_bundle_, hwid.value(), check_prefix_only);
+  if (!selection)
+    return std::nullopt;
+
+  if (!check_prefix_only && !Check_HW_Requirement(selection.value())) {
+    LOG(ERROR) << hwid.value() << " do not meet feature level "
+               << selection->feature_level() << " requirement.";
+    return std::nullopt;
+  }
+  return selection;
+}
+
+bool FeatureManagementImpl::Check_HW_Requirement(
+    const DeviceSelection& selection) {
+  if (selection.feature_level() == 0) {
+    LOG(ERROR) << "Unexpected feature level: 0";
+    return false;
+  }
+
+  if (selection.feature_level() > 1) {
+    LOG(ERROR) << "Requirement not defined yet for feature_level "
+               << selection.feature_level();
+    return false;
+  }
+
+  // TODO(b:273339247)
   return true;
 }
 

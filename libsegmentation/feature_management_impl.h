@@ -5,6 +5,7 @@
 #ifndef LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 
+#include <memory>
 #include <set>
 #include <string>
 
@@ -12,11 +13,16 @@
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 
+#include <libcrossystem/crossystem.h>
+
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
+#include "proto/device_selection.pb.h"
 #include "proto/feature_management.pb.h"
 
+using chromiumos::feature_management::api::software::DeviceSelection;
 using chromiumos::feature_management::api::software::FeatureBundle;
+using chromiumos::feature_management::api::software::SelectionBundle;
 
 namespace segmentation {
 
@@ -28,8 +34,10 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // feature-management-data.
   FeatureManagementImpl();
 
-  FeatureManagementImpl(const base::FilePath& device_info_file_path,
+  FeatureManagementImpl(crossystem::Crossystem* crossystem,
+                        const base::FilePath& device_info_file_path,
                         const std::string& feature_db,
+                        const std::string& selection_db,
                         const std::string& os_version);
 
   bool IsFeatureEnabled(const std::string& name) override;
@@ -38,6 +46,10 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   ScopeLevel GetScopeLevel() override;
 
   const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
+
+  // Return feature level information based on HWID information and
+  // hardware requirement.
+  std::optional<DeviceSelection> GetDeviceInfoFromHwid(bool check_prefix_only);
 
  private:
   // Represents the file that houses the device info. This will be read to
@@ -55,7 +67,10 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   base::FilePath temp_device_info_file_path_;
 
   // Internal feature database
-  FeatureBundle bundle_;
+  FeatureBundle feature_bundle_;
+
+  // Internal selection database
+  SelectionBundle selection_bundle_;
 
   // Use the "vpd" binary to persist the state.
   bool persist_via_vpd_ = false;
@@ -69,11 +84,19 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // return false and not set |cached_device_info_|.
   bool CacheDeviceInfo();
 
+  // Check hardware requirement based on feature level
+  bool Check_HW_Requirement(const DeviceSelection& selection);
+
   // Cache valid device information read from the stateful partition.
   std::optional<libsegmentation::DeviceInfo> cached_device_info_;
 
   // Hashed version of the current chromeos version (CHROMEOS_RELEASE_VERSION)
   uint32_t current_version_hash_;
+
+  // To acccess internal data. Can be overriden, using backend if not.
+  crossystem::Crossystem* crossystem_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_backend_;
+
 #endif
 };
 
