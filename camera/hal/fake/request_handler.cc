@@ -18,7 +18,12 @@ namespace {
 
 uint64_t CurrentTimestamp() {
   struct timespec ts;
-  if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
+  // TODO(b/271803810#22): android.sensor.timestamp HAL metadata documentation
+  // states that HAL should use CLOCK_BOOTTIME, but it doesn't work well with
+  // current Chrome VCD implementation, and causing wrong video length after
+  // device is back from suspend and CLOCK_BOOTTIME / CLOCK_MONOTONIC is
+  // skewed.
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
     PLOGF(ERROR) << "Get clock time fails";
     // TODO(pihsun): Handle error
     return 0;
