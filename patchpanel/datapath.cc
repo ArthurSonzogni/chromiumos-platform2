@@ -962,7 +962,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   if (!nsinfo.outbound_ifname.empty()) {
-    StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
+    StartRoutingDevice(nsinfo.current_outbound_device, nsinfo.host_ifname,
                        nsinfo.source);
   } else if (!nsinfo.route_on_vpn) {
     StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source);
@@ -1267,9 +1267,10 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
   }
 }
 
-void Datapath::StartRoutingDevice(const std::string& ext_ifname,
+void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
                                   const std::string& int_ifname,
                                   TrafficSource source) {
+  const std::string& ext_ifname = shill_device.ifname;
   AddDownstreamInterfaceRules(int_ifname, source);
   // If |ext_ifname| is not null, mark egress traffic with the
   // fwmark routing tag corresponding to |ext_ifname|.
@@ -1706,7 +1707,7 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.
   if (vpn_ifname != kArcbr0Ifname) {
-    StartRoutingDevice(vpn_ifname, kArcbr0Ifname, TrafficSource::kArc);
+    StartRoutingDevice(vpn_device, kArcbr0Ifname, TrafficSource::kArc);
   }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::kIPv4, Iptables::Command::kA, "OUTPUT",
@@ -1877,8 +1878,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
 
   // int_ipv4_addr is not necessary if route_on_vpn == false
   const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StartRoutingDevice(info.upstream_device->ifname, info.downstream_ifname,
-                     source);
+  StartRoutingDevice(*info.upstream_device, info.downstream_ifname, source);
   return true;
 }
 

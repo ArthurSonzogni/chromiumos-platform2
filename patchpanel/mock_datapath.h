@@ -67,7 +67,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(void, RemoveInterface, (const std::string& ifname), (override));
   MOCK_METHOD(void,
               StartRoutingDevice,
-              (const std::string& ext_ifname,
+              (const ShillClient::Device& shill_device,
                const std::string& int_ifname,
                TrafficSource source),
               (override));

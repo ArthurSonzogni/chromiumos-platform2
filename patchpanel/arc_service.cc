@@ -514,7 +514,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     return;
   }
 
-  datapath_->StartRoutingDevice(shill_device.ifname, device->host_ifname(),
+  datapath_->StartRoutingDevice(shill_device, device->host_ifname(),
                                 TrafficSource::kArc);
   datapath_->AddInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device,
                                 device->config().guest_ipv4_addr());

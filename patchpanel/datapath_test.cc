@@ -1137,8 +1137,11 @@ TEST(DatapathTest, StartRoutingDevice) {
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x03ea0000/0xffff0000 -w");
 
+  ShillClient::Device eth_device;
+  eth_device.ifname = "eth0";
+
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDevice("eth0", "arc_eth0", TrafficSource::kArc);
+  datapath.StartRoutingDevice(eth_device, "arc_eth0", TrafficSource::kArc);
 }
 
 TEST(DatapathTest, StartRoutingDeviceAsUser) {

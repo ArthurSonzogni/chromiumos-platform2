@@ -281,9 +281,9 @@ class Datapath {
 
   // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
   // downstream network interface |int_ifname| associated to |source|. Traffic
-  // from the downstream interface is routed to |ext_ifname| regardless of the
-  // current default network selection.
-  virtual void StartRoutingDevice(const std::string& ext_ifname,
+  // from the downstream interface is routed to the shill Device |shill_device|
+  // regardless of the current default network selection.
+  virtual void StartRoutingDevice(const ShillClient::Device& shill_device,
                                   const std::string& int_ifname,
                                   TrafficSource source);
 
