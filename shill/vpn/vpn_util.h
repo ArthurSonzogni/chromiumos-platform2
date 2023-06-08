@@ -44,7 +44,7 @@ class VPNUtil {
   // Constructs a MinijailOptions object which contains the common options used
   // by VPN clients:
   // - |user| and |group| are set to "vpn".
-  // - |inherit_supplementary_groups| and |close_nonstd_fds| are set to true.
+  // - |inherit_supplementary_groups| are set to true.
   static ProcessManager::MinijailOptions BuildMinijailOptions(uint64_t capmask);
 
   // Writes |contents| into file with path |filename|, changes the group of this

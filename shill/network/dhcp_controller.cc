@@ -276,8 +276,6 @@ bool DHCPController::Start() {
       CAP_TO_MASK(CAP_NET_BIND_SERVICE) | CAP_TO_MASK(CAP_NET_BROADCAST) |
       CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   minijail_options.inherit_supplementary_groups = false;
-  // TODO(crrev.com/c/3162356): Check if |close_nonstd_fds| can be set to true.
-  minijail_options.close_nonstd_fds = false;
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
       base::BindOnce(&DHCPController::OnProcessExited,

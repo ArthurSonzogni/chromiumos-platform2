@@ -89,10 +89,6 @@ MATCHER_P(MinijailOptionsMatchInheritSupplumentaryGroup,
   return arg.inherit_supplementary_groups == inherit_supplementary_groups;
 }
 
-MATCHER_P(MinijailOptionsMatchCloseNonstdFDs, close_nonstd_fds, "") {
-  return arg.close_nonstd_fds == close_nonstd_fds;
-}
-
 }  // namespace shill
 
 #endif  // SHILL_NET_MOCK_PROCESS_MANAGER_H_

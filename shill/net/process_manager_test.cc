@@ -178,7 +178,6 @@ TEST_F(ProcessManagerTest,
   minijail_options.group = kGroup;
   minijail_options.capmask = kCapMask;
   minijail_options.inherit_supplementary_groups = false;
-  minijail_options.close_nonstd_fds = true;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
@@ -193,6 +192,7 @@ TEST_F(ProcessManagerTest,
                             _,  // pid_t*
                             &stdin_fd, &stdout_fd, &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<3>(kPid), Return(true)));
+
   struct std_file_descriptors std_fds {
     &stdin_fd, &stdout_fd, &stderr_fd
   };
@@ -220,7 +220,6 @@ TEST_F(ProcessManagerTest,
   minijail_options.group = kGroup;
   minijail_options.capmask = kCapMask;
   minijail_options.inherit_supplementary_groups = false;
-  minijail_options.close_nonstd_fds = false;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(false));
@@ -228,6 +227,7 @@ TEST_F(ProcessManagerTest,
               RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
                                     IsProcessEnv(kEnv), _, _, _, _))
       .Times(0);
+
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, {}, minijail_options,
@@ -253,7 +253,6 @@ TEST_F(ProcessManagerTest,
   minijail_options.group = kGroup;
   minijail_options.capmask = kCapMask;
   minijail_options.inherit_supplementary_groups = false;
-  minijail_options.close_nonstd_fds = false;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
@@ -262,6 +261,9 @@ TEST_F(ProcessManagerTest,
               RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
                                     IsProcessEnv(kEnv), _, _, _, _))
       .WillOnce(Return(false));
+  EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
+  EXPECT_CALL(minijail_, PreserveFd(_, _, _)).Times(3);
+
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
@@ -301,7 +303,6 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   minijail_options.group = kGroup;
   minijail_options.capmask = kCapMask;
   minijail_options.inherit_supplementary_groups = false;
-  minijail_options.close_nonstd_fds = false;
 
   std::optional<int> actual_exit_status;
   std::string actual_stdout_str;
@@ -328,6 +329,9 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
             *pid = kPid;
             return true;
           }));
+  EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
+  EXPECT_CALL(minijail_, PreserveFd(_, _, _)).Times(3);
+
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithStdout(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
       base::BindLambdaForTesting(callback));
@@ -365,6 +369,56 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   EXPECT_EQ(actual_stdout_str, expected_stdout);
 
   AssertEmptyWatchedProcesses();
+}
+
+TEST_F(ProcessManagerTest, StartProcessWithMinijailWithPreservedNonstdFds) {
+  const std::string kProgram = "/usr/bin/dump";
+  const std::vector<std::string> kArgs = {"-b", "-g"};
+  const std::map<std::string, std::string> kEnv = {
+      {"one", "1"},
+      {"two", "2"},
+  };
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
+  const uint64_t kCapMask = 1;
+  const pid_t kPid = 789;
+  int preserved_nonstd_fd = 5;
+  int stdin_fd;
+  int stdout_fd;
+  int stderr_fd;
+
+  ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kUser;
+  minijail_options.group = kGroup;
+  minijail_options.capmask = kCapMask;
+  minijail_options.inherit_supplementary_groups = false;
+  minijail_options.preserved_nonstd_fds.insert(preserved_nonstd_fd);
+
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_, ResetSignalMask(_)).Times(1);
+  EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
+  EXPECT_CALL(minijail_, PreserveFd(_, _, _)).Times(3);
+  EXPECT_CALL(minijail_,
+              PreserveFd(_, preserved_nonstd_fd, preserved_nonstd_fd))
+      .Times(1);
+  EXPECT_CALL(
+      minijail_,
+      RunEnvPipesAndDestroy(_,  // minijail*
+                            IsProcessArgs(kProgram, kArgs), IsProcessEnv(kEnv),
+                            _,  // pid_t*
+                            &stdin_fd, &stdout_fd, &stderr_fd))
+      .WillOnce(DoAll(SetArgPointee<3>(kPid), Return(true)));
+
+  struct std_file_descriptors std_fds {
+    &stdin_fd, &stdout_fd, &stderr_fd
+  };
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
+      base::DoNothing(), std_fds);
+  EXPECT_EQ(kPid, actual_pid);
+  AssertNonEmptyWatchedProcesses();
 }
 
 }  // namespace shill

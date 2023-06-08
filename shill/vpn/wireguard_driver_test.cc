@@ -6,8 +6,10 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <utility>
 
+#include <base/containers/flat_set.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
@@ -149,8 +151,7 @@ class WireGuardDriverTest : public testing::Test {
                     std::vector<std::string>{"pubkey"}, _,
                     AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                           MinijailOptionsMatchCapMask(0u),
-                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                          MinijailOptionsMatchCloseNonstdFDs(true)),
+                          MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                     _, _))
         .WillRepeatedly([](const base::Location&, const base::FilePath&,
                            const std::vector<std::string>&,
@@ -184,28 +185,33 @@ class WireGuardDriverTest : public testing::Test {
   void InvokeLinkReady() {
     // wireguard-tools should be invoked on interface ready.
     std::vector<std::string> args;
+    base::flat_set<int> fds;
     constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
     EXPECT_CALL(process_manager_,
                 StartProcessInMinijail(
                     _, base::FilePath("/usr/bin/wg"), _, _,
                     AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                           MinijailOptionsMatchCapMask(kExpectedCapMask),
-                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                          MinijailOptionsMatchCloseNonstdFDs(false)),
+                          MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                     _))
-        .WillOnce([this, &args](const base::Location&, const base::FilePath&,
-                                const std::vector<std::string>& arguments,
-                                const std::map<std::string, std::string>&,
-                                const MockProcessManager::MinijailOptions&,
-                                base::OnceCallback<void(int)> exit_callback) {
-          wireguard_tools_exit_callback_ = std::move(exit_callback);
-          args = arguments;
-          return kWireGuardToolsPid;
-        });
+        .WillOnce(
+            [this, &args, &fds](
+                const base::Location&, const base::FilePath&,
+                const std::vector<std::string>& arguments,
+                const std::map<std::string, std::string>&,
+                const MockProcessManager::MinijailOptions& minijail_options,
+                base::OnceCallback<void(int)> exit_callback) {
+              wireguard_tools_exit_callback_ = std::move(exit_callback);
+              args = arguments;
+              fds = minijail_options.preserved_nonstd_fds;
+              return kWireGuardToolsPid;
+            });
     std::move(link_ready_callback_).Run(kIfName, kIfIndex);
 
     EXPECT_EQ(args[0], "setconf");
     EXPECT_EQ(args[1], kIfName);
+    EXPECT_EQ(fds.size(), 1);
+    EXPECT_EQ(args[2], base::StringPrintf("/proc/self/fd/%d", *fds.begin()));
     config_file_path_ = base::FilePath(args[2]);
     EXPECT_TRUE(base::PathExists(config_file_path_));
   }

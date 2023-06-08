@@ -510,8 +510,7 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
                                    path.value()};
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   auto minijail_options = VPNUtil::BuildMinijailOptions(kCapMask);
-  // Do not close nonstd fds to leave the anonymous config file open.
-  minijail_options.close_nonstd_fds = false;
+  minijail_options.preserved_nonstd_fds.insert(config_fd_.get());
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
       /*environment=*/{}, minijail_options,

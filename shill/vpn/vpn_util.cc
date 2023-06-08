@@ -146,7 +146,6 @@ ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
   options.group = VPNUtil::kVPNGroup;
   options.capmask = capmask;
   options.inherit_supplementary_groups = true;
-  options.close_nonstd_fds = true;
   return options;
 }
 

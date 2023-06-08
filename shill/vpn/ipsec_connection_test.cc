@@ -356,8 +356,7 @@ TEST_F(IPsecConnectionTest, StartCharon) {
                   _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
                   AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                         MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                   _))
       .WillOnce(Return(123));
 
@@ -511,8 +510,7 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
                   _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
                   AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                         MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                   _))
       .WillOnce(WithArg<5>(
           [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
@@ -583,8 +581,7 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
                   _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
                   AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                         MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                   _))
       .WillOnce(WithArg<5>(
           [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
@@ -616,8 +613,7 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsL2TP) {
                   _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
                   AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
                         MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true)),
                   _))
       .WillOnce(WithArg<5>(
           [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {

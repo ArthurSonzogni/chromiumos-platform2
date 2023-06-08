@@ -340,14 +340,15 @@ pid_t ProcessManager::StartProcessInMinijailWithPipesInternal(
 
   minijail_->UseCapabilities(jail, minijail_options.capmask);
   minijail_->ResetSignalMask(jail);
-  // Important to close non-standard fds. See crbug.com/531655,
-  // crbug.com/911234 and crbug.com/914444.
-  if (minijail_options.close_nonstd_fds) {
-    minijail_->PreserveFd(jail, STDIN_FILENO, STDIN_FILENO);
-    minijail_->PreserveFd(jail, STDOUT_FILENO, STDOUT_FILENO);
-    minijail_->PreserveFd(jail, STDERR_FILENO, STDERR_FILENO);
-    minijail_->CloseOpenFds(jail);
+  minijail_->PreserveFd(jail, STDIN_FILENO, STDIN_FILENO);
+  minijail_->PreserveFd(jail, STDOUT_FILENO, STDOUT_FILENO);
+  minijail_->PreserveFd(jail, STDERR_FILENO, STDERR_FILENO);
+  for (int fd : minijail_options.preserved_nonstd_fds) {
+    minijail_->PreserveFd(jail, fd, fd);
   }
+  // Important to close non-standard fds. See b/286322349, crbug.com/531655,
+  // crbug.com/911234, crbug.com/914444.
+  minijail_->CloseOpenFds(jail);
 
   if (minijail_options.rlimit_as_soft.has_value()) {
     minijail_rlimit(jail, RLIMIT_AS, minijail_options.rlimit_as_soft.value(),
