@@ -88,6 +88,8 @@ ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0x40046445 || arg1 == 0xc0306443 || arg1 == 0x80086444 || \
        arg1 == 0x6442 || arg1 == 0x40206441 || arg1 == 0x641f || \
        arg1 == 0x40046411
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 memfd_create: 1
 openat: 1
 pipe2: 1

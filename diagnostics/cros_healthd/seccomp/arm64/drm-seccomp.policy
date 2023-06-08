@@ -68,6 +68,8 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == 0xc0186440 || arg1 == 0xc01064ac || arg1 == 0x40088026 || \
        arg1 == 0xc0018036 || arg1 == 0x4018800e || arg1 == 0x641f || \
        arg1 == 0x40046411
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 memfd_create: 1
 newfstatat: 1
 openat: 1
