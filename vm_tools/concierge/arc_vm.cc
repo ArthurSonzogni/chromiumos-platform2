@@ -50,6 +50,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vmm_swap_metrics.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -279,6 +280,7 @@ ArcVm::ArcVm(Config config)
       data_disk_path_(config.data_disk_path),
       features_(config.features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
+      vmm_swap_metrics_(std::move(config.vmm_swap_metrics)),
       swap_policy_timer_(std::move(config.swap_policy_timer)),
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
       vmm_swap_low_disk_policy_(std::move(config.vmm_swap_low_disk_policy)),
@@ -1124,6 +1126,7 @@ base::TimeDelta ArcVm::CalculateVmmSwapDurationTarget() const {
 
 void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  vmm_swap_metrics_->OnSwappableIdleEnabled();
   vmm_swap_usage_policy_.OnEnabled();
 
   if (!pending_swap_vm_callback_.is_null()) {
@@ -1210,6 +1213,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
       return;
     }
     if (policy_result == VmmSwapPolicyResult::kPass) {
+      vmm_swap_metrics_->OnVmmSwapEnabled();
       is_vmm_swap_enabled_ = true;
       swap_policy_timer_->Start(FROM_HERE, kVmmSwapTrimWaitPeriod, this,
                                 &ArcVm::StartVmmSwapOut);
@@ -1249,6 +1253,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
 void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+    vmm_swap_metrics_->OnVmmSwapEnabled();
     is_vmm_swap_enabled_ = true;
     response.set_success(true);
     swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
@@ -1263,6 +1268,7 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
 
 void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  vmm_swap_metrics_->OnSwappableIdleDisabled();
   vmm_swap_usage_policy_.OnDisabled();
   if (DisableVmmSwap()) {
     response.set_success(true);
@@ -1289,6 +1295,7 @@ bool ArcVm::DisableVmmSwap() {
     std::move(pending_swap_vm_callback_).Run(response);
   }
   is_vmm_swap_enabled_ = false;
+  vmm_swap_metrics_->OnVmmSwapDisabled();
   return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str());
 }
 

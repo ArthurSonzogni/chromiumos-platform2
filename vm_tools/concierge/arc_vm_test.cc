@@ -25,14 +25,17 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <metrics/metrics_library_mock.h>
 #include <spaced/dbus-proxies.h>
 #include <spaced/dbus-proxy-mocks.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
+#include "vm_tools/concierge/vmm_swap_metrics.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 
 using ::testing::_;
@@ -42,6 +45,8 @@ namespace concierge {
 namespace {
 constexpr int kSeneschalServerPort = 3000;
 constexpr int kLcdDensity = 160;
+
+static constexpr char kMetricsArcvmStateName[] = "Memory.VmmSwap.ARCVM.State";
 }  // namespace
 
 TEST(ArcVmParamsTest, NonDevModeKernelParams) {
@@ -867,6 +872,8 @@ class ArcVmTest : public ::testing::Test {
     // Create the temporary directory.
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
+    metrics_library_ = std::make_unique<MetricsLibraryMock>();
+
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
@@ -881,6 +888,9 @@ class ArcVmTest : public ::testing::Test {
     auto aggressive_balloon_timer =
         std::make_unique<base::MockRepeatingTimer>();
     aggressive_balloon_timer_ = aggressive_balloon_timer.get();
+    auto swap_metrics_heartbeat_timer =
+        std::make_unique<base::MockRepeatingTimer>();
+    swap_metrics_heartbeat_timer_ = swap_metrics_heartbeat_timer.get();
 
     spaced_proxy_ = new org::chromium::SpacedProxyMock();
     SpacedProxyReturnSuccessCallback(10LL << 30);  // 10GiB
@@ -892,6 +902,10 @@ class ArcVmTest : public ::testing::Test {
         .vsock_cid = vsock_cid,
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
+        .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
+            VmId::Type::ARCVM,
+            raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library_.get()),
+            std::move(swap_metrics_heartbeat_timer)),
         .vmm_swap_low_disk_policy = std::make_unique<VmmSwapLowDiskPolicy>(
             base::FilePath("dummy"),
             raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get())),
@@ -972,12 +986,15 @@ class ArcVmTest : public ::testing::Test {
   }
 
  protected:
+  std::unique_ptr<MetricsLibraryMock> metrics_library_;
+
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
 
   raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
   raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
   raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
+  raw_ptr<base::MockRepeatingTimer> swap_metrics_heartbeat_timer_;
 
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
       std::make_unique<VmmSwapTbwPolicy>();
@@ -1183,6 +1200,18 @@ TEST_F(ArcVmTest, EnableVmmSwap) {
   ASSERT_TRUE(swap_policy_timer_->IsRunning());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 0);
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapHeartbeatMetrics) {
+  ASSERT_TRUE(EnableVmmSwap());
+
+  EXPECT_TRUE(swap_metrics_heartbeat_timer_->IsRunning());
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmStateName,
+                    static_cast<int>(VmmSwapMetrics::State::kEnabled), _))
+      .Times(1);
+  swap_metrics_heartbeat_timer_->Fire();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapFail) {
@@ -1442,6 +1471,13 @@ TEST_F(ArcVmTest, DisableVmmSwap) {
   ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
 }
 
+TEST_F(ArcVmTest, DisableVmmSwapHeartbeatMetricsStop) {
+  ASSERT_TRUE(EnableVmmSwap());
+  ASSERT_TRUE(DisableVmmSwap());
+
+  EXPECT_FALSE(swap_metrics_heartbeat_timer_->IsRunning());
+}
+
 TEST_F(ArcVmTest, DisableVmmSwapWhileTrimming) {
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
@@ -1544,6 +1580,21 @@ TEST_F(ArcVmTest, HandleStatefulUpdateWhenStateIsNormal) {
   update.set_state(spaced::StatefulDiskSpaceState::NORMAL);
   vm_->HandleStatefulUpdate(update);
   EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 0);
+}
+
+TEST_F(ArcVmTest, HandleStatefulUpdateHeartbeatDisabledMetrics) {
+  ASSERT_TRUE(EnableVmmSwap());
+  spaced::StatefulDiskSpaceUpdate update;
+  update.set_state(spaced::StatefulDiskSpaceState::LOW);
+  vm_->HandleStatefulUpdate(update);
+
+  EXPECT_TRUE(swap_metrics_heartbeat_timer_->IsRunning());
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmStateName,
+                    static_cast<int>(VmmSwapMetrics::State::kDisabled), _))
+      .Times(1);
+  swap_metrics_heartbeat_timer_->Fire();
 }
 
 }  // namespace concierge
