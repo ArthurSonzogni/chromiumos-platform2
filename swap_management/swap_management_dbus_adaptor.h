@@ -35,7 +35,7 @@ class SwapManagementDBusAdaptor
   bool SwapStart(brillo::ErrorPtr* error) override;
   bool SwapStop(brillo::ErrorPtr* error) override;
   bool SwapRestart(brillo::ErrorPtr* error) override;
-  bool SwapSetSize(brillo::ErrorPtr* error, uint32_t size) override;
+  bool SwapSetSize(brillo::ErrorPtr* error, int32_t size) override;
   bool SwapSetSwappiness(brillo::ErrorPtr* error, uint32_t swappiness) override;
   std::string SwapStatus() override;
   bool SwapZramEnableWriteback(brillo::ErrorPtr* error,

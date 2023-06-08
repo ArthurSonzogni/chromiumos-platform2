@@ -75,7 +75,7 @@ bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
 }
 
 bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
-                                            uint32_t size) {
+                                            int32_t size) {
   ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapSetSize(size);
   if (!status.ok()) {

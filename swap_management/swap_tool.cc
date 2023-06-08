@@ -246,9 +246,8 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
                                  " to 64-bit unsigned integer.");
 
   if (requested_size_mib == 0)
-    return absl::InvalidArgumentError("Swap is not turned on since " +
-                                      std::string(kSwapSizeFile) +
-                                      " contains 0.");
+    LOG(WARNING) << "swap is disabled since " << std::string(kSwapSizeFile)
+                 << " contains 0.";
 
   return requested_size_mib * 1024 * 1024;
 }
@@ -511,7 +510,7 @@ absl::Status SwapTool::SwapStart() {
     return status;
 
   absl::StatusOr<uint64_t> size_byte = GetZramSize(*mem_total);
-  if (!size_byte.ok())
+  if (!size_byte.ok() || *size_byte == 0)
     return size_byte.status();
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
@@ -564,14 +563,18 @@ absl::Status SwapTool::SwapStop() {
 }
 
 // Set zram disksize in MiB.
-// If `size` equals 0, set zram disksize to the default value.
-absl::Status SwapTool::SwapSetSize(uint32_t size) {
+// If `size` equals 0, set zram size file to the default value.
+// If `size` is negative, set zram size file to 0. Swap is disabled if zram size
+// file contains 0.
+absl::Status SwapTool::SwapSetSize(int32_t size) {
   // Remove kSwapSizeFile so SwapStart will use default size for zram.
-  if (size == 0)
+  if (size == 0) {
     return SwapToolUtil::Get()->DeleteFile(base::FilePath(kSwapSizeFile));
-
-  if (size < 100 || size > 20000)
-    return absl::InvalidArgumentError("Size is not between 100 and 20000 MiB.");
+  } else if (size < 0) {
+    size = 0;
+  } else if (size < 128 || size > 65000) {
+    return absl::InvalidArgumentError("Size is not between 128 and 65000 MiB.");
+  }
 
   return SwapToolUtil::Get()->WriteFile(base::FilePath(kSwapSizeFile),
                                         std::to_string(size));

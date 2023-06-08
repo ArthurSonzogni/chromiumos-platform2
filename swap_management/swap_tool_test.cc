@@ -7,7 +7,6 @@
 #include <limits>
 #include <utility>
 
-#include <absl/random/random.h>
 #include <absl/strings/str_cat.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -242,11 +241,7 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(DoAll(SetArgPointee<1>("0"), Return(absl::OkStatus())));
 
-  absl::Status status = swap_tool_->SwapStart();
-  EXPECT_TRUE(absl::IsInvalidArgument(status));
-  EXPECT_EQ(status.ToString(),
-            "INVALID_ARGUMENT: Swap is not turned on since "
-            "/var/lib/swap/swap_size contains 0.");
+  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapStartWithEmptySwapZramSize) {
@@ -309,33 +304,34 @@ TEST_F(SwapToolTest, SwapStop) {
 }
 
 TEST_F(SwapToolTest, SwapSetSize) {
+  // If size is negative.
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
+                                    absl::StrCat(0)))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_THAT(swap_tool_->SwapSetSize(-1), absl::OkStatus());
+
   // If size is 0.
   EXPECT_CALL(mock_util_, DeleteFile(base::FilePath("/var/lib/swap/swap_size")))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_THAT(swap_tool_->SwapSetSize(0), absl::OkStatus());
 
-  // If size is larger than 20000.
-  absl::BitGen gen;
-  uint32_t size = absl::uniform_int_distribution<uint32_t>(
-      20001, std::numeric_limits<uint32_t>::max())(gen);
-  absl::Status status = swap_tool_->SwapSetSize(size);
+  // If size is larger than 65000.
+  absl::Status status = swap_tool_->SwapSetSize(128000);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
-            "INVALID_ARGUMENT: Size is not between 100 and 20000 MiB.");
+            "INVALID_ARGUMENT: Size is not between 128 and 65000 MiB.");
 
-  // If size is smaller than 100, but not 0.
-  size = absl::uniform_int_distribution<uint32_t>(1, 99)(gen);
-  status = swap_tool_->SwapSetSize(size);
+  // If size is smaller than 128, but not 0.
+  status = swap_tool_->SwapSetSize(64);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
-            "INVALID_ARGUMENT: Size is not between 100 and 20000 MiB.");
+            "INVALID_ARGUMENT: Size is not between 128 and 65000 MiB.");
 
-  // If size is between 100 and 20000.
-  size = absl::uniform_int_distribution<uint32_t>(100, 20000)(gen);
+  // If size is between 128 and 65000.
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
-                                    absl::StrCat(size)))
+                                    absl::StrCat(1024)))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->SwapSetSize(size), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapSetSize(1024), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapZramEnableWriteback) {

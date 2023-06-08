@@ -68,7 +68,7 @@ class SwapTool {
 
   absl::Status SwapStart();
   absl::Status SwapStop();
-  absl::Status SwapSetSize(uint32_t size);
+  absl::Status SwapSetSize(int32_t size);
   absl::Status SwapSetSwappiness(uint32_t swappiness);
   std::string SwapStatus();
 

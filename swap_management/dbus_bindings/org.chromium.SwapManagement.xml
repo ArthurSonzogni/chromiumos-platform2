@@ -23,11 +23,13 @@
     </method>
     <method name="SwapSetSize">
       <tp:docstring>
-        Set zram size in swap file. Change can be applied after SwapRestart or reboot.
+        Set zram size in swap file, or disable swap. Change can be applied after
+        SwapRestart or reboot, and persistently across reboot.
       </tp:docstring>
-      <arg name="size" type="u" direction="in">
+      <arg name="size" type="i" direction="in">
         <tp:docstring>
-          Size (in MiB) for the swap file. 0 means using default size.
+          Size (in MiB) for the swap file. 0 means using default size. Negative size
+          means disabling swap.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
