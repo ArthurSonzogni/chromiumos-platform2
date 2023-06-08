@@ -328,6 +328,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
 /var/lib/preload-network-drivers.* u:object_r:cros_var_lib_preload_network_drivers:s0
 /var/lib/private_computing(/.*)? u:object_r:cros_var_lib_private_computing:s0
+/var/lib/reporting/crash_events(/.*)?   u:object_r:cros_var_lib_reporting_crash_events:s0
+/var/lib/reporting(/.*)?        u:object_r:cros_var_lib_reporting:s0
 /var/lib/rmad(/.*)?             u:object_r:cros_var_lib_rmad:s0
 /var/lib/shill(/.*)?            u:object_r:cros_var_lib_shill:s0
 /var/lib/tpm(/.*)?              u:object_r:cros_var_lib_tpm:s0
