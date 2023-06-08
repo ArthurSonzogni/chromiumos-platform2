@@ -229,6 +229,11 @@ bool TpmUtilityV1::CreateCertifiedKey(
     LOG(ERROR) << "restricted key is not support for TPM1.2.";
     return false;
   }
+  if (key_usage == KEY_USAGE_DECRYPT) {
+    LOG(ERROR) << __func__
+               << ": The creation of decrypt key is deprecated in TPM1.2";
+    return false;
+  }
 
   // Load the AIK (which is wrapped by the SRK).
   ScopedTssKey identity_key(context_handle_);
