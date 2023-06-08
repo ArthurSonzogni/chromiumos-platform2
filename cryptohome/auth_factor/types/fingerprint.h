@@ -38,6 +38,8 @@ class FingerprintAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<auth_factor::FingerprintMetadata>,
+      public AfDriverResetCapability<
+          AuthFactorDriver::ResetCapability::kResetWrongAttemptsOnly>,
       public AfDriverWithConfigurableIntents<
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
           AuthIntentSequence<AuthIntent::kDecrypt>>,

@@ -32,6 +32,8 @@ class KioskAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::KioskMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
+      public AfDriverResetCapability<
+          AuthFactorDriver::ResetCapability::kNoReset>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,

@@ -113,6 +113,7 @@ void Crypto::PasswordToPasskey(const char* password,
 
 bool Crypto::ResetLeCredential(const uint64_t le_label,
                                const SecureBlob& reset_secret,
+                               bool strong_reset,
                                CryptoError& out_error) const {
   // Bail immediately if we don't have a valid LECredentialManager.
   if (!le_manager_) {
@@ -122,8 +123,8 @@ bool Crypto::ResetLeCredential(const uint64_t le_label,
     return false;
   }
 
-  LECredStatus ret = le_manager_->ResetCredential(le_label, reset_secret,
-                                                  /*strong_reset=*/false);
+  LECredStatus ret =
+      le_manager_->ResetCredential(le_label, reset_secret, strong_reset);
   if (!ret.ok()) {
     PopulateError(&out_error, ret->local_lecred_error() ==
                                       LE_CRED_ERROR_INVALID_RESET_SECRET

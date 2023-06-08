@@ -97,6 +97,16 @@ class AuthFactorDriver {
   virtual IntentConfigurability GetIntentConfigurability(
       AuthIntent auth_intent) const = 0;
 
+  // The capability of resetting LE credentials for this auth factor. The
+  // capability depends on strength of the auth factor (which auth factor tier
+  // it falls in).
+  enum class ResetCapability {
+    kNoReset,
+    kResetWrongAttemptsOnly,
+    kResetWrongAttemptsAndExpiration,
+  };
+  virtual ResetCapability GetResetCapability() const = 0;
+
   // Creates a credential verifier for the specified type and input. Returns
   // null on failure or if verifiers are not supported by the driver.
   virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(

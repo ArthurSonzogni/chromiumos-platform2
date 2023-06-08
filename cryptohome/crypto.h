@@ -66,6 +66,7 @@ class Crypto final {
   // error.
   [[nodiscard]] bool ResetLeCredential(const uint64_t le_label,
                                        const brillo::SecureBlob& reset_secret,
+                                       bool strong_reset,
                                        CryptoError& out_error) const;
 
   // Returns whether TPM unseal operations with direct authorization are allowed

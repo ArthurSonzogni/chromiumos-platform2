@@ -545,11 +545,13 @@ class AuthSession final {
   // backed by PinWeaver, the code will need to reset specific LE credentials.
   void ResetLECredentials();
 
-  // This function is used to reset the attempt count for rate-limiters.
-  // Normally credentials guarded by rate-limiters will never be locked, but we
-  // still check them to see if they're accidentally locked. In that case, the
-  // reset secret is the same as the rate-limiter's.
-  void ResetRateLimiterCredentials();
+  // This function is used to reset the attempt count and expiration (depending
+  // on |capability|) for rate-limiters. Normally credentials guarded by
+  // rate-limiters will never be locked, but we still check them to see if
+  // they're accidentally locked. In that case, the reset secret is the same as
+  // the rate-limiter's.
+  void ResetRateLimiterCredentials(
+      AuthFactorDriver::ResetCapability capability);
 
   // Authenticate the user with the single given auth factor. Additional
   // parameters are provided to aid legacy vault keyset authentication and

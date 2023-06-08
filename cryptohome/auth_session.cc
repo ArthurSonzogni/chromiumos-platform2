@@ -3380,9 +3380,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
   // Reset all of the rate limiters and and credential lockouts.
   ResetLECredentials();
-  ResetRateLimiterCredentials();
+  ResetRateLimiterCredentials(factor_driver.GetResetCapability());
 
   // Backup VaultKeyset of the authenticated factor can still be in disk if
   // the migration is not completed. Break the dependency of the migrated and
@@ -3601,14 +3603,15 @@ void AuthSession::ResetLECredentials() {
 
     CryptoError error;
     if (!crypto_->ResetLeCredential(state->le_label.value(), reset_secret,
-                                    error)) {
+                                    /*strong_reset=*/false, error)) {
       LOG(WARNING) << "Failed to reset an LE credential for "
                    << state->le_label.value() << " with error: " << error;
     }
   }
 }
 
-void AuthSession::ResetRateLimiterCredentials() {
+void AuthSession::ResetRateLimiterCredentials(
+    AuthFactorDriver::ResetCapability capability) {
   if (!user_secret_stash_) {
     return;
   }
@@ -3627,11 +3630,19 @@ void AuthSession::ResetRateLimiterCredentials() {
     return;
   }
   CryptoError error;
-  if (crypto_->GetWrongAuthAttempts(rate_limiter_label.value()) != 0 &&
-      !crypto_->ResetLeCredential(rate_limiter_label.value(),
-                                  reset_secret.value(), error)) {
-    LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
-                 << error;
+  bool strong_reset =
+      capability ==
+      AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration;
+  // The only situation we don't need to reset the rate-limiter leaf is that
+  // wrong attempts is zero and expiration shouldn't be reset.
+  if (strong_reset ||
+      crypto_->GetWrongAuthAttempts(rate_limiter_label.value()) != 0) {
+    if (!crypto_->ResetLeCredential(rate_limiter_label.value(),
+                                    reset_secret.value(), strong_reset,
+                                    error)) {
+      LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
+                   << error;
+    }
   }
 
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
@@ -3655,7 +3666,8 @@ void AuthSession::ResetRateLimiterCredentials() {
       continue;
     }
     if (!crypto_->ResetLeCredential(state->gsc_secret_label.value(),
-                                    reset_secret.value(), error)) {
+                                    reset_secret.value(),
+                                    /*strong_reset=*/false, error)) {
       LOG(WARNING) << "Failed to reset fingerprint credential for "
                    << state->gsc_secret_label.value()
                    << " with error: " << error;

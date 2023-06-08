@@ -23,6 +23,8 @@
 namespace cryptohome {
 namespace {
 
+using ResetCapability = AuthFactorDriver::ResetCapability;
+
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
@@ -249,6 +251,34 @@ TEST_F(AuthFactorDriverManagerTest, GetIntentConfigurability) {
   EXPECT_THAT(decrypt(AuthFactorType::kUnspecified), IsNotConfigurable());
   EXPECT_THAT(vonly(AuthFactorType::kUnspecified), IsNotConfigurable());
   EXPECT_THAT(webauthn(AuthFactorType::kUnspecified), IsNotConfigurable());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::GetResetCapability. We do this here instead of
+// in a per-driver test because the check is trivial enough that one test is
+// simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, GetResetCapability) {
+  auto reset_capability = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetResetCapability();
+  };
+
+  EXPECT_EQ(reset_capability(AuthFactorType::kPassword),
+            ResetCapability::kResetWrongAttemptsAndExpiration);
+  EXPECT_EQ(reset_capability(AuthFactorType::kPin),
+            ResetCapability::kResetWrongAttemptsAndExpiration);
+  EXPECT_EQ(reset_capability(AuthFactorType::kCryptohomeRecovery),
+            ResetCapability::kResetWrongAttemptsAndExpiration);
+  EXPECT_EQ(reset_capability(AuthFactorType::kKiosk),
+            ResetCapability::kNoReset);
+  EXPECT_EQ(reset_capability(AuthFactorType::kSmartCard),
+            ResetCapability::kResetWrongAttemptsAndExpiration);
+  EXPECT_EQ(reset_capability(AuthFactorType::kLegacyFingerprint),
+            ResetCapability::kNoReset);
+  EXPECT_EQ(reset_capability(AuthFactorType::kFingerprint),
+            ResetCapability::kResetWrongAttemptsOnly);
+  EXPECT_EQ(reset_capability(AuthFactorType::kUnspecified),
+            ResetCapability::kNoReset);
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

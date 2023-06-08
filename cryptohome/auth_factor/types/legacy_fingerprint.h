@@ -30,6 +30,8 @@ class LegacyFingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<>,
       public AfDriverWithMetadata<std::monostate>,
       public AfDriverFullAuthUnsupported,
+      public AfDriverResetCapability<
+          AuthFactorDriver::ResetCapability::kNoReset>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,

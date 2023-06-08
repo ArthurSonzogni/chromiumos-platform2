@@ -36,6 +36,8 @@ class SmartCardAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::SmartCardMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
+      public AfDriverResetCapability<
+          AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,

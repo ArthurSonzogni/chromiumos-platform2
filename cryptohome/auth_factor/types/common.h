@@ -180,6 +180,12 @@ class AfDriverFullAuthUnsupported : public virtual AuthFactorDriver {
   bool IsFullAuthSupported(AuthIntent auth_intent) const final;
 };
 
+template <AuthFactorDriver::ResetCapability kCapability>
+class AfDriverResetCapability : public virtual AuthFactorDriver {
+ private:
+  ResetCapability GetResetCapability() const final { return kCapability; }
+};
+
 // Common implementation of the verifier functions for drivers which do not
 // support verifiers.
 class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
