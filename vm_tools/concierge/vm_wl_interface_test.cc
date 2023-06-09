@@ -7,13 +7,12 @@
 #include <memory>
 #include <utility>
 
-#include "dbus/scoped_dbus_error.h"
-#include "dbus/vm_wl/dbus-constants.h"
-
-#include <dbus/object_path.h>
+#include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include <dbus/message.h>
+#include <dbus/object_path.h>
+#include <dbus/scoped_dbus_error.h>
+#include <dbus/vm_wl/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vm_applications/apps.pb.h>

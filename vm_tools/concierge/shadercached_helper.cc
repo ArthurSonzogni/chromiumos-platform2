@@ -3,14 +3,15 @@
 // found in the LICENSE file.
 
 #include "vm_tools/concierge/shadercached_helper.h"
+
 #include <shadercached/proto_bindings/shadercached.pb.h>
 
-#include "base/strings/strcat.h"
-#include "base/strings/stringprintf.h"
-#include "brillo/dbus/dbus_proxy_util.h"
-#include "dbus/message.h"
-#include "dbus/scoped_dbus_error.h"
-#include "dbus/shadercached/dbus-constants.h"
+#include <base/strings/strcat.h>
+#include <base/strings/stringprintf.h>
+#include <brillo/dbus/dbus_proxy_util.h>
+#include <dbus/message.h>
+#include <dbus/scoped_dbus_error.h>
+#include <dbus/shadercached/dbus-constants.h>
 
 namespace vm_tools::concierge {
 

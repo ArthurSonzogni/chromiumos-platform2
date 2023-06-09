@@ -9,12 +9,13 @@
 #include <string>
 #include <utility>
 
-#include "base/logging.h"
-#include "dbus/scoped_dbus_error.h"
-#include "dlcservice/proto_bindings/dlcservice.pb.h"
-#include "dlcservice/dbus-proxies.h"  // NOLINT (build/include_alpha)
-
 #include <base/check.h>
+#include <base/logging.h>
+#include <dbus/scoped_dbus_error.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
+
+// Needs to be included after dlcservice.pb.h
+#include <dlcservice/dbus-proxies.h>  // NOLINT (build/include_alpha)
 
 namespace vm_tools {
 namespace concierge {
