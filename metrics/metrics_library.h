@@ -14,7 +14,9 @@
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
 
+#include "metrics/metrics_writer.h"
 #include "policy/libpolicy.h"
 
 class MetricsLibraryInterface {
@@ -82,11 +84,27 @@ class MetricsLibraryInterface {
   virtual ~MetricsLibraryInterface() {}
 };
 
-// Library used to send metrics to Chrome/UMA. The Send* methods in this class
-// are not thread-safe. Do not call them in parallel.
+// Library used to send metrics to Chrome/UMA. The thread-safety of Send*
+// methods in this class depends on the `MetricsWriter`.
+// It is not thread-safe by default (`SynchronousMetricsWriter`). Do not call
+// them in parallel.
 class MetricsLibrary : public MetricsLibraryInterface {
  public:
+  // Creates `MetricsLibrary`.
+  //
+  // This sets `SynchronousMetricsWriter` as the default.
   MetricsLibrary();
+  // Creates `MetricsLibrary` with custom `MetricsWriter`.
+  //
+  // Example:
+  //    base::ThreadPoolInstance::CreateAndStartWithDefaultParams("name");
+  //    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
+  //      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
+  //    scoped_refptr<AsynchronousMetricsWriter> metrics_writer =
+  //      base::MakeRefCounted<AsynchronousMetricsWriter>(sequenced_task_runner,
+  //                                                        false);
+  //    MetricsLibrary metrics = MetricsLibrary(metrics_writer);
+  explicit MetricsLibrary(scoped_refptr<MetricsWriter> metrics_writer);
   MetricsLibrary(const MetricsLibrary&) = delete;
   MetricsLibrary& operator=(const MetricsLibrary&) = delete;
 
@@ -324,7 +342,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Cached state of whether or not AppSync opt-in is enabled.
   bool cached_appsync_enabled_;
 
-  base::FilePath uma_events_file_;
+  scoped_refptr<MetricsWriter> metrics_writer_;
   base::FilePath consent_file_;
   base::FilePath daemon_store_dir_;
   base::FilePath appsync_daemon_store_dir_;

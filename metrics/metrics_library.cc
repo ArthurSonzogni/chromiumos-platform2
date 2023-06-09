@@ -4,6 +4,9 @@
 
 #include "metrics/metrics_library.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include "base/files/file_path.h"
@@ -25,6 +28,8 @@
 #include <optional>
 #include <vector>
 
+#include "base/memory/scoped_refptr.h"
+#include "metrics/metrics_writer.h"
 #include "metrics/serialization/metric_sample.h"
 #include "metrics/serialization/serialization_utils.h"
 
@@ -35,7 +40,6 @@ using org::chromium::SessionManagerInterfaceProxy;
 
 namespace {
 
-constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 // If you change this path make sure to also change the corresponding rollback
 // constant: src/platform2/oobe_config/rollback_constants.cc
 constexpr char kConsentFile[] = "/home/chronos/Consent To Send Stats";
@@ -106,11 +110,14 @@ static_assert(std::size(kCrosEventNames) == 35,
 }  // namespace
 
 MetricsLibrary::MetricsLibrary()
+    : MetricsLibrary(base::MakeRefCounted<SynchronousMetricsWriter>()) {}
+
+MetricsLibrary::MetricsLibrary(scoped_refptr<MetricsWriter> metrics_writer)
     : cached_enabled_time_(0),
       cached_appsync_enabled_time_(0),
       cached_enabled_(false),
       cached_appsync_enabled_(false),
-      uma_events_file_(base::FilePath(kUMAEventsPath)),
+      metrics_writer_(std::move(metrics_writer)),
       consent_file_(base::FilePath(kConsentFile)),
       daemon_store_dir_(kDaemonStoreUmaConsentDir),
       appsync_daemon_store_dir_(kDaemonStoreAppSyncOptinDir) {}
@@ -324,7 +331,7 @@ void MetricsLibrary::Init() {
 }
 
 void MetricsLibrary::SetOutputFile(const std::string& output_file) {
-  uma_events_file_ = base::FilePath(output_file);
+  metrics_writer_->SetOutputFile(output_file);
 }
 
 bool MetricsLibrary::Replay(const std::string& input_file) {
@@ -334,16 +341,13 @@ bool MetricsLibrary::Replay(const std::string& input_file) {
           metrics::SerializationUtils::kSampleBatchMaxLength)) {
     return false;
   }
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      samples, uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(samples);
 }
 
 bool MetricsLibrary::SendToUMA(
     const std::string& name, int sample, int min, int max, int nbuckets) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::HistogramSample(name, sample, min, max,
-                                              nbuckets)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics({metrics::MetricSample::HistogramSample(
+      name, sample, min, max, nbuckets)});
 }
 
 #if USE_METRICS_UPLOADER
@@ -381,19 +385,16 @@ bool MetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
     return false;
   }
 
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      std::vector<metrics::MetricSample>(
-          num_samples,
-          metrics::MetricSample::LinearHistogramSample(name, sample, max)),
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(std::vector<metrics::MetricSample>(
+      num_samples,
+      metrics::MetricSample::LinearHistogramSample(name, sample, max)));
 }
 
 bool MetricsLibrary::SendLinearToUMA(const std::string& name,
                                      int sample,
                                      int max) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::LinearHistogramSample(name, sample, max)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::LinearHistogramSample(name, sample, max)});
 }
 
 bool MetricsLibrary::SendPercentageToUMA(const std::string& name, int sample) {
@@ -401,27 +402,23 @@ bool MetricsLibrary::SendPercentageToUMA(const std::string& name, int sample) {
 }
 
 bool MetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)});
 }
 
 bool MetricsLibrary::SendSparseToUMA(const std::string& name, int sample) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::SparseHistogramSample(name, sample)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::SparseHistogramSample(name, sample)});
 }
 
 bool MetricsLibrary::SendUserActionToUMA(const std::string& action) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::UserActionSample(action)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::UserActionSample(action)});
 }
 
 bool MetricsLibrary::SendCrashToUMA(const char* crash_kind) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::CrashSample(crash_kind)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::CrashSample(crash_kind)});
 }
 
 void MetricsLibrary::SetPolicyProvider(policy::PolicyProvider* provider) {

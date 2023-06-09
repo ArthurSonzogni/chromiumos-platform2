@@ -52,9 +52,11 @@ class MetricsLibraryTest : public testing::Test {
 
     test_consent_id_file_ = test_dir_.Append(kTestConsentIdFile);
     lib_.SetConsentFileForTest(test_consent_id_file_);
-    EXPECT_FALSE(lib_.uma_events_file_.empty());
+    SynchronousMetricsWriter& writer =
+        *static_cast<SynchronousMetricsWriter*>(lib_.metrics_writer_.get());
+    EXPECT_FALSE(writer.uma_events_file_.empty());
     lib_.Init();
-    EXPECT_FALSE(lib_.uma_events_file_.empty());
+    EXPECT_FALSE(writer.uma_events_file_.empty());
     test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
     lib_.SetOutputFile(test_uma_events_file_.value());
     EXPECT_EQ(0, WriteFile(test_uma_events_file_, "", 0));
@@ -384,9 +386,11 @@ class CMetricsLibraryTest : public testing::Test {
 
     lib_ = CMetricsLibraryNew();
     MetricsLibrary& ml = *reinterpret_cast<MetricsLibrary*>(lib_);
-    EXPECT_FALSE(ml.uma_events_file_.empty());
+    SynchronousMetricsWriter& writer =
+        *static_cast<SynchronousMetricsWriter*>(ml.metrics_writer_.get());
+    EXPECT_FALSE(writer.uma_events_file_.empty());
     CMetricsLibraryInit(lib_);
-    EXPECT_FALSE(ml.uma_events_file_.empty());
+    EXPECT_FALSE(writer.uma_events_file_.empty());
 
     test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
     ml.SetOutputFile(test_uma_events_file_.value());

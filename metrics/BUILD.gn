@@ -59,6 +59,7 @@ shared_library("libmetrics") {
     "c_metrics_library.cc",
     "cumulative_metrics.cc",
     "metrics_library.cc",
+    "metrics_writer.cc",
     "persistent_integer.cc",
     "serialization/metric_sample.cc",
     "serialization/serialization_utils.cc",
@@ -201,6 +202,7 @@ if (use.test) {
     sources = [
       "fake_metrics_library_test.cc",
       "metrics_library_test.cc",
+      "metrics_writer_test.cc",
       "serialization/serialization_utils_test.cc",
     ]
     configs += [
