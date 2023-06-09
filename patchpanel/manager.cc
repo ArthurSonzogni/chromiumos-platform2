@@ -272,6 +272,20 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   }
   ipv6_svc_->UpdateUplinkIPv6DNS(shill_device.ifname,
                                  shill_device.ipconfig.ipv6_dns_addresses);
+
+  // Update local copies of the ShillClient::Device to keep IP configuration
+  // properties in sync.
+  for (auto& [_, info] : downstream_networks_) {
+    if (info.upstream_device &&
+        info.upstream_device->ifname == shill_device.ifname) {
+      info.upstream_device = shill_device;
+    }
+  }
+  for (auto& [_, nsinfo] : connected_namespaces_) {
+    if (nsinfo.current_outbound_device.ifname == shill_device.ifname) {
+      nsinfo.current_outbound_device = shill_device;
+    }
+  }
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
