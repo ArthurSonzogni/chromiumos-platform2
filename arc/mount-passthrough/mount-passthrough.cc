@@ -478,9 +478,7 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "--fuse_umask must be specified.";
     return 1;
   }
-  // TODO(b/286238422): Replace USE_ARC_CONTAINER_P with USE_ARCPP when we start
-  // properly setting up R container.
-  if (USE_ARC_CONTAINER_P) {
+  if (USE_ARCPP) {
     if (FLAGS_fuse_uid != kAndroidRootUid &&
         FLAGS_fuse_uid != kAndroidMediaRwUid) {
       LOG(ERROR) << "Invalid FUSE file system UID: " << FLAGS_fuse_uid;

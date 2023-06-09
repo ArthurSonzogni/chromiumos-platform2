@@ -116,7 +116,7 @@ TEST_F(MountPassthroughUtilTest, VmMyFiles) {
 
 // Container behaves very differently from VM (ex. not using the concierge
 // namespace).
-TEST_F(MountPassthroughUtilTest, ContainerMyFiles) {
+TEST_F(MountPassthroughUtilTest, ContainerPiMyFiles) {
   // From arc/container/myfiles/arc-myfiles.conf.
   const char* argv[] = {
       "mount-passthrough-jailed",
@@ -203,13 +203,13 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFiles) {
   EXPECT_TRUE(args.empty());
 }
 
-// This is very similar to ContainerMyFiles but --dest and
+// This is very similar to ContainerPiMyFiles but --dest and
 // --android_app_access_type are different. Make sure non-default
 // --android_app_access_type value is handled correctly.
 //
 // MyFiles-write and MyFiles-default aren't tested as those are similar
-// enough to ContainerMyFiles and ContainerMyFilesRead.
-TEST_F(MountPassthroughUtilTest, ContainerMyFilesRead) {
+// enough to ContainerPiMyFiles and ContainerPiMyFilesRead.
+TEST_F(MountPassthroughUtilTest, ContainerPiMyFilesRead) {
   // From arc/container/myfiles/arc-myfiles-read.conf.
   const char* argv[] = {
       "mount-passthrough-jailed",
@@ -228,7 +228,7 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFilesRead) {
   ParseCommandLine(std::size(argv), argv, &flags);
   auto args = CreateMinijailCommandLineArgs(flags);
 
-  // Same with ContainerMyFiles.
+  // Same with ContainerPiMyFiles.
   EXPECT_EQ("/sbin/minijail0", PopFront(args));
   EXPECT_EQ("--profile=minimalistic-mountns", PopFront(args));
   EXPECT_EQ("--no-fs-restrictions", PopFront(args));
@@ -272,7 +272,7 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFilesRead) {
   EXPECT_EQ("/run/arc/media/MyFiles-read,/mnt/dest,none,0x102e",
             PopFront(args));
 
-  // Same with ContainerMyFiles.
+  // Same with ContainerPiMyFiles.
   EXPECT_EQ("--", PopFront(args));
   EXPECT_EQ("/usr/bin/mount-passthrough", PopFront(args));
   EXPECT_EQ("--source=/mnt/source", PopFront(args));
@@ -291,7 +291,7 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFilesRead) {
 // sure that the flag is handled correctly.
 // /media/removable-{write,default} aren't tested as those are similar
 // enough to /media/removable-read.
-TEST_F(MountPassthroughUtilTest, ContainerRemovableRead) {
+TEST_F(MountPassthroughUtilTest, ContainerPiRemovableRead) {
   // From arc/container/removable-media/arc-removable-media-read.conf.
   const char* argv[] = {"mount-passthrough-jailed",
                         "--source=/media/removable",
@@ -309,7 +309,7 @@ TEST_F(MountPassthroughUtilTest, ContainerRemovableRead) {
   ParseCommandLine(std::size(argv), argv, &flags);
   auto args = CreateMinijailCommandLineArgs(flags);
 
-  // Same with ContainerMyFiles.
+  // Same with ContainerPiMyFiles.
   EXPECT_EQ("/sbin/minijail0", PopFront(args));
   EXPECT_EQ("--profile=minimalistic-mountns", PopFront(args));
   EXPECT_EQ("--no-fs-restrictions", PopFront(args));
@@ -352,7 +352,7 @@ TEST_F(MountPassthroughUtilTest, ContainerRemovableRead) {
   EXPECT_EQ("/run/arc/media/removable-read,/mnt/dest,none,0x102e",
             PopFront(args));
 
-  // Same with ContainerMyFilesRead.
+  // Same with ContainerPiMyFilesRead.
   EXPECT_EQ("--", PopFront(args));
   EXPECT_EQ("/usr/bin/mount-passthrough", PopFront(args));
   EXPECT_EQ("--source=/mnt/source", PopFront(args));
@@ -364,6 +364,98 @@ TEST_F(MountPassthroughUtilTest, ContainerRemovableRead) {
 
   // The default SELinux context should be used.
   EXPECT_EQ("--use_default_selinux_context", PopFront(args));
+
+  EXPECT_TRUE(args.empty());
+}
+
+// On Android R container, --media_provider_uid is specified for MyFiles
+// sharing. Unlike ARCVM, its value is different from that of --fuse_uid.
+// The other options are the same as Android P container.
+TEST_F(MountPassthroughUtilTest, ContainerRvcMyFiles) {
+  // From arc/container/myfiles/arc-myfiles.conf.
+  const char* argv[] = {
+      "mount-passthrough-jailed",
+      "--source=/home/chronos/user/MyFiles",
+      "--dest=/run/arc/media/MyFiles",
+      "--fuse_umask=007",
+      "--fuse_uid=1023",
+      "--fuse_gid=1023",
+      "--media_provider_uid=10063",
+  };
+
+  base::CommandLine command_line(std::size(argv), argv);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  CommandLineFlags flags;
+  ParseCommandLine(std::size(argv), argv, &flags);
+  auto args = CreateMinijailCommandLineArgs(flags);
+
+  EXPECT_EQ("/sbin/minijail0", PopFront(args));
+
+  // Use minimalistic-mountns profile.
+  EXPECT_EQ("--profile=minimalistic-mountns", PopFront(args));
+  EXPECT_EQ("--no-fs-restrictions", PopFront(args));
+
+  // Same with VM.
+  EXPECT_EQ("-N", PopFront(args));
+  EXPECT_EQ("--uts", PopFront(args));
+  EXPECT_EQ("-v", PopFront(args));
+  EXPECT_EQ("-r", PopFront(args));
+  EXPECT_EQ("-e", PopFront(args));
+  EXPECT_EQ("-l", PopFront(args));
+  EXPECT_EQ("-c", PopFront(args));
+  EXPECT_EQ("cap_sys_admin+eip", PopFront(args));
+  EXPECT_EQ("-u", PopFront(args));
+  EXPECT_EQ("chronos", PopFront(args));
+  EXPECT_EQ("-g", PopFront(args));
+  EXPECT_EQ("chronos", PopFront(args));
+  EXPECT_EQ("-G", PopFront(args));
+  EXPECT_EQ("-K", PopFront(args));
+  EXPECT_EQ("-R", PopFront(args));
+  EXPECT_EQ("RLIMIT_NOFILE,8192,8192", PopFront(args));
+
+  // Mount tmpfs on /mnt.
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC", PopFront(args));
+
+  // Bind /dev/fuse to mount FUSE file systems.
+  EXPECT_EQ("-b", PopFront(args));
+  EXPECT_EQ("/dev/fuse", PopFront(args));
+
+  // Mark PRIVATE recursively under (pivot) root, in order not to
+  // expose shared mount points accidentally.
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("none,/,none,0x44000", PopFront(args));
+
+  // Mount source/dest directories.
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("/home/chronos/user/MyFiles,/mnt/source,none,0x5000",
+            PopFront(args));
+  // 0x84000 = slave,rec
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("/home/chronos/user/MyFiles,/mnt/source,none,0x84000",
+            PopFront(args));
+  // 0x102e = bind,remount,noexec,nodev,nosuid
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("/home/chronos/user/MyFiles,/mnt/source,none,0x102e",
+            PopFront(args));
+  // 0x1000 = bind
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("/run/arc/media/MyFiles,/mnt/dest,none,0x1000", PopFront(args));
+  // 0x102e = bind,remount,noexec,nodev,nosuid
+  EXPECT_EQ("-k", PopFront(args));
+  EXPECT_EQ("/run/arc/media/MyFiles,/mnt/dest,none,0x102e", PopFront(args));
+
+  // Mostly same with VM (different source/dest/uid/gid).
+  EXPECT_EQ("--", PopFront(args));
+  EXPECT_EQ("/usr/bin/mount-passthrough", PopFront(args));
+  EXPECT_EQ("--source=/mnt/source", PopFront(args));
+  EXPECT_EQ("--dest=/mnt/dest", PopFront(args));
+  EXPECT_EQ("--fuse_umask=007", PopFront(args));
+  EXPECT_EQ("--fuse_uid=1023", PopFront(args));
+  EXPECT_EQ("--fuse_gid=1023", PopFront(args));
+  EXPECT_EQ("--android_app_access_type=full", PopFront(args));
+  EXPECT_EQ("--media_provider_uid=10063", PopFront(args));
 
   EXPECT_TRUE(args.empty());
 }

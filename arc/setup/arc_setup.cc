@@ -2373,7 +2373,8 @@ void ArcSetup::OnBootContinue() {
 
   if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
     EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait",
-                            "arcpp-media-sharing-services"}));
+                            "arcpp-media-sharing-services",
+                            "IS_ANDROID_CONTAINER_RVC=false"}));
   }
 }
 
