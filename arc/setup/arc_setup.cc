@@ -79,8 +79,6 @@
 #define AID_LOG 1007       /* log devices */
 #define AID_SDCARD_RW 1015 /* external storage write access */
 #define AID_MEDIA_RW 1023  /* internal media storage write access */
-#define AID_EXTERNAL_STORAGE \
-  1077 /* Full external storage access including USB OTG volumes */
 #define AID_SHELL 2000     /* adb and debug shell user */
 #define AID_CACHE 2001     /* cache access */
 #define AID_EVERYBODY 9997 /* shared between all apps in the same profile */
@@ -2348,31 +2346,10 @@ void ArcSetup::OnBootContinue() {
   EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-sdcard",
                           env_chromeos_user, env_container_pid}));
 
-  const base::FilePath packages_xml =
-      arc_paths_->android_data_directory.Append("data/system/packages.xml");
-
-  int media_uid;
-  int media_gid;
-  const AndroidSdkVersion sdk_version = GetSdkVersion();
-  if (sdk_version >= AndroidSdkVersion::ANDROID_R &&
-      FindMediaProviderUid(packages_xml, &media_uid)) {
-    media_gid = AID_EXTERNAL_STORAGE;
-    LOG(INFO) << "Using " << media_uid << ":" << media_gid << " for myfiles";
-  } else {
-    LOG(INFO) << "Using default media uid:gid for myfiles";
-    media_uid = AID_MEDIA_RW;
-    media_gid = AID_MEDIA_RW;
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
+    EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait",
+                            "arcpp-media-sharing-services"}));
   }
-
-  const std::string env_media_uid =
-      base::StringPrintf("ANDROID_MEDIA_UID=%d", media_uid);
-  const std::string env_media_gid =
-      base::StringPrintf("ANDROID_MEDIA_GID=%d", media_gid);
-  LOG(INFO) << "Mounting myfiles with " << env_media_uid << ":"
-            << env_media_gid;
-
-  EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-myfiles",
-                          env_media_uid, env_media_gid}));
 }
 
 void ArcSetup::OnStop() {

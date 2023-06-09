@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -29,9 +28,6 @@ constexpr char kElementVersion[] = "<version ";
 // Fingerprint attribute prefix in packages.xml and packages_cache.xml files.
 constexpr char kAttributeFingerprint[] = " fingerprint=\"";
 
-constexpr char kMediaProviderPackageName[] =
-    "com.android.providers.media.module";
-
 // Helper function for extracting an attribute value from an XML line.
 // Expects |key| to be suffixed with '=\"' (e.g. ' sdkVersion=\"').
 StringPiece GetAttributeValue(const StringPiece& line, const StringPiece& key) {
@@ -43,113 +39,6 @@ StringPiece GetAttributeValue(const StringPiece& line, const StringPiece& key) {
   if (value_end_pos == StringPiece::npos)
     return StringPiece();
   return line.substr(value_begin_pos, value_end_pos - value_begin_pos);
-}
-
-bool CheckMediaProviderUid(int uid) {
-  constexpr int kAndroidAppUidStart = 10000;
-  constexpr int kAndroidAppUidEnd = 19999;
-  return uid >= kAndroidAppUidStart && uid <= kAndroidAppUidEnd;
-}
-
-bool FindMediaProviderUidFromBinaryPackagesXml(
-    const base::FilePath& packages_xml_path, int* out_uid) {
-  constexpr char kPackage[] = "package";
-  constexpr char kAttributeName[] = "name";
-  constexpr char kAttributeUserId[] = "userId";
-
-  AndroidBinaryXmlTokenizer tokenizer;
-  if (!base::PathExists(packages_xml_path) ||
-      !tokenizer.Init(packages_xml_path)) {
-    LOG(WARNING) << "Failed to initialize the tokenizer with file "
-                 << packages_xml_path.value();
-    return false;
-  }
-
-  using Token = AndroidBinaryXmlTokenizer::Token;
-  while (tokenizer.Next()) {
-    if (tokenizer.token() != Token::kStartTag || tokenizer.name() != kPackage) {
-      continue;
-    }
-
-    std::string package_name;
-    std::optional<int> uid;
-
-    while (tokenizer.Next() && tokenizer.token() == Token::kAttribute) {
-      if (tokenizer.name() == kAttributeName) {
-        package_name = tokenizer.string_value();
-      } else if (tokenizer.name() == kAttributeUserId) {
-        uid = tokenizer.int_value();
-      }
-    }
-
-    if (package_name != kMediaProviderPackageName) {
-      continue;
-    }
-
-    if (!uid.has_value()) {
-      LOG(FATAL) << "User id is not found";
-    }
-
-    if (!CheckMediaProviderUid(*uid)) {
-      LOG(FATAL) << "User id " << *uid << " is invalid";
-    }
-
-    *out_uid = *uid;
-    LOG(INFO) << "Found media provider uid " << *out_uid << " in "
-              << packages_xml_path.value();
-    return true;
-  }
-
-  // In rare case this might be true when boot was interrupted or
-  // race during the writing of the file.
-  LOG(WARNING) << "Could not find media provider uid in "
-               << packages_xml_path.value();
-  return false;
-}
-
-bool FindMediaProviderUidInLine(int* out_uid, const std::string& line) {
-  constexpr char kAttributeName[] = "name=\"";
-  constexpr char kAttributeUserId[] = "userId=\"";
-  constexpr char kPackage[] = "<package ";
-  StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
-  if (!base::StartsWith(trimmed, kPackage, base::CompareCase::SENSITIVE)) {
-    return false;
-  }
-
-  StringPiece package_name = GetAttributeValue(trimmed, kAttributeName);
-  LOG_IF(FATAL, package_name.empty()) << "Empty package name in " << trimmed;
-  if (package_name != kMediaProviderPackageName) {
-    return false;
-  }
-
-  StringPiece uid = GetAttributeValue(trimmed, kAttributeUserId);
-  LOG_IF(FATAL, uid.empty()) << "Empty userId in " << trimmed;
-
-  if (!base::StringToInt(uid, out_uid) || !CheckMediaProviderUid(*out_uid)) {
-    LOG(FATAL) << "Failed to extract uid from " << trimmed;
-  }
-
-  return true;
-}
-
-bool FindMediaProviderUidFromPackagesCacheXml(int* out_uid) {
-  const base::FilePath packages_cache_xml_path(
-      "/opt/google/containers/android/rootfs/root/system/etc/"
-      "packages_cache.xml");
-  if (!base::PathExists(packages_cache_xml_path)) {
-    return false;
-  }
-
-  if (FindLine(packages_cache_xml_path,
-               base::BindRepeating(&FindMediaProviderUidInLine, out_uid))) {
-    LOG(INFO) << "Found media provider uid " << *out_uid << " in "
-              << packages_cache_xml_path.value();
-    return true;  // found it.
-  }
-
-  LOG(FATAL) << "No media provider package in "
-             << packages_cache_xml_path.value();
-  return false;
 }
 
 }  // namespace
@@ -295,21 +184,6 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
   out_fingerprint->assign(fingerprint.data(), fingerprint.size());
   out_sdk_version->assign(sdk_version.data(), sdk_version.size());
   return true;
-}
-
-bool FindMediaProviderUid(const base::FilePath& packages_xml_path,
-                          int* out_uid) {
-  if (FindMediaProviderUidFromBinaryPackagesXml(packages_xml_path, out_uid)) {
-    return true;
-  }
-
-  if (FindMediaProviderUidFromPackagesCacheXml(out_uid)) {
-    return true;
-  }
-
-  LOG(WARNING)
-      << "Not found media provider. It is expected for manually pushed image.";
-  return false;
 }
 
 }  // namespace arc

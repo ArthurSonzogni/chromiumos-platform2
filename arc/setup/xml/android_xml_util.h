@@ -55,17 +55,6 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
                                   std::string* out_sdk_version,
                                   const std::string& line);
 
-// Extracts media provider user id. It analyzes two files, packages.xml and
-// packages_cache.xml and extracts package information associated with media
-// provider. Note, packages.xml might not be available during the initial boot
-// so packages_cache.xml is used as a fallback. For manual pushed images
-// packages_cache.xml may not exist as well. |packages_xml_path| specifies the
-// path to find packages_cache.xml. If media provider is found it returns true
-// and |out_uid| is set.
-COMPONENT_EXPORT(LIBANDROIDXML)
-bool FindMediaProviderUid(const base::FilePath& packages_xml_path,
-                          int* out_uid);
-
 }  // namespace arc
 
 #endif  // ARC_SETUP_XML_ANDROID_XML_UTIL_H_
