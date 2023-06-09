@@ -39,6 +39,10 @@ constexpr char kBorealisDiskBytesWritten[] =
     "Borealis.Disk.StatefulWritesDaily";
 constexpr char kBorealisDiskBytesWrittenGuest[] = "borealis-disk-kb-written";
 
+constexpr char kBorealisAudioUsedSubdevices[] = "Borealis.Audio.UsedSubdevices";
+constexpr char kBorealisAudioUsedSubdevicesGuest[] =
+    "borealis-audio-used-subdevices";
+
 constexpr char kBorealisDiskHighestDirtyPagesDaily[] =
     "Borealis.Disk.HighestDirtyPagesDaily";
 constexpr char kBorealisDiskHighestDirtyPagesDailyGuest[] =
@@ -262,6 +266,8 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
                                   MapFsckResultToEnum(value));
     } else if (name == kBorealisStartupFsckTimeGuest) {
       metrics_lib_->SendToUMA(kBorealisStartupFsckTime, value, 0, 60000, 60);
+    } else if (name == kBorealisAudioUsedSubdevicesGuest) {
+      metrics_lib_->SendToUMA(kBorealisAudioUsedSubdevices, value, 0, 50, 51);
     } else {
       LOG(ERROR) << "Unknown Borealis metric " << name;
       return false;
