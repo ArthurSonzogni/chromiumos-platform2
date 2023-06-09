@@ -59,7 +59,7 @@ pkg_config("target_defaults") {
     "USE_CHEETS=${use.cheets}",
     "USE_NSS_CERTS=1",
     "USE_SYSTEMD=${use.systemd}",
-    "USE_APPLY_LANDLOCK_POLICY=0",
+    "USE_APPLY_LANDLOCK_POLICY=${use.apply_landlock_policy}",
     "USE_USER_SESSION_ISOLATION=${use.user_session_isolation}",
   ]
 }
