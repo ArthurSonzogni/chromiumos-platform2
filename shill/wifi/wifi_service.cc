@@ -2053,6 +2053,7 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
         // then signal a failure.
         return false;
       }
+      error->Reset();
     }
   }
 
