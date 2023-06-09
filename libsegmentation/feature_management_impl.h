@@ -48,6 +48,12 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // in this variable.
   base::FilePath device_info_file_path_;
 
+  // When VPD is updated the kernel cache is not updated until next reboot.
+  // To work around the issue, save the data temporary.
+  // This is a workaround until a library will have a coherent view of the
+  // the vpd information (see b:77594752).
+  base::FilePath temp_device_info_file_path_;
+
   // Internal feature database
   FeatureBundle bundle_;
 

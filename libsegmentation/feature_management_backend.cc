@@ -232,13 +232,22 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 }
 
 bool FeatureManagementImpl::CacheDeviceInfo() {
-  base::FilePath device_info_file = base::FilePath(device_info_file_path_);
-  // If the device info isn't cached, try to read it from the stateful partition
-  // file that contains the information. If it's not present in the stateful
-  // partition file then read it form the hardware id and write it to the
-  // stateful partition for subsequent boots.
-  std::optional<libsegmentation::DeviceInfo> device_info_result =
-      FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file);
+  // Read from the tmpfs file in case the VPD has been writen but the device has
+  // not been rebooted.
+  std::optional<libsegmentation::DeviceInfo> device_info_result;
+  if (persist_via_vpd_ && base::PathExists(temp_device_info_file_path_)) {
+    device_info_result = FeatureManagementUtil::ReadDeviceInfoFromFile(
+        temp_device_info_file_path_);
+    // To ease testing, overwrite hash check.
+    if (device_info_result)
+      device_info_result->set_cached_version_hash(current_version_hash_);
+  } else {
+    device_info_result =
+        FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file_path_);
+  }
+
+  // If the device info isn't cached, read it form the hardware id and write it
+  // to the VPD for subsequent boots.
   if (!device_info_result ||
       device_info_result->cached_version_hash() != current_version_hash_) {
     device_info_result = GetDeviceInfoFromGSC();
@@ -255,9 +264,12 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
         LOG(ERROR) << "Failed to persist device info via vpd";
         return false;
       }
+      // Best effort.
+      FeatureManagementUtil::WriteDeviceInfoToFile(device_info_result.value(),
+                                                   temp_device_info_file_path_);
     } else {
       if (!FeatureManagementUtil::WriteDeviceInfoToFile(
-              device_info_result.value(), device_info_file)) {
+              device_info_result.value(), device_info_file_path_)) {
         LOG(ERROR) << "Failed to persist device info";
         return false;
       }

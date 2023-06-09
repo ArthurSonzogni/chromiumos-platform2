@@ -36,6 +36,7 @@ namespace segmentation {
 // info state and read cache device info state.
 constexpr const char kVpdSysfsFilePath[] =
     "/sys/firmware/vpd/rw/feature_device_info";
+constexpr const char kTempDeviceInfoPath[] = "/tmp/feature_device_info";
 
 #if USE_FEATURE_MANAGEMENT
 // Sysfs file corresponding to VPD state. This will be used to persist device
@@ -63,7 +64,8 @@ FeatureManagementImpl::FeatureManagementImpl(
     const base::FilePath& device_info_file_path,
     const std::string& feature_db,
     const std::string& os_version)
-    : device_info_file_path_(device_info_file_path) {
+    : device_info_file_path_(device_info_file_path),
+      temp_device_info_file_path_(kTempDeviceInfoPath) {
   persist_via_vpd_ =
       device_info_file_path_ == base::FilePath(kVpdSysfsFilePath);
   std::string decoded_pb;
