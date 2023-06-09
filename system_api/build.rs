@@ -26,11 +26,6 @@ const OPTS: Option<&[&str]> = None;
 // ebuild. Otherwise, the source files will not be accessible when building dev-rust/system_api.
 const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
     (
-        "org_chromium_authpolicy",
-        "authpolicy/dbus_bindings/org.chromium.AuthPolicy.xml",
-        BindingsType::Client(OPTS),
-    ),
-    (
         "org_chromium_debugd",
         "debugd/dbus_bindings/org.chromium.debugd.xml",
         BindingsType::Client(OPTS),
