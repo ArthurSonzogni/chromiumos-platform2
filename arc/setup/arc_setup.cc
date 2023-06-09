@@ -132,6 +132,7 @@ constexpr char kMediaMyFilesDefaultDirectory[] =
     "/run/arc/media/MyFiles-default";
 constexpr char kMediaMyFilesReadDirectory[] = "/run/arc/media/MyFiles-read";
 constexpr char kMediaMyFilesWriteDirectory[] = "/run/arc/media/MyFiles-write";
+constexpr char kMediaMyFilesFullDirectory[] = "/run/arc/media/MyFiles-full";
 constexpr char kMediaProfileFile[] = "media_profiles.xml";
 constexpr char kMediaRemovableDirectory[] = "/run/arc/media/removable";
 constexpr char kMediaRemovableDefaultDirectory[] =
@@ -139,6 +140,7 @@ constexpr char kMediaRemovableDefaultDirectory[] =
 constexpr char kMediaRemovableReadDirectory[] = "/run/arc/media/removable-read";
 constexpr char kMediaRemovableWriteDirectory[] =
     "/run/arc/media/removable-write";
+constexpr char kMediaRemovableFullDirectory[] = "/run/arc/media/removable-full";
 constexpr char kObbMountDirectory[] = "/run/arc/obb";
 constexpr char kObbRootfsDirectory[] =
     "/opt/google/containers/arc-obb-mounter/mountpoints/container-root";
@@ -634,6 +636,7 @@ struct ArcPaths {
   const base::FilePath media_myfiles_read_directory{kMediaMyFilesReadDirectory};
   const base::FilePath media_myfiles_write_directory{
       kMediaMyFilesWriteDirectory};
+  const base::FilePath media_myfiles_full_directory{kMediaMyFilesFullDirectory};
   const base::FilePath media_profile_file{kMediaProfileFile};
   const base::FilePath media_removable_directory{kMediaRemovableDirectory};
   const base::FilePath media_removable_default_directory{
@@ -642,6 +645,8 @@ struct ArcPaths {
       kMediaRemovableReadDirectory};
   const base::FilePath media_removable_write_directory{
       kMediaRemovableWriteDirectory};
+  const base::FilePath media_removable_full_directory{
+      kMediaRemovableFullDirectory};
   const base::FilePath obb_mount_directory{kObbMountDirectory};
   const base::FilePath obb_rootfs_directory{kObbRootfsDirectory};
   const base::FilePath oem_mount_directory{kOemMountDirectory};
@@ -1457,6 +1462,13 @@ void ArcSetup::SetUpMountPointsForMedia() {
         !InstallDirectory(0755, kMediaUid, kMediaGid,
                           arc_paths_->media_mount_directory.Append(directory)));
   }
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    for (auto* directory : {"removable-full", "MyFiles-full"}) {
+      EXIT_IF(!InstallDirectory(
+          0755, kMediaUid, kMediaGid,
+          arc_paths_->media_mount_directory.Append(directory)));
+    }
+  }
 }
 
 void ArcSetup::SetUpMountPointForAdbd() {
@@ -1505,6 +1517,13 @@ void ArcSetup::CleanUpStaleMountPoints() {
       arc_paths_->media_removable_read_directory));
   EXIT_IF(!arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    EXIT_IF(!arc_mounter_->UmountIfExists(
+        arc_paths_->media_myfiles_full_directory));
+    EXIT_IF(!arc_mounter_->UmountIfExists(
+        arc_paths_->media_removable_full_directory));
+  }
+
   // If the android_mutable_source path cannot be unmounted below continue
   // anyway. This allows the mini-container to start and allows tests to
   // exercise the mini-container (b/148185982).
@@ -1770,6 +1789,12 @@ void ArcSetup::UnmountOnStop() {
       arc_mounter_->UmountIfExists(arc_paths_->media_removable_read_directory));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    IGNORE_ERRORS(
+        arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_full_directory));
+    IGNORE_ERRORS(arc_mounter_->UmountIfExists(
+        arc_paths_->media_removable_full_directory));
+  }
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
