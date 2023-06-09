@@ -44,6 +44,13 @@ namespace secagentd::bpf {
 // 2^N size.
 #define CROS_MAX_STRUCT_SIZE (2048)
 
+#define CROS_MAX_SOCKET (1024)
+#define CROS_AVG_CONN_PER_SOCKET (2)
+#define CROS_MAX_FLOW_MAP_ENTRIES (CROS_MAX_SOCKET * CROS_AVG_CONN_PER_SOCKET)
+
+#ifdef __cplusplus
+constexpr uint32_t kMaxFlowMapEntries{CROS_MAX_FLOW_MAP_ENTRIES};
+#endif
 typedef uint64_t time_ns_t;
 
 // TODO(b/243571230): all of these struct fields map to kernel types.

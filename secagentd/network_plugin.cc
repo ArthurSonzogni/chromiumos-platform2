@@ -13,6 +13,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/types/span.h"
 #include "base/base64.h"
+#include "base/containers/lru_cache.h"
 #include "base/hash/hash.h"
 #include "base/hash/sha1.h"
 #include "base/strings/string_util.h"
@@ -257,19 +258,22 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
 std::unique_ptr<cros_xdr::reporting::NetworkFlowEvent>
 NetworkPlugin::MakeFlowEvent(
     const secagentd::bpf::cros_synthetic_network_flow& flow_event) const {
-  static std::unordered_map<bpf::cros_flow_map_key, bpf::cros_flow_map_value,
-                            absl::Hash<bpf::cros_flow_map_key>>
-      prev_tx_rx_totals;
+  static base::HashingLRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value,
+                               absl::Hash<bpf::cros_flow_map_key>,
+                               std::equal_to<bpf::cros_flow_map_key>>
+      prev_tx_rx_totals(bpf::kMaxFlowMapEntries);
   auto flow_proto = std::make_unique<pb::NetworkFlowEvent>();
   auto* flow = flow_proto->mutable_network_flow();
   auto& five_tuple = flow_event.flow_map_key.five_tuple;
   bpf::cros_flow_map_key k = flow_event.flow_map_key;
-  auto it = prev_tx_rx_totals.find(k);
+  auto it = prev_tx_rx_totals.Get(k);
+
   if (it == prev_tx_rx_totals.end()) {
-    prev_tx_rx_totals.insert(
-        {flow_event.flow_map_key, flow_event.flow_map_value});
     flow->set_rx_bytes(flow_event.flow_map_value.rx_bytes);
     flow->set_tx_bytes(flow_event.flow_map_value.tx_bytes);
+    if (!flow_event.flow_map_value.garbage_collect_me) {
+      prev_tx_rx_totals.Put(flow_event.flow_map_key, flow_event.flow_map_value);
+    }
   } else {
     auto rx_bytes = flow_event.flow_map_value.rx_bytes - it->second.rx_bytes;
     auto tx_bytes = flow_event.flow_map_value.tx_bytes - it->second.tx_bytes;
@@ -281,6 +285,9 @@ NetworkPlugin::MakeFlowEvent(
     it->second.tx_bytes = flow_event.flow_map_value.tx_bytes;
     flow->set_rx_bytes(rx_bytes);
     flow->set_tx_bytes(tx_bytes);
+    if (flow_event.flow_map_value.garbage_collect_me) {
+      prev_tx_rx_totals.Erase(it);
+    }
   }
 
   /* default to ipv4 */
@@ -334,12 +341,6 @@ NetworkPlugin::MakeFlowEvent(
   }
   FillProcessTree(flow_proto.get(),
                   flow_event.process_map_value.common.process);
-  if (flow_event.flow_map_value.garbage_collect_me) {
-    if (prev_tx_rx_totals.erase(flow_event.flow_map_key) == 0) {
-      LOG(ERROR) << "Tally map has no entry corresponding to flow_map_key "
-                    "marked for garbage collection";
-    }
-  }
   return flow_proto;
 }
 

@@ -19,9 +19,6 @@ struct {
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
-#define CROS_MAX_SOCKET (1024)
-#define CROS_AVG_CONN_PER_SOCKET (2)
-
 struct {
   __uint(type, BPF_MAP_TYPE_LRU_HASH);
   __uint(max_entries, CROS_MAX_SOCKET* CROS_AVG_CONN_PER_SOCKET);
