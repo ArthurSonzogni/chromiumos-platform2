@@ -241,6 +241,9 @@ shared_library("libarckeymint_context") {
     ":libkeymint",
     ":liblog",
   ]
+  if (use.keymint) {
+    install_path = "lib"
+  }
 }
 
 # Lib Base
