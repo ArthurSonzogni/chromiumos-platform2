@@ -10,6 +10,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <re2/re2.h>
 
 #include <libmount/libmount.h>
 
@@ -76,7 +77,13 @@ StorageDeviceResolver::GetSwapDevices(const base::FilePath& rootfs) {
   while (mnt_table_next_fs(table, itr, &fs) == 0) {
     std::string swap_dev = mnt_fs_get_srcpath(fs);
 
-    // We expect devices of the format "/dev/<blah>"
+    // Zram swap device filename in /proc/swaps can be either /dev/zram[0-9] or
+    // /zram[0-9] (see b/248317295). Since zram is non-disk based device, we
+    // can just skip.
+    if (RE2::FullMatch(swap_dev, R"((\/dev)?\/zram\d)"))
+      continue;
+
+    // If not zram, we expect devices of the format "/dev/<blah>"
     if (swap_dev.find(kDevFsPrefix) != 0) {
       mnt_free_iter(itr);
       mnt_free_table(table);
