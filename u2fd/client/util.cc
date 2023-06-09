@@ -277,13 +277,18 @@ std::optional<brillo::Blob> ParseSerialNumberFromCert(
   size_t length = i2d_ASN1_INTEGER(X509_get_serialNumber(cert.get()),
                                    &serial_number_buffer);
   crypto::ScopedOpenSSLBytes scoped_serial_number_buffer(serial_number_buffer);
-  if (length <= 0) {
+  // First 2 bytes is the type+size specifier.
+  if (length <= 2) {
     LOG(ERROR) << "Failed to encode certificate serial number.";
     return std::nullopt;
   }
 
+  // CryptAuth parses the serial number of the cert as a bignum and
+  // encode it back to a hex. When the serial number is positive, this is
+  // equivalent to stripping the first 2 bytes (type + size) of the DER
+  // encoding. The serial number is assumed to be positive.
   brillo::Blob serial_number;
-  serial_number.assign(serial_number_buffer, serial_number_buffer + length);
+  serial_number.assign(serial_number_buffer + 2, serial_number_buffer + length);
 
   return serial_number;
 }

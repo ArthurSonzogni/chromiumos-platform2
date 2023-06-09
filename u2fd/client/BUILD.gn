@@ -10,6 +10,9 @@ group("all") {
     ":libu2fd-client",
     ":u2fd-client",
   ]
+  if (use.test) {
+    deps += [ ":u2fd_client_test_runner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -51,4 +54,19 @@ generate_pkg_config("u2fd-client") {
   cflags = [ "-I/usr/include/u2f/client" ]
   libs = [ "-lu2fd-client" ]
   install = true
+}
+
+if (use.test) {
+  executable("u2fd_client_test_runner") {
+    sources = [ "util_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libu2fd-client",
+      "//common-mk/testrunner",
+    ]
+    run_test = true
+  }
 }
