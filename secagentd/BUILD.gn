@@ -159,8 +159,7 @@ if (use.test) {
       "test/policies_features_broker_test.cc",
       "test/process_cache_test.cc",
       "test/process_plugin_test.cc",
-
-      #      "test/secagent_test.cc",
+      "test/secagent_test.cc",
     ]
     configs += [
       "//common-mk:test",

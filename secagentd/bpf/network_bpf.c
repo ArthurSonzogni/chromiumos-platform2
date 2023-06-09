@@ -14,7 +14,6 @@
 #include "secagentd/bpf/bpf_utils.h"
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
-
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
@@ -30,21 +29,6 @@ struct {
   __type(value, struct cros_flow_map_value);
 } cros_network_flow_map SEC(".maps");
 
-#define CROS_GARBAGE_COLLECT_LIST_SIZE (5)
-struct cros_tuple_list {
-  uint8_t write_index;
-  struct cros_network_5_tuple list[CROS_GARBAGE_COLLECT_LIST_SIZE];
-};
-
-#define CROS_GARBAGE_COLLECT_MAX_ENTRIES (100)
-// Tuple list is large and this is mostly a time saving optimization.
-struct {
-  __uint(type, BPF_MAP_TYPE_LRU_HASH);
-  __uint(max_entries, CROS_GARBAGE_COLLECT_MAX_ENTRIES);
-  __type(key, struct sock*);
-  __type(value, struct cros_tuple_list);
-} cros_allocated_tuples SEC(".maps");
-
 /* The process protocol and family information
  * remains the same for a socket for its lifetime.
  * so record it just once.
@@ -52,9 +36,22 @@ struct {
 struct {
   __uint(type, BPF_MAP_TYPE_LRU_HASH);
   __uint(max_entries, CROS_MAX_SOCKET);
-  __type(key, uint64_t);
+  __type(key, uint64_t);  // A unique ID for a socket.
   __type(value, struct cros_sock_to_process_map_value);
 } process_map SEC(".maps");
+
+/* A recording of sockets that have at least one
+ * flow map entry associated with it.
+ * This should only be used by the BPF to determine
+ * if a socket should be added to the socket graveyard
+ * at socket release.
+ */
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_HASH);
+  __uint(max_entries, CROS_MAX_SOCKET);
+  __type(key, uint64_t);    // A unique ID for a socket.
+  __type(value, uint64_t);  // Also the address of the socket.
+} active_socket_map SEC(".maps");
 
 /* BPF Verifier only allows a stack of 512 bytes max.
  * Use this one simple trick that BPF verifiers hate
@@ -144,6 +141,8 @@ static inline __attribute__((always_inline)) void cros_new_flow_entry(
   value.direction = direction;
   value.rx_bytes = rx_bytes;
   value.tx_bytes = tx_bytes;
+  bpf_map_update_elem(&active_socket_map, &key_ref->sock, &key_ref->sock,
+                      BPF_NOEXIST);
   bpf_map_update_elem(&cros_network_flow_map, key_ref, &value, BPF_ANY);
   /* Use the heap instead of the stack. */
   process_value = bpf_map_lookup_elem(&heap_cros_network_common_map, &zero);
@@ -155,27 +154,6 @@ static inline __attribute__((always_inline)) void cros_new_flow_entry(
   cros_fill_common(&process_value->common, (const struct socket*)key_ref->sock);
   process_value->garbage_collect_me = false;
   bpf_map_update_elem(&process_map, &key_ref->sock, process_value, BPF_NOEXIST);
-  struct cros_tuple_list* tuple_list =
-      bpf_map_lookup_elem(&cros_allocated_tuples, &key_ref->sock);
-  if (tuple_list != NULL) {
-    if (tuple_list->write_index < CROS_ARRAY_SIZE(tuple_list->list)) {
-      __builtin_memmove(&tuple_list->list[tuple_list->write_index],
-                        &(key_ref->five_tuple), sizeof(tuple_list->list[0]));
-      tuple_list->write_index++;
-    }
-  } else {
-    struct cros_tuple_list new_tuple_list;
-    __builtin_memset(&new_tuple_list, 0, sizeof(new_tuple_list));
-    __builtin_memmove(&new_tuple_list.list[0], &(key_ref->five_tuple),
-                      sizeof(new_tuple_list.list[0]));
-    new_tuple_list.write_index = 1;
-    if (bpf_map_update_elem(&cros_allocated_tuples, &key_ref->sock,
-                            &new_tuple_list, BPF_NOEXIST) != 0) {
-      bpf_printk(
-          "Error: Unable to insert a new tuple for a socket in the tuple "
-          "garbage collection list");
-    }
-  }
 }
 
 CROS_IF_FUNCTION_HOOK("fexit/inet_listen",
@@ -335,48 +313,10 @@ int BPF_PROG(cros_handle_inet_stream_connect_exit,
   return 0;
 }
 
-static __noinline int cros_garbage_collect_tuples(
-    struct bpf_map* map,
-    struct cros_flow_map_key* key,
-    struct cros_flow_map_value* val,
-    struct socket* data) {
-  struct socket* sock = data;
-  if (sock) {
-    if (key->sock == sock) {
-      val->garbage_collect_me = true;
-    }
-  }
-  return 0;
-}
 CROS_IF_FUNCTION_HOOK("fexit/inet_release",
                       "raw_tracepoint/cros_inet_release_enter")
 int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
-  struct cros_tuple_list* tuple_list;
-  struct cros_flow_map_value* val;
-  tuple_list = bpf_map_lookup_elem(&cros_allocated_tuples, &sock);
-  struct socket* data = sock;
-  if (tuple_list == NULL ||
-      tuple_list->write_index > (CROS_ARRAY_SIZE(tuple_list->list))) {
-    // Somehow a garbage collection list wasn't made or this socket
-    // has many, many tuples to garbage collect.
-    // so scan the flow_map table and tag all entries associated with
-    // this socket as to be garbage collected.
-    bpf_for_each_map_elem(&cros_network_flow_map, cros_garbage_collect_tuples,
-                          &data, 0);
-    return 0;
-  }
-  struct cros_flow_map_key key;
-  __builtin_memset(&key, 0, sizeof(key));
-  key.sock = (uint64_t)sock;
-  for (int idx = 0; idx < CROS_ARRAY_SIZE(tuple_list->list); idx++) {
-    key.five_tuple = tuple_list->list[idx];
-    val = bpf_map_lookup_elem(&cros_network_flow_map, &key);
-    if (val == NULL) {
-      bpf_printk("Failed to mark an entry for garbage collection.");
-      continue;
-    }
-    val->garbage_collect_me = true;
-  }
-  bpf_map_delete_elem(&cros_allocated_tuples, &sock);
+  uint64_t key = (uint64_t)sock;
+  bpf_map_delete_elem(&active_socket_map, &key);
   return 0;
 }

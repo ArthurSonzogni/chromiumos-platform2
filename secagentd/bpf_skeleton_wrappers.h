@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
@@ -187,6 +188,7 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
  protected:
   std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override;
   void ScanFlowMap();
+  std::unordered_set<uint64_t> GetActiveSocketsSet();
   void RegisterCallbacks(BpfCallbacks cbs) override;
 
  private:
