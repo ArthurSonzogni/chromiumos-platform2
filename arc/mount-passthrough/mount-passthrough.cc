@@ -44,8 +44,20 @@
 
 namespace {
 
-constexpr uid_t kAndroidAppUidStart = 10000 + USER_NS_SHIFT;
-constexpr uid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
+// Android UID and GID values are taken from
+// system/core/libcutils/include/private/android_filesystem_config.h in the
+// Android codebase.
+constexpr uid_t kAndroidRootUid = 0;
+constexpr uid_t kAndroidMediaRwUid = 1023;
+constexpr uid_t kAndroidAppUidStart = 10000;
+constexpr uid_t kAndroidAppUidEnd = 19999;
+constexpr uid_t kAndroidAppUidStartInCrOS = kAndroidAppUidStart + USER_NS_SHIFT;
+constexpr uid_t kAndroidAppUidEndInCrOS = kAndroidAppUidEnd + USER_NS_SHIFT;
+
+constexpr gid_t kAndroidSdcardGid = 1015;
+constexpr gid_t kAndroidMediaRwGid = 1023;
+constexpr gid_t kAndroidExternalStorageGid = 1077;
+constexpr gid_t kAndroidEverybodyGid = 9997;
 
 constexpr char kCrosMountPassthroughFsContext[] =
     "u:object_r:cros_mount_passthrough_fs:s0";
@@ -89,7 +101,8 @@ int check_allowed() {
   // We only check Android app process for the Android external storage
   // permissions. Other kind of permissions (such as uid/gid) should be checked
   // through the standard Linux permission checks.
-  if (context->uid < kAndroidAppUidStart || context->uid > kAndroidAppUidEnd) {
+  if (context->uid < kAndroidAppUidStartInCrOS ||
+      context->uid > kAndroidAppUidEndInCrOS) {
     return 0;
   }
 
@@ -461,13 +474,30 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "--fuse_umask must be specified.";
     return 1;
   }
-  if (FLAGS_fuse_uid < 0) {
-    LOG(ERROR) << "--fuse_uid must be specified as a non-negative integer.";
-    return 1;
-  }
-  if (FLAGS_fuse_gid < 0) {
-    LOG(ERROR) << "--fuse_gid must be specified as a non-negative integer.";
-    return 1;
+  // TODO(b/286238422): Replace USE_ARC_CONTAINER_P with USE_ARCPP when we start
+  // properly setting up R container.
+  if (USE_ARC_CONTAINER_P) {
+    if (FLAGS_fuse_uid != kAndroidRootUid &&
+        FLAGS_fuse_uid != kAndroidMediaRwUid) {
+      LOG(ERROR) << "Invalid FUSE file system UID: " << FLAGS_fuse_uid;
+      return 1;
+    }
+    if (FLAGS_fuse_gid != kAndroidSdcardGid &&
+        FLAGS_fuse_gid != kAndroidMediaRwGid &&
+        FLAGS_fuse_gid != kAndroidEverybodyGid) {
+      LOG(ERROR) << "Invalid FUSE file system GID: " << FLAGS_fuse_gid;
+      return 1;
+    }
+  } else {
+    if (FLAGS_fuse_uid < kAndroidAppUidStart ||
+        FLAGS_fuse_uid > kAndroidAppUidEnd) {
+      LOG(ERROR) << "Invalid FUSE file system UID: " << FLAGS_fuse_uid;
+      return 1;
+    }
+    if (FLAGS_fuse_gid != kAndroidExternalStorageGid) {
+      LOG(ERROR) << "Invalid FUSE file system GID: " << FLAGS_fuse_gid;
+      return 1;
+    }
   }
   if (FLAGS_android_app_access_type.empty()) {
     LOG(ERROR) << "--android_app_access_type must be specified.";
@@ -494,7 +524,6 @@ int main(int argc, char** argv) {
 
   const uid_t fuse_uid = FLAGS_fuse_uid + USER_NS_SHIFT;
   const gid_t fuse_gid = FLAGS_fuse_gid + USER_NS_SHIFT;
-
 
   struct fuse_operations passthrough_ops;
   setup_passthrough_ops(&passthrough_ops);
@@ -552,11 +581,12 @@ int main(int argc, char** argv) {
       //
       // Calculate the categories in the same way as set_range_from_level() in
       // Android's external/selinux/libselinux/src/android/android_platform.c.
-      if (fuse_uid < kAndroidAppUidStart || kAndroidAppUidEnd < fuse_uid) {
-        LOG(ERROR) << "Unexpected FUSE file system UID: " << fuse_uid;
+      if (FLAGS_fuse_uid < kAndroidAppUidStart ||
+          FLAGS_fuse_uid > kAndroidAppUidEnd) {
+        LOG(ERROR) << "Unexpected FUSE file system UID: " << FLAGS_fuse_uid;
         return 1;
       }
-      const uid_t media_provider_app_id = fuse_uid - kAndroidAppUidStart;
+      const uid_t media_provider_app_id = FLAGS_fuse_uid - kAndroidAppUidStart;
       security_context =
           std::string(kMediaRwDataFileContext) +
           base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
