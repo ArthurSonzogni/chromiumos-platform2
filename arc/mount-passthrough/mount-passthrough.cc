@@ -454,6 +454,10 @@ int main(int argc, char** argv) {
       " Must be either full, read, or write (required)");
   DEFINE_bool(use_default_selinux_context, false,
               "Use the default \"fuse\" SELinux context");
+  DEFINE_int32(
+      media_provider_uid, -1,
+      "UID of Android's MediaProvider "
+      "(required in Android R+ for setting non-default SELinux context)");
 
   // Use "arc-" prefix so that the log is recorded in /var/log/arc.log.
   brillo::OpenLog("arc-mount-passthrough", true /*log_pid*/);
@@ -510,6 +514,15 @@ int main(int argc, char** argv) {
                << FLAGS_android_app_access_type
                << ". It must be either full, read, or write.";
     return 1;
+  }
+  if (!USE_ARC_CONTAINER_P && !FLAGS_use_default_selinux_context) {
+    // MediaProvider UID needs to be specified in R+ to calculate the
+    // non-default SELinux context.
+    if (FLAGS_media_provider_uid < kAndroidAppUidStart ||
+        FLAGS_media_provider_uid > kAndroidAppUidEnd) {
+      LOG(ERROR) << "Invalid MediaProvider UID: " << FLAGS_media_provider_uid;
+      return 1;
+    }
   }
 
   if (getuid() != CHRONOS_UID) {
@@ -581,12 +594,8 @@ int main(int argc, char** argv) {
       //
       // Calculate the categories in the same way as set_range_from_level() in
       // Android's external/selinux/libselinux/src/android/android_platform.c.
-      if (FLAGS_fuse_uid < kAndroidAppUidStart ||
-          FLAGS_fuse_uid > kAndroidAppUidEnd) {
-        LOG(ERROR) << "Unexpected FUSE file system UID: " << FLAGS_fuse_uid;
-        return 1;
-      }
-      const uid_t media_provider_app_id = FLAGS_fuse_uid - kAndroidAppUidStart;
+      const uid_t media_provider_app_id =
+          FLAGS_media_provider_uid - kAndroidAppUidStart;
       security_context =
           std::string(kMediaRwDataFileContext) +
           base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",

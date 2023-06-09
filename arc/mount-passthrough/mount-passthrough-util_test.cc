@@ -44,6 +44,7 @@ TEST_F(MountPassthroughUtilTest, VmMyFiles) {
       "--fuse_umask=007",
       "--fuse_uid=10058",
       "--fuse_gid=1077",
+      "--media_provider_uid=10058",
       "--enter_concierge_namespace",
       "--max_number_of_open_fds=262144",
   };
@@ -108,6 +109,7 @@ TEST_F(MountPassthroughUtilTest, VmMyFiles) {
   EXPECT_EQ("--fuse_uid=10058", PopFront(args));
   EXPECT_EQ("--fuse_gid=1077", PopFront(args));
   EXPECT_EQ("--android_app_access_type=full", PopFront(args));
+  EXPECT_EQ("--media_provider_uid=10058", PopFront(args));
 
   EXPECT_TRUE(args.empty());
 }

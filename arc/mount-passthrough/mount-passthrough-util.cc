@@ -22,6 +22,10 @@ void ParseCommandLine(int argc,
   DEFINE_string(android_app_access_type, "full", "Access type of Android apps");
   DEFINE_bool(use_default_selinux_context, false,
               "Use default \"fuse\" SELinux context");
+  DEFINE_int32(
+      media_provider_uid, -1,
+      "UID of Android's MediaProvider "
+      "(required in Android R+ for setting non-default SELinux context)");
   DEFINE_bool(enter_concierge_namespace, false, "Enter concierge namespace");
   // This is larger than the default value 1024 because this process handles
   // many open files. See b/30236190 for more context.
@@ -35,6 +39,7 @@ void ParseCommandLine(int argc,
   flags->fuse_gid = FLAGS_fuse_gid;
   flags->android_app_access_type = FLAGS_android_app_access_type;
   flags->use_default_selinux_context = FLAGS_use_default_selinux_context;
+  flags->media_provider_uid = FLAGS_media_provider_uid;
   flags->enter_concierge_namespace = FLAGS_enter_concierge_namespace;
   flags->max_number_of_open_fds = FLAGS_max_number_of_open_fds;
 }
@@ -159,6 +164,11 @@ std::vector<std::string> CreateMinijailCommandLineArgs(
 
   if (flags.use_default_selinux_context) {
     args.push_back("--use_default_selinux_context");
+  }
+
+  if (flags.media_provider_uid >= 0) {
+    args.push_back(base::StringPrintf("--media_provider_uid=%d",
+                                      flags.media_provider_uid));
   }
 
   return args;

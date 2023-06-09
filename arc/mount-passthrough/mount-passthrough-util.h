@@ -19,6 +19,7 @@ struct CommandLineFlags {
   int32_t fuse_gid = 0;
   std::string android_app_access_type;
   bool use_default_selinux_context = false;
+  int32_t media_provider_uid = 0;
   bool enter_concierge_namespace = false;
   int32_t max_number_of_open_fds = 0;
 };
