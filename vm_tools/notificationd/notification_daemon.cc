@@ -172,7 +172,7 @@ void NotificationDaemon::OnClicked(const std::string& notification_key,
       action_key = kDefaultActionKey;
     }
   } else {
-    DCHECK_LT(button_index, click_action.action_keys_for_buttons.size());
+    CHECK_LT(button_index, click_action.action_keys_for_buttons.size());
     action_key = click_action.action_keys_for_buttons[button_index];
   }
 
