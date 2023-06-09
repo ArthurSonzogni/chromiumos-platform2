@@ -571,6 +571,18 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
     return;
   }
 
+  // Ensure that the cached states of the default physical Device and default
+  // logical Device are refreshed as well.
+  // TODO(b/273741099): Handle the VPN Device. Since the VPN Device is not
+  // exposed in kDevicesProperty, ShillClient never registers a signal handler
+  // for Device property changes on the VPN Device.
+  if (default_physical_device_.ifname == device_it->second.ifname) {
+    default_physical_device_ = device_it->second;
+  }
+  if (default_logical_device_.ifname == device_it->second.ifname) {
+    default_logical_device_ = device_it->second;
+  }
+
   LOG(INFO) << "[" << device_path.value()
             << "]: IPConfig changed: " << new_ip_config;
   for (const auto& handler : ipconfigs_handlers_) {
