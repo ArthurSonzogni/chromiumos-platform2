@@ -16,6 +16,9 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 
+#include "runtime_probe/system/context.h"
+#include "runtime_probe/utils/file_utils.h"
+
 namespace runtime_probe {
 
 namespace {
@@ -25,18 +28,19 @@ std::optional<uint8_t> i2cget(int i2c_bus, int chip_addr, uint8_t data_addr) {
   if (i2c_bus < 0 || chip_addr < 0) {
     return std::nullopt;
   }
+  base::FilePath i2c_filepath =
+      GetRootedPath(base::StringPrintf("/dev/i2c-%d", i2c_bus));
+  base::ScopedFD fd(HANDLE_EINTR(open(i2c_filepath.value().c_str(), O_RDWR)));
 
-  std::string i2c_filename = base::StringPrintf("/dev/i2c-%d", i2c_bus);
-  base::ScopedFD fd(HANDLE_EINTR(open(i2c_filename.c_str(), O_RDWR)));
   if (fd.get() < 0) {
-    LOG(ERROR) << "Could not open file " << i2c_filename;
+    LOG(ERROR) << "Could not open file " << i2c_filepath;
     return std::nullopt;
   }
-  // TODO(kevinptt): move ioctl to runtime_probe::Syscaller.
+  auto* syscaller = Context::Get()->syscaller();
   // If a device is busy (under control of others), the kernel will not allowed
   // to read data with `I2C_SLAVE` to prevent race condition, so we use
   // `I2C_SLAVE_FORCE` instead, which is also used by `i2cget -f`.
-  if (ioctl(fd.get(), I2C_SLAVE_FORCE, chip_addr) < 0) {
+  if (syscaller->Ioctl(fd.get(), I2C_SLAVE_FORCE, chip_addr) < 0) {
     LOG(ERROR) << "Could not set target address to "
                << base::StringPrintf("0x%02x", chip_addr);
     return std::nullopt;
@@ -46,7 +50,7 @@ std::optional<uint8_t> i2cget(int i2c_bus, int chip_addr, uint8_t data_addr) {
                             .command = data_addr,
                             .size = I2C_SMBUS_BYTE_DATA,
                             .data = &data};
-  if (ioctl(fd.get(), I2C_SMBUS, &args)) {
+  if (syscaller->Ioctl(fd.get(), I2C_SMBUS, &args)) {
     LOG(ERROR) << "Could not read byte "
                << base::StringPrintf("0x%02x", data_addr) << " from "
                << base::StringPrintf("0x%02x", chip_addr) << ": "

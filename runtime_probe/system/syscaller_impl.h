@@ -21,6 +21,12 @@ class SyscallerImpl : public Syscaller {
              fd_set* writefds,
              fd_set* exceptfds,
              struct timeval* timeout) override;
+  int Ioctl(int fd,
+            unsigned long request,  // NOLINT(runtime/int)
+            int data) override;
+  int Ioctl(int fd,
+            unsigned long request,  // NOLINT(runtime/int)
+            void* data) override;
 };
 
 }  // namespace runtime_probe

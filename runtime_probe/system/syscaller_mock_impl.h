@@ -23,6 +23,14 @@ class SyscallerMockImpl : public Syscaller {
               Select,
               (int, fd_set*, fd_set*, fd_set*, struct timeval*),
               (override));
+  MOCK_METHOD(int,
+              Ioctl,
+              (int, unsigned long, int),  // NOLINT(runtime/int)
+              (override));
+  MOCK_METHOD(int,
+              Ioctl,
+              (int, unsigned long, void*),  // NOLINT(runtime/int)
+              (override));
 };
 
 }  // namespace runtime_probe

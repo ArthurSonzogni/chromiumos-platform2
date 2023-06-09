@@ -55,6 +55,7 @@ source_set("functions") {
 if (use.test) {
   source_set("test") {
     sources = [
+      "ap_i2c_test.cc",
       "ata_storage_test.cc",
       "audio_codec_test.cc",
       "ec_i2c_test.cc",

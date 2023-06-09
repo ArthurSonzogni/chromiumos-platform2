@@ -21,6 +21,12 @@ class Syscaller {
                      fd_set* writefds,
                      fd_set* exceptfds,
                      struct timeval* timeout) = 0;
+  virtual int Ioctl(int fd,
+                    unsigned long request,  // NOLINT(runtime/int)
+                    int data) = 0;
+  virtual int Ioctl(int fd,
+                    unsigned long request,  // NOLINT(runtime/int)
+                    void* data) = 0;
 };
 
 }  // namespace runtime_probe
