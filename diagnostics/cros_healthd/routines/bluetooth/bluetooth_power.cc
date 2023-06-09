@@ -17,6 +17,7 @@
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
+#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 
 namespace diagnostics {
 namespace {
@@ -42,6 +43,11 @@ void BluetoothPowerRoutine::Start() {
       base::BindOnce(&BluetoothPowerRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       kPowerRoutineTimeout);
+
+  event_subscriptions_.push_back(
+      context_->bluetooth_event_hub()->SubscribeAdapterPropertyChanged(
+          base::BindRepeating(&BluetoothPowerRoutine::OnAdapterPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr())));
 
   RunPreCheck(
       /*on_passed=*/base::BindOnce(&BluetoothPowerRoutine::RunNextStep,
@@ -103,12 +109,23 @@ void BluetoothPowerRoutine::RunNextStep() {
                        kBluetoothRoutineUnexpectedFlow);
       break;
     case TestStep::kCheckPoweredStatusOff:
+      // We can't get the power off event when the power is already off.
+      // Create another flow to skip event observation.
+      if (!GetAdapter()->powered()) {
+        // Verify the powered status in HCI level directly.
+        context_->executor()->GetHciDeviceConfig(
+            base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
+                           weak_ptr_factory_.GetWeakPtr()));
+        return;
+      }
+      // Wait for the property changed event in |OnAdapterPropertyChanged|.
       EnsureAdapterPoweredState(
           /*powered=*/false,
           base::BindOnce(&BluetoothPowerRoutine::HandleAdapterPoweredChanged,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckPoweredStatusOn:
+      // Wait for the property changed event in |OnAdapterPropertyChanged|.
       EnsureAdapterPoweredState(
           /*powered=*/true,
           base::BindOnce(&BluetoothPowerRoutine::HandleAdapterPoweredChanged,
@@ -127,6 +144,14 @@ void BluetoothPowerRoutine::HandleAdapterPoweredChanged(bool is_success) {
                      kBluetoothRoutineFailedChangePowered);
     return;
   }
+}
+
+void BluetoothPowerRoutine::OnAdapterPropertyChanged(
+    org::bluez::Adapter1ProxyInterface* adapter,
+    const std::string& property_name) {
+  if (adapter != GetAdapter() || property_name != adapter->PoweredName() ||
+      (step_ != kCheckPoweredStatusOff && step_ != kCheckPoweredStatusOn))
+    return;
 
   // Verify the powered status in HCI level first.
   context_->executor()->GetHciDeviceConfig(

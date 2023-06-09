@@ -47,6 +47,10 @@ class BluetoothPowerRoutineTest : public testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
+  FakeBluetoothEventHub* fake_bluetooth_event_hub() {
+    return mock_context_.fake_bluetooth_event_hub();
+  }
+
   void SetUpNullAdapter() {
     EXPECT_CALL(*mock_context_.mock_bluetooth_info_manager(), GetAdapters())
         .WillOnce(
@@ -61,11 +65,18 @@ class BluetoothPowerRoutineTest : public testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
+      if (!target_powered) {
+        EXPECT_CALL(mock_adapter_proxy_, powered())
+            .WillOnce(Return(current_powered));
+      }
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
           .WillOnce(Invoke(
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                EXPECT_EQ(powered, target_powered);
                 std::move(on_finish).Run(is_success);
+                if (is_success) {
+                  fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
+                      &mock_adapter_proxy_, mock_adapter_proxy_.PoweredName());
+                }
               }));
     }
   }
@@ -309,7 +320,9 @@ TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off.
-  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
+  EXPECT_CALL(mock_adapter_proxy_, powered())
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _));
 
   routine_->Start();

@@ -44,12 +44,17 @@ class BluetoothPowerRoutine final : public DiagnosticRoutineWithStatus,
   // Handle the response of setting the adapter power.
   void HandleAdapterPoweredChanged(bool is_success);
 
+  // Observe adapter property changed events to check the powered property of
+  // adapter in D-Bus level.
+  void OnAdapterPropertyChanged(org::bluez::Adapter1ProxyInterface* adapter,
+                                const std::string& property_name);
+
   // Handle the response of hciconfig and check the powered property of adapter
   // in HCI level.
   void HandleHciConfigResponse(
       ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
-  // Check the powered property of adapter in D-Bus level.
+  // Check the powered property of adapter in D-Bus and HCI level.
   void VerifyAdapterPowered(bool hci_powered);
 
   // Routine timeout function.
