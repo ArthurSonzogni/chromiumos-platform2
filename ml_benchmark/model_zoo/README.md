@@ -10,7 +10,7 @@ DUT via the `chromeos-base/ml-test-assets` package:
 
 `emerge-${BOARD} ml-test-assets && cros deploy <DUT> ml-test-assets`
 
-The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.2.tar.xz)
+The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.3.tar.xz)
 
 ## Tools
 
@@ -56,6 +56,19 @@ Example usage:
 |----------------------------|--------------:|---------------------------------------:|-------------|------------|
 | mobilenet_v2_1.0_224       |          <= 5 | avg_err <=0.00005<br/>std_dev <=6e-06  |         TBD |    <=150MB |
 | mobilenet_v2_1.0_224_quant |          <= 5 | avg_err <=1.5<br/>std_dev <=0.2        |         TBD |    <=150MB |
+
+### Audio Models
+
+**Note: These models are running on CPU in production**
+
+**Note2: While running `benchmark_model` with following models,
+add `--run_delay=<secs>` to simulate audio server behavior.**
+
+| Model       | Latency on CPU (ms) | Extra arguments    | sha256                                                           |
+|-------------|--------------------:|--------------------| ---------------------------------------------------------------- |
+| lstm        |                <= 1 | `--run_delay=0.01` | 381506dd6209615e57285531d5e97c159ff41605341d184c7fd869eb8e364cfe |
+| seanet_wave |                <= 2 | `--run_delay=0.02` | 78c23dbb0e82d3cd59d0027fbf5b4351c4125494d7bccb52eb6b509c5e72fca8 |
+| seanet_stft |                <= 2 | `--run_delay=0.02` | a46d719aa611ceddc41f6a9437946f8ebb06cd774fc6db01b766110113f9be1b |
 
 # ML accelerator requirements
 
