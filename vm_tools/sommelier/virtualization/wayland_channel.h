@@ -193,8 +193,10 @@ class VirtGpuChannel : public WaylandChannel {
  public:
   VirtGpuChannel()
       : virtgpu_{-1},
-        ring_addr_{MAP_FAILED},
-        ring_handle_{},
+        query_ring_addr_{MAP_FAILED},
+        query_ring_handle_{},
+        channel_ring_addr_{MAP_FAILED},
+        channel_ring_handle_{},
         supports_dmabuf_(false),
         descriptor_id_{1} {}
   ~VirtGpuChannel() override;
@@ -245,6 +247,7 @@ class VirtGpuChannel : public WaylandChannel {
   int32_t submit_cmd(uint32_t* cmd,
                      uint32_t size,
                      uint32_t ring_idx,
+                     uint32_t ring_handle,
                      bool wait);
   int32_t channel_poll();
   int32_t close_gem_handle(uint32_t gem_handle);
@@ -272,9 +275,18 @@ class VirtGpuChannel : public WaylandChannel {
                       int& fd,
                       size_t& index);
 
+  int32_t create_ring(uint32_t& out_handle,
+                      uint32_t& out_res_id,
+                      void*& out_addr);
+
   int32_t virtgpu_;
-  void* ring_addr_;
-  uint32_t ring_handle_;
+
+  void* query_ring_addr_;
+  uint32_t query_ring_handle_;
+
+  void* channel_ring_addr_;
+  uint32_t channel_ring_handle_;
+
   bool supports_dmabuf_;
   // Matches the crosvm-side descriptor_id, must be an odd number.
   uint32_t descriptor_id_;
