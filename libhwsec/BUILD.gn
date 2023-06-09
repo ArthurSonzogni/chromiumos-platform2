@@ -254,6 +254,7 @@ source_set("hardware_abstraction_internal_library") {
   sources = [
     "backend/digest_algorithms.cc",
     "error/tpm_retry_handler.cc",
+    "frontend/arc_attestation/frontend_impl.cc",
     "frontend/attestation/frontend_impl.cc",
     "frontend/bootlockbox/frontend_impl.cc",
     "frontend/chaps/frontend_impl.cc",

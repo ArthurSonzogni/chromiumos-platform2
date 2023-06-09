@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "libhwsec/frontend/arc_attestation/frontend.h"
 #include "libhwsec/frontend/attestation/frontend.h"
 #include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
@@ -47,6 +48,8 @@ class Factory {
   GetLocalDataMigrationFrontend() = 0;
   virtual std::unique_ptr<const AttestationFrontend>
   GetAttestationFrontend() = 0;
+  virtual std::unique_ptr<const ArcAttestationFrontend>
+  GetArcAttestationFrontend() = 0;
 };
 
 }  // namespace hwsec

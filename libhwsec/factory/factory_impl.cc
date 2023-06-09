@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/frontend/arc_attestation/frontend_impl.h"
 #include "libhwsec/frontend/attestation/frontend_impl.h"
 #include "libhwsec/frontend/bootlockbox/frontend_impl.h"
 #include "libhwsec/frontend/chaps/frontend_impl.h"
@@ -85,6 +86,11 @@ FactoryImpl::GetLocalDataMigrationFrontend() {
 std::unique_ptr<const AttestationFrontend>
 FactoryImpl::GetAttestationFrontend() {
   return std::make_unique<AttestationFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<const ArcAttestationFrontend>
+FactoryImpl::GetArcAttestationFrontend() {
+  return std::make_unique<ArcAttestationFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

@@ -69,6 +69,10 @@ class MockFactory : public Factory {
               GetAttestationFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<const ArcAttestationFrontend>,
+              GetArcAttestationFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

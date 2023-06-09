@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "libhwsec/factory/factory.h"
+#include "libhwsec/frontend/arc_attestation/frontend.h"
 #include "libhwsec/frontend/attestation/frontend.h"
 #include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
@@ -52,6 +53,8 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<const LocalDataMigrationFrontend>
   GetLocalDataMigrationFrontend() override;
   std::unique_ptr<const AttestationFrontend> GetAttestationFrontend() override;
+  std::unique_ptr<const ArcAttestationFrontend> GetArcAttestationFrontend()
+      override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;
