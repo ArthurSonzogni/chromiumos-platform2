@@ -286,6 +286,8 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
       nsinfo.current_outbound_device = shill_device;
     }
   }
+
+  arc_svc_->UpdateDeviceIPConfig(shill_device);
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {

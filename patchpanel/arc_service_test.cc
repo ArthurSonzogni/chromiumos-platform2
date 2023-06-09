@@ -18,6 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
@@ -83,6 +84,7 @@ class ArcServiceTest : public testing::Test {
     addr_mgr_ = std::make_unique<AddressManager>();
     metrics_ = std::make_unique<MetricsLibraryMock>();
     guest_devices_.clear();
+    shill_devices_.clear();
   }
 
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
@@ -96,12 +98,14 @@ class ArcServiceTest : public testing::Test {
                      const Device& device,
                      Device::ChangeEvent event) {
     guest_devices_[device.host_ifname()] = event;
+    shill_devices_[device.host_ifname()] = shill_device;
   }
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MetricsLibraryMock> metrics_;
   std::map<std::string, Device::ChangeEvent> guest_devices_;
+  std::map<std::string, ShillClient::Device> shill_devices_;
 };
 
 TEST_F(ArcServiceTest, NotStarted_AddDevice) {
@@ -457,6 +461,75 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
+TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
+  auto svc = NewService(ArcService::ArcType::kContainer);
+
+  // New physical device eth0.
+  auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
+  eth_dev.ipconfig.ipv4_prefix_length = 24;
+  eth_dev.ipconfig.ipv4_address = "192.168.1.16";
+  eth_dev.ipconfig.ipv4_gateway = "192.168.1.1";
+  eth_dev.ipconfig.ipv4_dns_addresses = {"192.168.1.1", "8.8.8.8"};
+  svc->AddDevice(eth_dev);
+
+  // ArcService starts
+  EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetharc0"),
+                              StrEq("arc0"), _, kArcGuestCIDR, false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetheth0"),
+                              StrEq("eth0"), _, kFirstEthGuestCIDR, false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
+                                             kFirstEthGuestIP,
+                                             TrafficSource::kArc, false, _));
+  EXPECT_CALL(*datapath_,
+              AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
+                                 IPv4Address(100, 115, 92, 6)));
+  svc->Start(kTestPID);
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+  ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
+  EXPECT_EQ("192.168.1.16",
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_address);
+  EXPECT_EQ("192.168.1.1",
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
+
+  eth_dev.ipconfig.ipv4_prefix_length = 16;
+  eth_dev.ipconfig.ipv4_address = "172.16.0.72";
+  eth_dev.ipconfig.ipv4_gateway = "172.16.0.1";
+  eth_dev.ipconfig.ipv4_dns_addresses = {"172.17.1.1"};
+  svc->UpdateDeviceIPConfig(eth_dev);
+
+  // ArcService stops
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
+      .WillOnce(Return(true));
+  svc->Stop(kTestPID);
+  ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
+  EXPECT_EQ("172.16.0.72",
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_address);
+  EXPECT_EQ("172.16.0.1",
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
+}
+
 TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
       .WillOnce(Return(true));
@@ -493,8 +566,10 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   // Expectations for arc0 teardown.
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0"))).Times(1);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0"))).Times(1);
+  // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
+  // Expectations for container setup  teardown.
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
   EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
       .WillOnce(Return(true));

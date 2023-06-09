@@ -20,6 +20,7 @@
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/address_manager.h"
@@ -600,6 +601,27 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   // the Device type from shill DBus interface by interface name.
   ReleaseConfig(shill_device.type, it->second->release_config());
   devices_.erase(it);
+}
+
+void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
+  auto shill_device_it = shill_devices_.find(shill_device.ifname);
+  if (shill_device_it == shill_devices_.end()) {
+    LOG(WARNING) << "Unknown shill Device " << shill_device;
+    return;
+  }
+  shill_device_it->second = shill_device;
+
+  auto arc_dev_it = devices_.find(shill_device.ifname);
+  if (arc_dev_it == devices_.end()) {
+    // If ARC is not running, ARC devices are not created.
+    return;
+  }
+
+  auto new_device = std::make_unique<Device>(
+      arc_dev_it->second->type(), shill_device,
+      arc_dev_it->second->host_ifname(), arc_dev_it->second->guest_ifname(),
+      arc_dev_it->second->release_config());
+  arc_dev_it->second = std::move(new_device);
 }
 
 std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {

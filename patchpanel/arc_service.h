@@ -70,6 +70,10 @@ class ArcService {
   // |ifname|.
   void RemoveDevice(const ShillClient::Device& shill_device);
 
+  // Notifies ArcService that the IP configuration of the physical shill Device
+  // |shill_device| changed.
+  void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
+
  private:
   // Creates ARC interface configurations for all available IPv4 subnets which
   // will be assigned to ARC Devices as they are added.
