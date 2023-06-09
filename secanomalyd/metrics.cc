@@ -46,6 +46,8 @@ constexpr char kSecCompCoverageHistogramName[] =
     "ChromeOS.Sandboxing.SecCompCoverage";
 constexpr char kNonRootProcPercentageHistogramName[] =
     "ChromeOS.Sandboxing.NonRootProcPercentage";
+constexpr char kUnprivProcPercentageHistogramName[] =
+    "ChromeOS.Sandboxing.UnprivProcPercentage";
 
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
@@ -99,6 +101,12 @@ bool SendNonRootProcPercentageToUMA(unsigned int proc_percentage) {
   InitializeMetricsIfNecessary();
   return metrics_library->SendPercentageToUMA(
       kNonRootProcPercentageHistogramName, static_cast<int>(proc_percentage));
+}
+
+bool SendUnprivProcPercentageToUMA(unsigned int proc_percentage) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendPercentageToUMA(
+      kUnprivProcPercentageHistogramName, static_cast<int>(proc_percentage));
 }
 
 bool SendAnomalyUploadResultToUMA(bool success) {

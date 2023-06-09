@@ -30,6 +30,8 @@ bool SendSecCompCoverageToUMA(unsigned int coverage_percentage);
 
 bool SendNonRootProcPercentageToUMA(unsigned int proc_percentage);
 
+bool SendUnprivProcPercentageToUMA(unsigned int proc_percentage);
+
 bool SendAnomalyUploadResultToUMA(bool success);
 
 #endif  // SECANOMALYD_METRICS_H_

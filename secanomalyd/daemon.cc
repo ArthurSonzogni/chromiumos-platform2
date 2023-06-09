@@ -110,6 +110,27 @@ bool EmitNonRootProcPercentageUma(const ProcEntries& proc_entries) {
   return true;
 }
 
+bool EmitUnprivProcPercentageUma(const ProcEntries& proc_entries) {
+  size_t total_proc_count = proc_entries.size();
+  size_t unpriv_proc_count = 0;
+  unpriv_proc_count = std::count_if(
+      proc_entries.begin(), proc_entries.end(), [](const ProcEntry& entry) {
+        return entry.sandbox_status()[ProcEntry::kNoCapSysAdminBit] == 1 &&
+               entry.sandbox_status()[ProcEntry::kNonRootBit] == 1;
+      });
+  unsigned int unpriv_proc_percentage =
+      static_cast<unsigned int>(round((static_cast<float>(unpriv_proc_count) /
+                                       static_cast<float>(total_proc_count)) *
+                                      100));
+
+  VLOG(1) << "Reporting unpriv process percentage UMA metric";
+  if (!SendUnprivProcPercentageToUMA(unpriv_proc_percentage)) {
+    LOG(WARNING) << "Could not upload unpriv process percentage UMA metric";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 int Daemon::OnInit() {
@@ -356,7 +377,8 @@ void Daemon::EmitSandboxingUma() {
   system_context_->Refresh(/*skip_known_mount_refresh=*/true);
 
   if ((!has_emitted_seccomp_coverage_uma_ ||
-       !has_emitted_nonroot_proc_percentage_uma_) &&
+       !has_emitted_nonroot_proc_percentage_uma_ ||
+       !has_emitted_unpriv_proc_percentage_uma_) &&
       system_context_->IsUserLoggedIn()) {
     MaybeProcEntries maybe_proc_entries =
         ReadProcesses(ProcessFilter::kNoKernelTasks);
@@ -373,6 +395,11 @@ void Daemon::EmitSandboxingUma() {
     if (!has_emitted_nonroot_proc_percentage_uma_) {
       has_emitted_nonroot_proc_percentage_uma_ =
           EmitNonRootProcPercentageUma(maybe_proc_entries.value());
+    }
+
+    if (!has_emitted_unpriv_proc_percentage_uma_) {
+      has_emitted_unpriv_proc_percentage_uma_ =
+          EmitUnprivProcPercentageUma(maybe_proc_entries.value());
     }
   }
 }

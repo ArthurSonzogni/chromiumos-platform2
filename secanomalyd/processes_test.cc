@@ -91,11 +91,11 @@ class ProcessesTestFixture : public ::testing::Test {
       "SigCgt:	0000000012345678\n"
       "CapInh:	0000000000000000\n"
       "CapPrm:	000003ffffffffff\n"
-      "CapEff:	000003ffffffffff\n"
+      "CapEff:	$3\n"
       "CapBnd:	000003ffffffffff\n"
       "CapAmb:	0000000000000000\n"
-      "NoNewPrivs:	$3\n"
-      "Seccomp:	$4\n"
+      "NoNewPrivs:	$4\n"
+      "Seccomp:	$5\n"
       "Seccomp_filters:	0\n"
       "Speculation_Store_Bypass:	vulnerable\n"
       "SpeculationIndirectBranch:	always enabled\n"
@@ -124,6 +124,7 @@ class ProcessesTestFixture : public ::testing::Test {
     std::string uid;
     std::string ppid;
     std::string name;
+    std::string cap_eff;
     std::string no_new_privs;
     std::string seccomp;
     std::string cmdline;
@@ -167,6 +168,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "0",
            .ppid = "0",
            .name = "init",
+           .cap_eff = "000001ffffffffff",
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = "/sbin/init",
@@ -179,6 +181,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "0",
            .ppid = "1",
            .name = "normal_process",
+           .cap_eff = "ffffffffffffffff",  // All caps present
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = std::string("normal_process\0--start", 22),
@@ -191,6 +194,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "3",
            .ppid = "4",
            .name = "normal_process_secure",
+           .cap_eff = "0000000000000000",  // No caps present
            .no_new_privs = "1",
            .seccomp = "2",
            .cmdline = std::string("normal_process\0--start", 22),
@@ -203,6 +207,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "4",
            .ppid = "1",
            .name = "no_cmdline",
+           .cap_eff = "ffffffffffdfffff",  // Only missing CAP_SYS_ADMIN
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = "",
@@ -215,6 +220,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "5",
            .ppid = "1",
            .name = "invalid_pidns",
+           .cap_eff = "0000000000200000",  // Only CAP_SYS_ADMIN present
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = std::string("invalid_pidns\0--start", 21),
@@ -227,6 +233,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "6",
            .ppid = "abc",
            .name = "invalid_ppid",
+           .cap_eff = "efg",  // Invalid hex
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = std::string("invalid_ppid\0--start", 20),
@@ -239,6 +246,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "7",
            .ppid = "1",
            .name = "status_read_failure",
+           .cap_eff = "000003ffffffffff",
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = "",
@@ -251,6 +259,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "0",
            .ppid = "1",
            .name = "invalid_pid",
+           .cap_eff = "000003ffffffffff",
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = std::string("invalid_pid\0--start", 19),
@@ -263,6 +272,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "8",
            .ppid = "9",
            .name = "not_in_init_pid_ns",
+           .cap_eff = "000003ffffffffff",
            .no_new_privs = "1",
            .seccomp = "1",
            .cmdline = std::string("not_in_init_pid_ns\0--start", 26),
@@ -275,6 +285,7 @@ class ProcessesTestFixture : public ::testing::Test {
            .uid = "0",
            .ppid = "2",
            .name = "kernel_task",
+           .cap_eff = "ffffffffffffffff",
            .no_new_privs = "0",
            .seccomp = "0",
            .cmdline = "",
@@ -286,8 +297,9 @@ class ProcessesTestFixture : public ::testing::Test {
  private:
   void CreateFakeProcDir(MockProccess& mp, base::FilePath proc_dir) {
     // Generates content for the process status file, based on template.
-    std::string status = absl::Substitute(kStatusTemplate, mp.name, mp.ppid,
-                                          mp.uid, mp.no_new_privs, mp.seccomp);
+    std::string status =
+        absl::Substitute(kStatusTemplate, mp.name, mp.ppid, mp.uid, mp.cap_eff,
+                         mp.no_new_privs, mp.seccomp);
 
     ASSERT_TRUE(base::WriteFile(proc_dir.Append("status"), status));
     ASSERT_TRUE(base::WriteFile(proc_dir.Append("cmdline"), mp.cmdline));
@@ -307,7 +319,7 @@ TEST_F(ProcessesTestFixture, InitProcess) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(1, 0, 402653184, 402653184, mock_processes_[key].name,
-                          mock_processes_[key].cmdline, 0b00000);
+                          mock_processes_[key].cmdline, 0b000000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -319,7 +331,7 @@ TEST_F(ProcessesTestFixture, NormalProcess) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(2, 1, 402653184, 402653184, mock_processes_[key].name,
-                          "normal_process --start", 0b00000);
+                          "normal_process --start", 0b000000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -331,7 +343,7 @@ TEST_F(ProcessesTestFixture, NormalProcessSecure) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(3, 4, 402653184, 402653184, mock_processes_[key].name,
-                          "normal_process --start", 0b11010);
+                          "normal_process --start", 0b111010);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -343,7 +355,7 @@ TEST_F(ProcessesTestFixture, EmptyCmdline) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(4, 1, 402653184, 402653184, mock_processes_[key].name,
-                          "[" + mock_processes_[key].name + "]", 0b10000);
+                          "[" + mock_processes_[key].name + "]", 0b110000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -355,7 +367,7 @@ TEST_F(ProcessesTestFixture, InvalidPIDNS) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(5, 1, 0, 402653184, mock_processes_[key].name,
-                          "invalid_pidns --start", 0b10000);
+                          "invalid_pidns --start", 0b010000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);
@@ -367,7 +379,7 @@ TEST_F(ProcessesTestFixture, InvalidPPID) {
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe =
       CreateMockProcEntry(6, 0, 402653184, 402653184, mock_processes_[key].name,
-                          "invalid_ppid --start", 0b10000);
+                          "invalid_ppid --start", 0b010000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
   ExpectEqProcEntry(actual_pe_ptr.value(), expected_pe);

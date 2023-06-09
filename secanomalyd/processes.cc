@@ -46,6 +46,7 @@ static constexpr LazyRE2 kProcNsPattern = {R"([a-z]+:\[(\d+)\])"};
 constexpr char kSecCompModeDisabled[] = "0";
 // SECCOMP_MODE_STRICT is 1.
 // SECCOMP_MODE_FILTER is 2.
+constexpr uint64_t kCapSysAdminMask = 1 << 21;
 
 // Reads a file under a directory, given the FD for the directory. This is
 // useful for when the OS reuses a PID, in which case the underlying FD becomes
@@ -149,8 +150,8 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // with a tab: Attribute:\tValue1\tValue2\tValue3\n...
   // See https://man7.org/linux/man-pages/man5/proc.5.html for the list of
   // attributes in this file.
-  // In our case we parse the values of `Name`, `PPid`, `Uid`, `NoNewPrivs` and
-  // `Seccomp`.
+  // In our case we parse the values of `Name`, `PPid`, `Uid`, `CapEff`,
+  // `NoNewPrivs` and `Seccomp`.
   base::StringTokenizer t(status_file_content, "\n");
   while (t.GetNext()) {
     base::StringPiece line = t.token_piece();
@@ -172,6 +173,14 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
           all_uids.length() - all_uids.substr(all_uids.find("\t")).length();
       if (std::string(all_uids.substr(0, real_uid_len)) != "0") {
         sandbox_status.set(kNonRootBit);
+      }
+    }
+    if (base::StartsWith(line, "CapEff:")) {
+      uint64_t cap_eff_hex;
+      if (base::HexStringToUInt64(line.substr(line.rfind("\t") + 1),
+                                  &cap_eff_hex) &&
+          (cap_eff_hex & kCapSysAdminMask) == 0) {
+        sandbox_status.set(kNoCapSysAdminBit);
       }
     }
     if (base::StartsWith(line, "NoNewPrivs:") &&

@@ -70,13 +70,11 @@ class Daemon : public brillo::DBusDaemon {
   // as a change in the Landlock state would require a system reboot.
   bool has_emitted_landlock_status_uma_ = false;
 
-  // SecComp coverage is sent only once per execution of secanomalyd and only in
-  // the logged-in state. We only need a rough percentage.
+  // Following sandboxing metrics are sent only once per execution of
+  // secanomalyd and only in the logged-in state.
   bool has_emitted_seccomp_coverage_uma_ = false;
-
-  // The percentage of non-root processes is sent once per execution of
-  // secanomalyd. This is done only when the user is logged-in.
   bool has_emitted_nonroot_proc_percentage_uma_ = false;
+  bool has_emitted_unpriv_proc_percentage_uma_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;
