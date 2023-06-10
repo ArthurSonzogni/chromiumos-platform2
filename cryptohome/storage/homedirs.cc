@@ -119,7 +119,7 @@ bool HomeDirs::MustRunAutomaticCleanupOnLogin() {
     return false;
 
   // If the device is not enterprise owned, do not run cleanup.
-  if (!enterprise_owned_) {
+  if (!enterprise_owned()) {
     return false;
   }
 
@@ -205,7 +205,7 @@ HomeDirs::CryptohomesRemovedStatus HomeDirs::RemoveCryptohomesBasedOnPolicy() {
   auto state = HomeDirs::CryptohomesRemovedStatus::kError;
   ObfuscatedUsername owner;
   bool has_owner = GetOwner(&owner);
-  if (!enterprise_owned_ && !has_owner) {
+  if (!enterprise_owned() && !has_owner) {
     return state;
   }
 
@@ -219,7 +219,7 @@ HomeDirs::CryptohomesRemovedStatus HomeDirs::RemoveCryptohomesBasedOnPolicy() {
   size_t cryptohomes_removed = 0;
   EphemeralPolicyUtil ephemeral_util(settings);
   for (const auto& dir : homedirs) {
-    if (has_owner && !enterprise_owned_ && dir.obfuscated == owner) {
+    if (has_owner && !enterprise_owned() && dir.obfuscated == owner) {
       continue;  // Owner vault shouldn't be remove.
     }
 
@@ -472,7 +472,7 @@ bool HomeDirs::GetOwner(ObfuscatedUsername* owner) {
 bool HomeDirs::IsOrWillBeOwner(const Username& account_id) {
   Username owner;
   GetPlainOwner(&owner);
-  return !enterprise_owned_ && (owner->empty() || account_id == owner);
+  return !enterprise_owned() && (owner->empty() || account_id == owner);
 }
 
 bool HomeDirs::Create(const Username& username) {
