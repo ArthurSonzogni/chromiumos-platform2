@@ -81,7 +81,7 @@ void VolumeButtonRoutine::OnStart() {
 
   timeout_callback_.Reset(base::BindOnce(&VolumeButtonRoutine::OnTimeout,
                                          weak_ptr_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, timeout_callback_.callback(), timeout_);
 }
 

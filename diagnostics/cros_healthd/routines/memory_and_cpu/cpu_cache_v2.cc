@@ -82,7 +82,7 @@ void CpuCacheRoutineV2::Run(
                      "process control disconnected before routine finished")));
 
   start_ticks_ = tick_clock_.NowTicks();
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&CpuCacheRoutineV2::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -103,7 +103,7 @@ void CpuCacheRoutineV2::UpdatePercentage() {
   }
 
   if (state()->percentage < 99) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&CpuCacheRoutineV2::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),

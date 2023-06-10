@@ -81,7 +81,7 @@ void CpuStressRoutineV2::Run(
                      "process control disconnected before routine finished")));
 
   start_ticks_ = tick_clock_.NowTicks();
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&CpuStressRoutineV2::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -102,7 +102,7 @@ void CpuStressRoutineV2::UpdatePercentage() {
   }
 
   if (state()->percentage < 99) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&CpuStressRoutineV2::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),

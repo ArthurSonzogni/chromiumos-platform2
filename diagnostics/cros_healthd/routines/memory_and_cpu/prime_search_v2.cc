@@ -82,7 +82,7 @@ void PrimeSearchRoutineV2::Run(
       std::move(notify_resource_queue_finished));
 
   start_ticks_ = tick_clock_.NowTicks();
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&PrimeSearchRoutineV2::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -102,7 +102,7 @@ void PrimeSearchRoutineV2::UpdatePercentage() {
   }
 
   if (state()->percentage < 99) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&PrimeSearchRoutineV2::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),

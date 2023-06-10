@@ -53,7 +53,7 @@ void PowerButtonRoutine::Start() {
 
   timeout_callback_.Reset(base::BindOnce(&PowerButtonRoutine::OnTimeout,
                                          weak_ptr_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, timeout_callback_.callback(), base::Seconds(timeout_seconds_));
 }
 
