@@ -417,16 +417,15 @@ void WireGuardDriver::UnloadCredentials() {
 
 void WireGuardDriver::CreateKernelWireGuardInterface() {
   auto link_ready_callback = base::BindOnce(
-      &WireGuardDriver::ConfigureInterface, weak_factory_.GetWeakPtr(),
-      /*created_in_kernel=*/true);
-  const std::string err_msg = "Failed to create wireguard interface in kernel";
+      &WireGuardDriver::ConfigureInterface, weak_factory_.GetWeakPtr());
+  constexpr base::StringPiece kErrMsg = "Failed to create wireguard interface";
   auto failure_callback =
       base::BindOnce(&WireGuardDriver::FailService, weak_factory_.GetWeakPtr(),
-                     Service::kFailureInternal, err_msg);
+                     Service::kFailureInternal, kErrMsg);
   if (!manager()->device_info()->CreateWireGuardInterface(
           kDefaultInterfaceName, std::move(link_ready_callback),
           std::move(failure_callback))) {
-    FailService(Service::kFailureInternal, err_msg);
+    FailService(Service::kFailureInternal, kErrMsg);
   }
 }
 
@@ -475,13 +474,11 @@ std::string WireGuardDriver::GenerateConfigFileContents() {
   return base::JoinString(lines, "\n");
 }
 
-void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
-                                         const std::string& interface_name,
+void WireGuardDriver::ConfigureInterface(const std::string& interface_name,
                                          int interface_index) {
-  LOG(INFO) << "WireGuard interface " << interface_name << " was created "
-            << (created_in_kernel ? "in kernel" : "by userspace program")
-            << ". Start configuration";
-  kernel_interface_open_ = created_in_kernel;
+  LOG(INFO) << "WireGuard interface " << interface_name
+            << " was created. Start configuration";
+  kernel_interface_open_ = true;
 
   if (!event_handler_) {
     LOG(ERROR) << "Missing event_handler_";

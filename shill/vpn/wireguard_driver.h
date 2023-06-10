@@ -76,8 +76,7 @@ class WireGuardDriver : public VPNDriver {
   std::string GenerateConfigFileContents();
 
   // Configures the interface via wireguard-tools when the interface is ready.
-  void ConfigureInterface(bool created_in_kernel,
-                          const std::string& interface_name,
+  void ConfigureInterface(const std::string& interface_name,
                           int interface_index);
   void OnConfigurationDone(int exit_code);
 
