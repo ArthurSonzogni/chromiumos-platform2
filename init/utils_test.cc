@@ -33,7 +33,8 @@ constexpr char kEFIPartition[] = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B";
 
 }  // namespace
 
-TEST(GetRootDevice, NoStripPartition) {
+// TODO(b/286154453): Appears to fail when host OS has md array.
+TEST(GetRootDevice, DISABLED_NoStripPartition) {
   base::FilePath root_dev;
   char dev_path[PATH_MAX];
   int ret = rootdev(dev_path, sizeof(dev_path), true, false);
