@@ -145,7 +145,7 @@ int64_t GetVmMemoryMiB() {
   int64_t vm_memory_mb;
   if (sys_memory_mb >= 4096) {
     // On devices with >=4GB RAM, reserve 1GB for other processes.
-    vm_memory_mb = sys_memory_mb - 1024;
+    vm_memory_mb = sys_memory_mb - kHostReservedNumMiB;
   } else {
     vm_memory_mb = sys_memory_mb / 4 * 3;
   }

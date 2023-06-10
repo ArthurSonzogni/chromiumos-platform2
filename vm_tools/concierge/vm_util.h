@@ -44,6 +44,9 @@ enum VmInfo_VmType : int;
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
+// Reserved memory for host when sizing a VM.
+constexpr int kHostReservedNumMiB = 1024;
+
 // Describes key components of a VM.
 struct VMImageSpec {
   base::FilePath kernel;
