@@ -34,11 +34,11 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/thread.h>
-#include <base/guid.h>
 #include <base/location.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+#include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "missive/analytics/metrics.h"
@@ -366,7 +366,7 @@ StatusOr<GenerationGuid> NewStorage::CreateGenerationGuidForDMToken(
   }
 
   GenerationGuid generation_guid =
-      base::GUID::GenerateRandomV4().AsLowercaseString();
+      base::Uuid::GenerateRandomV4().AsLowercaseString();
 
   dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)] =
       generation_guid;

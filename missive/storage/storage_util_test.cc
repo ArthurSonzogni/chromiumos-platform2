@@ -7,9 +7,9 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/guid.h>
 #include <base/location.h>
 #include <base/test/task_environment.h>
+#include <base/uuid.h>
 #include <gtest/gtest.h>
 
 #include "base/files/file_util.h"
@@ -40,7 +40,7 @@ TEST_F(StorageDirectoryTest, QueueDirectoriesAreFound) {
   // New queues have a generation guid as an extension, e.g.
   // foo/bar/FastBatch.JsK32KLs
   const auto generation_guid =
-      base::GUID::GenerateRandomV4().AsLowercaseString();
+      base::Uuid::GenerateRandomV4().AsLowercaseString();
   StorageDirectory::Set expected_queue_directories;
   for (const auto& [priority, options] : queue_options) {
     // Remove any existing extension first so that we are certain what the

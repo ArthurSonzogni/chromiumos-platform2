@@ -14,9 +14,9 @@
 #include <base/check_op.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/uuid.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -108,7 +108,7 @@ void Service::SendIdReleased(const std::string& id) {
 
 // static
 bool Service::IsValidVirtualFileId(const std::string& id) {
-  return base::GUID::ParseCaseInsensitive(id).is_valid();
+  return base::Uuid::ParseCaseInsensitive(id).is_valid();
 }
 
 void Service::GenerateVirtualFileId(
@@ -125,7 +125,7 @@ void Service::GenerateVirtualFileId(
     return;
   }
   // Generate a new ID.
-  std::string id = base::GenerateGUID();
+  std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
 
   // Set the size of the ID.
   // NOTE: Currently, updating the size value is not supported. If the virtual

@@ -10,12 +10,12 @@
 #include "base/command_line.h"
 #include "base/containers/ring_buffer.h"
 #include "base/functional/bind.h"
-#include "base/guid.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/synchronization/waitable_event.h"
+#include "base/uuid.h"
 #include <brillo/process/process.h>
 #include "brillo/syslog_logging.h"
 #include "components/feedback/feedback_common.h"
@@ -104,7 +104,8 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
     return false;
   }
 
-  report->AddLog("unique_guid", base::GenerateGUID());
+  report->AddLog("unique_guid",
+                 base::Uuid::GenerateRandomV4().AsLowercaseString());
   report->set_product_id(product_id);
   report->set_description(args->GetSwitchValueASCII(kSwitchDescription));
   report->set_user_email(args->GetSwitchValueASCII(kSwitchUserEmail));

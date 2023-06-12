@@ -10,12 +10,12 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/uuid.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender_paths.h"
@@ -226,7 +226,7 @@ std::string GetClientId() {
       return client_id;
     }
   }
-  client_id = base::GenerateGUID();
+  client_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
   // Strip out the dashes, we don't want those.
   base::RemoveChars(client_id, "-", &client_id);
 

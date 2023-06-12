@@ -9,7 +9,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/strcat.h>
-#include <base/guid.h>
 #include <brillo/key_value_store.h>
 #include <gtest/gtest.h>
 

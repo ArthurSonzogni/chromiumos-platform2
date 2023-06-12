@@ -18,11 +18,11 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
-#include <base/guid.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/uuid.h>
 #include <base/values.h>
 #include <brillo/scoped_umask.h>
 
@@ -328,7 +328,7 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
 }
 
 std::string BiodStorage::GenerateNewRecordId() {
-  std::string record_id(base::GenerateGUID());
+  std::string record_id(base::Uuid::GenerateRandomV4().AsLowercaseString());
   // dbus member names only allow '_'
   std::replace(record_id.begin(), record_id.end(), '-', '_');
   return record_id;

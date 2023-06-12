@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 #include <base/strings/strcat.h>
-#include <base/guid.h>
+#include <base/uuid.h>
 
 #include "missive/storage/storage_util.h"
 #include "missive/util/file.h"
@@ -88,7 +88,7 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFileName(
       full_name.Extension().substr(1);
 
   const auto generation_guid =
-      base::GUID::ParseCaseInsensitive(extension_without_leading_period);
+      base::Uuid::ParseCaseInsensitive(extension_without_leading_period);
   if (!generation_guid.is_valid()) {
     return Status(
         error::DATA_LOSS,

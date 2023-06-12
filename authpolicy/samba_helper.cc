@@ -10,13 +10,13 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversion_utils.h>
 #include <base/system/sys_info.h>
+#include <base/uuid.h>
 #include <crypto/random.h>
 
 #include "authpolicy/anonymizer.h"
@@ -200,7 +200,7 @@ bool Contains(const std::string& str, const std::string& substr) {
 
 std::string GuidToOctetString(const std::string& guid) {
   std::string octet_str;
-  if (!base::IsValidGUID(guid))
+  if (!base::Uuid::ParseCaseInsensitive(guid).is_valid())
     return octet_str;
   DCHECK_EQ(kGuidSize, guid.size());
 
