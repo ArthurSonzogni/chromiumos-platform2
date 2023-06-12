@@ -51,6 +51,9 @@ pub enum HibernateError {
     /// Cookie error
     #[error("Cookie error: {0}")]
     CookieError(String),
+    /// Hibernate is not supported.
+    #[error("Hibernate is not supported: {0}")]
+    HibernateNotSupportedError(String),
     /// Insufficient Memory available.
     #[error("Not enough free memory and swap")]
     InsufficientMemoryAvailableError(),

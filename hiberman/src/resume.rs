@@ -139,9 +139,8 @@ impl ResumeConductor {
                 cryptohome::get_user_key_for_session(&session_id)?
             }
             DBusEvent::AbortRequest { reason } => {
-                // Abort resume.
-                info!("Aborting resume: {:?}", reason);
-                return Ok(());
+                info!("hibernate is not available: {reason}");
+                return Err(HibernateError::HibernateNotSupportedError(reason).into());
             }
         };
 
