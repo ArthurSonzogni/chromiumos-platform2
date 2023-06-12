@@ -69,6 +69,9 @@ constexpr char kVpdEthernetMacFilePath[] = "/sys/firmware/vpd/ro/ethernet_mac0";
 // Path to file with |dock_mac| VPD field value.
 constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
 
+// Name of the /drivers/net/veth.c driver. This driver is only used in tast and
+// should be ignored when reporting driver names in NotifyEthernetDriverName().
+constexpr char kVethDriverName[] = "veth";
 // Constant used to notify metrics of failed attempt to get ethernet driver name
 // from ETHTOOL.
 constexpr char kEthernetDriverNameError[] = "error";
@@ -984,6 +987,12 @@ void Ethernet::NotifyEthernetDriverName() {
     // is not \0 terminated.
     dvrname[kDriverNameSize - 1] = '\0';
     driver = dvrname;
+  }
+
+  // Ignore virtual ethernet interfaces used in tast to simulate a physical
+  // ethernet network interface.
+  if (driver == kVethDriverName) {
+    return;
   }
 
   Metrics::EthernetDriver driver_enum;
