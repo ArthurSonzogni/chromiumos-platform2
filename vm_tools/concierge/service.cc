@@ -91,7 +91,6 @@
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
-
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
@@ -99,6 +98,7 @@
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/if_method_exists.h"
+#include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
@@ -1752,6 +1752,11 @@ StartVmResponse Service::StartVmInternal(
   VmId::Type classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(ToLegacyVmType(classification));
+
+  // Log how long it takes to start the VM.
+  metrics::DurationRecorder duration_recorder(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
+      classification, metrics::DurationRecorder::Event::kVmStart);
 
   std::optional<VmStartImageFds> vm_start_image_fds =
       GetVmStartImageFds(reader, request.fds());
