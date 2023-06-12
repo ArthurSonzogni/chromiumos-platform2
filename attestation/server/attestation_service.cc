@@ -1307,6 +1307,14 @@ bool AttestationService::CreateCertificateRequestInternal(
       identity_certificate.identity_credential());
   request_pb.set_profile(profile);
 
+  // TODO(b/286838595): Remove the profile switch once PCA supports
+  // DEVICE_TRUST_USER_CERTIFICATE.
+  if (profile == DEVICE_TRUST_USER_CERTIFICATE) {
+    // Reuse the ENTERPRISE_USER_CERTIFICATE from PCA when requesting a
+    // DEVICE_TRUST_USER_CERTIFICATE as they provide a similar functionality.
+    request_pb.set_profile(ENTERPRISE_USER_CERTIFICATE);
+  }
+
   if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
     // Send the attested device ID, if we have one.
     if (!attested_device_id_.empty()) {

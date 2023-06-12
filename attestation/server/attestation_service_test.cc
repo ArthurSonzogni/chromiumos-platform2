@@ -2554,6 +2554,38 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
   Run();
 }
 
+TEST_P(AttestationServiceTest, CreateDeviceTrustUserCertificateRequestSuccess) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_TRUE(pca_request.nvram_quotes().empty());
+
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    EXPECT_EQ(ENTERPRISE_USER_CERTIFICATE, pca_request.profile());
+    EXPECT_FALSE(pca_request.has_origin());
+    std::move(quit_closure).Run();
+  };
+
+  CreateCertificateRequestRequest request;
+  request.set_certificate_profile(DEVICE_TRUST_USER_CERTIFICATE);
+  request.set_aca_type(aca_type_);
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
 TEST_P(AttestationServiceTest, CreateDeviceSetupCertificateRequestSuccess) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
