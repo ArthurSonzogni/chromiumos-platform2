@@ -191,6 +191,9 @@ class MobileOperatorInfoCarriersAttTest
         kAttApn5G(ApnBuilder("nrbroadband")
                       .IpType(kApnIpTypeV4V6)
                       .ApnTypes({kApnTypeDefault, kApnTypeIA})),
+        kAttApn5GC(ApnBuilder("5gcbroadband")
+                       .IpType(kApnIpTypeV4V6)
+                       .ApnTypes({kApnTypeDefault, kApnTypeIA})),
         kAttApnHotspot(ApnBuilder("hotspot")
                            .IpType(kApnIpTypeV4V6)
                            .IsRequiredByCarrierSpec(true)
@@ -213,6 +216,7 @@ class MobileOperatorInfoCarriersAttTest
 
   const ApnBuilder kAttApn4G;
   const ApnBuilder kAttApn5G;
+  const ApnBuilder kAttApn5GC;
   const ApnBuilder kAttApnHotspot;
 
   const std::set<string> kAtt5gMccmncs;
@@ -231,7 +235,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttUsHome_AttServing) {
     EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->mtu(), kAttMtu);
-    operator_info_->UpdateGID1(CreateRandomGid1NotInSet({"53FF"}));
+    operator_info_->UpdateGID1(CreateRandomGid1NotInSet({"52FF", "53FF"}));
     CheckFirstApn(kAttApn4G);
     CheckIfApnExists(kAttApnHotspot);
   }
@@ -267,6 +271,23 @@ TEST_F(MobileOperatorInfoCarriersAttTest, Att5gUsHome_AttServing) {
       EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
       EXPECT_EQ(operator_info_->mtu(), kAttMtu);
       CheckFirstApn(kAttApn5G);
+      CheckIfApnExists(kAttApn4G);
+      CheckIfApnExists(kAttApnHotspot);
+    }
+  }
+}
+
+TEST_F(MobileOperatorInfoCarriersAttTest, Att5gcUsHome_AttServing) {
+  for (const auto& home : kAtt5gMccmncs) {
+    for (const auto& serving : GetUsMnoOnlyMccmncs()) {
+      operator_info_->UpdateMCCMNC(home);
+      operator_info_->UpdateServingMCCMNC(serving);
+      // ATT 5GC has an GID1 filter
+      operator_info_->UpdateGID1("52FF");
+      EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
+      EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
+      EXPECT_EQ(operator_info_->mtu(), kAttMtu);
+      CheckFirstApn(kAttApn5GC);
       CheckIfApnExists(kAttApn4G);
       CheckIfApnExists(kAttApnHotspot);
     }
