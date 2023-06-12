@@ -13,7 +13,7 @@
 #include <base/timer/timer.h>
 #include <libec/ec_command.h>
 #include <libec/ec_usb_endpoint.h>
-#include <libec/pwm_command.h>
+#include <libec/pwm/pwm_keyboard_command.h>
 
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/udev.h"

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBEC_PWM_COMMAND_H_
-#define LIBEC_PWM_COMMAND_H_
+#ifndef LIBEC_PWM_PWM_KEYBOARD_COMMAND_H_
+#define LIBEC_PWM_PWM_KEYBOARD_COMMAND_H_
 
 #include <brillo/brillo_export.h>
 #include "libec/ec_command.h"
@@ -43,4 +43,4 @@ static_assert(!std::is_copy_assignable<GetKeyboardBacklightCommand>::value,
 
 }  // namespace ec
 
-#endif  // LIBEC_PWM_COMMAND_H_
+#endif  // LIBEC_PWM_PWM_KEYBOARD_COMMAND_H_

@@ -6,7 +6,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "libec/pwm_command.h"
+#include "libec/pwm/pwm_keyboard_command.h"
 
 namespace ec {
 namespace {

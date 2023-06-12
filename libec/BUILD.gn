@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":install_fingerprint_headers",
     ":install_libec_headers",
+    ":install_pwm_headers",
     ":libec",
     ":libec_pc",
     ":libec_static",
@@ -175,6 +176,11 @@ install_config("install_fingerprint_headers") {
   install_path = "/usr/include/libec/fingerprint"
 }
 
+install_config("install_pwm_headers") {
+  sources = [ "pwm/pwm_keyboard_command.h" ]
+  install_path = "/usr/include/libec/pwm"
+}
+
 if (use.test) {
   config("libec_lib_test_all_dependent_configs") {
     libs = [ "system_api-power_manager-protos" ]
@@ -230,7 +236,7 @@ if (use.test) {
       "led_control_command_test.cc",
       "motion_sense_command_lid_angle_test.cc",
       "pd_chip_info_command_test.cc",
-      "pwm_command_test.cc",
+      "pwm/pwm_keyboard_command_test.cc",
       "rand_num_command_test.cc",
       "rand_num_params_test.cc",
       "read_memmap_command_test.cc",
