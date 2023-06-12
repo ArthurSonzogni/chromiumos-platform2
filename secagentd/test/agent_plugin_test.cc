@@ -182,7 +182,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
 
 TEST_F(AgentPluginTestFixture, TestGetName) {
   CreateAgentPlugin(nullptr);
-  ASSERT_EQ("AgentPlugin", plugin_->GetName());
+  ASSERT_EQ("Agent", plugin_->GetName());
 }
 
 TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {

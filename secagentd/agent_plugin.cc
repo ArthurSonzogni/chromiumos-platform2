@@ -77,7 +77,7 @@ AgentPlugin::AgentPlugin(
 }
 
 std::string AgentPlugin::GetName() const {
-  return "AgentPlugin";
+  return "Agent";
 }
 
 absl::Status AgentPlugin::Activate() {

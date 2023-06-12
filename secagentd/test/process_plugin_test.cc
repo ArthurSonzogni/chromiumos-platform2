@@ -129,7 +129,7 @@ TEST_F(ProcessPluginTestFixture, TestActivationFailureBadSkeleton) {
 }
 
 TEST_F(ProcessPluginTestFixture, TestGetName) {
-  ASSERT_EQ("ProcessPlugin", plugin_->GetName());
+  ASSERT_EQ("Process", plugin_->GetName());
 }
 
 TEST_F(ProcessPluginTestFixture, TestBPFEventIsAvailable) {

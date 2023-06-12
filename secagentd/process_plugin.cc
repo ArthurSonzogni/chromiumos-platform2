@@ -91,7 +91,7 @@ ProcessPlugin::ProcessPlugin(
 }
 
 std::string ProcessPlugin::GetName() const {
-  return "ProcessPlugin";
+  return "Process";
 }
 
 void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {

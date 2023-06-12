@@ -89,6 +89,13 @@ void SecAgent::CheckPolicyAndFeature() {
       bypass_policy_for_testing_;
   bool xdr_reporting_feature = policies_features_broker_->GetFeature(
       PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting);
+
+  if (first_visit) {
+    LOG(INFO) << "DeviceReportXDREventsPolicy: " << xdr_reporting_policy
+              << (bypass_policy_for_testing_ ? " (set by flag)" : "");
+    LOG(INFO) << "CrOSLateBootSecagentdXDRReporting: " << xdr_reporting_feature;
+  }
+
   // If either policy is false do not report.
   if (reporting_events_ && !(xdr_reporting_feature && xdr_reporting_policy)) {
     LOG(INFO) << "Stopping event reporting and quitting. Policy: "
@@ -111,14 +118,10 @@ void SecAgent::CheckPolicyAndFeature() {
     // BPF plugins were activated in the past. Repoll features and
     // activate/deactivate relevant plugins.
     ActivateOrDeactivateBpfPlugins();
+  } else if (first_visit) {
+    LOG(INFO) << "Not reporting yet.";
   }
 
-  if (first_visit) {
-    LOG(INFO) << "Not reporting yet.";
-    LOG(INFO) << "DeviceReportXDREventsPolicy: " << xdr_reporting_policy
-              << (bypass_policy_for_testing_ ? " (set by flag)" : "");
-    LOG(INFO) << "CrOSLateBootSecagentdXDRReporting: " << xdr_reporting_feature;
-  }
   // Else do nothing until the next poll.
   first_visit = false;
 }
