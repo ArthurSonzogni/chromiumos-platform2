@@ -228,7 +228,7 @@ void DeviceIdentifierGenerator::ComputeKeys(
     LOG(WARNING) << "No device identifiers available, no state keys generated";
     if (machine_serial_number_.empty() && disk_serial_number_.empty()) {
       metrics_->SendStateKeyGenerationStatus(
-          LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS);
+          LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS);
     } else if (machine_serial_number_.empty()) {
       metrics_->SendStateKeyGenerationStatus(
           LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER);

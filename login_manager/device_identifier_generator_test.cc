@@ -60,7 +60,7 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
       : generator_(&system_utils_, &metrics_),
         state_keys_received_(false),
         last_state_key_generation_status_(
-            LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS) {
+            LoginMetrics::DEPRECATED_STATE_KEY_STATUS_MISSING_IDENTIFIERS) {
     EXPECT_CALL(metrics_, SendStateKeyGenerationStatus(_))
         .WillRepeatedly(SaveArg<0>(&last_state_key_generation_status_));
   }
@@ -229,7 +229,7 @@ TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfoFailure) {
 
   // Later requests get answered immediately.
   RequestStateKeys(true);
-  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS,
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS,
             last_state_key_generation_status_);
   EXPECT_EQ(0, state_keys_.size());
 }
