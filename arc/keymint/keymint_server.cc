@@ -142,7 +142,25 @@ void KeyMintServer::GetKeyCharacteristics(
 void KeyMintServer::GenerateKey(
     arc::mojom::keymint::GenerateKeyRequestPtr request,
     GenerateKeyCallback callback) {
-  // TODO(b/274723521): Finish this.
+  auto km_request = MakeGenerateKeyRequest(
+      request->key_params, backend_.keymint()->message_version());
+
+  auto task_lambda = base::BindOnce(
+      [](GenerateKeyCallback callback,
+         std::unique_ptr<::keymaster::GenerateKeyResponse> km_response) {
+        // Prepare mojo response.
+        uint32_t error;
+        auto response = MakeGenerateKeyResult(*km_response, error);
+        // Run callback.
+        if (response.has_value()) {
+          std::move(callback).Run(error, std::move(response.value()));
+        }
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::GenerateKey,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::ImportKey(arc::mojom::keymint::ImportKeyRequestPtr request,

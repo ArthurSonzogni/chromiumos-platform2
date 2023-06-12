@@ -67,6 +67,39 @@ constexpr int32_t kKeyMintMessageVersion = 4;
                            b[4]->value->get_blob());
 }
 
+std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
+  std::vector<arc::mojom::keymint::KeyParameterPtr> parameters(5);
+  // bool
+  auto paramBool = arc::mojom::keymint::KeyParameterValue::NewBoolValue(true);
+  parameters[0] = arc::mojom::keymint::KeyParameter::New(
+      static_cast<arc::mojom::keymint::Tag>(KM_TAG_CALLER_NONCE),
+      std::move(paramBool));
+  // enum, enum_rep, int, int_rep
+  auto paramInt = arc::mojom::keymint::KeyParameterValue::NewInteger(
+      KM_ALGORITHM_TRIPLE_DES);
+  parameters[1] = arc::mojom::keymint::KeyParameter::New(
+      static_cast<arc::mojom::keymint::Tag>(KM_TAG_ALGORITHM),
+      std::move(paramInt));
+  // long
+  auto paramLong =
+      arc::mojom::keymint::KeyParameterValue::NewLongInteger(65537);
+  parameters[2] = arc::mojom::keymint::KeyParameter::New(
+      static_cast<arc::mojom::keymint::Tag>(KM_TAG_RSA_PUBLIC_EXPONENT),
+      std::move(paramLong));
+  // date
+  auto paramDate = arc::mojom::keymint::KeyParameterValue::NewDateTime(1337);
+  parameters[3] = arc::mojom::keymint::KeyParameter::New(
+      static_cast<arc::mojom::keymint::Tag>(KM_TAG_ACTIVE_DATETIME),
+      std::move(paramDate));
+  // bignum, bytes
+  auto paramBlob = arc::mojom::keymint::KeyParameterValue::NewBlob(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()));
+  parameters[4] = arc::mojom::keymint::KeyParameter::New(
+      static_cast<arc::mojom::keymint::Tag>(KM_TAG_APPLICATION_DATA),
+      std::move(paramBlob));
+  return parameters;
+}
+
 }  // namespace
 
 TEST(ConvertFromKeymasterMessage, Uint8Vector) {
@@ -169,6 +202,19 @@ TEST(ConvertToKeymasterMessage, GetKeyCharacteristicsRequest) {
   EXPECT_TRUE(VerifyVectorUint8(output->additional_params[1].blob.data,
                                 output->additional_params[1].blob.data_length,
                                 input->app_data));
+}
+
+TEST(ConvertToKeymasterMessage, GenerateKeyRequest) {
+  // Prepare.
+  std::vector<arc::mojom::keymint::KeyParameterPtr> input =
+      KeyParameterVector();
+
+  // Convert.
+  auto output = MakeGenerateKeyRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_TRUE(
+      VerifyKeyParametersWithStrictInputs(output->key_description, input));
 }
 
 }  // namespace arc::keymint
