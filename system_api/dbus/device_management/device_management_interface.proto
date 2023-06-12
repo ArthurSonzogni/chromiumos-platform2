@@ -34,6 +34,87 @@ enum DeviceManagementErrorCode {
   DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED = 6;
 }
 
+// ----------------- Install Attributes Interface -----------------
+
+// The possible states of Install Attributes module, this is used by
+// InstallAttributesGetStatus().
+enum InstallAttributesState {
+  // See InstallAttributes::Status in install_attributes.h for definition
+  // of these states.
+  UNKNOWN = 0;
+  TPM_NOT_OWNED = 1;
+  FIRST_INSTALL = 2;
+  VALID = 3;
+  INVALID = 4;
+}
+
+// Input parameters to InstallAttributesGet()
+message InstallAttributesGetRequest {
+  // Name of the install attributes to retrieve.
+  // There's no explicit requirement about the name, so generally it can be
+  // any valid string.
+  string name = 1;
+}
+
+// Output parameters for InstallAttributesGet()
+message InstallAttributesGetReply {
+  // Will be set if an error occurred.
+  DeviceManagementErrorCode error = 1;
+
+  // The value associated with the install attributes.
+  bytes value = 2;
+}
+
+// Input parameters to InstallAttributesSet()
+message InstallAttributesSetRequest {
+  // Name of the install attributes to set.
+  // There's no explicit requirement about the name, so generally it can be
+  // any valid string.
+  string name = 1;
+
+  // Value to set for the install attributes.
+  bytes value = 2;
+}
+
+// Output parameters for InstallAttributesSet()
+message InstallAttributesSetReply {
+  // Will be set if an error occurred.
+  DeviceManagementErrorCode error = 1;
+}
+
+// Input parameters to InstallAttributesFinalize()
+message InstallAttributesFinalizeRequest {
+  // There's no parameters to InstallAttributesFinalize() right now.
+}
+
+// Output parameters for InstallAttributesFinalize()
+message InstallAttributesFinalizeReply {
+  // If the install attributes are not finalized successfully, then this
+  // error code would be set. Otherwise, the install attribute is correctly
+  // finalized.
+  DeviceManagementErrorCode error = 1;
+}
+
+// Input parameters to InstallAttributesGetStatus()
+message InstallAttributesGetStatusRequest {}
+
+// Output parameters for InstallAttributesGetStatus()
+message InstallAttributesGetStatusReply {
+  // If there's a problem retrieving the status, this will be set.
+  DeviceManagementErrorCode error = 1;
+
+  // How many install attributes are there?
+  int32 count = 2;
+
+  // Returns true if the attribute storage is securely stored. It does not
+  // indicate if the store has been finalized, just if the system TPM/Lockbox
+  // is being used.
+  bool is_secure = 3;
+
+  // The state the install attributes are in.
+  InstallAttributesState state = 4;
+}
+
 // ----------------- Firmware Management Parameters Interface -----------------
 
 // This represents the content of Firmware Management Parameters
