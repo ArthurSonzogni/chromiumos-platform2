@@ -754,6 +754,7 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
             config_minus_brand.get("arc", {}).get("build-properties", {}).pop(
                 "oem", None
             )
+            config_minus_brand.get("identity", {}).pop("frid", None)
 
             config_list.append(config_minus_brand)
             custom_labels[name] = config_list
