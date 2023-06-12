@@ -280,11 +280,7 @@ ArcVm::ArcVm(Config config)
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
       vmm_swap_tbw_policy_(std::move(config.vmm_swap_tbw_policy)),
       guest_memory_size_(config.guest_memory_size),
-      aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {
-  if (config.vmm_swap_usage_path.has_value()) {
-    vmm_swap_usage_policy_.Init(config.vmm_swap_usage_path.value());
-  }
-}
+      aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {}
 
 ArcVm::~ArcVm() {
   Shutdown();
@@ -556,10 +552,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
 }
 
 bool ArcVm::Shutdown() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  vmm_swap_usage_policy_.OnShutdown();
-
   // Notify arc-patchpanel that ARCVM is down.
   // This should run before the process existence check below since we still
   // want to release the network resources on crash.

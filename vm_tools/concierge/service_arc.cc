@@ -5,11 +5,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include <optional>
 #include <string>
 
 #include <base/cpu.h>
-#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -53,7 +51,6 @@ constexpr char kArcVmName[] = "arcvm";
 // sign-in.
 constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
 constexpr char kPstoreExtension[] = ".pstore";
-constexpr char kVmmSwapUsageHistoryExtension[] = ".vmm_swap_history";
 
 // A feature name for enabling jemalloc multi-arena settings
 // in low memory devices.
@@ -116,12 +113,6 @@ base::FilePath GetPstoreDest(const std::string& owner_id) {
   return GetCryptohomePath(owner_id)
       .Append(vm_tools::GetEncodedName(kArcVmName))
       .AddExtension(kPstoreExtension);
-}
-
-base::FilePath GetVmmSwapUsageHistoryPath(const std::string& owner_id) {
-  return GetCryptohomePath(owner_id)
-      .Append(kArcVmName)
-      .AddExtension(kVmmSwapUsageHistoryExtension);
 }
 
 // Returns true if the path is a valid demo image path.
@@ -570,10 +561,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  std::optional<base::FilePath> vmm_swap_usage_path;
   if (request.enable_vmm_swap()) {
     vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
-    vmm_swap_usage_path = GetVmmSwapUsageHistoryPath(request.owner_id());
   }
 
   auto vm = ArcVm::Create(
@@ -582,7 +571,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                     .network_client = std::move(network_client),
                     .seneschal_server_proxy = std::move(server_proxy),
                     .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
-                    .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
                     .guest_memory_size = memory_mib * MIB,
                     .runtime_dir = std::move(runtime_dir),
                     .data_disk_path = std::move(data_disk_path),
