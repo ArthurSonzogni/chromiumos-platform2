@@ -83,6 +83,8 @@
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_writer.h>
 #include <spaced/dbus-proxies.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_cicerone/cicerone_service.pb.h>
@@ -1413,6 +1415,15 @@ bool Service::Init() {
   // TODO(b/193806814): This log line helps us detect when there is a race
   // during signal setup. When we eventually fix that bug we won't need it.
   LOG(INFO) << "Finished setting up signal handlers";
+
+  if (!metrics_thread_.StartWithOptions(
+          base::Thread::Options(base::MessagePumpType::DEFAULT, 0))) {
+    LOG(ERROR) << "Failed to start metrics thread";
+    return false;
+  }
+  metrics_ = std::make_unique<MetricsLibrary>(
+      base::MakeRefCounted<AsynchronousMetricsWriter>(
+          metrics_thread_.task_runner()));
 
   if (!dbus_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {

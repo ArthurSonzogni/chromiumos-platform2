@@ -36,6 +36,7 @@
 #include <dbus/message.h>
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
+#include <metrics/metrics_library.h>
 #include <shadercached/proto_bindings/shadercached.pb.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -450,6 +451,13 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
   // sibling VM process has died on the hypervisor.
   void OnSiblingVmDead(VmId vm_id);
+
+  base::Thread metrics_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
+      "metrics thread"};
+  // Destructor will need to run last after all metrics logging to allow
+  // flushing of all metrics in AsynchronousMetricsWriter destructor.
+  std::unique_ptr<MetricsLibraryInterface> metrics_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;

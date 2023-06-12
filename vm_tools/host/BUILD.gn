@@ -195,6 +195,7 @@ static_library("libconcierge") {
     "libarchive",
     "libcrossystem",
     "libdlcservice-client",
+    "libmetrics",
     "libminijail",
     "libqcow_utils",
     "libshill-client",
