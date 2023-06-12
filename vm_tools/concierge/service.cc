@@ -1298,8 +1298,11 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
-std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
-  auto service = base::WrapUnique(new Service(std::move(quit_closure)));
+std::unique_ptr<Service> Service::Create(
+    base::OnceClosure quit_closure,
+    std::unique_ptr<MetricsLibraryInterface> metrics) {
+  auto service = base::WrapUnique(
+      new Service(std::move(quit_closure), std::move(metrics)));
 
   if (!service->Init()) {
     service.reset();
@@ -1308,10 +1311,12 @@ std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
   return service;
 }
 
-Service::Service(base::OnceClosure quit_closure)
+Service::Service(base::OnceClosure quit_closure,
+                 std::unique_ptr<MetricsLibraryInterface> metrics)
     : next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
       host_kernel_version_(GetKernelVersion()),
+      metrics_(std::move(metrics)),
       weak_ptr_factory_(this) {}
 
 Service::~Service() {

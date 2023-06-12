@@ -36,6 +36,7 @@
 #include <dbus/message.h>
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
+#include <metrics/metrics_library.h>
 #include <shadercached/proto_bindings/shadercached.pb.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -66,7 +67,9 @@ class Service final : public org::chromium::VmConciergeInterface,
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
-  static std::unique_ptr<Service> Create(base::OnceClosure quit_closure);
+  static std::unique_ptr<Service> Create(
+      base::OnceClosure quit_closure,
+      std::unique_ptr<MetricsLibraryInterface> metrics);
   ~Service();
 
  private:
@@ -77,7 +80,8 @@ class Service final : public org::chromium::VmConciergeInterface,
     base::FilePath foz_db_list;
   };
 
-  explicit Service(base::OnceClosure quit_closure);
+  explicit Service(base::OnceClosure quit_closure,
+                   std::unique_ptr<MetricsLibraryInterface> metrics);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
 
@@ -558,6 +562,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   // vmm-swap. This is instantiated by Service and shared with each VM.
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ GUARDED_BY_CONTEXT(
       sequence_checker_) = std::make_unique<VmmSwapTbwPolicy>();
+
+  std::unique_ptr<MetricsLibraryInterface> metrics_;
 
   // This should be the last member of the class.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
