@@ -41,15 +41,15 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
                                    const KeyData& key_data) {
   switch (type) {
     case AuthFactorType::kPassword:
-      metadata.metadata = auth_factor::SerializedPasswordMetadata();
+      metadata.metadata = auth_factor::PasswordMetadata();
       break;
     case AuthFactorType::kPin:
-      metadata.metadata = auth_factor::SerializedPinMetadata();
+      metadata.metadata = auth_factor::PinMetadata();
       metadata.common.lockout_policy =
-          auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED;
+          auth_factor::LockoutPolicy::ATTEMPT_LIMITED;
       break;
     case AuthFactorType::kKiosk:
-      metadata.metadata = auth_factor::SerializedKioskMetadata();
+      metadata.metadata = auth_factor::KioskMetadata();
       break;
     case AuthFactorType::kSmartCard: {
       // Check for 0 or more than 1 challenge response key,
@@ -63,8 +63,8 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
       // For AuthFactorType::kSmartCard chose the first/only key by default.
       brillo::Blob public_key_blob = brillo::BlobFromString(
           key_data.challenge_response_key(0).public_key_spki_der());
-      metadata.metadata = auth_factor::SerializedSmartCardMetadata{
-          .public_key_spki_der = public_key_blob};
+      metadata.metadata = auth_factor::SmartCardMetadata{.public_key_spki_der =
+                                                             public_key_blob};
       break;
     }
     default:
@@ -269,11 +269,11 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
     case AuthFactorType::kSmartCard: {
       out_key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
       const auto* smart_card_metadata =
-          std::get_if<auth_factor::SerializedSmartCardMetadata>(
+          std::get_if<auth_factor::SmartCardMetadata>(
               &auth_factor_metadata.metadata);
       if (!smart_card_metadata) {
         LOG(ERROR) << "Could not extract "
-                      "auth_factor::SerializedSmartCardMetadata from "
+                      "auth_factor::SmartCardMetadata from "
                       "|auth_factor_metadata|";
         return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
       }

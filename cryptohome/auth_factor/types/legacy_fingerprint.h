@@ -57,7 +57,7 @@ class LegacyFingerprintAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::CommonMetadata& common,
       const std::monostate& typed_metadata) const override;
 
   FingerprintAuthBlockService* fp_service_;

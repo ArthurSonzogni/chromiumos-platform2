@@ -60,7 +60,7 @@ TEST_F(SmartCardDriverTest, ConvertToProto) {
       &key_challenge_service_factory_);
   AuthFactorDriver& driver = sc_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::SerializedSmartCardMetadata>(
+      CreateMetadataWithType<auth_factor::SmartCardMetadata>(
           {.public_key_spki_der = kPublicKey});
 
   // Test
@@ -204,11 +204,10 @@ TEST_F(SmartCardDriverTest, GetDelayFails) {
       &key_challenge_service_factory_);
   AuthFactorDriver& driver = sc_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kSmartCard, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedSmartCardMetadata>(
-          {.public_key_spki_der = kPublicKey}),
-      {.state = ChallengeCredentialAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kSmartCard, kLabel,
+                    CreateMetadataWithType<auth_factor::SmartCardMetadata>(
+                        {.public_key_spki_der = kPublicKey}),
+                    {.state = ChallengeCredentialAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -223,11 +222,10 @@ TEST_F(SmartCardDriverTest, GetExpirationFails) {
       &key_challenge_service_factory_);
   AuthFactorDriver& driver = sc_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kSmartCard, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedSmartCardMetadata>(
-          {.public_key_spki_der = kPublicKey}),
-      {.state = ChallengeCredentialAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kSmartCard, kLabel,
+                    CreateMetadataWithType<auth_factor::SmartCardMetadata>(
+                        {.public_key_spki_der = kPublicKey}),
+                    {.state = ChallengeCredentialAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

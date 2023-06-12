@@ -52,7 +52,7 @@ class PasswordAuthFactorDriver final
       public AfDriverWithPasswordBlockTypes,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::SerializedPasswordMetadata>,
+      public AfDriverWithMetadata<auth_factor::PasswordMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoDelay,
@@ -71,9 +71,8 @@ class PasswordAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::SerializedCommonMetadata& common,
-      const auth_factor::SerializedPasswordMetadata& typed_metadata)
-      const override;
+      const auth_factor::CommonMetadata& common,
+      const auth_factor::PasswordMetadata& typed_metadata) const override;
 };
 
 }  // namespace cryptohome

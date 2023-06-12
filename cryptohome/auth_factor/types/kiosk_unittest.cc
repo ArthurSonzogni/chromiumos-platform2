@@ -35,7 +35,7 @@ TEST_F(KioskDriverTest, KioskConvertToProto) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>();
+      CreateMetadataWithType<auth_factor::KioskMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -139,10 +139,9 @@ TEST_F(KioskDriverTest, GetDelayFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kKiosk, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>(),
-      {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kKiosk, kLabel,
+                    CreateMetadataWithType<auth_factor::KioskMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -154,10 +153,9 @@ TEST_F(KioskDriverTest, GetExpirationFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kKiosk, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>(),
-      {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kKiosk, kLabel,
+                    CreateMetadataWithType<auth_factor::KioskMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

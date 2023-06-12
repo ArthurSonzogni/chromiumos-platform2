@@ -89,7 +89,7 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>();
+      CreateMetadataWithType<auth_factor::FingerprintMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -287,10 +287,9 @@ TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
 
   EXPECT_CALL(mock_user_metadata_reader_, Load)
       .WillOnce(ReturnError<CryptohomeError>(
@@ -310,10 +309,9 @@ TEST_F(FingerprintDriverTest, GetDelayInfinite) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
@@ -332,10 +330,9 @@ TEST_F(FingerprintDriverTest, GetDelayFinite) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
@@ -354,10 +351,9 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
@@ -376,10 +372,9 @@ TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
 
   EXPECT_CALL(mock_user_metadata_reader_, Load)
       .WillOnce(ReturnError<CryptohomeError>(
@@ -399,10 +394,9 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
@@ -421,10 +415,9 @@ TEST_F(FingerprintDriverTest, IsExpired) {
       &mock_user_metadata_reader_);
   AuthFactorDriver& driver = fp_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kFingerprint, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedFingerprintMetadata>(),
-      {.state = FingerprintAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));

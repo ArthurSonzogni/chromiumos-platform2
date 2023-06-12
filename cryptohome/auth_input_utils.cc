@@ -151,7 +151,7 @@ std::optional<AuthInput> CreateAuthInput(
       // Check for auth_factor_metadata and add the public_key_spki_der to
       // AuthInput from the auth_factor_metadata
       const auto* smart_card_metadata =
-          std::get_if<auth_factor::SerializedSmartCardMetadata>(
+          std::get_if<auth_factor::SmartCardMetadata>(
               &auth_factor_metadata.metadata);
       std::optional<brillo::Blob> public_key_spki_der;
       if (smart_card_metadata) {

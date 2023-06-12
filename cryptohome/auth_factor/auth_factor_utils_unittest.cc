@@ -222,8 +222,8 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
   EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::SerializedLockoutPolicy::NO_LOCKOUT);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPasswordMetadata>(
+            auth_factor::LockoutPolicy::NO_LOCKOUT);
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::PasswordMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPassword);
   EXPECT_EQ(auth_factor_label, kLabel);
@@ -256,8 +256,8 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPIN) {
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
   EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPinMetadata>(
+            auth_factor::LockoutPolicy::ATTEMPT_LIMITED);
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
@@ -290,8 +290,8 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINTimeLimit) {
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
   EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::SerializedLockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPinMetadata>(
+            auth_factor::LockoutPolicy::TIME_LIMITED);
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
@@ -324,8 +324,8 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINAttemptLimitFeaturesNull) {
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
   EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::SerializedLockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPinMetadata>(
+            auth_factor::LockoutPolicy::TIME_LIMITED);
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
@@ -360,8 +360,8 @@ TEST(AuthFactorUtilsTest,
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
   EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::SerializedLockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPinMetadata>(
+            auth_factor::LockoutPolicy::TIME_LIMITED);
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
@@ -487,14 +487,12 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyVaultKeysets) {
 TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
   auto uss = EnableUssExperiment();
   InstallVaultKeysets({});
-  InstallUssFactor(
-      AuthFactor(AuthFactorType::kPassword, "primary",
-                 {.metadata = auth_factor::SerializedPasswordMetadata()},
-                 {.state = TpmBoundToPcrAuthBlockState()}));
-  InstallUssFactor(
-      AuthFactor(AuthFactorType::kPin, "secondary",
-                 {.metadata = auth_factor::SerializedPinMetadata()},
-                 {.state = PinWeaverAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
+                              {.metadata = auth_factor::PinMetadata()},
+                              {.state = PinWeaverAuthBlockState()}));
   auto af_map = LoadAuthFactorMap(
       /*is_uss_migration_enabled=*/false, kObfuscatedUsername, platform_,
       converter_, manager_);
@@ -512,14 +510,12 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
 TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
   InstallVaultKeysets({{"tertiary", &CreatePasswordVaultKeyset},
                        {"quaternary", &CreateBackupVaultKeyset}});
-  InstallUssFactor(
-      AuthFactor(AuthFactorType::kPassword, "primary",
-                 {.metadata = auth_factor::SerializedPasswordMetadata()},
-                 {.state = TpmBoundToPcrAuthBlockState()}));
-  InstallUssFactor(
-      AuthFactor(AuthFactorType::kPin, "secondary",
-                 {.metadata = auth_factor::SerializedPinMetadata()},
-                 {.state = PinWeaverAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
+                              {.metadata = auth_factor::PinMetadata()},
+                              {.state = PinWeaverAuthBlockState()}));
 
   // Without USS, only the regular and backup VKs should be loaded.
   {
@@ -560,10 +556,9 @@ TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
 TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndMigratedVk) {
   InstallVaultKeysets({{"secondary", &CreatePasswordVaultKeyset},
                        {"primary", &CreateMigratedVaultKeyset}});
-  InstallUssFactor(
-      AuthFactor(AuthFactorType::kPassword, "primary",
-                 {.metadata = auth_factor::SerializedPasswordMetadata()},
-                 {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
   auto no_uss = EnableUssExperiment();
 
   // Without USS migration, only the regular and migrated VKs should be loaded.

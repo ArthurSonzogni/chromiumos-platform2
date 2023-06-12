@@ -40,7 +40,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::SerializedPasswordMetadata>();
+      CreateMetadataWithType<auth_factor::PasswordMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -131,10 +131,9 @@ TEST_F(PasswordDriverTest, GetDelayFails) {
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kPassword, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedPasswordMetadata>(),
-      {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<auth_factor::PasswordMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -146,10 +145,9 @@ TEST_F(PasswordDriverTest, GetExpirationFails) {
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kPassword, kLabel,
-      CreateMetadataWithType<auth_factor::SerializedPasswordMetadata>(),
-      {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<auth_factor::PasswordMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

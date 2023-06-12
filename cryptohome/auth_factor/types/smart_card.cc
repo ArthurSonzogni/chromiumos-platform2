@@ -74,8 +74,8 @@ AuthFactorLabelArity SmartCardAuthFactorDriver::GetAuthFactorLabelArity()
 
 std::optional<user_data_auth::AuthFactor>
 SmartCardAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::SerializedCommonMetadata& common,
-    const auth_factor::SerializedSmartCardMetadata& typed_metadata) const {
+    const auth_factor::CommonMetadata& common,
+    const auth_factor::SmartCardMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
   proto.mutable_smart_card_metadata()->set_public_key_spki_der(

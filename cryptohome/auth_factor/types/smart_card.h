@@ -33,7 +33,7 @@ class SmartCardAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kChallengeCredential>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::SerializedSmartCardMetadata>,
+      public AfDriverWithMetadata<auth_factor::SmartCardMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoDelay,
@@ -58,9 +58,8 @@ class SmartCardAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::SerializedCommonMetadata& common,
-      const auth_factor::SerializedSmartCardMetadata& typed_metadata)
-      const override;
+      const auth_factor::CommonMetadata& common,
+      const auth_factor::SmartCardMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
   AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper_;

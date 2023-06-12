@@ -29,7 +29,7 @@ class KioskAuthFactorDriver final
       public AfDriverWithPasswordBlockTypes,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kOnlyKiosk>,
-      public AfDriverWithMetadata<auth_factor::SerializedKioskMetadata>,
+      public AfDriverWithMetadata<auth_factor::KioskMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
@@ -45,9 +45,8 @@ class KioskAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::SerializedCommonMetadata& common,
-      const auth_factor::SerializedKioskMetadata& typed_metadata)
-      const override;
+      const auth_factor::CommonMetadata& common,
+      const auth_factor::KioskMetadata& typed_metadata) const override;
 };
 
 }  // namespace cryptohome

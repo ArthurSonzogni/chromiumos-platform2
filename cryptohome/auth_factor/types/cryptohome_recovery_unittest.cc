@@ -35,8 +35,8 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
   // Setup
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
-  AuthFactorMetadata metadata = CreateMetadataWithType<
-      auth_factor::SerializedCryptohomeRecoveryMetadata>();
+  AuthFactorMetadata metadata =
+      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -152,10 +152,10 @@ TEST_F(CryptohomeRecoveryDriverTest, GetDelayFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
 
-  AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
-                    CreateMetadataWithType<
-                        auth_factor::SerializedCryptohomeRecoveryMetadata>(),
-                    {.state = CryptohomeRecoveryAuthBlockState()});
+  AuthFactor factor(
+      AuthFactorType::kCryptohomeRecovery, kLabel,
+      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(),
+      {.state = CryptohomeRecoveryAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -167,10 +167,10 @@ TEST_F(CryptohomeRecoveryDriverTest, GetExpirationFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
 
-  AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
-                    CreateMetadataWithType<
-                        auth_factor::SerializedCryptohomeRecoveryMetadata>(),
-                    {.state = CryptohomeRecoveryAuthBlockState()});
+  AuthFactor factor(
+      AuthFactorType::kCryptohomeRecovery, kLabel,
+      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(),
+      {.state = CryptohomeRecoveryAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

@@ -32,9 +32,8 @@ CryptohomeRecoveryAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 CryptohomeRecoveryAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::SerializedCommonMetadata& common,
-    const auth_factor::SerializedCryptohomeRecoveryMetadata& typed_metadata)
-    const {
+    const auth_factor::CommonMetadata& common,
+    const auth_factor::CryptohomeRecoveryMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
   // TODO(b/232896212): There's no metadata for recovery auth factor

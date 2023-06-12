@@ -31,50 +31,48 @@ namespace {
 // factors, there will be more computations involved.
 void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
                          AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = auth_factor::SerializedPasswordMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::PasswordMetadata();
 }
 
 // Set pin metadata here, which happens to be empty.
 void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
                     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = auth_factor::SerializedPinMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::PinMetadata();
 }
 
 // Set cryptohome recovery metadata here, which happens to be empty.
 void GetCryptohomeRecoveryMetadata(
     const user_data_auth::AuthFactor& auth_factor,
     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata =
-      auth_factor::SerializedCryptohomeRecoveryMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::CryptohomeRecoveryMetadata();
 }
 
 // Set kiosk metadata here.
 void GetKioskMetadata(const user_data_auth::AuthFactor& auth_factor,
                       AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = auth_factor::SerializedKioskMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::KioskMetadata();
 }
 
 // Set smart card metadata here, which includes public_key_spki_der.
 void GetSmartCardMetadata(const user_data_auth::AuthFactor& auth_factor,
                           AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = auth_factor::SerializedSmartCardMetadata{
+  out_auth_factor_metadata.metadata = auth_factor::SmartCardMetadata{
       .public_key_spki_der = brillo::BlobFromString(
           auth_factor.smart_card_metadata().public_key_spki_der())};
 }
 
 void GetFingerprintMetadata(const user_data_auth::AuthFactor& auth_factor,
                             AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata =
-      auth_factor::SerializedFingerprintMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::FingerprintMetadata();
 }
 
-auth_factor::SerializedLockoutPolicy LockoutPolicyFromAuthFactorProto(
+auth_factor::LockoutPolicy LockoutPolicyFromAuthFactorProto(
     const user_data_auth::LockoutPolicy& policy) {
   switch (policy) {
     case user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED:
-      return auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED;
+      return auth_factor::LockoutPolicy::ATTEMPT_LIMITED;
     case user_data_auth::LOCKOUT_POLICY_TIME_LIMITED:
-      return auth_factor::SerializedLockoutPolicy::TIME_LIMITED;
+      return auth_factor::LockoutPolicy::TIME_LIMITED;
     case user_data_auth::LOCKOUT_POLICY_NONE:
     // Usually, LOCKOUT_POLICY_UNKNOWN will will be an error for invalid
     // argument, but until chrome implements the change, we will continue to
@@ -82,7 +80,7 @@ auth_factor::SerializedLockoutPolicy LockoutPolicyFromAuthFactorProto(
     case user_data_auth::LOCKOUT_POLICY_UNKNOWN:
     // Default covers for proto min and max.
     default:
-      return auth_factor::SerializedLockoutPolicy::NO_LOCKOUT;
+      return auth_factor::LockoutPolicy::NO_LOCKOUT;
   }
 }
 }  // namespace
@@ -128,7 +126,7 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       out_auth_factor_type = AuthFactorType::kPin;
       if (features_lib.IsFeatureEnabled(Features::kModernPin) &&
           out_auth_factor_metadata.common.lockout_policy !=
-              auth_factor::SerializedLockoutPolicy::TIME_LIMITED) {
+              auth_factor::LockoutPolicy::TIME_LIMITED) {
         LOG(ERROR) << "Lockout policy not set when modern pin is enabled "
                    << auth_factor.type();
         return false;

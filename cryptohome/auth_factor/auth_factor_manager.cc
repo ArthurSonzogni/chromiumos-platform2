@@ -111,7 +111,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
 
   // Create a flatbuffer to be persisted.
   std::optional<brillo::SecureBlob> flatbuffer =
-      auth_factor::SerializedAuthFactor{
+      auth_factor::AuthFactor{
           .auth_block_state = auth_factor.auth_block_state(),
           .metadata = auth_factor.metadata().metadata,
           .common_metadata = auth_factor.metadata().common}
@@ -180,7 +180,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
   brillo::SecureBlob auth_factor_to_read(file_contents.begin(),
                                          file_contents.end());
   auto serialized_factor =
-      auth_factor::SerializedAuthFactor::Deserialize(auth_factor_to_read);
+      auth_factor::AuthFactor::Deserialize(auth_factor_to_read);
   if (!serialized_factor.has_value()) {
     LOG(ERROR) << "Failed to parse persisted auth factor " << auth_factor_label
                << " of type " << AuthFactorTypeToString(auth_factor_type)

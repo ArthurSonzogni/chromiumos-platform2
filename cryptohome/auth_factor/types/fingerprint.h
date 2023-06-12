@@ -37,7 +37,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::SerializedFingerprintMetadata>,
+      public AfDriverWithMetadata<auth_factor::FingerprintMetadata>,
       public AfDriverNoCredentialVerifier {
  public:
   FingerprintAuthFactorDriver(
@@ -71,9 +71,8 @@ class FingerprintAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::SerializedCommonMetadata& common,
-      const auth_factor::SerializedFingerprintMetadata& typed_metadata)
-      const override;
+      const auth_factor::CommonMetadata& common,
+      const auth_factor::FingerprintMetadata& typed_metadata) const override;
 
   Platform* platform_;
   Crypto* crypto_;
