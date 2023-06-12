@@ -72,8 +72,15 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
   ]
-  libs = [ "hwsec" ]
-  defines = [ "PLATFORM_FWMP_INDEX=${use.generic_tpm2}" ]
+  libs = [
+    "hwsec",
+    "hwsec-foundation",
+    "installattributes",
+  ]
+  defines = [
+    "PLATFORM_FWMP_INDEX=${use.generic_tpm2}",
+    "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
+  ]
   cflags = [ "-Wconsumed" ]
 }
 
@@ -83,6 +90,9 @@ source_set("device_management_server_library") {
     "device_management_daemon.cc",
     "device_management_service.cc",
     "fwmp/firmware_management_parameters.cc",
+    "install_attributes/install_attributes.cc",
+    "install_attributes/lockbox.cc",
+    "install_attributes/platform.cc",
   ]
   configs += [
     ":target_defaults",

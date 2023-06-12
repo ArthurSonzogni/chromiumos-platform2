@@ -11,6 +11,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -28,6 +29,63 @@ void DeviceManagementServiceAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(std::move(cb));
+}
+
+void DeviceManagementServiceAdaptor::InstallAttributesGet(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        device_management::InstallAttributesGetReply>> response,
+    const device_management::InstallAttributesGetRequest& request) {
+  VLOG(1) << __func__;
+  device_management::InstallAttributesGetReply reply;
+  std::vector<uint8_t> data;
+  bool status = service_->InstallAttributesGet(request.name(), &data);
+  if (status) {
+    *reply.mutable_value() = {data.begin(), data.end()};
+  } else {
+    reply.set_error(device_management::
+                        DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED);
+  }
+  response->Return(reply);
+}
+
+void DeviceManagementServiceAdaptor::InstallAttributesSet(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        device_management::InstallAttributesSetReply>> response,
+    const device_management::InstallAttributesSetRequest& request) {
+  device_management::InstallAttributesSetReply reply;
+  std::vector<uint8_t> data(request.value().begin(), request.value().end());
+  bool status = service_->InstallAttributesSet(request.name(), data);
+  if (!status) {
+    reply.set_error(device_management::
+                        DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_SET_FAILED);
+  }
+  response->Return(reply);
+}
+
+void DeviceManagementServiceAdaptor::InstallAttributesFinalize(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        device_management::InstallAttributesFinalizeReply>> response,
+    const device_management::InstallAttributesFinalizeRequest& request) {
+  device_management::InstallAttributesFinalizeReply reply;
+  bool status = service_->InstallAttributesFinalize();
+  if (!status) {
+    reply.set_error(
+        device_management::
+            DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED);
+  }
+  response->Return(reply);
+}
+
+void DeviceManagementServiceAdaptor::InstallAttributesGetStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        device_management::InstallAttributesGetStatusReply>> response,
+    const device_management::InstallAttributesGetStatusRequest& request) {
+  device_management::InstallAttributesGetStatusReply reply;
+  reply.set_count(service_->InstallAttributesCount());
+  reply.set_is_secure(service_->InstallAttributesIsSecure());
+  reply.set_state(DeviceManagementService::InstallAttributesStatusToProtoEnum(
+      service_->InstallAttributesGetStatus()));
+  response->Return(reply);
 }
 
 void DeviceManagementServiceAdaptor::GetFirmwareManagementParameters(

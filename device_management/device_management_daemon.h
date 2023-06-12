@@ -8,6 +8,7 @@
 #include "device_management/dbus_interface.h"
 #include "device_management/device_management_adaptor.h"
 #include "device_management/device_management_service.h"
+#include "device_management/install_attributes/platform.h"
 
 #include <memory>
 
@@ -32,6 +33,7 @@ class DeviceManagementDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_;
+  std::unique_ptr<Platform> platform_;
   std::unique_ptr<DeviceManagementService> service_;
   std::unique_ptr<DeviceManagementServiceAdaptor> adaptor_;
 };

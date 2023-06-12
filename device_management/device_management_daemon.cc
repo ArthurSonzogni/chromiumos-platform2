@@ -27,12 +27,13 @@ void DeviceManagementDaemon::RegisterDBusObjectsAsync(
   VLOG(1) << "Creating service...";
 
   hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
+  platform_ = std::make_unique<Platform>();
   hwsec_ = hwsec_factory_->GetCryptohomeFrontend();
 
   CHECK(hwsec_);
 
   service_ = std::make_unique<DeviceManagementService>();
-  service_->Initialize(*hwsec_);
+  service_->Initialize(*hwsec_, *platform_);
 
   VLOG(1) << "Registering dbus objects...";
 

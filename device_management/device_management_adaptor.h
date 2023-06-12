@@ -36,6 +36,24 @@ class DeviceManagementServiceAdaptor
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // org::chromium::DeviceManagementInterface overrides.
+  void InstallAttributesGet(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          device_management::InstallAttributesGetReply>> response,
+      const device_management::InstallAttributesGetRequest& request) override;
+  void InstallAttributesSet(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          device_management::InstallAttributesSetReply>> response,
+      const device_management::InstallAttributesSetRequest& request) override;
+  void InstallAttributesFinalize(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          device_management::InstallAttributesFinalizeReply>> response,
+      const device_management::InstallAttributesFinalizeRequest& request)
+      override;
+  void InstallAttributesGetStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          device_management::InstallAttributesGetStatusReply>> response,
+      const device_management::InstallAttributesGetStatusRequest& request)
+      override;
   void GetFirmwareManagementParameters(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           device_management::GetFirmwareManagementParametersReply>> response,

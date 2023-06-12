@@ -18,6 +18,58 @@
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 
     <interface name="org.chromium.DeviceManagement">
+    <method name="InstallAttributesGet">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesGetRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesGetReply" />
+        </arg>
+    </method>
+
+    <method name="InstallAttributesSet">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesSetRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesSetReply" />
+        </arg>
+    </method>
+
+    <method name="InstallAttributesFinalize">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesFinalizeRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesFinalizeReply" />
+        </arg>
+    </method>
+
+    <method name="InstallAttributesGetStatus">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesGetStatusRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::InstallAttributesGetStatusReply" />
+        </arg>
+    </method>
+
     <method name="GetFirmwareManagementParameters">
         <annotation name="org.chromium.DBus.Method.Kind"
                     value="async"/>
