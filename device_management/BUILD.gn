@@ -181,6 +181,10 @@ if (use.test) {
     sources = [
       "device_management_testrunner.cc",
       "fwmp/firmware_management_parameters_test.cc",
+      "install_attributes/fake_platform.cc",
+      "install_attributes/install_attributes_test.cc",
+      "install_attributes/mock_lockbox.cc",
+      "install_attributes/mock_platform.cc",
     ]
     libs = [
       "hwsec_test",
