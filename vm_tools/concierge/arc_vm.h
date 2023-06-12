@@ -75,7 +75,7 @@ class ArcVm final : public VmBaseImpl {
     uint32_t vsock_cid;
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
-    std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
+    const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
     // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
     // enabled this should be `nullopt`, otherwise the file is created.
     std::optional<base::FilePath> vmm_swap_usage_path;
@@ -267,7 +267,7 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
+  const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   VmmSwapUsagePolicy vmm_swap_usage_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);

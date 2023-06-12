@@ -576,18 +576,19 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vmm_swap_usage_path = GetVmmSwapUsageHistoryPath(request.owner_id());
   }
 
-  auto vm = ArcVm::Create(
-      ArcVm::Config{.kernel = base::FilePath(kKernelPath),
-                    .vsock_cid = vsock_cid,
-                    .network_client = std::move(network_client),
-                    .seneschal_server_proxy = std::move(server_proxy),
-                    .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
-                    .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
-                    .guest_memory_size = memory_mib * MIB,
-                    .runtime_dir = std::move(runtime_dir),
-                    .data_disk_path = std::move(data_disk_path),
-                    .features = features,
-                    .vm_builder = std::move(vm_builder)});
+  auto vm = ArcVm::Create(ArcVm::Config{
+      .kernel = base::FilePath(kKernelPath),
+      .vsock_cid = vsock_cid,
+      .network_client = std::move(network_client),
+      .seneschal_server_proxy = std::move(server_proxy),
+      .vmm_swap_tbw_policy =
+          raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
+      .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
+      .guest_memory_size = memory_mib * MIB,
+      .runtime_dir = std::move(runtime_dir),
+      .data_disk_path = std::move(data_disk_path),
+      .features = features,
+      .vm_builder = std::move(vm_builder)});
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

@@ -847,7 +847,8 @@ class ArcVmTest : public ::testing::Test {
         .vsock_cid = vsock_cid,
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
-        .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
+        .vmm_swap_tbw_policy =
+            raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
         .guest_memory_size = kGuestMemorySize,
         .runtime_dir = temp_dir_.GetPath(),
         .data_disk_path = base::FilePath("dummy"),
@@ -928,8 +929,8 @@ class ArcVmTest : public ::testing::Test {
   base::MockRepeatingTimer* swap_state_monitor_timer_;
   base::MockRepeatingTimer* aggressive_balloon_timer_;
 
-  std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
-      std::make_shared<VmmSwapTbwPolicy>();
+  std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
+      std::make_unique<VmmSwapTbwPolicy>();
 
  private:
   // Temporary directory where we will store our socket.

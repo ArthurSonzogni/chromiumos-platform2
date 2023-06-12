@@ -277,7 +277,7 @@ ArcVm::ArcVm(Config config)
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
       swap_policy_timer_(std::move(config.swap_policy_timer)),
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
-      vmm_swap_tbw_policy_(std::move(config.vmm_swap_tbw_policy)),
+      vmm_swap_tbw_policy_(config.vmm_swap_tbw_policy),
       guest_memory_size_(config.guest_memory_size),
       aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {
   if (config.vmm_swap_usage_path.has_value()) {
