@@ -11,8 +11,7 @@ allow cros_os_install_service minijail:fifo_file r_file_perms;
 allow cros_os_install_service minijail:fd use;
 
 # For checking the variable that triggers autoinstall.
-allow cros_os_install_service efivarfs:dir r_dir_perms;
-allow cros_os_install_service efivarfs:file r_file_perms;
+r_dir_file(cros_os_install_service, efivarfs);
 
 filetrans_pattern(cros_os_install_service, cros_var_log_os_install_service, cros_var_log_os_install_service, file)
 allow cros_os_install_service cros_var_log_os_install_service:file rw_file_perms;
