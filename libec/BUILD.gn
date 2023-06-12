@@ -187,7 +187,10 @@ install_config("install_pwm_headers") {
 }
 
 install_config("install_thermal_headers") {
-  sources = [ "thermal/temp_sensor_get_info_command.h" ]
+  sources = [
+    "thermal/temp_sensor_get_info_command.h",
+    "thermal/thermal_auto_fan_ctrl_command.h",
+  ]
   install_path = "/usr/include/libec/thermal"
 }
 
@@ -261,6 +264,7 @@ if (use.test) {
       "set_mkbp_wake_mask_command_test.cc",
       "smart_discharge_command_test.cc",
       "thermal/temp_sensor_get_info_command_test.cc",
+      "thermal/thermal_auto_fan_ctrl_command_test.cc",
       "versions_command_test.cc",
     ]
     configs += [
