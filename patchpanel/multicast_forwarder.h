@@ -25,11 +25,11 @@ namespace patchpanel {
 
 constexpr net_base::IPv4Address kMdnsMcastAddress(224, 0, 0, 251);
 constexpr net_base::IPv6Address kMdnsMcastAddress6(
-    0xff02, 0, 0, 0, 0, 0, 0, 0xfb);
+    0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xfb);
 constexpr uint16_t kMdnsPort = 5353;
 constexpr net_base::IPv4Address kSsdpMcastAddress(239, 255, 255, 250);
 constexpr net_base::IPv6Address kSsdpMcastAddress6(
-    0xff02, 0, 0, 0, 0, 0, 0, 0xc);
+    0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xc);
 constexpr uint16_t kSsdpPort = 1900;
 
 // Listens on a well-known port and forwards multicast messages between

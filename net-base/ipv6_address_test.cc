@@ -36,9 +36,10 @@ TEST(IPv6AddressTest, Constructor) {
   EXPECT_EQ(address1.data(), kGoodData);
   EXPECT_EQ(address1, address2);
 
-  constexpr IPv6Address address3(0xfe80, 0, 0, 0, 0x1aa9, 0x05ff, 0x7ebf,
-                                 0x14c5);
-  EXPECT_EQ(address3.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
+  constexpr IPv6Address address3(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+                                 0xff);
+  EXPECT_EQ(address3.ToString(), "11:2233:4455:6677:8899:aabb:ccdd:eeff");
 }
 
 TEST(IPv6AddressTest, CreateFromString_Success) {

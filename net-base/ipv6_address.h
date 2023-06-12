@@ -48,33 +48,25 @@ class NET_BASE_EXPORT IPv6Address {
   // Constructs an instance with the "::" address.
   constexpr IPv6Address() : data_(DataType{}) {}
 
-  // Constructs an instance by the list of uint16_t, similar to the IPv6 network
-  // address format.
-  // e.g. IPv6Address(0x2401, 0xfa00, 0, 0, 0, 0, 0, 0x1) means "2401:fa00::1".
-  constexpr IPv6Address(uint16_t n0,
-                        uint16_t n1,
-                        uint16_t n2,
-                        uint16_t n3,
-                        uint16_t n4,
-                        uint16_t n5,
-                        uint16_t n6,
-                        uint16_t n7)
-      : data_({static_cast<uint8_t>((n0 >> 8) & 0xff),
-               static_cast<uint8_t>(n0 & 0xff),
-               static_cast<uint8_t>((n1 >> 8) & 0xff),
-               static_cast<uint8_t>(n1 & 0xff),
-               static_cast<uint8_t>((n2 >> 8) & 0xff),
-               static_cast<uint8_t>(n2 & 0xff),
-               static_cast<uint8_t>((n3 >> 8) & 0xff),
-               static_cast<uint8_t>(n3 & 0xff),
-               static_cast<uint8_t>((n4 >> 8) & 0xff),
-               static_cast<uint8_t>(n4 & 0xff),
-               static_cast<uint8_t>((n5 >> 8) & 0xff),
-               static_cast<uint8_t>(n5 & 0xff),
-               static_cast<uint8_t>((n6 >> 8) & 0xff),
-               static_cast<uint8_t>(n6 & 0xff),
-               static_cast<uint8_t>((n7 >> 8) & 0xff),
-               static_cast<uint8_t>(n7 & 0xff)}) {}
+  // Constructs an instance by the list of uint8_t, in network order.
+  constexpr IPv6Address(uint8_t b0,
+                        uint8_t b1,
+                        uint8_t b2,
+                        uint8_t b3,
+                        uint8_t b4,
+                        uint8_t b5,
+                        uint8_t b6,
+                        uint8_t b7,
+                        uint8_t b8,
+                        uint8_t b9,
+                        uint8_t b10,
+                        uint8_t b11,
+                        uint8_t b12,
+                        uint8_t b13,
+                        uint8_t b14,
+                        uint8_t b15)
+      : data_({b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14,
+               b15}) {}
 
   constexpr explicit IPv6Address(const DataType& data) : data_(data) {}
   explicit IPv6Address(const struct in6_addr& addr);

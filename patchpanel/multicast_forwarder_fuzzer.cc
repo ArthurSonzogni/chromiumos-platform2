@@ -112,14 +112,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const net_base::IPv4Address mcast_addr(
       provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
       provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>());
-  const net_base::IPv6Address ipv6_addr(provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>(),
-                                        provider.ConsumeIntegral<uint16_t>());
+  const net_base::IPv6Address ipv6_addr(
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>());
   TestMulticastForwarder mcast_forwarder(lan_ifname, mcast_addr, ipv6_addr,
                                          kMdnsPort);
   mcast_forwarder.Init();
