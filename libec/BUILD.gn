@@ -10,6 +10,7 @@ group("all") {
     ":install_fingerprint_headers",
     ":install_libec_headers",
     ":install_pwm_headers",
+    ":install_thermal_headers",
     ":libec",
     ":libec_pc",
     ":libec_static",
@@ -185,6 +186,11 @@ install_config("install_pwm_headers") {
   install_path = "/usr/include/libec/pwm"
 }
 
+install_config("install_thermal_headers") {
+  sources = [ "thermal/temp_sensor_get_info_command.h" ]
+  install_path = "/usr/include/libec/thermal"
+}
+
 if (use.test) {
   config("libec_lib_test_all_dependent_configs") {
     libs = [ "system_api-power_manager-protos" ]
@@ -254,6 +260,7 @@ if (use.test) {
       "set_force_lid_open_command_test.cc",
       "set_mkbp_wake_mask_command_test.cc",
       "smart_discharge_command_test.cc",
+      "thermal/temp_sensor_get_info_command_test.cc",
       "versions_command_test.cc",
     ]
     configs += [
