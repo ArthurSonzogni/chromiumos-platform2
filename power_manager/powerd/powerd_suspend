@@ -266,9 +266,14 @@ eval set -- "${FLAGS_ARGV}"
 # (http://crbug.com/338015).
 metrics_client -e Power.SuspendAttempt 0 2 &
 
-# Log the time before going to suspend (no-op if no RTC).
-cp /sys/class/rtc/rtc0/since_epoch "${SUSPEND_TO_RAM_TIME_FILE}" \
-  2> /dev/null || true
+# Don't log the suspend time when hibernating, otherwise the
+# Power.TimeInSuspendAtResume metric would include hibernations,
+# which would be misleading.
+if [ "${FLAGS_suspend_to_disk}" -eq "${FLAGS_FALSE}" ]; then
+  # Log the time before going to suspend (no-op if no RTC).
+  cp /sys/class/rtc/rtc0/since_epoch "${SUSPEND_TO_RAM_TIME_FILE}" \
+    2> /dev/null || true
+fi
 
 # Remove last_resume_timings to ensure the file is fresh on resume.
 rm -f "${LAST_RESUME_TIMINGS_FILE}"
