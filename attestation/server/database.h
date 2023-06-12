@@ -5,7 +5,7 @@
 #ifndef ATTESTATION_SERVER_DATABASE_H_
 #define ATTESTATION_SERVER_DATABASE_H_
 
-#include "attestation/common/database.pb.h"
+#include <attestation/proto_bindings/database.pb.h>
 
 namespace attestation {
 

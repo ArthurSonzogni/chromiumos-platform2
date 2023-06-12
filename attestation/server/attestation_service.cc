@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/functional/bind.h>
@@ -40,7 +41,6 @@ extern "C" {
 #include <vboot/crossystem.h>
 }
 
-#include "attestation/common/database.pb.h"
 #include "attestation/common/nvram_quoter_factory.h"
 #include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/attestation_flow.h"

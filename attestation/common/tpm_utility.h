@@ -13,8 +13,7 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
-
-#include "attestation/common/database.pb.h"
+#include <attestation/proto_bindings/database.pb.h>
 
 namespace attestation {
 

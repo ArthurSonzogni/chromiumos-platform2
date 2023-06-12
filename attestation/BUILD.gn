@@ -12,7 +12,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":attestation_client",
+    #":attestation_client",
     ":attestationd",
     ":install_init",
     ":install_minijail_conf",
@@ -25,13 +25,6 @@ group("all") {
   if (use.test) {
     deps += [ ":attestation_testrunner" ]
   }
-}
-
-config("local_proto_include") {
-  # This config is used when any build target used the local protobufs.
-  # The local protobuf used some other protos in system_api, so we'll need
-  # to fix the include path so that it builds correctly.
-  include_dirs = [ "${sysroot}/usr/include/attestation/proto_bindings/" ]
 }
 
 config("local_print_proto_include") {
@@ -63,19 +56,6 @@ pkg_config("target_defaults") {
     "-Wconsumed",
     "-Wno-error=deprecated-declarations",
   ]
-}
-
-# A library for just the protobufs.
-proto_library("proto_library_proto") {
-  proto_in_dir = "common"
-  proto_out_dir = "include/attestation/common"
-  proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/attestation/" ]
-  sources = [ "${proto_in_dir}/database.proto" ]
-  standalone = true
-
-  # Use -fPIC so this code can be linked into a shared library.
-  use_pic = true
-  configs = [ ":local_proto_include" ]
 }
 
 action("print_proto_library") {
@@ -144,12 +124,8 @@ source_set("common_library") {
   configs += [
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
-    ":local_proto_include",
   ]
-  deps = [
-    ":proto_library",
-    ":proto_library_proto",
-  ]
+  deps = [ ":proto_library" ]
   if (use.tpm2) {
     sources += [ "common/tpm_utility_v2.cc" ]
     all_dependent_configs += [ ":common_library_with_tpm2_config" ]
@@ -170,23 +146,16 @@ shared_library("libattestation") {
   install_path = "lib"
   configs += [
     "//common-mk:nouse_thin_archive",
-    ":local_proto_include",
     ":target_defaults",
   ]
   libs = [ "system_api" ]
-  deps = [
-    ":proto_library",
-    ":proto_library_proto",
-  ]
+  deps = [ ":proto_library" ]
 }
 
 # A client command line utility.
 executable("attestation_client") {
   sources = [ "client/main.cc" ]
-  configs += [
-    ":target_defaults",
-    ":local_proto_include",
-  ]
+  configs += [ ":target_defaults" ]
   install_path = "bin"
 
   # NOSORT
@@ -200,7 +169,6 @@ executable("attestation_client") {
   deps = [
     ":common_library",
     ":proto_library",
-    ":proto_library_proto",
   ]
 }
 
@@ -225,14 +193,10 @@ source_set("server_library") {
     "server/pkcs11_key_store.cc",
   ]
   all_dependent_configs = [ ":server_library_config" ]
-  configs += [
-    ":target_defaults",
-    ":local_proto_include",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":pca-agent-proxies",
     ":proto_library",
-    ":proto_library_proto",
   ]
 }
 
@@ -248,7 +212,6 @@ executable("attestationd") {
   sources = [ "server/main.cc" ]
   configs += [
     ":attestationd_config",
-    ":local_proto_include",
     ":target_defaults",
   ]
   install_path = "sbin"
@@ -268,7 +231,6 @@ executable("attestationd") {
   deps = [
     ":common_library",
     ":proto_library",
-    ":proto_library_proto",
     ":server_library",
   ]
 }
@@ -427,7 +389,6 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":attestation_testrunner_config",
-      ":local_proto_include",
       ":target_defaults",
     ]
     run_test = true
@@ -444,7 +405,6 @@ if (use.test) {
       ":common_library",
       ":pca_agent_server_library",
       ":proto_library",
-      ":proto_library_proto",
       ":server_library",
     ]
   }
