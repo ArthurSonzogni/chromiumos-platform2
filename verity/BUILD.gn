@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_fls_header",
+    ":install_headers",
+    ":install_pkg_config",
     ":libdm-bht",
     ":verity",
   ]
@@ -27,13 +30,34 @@ shared_library("libdm-bht") {
     "dm-bht.cc",
     "file_hasher.cc",
   ]
+  install_path = "lib"
   configs += [ ":target_defaults" ]
 }
 
 executable("verity") {
   sources = [ "verity_main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libdm-bht" ]
+}
+
+install_config("install_pkg_config") {
+  sources = [ "libdm-bht.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
+install_config("install_headers") {
+  sources = [
+    "dm-bht-userspace.h",
+    "dm-bht.h",
+    "file_hasher.h",
+  ]
+  install_path = "/usr/include/verity"
+}
+
+install_config("install_fls_header") {
+  sources = [ "include/asm-generic/bitops/fls.h" ]
+  install_path = "/usr/include/verity/asm-generic/bitops/"
 }
 
 if (use.test) {
@@ -50,5 +74,6 @@ if (use.test) {
       ":libdm-bht",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 }
