@@ -7,9 +7,9 @@
 #include <utility>
 
 #include <base/check_op.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/uuid.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -160,7 +160,7 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
   request.set_path(dispatcher_image_path.value());
   // We do not track VMs by uuid but rather by their name, so always generate
   // new one.
-  request.set_new_uuid(base::GenerateGUID());
+  request.set_new_uuid(base::Uuid::GenerateRandomV4().AsLowercaseString());
   request.set_preserve_uuid(false);
   request.set_regenerate_src_uuid(true);
 

@@ -27,7 +27,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/no_destructor.h>
@@ -38,6 +37,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/uuid.h>
 #include <brillo/timezone/tzif_parser.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
@@ -1216,7 +1216,8 @@ void Service::SelectFile(const std::string& container_token,
   select_file->set_vm_name(vm_name);
   select_file->set_container_name(container_name);
   select_file->set_owner_id(owner_id);
-  std::string select_file_token = base::GenerateGUID();
+  std::string select_file_token =
+      base::Uuid::GenerateRandomV4().AsLowercaseString();
   select_file->set_select_file_token(select_file_token);
   dbus::MethodCall method_call(
       vm_tools::apps::kVmApplicationsServiceInterface,

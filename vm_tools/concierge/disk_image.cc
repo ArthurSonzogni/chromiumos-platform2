@@ -14,12 +14,12 @@
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/uuid.h>
 
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/plugin_vm_config.h"
@@ -37,12 +37,12 @@ namespace vm_tools {
 namespace concierge {
 
 DiskImageOperation::DiskImageOperation(const VmId vm_id)
-    : uuid_(base::GenerateGUID()),
+    : uuid_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
       vm_id_(std::move(vm_id)),
       status_(DISK_STATUS_FAILED),
       source_size_(0),
       processed_size_(0) {
-  CHECK(base::IsValidGUID(uuid_));
+  CHECK(base::Uuid::ParseCaseInsensitive(uuid_).is_valid());
 }
 
 void DiskImageOperation::Run(uint64_t io_limit) {

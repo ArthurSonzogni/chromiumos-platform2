@@ -13,10 +13,10 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/uuid.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_cicerone/cicerone_service.pb.h>
@@ -194,7 +194,7 @@ std::string VirtualMachine::GenerateContainerToken(
     const std::string& container_name) {
   if (IsContainerless())
     return "";
-  std::string token = base::GenerateGUID();
+  std::string token = base::Uuid::GenerateRandomV4().AsLowercaseString();
   pending_containers_[token] = std::make_unique<Container>(
       container_name, token, weak_ptr_factory_.GetWeakPtr());
   return token;

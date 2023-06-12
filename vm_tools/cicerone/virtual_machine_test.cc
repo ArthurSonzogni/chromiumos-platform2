@@ -4,8 +4,8 @@
 
 #include <string>
 
-#include <base/guid.h>
 #include <base/logging.h>
+#include <base/uuid.h>
 #include <gtest/gtest.h>
 
 #include <vm_cicerone/cicerone_service.pb.h>
@@ -48,18 +48,22 @@ class VirtualMachineTest : public ::testing::Test {
 
 TEST_F(VirtualMachineTest, NoContainerToken) {
   // If the token was never generated, then [un]registration should fail.
-  EXPECT_FALSE(termina_vm_.RegisterContainer(base::GenerateGUID(),
-                                             kFakeGarconPort1, kFakeIp1));
-  EXPECT_FALSE(termina_vm_.UnregisterContainer(base::GenerateGUID()));
+  EXPECT_FALSE(termina_vm_.RegisterContainer(
+      base::Uuid::GenerateRandomV4().AsLowercaseString(), kFakeGarconPort1,
+      kFakeIp1));
+  EXPECT_FALSE(termina_vm_.UnregisterContainer(
+      base::Uuid::GenerateRandomV4().AsLowercaseString()));
 }
 
 TEST_F(VirtualMachineTest, InvalidContainerToken) {
   // If the wrong token is used, then registration should fail.
   std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
-  EXPECT_FALSE(termina_vm_.RegisterContainer(base::GenerateGUID(),
-                                             kFakeGarconPort1, kFakeIp1));
+  EXPECT_FALSE(termina_vm_.RegisterContainer(
+      base::Uuid::GenerateRandomV4().AsLowercaseString(), kFakeGarconPort1,
+      kFakeIp1));
   // Invalid token should fail unregister operation.
-  EXPECT_FALSE(termina_vm_.UnregisterContainer(base::GenerateGUID()));
+  EXPECT_FALSE(termina_vm_.UnregisterContainer(
+      base::Uuid::GenerateRandomV4().AsLowercaseString()));
 }
 
 TEST_F(VirtualMachineTest, ValidContainerToken) {

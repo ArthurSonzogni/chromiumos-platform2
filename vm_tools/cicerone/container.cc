@@ -12,7 +12,6 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>

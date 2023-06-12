@@ -52,7 +52,6 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
-#include <base/guid.h>
 #include <base/hash/md5.h>
 #include <base/location.h>
 #include <base/logging.h>
@@ -69,6 +68,7 @@
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <base/uuid.h>
 #include <base/version.h>
 #include <blkid/blkid.h>
 #include <brillo/dbus/dbus_proxy_util.h>
@@ -2202,7 +2202,7 @@ StartVmResponse Service::StartVmInternal(
   // per-container tokens.
   std::string vm_token = "";
   if (!request.start_termina())
-    vm_token = base::GenerateGUID();
+    vm_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
 
   // Notify cicerone that we have started a VM.
   // We must notify cicerone now before calling StartTermina, but we will only

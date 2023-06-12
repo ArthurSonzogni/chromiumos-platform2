@@ -9,8 +9,8 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
-#include <base/guid.h>
 #include <base/logging.h>
+#include <base/uuid.h>
 
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
@@ -177,7 +177,7 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   // Generate the token used by cicerone to identify the VM and write it to
   // a VM specific directory that gets mounted into the VM.
-  std::string vm_token = base::GenerateGUID();
+  std::string vm_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
   if (base::WriteFile(runtime_dir.GetPath().Append("cicerone.token"),
                       vm_token.c_str(),
                       vm_token.length()) != vm_token.length()) {
