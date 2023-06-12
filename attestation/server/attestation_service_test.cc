@@ -39,6 +39,7 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
+using hwsec::EndorsementAuth;
 using hwsec::KeyRestriction;
 using hwsec::TPMError;
 using hwsec::TPMRetryAction;
@@ -247,6 +248,8 @@ class AttestationServiceBaseTest : public testing::Test {
     };
     EXPECT_CALL(mock_hwsec_, GetCurrentBootMode)
         .WillRepeatedly(ReturnValue(fake_mode));
+    EXPECT_CALL(mock_hwsec_, CreateCertifiedKey)
+        .WillRepeatedly(ReturnValue(CertifiedKey()));
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(
@@ -1577,15 +1580,16 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccess) {
   // We need an identity to create a certifiable key.
   SetUpIdentity(identity_);
 
-  // Configure a fake TPM response.
-  EXPECT_CALL(mock_tpm_utility_,
-              CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+  // Configure a fake certified key.
+  CertifiedKey fake_certified_key;
+  fake_certified_key.set_public_key("public_key");
+  fake_certified_key.set_certified_key_info("certify_info");
+  fake_certified_key.set_certified_key_proof("certify_info_signature");
+  EXPECT_CALL(mock_hwsec_,
+              CreateCertifiedKey(_, KEY_TYPE_RSA, KEY_USAGE_SIGN,
                                  KeyRestriction::kUnrestricted,
-                                 Eq(std::nullopt), _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<7>(std::string("public_key")),
-                      SetArgPointee<9>(std::string("certify_info")),
-                      SetArgPointee<10>(std::string("certify_info_signature")),
-                      Return(true)));
+                                 EndorsementAuth::kNoEndorsement, _))
+      .WillOnce(ReturnValue(fake_certified_key));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
   // Set expectations on the outputs.
@@ -1611,15 +1615,16 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   // We need an identity to create a certifiable key.
   SetUpIdentity(identity_);
 
-  // Configure a fake TPM response.
-  EXPECT_CALL(mock_tpm_utility_,
-              CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+  // Configure a fake certified key.
+  CertifiedKey fake_certified_key;
+  fake_certified_key.set_public_key("public_key");
+  fake_certified_key.set_certified_key_info("certify_info");
+  fake_certified_key.set_certified_key_proof("certify_info_signature");
+  EXPECT_CALL(mock_hwsec_,
+              CreateCertifiedKey(_, KEY_TYPE_RSA, KEY_USAGE_SIGN,
                                  KeyRestriction::kUnrestricted,
-                                 Eq(std::nullopt), _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<7>(std::string("public_key")),
-                      SetArgPointee<9>(std::string("certify_info")),
-                      SetArgPointee<10>(std::string("certify_info_signature")),
-                      Return(true)));
+                                 EndorsementAuth::kNoEndorsement, _))
+      .WillOnce(ReturnValue(fake_certified_key));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
   // Set expectations on the outputs.
@@ -1687,9 +1692,8 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
   // We need an identity to create a certifiable key.
   SetUpIdentity(identity_);
 
-  EXPECT_CALL(mock_tpm_utility_,
-              CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, CreateCertifiedKey(_, _, _, _, _, _))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,
                      const CreateCertifiableKeyReply& reply) {

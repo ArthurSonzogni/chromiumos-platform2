@@ -51,6 +51,7 @@ extern "C" {
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec::DeviceConfig;
+using hwsec::EndorsementAuth;
 using hwsec::KeyRestriction;
 using hwsec::TPMError;
 
@@ -418,6 +419,13 @@ constexpr KeyRestriction GetKeyRestrictionByProfile(
   return profile == ENTERPRISE_VTPM_EK_CERTIFICATE
              ? KeyRestriction::kRestricted
              : KeyRestriction::kUnrestricted;
+}
+
+constexpr EndorsementAuth GetEndorsementAuthByProfile(
+    CertificateProfile profile) {
+  return profile == ENTERPRISE_VTPM_EK_CERTIFICATE
+             ? EndorsementAuth::kEndorsement
+             : EndorsementAuth::kNoEndorsement;
 }
 
 }  // namespace
@@ -1505,21 +1513,17 @@ bool AttestationService::CreateKey(const std::string& username,
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
-  const auto& identity_data = database_pb.identities().Get(identity);
-  if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, key_restriction, std::nullopt,
-          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
-          &public_key, &public_key_tpm_format, &key_info, &proof)) {
-    return false;
-  }
-  key->set_key_blob(key_blob);
-  key->set_public_key(public_key);
+  const auto& identity_key_blob =
+      database_pb.identities().Get(identity).identity_key().identity_key_blob();
+  ASSIGN_OR_RETURN(
+      *key,
+      hwsec_->CreateCertifiedKey(BlobFromString(identity_key_blob), key_type,
+                                 key_usage, KeyRestriction::kUnrestricted,
+                                 EndorsementAuth::kNoEndorsement, nonce),
+      _.WithStatus<TPMError>("Failed to create certified key")
+          .LogError()
+          .As(false));
   key->set_key_name(key_label);
-  key->set_public_key_tpm_format(public_key_tpm_format);
-  key->set_certified_key_info(key_info);
-  key->set_certified_key_proof(proof);
-  key->set_key_type(key_type);
-  key->set_key_usage(key_usage);
   return SaveKey(username, key_label, *key);
 }
 
@@ -2335,20 +2339,23 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
   }
 
   for (KeyType key_type : tpm_utility_->GetSupportedKeyTypes()) {
-    std::string key_blob;
-    std::string public_key_der;
-    std::string public_key_tpm_format;
-    std::string key_info;
-    std::string proof;
-    if (!tpm_utility_->CreateCertifiedKey(
-            key_type, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-            std::nullopt, aik_key_blob, nonce, &key_blob, &public_key_der,
-            &public_key_tpm_format, &key_info, &proof)) {
-      LOG(ERROR) << __func__
-                 << ": Failed to create certified key for key_type: "
-                 << key_type;
-      return false;
-    }
+    ASSIGN_OR_RETURN(
+        CertifiedKey certified_key,
+        hwsec_->CreateCertifiedKey(BlobFromString(aik_key_blob), key_type,
+                                   KEY_USAGE_SIGN,
+                                   KeyRestriction::kUnrestricted,
+                                   EndorsementAuth::kNoEndorsement, nonce),
+        _
+            .WithStatus<TPMError>(base::StringPrintf(
+                "Failed to create certified key for key_type %d", key_type))
+            .LogError()
+            .As(false));
+
+    std::string public_key_der = certified_key.public_key();
+    std::string public_key_tpm_format = certified_key.public_key_tpm_format();
+    std::string key_info = certified_key.certified_key_info();
+    std::string proof = certified_key.certified_key_proof();
+
     std::string public_key_info;
     if (!GetSubjectPublicKeyInfo(key_type, public_key_der, &public_key_info)) {
       LOG(ERROR) << __func__ << ": Failed to get public key info for key_type: "
@@ -2921,29 +2928,27 @@ void AttestationService::CreateCertificateRequestTask(
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
-  CertifiedKey key;
 
   const KeyUsage key_usage =
       GetKeyUsageByProfile(request.certificate_profile());
   const KeyRestriction key_restriction =
       GetKeyRestrictionByProfile(request.certificate_profile());
+  const EndorsementAuth endorsement_auth =
+      GetEndorsementAuthByProfile(request.certificate_profile());
 
-  const auto& identity_data = database_pb.identities().Get(identity);
-  if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, key_restriction, request.certificate_profile(),
-          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
-          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
-    LOG(ERROR) << __func__ << ": Failed to create a key.";
+  const auto& identity_key_blob =
+      database_pb.identities().Get(identity).identity_key().identity_key_blob();
+  auto certified_key_result = hwsec_->CreateCertifiedKey(
+      BlobFromString(identity_key_blob), key_type, key_usage, key_restriction,
+      endorsement_auth, nonce);
+  if (!certified_key_result.ok()) {
+    LOG(ERROR) << __func__ << ": Failed to create a certified key: "
+               << certified_key_result.status();
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
-  key.set_key_blob(key_blob);
-  key.set_public_key(public_key_der);
-  key.set_public_key_tpm_format(public_key_tpm_format);
-  key.set_certified_key_info(key_info);
-  key.set_certified_key_proof(proof);
-  key.set_key_type(key_type);
-  key.set_key_usage(key_usage);
+
+  CertifiedKey key = certified_key_result.value();
   std::string message_id;
   if (!CreateCertificateRequestInternal(
           request.aca_type(), request.username(), key,
