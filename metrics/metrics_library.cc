@@ -9,10 +9,10 @@
 #include "base/files/file_path.h"
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/uuid.h>
 #include <brillo/files/safe_fd.h>
 #include <errno.h>
 #include <session_manager/dbus-proxies.h>
@@ -300,7 +300,7 @@ bool MetricsLibrary::EnableMetrics() {
   if (AreMetricsEnabled())
     return true;
 
-  std::string guid = base::GenerateGUID();
+  std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
 
   if (guid.empty())
     return false;

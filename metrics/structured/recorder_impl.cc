@@ -9,8 +9,8 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/guid.h>
 #include <base/logging.h>
+#include <base/uuid.h>
 #include <metrics/structured/structured_events.h>
 #include <metrics/structured/event_base.h>
 #include <metrics/structured/proto/storage.pb.h>
@@ -28,7 +28,7 @@ constexpr mode_t kFilePermissions = 0660;
 // exist. Returns whether the write was successful.
 bool WriteEventsProtoToDir(const std::string& directory,
                            const EventsProto& events) {
-  const std::string guid = base::GenerateGUID();
+  const std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
   if (guid.empty())
     return false;
   const std::string filepath = base::StrCat({directory, "/", guid});
