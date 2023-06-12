@@ -177,7 +177,10 @@ install_config("install_fingerprint_headers") {
 }
 
 install_config("install_pwm_headers") {
-  sources = [ "pwm/pwm_keyboard_command.h" ]
+  sources = [
+    "pwm/pwm_keyboard_command.h",
+    "pwm/pwm_set_fan_target_rpm_command.h",
+  ]
   install_path = "/usr/include/libec/pwm"
 }
 
@@ -237,6 +240,7 @@ if (use.test) {
       "motion_sense_command_lid_angle_test.cc",
       "pd_chip_info_command_test.cc",
       "pwm/pwm_keyboard_command_test.cc",
+      "pwm/pwm_set_fan_target_rpm_command_test.cc",
       "rand_num_command_test.cc",
       "rand_num_params_test.cc",
       "read_memmap_command_test.cc",
