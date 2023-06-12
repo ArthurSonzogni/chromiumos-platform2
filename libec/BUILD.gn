@@ -188,6 +188,7 @@ install_config("install_pwm_headers") {
 
 install_config("install_thermal_headers") {
   sources = [
+    "thermal/get_memmap_temp_command.h",
     "thermal/temp_sensor_get_info_command.h",
     "thermal/thermal_auto_fan_ctrl_command.h",
   ]
@@ -263,6 +264,7 @@ if (use.test) {
       "set_force_lid_open_command_test.cc",
       "set_mkbp_wake_mask_command_test.cc",
       "smart_discharge_command_test.cc",
+      "thermal/get_memmap_temp_command_test.cc",
       "thermal/temp_sensor_get_info_command_test.cc",
       "thermal/thermal_auto_fan_ctrl_command_test.cc",
       "versions_command_test.cc",
