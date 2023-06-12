@@ -79,7 +79,7 @@ constexpr char kLocaltimePath[] = "/etc/localtime";
 // TCP4 ports restricted from tunneling to the container.
 const uint16_t kRestrictedPorts[] = {
     2222,  // cros-sftp service
-    5355,  // link-local mDNS
+    5355,  // Link-Local Multicast Name Resolution
 };
 
 // Path to the unix domain socket Concierge listens on for connections
