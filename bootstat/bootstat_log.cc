@@ -102,7 +102,7 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   int ret = rootdev(boot_path, sizeof(boot_path),
                     true,    // Do full resolution.
                     false);  // Do not remove partition number.
-  if (ret < 0) {
+  if (ret != 0) {
     LOG(ERROR) << "Cannot get rootdev.";
     return base::FilePath();
   }
