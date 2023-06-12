@@ -87,6 +87,12 @@ std::map<Address, MacAddress> GetNeighborMacTable(
 
           size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
           ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
+          // Filter out the special IPs that get resolved into MAC without
+          // sending an ARP/NDP packet.
+          if (nd_msg->ndm_state & NUD_NOARP) {
+            continue;
+          }
+          // Filter out the IPs from different network interfaces.
           if (ifindex && nd_msg->ndm_ifindex != *ifindex) {
             continue;
           }
