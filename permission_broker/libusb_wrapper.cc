@@ -84,8 +84,12 @@ bool UsbDevice::SetPowerState(bool enabled, uint16_t port) const {
   uint8_t request =
       enabled ? LIBUSB_REQUEST_SET_FEATURE : LIBUSB_REQUEST_CLEAR_FEATURE;
   result = libusb_control_transfer(
-      handle, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, request,
-      USB_PORT_FEAT_POWER, port, nullptr, 0,
+      handle,
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+      LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER,
+#pragma clang diagnostic pop
+      request, USB_PORT_FEAT_POWER, port, nullptr, 0,
       kUsbControlTimeout.InMilliseconds());
   libusb_close(handle);
 
