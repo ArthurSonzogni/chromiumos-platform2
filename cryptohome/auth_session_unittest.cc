@@ -51,6 +51,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -2576,7 +2577,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -2675,7 +2676,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -2775,7 +2776,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -2874,7 +2875,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -2968,7 +2969,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -3079,7 +3080,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -3181,7 +3182,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{.le_label = 0xbaadf00d}});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -3342,7 +3343,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Creating the auth factor.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kCryptohomeRecovery, kFakeLabel,
-      AuthFactorMetadata{.metadata = CryptohomeRecoveryAuthFactorMetadata()},
+      AuthFactorMetadata{
+          .metadata = auth_factor::SerializedCryptohomeRecoveryMetadata()},
       AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -3479,9 +3481,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   // Creating the auth factor.
   auto auth_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kSmartCard, kFakeLabel,
-      AuthFactorMetadata{
-          .metadata = SmartCardAuthFactorMetadata{.public_key_spki_der =
-                                                      public_key_spki_der}},
+      AuthFactorMetadata{.metadata =
+                             auth_factor::SerializedSmartCardMetadata{
+                                 .public_key_spki_der = public_key_spki_der}},
       AuthBlockState{.state = ChallengeCredentialAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
@@ -3606,7 +3608,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
       .WillOnce(Return(true));
   auto verifier = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()});
+      AuthFactorMetadata{.metadata =
+                             auth_factor::SerializedPasswordMetadata()});
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
@@ -4845,7 +4848,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   auth_factor_map.Add(
       std::make_unique<AuthFactor>(
           AuthFactorType::kPassword, kLegacyLabel,
-          AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+          AuthFactorMetadata{.metadata =
+                                 auth_factor::SerializedPasswordMetadata()},
           AuthBlockState()),
       AuthFactorStorageType::kVaultKeyset);
   // Start a session with this single factor and USS migration enabled.
@@ -4925,7 +4929,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
   EXPECT_THAT(auth_factor.metadata().metadata,
-              VariantWith<KioskAuthFactorMetadata>(_));
+              VariantWith<auth_factor::SerializedKioskMetadata>(_));
 }
 
 // Test adding two fingerprint auth factors to the newly created user.

@@ -23,6 +23,7 @@
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -40,14 +41,15 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
                                    const KeyData& key_data) {
   switch (type) {
     case AuthFactorType::kPassword:
-      metadata.metadata = PasswordAuthFactorMetadata();
+      metadata.metadata = auth_factor::SerializedPasswordMetadata();
       break;
     case AuthFactorType::kPin:
-      metadata.metadata = PinAuthFactorMetadata();
-      metadata.common.lockout_policy = LockoutPolicy::kAttemptLimited;
+      metadata.metadata = auth_factor::SerializedPinMetadata();
+      metadata.common.lockout_policy =
+          auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED;
       break;
     case AuthFactorType::kKiosk:
-      metadata.metadata = KioskAuthFactorMetadata();
+      metadata.metadata = auth_factor::SerializedKioskMetadata();
       break;
     case AuthFactorType::kSmartCard: {
       // Check for 0 or more than 1 challenge response key,
@@ -61,8 +63,8 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
       // For AuthFactorType::kSmartCard chose the first/only key by default.
       brillo::Blob public_key_blob = brillo::BlobFromString(
           key_data.challenge_response_key(0).public_key_spki_der());
-      metadata.metadata =
-          SmartCardAuthFactorMetadata{.public_key_spki_der = public_key_blob};
+      metadata.metadata = auth_factor::SerializedSmartCardMetadata{
+          .public_key_spki_der = public_key_blob};
       break;
     }
     default:
@@ -267,15 +269,16 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
     case AuthFactorType::kSmartCard: {
       out_key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
       const auto* smart_card_metadata =
-          std::get_if<SmartCardAuthFactorMetadata>(
+          std::get_if<auth_factor::SerializedSmartCardMetadata>(
               &auth_factor_metadata.metadata);
       if (!smart_card_metadata) {
-        LOG(ERROR) << "Could not extract SmartCardMetadata from "
+        LOG(ERROR) << "Could not extract "
+                      "auth_factor::SerializedSmartCardMetadata from "
                       "|auth_factor_metadata|";
         return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
       }
       std::string public_key_string =
-          brillo::BlobToString(*smart_card_metadata->public_key_spki_der);
+          brillo::BlobToString(smart_card_metadata->public_key_spki_der);
       auto* challenge_key = out_key_data.add_challenge_response_key();
       challenge_key->set_public_key_spki_der(public_key_string);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

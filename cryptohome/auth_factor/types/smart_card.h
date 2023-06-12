@@ -21,6 +21,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/util/async_init.h"
@@ -32,7 +33,7 @@ class SmartCardAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kChallengeCredential>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<SmartCardAuthFactorMetadata>,
+      public AfDriverWithMetadata<auth_factor::SerializedSmartCardMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoDelay,
@@ -57,8 +58,9 @@ class SmartCardAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const CommonAuthFactorMetadata& common,
-      const SmartCardAuthFactorMetadata& typed_metadata) const override;
+      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::SerializedSmartCardMetadata& typed_metadata)
+      const override;
 
   Crypto* crypto_;
   AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper_;

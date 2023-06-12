@@ -12,6 +12,7 @@
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -20,6 +21,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -30,17 +32,23 @@ using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::status::MakeStatus;
 
 user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
-    const std::optional<LockoutPolicy>& policy) {
+    const std::optional<auth_factor::SerializedLockoutPolicy>& policy) {
   if (!policy.has_value()) {
-    return user_data_auth::LOCKOUT_POLICY_UNKNOWN;
+    // This assumption can be made because historically all pins have been
+    // attempt limited. When modern pins are enabled they will say time limited
+    // explicitly.
+    return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
   }
   switch (policy.value()) {
-    case cryptohome::LockoutPolicy::kNoLockout:
-      return user_data_auth::LOCKOUT_POLICY_NONE;
-    case cryptohome::LockoutPolicy::kAttemptLimited:
-      return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
-    case cryptohome::LockoutPolicy::kTimeLimited:
+    case auth_factor::SerializedLockoutPolicy::TIME_LIMITED:
       return user_data_auth::LOCKOUT_POLICY_TIME_LIMITED;
+    // This assumption can be made because historically all pins have been
+    // attempt limited. When modern pins are enabled they will say time limited
+    // explicitly.
+    case auth_factor::SerializedLockoutPolicy::NO_LOCKOUT:
+    case auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED:
+    case auth_factor::SerializedLockoutPolicy::UNKNOWN:
+      return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
   }
 }
 
@@ -107,8 +115,8 @@ AuthFactorLabelArity PinAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 PinAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const PinAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedPinMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
   proto.mutable_common_metadata()->set_lockout_policy(

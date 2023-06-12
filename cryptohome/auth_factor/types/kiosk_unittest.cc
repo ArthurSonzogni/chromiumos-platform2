@@ -14,6 +14,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -34,7 +35,7 @@ TEST_F(KioskDriverTest, KioskConvertToProto) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<KioskAuthFactorMetadata>();
+      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -138,9 +139,10 @@ TEST_F(KioskDriverTest, GetDelayFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
-  AuthFactor factor(AuthFactorType::kKiosk, kLabel,
-                    CreateMetadataWithType<KioskAuthFactorMetadata>(),
-                    {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(
+      AuthFactorType::kKiosk, kLabel,
+      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>(),
+      {.state = TpmEccAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -152,9 +154,10 @@ TEST_F(KioskDriverTest, GetExpirationFails) {
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
 
-  AuthFactor factor(AuthFactorType::kKiosk, kLabel,
-                    CreateMetadataWithType<KioskAuthFactorMetadata>(),
-                    {.state = TpmEccAuthBlockState()});
+  AuthFactor factor(
+      AuthFactorType::kKiosk, kLabel,
+      CreateMetadataWithType<auth_factor::SerializedKioskMetadata>(),
+      {.state = TpmEccAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

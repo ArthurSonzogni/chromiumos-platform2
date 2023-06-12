@@ -23,6 +23,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/user_metadata.h"
@@ -36,7 +37,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
+      public AfDriverWithMetadata<auth_factor::SerializedFingerprintMetadata>,
       public AfDriverNoCredentialVerifier {
  public:
   FingerprintAuthFactorDriver(
@@ -70,8 +71,9 @@ class FingerprintAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const CommonAuthFactorMetadata& common,
-      const FingerprintAuthFactorMetadata& typed_metadata) const override;
+      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::SerializedFingerprintMetadata& typed_metadata)
+      const override;
 
   Platform* platform_;
   Crypto* crypto_;

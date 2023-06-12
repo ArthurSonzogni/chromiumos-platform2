@@ -13,8 +13,8 @@ namespace cryptohome {
 // Make sure that a default-constructed object doesn't have any metadata in it.
 TEST(AuthFactorMetadataTest, DefaultConstructor) {
   AuthFactorMetadata metadata;
-  EXPECT_FALSE(
-      std::holds_alternative<PasswordAuthFactorMetadata>(metadata.metadata));
+  EXPECT_FALSE(std::holds_alternative<auth_factor::SerializedPasswordMetadata>(
+      metadata.metadata));
 }
 
 }  // namespace cryptohome

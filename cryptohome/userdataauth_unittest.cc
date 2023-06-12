@@ -62,6 +62,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
@@ -1867,8 +1868,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Dmcrypt) {
       .Times(kDmcryptMounts.size())
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
-  for (const auto& kDmcryptMount : kDmcryptMounts) {
-    EXPECT_CALL(platform_, Unmount(kDmcryptMount.dst, true, _))
+  for (int i = 0; i < kDmcryptMounts.size(); ++i) {
+    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -1912,8 +1913,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt_Forced) {
       .WillOnce(Invoke(DmcryptDeviceMounts));
   EXPECT_CALL(platform_, ExpireMount(_)).Times(0);
 
-  for (const auto& kDmcryptMount : kDmcryptMounts) {
-    EXPECT_CALL(platform_, Unmount(kDmcryptMount.dst, true, _))
+  for (int i = 0; i < kDmcryptMounts.size(); ++i) {
+    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -3153,7 +3154,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   // Add a verifier as well.
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
+      AuthFactorMetadata{.metadata =
+                             auth_factor::SerializedPasswordMetadata()}));
 
   TestFuture<user_data_auth::StartAuthSessionReply>
       start_auth_session_reply_future;
@@ -3206,7 +3208,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, "password-verifier-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
+      AuthFactorMetadata{.metadata =
+                             auth_factor::SerializedPasswordMetadata()}));
 
   TestFuture<user_data_auth::StartAuthSessionReply>
       start_auth_session_reply_future;
@@ -3314,7 +3317,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
+      AuthFactorMetadata{.metadata =
+                             auth_factor::SerializedPasswordMetadata()}));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3582,7 +3586,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
@@ -3595,7 +3599,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),
@@ -3733,7 +3737,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
@@ -3746,7 +3750,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),
@@ -3855,7 +3859,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
@@ -3869,9 +3873,11 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
       AuthFactorMetadata{
-          .common = CommonAuthFactorMetadata{.lockout_policy =
-                                                 LockoutPolicy::kTimeLimited},
-          .metadata = PinAuthFactorMetadata()},
+          .common =
+              auth_factor::SerializedCommonMetadata{
+                  .lockout_policy =
+                      auth_factor::SerializedLockoutPolicy::TIME_LIMITED},
+          .metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),
@@ -3980,7 +3986,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
@@ -3993,7 +3999,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),
@@ -4112,7 +4118,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
-      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPasswordMetadata()},
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
@@ -4126,9 +4132,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
       AuthFactorMetadata{
-          .common = CommonAuthFactorMetadata{.lockout_policy =
-                                                 LockoutPolicy::kTimeLimited},
-          .metadata = PinAuthFactorMetadata()},
+          .common =
+              auth_factor::SerializedCommonMetadata{
+                  .lockout_policy =
+                      auth_factor::SerializedLockoutPolicy::TIME_LIMITED},
+          .metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),
@@ -4257,7 +4265,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   // Add an AuthFactor backed by USS.
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthFactorMetadata{.metadata = auth_factor::SerializedPinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
                          .salt = SecureBlob("fake salt"),

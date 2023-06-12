@@ -42,10 +42,10 @@ class CredentialVerifierTest : public ::testing::Test {
   CredentialVerifierTest()
       : pw_verifier_(AuthFactorType::kPassword,
                      "password",
-                     {.metadata = PasswordAuthFactorMetadata()}),
+                     {.metadata = auth_factor::SerializedPasswordMetadata()}),
         pin_verifier_(AuthFactorType::kPin,
                       "pin",
-                      {.metadata = PinAuthFactorMetadata()}) {}
+                      {.metadata = auth_factor::SerializedPinMetadata()}) {}
 
  protected:
   // A couple of verifiers that we can test with.
@@ -64,9 +64,9 @@ TEST_F(CredentialVerifierTest, AuthFactorLabel) {
 }
 
 TEST_F(CredentialVerifierTest, AuthFactorMetadata) {
-  EXPECT_TRUE(std::holds_alternative<PasswordAuthFactorMetadata>(
+  EXPECT_TRUE(std::holds_alternative<auth_factor::SerializedPasswordMetadata>(
       pw_verifier_.auth_factor_metadata().metadata));
-  EXPECT_TRUE(std::holds_alternative<PinAuthFactorMetadata>(
+  EXPECT_TRUE(std::holds_alternative<auth_factor::SerializedPinMetadata>(
       pin_verifier_.auth_factor_metadata().metadata));
 }
 

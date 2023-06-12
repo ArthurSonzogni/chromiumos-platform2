@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -150,11 +151,11 @@ std::optional<AuthInput> CreateAuthInput(
       // Check for auth_factor_metadata and add the public_key_spki_der to
       // AuthInput from the auth_factor_metadata
       const auto* smart_card_metadata =
-          std::get_if<SmartCardAuthFactorMetadata>(
+          std::get_if<auth_factor::SerializedSmartCardMetadata>(
               &auth_factor_metadata.metadata);
       std::optional<brillo::Blob> public_key_spki_der;
       if (smart_card_metadata) {
-        public_key_spki_der = *smart_card_metadata->public_key_spki_der;
+        public_key_spki_der = smart_card_metadata->public_key_spki_der;
       } else {
         public_key_spki_der = std::nullopt;
       }

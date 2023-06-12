@@ -61,9 +61,10 @@ std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
 ScryptVerifier::ScryptVerifier(std::string auth_factor_label,
                                brillo::SecureBlob scrypt_salt,
                                brillo::SecureBlob verifier)
-    : SyncCredentialVerifier(AuthFactorType::kPassword,
-                             std::move(auth_factor_label),
-                             {.metadata = PasswordAuthFactorMetadata()}),
+    : SyncCredentialVerifier(
+          AuthFactorType::kPassword,
+          std::move(auth_factor_label),
+          {.metadata = auth_factor::SerializedPasswordMetadata()}),
       scrypt_salt_(std::move(scrypt_salt)),
       verifier_(std::move(verifier)) {}
 

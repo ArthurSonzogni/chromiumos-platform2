@@ -12,47 +12,22 @@
 #include <brillo/cryptohome.h>
 #include <libhwsec/structures/explicit_init.h>
 
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
+
 namespace cryptohome {
 
-enum class LockoutPolicy {
-  kNoLockout = 0,
-  kAttemptLimited = 1,
-  kTimeLimited = 2
-};
-
-struct CommonAuthFactorMetadata {
-  std::string chromeos_version_last_updated;
-  std::string chrome_version_last_updated;
-  std::optional<LockoutPolicy> lockout_policy;
-  std::string user_specified_name;
-};
-
-struct PasswordAuthFactorMetadata {};
-
-struct PinAuthFactorMetadata {};
-
-struct CryptohomeRecoveryAuthFactorMetadata {};
-
-struct KioskAuthFactorMetadata {};
-
-struct SmartCardAuthFactorMetadata {
-  hwsec::ExplicitInit<brillo::Blob> public_key_spki_der;
-};
-
-struct FingerprintAuthFactorMetadata {};
-
 struct AuthFactorMetadata {
-  CommonAuthFactorMetadata common;
+  auth_factor::SerializedCommonMetadata common;
 
   // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
   std::variant<std::monostate,
-               PasswordAuthFactorMetadata,
-               PinAuthFactorMetadata,
-               CryptohomeRecoveryAuthFactorMetadata,
-               KioskAuthFactorMetadata,
-               SmartCardAuthFactorMetadata,
-               FingerprintAuthFactorMetadata>
+               auth_factor::SerializedPasswordMetadata,
+               auth_factor::SerializedPinMetadata,
+               auth_factor::SerializedCryptohomeRecoveryMetadata,
+               auth_factor::SerializedKioskMetadata,
+               auth_factor::SerializedSmartCardMetadata,
+               auth_factor::SerializedFingerprintMetadata>
       metadata;
 };
 

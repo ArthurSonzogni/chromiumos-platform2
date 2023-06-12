@@ -62,6 +62,7 @@
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -1316,7 +1317,7 @@ void AuthSession::AuthenticateAuthFactor(
         if (stored_auth_factor->storage_type() ==
                 AuthFactorStorageType::kVaultKeyset &&
             request_auth_factor_type == AuthFactorType::kKiosk) {
-          metadata.metadata = KioskAuthFactorMetadata();
+          metadata.metadata = auth_factor::SerializedKioskMetadata();
         } else {
           LOG(ERROR)
               << "Unexpected mismatch in type from label and auth_input.";

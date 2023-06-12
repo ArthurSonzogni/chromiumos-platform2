@@ -22,6 +22,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
@@ -31,7 +32,7 @@ class PinAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<PinAuthFactorMetadata>,
+      public AfDriverWithMetadata<auth_factor::SerializedPinMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
@@ -50,8 +51,8 @@ class PinAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const CommonAuthFactorMetadata& common,
-      const PinAuthFactorMetadata& typed_metadata) const override;
+      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::SerializedPinMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
 };

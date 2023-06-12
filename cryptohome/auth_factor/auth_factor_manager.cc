@@ -49,8 +49,6 @@ namespace {
 // Use rw------- for the auth factor files.
 constexpr mode_t kAuthFactorFilePermissions = 0600;
 
-constexpr int kFlatbufferAllocatorInitialSize = 4096;
-
 // Checks if the provided `auth_factor_label` is valid and on success returns
 // `AuthFactorPath()`.
 CryptohomeStatusOr<base::FilePath> GetAuthFactorPathFromStringType(
@@ -90,296 +88,6 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
   return GetAuthFactorPathFromStringType(obfuscated_username, type_string,
                                          auth_factor_label);
 }
-
-std::optional<cryptohome::LockoutPolicy> GetLockoutPolicy(
-    auth_factor::SerializedLockoutPolicy lockout_policy) {
-  switch (lockout_policy) {
-    case auth_factor::SerializedLockoutPolicy::NO_LOCKOUT:
-      return cryptohome::LockoutPolicy::kNoLockout;
-    case auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED:
-      return cryptohome::LockoutPolicy::kAttemptLimited;
-    case auth_factor::SerializedLockoutPolicy::TIME_LIMITED:
-      return cryptohome::LockoutPolicy::kTimeLimited;
-    case auth_factor::SerializedLockoutPolicy::UNKNOWN:
-      return std::nullopt;
-  }
-}
-
-auth_factor::SerializedLockoutPolicy GetSerializedLockoutPolicy(
-    cryptohome::LockoutPolicy lockout_policy) {
-  switch (lockout_policy) {
-    case cryptohome::LockoutPolicy::kNoLockout:
-      return auth_factor::SerializedLockoutPolicy::NO_LOCKOUT;
-    case cryptohome::LockoutPolicy::kAttemptLimited:
-      return auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED;
-    case cryptohome::LockoutPolicy::kTimeLimited:
-      return auth_factor::SerializedLockoutPolicy::TIME_LIMITED;
-  }
-}
-
-// Serializes the factor-specific metadata.
-auth_factor::SerializedCommonMetadata SerializeCommonMetadataToOffset(
-    const CommonAuthFactorMetadata& common_metadata) {
-  return auth_factor::SerializedCommonMetadata{
-      .chromeos_version_last_updated =
-          common_metadata.chromeos_version_last_updated,
-      .chrome_version_last_updated =
-          common_metadata.chrome_version_last_updated,
-      .lockout_policy = common_metadata.lockout_policy.has_value()
-                            ? GetSerializedLockoutPolicy(
-                                  common_metadata.lockout_policy.value())
-                            : auth_factor::SerializedLockoutPolicy::UNKNOWN,
-      .user_specified_name = common_metadata.user_specified_name};
-}
-
-auth_factor::SerializedPasswordMetadata SerializeMetadataToOffset(
-    const PasswordAuthFactorMetadata& password_metadata) {
-  auth_factor::SerializedPasswordMetadata metadata;
-  return metadata;
-}
-
-auth_factor::SerializedPinMetadata SerializeMetadataToOffset(
-    const PinAuthFactorMetadata& pin_metadata) {
-  auth_factor::SerializedPinMetadata metadata;
-  return metadata;
-}
-
-auth_factor::SerializedCryptohomeRecoveryMetadata SerializeMetadataToOffset(
-    const CryptohomeRecoveryAuthFactorMetadata& recovery_metadata) {
-  auth_factor::SerializedCryptohomeRecoveryMetadata metadata;
-  return metadata;
-}
-
-auth_factor::SerializedKioskMetadata SerializeMetadataToOffset(
-    const KioskAuthFactorMetadata& kiosk_metadata) {
-  auth_factor::SerializedKioskMetadata metadata;
-  return metadata;
-}
-
-auth_factor::SerializedSmartCardMetadata SerializeMetadataToOffset(
-    const SmartCardAuthFactorMetadata& smart_card_metadata) {
-  auth_factor::SerializedSmartCardMetadata metadata;
-
-  metadata.public_key_spki_der = *smart_card_metadata.public_key_spki_der;
-  return metadata;
-}
-
-auth_factor::SerializedFingerprintMetadata SerializeMetadataToOffset(
-    const FingerprintAuthFactorMetadata& fingerprint_metadata) {
-  auth_factor::SerializedFingerprintMetadata metadata;
-  return metadata;
-}
-
-// Serializes the factor-specific metadata into the given flatbuffer builder.
-// Returns the flatbuffer offset, to be used for building the outer table.
-//
-// Implemented by selecting the appropriate specific overload based on the
-// factor type and delegating to it.
-auth_factor::SerializedAuthFactorMetadata SerializeMetadataToOffset(
-    const AuthFactorMetadata& metadata) {
-  if (const auto* password_metadata =
-          std::get_if<PasswordAuthFactorMetadata>(&metadata.metadata)) {
-    return SerializeMetadataToOffset(*password_metadata);
-  } else if (const auto* pin_metadata =
-                 std::get_if<PinAuthFactorMetadata>(&metadata.metadata)) {
-    return SerializeMetadataToOffset(*pin_metadata);
-  } else if (const auto* smart_card_metadata =
-                 std::get_if<SmartCardAuthFactorMetadata>(&metadata.metadata)) {
-    return SerializeMetadataToOffset(*smart_card_metadata);
-  } else if (const auto* recovery_metadata =
-                 std::get_if<CryptohomeRecoveryAuthFactorMetadata>(
-                     &metadata.metadata)) {
-    return SerializeMetadataToOffset(*recovery_metadata);
-  } else if (const auto* kiosk_metadata =
-                 std::get_if<KioskAuthFactorMetadata>(&metadata.metadata)) {
-    return SerializeMetadataToOffset(*kiosk_metadata);
-  } else if (const auto* fingerprint_metadata =
-                 std::get_if<FingerprintAuthFactorMetadata>(
-                     &metadata.metadata)) {
-    return SerializeMetadataToOffset(*fingerprint_metadata);
-  }
-  LOG(ERROR) << "Missing or unexpected auth factor metadata: "
-             << metadata.metadata.index();
-  return auth_factor::SerializedAuthFactorMetadata{};
-}
-
-// Serializes the auth factor into a flatbuffer blob. Returns null on failure.
-std::optional<brillo::SecureBlob> SerializeAuthFactor(
-    const AuthFactor& auth_factor) {
-  hwsec_foundation::FlatbufferSecureAllocatorBridge allocator;
-  flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
-                                         &allocator);
-
-  auto auth_block_state_offset =
-      hwsec_foundation::ToFlatBuffer<AuthBlockState>()(
-          &builder, auth_factor.auth_block_state());
-  if (auth_block_state_offset.IsNull()) {
-    LOG(ERROR) << "Failed to serialize auth block state";
-    return std::nullopt;
-  }
-
-  auth_factor::SerializedAuthFactorMetadata serialized_metadata =
-      SerializeMetadataToOffset(auth_factor.metadata());
-  auto serialized_common_metadata =
-      SerializeCommonMetadataToOffset(auth_factor.metadata().common);
-
-  auth_factor::SerializedAuthFactor serialized_auth_factor{
-      .auth_block_state = auth_factor.auth_block_state(),
-      .metadata = serialized_metadata,
-      .common_metadata = serialized_common_metadata};
-  return serialized_auth_factor.Serialize();
-}
-
-void ConvertCommonMetadataFromFlatbuffer(
-    const auth_factor::SerializedCommonMetadata& serialized_common_metadata,
-    AuthFactorMetadata* metadata) {
-  metadata->common = CommonAuthFactorMetadata{
-      .chromeos_version_last_updated =
-          serialized_common_metadata.chromeos_version_last_updated,
-      .chrome_version_last_updated =
-          serialized_common_metadata.chrome_version_last_updated,
-      .lockout_policy =
-          serialized_common_metadata.lockout_policy.has_value()
-              ? GetLockoutPolicy(
-                    serialized_common_metadata.lockout_policy.value())
-              : std::nullopt,
-      .user_specified_name = serialized_common_metadata.user_specified_name};
-}
-
-bool ConvertPasswordMetadataFromFlatbuffer(
-    const auth_factor::SerializedPasswordMetadata& serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  // There's no password-specific metadata currently.
-  metadata->metadata = PasswordAuthFactorMetadata();
-  return true;
-}
-
-bool ConvertPinMetadataFromFlatbuffer(
-    const auth_factor::SerializedPinMetadata& serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  // There's no pin-specific metadata currently.
-  metadata->metadata = PinAuthFactorMetadata();
-  return true;
-}
-
-bool ConvertCryptohomeRecoveryMetadataFromFlatbuffer(
-    const auth_factor::SerializedCryptohomeRecoveryMetadata&
-        serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  // There's no metadata currently.
-  metadata->metadata = CryptohomeRecoveryAuthFactorMetadata();
-  return true;
-}
-
-bool ConvertSmartCardMetadataFromFlatbuffer(
-    const auth_factor::SerializedSmartCardMetadata& serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  metadata->metadata = SmartCardAuthFactorMetadata{
-      .public_key_spki_der = serialized_metadata.public_key_spki_der};
-  return true;
-}
-
-bool ConvertKioskMetadataFromFlatbuffer(
-    const auth_factor::SerializedKioskMetadata& serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  // There's no metadata currently.
-  metadata->metadata = KioskAuthFactorMetadata();
-  return true;
-}
-
-bool ConvertFingerprintMetadataFromFlatbuffer(
-    const auth_factor::SerializedFingerprintMetadata& serialized_metadata,
-    AuthFactorMetadata* metadata) {
-  // There's no metadata currently.
-  metadata->metadata = FingerprintAuthFactorMetadata();
-  return true;
-}
-
-bool ParseAuthFactorFlatbuffer(const brillo::SecureBlob& flatbuffer,
-                               AuthBlockState* auth_block_state,
-                               AuthFactorMetadata* metadata) {
-  flatbuffers::Verifier flatbuffer_verifier(flatbuffer.data(),
-                                            flatbuffer.size());
-  auto auth_factor_table =
-      auth_factor::SerializedAuthFactor::Deserialize(flatbuffer);
-
-  if (!auth_factor_table.has_value()) {
-    LOG(ERROR) << "The SerializedAuthFactor flatbuffer is invalid";
-    return false;
-  }
-
-  *auth_block_state = auth_factor_table->auth_block_state;
-
-  // Extract the common metadata from the serialized data.
-  ConvertCommonMetadataFromFlatbuffer(auth_factor_table->common_metadata,
-                                      metadata);
-
-  // Extract the factor-specific metadata from the serialized data.
-  if (const auto* password_metadata =
-          std::get_if<auth_factor::SerializedPasswordMetadata>(
-              &auth_factor_table->metadata)) {
-    if (!ConvertPasswordMetadataFromFlatbuffer(*password_metadata, metadata)) {
-      LOG(ERROR) << "Failed to convert SerializedAuthFactor password metadata";
-      return false;
-    }
-  } else if (const auto* pin_metadata =
-                 std::get_if<auth_factor::SerializedPinMetadata>(
-                     &auth_factor_table->metadata)) {
-    if (!ConvertPinMetadataFromFlatbuffer(*pin_metadata, metadata)) {
-      LOG(ERROR) << "Failed to convert SerializedAuthFactor pin metadata";
-      return false;
-    }
-
-    // Since CommonMetadata in AuthFactor is not stored from the beginning it
-    // will load the default value in CommonMetadata. To correct for the default
-    // value load, we need to have this if condition for legacy PINS.
-    if (!metadata->common.lockout_policy.has_value()) {
-      metadata->common.lockout_policy = LockoutPolicy::kAttemptLimited;
-    }
-  } else if (const auto* recovery_metadata =
-                 std::get_if<auth_factor::SerializedCryptohomeRecoveryMetadata>(
-                     &auth_factor_table->metadata)) {
-    if (!ConvertCryptohomeRecoveryMetadataFromFlatbuffer(*recovery_metadata,
-                                                         metadata)) {
-      LOG(ERROR) << "Failed to convert SerializedAuthFactor recovery metadata";
-      return false;
-    }
-  } else if (const auto* smart_card_metadata =
-                 std::get_if<auth_factor::SerializedSmartCardMetadata>(
-                     &auth_factor_table->metadata)) {
-    if (!ConvertSmartCardMetadataFromFlatbuffer(*smart_card_metadata,
-                                                metadata)) {
-      LOG(ERROR)
-          << "Failed to convert SerializedAuthFactor smart card metadata";
-      return false;
-    }
-  } else if (const auto* kiosk_metadata =
-                 std::get_if<auth_factor::SerializedKioskMetadata>(
-                     &auth_factor_table->metadata)) {
-    if (!ConvertKioskMetadataFromFlatbuffer(*kiosk_metadata, metadata)) {
-      LOG(ERROR) << "Failed to convert SerializedAuthFactor kiosk metadata";
-      return false;
-    }
-  } else if (const auto* fingerprint_metadata =
-                 std::get_if<auth_factor::SerializedFingerprintMetadata>(
-                     &auth_factor_table->metadata)) {
-    if (!ConvertFingerprintMetadataFromFlatbuffer(*fingerprint_metadata,
-                                                  metadata)) {
-      LOG(ERROR)
-          << "Failed to convert SerializedAuthFactor fingerprint metadata";
-      return false;
-    }
-  } else {
-    LOG(ERROR) << "SerializedAuthFactor has unknown metadata";
-    return false;
-  }
-
-  if (!metadata->common.lockout_policy.has_value()) {
-    metadata->common.lockout_policy = LockoutPolicy::kNoLockout;
-  }
-  return true;
-}
-
 }  // namespace
 
 AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
@@ -403,7 +111,11 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
 
   // Create a flatbuffer to be persisted.
   std::optional<brillo::SecureBlob> flatbuffer =
-      SerializeAuthFactor(auth_factor);
+      auth_factor::SerializedAuthFactor{
+          .auth_block_state = auth_factor.auth_block_state(),
+          .metadata = auth_factor.metadata().metadata,
+          .common_metadata = auth_factor.metadata().common}
+          .Serialize();
 
   if (!flatbuffer.has_value()) {
     LOG(ERROR) << "Failed to serialize auth factor " << auth_factor.label()
@@ -467,10 +179,9 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
 
   brillo::SecureBlob auth_factor_to_read(file_contents.begin(),
                                          file_contents.end());
-  AuthBlockState auth_block_state;
-  AuthFactorMetadata auth_factor_metadata;
-  if (!ParseAuthFactorFlatbuffer(auth_factor_to_read, &auth_block_state,
-                                 &auth_factor_metadata)) {
+  auto serialized_factor =
+      auth_factor::SerializedAuthFactor::Deserialize(auth_factor_to_read);
+  if (!serialized_factor.has_value()) {
     LOG(ERROR) << "Failed to parse persisted auth factor " << auth_factor_label
                << " of type " << AuthFactorTypeToString(auth_factor_type)
                << " for " << obfuscated_username;
@@ -480,8 +191,11 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  return std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
-                                      auth_factor_metadata, auth_block_state);
+  return std::make_unique<AuthFactor>(
+      auth_factor_type, auth_factor_label,
+      AuthFactorMetadata{.common = serialized_factor.value().common_metadata,
+                         .metadata = serialized_factor.value().metadata},
+      serialized_factor.value().auth_block_state);
 }
 
 std::map<std::string, std::unique_ptr<AuthFactor>>

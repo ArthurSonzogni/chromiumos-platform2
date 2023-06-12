@@ -20,6 +20,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
@@ -29,7 +30,8 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<CryptohomeRecoveryAuthFactorMetadata>,
+      public AfDriverWithMetadata<
+          auth_factor::SerializedCryptohomeRecoveryMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
@@ -46,8 +48,8 @@ class CryptohomeRecoveryAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const CommonAuthFactorMetadata& common,
-      const CryptohomeRecoveryAuthFactorMetadata& typed_metadata)
+      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::SerializedCryptohomeRecoveryMetadata& typed_metadata)
       const override;
 
   Crypto* crypto_;

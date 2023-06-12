@@ -20,6 +20,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/username.h"
 
@@ -199,8 +200,8 @@ AuthFactorLabelArity FingerprintAuthFactorDriver::GetAuthFactorLabelArity()
 
 std::optional<user_data_auth::AuthFactor>
 FingerprintAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const FingerprintAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedFingerprintMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   proto.mutable_fingerprint_metadata();

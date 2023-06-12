@@ -60,11 +60,11 @@ AuthBlockState CreatePasswordAuthBlockState(const std::string& suffix = "") {
 std::unique_ptr<AuthFactor> CreatePasswordAuthFactor() {
   AuthFactorMetadata metadata = {
       .common =
-          CommonAuthFactorMetadata{
+          auth_factor::SerializedCommonMetadata{
               .chromeos_version_last_updated = kChromeosVersion,
               .chrome_version_last_updated = kChromeVersion,
           },
-      .metadata = PasswordAuthFactorMetadata()};
+      .metadata = auth_factor::SerializedPasswordMetadata()};
   return std::make_unique<AuthFactor>(AuthFactorType::kPassword, kSomeIdpLabel,
                                       metadata, CreatePasswordAuthBlockState());
 }
@@ -109,7 +109,7 @@ TEST_F(AuthFactorManagerTest, Save) {
             kChromeosVersion);
   EXPECT_EQ(loaded_auth_factor.metadata().common.chrome_version_last_updated,
             kChromeVersion);
-  EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
+  EXPECT_TRUE(absl::holds_alternative<auth_factor::SerializedPasswordMetadata>(
       loaded_auth_factor.metadata().metadata));
   EXPECT_EQ(auth_factor->auth_block_state(),
             loaded_auth_factor.auth_block_state());

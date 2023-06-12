@@ -9,6 +9,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 
@@ -51,8 +52,8 @@ AuthFactorLabelArity PasswordAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 PasswordAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const PasswordAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedPasswordMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   proto.mutable_password_metadata();

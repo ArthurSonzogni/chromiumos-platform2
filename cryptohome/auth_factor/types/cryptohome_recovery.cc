@@ -9,6 +9,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 
@@ -31,8 +32,9 @@ CryptohomeRecoveryAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 CryptohomeRecoveryAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const CryptohomeRecoveryAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedCryptohomeRecoveryMetadata& typed_metadata)
+    const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
   // TODO(b/232896212): There's no metadata for recovery auth factor

@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/types/password.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
@@ -28,7 +29,7 @@ class KioskAuthFactorDriver final
       public AfDriverWithPasswordBlockTypes,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kOnlyKiosk>,
-      public AfDriverWithMetadata<KioskAuthFactorMetadata>,
+      public AfDriverWithMetadata<auth_factor::SerializedKioskMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
@@ -44,8 +45,9 @@ class KioskAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const CommonAuthFactorMetadata& common,
-      const KioskAuthFactorMetadata& typed_metadata) const override;
+      const auth_factor::SerializedCommonMetadata& common,
+      const auth_factor::SerializedKioskMetadata& typed_metadata)
+      const override;
 };
 
 }  // namespace cryptohome

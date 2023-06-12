@@ -12,6 +12,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/verifiers/smart_card.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -73,12 +74,12 @@ AuthFactorLabelArity SmartCardAuthFactorDriver::GetAuthFactorLabelArity()
 
 std::optional<user_data_auth::AuthFactor>
 SmartCardAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const SmartCardAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedSmartCardMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
   proto.mutable_smart_card_metadata()->set_public_key_spki_der(
-      brillo::BlobToString(*typed_metadata.public_key_spki_der));
+      brillo::BlobToString(typed_metadata.public_key_spki_der));
   return proto;
 }
 

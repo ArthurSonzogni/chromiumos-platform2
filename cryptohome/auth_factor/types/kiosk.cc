@@ -7,6 +7,7 @@
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 
@@ -28,8 +29,8 @@ AuthFactorLabelArity KioskAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 KioskAuthFactorDriver::TypedConvertToProto(
-    const CommonAuthFactorMetadata& common,
-    const KioskAuthFactorMetadata& typed_metadata) const {
+    const auth_factor::SerializedCommonMetadata& common,
+    const auth_factor::SerializedKioskMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
   proto.mutable_kiosk_metadata();

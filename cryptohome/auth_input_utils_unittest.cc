@@ -14,6 +14,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_platform.h"
 
@@ -80,8 +81,9 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputSmartCard) {
 
   brillo::Blob public_key_spki_der = brillo::BlobFromString(kPublicKeySPKIDer);
   AuthFactorMetadata auth_factor_metadata{
-      .metadata = SmartCardAuthFactorMetadata{.public_key_spki_der =
-                                                  public_key_spki_der},
+      .metadata =
+          auth_factor::SerializedSmartCardMetadata{.public_key_spki_der =
+                                                       public_key_spki_der},
   };
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,

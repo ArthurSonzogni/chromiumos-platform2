@@ -22,6 +22,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/features.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -30,48 +31,50 @@ namespace {
 // factors, there will be more computations involved.
 void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
                          AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = PasswordAuthFactorMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::SerializedPasswordMetadata();
 }
 
 // Set pin metadata here, which happens to be empty.
 void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
                     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = PinAuthFactorMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::SerializedPinMetadata();
 }
 
 // Set cryptohome recovery metadata here, which happens to be empty.
 void GetCryptohomeRecoveryMetadata(
     const user_data_auth::AuthFactor& auth_factor,
     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = CryptohomeRecoveryAuthFactorMetadata();
+  out_auth_factor_metadata.metadata =
+      auth_factor::SerializedCryptohomeRecoveryMetadata();
 }
 
 // Set kiosk metadata here.
 void GetKioskMetadata(const user_data_auth::AuthFactor& auth_factor,
                       AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = KioskAuthFactorMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::SerializedKioskMetadata();
 }
 
 // Set smart card metadata here, which includes public_key_spki_der.
 void GetSmartCardMetadata(const user_data_auth::AuthFactor& auth_factor,
                           AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = SmartCardAuthFactorMetadata{
+  out_auth_factor_metadata.metadata = auth_factor::SerializedSmartCardMetadata{
       .public_key_spki_der = brillo::BlobFromString(
           auth_factor.smart_card_metadata().public_key_spki_der())};
 }
 
 void GetFingerprintMetadata(const user_data_auth::AuthFactor& auth_factor,
                             AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = FingerprintAuthFactorMetadata();
+  out_auth_factor_metadata.metadata =
+      auth_factor::SerializedFingerprintMetadata();
 }
 
-LockoutPolicy LockoutPolicyFromAuthFactorProto(
+auth_factor::SerializedLockoutPolicy LockoutPolicyFromAuthFactorProto(
     const user_data_auth::LockoutPolicy& policy) {
   switch (policy) {
     case user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED:
-      return cryptohome::LockoutPolicy::kAttemptLimited;
+      return auth_factor::SerializedLockoutPolicy::ATTEMPT_LIMITED;
     case user_data_auth::LOCKOUT_POLICY_TIME_LIMITED:
-      return cryptohome::LockoutPolicy::kTimeLimited;
+      return auth_factor::SerializedLockoutPolicy::TIME_LIMITED;
     case user_data_auth::LOCKOUT_POLICY_NONE:
     // Usually, LOCKOUT_POLICY_UNKNOWN will will be an error for invalid
     // argument, but until chrome implements the change, we will continue to
@@ -79,7 +82,7 @@ LockoutPolicy LockoutPolicyFromAuthFactorProto(
     case user_data_auth::LOCKOUT_POLICY_UNKNOWN:
     // Default covers for proto min and max.
     default:
-      return cryptohome::LockoutPolicy::kNoLockout;
+      return auth_factor::SerializedLockoutPolicy::NO_LOCKOUT;
   }
 }
 }  // namespace
@@ -125,7 +128,7 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       out_auth_factor_type = AuthFactorType::kPin;
       if (features_lib.IsFeatureEnabled(Features::kModernPin) &&
           out_auth_factor_metadata.common.lockout_policy !=
-              LockoutPolicy::kTimeLimited) {
+              auth_factor::SerializedLockoutPolicy::TIME_LIMITED) {
         LOG(ERROR) << "Lockout policy not set when modern pin is enabled "
                    << auth_factor.type();
         return false;
