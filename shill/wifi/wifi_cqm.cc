@@ -149,7 +149,9 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
                             Metrics::kWiFiCQMPacketLoss, Metrics::kWiFiCQMMax);
     wifi_->EmitStationInfoRequestEvent(
         WiFiLinkStatistics::Trigger::kCQMPacketLoss);
-    TriggerFwDump();
+    // TODO(b/286985004): Uncomment TriggerFWDump() once FW dump in feedback
+    // report feature is completed.
+    // TriggerFwDump();
     return;
   }
 
@@ -161,7 +163,9 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
                             Metrics::kWiFiCQMBeaconLoss, Metrics::kWiFiCQMMax);
     wifi_->EmitStationInfoRequestEvent(
         WiFiLinkStatistics::Trigger::kCQMBeaconLoss);
-    TriggerFwDump();
+    // TODO(b/286985004): Enable FW dump trigger once FW dump in feedback
+    // report feature is completed.
+    // TriggerFwDump();
     return;
   }
 }
