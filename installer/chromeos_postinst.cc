@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -47,6 +48,7 @@ const char kUMANonChromebookBiosSuccessUBoot[] =
     "Installer.Postinstall.NonChromebookBiosSuccess.UBoot";
 const char kUMANonChromebookBiosSuccessUnknown[] =
     "Installer.Postinstall.NonChromebookBiosSuccess.Unknown";
+const char kUMAESPMountRetries[] = "Installer.Postinstall.ESPMountRetries";
 
 bool GetKernelCommandLine(string* kernel_cmd_line) {
   if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
@@ -401,6 +403,8 @@ void RepairPartitionTable(CgptManager& cgpt_manager) {
 // TODO(tbrandston): perhaps we should only return false for errors that would
 // interfere with completing install/update?
 bool ESPPostInstall(const InstallConfig& install_config) {
+  std::unique_ptr<MetricsInterface> metrics =
+      MetricsInterface::GetMetricsInstance();
   // Early-return for bootloaders we don't handle here.
   switch (install_config.bios_type) {
     case BiosType::kSecure:
@@ -427,13 +431,16 @@ bool ESPPostInstall(const InstallConfig& install_config) {
             << install_config.boot.mount();
 
   bool mount_success = false;
+  int mount_attempts = 0;
+  int max_mount_attempts = 5;
 
   // As of switching to Linux v5.15, the `udev_settle` call may be ran
   // before all disk operations. Given there isn't a fully synchronous
   // mechanism we can rely on, we're retrying with another settle attempt.
 
-  for (int attempts = 0; attempts < 5; ++attempts) {
-    LOG(INFO) << "Mount attempt " << attempts + 1 << " of 5";
+  for (; mount_attempts < max_mount_attempts; ++mount_attempts) {
+    LOG(INFO) << "Mount attempt " << mount_attempts + 1 << " of "
+              << max_mount_attempts;
 
     // Wait for partitions to be re-read, else the mount will race.
     int settle_result = RunCommand({"udevadm", "settle", "--timeout=10"});
@@ -455,6 +462,9 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       sleep(1);
     }
   }
+
+  metrics->SendLinearMetric(kUMAESPMountRetries, mount_attempts,
+                            max_mount_attempts);
 
   if (!mount_success) {
     PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
@@ -518,8 +528,6 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       break;
   }
 
-  std::unique_ptr<MetricsInterface> metrics =
-      MetricsInterface::GetMetricsInstance();
   SendNonChromebookBiosSuccess(*metrics, install_config.bios_type, success);
 
   // Unmount the EFI system partition.
