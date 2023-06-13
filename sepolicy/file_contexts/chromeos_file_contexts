@@ -100,6 +100,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/ipf_ufd                u:object_r:cros_ipf_ufd_exec:s0
 /usr/bin/ipfhostd               u:object_r:cros_ipfhostd_exec:s0
 /usr/bin/find                   u:object_r:cros_system_file:s0
+/usr/bin/flex_hwis_tool         u:object_r:cros_flex_hwis_tool_exec:s0
 /usr/bin/gdbus                  u:object_r:cros_gdbus_exec:s0
 /usr/bin/getopt                 u:object_r:cros_getopt_exec:s0
 /usr/bin/hermes                 u:object_r:cros_hermes_exec:s0
