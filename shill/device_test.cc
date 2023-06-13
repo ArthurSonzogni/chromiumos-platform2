@@ -489,7 +489,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   EXPECT_CALL(*network_, Stop());
   device_->SetEnabled(false);

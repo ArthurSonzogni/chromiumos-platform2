@@ -433,9 +433,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   static const char kStoragePowered[];
 
-  // Brings the associated network interface down unless
-  // network->fixed_ip_params() is true, which indicates that the interface
-  // state shouldn't be changed.
+  // Brings the associated network interface down.
   void BringNetworkInterfaceDown();
 
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);

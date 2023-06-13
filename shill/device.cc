@@ -854,9 +854,7 @@ bool Device::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 }
 
 void Device::BringNetworkInterfaceDown() {
-  // If fixed_ip_params is true, we don't manipulate the interface state.
-  if (!network_->fixed_ip_params())
-    rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+  rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 ControlInterface* Device::control_interface() const {
