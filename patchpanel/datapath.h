@@ -355,8 +355,7 @@ class Datapath {
   virtual bool AddIPv6HostRoute(const std::string& ifname,
                                 const net_base::IPv6CIDR& ipv6_cidr,
                                 const std::string& src_addr = "");
-  virtual void RemoveIPv6HostRoute(const std::string& ipv6_addr,
-                                   int ipv6_prefix_len);
+  virtual void RemoveIPv6HostRoute(const net_base::IPv6CIDR& ipv6_cidr);
 
   // Add an 'ip -6 neigh proxy' entry so that |ipv6_addr| is resolvable into MAC
   // by neighbors from |ifname|, though itself is actually configured on a

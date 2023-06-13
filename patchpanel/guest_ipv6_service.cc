@@ -300,7 +300,8 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
   // Remove downlink /128 routes
   for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-    datapath_->RemoveIPv6HostRoute(neighbor_ip.ToString(), 128);
+    datapath_->RemoveIPv6HostRoute(
+        *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
   }
   downstream_neighbors_[ifname_downlink].clear();
 
@@ -352,7 +353,8 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     }
     // Remove downlink /128 routes
     for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-      datapath_->RemoveIPv6HostRoute(neighbor_ip.ToString(), 128);
+      datapath_->RemoveIPv6HostRoute(
+          *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
     }
     downstream_neighbors_[ifname_downlink].clear();
   }

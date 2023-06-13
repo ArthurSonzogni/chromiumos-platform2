@@ -1532,12 +1532,8 @@ bool Datapath::AddIPv6HostRoute(const std::string& ifname,
   }
 }
 
-void Datapath::RemoveIPv6HostRoute(const std::string& ipv6_addr,
-                                   int ipv6_prefix_len) {
-  std::string ipv6_addr_cidr =
-      ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
-
-  process_runner_->ip6("route", "del", {ipv6_addr_cidr});
+void Datapath::RemoveIPv6HostRoute(const net_base::IPv6CIDR& ipv6_cidr) {
+  process_runner_->ip6("route", "del", {ipv6_cidr.ToString()});
 }
 
 bool Datapath::AddIPv6NeighborProxy(const std::string& ifname,

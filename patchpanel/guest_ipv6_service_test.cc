@@ -219,7 +219,9 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       .With(Args<1, 2>(AreTheseTwo(1, 101)));
   EXPECT_CALL(*datapath_,
               RemoveIPv6NeighborProxy("down1", "2001:db8:0:100::1234"));
-  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:100::abcd", 128));
+  EXPECT_CALL(*datapath_,
+              RemoveIPv6HostRoute(*net_base::IPv6CIDR::CreateFromCIDRString(
+                  "2001:db8:0:100::abcd/128")));
   target.StopForwarding("up1", "down1");
 
   // OnUplinkIPv6Changed -> StartForwarding
@@ -253,8 +255,12 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
       .With(Args<1, 2>(AreTheseTwo(1, 101)));
-  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:200::abcd", 128));
-  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:200::9876", 128));
+  EXPECT_CALL(*datapath_,
+              RemoveIPv6HostRoute(*net_base::IPv6CIDR::CreateFromCIDRString(
+                  "2001:db8:0:200::abcd/128")));
+  EXPECT_CALL(*datapath_,
+              RemoveIPv6HostRoute(*net_base::IPv6CIDR::CreateFromCIDRString(
+                  "2001:db8:0:200::9876/128")));
   EXPECT_CALL(*datapath_,
               RemoveIPv6NeighborProxy("down1", "2001:db8:0:200::1234"));
   target.StopUplink("up1");
