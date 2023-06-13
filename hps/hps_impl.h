@@ -98,6 +98,7 @@ class HPS_impl : public HPS {
   bool mcu_update_sent_ = false;
   bool spi_update_sent_ = false;
   uint16_t feat_enabled_;
+  int transient_error_count_ = 0;
   base::FilePath mcu_blob_;
   base::FilePath fpga_bitstream_;
   base::FilePath fpga_app_image_;

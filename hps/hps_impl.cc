@@ -60,6 +60,10 @@ static constexpr base::TimeDelta kSuspendThreshold = base::Milliseconds(1000);
 // service-failure-hpsd from being uploaded. See normal exit.
 static constexpr int kNoRespawnExit = 5;
 
+// How many "transient" errors we will try to recover from with a power cycle
+// before declaring defeat.
+static constexpr int kMaxTransientErrors = 100;
+
 base::TimeDelta GetTime(clockid_t clk_id) {
   struct timespec ts = {};
   CHECK_EQ(clock_gettime(clk_id, &ts), 0);
@@ -599,6 +603,13 @@ bool HPS_impl::IsRunning() {
   if (errors.has_value() && errors.value()) {
     std::string msg =
         "Error " + HpsRegValToString(HpsReg::kError, errors.value());
+    // For transient camera errors, try resetting the module (b/266351818).
+    if (errors.value() == RError::kCameraImageTimeout &&
+        ++transient_error_count_ < kMaxTransientErrors) {
+      LOG(ERROR) << "Fault: transient camera error #" << transient_error_count_
+                 << ", resetting HPS: " << msg;
+      return false;
+    }
     OnFatalError(FROM_HERE, msg);
   }
   return true;
@@ -651,6 +662,8 @@ void HPS_impl::LogStateOnError() {
   LOG(ERROR) << base::StringPrintf("- Updates sent: mcu:%d spi:%d",
                                    mcu_update_sent_, spi_update_sent_);
   LOG(ERROR) << base::StringPrintf("- Wake lock: %d", !!wake_lock_);
+  LOG(ERROR) << base::StringPrintf("- Transient errors: %d",
+                                   transient_error_count_);
   DumpHpsRegisters(*device_,
                    [](const std::string& s) { LOG(ERROR) << "- " << s; });
 }

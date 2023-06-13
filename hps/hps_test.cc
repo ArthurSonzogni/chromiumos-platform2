@@ -4,14 +4,14 @@
 
 #include <deque>
 #include <memory>
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/memory/ref_counted.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
 #include <base/sys_byteorder.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
@@ -110,6 +110,42 @@ class HPSTestButUsingAMock : public testing::Test {
 
   bool CheckMagic() { return hps_->CheckMagic(); }
 
+  void ExpectRegisterDump() {
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic)).WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kHwRev)).WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kBankReady))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError)).WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeatEn)).WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeature0))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeature1))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFirmwareVersionHigh))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFirmwareVersionLow))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaBootCount))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaLoopCount))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaRomVersion))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSpiFlashStatus))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kCameraConfig))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kOptionBytesConfig))
+        .WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kPartIds)).WillOnce(Return(0x1234));
+    EXPECT_CALL(*dev_, ReadStringReg(hps::HpsReg::kPreviousCrashMessage, 256))
+        .WillOnce(Return("test"));
+    EXPECT_CALL(*dev_, ReadStringReg(hps::HpsReg::kFpgaCrashMessage, 256))
+        .WillOnce(Return("test"));
+  }
+
   MockHpsDev* dev_;
   MockHpsMetrics* metrics_;
   std::unique_ptr<hps::HPS_impl> hps_;
@@ -172,6 +208,37 @@ TEST_F(HPSTestButUsingAMock, IsRunningOk) {
   EXPECT_TRUE(hps_->IsRunning());
 }
 
+TEST_F(HPSTestButUsingAMock, TransientCameraError) {
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+      .WillOnce(Return(R2::kAppl));
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
+      .WillOnce(Return(hps::RError::kCameraImageTimeout));
+  EXPECT_FALSE(hps_->IsRunning());
+}
+
+TEST_F(HPSTestButUsingAMock, TooManyTransientErrors) {
+  for (int i = 0; i < 99; i++) {
+    testing::InSequence s;
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+        .WillOnce(Return(R2::kAppl));
+    EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
+        .WillOnce(Return(hps::RError::kCameraImageTimeout));
+    EXPECT_FALSE(hps_->IsRunning());
+    testing::Mock::VerifyAndClearExpectations(dev_);
+  }
+  EXPECT_DEATH(
+      {
+        testing::InSequence s;
+        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+            .WillOnce(Return(R2::kAppl));
+        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
+            .WillOnce(Return(hps::RError::kCameraImageTimeout));
+        ExpectRegisterDump();
+        hps_->IsRunning();
+      },
+      "Terminating for fatal error");
+}
+
 TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
   EXPECT_DEATH(
       {
@@ -180,47 +247,7 @@ TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
             .WillOnce(Return(R2::kAppl));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
             .WillOnce(Return(0x1234));
-        // Expect dump of all readable registers:
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kHwRev))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kBankReady))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeatEn))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeature0))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFeature1))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFirmwareVersionHigh))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFirmwareVersionLow))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaBootCount))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaLoopCount))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaRomVersion))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSpiFlashStatus))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kCameraConfig))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kOptionBytesConfig))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kPartIds))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_,
-                    ReadStringReg(hps::HpsReg::kPreviousCrashMessage, 256))
-            .WillOnce(Return("test"));
-        EXPECT_CALL(*dev_, ReadStringReg(hps::HpsReg::kFpgaCrashMessage, 256))
-            .WillOnce(Return("test"));
-
+        ExpectRegisterDump();
         hps_->IsRunning();
       },
       "Terminating for fatal error");
