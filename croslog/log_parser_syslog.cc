@@ -21,11 +21,8 @@ constexpr size_t kTimeStringLengthUTC = 27;
 
 int ParseTime(const std::string& entire_line, base::Time* time) {
   DCHECK_NE(nullptr, time);
-
-  if (entire_line[26] == 'Z') {
+  if (entire_line.length() >= kTimeStringLengthUTC && entire_line[26] == 'Z') {
     // Case of UTC time format like "2020-05-25T00:00:00.000000Z".
-    if (entire_line.length() < kTimeStringLengthUTC)
-      return -1;
     std::string log_time = entire_line.substr(0, kTimeStringLengthUTC);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
@@ -33,10 +30,9 @@ int ParseTime(const std::string& entire_line, base::Time* time) {
       return -1;
 
     return kTimeStringLengthUTC;
-  } else if (entire_line[26] == '+' || entire_line[26] == '-') {
+  } else if (entire_line.length() >= kTimeStringLengthWithTimeZone &&
+             (entire_line[26] == '+' || entire_line[26] == '-')) {
     // Case of format with time-zone like "2020-05-25T00:00:00.000000+00:00".
-    if (entire_line.length() < kTimeStringLengthWithTimeZone)
-      return -1;
     std::string log_time = entire_line.substr(0, kTimeStringLengthWithTimeZone);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
@@ -58,11 +54,6 @@ LogParserSyslog::LogParserSyslog() = default;
 MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
   if (entire_line.empty()) {
     // Returns an invalid value if the line is invalid or empty.
-    return std::nullopt;
-  }
-
-  if (entire_line.size() < kTimeStringLengthUTC) {
-    // Parse failed. Maybe this line doesn't contains a header.
     return std::nullopt;
   }
 
