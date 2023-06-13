@@ -29,7 +29,7 @@ StatusOr<bool> SealingTpm1::IsSupported() {
 }
 
 StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
-    const brillo::SecureBlob& auth_value) {
+    const std::optional<brillo::SecureBlob>& auth_value) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
@@ -42,22 +42,23 @@ StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
                       enc_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
-  // Get the TPM usage policy object and set the auth_value.
-  TSS_HPOLICY tpm_usage_policy;
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
-                      tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
-      .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
+  if (auth_value.has_value()) {
+    // Get the TPM usage policy object and set the auth_value.
+    TSS_HPOLICY tpm_usage_policy;
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
+                        tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
+        .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
 
-  brillo::SecureBlob mutable_auth_value = auth_value;
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
-                      tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                      mutable_auth_value.size(), mutable_auth_value.data())))
-      .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
+    brillo::SecureBlob mutable_auth_value = *auth_value;
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
+                        tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
+                        mutable_auth_value.size(), mutable_auth_value.data())))
+        .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_AssignToObject(
-                      tpm_usage_policy, enc_handle)))
-      .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
-
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_AssignToObject(
+                        tpm_usage_policy, enc_handle)))
+        .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
+  }
   return enc_handle;
 }
 
@@ -96,13 +97,8 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
     }
   }
 
-  if (!policy.permission.auth_value.has_value()) {
-    return MakeStatus<TPMError>("Unsupported empty auth value",
-                                TPMRetryAction::kNoRetry);
-  }
-
   ASSIGN_OR_RETURN(ScopedTssKey auth_value_key,
-                   GetAuthValueKey(policy.permission.auth_value.value()),
+                   GetAuthValueKey(policy.permission.auth_value),
                    _.WithStatus<TPMError>("Failed to get auth value key"));
 
   brillo::SecureBlob plaintext = unsealed_data;
@@ -148,13 +144,8 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  if (!policy.permission.auth_value.has_value()) {
-    return MakeStatus<TPMError>("Unsupported empty auth value",
-                                TPMRetryAction::kNoRetry);
-  }
-
   ASSIGN_OR_RETURN(ScopedTssKey auth_value_key,
-                   GetAuthValueKey(policy.permission.auth_value.value()),
+                   GetAuthValueKey(policy.permission.auth_value),
                    _.WithStatus<TPMError>("Failed to get auth value key"));
 
   brillo::Blob mutable_sealed_data = sealed_data;

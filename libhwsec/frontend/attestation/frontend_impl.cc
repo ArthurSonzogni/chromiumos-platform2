@@ -24,10 +24,6 @@ StatusOr<brillo::SecureBlob> AttestationFrontendImpl::Unseal(
               DeviceConfigs{
                   DeviceConfig::kBootMode,
               },
-          .permission =
-              Permission{
-                  .auth_value = brillo::SecureBlob(""),
-              },
       },
       sealed_data, Sealing::UnsealOptions{});
 }
@@ -42,10 +38,6 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::Seal(
                       DeviceConfigSettings::BootModeSetting{
                           .mode = std::nullopt,
                       },
-              },
-          .permission =
-              Permission{
-                  .auth_value = brillo::SecureBlob(""),
               },
       },
       unsealed_data);

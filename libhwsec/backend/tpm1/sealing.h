@@ -43,7 +43,8 @@ class SealingTpm1 : public Sealing {
                                       UnsealOptions options) override;
 
  private:
-  StatusOr<ScopedTssKey> GetAuthValueKey(const brillo::SecureBlob& auth_value);
+  StatusOr<ScopedTssKey> GetAuthValueKey(
+      const std::optional<brillo::SecureBlob>& auth_value);
 
   overalls::Overalls& overalls_;
   TssHelper& tss_helper_;

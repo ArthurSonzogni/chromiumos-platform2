@@ -43,8 +43,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
     use_only_policy_authorization = true;
   }
 
-  if (!policy.permission.auth_value.has_value() &&
-      use_only_policy_authorization) {
+  if (!policy.permission.auth_value.has_value() && policy_digest.empty()) {
     return MakeStatus<TPMError>("Seal without any useful policy",
                                 TPMRetryAction::kNoRetry);
   }
