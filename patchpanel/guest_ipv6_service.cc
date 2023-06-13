@@ -405,8 +405,11 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
       // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
       // route replace` so we don't need to remove the old one first.
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-        if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip.ToString(), 128,
-                                         uplink_ip)) {
+        if (!datapath_->AddIPv6HostRoute(
+                ifname,
+                *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
+                                                                128),
+                uplink_ip)) {
           LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
                        << " dev " << ifname << " src " << uplink_ip;
         }
@@ -571,8 +574,10 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
   LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
             << ", corresponding uplink " << uplink.value() << "["
             << uplink_ips_[uplink.value()] << "]";
-  if (!datapath_->AddIPv6HostRoute(ifname_downlink, ip.ToString(), 128,
-                                   uplink_ips_[uplink.value()])) {
+  if (!datapath_->AddIPv6HostRoute(
+          ifname_downlink,
+          *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ip, 128),
+          uplink_ips_[uplink.value()])) {
     LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
                  << ifname_downlink << " src " << uplink_ips_[uplink.value()];
   }

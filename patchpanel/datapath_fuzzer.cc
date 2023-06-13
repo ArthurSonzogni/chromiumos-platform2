@@ -92,12 +92,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       provider.ConsumeBytes<uint8_t>(mac.size());
   std::copy(mac_addr_bytes.begin(), mac_addr_bytes.end(), mac.begin());
 
-  struct in6_addr ipv6_addr;
-  memset(&ipv6_addr, 0, sizeof(ipv6_addr));
-  std::vector<uint8_t> ipv6_addr_bytes =
-      provider.ConsumeBytes<uint8_t>(sizeof(ipv6_addr.s6_addr));
-  std::copy(ipv6_addr_bytes.begin(), ipv6_addr_bytes.end(), ipv6_addr.s6_addr);
-  std::string ipv6_addr_str = IPv6AddressToString(ipv6_addr);
+  const std::vector<uint8_t> ipv6_addr_bytes =
+      provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
+  const int ipv6_prefix_len = provider.ConsumeIntegralInRange<int>(0, 128);
+  const auto ipv6_addr = *net_base::IPv6Address::CreateFromBytes(
+      ipv6_addr_bytes.data(), ipv6_addr_bytes.size());
+  const auto ipv6_cidr = *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+      ipv6_addr, ipv6_prefix_len);
+  const std::string ipv6_addr_str = ipv6_addr.ToString();
   bool route_on_vpn = provider.ConsumeBool();
 
   ConnectedNamespace nsinfo = {};
@@ -143,8 +145,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.StopVpnRouting(ifname);
   datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),
                               provider.ConsumeIntegral<uint16_t>());
-  datapath.AddIPv6HostRoute(ifname, ipv6_addr_str,
-                            static_cast<int>(prefix_len));
+  datapath.AddIPv6HostRoute(ifname, ipv6_cidr);
   datapath.RemoveIPv6HostRoute(ipv6_addr_str, static_cast<int>(prefix_len));
   datapath.AddIPv6Address(ifname, ipv6_addr_str);
   datapath.RemoveIPv6Address(ifname, ipv6_addr_str);

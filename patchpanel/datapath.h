@@ -353,8 +353,7 @@ class Datapath {
                                   uint16_t off = 0);
 
   virtual bool AddIPv6HostRoute(const std::string& ifname,
-                                const std::string& ipv6_addr,
-                                int ipv6_prefix_len,
+                                const net_base::IPv6CIDR& ipv6_cidr,
                                 const std::string& src_addr = "");
   virtual void RemoveIPv6HostRoute(const std::string& ipv6_addr,
                                    int ipv6_prefix_len);

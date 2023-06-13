@@ -1514,7 +1514,8 @@ TEST(DatapathTest, AddIPv6HostRoute) {
   FakeSystem system;
   Verify_ip6(*runner, "route replace 2001:da8:e00::1234/128 dev eth0");
   Datapath datapath(runner, firewall, &system);
-  datapath.AddIPv6HostRoute("eth0", "2001:da8:e00::1234", 128);
+  datapath.AddIPv6HostRoute("eth0", *net_base::IPv6CIDR::CreateFromCIDRString(
+                                        "2001:da8:e00::1234/128"));
 }
 
 TEST(DatapathTest, AddIPv4Route) {

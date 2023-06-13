@@ -206,8 +206,11 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:100::1234");
 
-  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:100::abcd", 128,
-                                           "2001:db8:0:100::1234"));
+  EXPECT_CALL(*datapath_,
+              AddIPv6HostRoute("down1",
+                               *net_base::IPv6CIDR::CreateFromCIDRString(
+                                   "2001:db8:0:100::abcd/128"),
+                               "2001:db8:0:100::1234"));
   target.FakeNDProxyNeighborDetectionSignal(
       101, StringToIPv6Address("2001:db8:0:100::abcd"));
 
@@ -231,13 +234,19 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       .WillOnce(Return(true));
   target.StartForwarding("up1", "down1");
 
-  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:200::abcd", 128,
-                                           "2001:db8:0:200::1234"));
+  EXPECT_CALL(*datapath_,
+              AddIPv6HostRoute("down1",
+                               *net_base::IPv6CIDR::CreateFromCIDRString(
+                                   "2001:db8:0:200::abcd/128"),
+                               "2001:db8:0:200::1234"));
   target.FakeNDProxyNeighborDetectionSignal(
       101, StringToIPv6Address("2001:db8:0:200::abcd"));
 
-  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:200::9876", 128,
-                                           "2001:db8:0:200::1234"));
+  EXPECT_CALL(*datapath_,
+              AddIPv6HostRoute("down1",
+                               *net_base::IPv6CIDR::CreateFromCIDRString(
+                                   "2001:db8:0:200::9876/128"),
+                               "2001:db8:0:200::1234"));
   target.FakeNDProxyNeighborDetectionSignal(
       101, StringToIPv6Address("2001:db8:0:200::9876"));
 
