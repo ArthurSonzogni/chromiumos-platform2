@@ -1534,6 +1534,7 @@ struct MetaDataTest {
   bool use_saved_lsb = false;
   std::string exec_name = "kernel";
   std::optional<bool> enterprise_enrolled = false;
+  std::optional<CrashCollector::ComputedCrashSeverity> severity = std::nullopt;
   std::string expected_meta;
 };
 
@@ -1657,6 +1658,11 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   }
   collector_.set_device_policy_for_test(std::move(test_device_policy));
 
+  if (test_case.severity.has_value()) {
+    EXPECT_CALL(collector_, ComputeSeverity(_))
+        .WillOnce(Return(test_case.severity.value()));
+  }
+
   collector_.SetUseSavedLsb(test_case.use_saved_lsb);
   collector_.FinishCrash(meta_file, test_case.exec_name, kPayloadName);
 
@@ -1677,6 +1683,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
       "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1703,12 +1711,45 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=beta\n"
       "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
       "ver=12345.0.2015_01_26_0853\n"
       "upload_var_lsb-release=12345.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=81\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
+  MetaDataTest base_severity_fatal_platform;
+  base_severity_fatal_platform.test_case_name = "BaseSeverityFatalPlatform";
+  base_severity_fatal_platform.severity = CrashCollector::ComputedCrashSeverity{
+      .crash_severity = CrashCollector::CrashSeverity::kFatal,
+      .product_group = CrashCollector::Product::kPlatform,
+  };
+  base_severity_fatal_platform.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=FATAL\n"
+      "upload_var_client_computed_product=Platform\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=82\n"
       "os_millis=%" PRId64
       "\n"
       "upload_var_osName=%s\n"
@@ -1729,6 +1770,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
       "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_in_progress_integration_test=some.Test\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
@@ -1758,6 +1801,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_num-experiments=%d\n"
       "upload_var_channel=test\n"
       "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1786,6 +1831,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
       "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "ver=6727.0.2015_01_26_0853\n"
@@ -1811,6 +1858,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
       "upload_var_is-enterprise-enrolled=true\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1836,6 +1885,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "foo=bar\n"
       "weird__key___=weird\\nvalue\n"
       "upload_var_channel=test\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1853,9 +1904,14 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
 
-  return {
-      base,         base_saved_lsb,      test_in_progress,        variations,
-      no_exec_name, enterprise_enrolled, device_policy_not_loaded};
+  return {base,
+          base_saved_lsb,
+          base_severity_fatal_platform,
+          test_in_progress,
+          variations,
+          no_exec_name,
+          enterprise_enrolled,
+          device_policy_not_loaded};
 }
 
 INSTANTIATE_TEST_SUITE_P(CrashCollectorInstantiation,
@@ -1915,6 +1971,8 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "error_type=unsupported-32bit-core-file\n"
       "upload_file_pslog=%s\n"
       "upload_var_channel=beta\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=crash_reporter_failure\n"

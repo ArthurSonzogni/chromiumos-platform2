@@ -180,6 +180,8 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
       "upload_var_package=com.android.settings v30 (11)\n"
       "upload_text_exception_info=%s\n"
       "upload_var_channel=beta\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Arc\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=com.android.settings\n"

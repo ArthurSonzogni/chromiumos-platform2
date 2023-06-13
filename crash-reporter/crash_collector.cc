@@ -90,6 +90,14 @@ const char kLsbChannelKey[] = "CHROMEOS_RELEASE_TRACK";
 // policy if one is defined.
 constexpr char kEnvSeccompPolicyPath[] = "SECCOMP_POLICY_PATH=";
 
+// Sentinel value indicating CrashSeverityEnumToString() received a non-enum
+// value.
+constexpr char kUnknownCrashSeverityEnumString[] =
+    "unknown-crash-severity-enum";
+
+// Sentinel value indicating ProductEnumToString() received a non-enum value.
+constexpr char kUnknownProductEnumString[] = "unknown-product-enum";
+
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -1598,6 +1606,14 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
                            *is_enterprise_enrolled ? "true" : "false");
   }
 
+  ComputedCrashSeverity computed_crash_severity = ComputeSeverity(exec_name);
+  std::string crash_severity =
+      CrashSeverityEnumToString(computed_crash_severity.crash_severity);
+  std::string product_group =
+      ProductEnumToString(computed_crash_severity.product_group);
+  AddCrashMetaUploadData("client_computed_severity", crash_severity);
+  AddCrashMetaUploadData("client_computed_product", product_group);
+
   std::string in_progress_test;
   if (base::ReadFileToString(paths::GetAt(paths::kSystemRunStateDirectory,
                                           paths::kInProgressTestName),
@@ -1661,6 +1677,43 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   }
 
   is_finished_ = true;
+}
+
+std::string CrashCollector::CrashSeverityEnumToString(
+    CrashSeverity crash_severity) const {
+  switch (crash_severity) {
+    case CrashSeverity::kUnspecified:
+      return "UNSPECIFIED";
+    case CrashSeverity::kFatal:
+      return "FATAL";
+    case CrashSeverity::kError:
+      return "ERROR";
+    case CrashSeverity::kWarning:
+      return "WARNING";
+    case CrashSeverity::kInfo:
+      return "INFO";
+  }
+  LOG(ERROR) << "Unexpected enum value for CrashSeverity: "
+             << static_cast<int>(crash_severity);
+  return kUnknownCrashSeverityEnumString;
+}
+
+std::string CrashCollector::ProductEnumToString(Product product) const {
+  switch (product) {
+    case Product::kUnspecified:
+      return "Unspecified";
+    case Product::kUi:
+      return "Ui";
+    case Product::kPlatform:
+      return "Platform";
+    case Product::kArc:
+      return "Arc";
+    case Product::kLacros:
+      return "Lacros";
+  }
+  LOG(ERROR) << "Unexpected enum value for Product: "
+             << static_cast<int>(product);
+  return kUnknownProductEnumString;
 }
 
 bool CrashCollector::ShouldHandleChromeCrashes() {

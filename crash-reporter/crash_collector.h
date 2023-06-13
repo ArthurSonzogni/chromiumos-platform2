@@ -640,6 +640,14 @@ class CrashCollector {
   // TODO(b/186659673): Validate daemon-store usage and always use it.
   bool UseDaemonStore();
 
+  // Returns the stringified version of a given |crash_severity| value, which is
+  // reported to the crash server.
+  std::string CrashSeverityEnumToString(CrashSeverity crash_severity) const;
+
+  // Returns the stringified version of a given |product| value, which is
+  // reported to the crash server.
+  std::string ProductEnumToString(Product product) const;
+
   // Returns an error type signature for a given |error_type| value,
   // which is reported to the crash server along with the
   // crash_reporter-user-collection signature.
