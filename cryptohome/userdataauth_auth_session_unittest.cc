@@ -903,8 +903,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVault) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply2 =
       AuthenticateAuthFactor(auth_request2);
   ASSERT_EQ(auth_reply2.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply2.authenticated());
-
+  ASSERT_THAT(
+      auth_reply2.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   status = PreparePersistentVaultImpl(serialized_token, {});
   EXPECT_THAT(status, NotOk());
   ASSERT_EQ(status->local_legacy_error(),
@@ -1023,7 +1024,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply.authenticated());
+  ASSERT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY, AUTH_INTENT_DECRYPT));
 
   // Arrange the vault operations.
   auto user_session = std::make_unique<MockUserSession>();
@@ -1180,7 +1183,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply.authenticated());
+  ASSERT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
 
   auto user_session3 = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session3, IsActive())
@@ -1234,7 +1239,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply.authenticated());
+  ASSERT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
 
   // Arrange the vault operations.
   auto user_session = std::make_unique<MockUserSession>();
@@ -1293,7 +1300,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Verify
   ASSERT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  ASSERT_FALSE(reply.authenticated());
+  ASSERT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
@@ -1327,7 +1334,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
 
   // Verify
   ASSERT_NE(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_FALSE(reply.authenticated());
+  ASSERT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
@@ -1368,7 +1375,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply.authenticated());
+  ASSERT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
+
   user_data_auth::GetHibernateSecretRequest hs_request;
   hs_request.set_auth_session_id(serialized_token);
   user_data_auth::GetHibernateSecretReply hs_reply =
@@ -1419,7 +1429,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretWithBroadcastId) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(auth_reply.authenticated());
+  ASSERT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
+
   user_data_auth::GetHibernateSecretRequest hs_request;
   hs_request.set_auth_session_id(serialized_public_token);
   user_data_auth::GetHibernateSecretReply hs_reply =
@@ -1471,7 +1484,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1525,7 +1537,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
 
   // Assert. The legacy `authenticated` field stays false.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
@@ -1549,7 +1560,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1574,7 +1584,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1612,7 +1621,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1648,7 +1656,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1692,7 +1699,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_TRUE(reply.authenticated());
   EXPECT_THAT(
       reply.authorized_for(),
       UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
@@ -1738,7 +1744,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1779,7 +1784,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -1824,7 +1828,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
@@ -2410,7 +2413,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(auth_reply.authenticated());
+  EXPECT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
 
   // Act.
   // Test that RemoveAuthFactor fails to remove the non-existing VK.
@@ -2467,8 +2472,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(auth_reply.authenticated());
-
+  EXPECT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   // Act.
   // Test that RemoveAuthFactor fails to remove the non-existing VK.
   user_data_auth::RemoveAuthFactorRequest remove_request;
@@ -2524,8 +2530,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(auth_reply.authenticated());
-
+  EXPECT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   // Act.
   // Test that RemoveAuthFactor fails to remove the non-existing VK.
   user_data_auth::RemoveAuthFactorRequest remove_request;
@@ -2593,8 +2600,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const user_data_auth::AuthenticateAuthFactorReply auth_reply =
       AuthenticateAuthFactor(auth_request);
   EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(auth_reply.authenticated());
-
+  EXPECT_THAT(
+      auth_reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   // Act.
   // Test that RemoveAuthFactor fails to remove the non-existing VK.
   user_data_auth::RemoveAuthFactorRequest remove_request;
@@ -2655,7 +2663,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(reply.authenticated());
   InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(serialized_token);
   EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),

@@ -303,8 +303,6 @@ void ReplyWithAuthenticationResult(
   DCHECK(auth_session);
   DCHECK(!on_done.is_null());
   user_data_auth::AuthenticateAuthFactorReply reply;
-  reply.set_authenticated(auth_session->status() ==
-                          AuthStatus::kAuthStatusAuthenticated);
   for (AuthIntent auth_intent : auth_session->authorized_intents()) {
     reply.add_authorized_for(AuthIntentToProto(auth_intent));
   }

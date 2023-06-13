@@ -326,7 +326,10 @@ bool StatefulRecovery::Mount(const Username& username,
     return false;
   }
 
-  if (!authenticate_reply.authenticated()) {
+  if (std::find(authenticate_reply.authorized_for().begin(),
+                authenticate_reply.authorized_for().end(),
+                user_data_auth::AUTH_INTENT_DECRYPT) ==
+      authenticate_reply.authorized_for().end()) {
     LOG(ERROR) << "AuthenticateAuthFactor returned success but failed to "
                   "authenticate.";
     InvalidateAuthSession(auth_session_reply.auth_session_id());

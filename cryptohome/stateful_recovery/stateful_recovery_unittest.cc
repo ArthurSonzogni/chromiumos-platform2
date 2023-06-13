@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
@@ -95,8 +96,10 @@ class StatefulRecoveryTest : public ::testing::Test {
             if (success.password_success) {
               out_reply->set_error(user_data_auth::CryptohomeErrorCode::
                                        CRYPTOHOME_ERROR_NOT_SET);
-              out_reply->set_authenticated(true);
-
+              out_reply->add_authorized_for(
+                  user_data_auth::AUTH_INTENT_DECRYPT);
+              out_reply->add_authorized_for(
+                  user_data_auth::AUTH_INTENT_VERIFY_ONLY);
             } else {
               out_reply->set_error(user_data_auth::CryptohomeErrorCode::
                                        CRYPTOHOME_ERROR_KEY_NOT_FOUND);
