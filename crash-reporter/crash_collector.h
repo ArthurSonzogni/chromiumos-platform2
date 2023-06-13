@@ -21,6 +21,8 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/memory/ref_counted.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <debugd/dbus-proxies.h>
@@ -143,7 +145,10 @@ class CrashCollector {
 
   void set_metrics_library_for_test(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
-    metrics_lib_ = std::move(metrics_lib);
+    metrics_lib_ = base::MakeRefCounted<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+        std::forward<std::unique_ptr<MetricsLibraryInterface>>(
+            std::move(metrics_lib)));
   }
 
   // For testing, set the log config file path instead of kDefaultLogConfig.
@@ -646,7 +651,8 @@ class CrashCollector {
   // Prepended to log messages to differentiate between collectors.
   const std::string tag_;
 
-  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      metrics_lib_;
 
   // Is this an early-boot crash collection?
   bool early_ = false;

@@ -47,6 +47,7 @@
 #include <debugd/dbus-constants.h>
 #include <policy/device_policy_impl.h>
 #include <re2/re2.h>
+#include <redaction_tool/libmetrics_metrics_recorder.h>
 #include <redaction_tool/redaction_tool.h>
 #include <zlib.h>
 
@@ -440,7 +441,10 @@ CrashCollector::CrashCollector(
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
-  metrics_lib_ = std::make_unique<MetricsLibrary>();
+  metrics_lib_ = base::MakeRefCounted<
+      base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+      std::forward<std::unique_ptr<MetricsLibraryInterface>>(
+          std::make_unique<MetricsLibrary>()));
 }
 
 CrashCollector::~CrashCollector() {
@@ -788,7 +792,9 @@ std::string CrashCollector::Sanitize(const std::string& name) {
 }
 
 void CrashCollector::StripSensitiveData(std::string* contents) {
-  redaction::RedactionTool redactor(nullptr);
+  redaction::RedactionTool redactor(
+      nullptr,
+      std::make_unique<redaction::LibMetricsMetricsRecorder>(metrics_lib_));
   *contents = redactor.Redact(*contents);
 }
 
@@ -1624,7 +1630,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   // Record report created metric in UMA.
   // TODO(b/270732207): Remove deadlock risk.
-  metrics_lib_->SendCrosEventToUMA(kReportCountEnum);
+  metrics_lib_->data->SendCrosEventToUMA(kReportCountEnum);
 
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     SetUpDBus();
