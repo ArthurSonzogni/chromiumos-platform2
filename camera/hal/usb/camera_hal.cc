@@ -627,13 +627,6 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     return;
   }
 
-  if (is_vivid) {
-    LOGF(INFO) << "New vivid camera device at " << path;
-  } else {
-    LOGF(INFO) << "New usb camera device at " << path << ", vid:pid = " << vid
-               << ":" << pid << ", bcdDevice = " << bcdDevice;
-  }
-
   DeviceInfo info;
   bool is_external = true;
   if (const DeviceInfo* info_ptr = characteristics_.Find(vid, pid)) {
@@ -653,10 +646,18 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
                     << " does not support constant frame rate";
     }
   }
-  VLOGF(1) << "Found a "
-           << (is_external ? "external"
-                           : (info.is_detachable ? "detachable" : "built-in"))
-           << " camera";
+
+  if (is_vivid) {
+    LOGF(INFO) << "New vivid camera device at " << path;
+  } else {
+    LOGF(INFO) << "New "
+               << (is_external
+                       ? "external"
+                       : (info.is_detachable ? "detachable" : "built-in"))
+               << " camera device " << V4L2CameraDevice::GetModelName(path)
+               << ", vid:pid = " << vid << ":" << pid
+               << ", bcdDevice = " << bcdDevice << " at " << path;
+  }
   if ((is_external || info.is_detachable) && !callbacks_) {
     VLOGF(1) << "No callbacks set, ignore it for now";
     return;
