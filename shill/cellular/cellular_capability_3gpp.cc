@@ -2224,6 +2224,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
 }
 
 void CellularCapability3gpp::ConfigureAttachApn() {
+  SLOG(this, 3) << __func__;
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
@@ -2234,25 +2235,6 @@ void CellularCapability3gpp::ConfigureAttachApn() {
   // - The UI APN is enforced, even when it's incorrect.
   // When the attach APN sent by shill matches the the one in the modem,
   // ModemManager will not unregister, so the operation will have no effect.
-
-  if (attach_apn_try_list_.size() > 0) {
-    if (base::Contains(attach_apn_try_list_.front(), kApnSourceProperty) &&
-        attach_apn_try_list_.front().at(kApnSourceProperty) == kApnSourceUi) {
-      SLOG(this, 2) << "Using user entered Attach APN, skipping round robin";
-      // Only keep the user entered Attach APN.
-      while (attach_apn_try_list_.size() > 1)
-        attach_apn_try_list_.pop_back();
-    } else {
-      // If the attach APN in shill's database is not the correct one, the
-      // device will never register. We can let the modem try to register with
-      // its own database by adding an empty APN to the list.
-      attach_apn_try_list_.emplace_back();
-      // When multiple Attach APNs are present(including the empty Attach added
-      // above), shill should fall back to the default one(first in the list) if
-      // all of them fail to register.
-      attach_apn_try_list_.emplace_back(attach_apn_try_list_.front());
-    }
-  }
 
   if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
     // If the carrier is not in shill's db, shill should use the custom APN or
@@ -2289,6 +2271,7 @@ void CellularCapability3gpp::SetNextAttachApn() {
 }
 
 void CellularCapability3gpp::ScheduleNextAttach(const Error& error) {
+  SLOG(this, 3) << __func__;
   // A finished callback does not qualify as a canceled callback.
   // We test for a canceled callback to check for outstanding callbacks.
   // So, explicitly cancel the callback here.

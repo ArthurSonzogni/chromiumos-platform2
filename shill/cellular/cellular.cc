@@ -2473,7 +2473,14 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
 }
 
 std::deque<Stringmap> Cellular::BuildAttachApnTryList() const {
-  return BuildApnTryList(ApnList::ApnType::kAttach);
+  std::deque<Stringmap> try_list = BuildApnTryList(ApnList::ApnType::kAttach);
+  if (try_list.size() > 1) {
+    // When multiple Attach APNs are present, shill should fall back to the
+    // default one(first in the list) if all of them fail to register.
+    try_list.emplace_back(try_list.front());
+    PrintApnListForDebugging(try_list, ApnList::ApnType::kAttach);
+  }
+  return try_list;
 }
 
 std::deque<Stringmap> Cellular::BuildDefaultApnTryList() const {
@@ -2547,9 +2554,13 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
       }
     }
   }
-  // With the revamp APN UI, if the user has entered an APN in the UI, only
+  // - With the revamp APN UI, if the user has entered an APN in the UI, only
   // customs APNs are used. Return early.
-  if (custom_apn_list && custom_apn_list->size() > 0) {
+  // - For the old UI, the Attach APN round robin is skipped if there is a
+  // custom attach APN.
+  if ((custom_apn_list && custom_apn_list->size() > 0) ||
+      (!custom_apn_list && custom_apn_info &&
+       apn_type == ApnList::ApnType::kAttach)) {
     PrintApnListForDebugging(apn_try_list, apn_type);
     ValidateApnTryList(apn_try_list);
     return apn_try_list;
