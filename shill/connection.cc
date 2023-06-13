@@ -57,7 +57,6 @@ Connection::Connection(int interface_index,
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
-      use_if_addrs_(false),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
       local_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
@@ -189,9 +188,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     }
     allowed_dsts_.push_back(*dst);
   }
-
-  use_if_addrs_ =
-      properties.use_if_addrs || IsPrimaryConnectivityTechnology(technology_);
 
   std::optional<IPAddress> gateway;
   if (!properties.gateway.empty()) {
@@ -367,7 +363,7 @@ void Connection::UpdateRoutingPolicy() {
     }
   }
 
-  if (use_if_addrs_ && is_primary_physical) {
+  if (is_primary_physical) {
     // Main routing table contains kernel-added routes for source address
     // selection. Sending traffic there before all other rules for physical
     // interfaces (but after any VPN rules) ensures that physical interface
@@ -437,12 +433,12 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
   }
   routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
 
-  if (use_if_addrs_) {
+  // TODO(b/264963034): kUnknown here is to adapt to legacy test code where
+  // kUnknown instead of kVPN is used as test case for non-physical interfaces.
+  // Remove this and use kVPN in test code instead when executing the refactor.
+  if (technology_ != Technology::kVPN && technology_ != Technology::kUnknown) {
     // Select the per-device table if the outgoing packet's src address matches
     // the interface's addresses or the input interface is this interface.
-    //
-    // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
-    // to provision IPv6 addresses.
     for (const auto& address : addresses_for_routing_policy_) {
       auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(address)
                               .SetTable(table_id)

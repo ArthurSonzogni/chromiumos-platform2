@@ -403,7 +403,6 @@ class CellularTest : public testing::Test {
       std::map<std::string, std::string>& ppp_config) {
     auto ip_props = PPPDaemon::ParseIPConfiguration(ppp_config);
     ip_props.blackhole_ipv6 = false;
-    ip_props.use_if_addrs = true;
     return ip_props;
   }
 

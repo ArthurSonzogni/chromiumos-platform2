@@ -146,9 +146,6 @@ class Connection {
   // setting up routing policy rules.
   std::vector<IPAddress> addresses_for_routing_policy_;
 
-  // True if this device should have rules sending traffic whose src address
-  // matches one of the interface's addresses to the per-device table.
-  bool use_if_addrs_;
   std::vector<IPAddress> allowed_dsts_;
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.

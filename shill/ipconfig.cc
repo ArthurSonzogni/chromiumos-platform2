@@ -234,8 +234,7 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.default_route == rhs.default_route &&
          lhs.inclusion_list == rhs.inclusion_list &&
          lhs.exclusion_list == rhs.exclusion_list &&
-         lhs.blackhole_ipv6 == rhs.blackhole_ipv6 &&
-         lhs.use_if_addrs == rhs.use_if_addrs && lhs.mtu == rhs.mtu &&
+         lhs.blackhole_ipv6 == rhs.blackhole_ipv6 && lhs.mtu == rhs.mtu &&
          lhs.dhcp_classless_static_routes == rhs.dhcp_classless_static_routes &&
          lhs.vendor_encapsulated_options == rhs.vendor_encapsulated_options &&
          lhs.isns_option_data == rhs.isns_option_data &&
@@ -281,9 +280,6 @@ std::ostream& operator<<(std::ostream& stream,
   }
   if (properties.blackhole_ipv6) {
     stream << ", blackhole_ipv6: true";
-  }
-  if (properties.use_if_addrs) {
-    stream << ", use_if_addrs: true";
   }
   if (properties.mtu != IPConfig::kUndefinedMTU) {
     stream << ", mtu: " << properties.mtu;

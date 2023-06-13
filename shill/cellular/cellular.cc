@@ -2076,7 +2076,6 @@ void Cellular::OnPPPConnected(
 
   auto properties = std::make_unique<IPConfig::Properties>(
       PPPDaemon::ParseIPConfiguration(params));
-  properties->use_if_addrs = true;
   ppp_device_->UpdateIPConfig(std::move(properties), nullptr);
 }
 
