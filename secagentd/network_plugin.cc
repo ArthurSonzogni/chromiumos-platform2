@@ -17,8 +17,8 @@
 #include "base/hash/sha1.h"
 #include "base/strings/string_util.h"
 #include "base/sys_byteorder.h"
+#include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"
-#include "secagentd/message_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {

@@ -150,6 +150,7 @@ if (use.test) {
   executable("secagentd_testrunner") {
     sources = [
       "test/agent_plugin_test.cc",
+      "test/batch_sender_test.cc",
       "test/bpf_skeleton_factory_tests.cc",
       "test/device_user_test.cc",
       "test/message_sender_test.cc",

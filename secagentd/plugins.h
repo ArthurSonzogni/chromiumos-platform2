@@ -21,6 +21,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
+#include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"

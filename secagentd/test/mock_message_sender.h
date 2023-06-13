@@ -27,25 +27,5 @@ class MockMessageSender : public MessageSenderInterface {
               (override));
 };
 
-template <typename KeyType, typename XdrMessage, typename AtomicVariantMessage>
-class MockBatchSender
-    : public BatchSenderInterface<KeyType, XdrMessage, AtomicVariantMessage> {
- public:
-  using VisitCallback =
-      typename BatchSenderInterface<KeyType, XdrMessage, AtomicVariantMessage>::
-          VisitCallback;
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void,
-              Enqueue,
-              (std::unique_ptr<AtomicVariantMessage>),
-              (override));
-  MOCK_METHOD(bool,
-              Visit,
-              (typename AtomicVariantMessage::VariantTypeCase,
-               const KeyType&,
-               VisitCallback),
-              (override));
-};
-
 }  // namespace secagentd::testing
 #endif  // SECAGENTD_TEST_MOCK_MESSAGE_SENDER_H_
