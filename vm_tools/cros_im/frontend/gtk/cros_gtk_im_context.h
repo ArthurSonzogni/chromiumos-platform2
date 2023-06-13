@@ -43,6 +43,7 @@ class CrosGtkIMContext : public GtkIMContext {
   void Reset();
   void SetCursorLocation(GdkRectangle* area);
   void SetSurrounding(const char* text, int len, int cursor_index);
+  void SetUsePreedit(gboolean use_preedit);
 
  private:
   // CrosGtkIMContext can't implement this directly as it is a GObject and
@@ -91,6 +92,8 @@ class CrosGtkIMContext : public GtkIMContext {
 
   // Set if FocusIn() is called prior to SetClientWindow().
   bool pending_activation_ = false;
+
+  bool supports_preedit_ = true;
 
   // Updated by calling RetrieveSurrounding()
   std::string surrounding_;

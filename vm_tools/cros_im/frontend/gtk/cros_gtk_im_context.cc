@@ -63,6 +63,7 @@ void cros_gtk_im_context_class_init(CrosGtkIMContextClass* klass) {
   im_context->reset = Fwd<&CrosGtkIMContext::Reset>;
   im_context->set_cursor_location = Fwd<&CrosGtkIMContext::SetCursorLocation>;
   im_context->set_surrounding = Fwd<&CrosGtkIMContext::SetSurrounding>;
+  im_context->set_use_preedit = Fwd<&CrosGtkIMContext::SetUsePreedit>;
 }
 
 void cros_gtk_im_context_class_finalize(CrosGtkIMContextClass* klass) {}
@@ -71,7 +72,8 @@ void cros_gtk_im_context_class_finalize(CrosGtkIMContextClass* klass) {}
 ////////////////////////////////////////////////////////////////////////////////
 
 IMContextBackend::ContentType ConvertContentType(GtkInputHints gtk_hints,
-                                                 GtkInputPurpose gtk_purpose) {
+                                                 GtkInputPurpose gtk_purpose,
+                                                 bool supports_preedit) {
   zcr_extended_text_input_v1_input_type input_type =
       ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_TEXT;
   zcr_extended_text_input_v1_input_mode input_mode =
@@ -147,6 +149,11 @@ IMContextBackend::ContentType ConvertContentType(GtkInputHints gtk_hints,
   }
 
   // GTK_INPUT_HINT_EMOJI and GTK_INPUT_HINT_NO_EMOJI are currently ignored.
+
+  if (!supports_preedit) {
+    inline_composition_support =
+        ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_UNSUPPORTED;
+  }
 
   return {.input_type = input_type,
           .input_mode = input_mode,
@@ -322,6 +329,18 @@ void CrosGtkIMContext::SetSurrounding(const char* text,
     surrounding_ = std::string(text, len);
   }
   surrounding_cursor_pos_ = cursor_index;
+}
+
+void CrosGtkIMContext::SetUsePreedit(gboolean use_preedit) {
+  // GTK doesn't specify when exactly this should be called, but apps we've
+  // found using this (Sublime, Inkscape) call it prior to activation. If we
+  // find apps which behave differently, we might need to explicitly call
+  // SetContentType() here.
+
+  // This is not covered by automated tests yet. GtkTextView and GtkEntry both
+  // do not expose the IM context they use, so we'd have to manually create one
+  // ourselves.
+  supports_preedit_ = use_preedit;
 }
 
 CrosGtkIMContext::BackendObserver::BackendObserver(CrosGtkIMContext* context)
@@ -526,7 +545,8 @@ void CrosGtkIMContext::Activate() {
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;
   g_object_get(this, "input-hints", &gtk_hints, "input-purpose", &gtk_purpose,
                NULL);
-  backend_->SetContentType(ConvertContentType(gtk_hints, gtk_purpose));
+  backend_->SetContentType(
+      ConvertContentType(gtk_hints, gtk_purpose, supports_preedit_));
 
   if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
     backend_->ShowInputPanel();
