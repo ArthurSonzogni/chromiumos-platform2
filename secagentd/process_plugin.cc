@@ -72,7 +72,6 @@ ProcessPlugin::ProcessPlugin(
     scoped_refptr<DeviceUserInterface> device_user,
     uint32_t batch_interval_s)
     : weak_ptr_factory_(this),
-      message_sender_(message_sender),
       process_cache_(process_cache),
       policies_features_broker_(policies_features_broker),
       device_user_(device_user),
@@ -138,14 +137,9 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     return;
   }
 
-  if (policies_features_broker_->GetFeature(
-          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdBatchEvents)) {
-    atomic_event->mutable_common()->set_device_user(
-        device_user_->GetDeviceUser());
-    EnqueueBatchedEvent(std::move(atomic_event));
-  } else {
-    DeprecatedSendImmediate(std::move(atomic_event));
-  }
+  atomic_event->mutable_common()->set_device_user(
+      device_user_->GetDeviceUser());
+  EnqueueBatchedEvent(std::move(atomic_event));
 }
 
 void ProcessPlugin::HandleBpfRingBufferReadReady() const {
@@ -176,24 +170,6 @@ absl::Status ProcessPlugin::Activate() {
 absl::Status ProcessPlugin::Deactivate() {
   return absl::UnimplementedError(
       "Deactivate not implemented for ProcessPlugin.");
-}
-
-void ProcessPlugin::DeprecatedSendImmediate(
-    std::unique_ptr<pb::ProcessEventAtomicVariant> atomic_event) {
-  auto xdr_process_event = std::make_unique<pb::XdrProcessEvent>();
-  if (atomic_event->has_process_exec()) {
-    xdr_process_event->set_allocated_process_exec(
-        atomic_event->release_process_exec());
-  } else if (atomic_event->has_process_terminate()) {
-    xdr_process_event->set_allocated_process_terminate(
-        atomic_event->release_process_terminate());
-  } else {
-    LOG(ERROR) << "Attempted to enqueue an empty event.";
-    return;
-  }
-  message_sender_->SendMessage(reporting::Destination::CROS_SECURITY_PROCESS,
-                               xdr_process_event->mutable_common(),
-                               std::move(xdr_process_event), std::nullopt);
 }
 
 void ProcessPlugin::EnqueueBatchedEvent(

@@ -265,12 +265,6 @@ class ProcessPlugin : public PluginInterface {
                            cros_xdr::reporting::XdrProcessEvent,
                            cros_xdr::reporting::ProcessEventAtomicVariant>;
 
-  // Immediately enqueues the given process event to ERP. This method will copy
-  // the given message into one of the deprecated unbatched fields in
-  // XdrProcessEvent.
-  void DeprecatedSendImmediate(
-      std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
-          atomic_event);
   // Pushes the given process event into the next outgoing batch.
   void EnqueueBatchedEvent(
       std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
@@ -288,7 +282,6 @@ class ProcessPlugin : public PluginInterface {
     batch_sender_ = std::move(given);
   }
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
-  scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;

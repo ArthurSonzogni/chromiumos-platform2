@@ -89,14 +89,6 @@ class ProcessPluginTestFixture : public ::testing::Test {
     EXPECT_CALL(*batch_sender_, Start());
     EXPECT_OK(plugin_->Activate());
 
-    // TODO(b/272125519): Switch over all protos and test cases to the new path.
-    // There shouldn't be any lack of coverage for now because the paths diverge
-    // at the very end.
-    ON_CALL(
-        *policies_features_broker_,
-        GetFeature(
-            PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdBatchEvents))
-        .WillByDefault(Return(false));
     ON_CALL(*policies_features_broker_,
             GetFeature(PoliciesFeaturesBroker::Feature::
                            kCrOSLateBootSecagentdCoalesceTerminates))
@@ -141,7 +133,7 @@ TEST_F(ProcessPluginTestFixture, TestBPFEventIsAvailable) {
 
   // Maybe serve up the event information.
   bpf::cros_event a;
-  EXPECT_CALL(*message_sender_, SendMessage).Times(AnyNumber());
+  EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(AnyNumber());
   cbs_.ring_buffer_event_callback.Run(a);
 }
 
@@ -184,103 +176,6 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillOnce(Return(false));
-
-  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
-  pb::CommonEventDataFields* actual_mutable_common = nullptr;
-  EXPECT_CALL(
-      *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
-      .WillOnce([&actual_sent_message, &actual_mutable_common](
-                    auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m,
-                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-        // SaveArgByMove unfortunately doesn't exist.
-        actual_sent_message = std::move(m);
-        actual_mutable_common = c;
-        return absl::OkStatus();
-      });
-
-  cbs_.ring_buffer_event_callback.Run(a);
-
-  pb::XdrProcessEvent* actual_process_event =
-      google::protobuf::down_cast<pb::XdrProcessEvent*>(
-          actual_sent_message.get());
-
-  EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
-  EXPECT_EQ(
-      kPids[0],
-      actual_process_event->process_exec().spawn_process().canonical_pid());
-  EXPECT_EQ(kPids[1],
-            actual_process_event->process_exec().process().canonical_pid());
-  EXPECT_EQ(
-      kPids[2],
-      actual_process_event->process_exec().parent_process().canonical_pid());
-  auto& ns = a.data.process_event.data.process_start.spawn_namespace;
-  EXPECT_EQ(
-      ns.cgroup_ns,
-      actual_process_event->process_exec().spawn_namespaces().cgroup_ns());
-  EXPECT_EQ(ns.pid_ns,
-            actual_process_event->process_exec().spawn_namespaces().pid_ns());
-  EXPECT_EQ(ns.user_ns,
-            actual_process_event->process_exec().spawn_namespaces().user_ns());
-  EXPECT_EQ(ns.uts_ns,
-            actual_process_event->process_exec().spawn_namespaces().uts_ns());
-  EXPECT_EQ(ns.mnt_ns,
-            actual_process_event->process_exec().spawn_namespaces().mnt_ns());
-  EXPECT_EQ(ns.net_ns,
-            actual_process_event->process_exec().spawn_namespaces().net_ns());
-  EXPECT_EQ(ns.ipc_ns,
-            actual_process_event->process_exec().spawn_namespaces().ipc_ns());
-}
-
-TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
-  constexpr bpf::time_ns_t kSpawnStartTime = 2222;
-  // Descending order in time starting from the youngest.
-  constexpr uint64_t kPids[] = {3, 2, 1};
-  std::vector<std::unique_ptr<pb::Process>> hierarchy;
-  for (int i = 0; i < std::size(kPids); ++i) {
-    hierarchy.push_back(std::make_unique<pb::Process>());
-    // Just some basic verification to make sure we consume the protos in the
-    // expected order. The process cache unit test should cover the remaining
-    // fields.
-    hierarchy[i]->set_canonical_pid(kPids[i]);
-  }
-
-  const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::kProcessStartEvent,
-                             .data.process_start = {.task_info =
-                                                        {
-                                                            .pid = kPids[0],
-                                                            .start_time =
-                                                                kSpawnStartTime,
-                                                        },
-                                                    .spawn_namespace =
-                                                        {
-                                                            .cgroup_ns = 1,
-                                                            .pid_ns = 2,
-                                                            .user_ns = 3,
-                                                            .uts_ns = 4,
-                                                            .mnt_ns = 5,
-                                                            .net_ns = 6,
-                                                            .ipc_ns = 7,
-                                                        }}},
-      .type = bpf::kProcessEvent,
-  };
-  EXPECT_CALL(*process_cache_,
-              PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
-  EXPECT_CALL(*process_cache_,
-              GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
-      .WillOnce(Return(ByMove(std::move(hierarchy))));
-  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillOnce(Return(true));
-
   EXPECT_CALL(*device_user_, GetDeviceUser).WillOnce(Return(kDeviceUser));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
@@ -313,6 +208,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
             actual_sent_event->process_exec().spawn_namespaces().net_ns());
   EXPECT_EQ(ns.ipc_ns,
             actual_sent_event->process_exec().spawn_namespaces().ipc_ns());
+
+  // Common fields.
+  EXPECT_EQ(kDeviceUser, actual_sent_event->common().device_user());
 }
 
 TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
@@ -382,16 +280,10 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
       .WillOnce(Return(ByMove(std::move(terminate_hierarchy_very_old))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _))
       .WillRepeatedly(Return(false));
-
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(*policies_features_broker_,
               GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                              kCrOSLateBootSecagentdCoalesceTerminates))
       .WillRepeatedly(Return(true));
-
   EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
 
   std::vector<std::unique_ptr<pb::ProcessEventAtomicVariant>>
@@ -461,34 +353,22 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
 
-  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
-  EXPECT_CALL(
-      *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
-      .WillOnce([&actual_sent_message](
-                    auto d, auto c,
-                    std::unique_ptr<google::protobuf::MessageLite> m,
-                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-        actual_sent_message = std::move(m);
-        return absl::OkStatus();
+  std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .WillOnce([&actual_sent_event](
+                    std::unique_ptr<pb::ProcessEventAtomicVariant> e) {
+        actual_sent_event = std::move(e);
       });
 
   cbs_.ring_buffer_event_callback.Run(a);
 
-  pb::XdrProcessEvent* actual_process_event =
-      google::protobuf::down_cast<pb::XdrProcessEvent*>(
-          actual_sent_message.get());
-  EXPECT_EQ(
-      kPids[0],
-      actual_process_event->process_exec().spawn_process().canonical_pid());
+  EXPECT_EQ(kPids[0],
+            actual_sent_event->process_exec().spawn_process().canonical_pid());
   EXPECT_EQ(kPids[1],
-            actual_process_event->process_exec().process().canonical_pid());
-  EXPECT_FALSE(actual_process_event->process_exec().has_parent_process());
+            actual_sent_event->process_exec().process().canonical_pid());
+  EXPECT_FALSE(actual_sent_event->process_exec().has_parent_process());
 }
 
 TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
@@ -522,11 +402,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
+  EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(0);
   cbs_.ring_buffer_event_callback.Run(a);
 }
 
@@ -555,33 +431,19 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
 
-  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
-  pb::CommonEventDataFields* actual_mutable_common = nullptr;
-  EXPECT_CALL(
-      *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
-      .WillOnce([&actual_sent_message, &actual_mutable_common](
-                    auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m,
-                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-        actual_sent_message = std::move(m);
-        actual_mutable_common = c;
-        return absl::OkStatus();
+  std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .WillOnce([&actual_process_event](
+                    std::unique_ptr<pb::ProcessEventAtomicVariant> e) {
+        actual_process_event = std::move(e);
       });
 
   EXPECT_CALL(*process_cache_, EraseProcess(kPids[0], kStartTime));
 
   cbs_.ring_buffer_event_callback.Run(a);
 
-  pb::XdrProcessEvent* actual_process_event =
-      google::protobuf::down_cast<pb::XdrProcessEvent*>(
-          actual_sent_message.get());
-  EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
   EXPECT_EQ(
       kPids[0],
       actual_process_event->process_terminate().process().canonical_pid());
@@ -625,33 +487,19 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[1], kStartTimes[1], 1))
       .WillOnce(Return(ByMove(std::move(parent_hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*policies_features_broker_,
-              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrOSLateBootSecagentdBatchEvents))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
 
-  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
-  pb::CommonEventDataFields* actual_mutable_common = nullptr;
-  EXPECT_CALL(
-      *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
-      .WillOnce([&actual_sent_message, &actual_mutable_common](
-                    auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m,
-                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-        actual_sent_message = std::move(m);
-        actual_mutable_common = c;
-        return absl::OkStatus();
+  std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .WillOnce([&actual_process_event](
+                    std::unique_ptr<pb::ProcessEventAtomicVariant> e) {
+        actual_process_event = std::move(e);
       });
 
   EXPECT_CALL(*process_cache_, EraseProcess(_, _)).Times(0);
 
   cbs_.ring_buffer_event_callback.Run(a);
 
-  pb::XdrProcessEvent* actual_process_event =
-      google::protobuf::down_cast<pb::XdrProcessEvent*>(
-          actual_sent_message.get());
-  EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
   // Expect some process information to be filled in from the BPF event despite
   // the cache miss.
   EXPECT_TRUE(
@@ -695,7 +543,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExitEvent) {
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
+  EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(0);
   EXPECT_CALL(*process_cache_, EraseProcess(kPids[0], kStartTime));
   cbs_.ring_buffer_event_callback.Run(a);
 }

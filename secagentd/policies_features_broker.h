@@ -29,7 +29,6 @@ class PoliciesFeaturesBrokerInterface
  public:
   enum class Feature {
     kCrOSLateBootSecagentdXDRReporting,
-    kCrOSLateBootSecagentdBatchEvents,
     kCrOSLateBootSecagentdCoalesceTerminates,
     kCrOSLateBootSecagentdXDRNetworkEvents,
   };
