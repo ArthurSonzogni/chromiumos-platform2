@@ -34,5 +34,11 @@
     "request": [
       "CrosHealthdProbe"
     ]
+  },
+  {
+    "identity": "u:r:cros_flex_hwis_tool:s0",
+    "request": [
+      "CrosHealthdProbe"
+    ]
   }
 ]
