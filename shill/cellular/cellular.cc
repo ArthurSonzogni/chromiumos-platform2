@@ -155,6 +155,19 @@ bool IsSubscriptionError(std::string mm_error) {
          ".ServiceOptionNotSubscribed";
 }
 
+void PrintApnListForDebugging(std::deque<Stringmap> apn_try_list,
+                              ApnList::ApnType apn_type) {
+  // Print list for debugging
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::string log_string =
+        ": Try list: ApnType: " + ApnList::GetApnTypeString(apn_type);
+    for (const auto& it : apn_try_list) {
+      log_string += " " + GetPrintableApnStringmap(it);
+    }
+    SLOG(3) << __func__ << log_string;
+  }
+}
+
 Metrics::DetailedCellularConnectionResult::ConnectionAttemptType
 ConnectionAttemptTypeToMetrics(CellularServiceRefPtr service) {
   using MetricsType =
@@ -2537,6 +2550,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // With the revamp APN UI, if the user has entered an APN in the UI, only
   // customs APNs are used. Return early.
   if (custom_apn_list && custom_apn_list->size() > 0) {
+    PrintApnListForDebugging(apn_try_list, apn_type);
     ValidateApnTryList(apn_try_list);
     return apn_try_list;
   }
@@ -2609,15 +2623,8 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     LOG(INFO) << LoggingTag() << ": " << __func__ << ": Adding last good APN: "
               << GetPrintableApnStringmap(*last_good_apn_info);
   }
-  // Print list for debugging
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::string log_string =
-        ": Try list: ApnType: " + ApnList::GetApnTypeString(apn_type);
-    for (const auto& it : apn_try_list) {
-      log_string += " " + GetPrintableApnStringmap(it);
-    }
-    SLOG(3) << __func__ << log_string;
-  }
+
+  PrintApnListForDebugging(apn_try_list, apn_type);
   ValidateApnTryList(apn_try_list);
   return apn_try_list;
 }
