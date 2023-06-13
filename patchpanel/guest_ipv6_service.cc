@@ -22,11 +22,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-
 #include <brillo/process/process.h>
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/ipc.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -130,13 +129,14 @@ bool CreateConfigFile(const std::string& ifname,
 // TODO(b/228585272): Support prefix larger than /64
 // static
 std::string GuestIPv6Service::IPAddressTo64BitPrefix(
-    const std::string addr_str) {
-  if (addr_str.empty()) {
+    const std::string& addr_str) {
+  const auto addr = net_base::IPv6Address::CreateFromString(addr_str);
+  if (!addr) {
     return "";
   }
-  in6_addr addr = StringToIPv6Address(addr_str);
-  memset(&addr.s6_addr[8], 0, 8);
-  return IPv6AddressToString(addr);
+
+  const auto cidr = *net_base::IPv6CIDR::CreateFromAddressAndPrefix(*addr, 64);
+  return cidr.GetPrefixAddress().ToString();
 }
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
@@ -534,12 +534,16 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   const NDProxySignalMessage& msg = fm.ndproxy_signal();
   if (msg.has_neighbor_detected_signal()) {
     const auto& inner_msg = msg.neighbor_detected_signal();
-    in6_addr ip;
-    memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
-    std::string ip6_str = IPv6AddressToString(ip);
+    const auto ip = net_base::IPv6Address::CreateFromBytes(
+        inner_msg.ip().data(), inner_msg.ip().size());
+    if (!ip) {
+      LOG(ERROR) << "Failed to create IPv6Address from NeighborDetectedSignal,"
+                 << " size=" << inner_msg.ip().size() << " instead of "
+                 << net_base::IPv6Address::kAddressLength;
+      return;
+    }
     std::string ifname = system_->IfIndextoname(inner_msg.if_id());
-
-    RegisterDownstreamNeighborIP(ifname, ip6_str);
+    RegisterDownstreamNeighborIP(ifname, ip->ToString());
     return;
   }
 
