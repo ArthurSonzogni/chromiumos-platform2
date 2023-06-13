@@ -56,7 +56,10 @@ static_library("libmaitred") {
     "../maitred/service_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  defines = [ "USE_VM_BOREALIS=${use.vm_borealis}" ]
+  defines = [
+    "USE_VM_BOREALIS=${use.vm_borealis}",
+    "USE_VM_SLUDGE=${use.vm_sludge}",
+  ]
   pkg_deps = [
     "grpc++",
     "libbrillo",

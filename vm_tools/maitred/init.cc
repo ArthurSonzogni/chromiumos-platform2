@@ -56,6 +56,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <chromeos/constants/vm_tools.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
@@ -355,6 +356,26 @@ constexpr struct {
     {
         .path = "/var/lib/misc",
         .mode = 0755,
+    },
+#endif
+};
+
+// Overlay mounts to be created on boot.
+constexpr struct {
+  const char* target;
+  const char* lower_dir;
+  const char* upper_dir;
+  const char* work_dir;
+} overlays[] = {
+// TODO(b/286177860): Use overlay /etc for Borealis once Borealis kernel has
+// overlayfs.
+// sludge kernel does not have overlayfs.
+#if !(USE_VM_BOREALIS || USE_VM_SLUDGE)
+    {
+        .target = "/etc",
+        .lower_dir = "/etc",
+        .upper_dir = "/run/etc/upper",
+        .work_dir = "/run/etc/work",
     },
 #endif
 };
@@ -1295,6 +1316,28 @@ bool Init::Setup() {
     for (const auto& dir : boot_dirs) {
       if (mkdir(dir.path, dir.mode) != 0 && errno != EEXIST) {
         PLOG(ERROR) << "Failed to create " << dir.path;
+        return false;
+      }
+    }
+
+    for (const auto& overlay : overlays) {
+      if (!brillo::MkdirRecursively(base::FilePath(overlay.upper_dir), 0755)
+               .is_valid()) {
+        PLOG(ERROR) << "Failed to create " << overlay.upper_dir;
+        return false;
+      }
+
+      if (!brillo::MkdirRecursively(base::FilePath(overlay.work_dir), 0755)
+               .is_valid()) {
+        PLOG(ERROR) << "Failed to create " << overlay.work_dir;
+        return false;
+      }
+
+      string options = base::StringPrintf("lowerdir=%s,upperdir=%s,workdir=%s",
+                                          overlay.lower_dir, overlay.upper_dir,
+                                          overlay.work_dir);
+      if (mount("overlay", overlay.target, "overlay", 0, options.c_str())) {
+        PLOG(ERROR) << "Failed to mount overlay " << overlay.target;
         return false;
       }
     }

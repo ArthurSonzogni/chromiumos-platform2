@@ -182,6 +182,7 @@ _IUSE = [
     "video_cards_msm",
     "virtgpu_native_context",
     "vm_borealis",
+    "vm_sludge",
     "vpn",
     "vtpm_proxy",
     "vulkan",
