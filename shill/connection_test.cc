@@ -627,9 +627,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
 
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(NetworkPriority{.is_primary_physical = true,
-                                           .is_primary_for_dns = true,
-                                           .ranking_order = 0});
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityLow);
@@ -752,9 +751,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
 
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(NetworkPriority{.is_primary_physical = true,
-                                           .is_primary_for_dns = true,
-                                           .ranking_order = 0});
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   const auto table_id =
