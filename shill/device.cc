@@ -350,12 +350,6 @@ void Device::DropConnection() {
   SelectService(nullptr);
 }
 
-void Device::ResetConnection() {
-  SLOG(this, 2) << __func__;
-  network_->Stop();
-  SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
-}
-
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             ResultCallback callback) {
   Error error;

@@ -16,6 +16,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/store/fake_store.h"
 #include "shill/technology.h"
@@ -29,6 +30,10 @@ namespace shill {
 namespace {
 const char kTestDeviceName[] = "tun0";
 const int kTestInterfaceIndex = 5;
+
+MATCHER_P(IsWeakPtrTo, address, "") {
+  return arg.get() == address;
+}
 }  // namespace
 
 class VirtualDeviceTest : public testing::Test {
@@ -86,6 +91,22 @@ TEST_F(VirtualDeviceTest, Stop) {
   base::test::TestFuture<Error> error;
   device_->Stop(GetResultCallback(&error));
   EXPECT_TRUE(error.Get().IsSuccess());
+}
+
+TEST_F(VirtualDeviceTest, ResetConnection) {
+  EXPECT_EQ(nullptr, device_->selected_service_);
+  device_->SetServiceState(Service::kStateAssociating);
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager_));
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(device_->network())));
+  device_->SelectService(service);
+  EXPECT_EQ(device_->selected_service_, service);
+
+  // ResetConnection() should drop the connection and the selected service,
+  // but should not change the service state.
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
+  device_->ResetConnection();
+  EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 }  // namespace shill

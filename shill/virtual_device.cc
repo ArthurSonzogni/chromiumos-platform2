@@ -71,6 +71,11 @@ void VirtualDevice::UpdateIPConfig(
   });
 }
 
+void VirtualDevice::ResetConnection() {
+  network()->Stop();
+  Device::SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
+}
+
 void VirtualDevice::DropConnection() {
   Device::DropConnection();
 }

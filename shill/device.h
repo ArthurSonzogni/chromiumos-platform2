@@ -246,10 +246,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   const ServiceRefPtr& selected_service() const { return selected_service_; }
 
-  // Drops the current connection and the selected service, if any.  Does not
-  // change the state of the previously selected service.
-  mockable void ResetConnection();
-
   // Responds to a neighbor reachability event from patchpanel. The base class
   // does nothing here so the derived class doesn't need to call this.
   void OnNeighborReachabilityEvent(
@@ -310,7 +306,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
-  FRIEND_TEST(DeviceTest, ResetConnection);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
@@ -328,6 +323,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
+  FRIEND_TEST(VirtualDeviceTest, ResetConnection);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
 
   virtual ~Device();

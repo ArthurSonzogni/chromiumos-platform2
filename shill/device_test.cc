@@ -291,21 +291,6 @@ TEST_F(DeviceTest, SelectedService) {
   SelectService(nullptr);
 }
 
-TEST_F(DeviceTest, ResetConnection) {
-  EXPECT_EQ(nullptr, device_->selected_service_);
-  device_->SetServiceState(Service::kStateAssociating);
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  EXPECT_EQ(device_->selected_service_, service);
-
-  // ResetConnection() should drop the connection and the selected service,
-  // but should not change the service state.
-  EXPECT_CALL(*service, SetState(_)).Times(0);
-  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
-  device_->ResetConnection();
-  EXPECT_EQ(nullptr, device_->selected_service_);
-}
-
 TEST_F(DeviceTest, NetworkFailure) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);

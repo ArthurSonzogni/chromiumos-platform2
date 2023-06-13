@@ -41,6 +41,10 @@ class VirtualDevice : public Device {
       std::unique_ptr<IPConfig::Properties> ipv4_properties,
       std::unique_ptr<IPConfig::Properties> ipv6_properties);
 
+  // Drops the current connection and the selected service, if any.  Does not
+  // change the state of the previously selected service.
+  mockable void ResetConnection();
+
   // Expose protected device methods to manager of this device.
   // (E.g. Cellular, L2TPIPsecDriver, OpenVPNDriver.)
   void DropConnection() override;
