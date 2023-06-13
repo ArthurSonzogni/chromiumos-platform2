@@ -26,6 +26,7 @@ main() {
     --vg-name="refvm_${suffix}" \
     -o "${image_path}"
 
+  sudo virt-sparsify --in-place --machine-readable "${image_path}"
   sudo qemu-img convert -O qcow2 "${image_path}" "${qcow2_path}"
   sha256sum "${qcow2_path}" | cut -d ' ' -f 1 > "${qcow2_path}.SHA256"
   sudo rm -f "${image_path}"
@@ -39,8 +40,8 @@ install_deps() {
   # If additional dependencies are required, please also note them in README.md.
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
-    brotli eatmydata fai-setup-storage lvm2 python3-jinja2 python3-requests \
-    python3-yaml qemu-utils
+    brotli eatmydata fai-setup-storage libguestfs-tools lvm2 python3-jinja2 \
+    python3-requests python3-yaml qemu-utils
 
   # TODO(b/280695675): Remove this once the VM image has a newer OS.
   # shellcheck disable=SC2154
