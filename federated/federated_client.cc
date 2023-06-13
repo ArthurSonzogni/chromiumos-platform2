@@ -24,14 +24,19 @@ namespace federated {
 
 namespace {
 #if USE_LOCAL_FEDERATED_SERVER
+constexpr base::TimeDelta kInitialWaitingWindow = base::Seconds(30);
 constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(30);
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(10);
 #else
-// TODO(b/239623649): discussion required about the default window.
-constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 30);
-
-// To avoid spam, retry window should not be shorter than kMinimalRetryWindow.
-constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
+// The first checkin happens kInitialWaitingWindow after the device startup to
+// avoid resource competition.
+constexpr base::TimeDelta kInitialWaitingWindow = base::Minutes(5);
+// The default value is used when the server doesn't respond with a valid retry
+// window.
+constexpr base::TimeDelta kDefaultRetryWindow = base::Minutes(30);
+// The retry window should not be shorter than kMinimalRetryWindow to avoid
+// spam.
+constexpr base::TimeDelta kMinimalRetryWindow = base::Minutes(1);
 #endif
 
 // Limits each round to 10 minutes.
@@ -237,7 +242,7 @@ FederatedClient::FederatedClient(
       api_key_(api_key),
       brella_lib_version_(brella_lib_version),
       client_config_(client_config),
-      next_retry_delay_(kDefaultRetryWindow),
+      next_retry_delay_(kInitialWaitingWindow),
       device_status_monitor_(device_status_monitor) {}
 
 FederatedClient::~FederatedClient() = default;
