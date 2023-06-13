@@ -543,7 +543,7 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
       return;
     }
     std::string ifname = system_->IfIndextoname(inner_msg.if_id());
-    RegisterDownstreamNeighborIP(ifname, ip->ToString());
+    RegisterDownstreamNeighborIP(ifname, *ip);
     return;
   }
 
@@ -557,8 +557,8 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
 }
 
 void GuestIPv6Service::RegisterDownstreamNeighborIP(
-    const std::string& ifname_downlink, const std::string& ip) {
-  downstream_neighbors_[ifname_downlink].insert(ip);
+    const std::string& ifname_downlink, const net_base::IPv6Address& ip) {
+  downstream_neighbors_[ifname_downlink].insert(ip.ToString());
 
   const auto& uplink = DownlinkToUplink(ifname_downlink);
   if (!uplink) {
@@ -570,7 +570,7 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
   LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
             << ", corresponding uplink " << uplink.value() << "["
             << uplink_ips_[uplink.value()] << "]";
-  if (!datapath_->AddIPv6HostRoute(ifname_downlink, ip, 128,
+  if (!datapath_->AddIPv6HostRoute(ifname_downlink, ip.ToString(), 128,
                                    uplink_ips_[uplink.value()])) {
     LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
                  << ifname_downlink << " src " << uplink_ips_[uplink.value()];

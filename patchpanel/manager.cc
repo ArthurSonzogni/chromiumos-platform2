@@ -823,9 +823,10 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   }
   // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
   // namespace if it did not exist yet, so that the address is reachable.
-  if (GetIpFamily(rule.proxy_address) == AF_INET6) {
-    ipv6_svc_->RegisterDownstreamNeighborIP(rule.host_ifname,
-                                            rule.proxy_address);
+  const auto ipv6_proxy_addr =
+      net_base::IPv6Address::CreateFromString(rule.proxy_address);
+  if (ipv6_proxy_addr) {
+    ipv6_svc_->RegisterDownstreamNeighborIP(rule.host_ifname, *ipv6_proxy_addr);
   }
 
   // Propagate DNS proxy addresses change.

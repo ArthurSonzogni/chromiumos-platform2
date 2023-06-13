@@ -87,7 +87,7 @@ class GuestIPv6Service {
   // configured on a cartain downstream neighbor, connected through
   // |ifname_downlink|. GuestIPv6Service will add a /128 route to that downlink.
   void RegisterDownstreamNeighborIP(const std::string& ifname_downlink,
-                                    const std::string& ip);
+                                    const net_base::IPv6Address& ip);
 
   static std::string IPAddressTo64BitPrefix(const std::string& addr_str);
 
