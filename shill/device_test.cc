@@ -545,9 +545,18 @@ TEST_F(DeviceTest, Reset) {
   EXPECT_EQ(Error::kNotImplemented, e.Get().type());
 }
 
-TEST_F(DeviceTest, Resume) {
+TEST_F(DeviceTest, ResumeConnected) {
+  scoped_refptr<MockService> service0(new NiceMock<MockService>(manager()));
+  SelectService(service0);
+  EXPECT_CALL(*service0, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*network_, RenewDHCPLease());
   EXPECT_CALL(*network_, InvalidateIPv6Config());
+  device_->OnAfterResume();
+}
+
+TEST_F(DeviceTest, ResumeDisconnected) {
+  EXPECT_CALL(*network_, RenewDHCPLease()).Times(0);
+  EXPECT_CALL(*network_, InvalidateIPv6Config()).Times(0);
   device_->OnAfterResume();
 }
 

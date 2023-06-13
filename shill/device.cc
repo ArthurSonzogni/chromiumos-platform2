@@ -361,7 +361,11 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 }
 
 void Device::ForceIPConfigUpdate() {
-  LOG(INFO) << LoggingTag() << ": " << __func__;
+  SLOG(this, 2) << __func__;
+  if (!IsConnected()) {
+    return;
+  }
+  LOG(INFO) << LoggingTag() << ": forced IP config update";
   network()->RenewDHCPLease();
   network()->InvalidateIPv6Config();
 }
