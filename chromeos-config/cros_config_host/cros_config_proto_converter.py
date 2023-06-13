@@ -22,6 +22,7 @@ import sys
 
 # pylint: disable=import-error
 from chromiumos.config.api import component_pb2
+from chromiumos.config.api import device_brand_id_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import proximity_config_pb2
 from chromiumos.config.api import topology_pb2
@@ -1880,6 +1881,20 @@ def _calculate_image_name_suffix(hw_design_config):
     )
 
 
+def _calculate_firmware_image_name_suffix(scan_config, for_signature_id=False):
+    result = []
+    if scan_config.whitelabel_tag and for_signature_id:
+        result.append(scan_config.whitelabel_tag)
+    if (
+        scan_config.feature_device_type
+        == device_brand_id_pb2.DeviceBrandId.ScanConfig.FeatureDeviceType.ON
+    ):
+        result.append("x")
+    if result:
+        result.insert(0, "")
+    return "-".join(result)
+
+
 def _build_firmware(config):
     """Returns firmware config, or None if no build targets."""
     fw_payload_config = config.sw_config.firmware
@@ -1941,7 +1956,10 @@ def _build_firmware(config):
             config.hw_design.id.value.lower(),
             result,
             "image-name",
-            suffix=ap_fw_suffix,
+            suffix=ap_fw_suffix
+            + _calculate_firmware_image_name_suffix(
+                config.brand_config.scan_config
+            ),
         )
 
     _upsert(_fw_bcs_path(main_ro, ap_fw_suffix), result, "main-ro-image")
@@ -1965,14 +1983,10 @@ def _build_fw_signing(config, whitelabel):
         hw_design = config.hw_design.name.lower()
         if ap_fw_suffix:
             hw_design += ap_fw_suffix
-        brand_scan_config = config.brand_config.scan_config
-        if brand_scan_config and brand_scan_config.whitelabel_tag:
-            signature_id = "%s-%s" % (
-                hw_design,
-                brand_scan_config.whitelabel_tag,
-            )
-        else:
-            signature_id = hw_design
+        signature_id = hw_design + _calculate_firmware_image_name_suffix(
+            config.brand_config.scan_config,
+            for_signature_id=True,
+        )
 
         result = {
             "key-id": config.device_signer_config.key_id,
@@ -2468,8 +2482,15 @@ def _build_identity(config):
         _upsert(program.mosys_platform_name, identity, "platform-name")
     else:
         _upsert(program.name, identity, "platform-name")
-    if brand_scan_config:
-        _upsert(brand_scan_config.whitelabel_tag, identity, "whitelabel-tag")
+    _upsert(brand_scan_config.whitelabel_tag, identity, "whitelabel-tag")
+    if brand_scan_config.feature_device_type:
+        _upsert(
+            device_brand_id_pb2.DeviceBrandId.ScanConfig.FeatureDeviceType.Name(
+                brand_scan_config.feature_device_type
+            ).lower(),
+            identity,
+            "feature-device-type",
+        )
 
     return identity
 
@@ -2631,13 +2652,11 @@ def _sw_config(sw_configs, design_config_id):
     raise ValueError("Software config is required for: %s" % design_config_id)
 
 
-def _is_whitelabel(brand_configs, device_brands):
-    for device_brand in device_brands:
-        if device_brand.id.value in brand_configs:
-            brand_scan_config = brand_configs[device_brand.id.value].scan_config
-            if brand_scan_config and brand_scan_config.whitelabel_tag:
-                return True
-    return False
+def _is_whitelabel(device_brands):
+    return any(
+        brand_config.scan_config.whitelabel_tag
+        for _, brand_config in device_brands
+    )
 
 
 def _transform_build_configs(
@@ -2653,21 +2672,29 @@ def _transform_build_configs(
     for hw_design in config.design_list:
         if config.device_brand_list:
             device_brands = [
-                x
+                (
+                    x,
+                    brand_configs.get(
+                        x.id.value, brand_config_pb2.BrandConfig()
+                    ),
+                )
                 for x in config.device_brand_list
                 if x.design_id.value == hw_design.id.value
             ]
         else:
-            device_brands = [device_brand_pb2.DeviceBrand()]
+            device_brands = [
+                (device_brand_pb2.DeviceBrand(), brand_config_pb2.BrandConfig())
+            ]
 
-        whitelabel = _is_whitelabel(brand_configs, device_brands)
+        whitelabel = _is_whitelabel(device_brands)
 
-        for device_brand in device_brands:
-            # Brand config can be empty since platform JSON config allows it
-            brand_config = brand_config_pb2.BrandConfig()
-            if device_brand.id.value in brand_configs:
-                brand_config = brand_configs[device_brand.id.value]
+        # TODO(b/285989091): Currently, crosid does not distinguish between
+        # identities differing only in feature_device_type, so ensure the least
+        # specific configs are considered first. Once crosid is ready, reverse
+        # this so the most specific brand configs are considered first.
+        device_brands.sort(key=lambda x: x[1].scan_config.feature_device_type)
 
+        for device_brand, brand_config in device_brands:
             for hw_design_config in hw_design.configs:
                 sw_config = _sw_config(sw_configs, hw_design_config.id.value)
                 program = _lookup(hw_design.program_id, programs)

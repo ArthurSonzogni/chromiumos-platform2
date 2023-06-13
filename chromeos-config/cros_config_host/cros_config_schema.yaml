@@ -79,6 +79,12 @@ typeDefs:
   customization-id: &customization_id
     description: "'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26."
     type: string
+  feature-device-type: &feature_device_type
+    description: Type of feature enablement for this device
+    type: string
+    enum:
+      - legacy
+      - "on"
   platform-name: &platform_name
     description: "Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value."
     type: string
@@ -936,6 +942,7 @@ properties:
                 platform-name: *platform_name
                 customization-id: *customization_id
                 custom-label-tag: *custom_label_tag
+                feature-device-type: *feature_device_type
               additionalProperties: false
             keyboard:
               type: object

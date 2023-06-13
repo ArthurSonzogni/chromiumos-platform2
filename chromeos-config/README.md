@@ -842,6 +842,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | custom-label-tag | string |  | False |  | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
 | customization-id | string |  | False |  | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
+| feature-device-type | string |  | False |  | False | Type of feature enablement for this device |
 | frid | string |  | False |  | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
 | platform-name | string |  | False |  | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
 | sku-id | integer |  | False |  | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
@@ -1812,10 +1813,18 @@ used to compare the values from firmware.  Strings are compared
 | `sku-id`                    | `/sys/class/dmi/id/product_sku`            | `/proc/device-tree/firmware/coreboot/sku-id`                    |
 | `customization-id`          | `/sys/firmware/vpd/ro/customization_id`    | `/sys/firmware/vpd/ro/customization_id`                         |
 | `custom-label-tag`          | `/sys/firmware/vpd/ro/custom_label_tag`    | `/sys/firmware/vpd/ro/custom_label_tag`                         |
+| `feature-device-type`       | `/sys/firmware/vpd/rw/feature_device_type` | `/sys/firmware/vpd/rw/feature_device_type`                      |
 
 Note: Prior to 2022, the VPD key for `custom-label-tag` was called
 `whitelabel_tag`.  If `/sys/firmware/vpd/ro/custom_label_tag` does not
 exist, `/sys/firmware/vpd/ro/whitelabel_tag` is checked instead.
+
+Note: `feature_device_type`, being stored in RW VPD, is at greater risk of
+corruption in shipped units. This is mitigated by enforcing that an
+"off" configuration with an otherwise-equivalent identity match is present for
+every identity with a non-"off" value, acting as a fallback configuration.
+Additionally, libsegmentation will calculate the expected value and repopulate
+it in RW VPD if necessary.
 
 #### File Parsing Notes
 

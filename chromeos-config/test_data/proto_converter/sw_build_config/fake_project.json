@@ -3540,6 +3540,1270 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65536.xml",
+            "system-path": "/etc/hardware_features_project_e_65536.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          },
+          "scale": 280
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "none"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65536
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "internal-backlight-no-als-ac-brightness": "80.1",
+          "internal-backlight-no-als-battery-brightness": "63.2",
+          "min-visible-backlight-level": "1000",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "0",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
+            "SeamlessRefreshRateSwitching"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65537.xml",
+            "system-path": "/etc/hardware_features_project_e_65537.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "has-touchscreen": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "internal"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65537
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "internal-backlight-no-als-ac-brightness": "80.5",
+          "internal-backlight-no-als-battery-brightness": "63.4",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "3000",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
+            "--has-internal-stylus"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65538.xml",
+            "system-path": "/etc/hardware_features_project_e_65538.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          },
+          "scale": 280
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "none"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65538
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "internal-backlight-no-als-ac-brightness": "80.1",
+          "internal-backlight-no-als-battery-brightness": "63.2",
+          "min-visible-backlight-level": "1000",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "0",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
+            "SeamlessRefreshRateSwitching"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65539.xml",
+            "system-path": "/etc/hardware_features_project_e_65539.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "has-touchscreen": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "internal"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65539
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "internal-backlight-no-als-ac-brightness": "80.5",
+          "internal-backlight-no-als-battery-brightness": "63.4",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "3000",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
+            "--has-internal-stylus"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65541.xml",
+            "system-path": "/etc/hardware_features_project_e_65541.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "has-touchscreen": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "internal"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65541
+        },
+        "keyboard": {
+          "backlight": true,
+          "mcutype": "prism_rgb_controller",
+          "numpad": true
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "has-keyboard-backlight": "1",
+          "internal-backlight-no-als-ac-brightness": "80.5",
+          "internal-backlight-no-als-battery-brightness": "63.4",
+          "keyboard-backlight-no-als-brightness": "40.0",
+          "keyboard-backlight-user-steps": "0.0\n10.0\n20.0\n40.0\n60.0\n100.0",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "3000",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
+            "--has-internal-stylus"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+            "metrics-tag": "project_e",
+            "oem": "FAKE_OEME",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_project_e_65543.xml",
+            "system-path": "/etc/hardware_features_project_e_65543.xml"
+          },
+          "media-codecs": {
+            "build-path": "media_codecs_c2.xml",
+            "system-path": "/etc/media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "media_codecs_performance_c2.xml",
+            "system-path": "/etc/media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_e.xml",
+            "system-path": "/etc/media_profiles_project_e.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "project_e",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf",
+                "source": "project_e/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e/fakeaudiocard.card_suffix.max98373.alc5682i.2uf.project_e.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/fakeaudiocard.card_settings",
+                "source": "project_e/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_e.MAX98373.yaml",
+                "source": "project_e/audio/sound-card-init-config/project_e.MAX98373.yaml"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/project_e/dsp.ini",
+                "source": "project_e/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/board.ini",
+                "source": "project_e/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/project_e/apm.ini",
+                "source": "project_e/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "sound-card-init-conf": "project_e.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_e"
+          }
+        },
+        "bluetooth": {
+          "flags": {
+            "enable-suspend-management": true
+          }
+        },
+        "brand-code": "FDDE",
+        "branding": {
+          "marketing-name": "ChromeOS Device Brandname E with feature device type on",
+          "oem-name": "FAKE_OEME"
+        },
+        "camera": {
+          "count": 1,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": false
+              },
+              "has-privacy-switch": false,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            }
+          ]
+        },
+        "cros-healthd": {
+          "battery": {
+            "has-smart-battery-info": true
+          },
+          "cached-vpd": {
+            "has-sku-number": true
+          },
+          "routines": {
+            "battery-health": {
+              "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
+            }
+          }
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
+          "firmware-config": 24608,
+          "image-name": "project_e-x",
+          "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "KEYE",
+          "signature-id": "project_e-x"
+        },
+        "hardware-properties": {
+          "form-factor": "CONVERTIBLE",
+          "has-audio-jack": true,
+          "has-backlight": true,
+          "has-sd-reader": true,
+          "has-touchscreen": true,
+          "psu-type": "battery",
+          "recovery-input": "KEYBOARD",
+          "storage-type": "EMMC",
+          "stylus-category": "internal"
+        },
+        "identity": {
+          "feature-device-type": "on",
+          "frid": "Google_Fake",
+          "platform-name": "fake",
+          "sku-id": 65543
+        },
+        "keyboard": {
+          "backlight": true,
+          "mcutype": "prism_rgb_controller",
+          "numpad": true
+        },
+        "name": "project_e",
+        "power": {
+          "battery-poll-interval-initial-ms": "1000",
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "has-keyboard-backlight": "1",
+          "internal-backlight-no-als-ac-brightness": "80.5",
+          "internal-backlight-no-als-battery-brightness": "63.4",
+          "keyboard-backlight-no-als-brightness": "40.0",
+          "keyboard-backlight-user-steps": "0.0\n10.0\n20.0\n40.0\n60.0\n100.0",
+          "suspend-to-idle": "1",
+          "turn-off-screen-timeout-ms": "3000",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "project_e"
+        },
+        "scheduler-tune": {
+          "boost-arcvm": 0.5,
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
+            "--enable-touchview",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
+            "--has-internal-stylus"
+          ]
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
             "marketing-name": "ChromeOS Device Brandname WL",
             "metrics-tag": "project_wl",
             "oem": "FAKE_OEM",

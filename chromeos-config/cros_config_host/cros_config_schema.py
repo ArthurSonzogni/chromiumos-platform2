@@ -647,6 +647,35 @@ class ValidationError(Exception):
     """Exception raised for a validation error"""
 
 
+def _IdentityProjection(identity):
+    """Returns a semantic projection of an identity dictionary.
+
+    Args:
+        identity: An identity dictionary.
+
+    Returns:
+        A hashable projection of the identity dictionary that compares equal to
+        the value returned by this function for all semantically equivalent,
+        with respect to identity matching, identity dictionaries.
+    """
+
+    def _FoldValue(value):
+        # Values we can get here are integers, strings, or None.  Use
+        # .lower() on strings, do nothing to everything else.
+        if isinstance(value, str):
+            # Consider strings of differing case to be equivalent.
+            return value.lower()
+        return value
+
+    # The platform-name plays no role in identity matching, so skip it
+    # when considering equivalency.
+    # TODO(crbug.com/1070692): Move /identity:platform-name to
+    # /mosys:platform-name so we can skip this.
+    keys = set(identity.keys()) - {"platform-name"}
+
+    return tuple(sorted((k, _FoldValue(identity[k])) for k in keys))
+
+
 def _IdentityEq(a, b):
     """Equality function for two identity dictionaries.
 
@@ -658,26 +687,7 @@ def _IdentityEq(a, b):
         True if a is semantically equivalent to b with respect to identity
         matching, False otherwise.
     """
-    union_keys = set(a) | set(b)
-
-    # The platform-name plays no role in identity matching, so skip it
-    # when considering equivalency.
-    # TODO(crbug.com/1070692): Move /identity:platform-name to
-    # /mosys:platform-name so we can skip this.
-    union_keys.discard("platform-name")
-
-    def _FoldValue(value):
-        # Values we can get here are integers, strings, or None.  Use
-        # .lower() on strings, do nothing to everything else.
-        if isinstance(value, str):
-            # Consider strings of differing case to be equivalent.
-            return value.lower()
-        return value
-
-    for key in union_keys:
-        if _FoldValue(a.get(key)) != _FoldValue(b.get(key)):
-            return False
-    return True
+    return _IdentityProjection(a) == _IdentityProjection(b)
 
 
 def _ValidateUniqueIdentities(json_config):
@@ -830,6 +840,37 @@ def _ValidateConsistentFingerprintFirmwareROVersion(configs):
             )
 
 
+def _ValidateFeatureDeviceTypeIdentities(json_config):
+    """Validates that each feature-device-type identity matches.
+
+    Each identity with a present feature-device-type value must have a
+    corresponding config with a feature-device-type value absent.
+
+    Args:
+        json_config: The transformed config to be validated.
+    """
+    on_identities = {}
+    feature_device_type_absent_identities = set()
+    for config in json_config["chromeos"]["configs"]:
+        identity = config.get("identity", {})
+        feature_device_type = identity.get("feature-device-type")
+        rest_of_identity = _IdentityProjection(
+            {k: v for k, v in identity.items() if k != "feature-device-type"}
+        )
+        if feature_device_type is not None:
+            on_identities[rest_of_identity] = identity
+        else:
+            feature_device_type_absent_identities.add(rest_of_identity)
+
+    for rest_of_identity, identity in on_identities.items():
+        if rest_of_identity not in feature_device_type_absent_identities:
+            raise ValidationError(
+                "Any config enabling feature-device-type must have a "
+                "corresponding feature-device-type absent identity.\n"
+                f"Example: {identity}"
+            )
+
+
 def ValidateConfig(config):
     """Validates a transformed cros config for general business rules.
 
@@ -844,6 +885,7 @@ def ValidateConfig(config):
     _ValidateCustomLabelBrandChangesOnly(json_config)
     _ValidateHardwarePropertiesAreValidType(json_config)
     _ValidateConsistentFingerprintFirmwareROVersion(json_config)
+    _ValidateFeatureDeviceTypeIdentities(json_config)
 
 
 def MergeConfigs(configs):

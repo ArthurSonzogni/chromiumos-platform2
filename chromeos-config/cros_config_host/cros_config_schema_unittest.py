@@ -667,6 +667,103 @@ chromeos:
         }
         cros_config_schema.ValidateConfig(json.dumps(config))
 
+    def testFeatureDeviceTypeValid(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {
+                            "platform-name": "foo",
+                            "sku-id": 1,
+                            "feature-device-type": "on",
+                        },
+                    },
+                    {
+                        "identity": {
+                            "sku-id": 1,
+                            "platform-name": "foo",
+                            "feature-device-type": "legacy",
+                        },
+                    },
+                    {
+                        "identity": {
+                            "sku-id": 1,
+                            "platform-name": "foo",
+                        },
+                    },
+                    {
+                        "identity": {
+                            "platform-name": "foo",
+                            "sku-id": 2,
+                        },
+                    },
+                ],
+            },
+        }
+        cros_config_schema.ValidateConfig(json.dumps(config))
+
+    def testFeatureDeviceTypeInvalid(self):
+        configs = [
+            [
+                {
+                    "identity": {
+                        "platform-name": "foo",
+                        "sku-id": 1,
+                        "feature-device-type": "on",
+                    },
+                },
+            ],
+            [
+                {
+                    "identity": {
+                        "platform-name": "foo",
+                        "sku-id": 1,
+                        "feature-device-type": "legacy",
+                    },
+                },
+            ],
+            [
+                {
+                    "identity": {
+                        "platform-name": "foo",
+                        "sku-id": 1,
+                        "feature-device-type": "on",
+                    },
+                },
+                {
+                    "identity": {
+                        "platform-name": "foo",
+                        "sku-id": 1,
+                        "feature-device-type": "legacy",
+                    },
+                },
+            ],
+        ]
+        for config in configs:
+            with self.assertRaises(cros_config_schema.ValidationError) as ctx:
+                cros_config_schema.ValidateConfig(
+                    json.dumps(
+                        {
+                            "chromeos": {
+                                "configs": config
+                                + [
+                                    {
+                                        "identity": {
+                                            "platform-name": "foo",
+                                            "sku-id": 2,
+                                        },
+                                    }
+                                ],
+                            }
+                        }
+                    )
+                )
+
+            self.assertRegex(
+                str(ctx.exception),
+                re.compile(".*feature-device-type absent identity.*"),
+            )
+
 
 class FilterBuildElements(cros_test_lib.TestCase):
     def testBasicFilterBuildElements(self):
