@@ -16,6 +16,8 @@
 #include <dbus/rgbkbd/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem_fake.h>
+#include <libcrossystem/crossystem.h>
 
 #include "rgbkbd/rgbkbd_daemon.h"
 
@@ -38,6 +40,8 @@ class RgbkbdDaemonTest : public testing::Test {
  public:
   RgbkbdDaemonTest() {
     cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+    crossystem_ = std::make_unique<crossystem::Crossystem>(
+        std::make_unique<crossystem::fake::CrossystemFake>());
 
     dbus::Bus::Options options;
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
@@ -58,8 +62,8 @@ class RgbkbdDaemonTest : public testing::Test {
 
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(testing::AnyNumber());
-    adaptor_.reset(
-        new DBusAdaptor(mock_bus_, cros_config_.get(), /*daemon=*/nullptr));
+    adaptor_.reset(new DBusAdaptor(mock_bus_, cros_config_.get(),
+                                   crossystem_.get(), /*daemon=*/nullptr));
   }
 
   RgbkbdDaemonTest(const RgbkbdDaemonTest&) = delete;
@@ -74,6 +78,7 @@ class RgbkbdDaemonTest : public testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   std::unique_ptr<rgbkbd::DBusAdaptor> adaptor_;
   std::unique_ptr<brillo::FakeCrosConfig> cros_config_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
 };
 
 void OnGetRgbKeyboardCapabilities(RgbKeyboardCapabilities expected,
@@ -85,6 +90,7 @@ void OnGetRgbKeyboardCapabilities(RgbKeyboardCapabilities expected,
 }
 
 TEST_F(RgbkbdDaemonTest, SetTestingModeOutOfBoundsCapabilities) {
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 1);
   adaptor_->SetTestingMode(/*enable_testing=*/true, /*capability=*/99);
 
   dbus::MethodCall method_call(rgbkbd::kRgbkbdServiceName,
@@ -98,6 +104,7 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeOutOfBoundsCapabilities) {
 }
 
 TEST_F(RgbkbdDaemonTest, SetTestingModeBarelyOutOfBoundsCapabilities) {
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 1);
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
       /*capability=*/static_cast<int>(RgbKeyboardCapabilities::kMaxValue) + 1);
@@ -113,6 +120,7 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeBarelyOutOfBoundsCapabilities) {
 }
 
 TEST_F(RgbkbdDaemonTest, SetTestingModeBarelyInBoundsCapabilities) {
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 1);
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
       /*capability=*/static_cast<int>(RgbKeyboardCapabilities::kMaxValue));
@@ -128,6 +136,7 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeBarelyInBoundsCapabilities) {
 }
 
 TEST_F(RgbkbdDaemonTest, SetTestingModeWithinBoundsCapabilities) {
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 1);
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
       static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
@@ -143,6 +152,7 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeWithinBoundsCapabilities) {
 }
 
 TEST_F(RgbkbdDaemonTest, SetTestingModeOffDoesntChangeCapability) {
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 1);
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
       static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
@@ -166,6 +176,36 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeOffDoesntChangeCapability) {
           base::BindOnce(&OnGetRgbKeyboardCapabilities,
                          RgbKeyboardCapabilities::kFourZoneFourLed));
   adaptor_->GetRgbKeyboardCapabilities(std::move(cb_2));
+}
+
+TEST_F(RgbkbdDaemonTest, SetTestingModeWhileNotInDebug) {
+  adaptor_->SetTestingMode(
+      /*enable_testing=*/true,
+      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
+
+  dbus::MethodCall method_call1(rgbkbd::kRgbkbdServiceName,
+                                rgbkbd::kGetRgbKeyboardCapabilities);
+  method_call1.SetSerial(kDBusSerial);
+  auto cb1 = std::make_unique<brillo::dbus_utils::DBusMethodResponse<uint32_t>>(
+      &method_call1, base::BindOnce(&OnGetRgbKeyboardCapabilities,
+                                    RgbKeyboardCapabilities::kNone));
+
+  adaptor_->GetRgbKeyboardCapabilities(std::move(cb1));
+
+  crossystem_->VbSetSystemPropertyInt("cros_debug", 0);
+
+  adaptor_->SetTestingMode(
+      /*enable_testing=*/true,
+      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
+
+  dbus::MethodCall method_call2(rgbkbd::kRgbkbdServiceName,
+                                rgbkbd::kGetRgbKeyboardCapabilities);
+  method_call2.SetSerial(kDBusSerial);
+  auto cb2 = std::make_unique<brillo::dbus_utils::DBusMethodResponse<uint32_t>>(
+      &method_call2, base::BindOnce(&OnGetRgbKeyboardCapabilities,
+                                    RgbKeyboardCapabilities::kNone));
+
+  adaptor_->GetRgbKeyboardCapabilities(std::move(cb2));
 }
 
 }  // namespace rgbkbd
