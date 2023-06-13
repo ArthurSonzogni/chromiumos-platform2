@@ -147,7 +147,7 @@ class GuestIPv6Service {
 
   // The IP address of neighbors discovered on each downlink. This information
   // is used to add /128 routes to those downlinks.
-  std::map<std::string, std::set<std::string>> downstream_neighbors_;
+  std::map<std::string, std::set<net_base::IPv6Address>> downstream_neighbors_;
 
   base::WeakPtrFactory<GuestIPv6Service> weak_factory_{this};
 };

@@ -300,7 +300,7 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
   // Remove downlink /128 routes
   for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-    datapath_->RemoveIPv6HostRoute(neighbor_ip, 128);
+    datapath_->RemoveIPv6HostRoute(neighbor_ip.ToString(), 128);
   }
   downstream_neighbors_[ifname_downlink].clear();
 
@@ -352,7 +352,7 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     }
     // Remove downlink /128 routes
     for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-      datapath_->RemoveIPv6HostRoute(neighbor_ip, 128);
+      datapath_->RemoveIPv6HostRoute(neighbor_ip.ToString(), 128);
     }
     downstream_neighbors_[ifname_downlink].clear();
   }
@@ -405,7 +405,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
       // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
       // route replace` so we don't need to remove the old one first.
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-        if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip, 128, uplink_ip)) {
+        if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip.ToString(), 128,
+                                         uplink_ip)) {
           LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
                        << " dev " << ifname << " src " << uplink_ip;
         }
@@ -558,7 +559,7 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
 
 void GuestIPv6Service::RegisterDownstreamNeighborIP(
     const std::string& ifname_downlink, const net_base::IPv6Address& ip) {
-  downstream_neighbors_[ifname_downlink].insert(ip.ToString());
+  downstream_neighbors_[ifname_downlink].insert(ip);
 
   const auto& uplink = DownlinkToUplink(ifname_downlink);
   if (!uplink) {
