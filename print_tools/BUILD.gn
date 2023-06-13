@@ -27,6 +27,7 @@ executable("printer_diag") {
     "ipp_in_json.h",
     "printer_diag.cc",
   ]
+  install_path = "bin"
   configs += [ ":target_defaults" ]
 }
 
