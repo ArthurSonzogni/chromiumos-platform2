@@ -117,6 +117,11 @@ class GuestIPv6Service {
   std::optional<std::string> DownlinkToUplink(const std::string& downlink);
   const std::set<std::string>& UplinkToDownlinks(const std::string& uplink);
 
+  // Queries |uplink_ips_| without modifying it.
+  // Return std::nullopt if |uplink_ips_| doesn't contain |ifname|.
+  const std::optional<net_base::IPv6Address> GetUplinkIp(
+      const std::string& ifname) const;
+
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
   SubprocessController* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.
@@ -137,7 +142,7 @@ class GuestIPv6Service {
   std::map<std::string, int32_t> if_cache_;
 
   // Uplink ifname -> the IPv6 address on that uplink, read from shill.
-  std::map<std::string, std::string> uplink_ips_;
+  std::map<std::string, net_base::IPv6Address> uplink_ips_;
   // Similarly, uplink ifname -> DNS servers information from shill.
   std::map<std::string, std::vector<std::string>> uplink_dns_;
 
