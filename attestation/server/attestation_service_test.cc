@@ -177,6 +177,7 @@ KeyInfo CreateMachineChallengeKeyInfoWithSPKAC(
 
   KeyInfo key_info;
   key_info.set_flow_type(ENTERPRISE_MACHINE);
+  key_info.set_domain("");
   key_info.set_customer_id("customer_id");
   key_info.set_device_id("device_id");
   key_info.set_certificate(pem_certificate_of_key_for_spkac);
@@ -978,12 +979,14 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
     std::move(quit_closure).Run();
   };
   SignEnterpriseChallengeRequest request;
+  request.set_flow_type(ENTERPRISE_USER);
   request.set_va_type(va_type_);
   request.set_username("user");
   request.set_key_label("label");
   request.set_domain(key_info.domain());
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
+  request.set_include_certificate(true);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
   service_->SignEnterpriseChallenge(request,
                                     base::BindOnce(callback, QuitClosure()));
@@ -1005,12 +1008,14 @@ TEST_P(AttestationServiceEnterpriseTest,
     std::move(quit_closure).Run();
   };
   SignEnterpriseChallengeRequest request;
+  request.set_flow_type(ENTERPRISE_USER);
   request.set_va_type(va_type_);
   request.set_username("user");
   request.set_key_label("label");
   request.set_domain(key_info.domain());
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
+  request.set_include_certificate(true);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
   service_->SignEnterpriseChallenge(request,
                                     base::BindOnce(callback, QuitClosure()));
@@ -1030,13 +1035,41 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeBadPrefix) {
     std::move(quit_closure).Run();
   };
   SignEnterpriseChallengeRequest request;
+  request.set_flow_type(ENTERPRISE_USER);
   request.set_va_type(va_type_);
   request.set_username("user");
   request.set_key_label("label");
   request.set_domain(key_info.domain());
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
+  request.set_include_certificate(true);
   request.set_challenge(CreateSignedChallenge("bad_prefix"));
+  service_->SignEnterpriseChallenge(request,
+                                    base::BindOnce(callback, QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeNoVAFlowType) {
+  KeyInfo key_info = CreateChallengeKeyInfo();
+  std::string key_info_str;
+  key_info.SerializeToString(&key_info_str);
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  auto callback = [](base::OnceClosure quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_challenge_response());
+    std::move(quit_closure).Run();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_va_type(va_type_);
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_domain(key_info.domain());
+  request.set_device_id(key_info.device_id());
+  request.set_include_signed_public_key(false);
+  request.set_include_certificate(true);
+  request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
   service_->SignEnterpriseChallenge(request,
                                     base::BindOnce(callback, QuitClosure()));
   Run();
@@ -1110,14 +1143,15 @@ TEST_P(AttestationServiceEnterpriseTest,
     std::move(quit_closure).Run();
   };
   SignEnterpriseChallengeRequest request;
+  request.set_flow_type(ENTERPRISE_MACHINE);
   request.set_va_type(va_type_);
   request.set_key_label("label");
-  request.set_domain("to_be_ignored");
   request.set_device_id(expected_key_info.device_id());
   request.set_include_signed_public_key(true);
   request.set_key_name_for_spkac(kKeyNameForSpkac);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
   request.set_include_customer_id(true);
+  request.set_include_certificate(false);
   service_->SignEnterpriseChallenge(
       request, base::BindOnce(callback, expected_key_info_str, QuitClosure()));
   Run();
@@ -1186,12 +1220,14 @@ class AttestationServiceCustomerIdTest : public AttestationServiceBaseTest {
   SignEnterpriseChallengeRequest CreateChallengeRequest(
       const KeyInfo& key_info, bool include_customer_id) {
     SignEnterpriseChallengeRequest request;
+    request.set_flow_type(ENTERPRISE_USER);
     request.set_va_type(DEFAULT_VA);
     request.set_username("user");
     request.set_key_label("label");
     request.set_domain(key_info.domain());
     request.set_device_id(key_info.device_id());
     request.set_include_signed_public_key(false);
+    request.set_include_certificate(true);
     request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
     request.set_include_customer_id(include_customer_id);
     return request;

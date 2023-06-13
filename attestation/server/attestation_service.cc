@@ -3127,17 +3127,18 @@ void AttestationService::SignEnterpriseChallengeTask(
     return;
   }
 
-  const bool is_user_specific = !request.username().empty();
-  KeyInfo key_info;
-  // EUK -> Enterprise User Key
-  // EMK -> Enterprise Machine Key
-  if (is_user_specific) {
-    key_info.set_flow_type(ENTERPRISE_USER);
-    key_info.set_domain(request.domain());
-  } else {
-    // For machine key the domain name should not be include.
-    key_info.set_flow_type(ENTERPRISE_MACHINE);
+  // A Verified Access (VA) flow type is required as part of the challenge
+  // response to determine the VA verification flow and the content of the VA
+  // response.
+  if (!request.has_flow_type()) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
   }
+
+  KeyInfo key_info;
+  key_info.set_flow_type(request.flow_type());
+  key_info.set_domain(request.domain());
+
   if (request.include_customer_id() && !PopulateCustomerId(&key_info)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
@@ -3149,19 +3150,19 @@ void AttestationService::SignEnterpriseChallengeTask(
         request.device_trust_signals_json();
 
   std::optional<CertifiedKey> key_for_certificate_and_spkac;
-  if (is_user_specific) {
-    // Always include the EUK certificate if an EUK is being challenged.
-    // Note that if including SPKAC has been requested when challenging an EUK,
-    // the SPKAC will also be created for the EUK. In other words,
-    // |key_name_for_spkac| is currently ignored for EUKs.
+  if (request.include_certificate()) {
+    // Note that if including SPKAC has been requested when including the
+    // certificate of the signing key, the SPKAC will also be created for the
+    // signing key. In other words, |key_name_for_spkac| is currently ignored
+    // when including the certificate of the signing key.
     key_for_certificate_and_spkac = key;
   } else if (request.include_signed_public_key() &&
              !request.key_name_for_spkac().empty()) {
-    // If a specific key name for SPKAC has been requested when challenging an
-    // EMK, include the certificate for that key.
+    // If a specific key name for SPKAC has been requested when not including
+    // the certificate of the signing key, include the certificate for that key.
     CertifiedKey key_for_spkac;
-    if (!FindKeyByLabel(std::string() /* username */,
-                        request.key_name_for_spkac(), &key_for_spkac)) {
+    if (!FindKeyByLabel(request.username(), request.key_name_for_spkac(),
+                        &key_for_spkac)) {
       result->set_status(STATUS_INVALID_PARAMETER);
       return;
     }
