@@ -14,6 +14,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_piece.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
@@ -484,7 +485,8 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
        CompleteLockedPinUssMigrationAfterRecoveryMidWay) {
   constexpr char kWrongPin[] = "0000";
-  static_assert(kWrongPin != kPin, "Bad kWrongPin");
+  static_assert(base::StringPiece(kWrongPin) != base::StringPiece(kPin),
+                "Bad kWrongPin");
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
                                user_data_auth::AUTH_SESSION_FLAGS_NONE,
