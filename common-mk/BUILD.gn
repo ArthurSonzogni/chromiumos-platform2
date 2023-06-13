@@ -96,6 +96,21 @@ config("compiler_defaults") {
       "-Werror",
       "-Wno-error=deprecated-declarations",
     ]
+    if (use.cpp20) {
+      cflags += [
+        # TODO(b/217226507): reduce the scope of this error suppression or
+        # fix each case.
+        "-Wno-error=deprecated-enum-enum-conversion",
+
+        # TODO(b/217226507): some lambda capturing (specifically tests with
+        # gmock) implicitly capture this, but in C++20 it should to be
+        # explicit. However, this feature is not available until C++20, so
+        # updating the code requires C++20 enabled.
+        # For transition, suppress the error, and once C++20 is stabilized
+        # we can clean up the cases.
+        "-Wno-error=deprecated-this-capture",
+      ]
+    }
   }
   if (use.cros_host) {
     defines += [ "NDEBUG" ]
