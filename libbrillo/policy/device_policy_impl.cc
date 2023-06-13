@@ -292,6 +292,82 @@ bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   return true;
 }
 
+bool DevicePolicyImpl::GetHwDataUsageEnabled(
+    bool* hw_data_usage_enabled) const {
+  if (!device_policy_.has_hardware_data_usage_enabled())
+    return false;
+
+  const em::RevenDeviceHWDataUsageEnabledProto& proto =
+      device_policy_.hardware_data_usage_enabled();
+  if (!proto.has_hardware_data_usage_enabled())
+    return false;
+
+  *hw_data_usage_enabled = proto.hardware_data_usage_enabled();
+  return true;
+}
+
+bool DevicePolicyImpl::GetReportSystemInfo(bool* report_system_info) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_system_info())
+    return false;
+
+  *report_system_info = proto.report_system_info();
+  return true;
+}
+
+bool DevicePolicyImpl::GetReportCpuInfo(bool* report_cpu_info) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_cpu_info())
+    return false;
+
+  *report_cpu_info = proto.report_cpu_info();
+  return true;
+}
+
+bool DevicePolicyImpl::GetReportGraphicsStatus(
+    bool* report_graphics_status) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_graphics_status())
+    return false;
+
+  *report_graphics_status = proto.report_graphics_status();
+  return true;
+}
+
+bool DevicePolicyImpl::GetReportMemoryInfo(bool* report_memory_info) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_memory_info())
+    return false;
+
+  *report_memory_info = proto.report_memory_info();
+  return true;
+}
+
+bool DevicePolicyImpl::GetReportNetworkConfig(
+    bool* report_network_config) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_network_configuration())
+    return false;
+
+  *report_network_config = proto.report_network_configuration();
+  return true;
+}
+
 bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
   if (!device_policy_.has_device_reporting())
     return false;

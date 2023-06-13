@@ -64,6 +64,12 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, GetDataRoamingEnabled, (bool*), (const, override));
   MOCK_METHOD(bool, GetAllowNewUsers, (bool*), (const, override));
   MOCK_METHOD(bool, GetMetricsEnabled, (bool*), (const, override));
+  MOCK_METHOD(bool, GetHwDataUsageEnabled, (bool*), (const, override));
+  MOCK_METHOD(bool, GetReportSystemInfo, (bool*), (const, override));
+  MOCK_METHOD(bool, GetReportCpuInfo, (bool*), (const, override));
+  MOCK_METHOD(bool, GetReportGraphicsStatus, (bool*), (const, override));
+  MOCK_METHOD(bool, GetReportMemoryInfo, (bool*), (const, override));
+  MOCK_METHOD(bool, GetReportNetworkConfig, (bool*), (const, override));
   MOCK_METHOD(bool, GetReportVersionInfo, (bool*), (const, override));
   MOCK_METHOD(bool, GetReportActivityTimes, (bool*), (const, override));
   MOCK_METHOD(bool, GetReportBootMode, (bool*), (const, override));

@@ -124,6 +124,30 @@ class DevicePolicy {
   // on success.
   virtual bool GetMetricsEnabled(bool* metrics_enabled) const = 0;
 
+  // Write the value of HWDataUsageEnabled policy in |hw_data_usage_enabled|.
+  // Returns true on success.
+  virtual bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const = 0;
+
+  // Writes the value of ReportSystemInfo policy in |report_system_info|.
+  // Returns true on success.
+  virtual bool GetReportSystemInfo(bool* report_system_info) const = 0;
+
+  // Writes the value of ReportCpuInfo policy in |report_cpu_info|.
+  // Returns true on success.
+  virtual bool GetReportCpuInfo(bool* report_cpu_info) const = 0;
+
+  // Writes the value of ReportGraphicsStatus policy in
+  // |report_graphics_status|. Returns true on success.
+  virtual bool GetReportGraphicsStatus(bool* report_graphics_status) const = 0;
+
+  // Writes the value of ReportMemoryInfo policy in |report_memory_info|.
+  // Returns true on success.
+  virtual bool GetReportMemoryInfo(bool* report_memory_info) const = 0;
+
+  // Writes the value of ReportNetworkConfiguration policy in
+  // |report_network_config|. Returns true on success.
+  virtual bool GetReportNetworkConfig(bool* report_network_config) const = 0;
+
   // Writes the value of ReportVersionInfo policy in |report_version_info|.
   // Returns true on success.
   virtual bool GetReportVersionInfo(bool* report_version_info) const = 0;

@@ -64,6 +64,12 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDataRoamingEnabled(bool* data_roaming_enabled) const override;
   bool GetAllowNewUsers(bool* allow_new_users) const override;
   bool GetMetricsEnabled(bool* metrics_enabled) const override;
+  bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const override;
+  bool GetReportSystemInfo(bool* report_system_info) const override;
+  bool GetReportCpuInfo(bool* report_cpu_info) const override;
+  bool GetReportGraphicsStatus(bool* report_graphics_status) const override;
+  bool GetReportMemoryInfo(bool* report_memory_info) const override;
+  bool GetReportNetworkConfig(bool* report_network_config) const override;
   bool GetReportVersionInfo(bool* report_version_info) const override;
   bool GetReportActivityTimes(bool* report_activity_times) const override;
   bool GetReportBootMode(bool* report_boot_mode) const override;

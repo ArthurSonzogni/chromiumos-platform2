@@ -94,6 +94,30 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   EXPECT_FALSE(bool_value);
 
   bool_value = true;
+  ASSERT_TRUE(policy.GetHwDataUsageEnabled(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
+  ASSERT_TRUE(policy.GetReportSystemInfo(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
+  ASSERT_TRUE(policy.GetReportCpuInfo(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
+  ASSERT_TRUE(policy.GetReportGraphicsStatus(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
+  ASSERT_TRUE(policy.GetReportMemoryInfo(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
+  ASSERT_TRUE(policy.GetReportNetworkConfig(&bool_value));
+  EXPECT_FALSE(bool_value);
+
+  bool_value = true;
   ASSERT_TRUE(policy.GetReportActivityTimes(&bool_value));
   EXPECT_FALSE(bool_value);
 
@@ -274,6 +298,12 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetAllowNewUsers(&bool_value));
   EXPECT_FALSE(policy.GetMetricsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
+  EXPECT_FALSE(policy.GetHwDataUsageEnabled(&bool_value));
+  EXPECT_FALSE(policy.GetReportSystemInfo(&bool_value));
+  EXPECT_FALSE(policy.GetReportCpuInfo(&bool_value));
+  EXPECT_FALSE(policy.GetReportGraphicsStatus(&bool_value));
+  EXPECT_FALSE(policy.GetReportMemoryInfo(&bool_value));
+  EXPECT_FALSE(policy.GetReportNetworkConfig(&bool_value));
   EXPECT_FALSE(policy.GetReportActivityTimes(&bool_value));
   EXPECT_FALSE(policy.GetReportBootMode(&bool_value));
   EXPECT_FALSE(policy.GetEphemeralSettings(&ephemeral_settings));
