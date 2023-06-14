@@ -287,8 +287,9 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
-  const std::string& ipv6_address = shill_device.ipconfig.ipv6_address;
-  if (ipv6_address.empty()) {
+  const auto ipv6_address = net_base::IPv6Address::CreateFromString(
+      shill_device.ipconfig.ipv6_address);
+  if (!ipv6_address) {
     if (shill_device.type == ShillClient::Device::Type::kCellular) {
       datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
     }
@@ -309,13 +310,9 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
 
   if (shill_device.type == ShillClient::Device::Type::kCellular) {
     // TODO(b/279871350): Support prefix shorter than /64.
-    std::string prefix = GuestIPv6Service::IPAddressTo64BitPrefix(ipv6_address);
-    if (prefix.empty()) {
-      LOG(ERROR) << "Fail to get prefix from IP address \"" << ipv6_address
-                 << "\"";
-      return;
-    }
-    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
+    const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(*ipv6_address);
+    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device,
+                                                 prefix.ToString());
   }
 }
 

@@ -87,7 +87,8 @@ class GuestIPv6Service {
   void RegisterDownstreamNeighborIP(const std::string& ifname_downlink,
                                     const net_base::IPv6Address& ip);
 
-  static std::string IPAddressTo64BitPrefix(const std::string& addr_str);
+  static net_base::IPv6Address IPAddressTo64BitPrefix(
+      const net_base::IPv6Address& addr_str);
 
  protected:
   virtual void SendNDProxyControl(

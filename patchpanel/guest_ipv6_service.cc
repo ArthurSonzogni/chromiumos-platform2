@@ -128,15 +128,10 @@ bool CreateConfigFile(const std::string& ifname,
 
 // TODO(b/228585272): Support prefix larger than /64
 // static
-std::string GuestIPv6Service::IPAddressTo64BitPrefix(
-    const std::string& addr_str) {
-  const auto addr = net_base::IPv6Address::CreateFromString(addr_str);
-  if (!addr) {
-    return "";
-  }
-
-  const auto cidr = *net_base::IPv6CIDR::CreateFromAddressAndPrefix(*addr, 64);
-  return cidr.GetPrefixAddress().ToString();
+net_base::IPv6Address GuestIPv6Service::IPAddressTo64BitPrefix(
+    const net_base::IPv6Address& addr) {
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr, 64)
+      ->GetPrefixAddress();
 }
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
@@ -249,7 +244,7 @@ void GuestIPv6Service::StartForwarding(
 
     if (forward_method == ForwardMethod::kMethodRAServer) {
       if (!StartRAServer(
-              ifname_downlink, IPAddressTo64BitPrefix(uplink_ip->ToString()),
+              ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip).ToString(),
               uplink_dns_[ifname_uplink], forward_record_[ifname_uplink].mtu)) {
         LOG(WARNING) << "Failed to start RA server on downlink "
                      << ifname_downlink << " with uplink " << ifname_uplink
@@ -429,22 +424,19 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       }
 
       if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
-        auto old_prefix = IPAddressTo64BitPrefix(
-            old_uplink_ip ? old_uplink_ip->ToString() : "");
-        auto new_prefix = IPAddressTo64BitPrefix(new_uplink_ip->ToString());
-        if (old_prefix == new_prefix) {
-          continue;
-        }
-        if (!old_prefix.empty()) {
+        const auto new_prefix = IPAddressTo64BitPrefix(*new_uplink_ip);
+        if (old_uplink_ip) {
+          if (IPAddressTo64BitPrefix(*old_uplink_ip) == new_prefix) {
+            continue;
+          }
           StopRAServer(ifname_downlink);
         }
-        if (!new_prefix.empty()) {
-          if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
-                             forward_record_[ifname].mtu)) {
-            LOG(WARNING) << "Failed to start RA server on downlink "
-                         << ifname_downlink << " with uplink " << ifname
-                         << " ip " << *new_uplink_ip;
-          }
+
+        if (!StartRAServer(ifname_downlink, new_prefix.ToString(),
+                           uplink_dns_[ifname], forward_record_[ifname].mtu)) {
+          LOG(WARNING) << "Failed to start RA server on downlink "
+                       << ifname_downlink << " with uplink " << ifname << " ip "
+                       << *new_uplink_ip;
         }
       }
     }
@@ -487,9 +479,9 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
     for (const auto& ifname_downlink : it->second.downstream_ifnames) {
       const auto uplink_ip = GetUplinkIp(ifname);
       if (uplink_ip) {
-        const auto prefix = IPAddressTo64BitPrefix(uplink_ip->ToString());
+        const auto prefix = IPAddressTo64BitPrefix(*uplink_ip);
         StopRAServer(ifname_downlink);
-        if (!StartRAServer(ifname_downlink, prefix, sorted_dns,
+        if (!StartRAServer(ifname_downlink, prefix.ToString(), sorted_dns,
                            it->second.mtu)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
