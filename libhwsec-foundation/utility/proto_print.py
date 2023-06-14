@@ -273,6 +273,7 @@ def GenerateFileHeaders(
             proto_name.upper(),
         )
         package_with_subdir = package_dir
+    guard_name = guard_name.replace("-", "_")
     proto_include_dir = package_with_subdir
     if proto_include_override is not None:
         proto_include_dir = proto_include_override
