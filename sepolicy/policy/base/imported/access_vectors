@@ -28,6 +28,10 @@ common file
 	quotaon
 	mounton
 	watch
+	watch_mount
+	watch_reads
+	watch_sb
+	watch_with_perm
 }
 
 
@@ -152,6 +156,7 @@ class filesystem
 	relabelfrom
 	relabelto
 	associate
+	watch
 	quotamod
 	quotaget
 }
