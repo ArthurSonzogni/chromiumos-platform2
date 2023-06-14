@@ -232,6 +232,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
   bool DisableVmmSwap();
+  void OnVmmSwapLowDiskPolicyResult(bool can_enable);
   void ApplyVmmSwapPolicyResult(SwapVmCallback callback,
                                 VmmSwapPolicyResult policy_result);
   void TrimVmmSwapMemory();
@@ -296,6 +297,8 @@ class ArcVm final : public VmBaseImpl {
   const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   VmmSwapUsagePolicy vmm_swap_usage_policy_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  SwapVmCallback pending_swap_vm_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool skip_tbw_management_ = false;
   const int64_t guest_memory_size_;

@@ -830,6 +830,21 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
       "false");
 }
 
+class FakeSwapVmCallback {
+ public:
+  ArcVm::SwapVmCallback Create() {
+    return base::BindOnce(&FakeSwapVmCallback::Response,
+                          weak_ptr_factory_.GetWeakPtr());
+  }
+
+  std::optional<SwapVmResponse> latest_response_;
+
+ private:
+  void Response(SwapVmResponse response) { latest_response_ = response; }
+
+  base::WeakPtrFactory<FakeSwapVmCallback> weak_ptr_factory_{this};
+};
+
 // Test fixture for actually testing the ArcVm functionality.
 class ArcVmTest : public ::testing::Test {
  protected:
@@ -852,14 +867,7 @@ class ArcVmTest : public ::testing::Test {
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
     spaced_proxy_ = new org::chromium::SpacedProxyMock();
-    ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
-        .WillByDefault(
-            [](const std::string& in_path,
-               base::OnceCallback<void(int64_t)> success_callback,
-               base::OnceCallback<void(brillo::Error*)> error_callback,
-               int timeout_ms) {
-              std::move(success_callback).Run(10LL << 30);  // 10GiB
-            });
+    SpacedProxyReturnSuccessCallback(10LL << 30);  // 10GiB
 
     disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
         std::unique_ptr<org::chromium::SpacedProxyMock>(spaced_proxy_));
@@ -907,21 +915,6 @@ class ArcVmTest : public ::testing::Test {
     vm_->InitializeBalloonPolicy(margins, "arcvm");
   }
 
-  bool HandleSwapVmRequest(SwapOperation operation) {
-    SwapVmRequest request;
-    request.set_operation(operation);
-    vm_->HandleSwapVmRequest(
-        request, base::BindOnce(&ArcVmTest::HandleSwapVmRequestCallback,
-                                base::Unretained(this)));
-    EXPECT_TRUE(latest_swap_vm_response_.has_value());
-    return latest_swap_vm_response_.has_value() &&
-           latest_swap_vm_response_.value().success();
-  }
-
-  void HandleSwapVmRequestCallback(SwapVmResponse response) {
-    latest_swap_vm_response_ = response;
-  }
-
   bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
 
   bool ForceEnableVmmSwap() {
@@ -943,11 +936,31 @@ class ArcVmTest : public ::testing::Test {
     return vm_->CalculateVmmSwapDurationTarget();
   }
 
+  void SpacedProxyReturnSuccessCallback(int64_t free_size) {
+    ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
+        .WillByDefault(
+            [free_size](const std::string& in_path,
+                        base::OnceCallback<void(int64_t)> success_callback,
+                        base::OnceCallback<void(brillo::Error*)> error_callback,
+                        int timeout_ms) {
+              std::move(success_callback).Run(free_size);
+            });
+  }
+
+  void SpacedProxyMoveSuccessCallback() {
+    ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
+        .WillByDefault(
+            [&](const std::string& in_path,
+                base::OnceCallback<void(int64_t)> success_callback,
+                base::OnceCallback<void(brillo::Error*)> error_callback,
+                int timeout_ms) {
+              spaced_proxy_success_callback_ = std::move(success_callback);
+            });
+  }
+
  protected:
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
-
-  std::optional<SwapVmResponse> latest_swap_vm_response_;
 
   base::MockOneShotTimer* swap_policy_timer_;
   base::MockRepeatingTimer* swap_state_monitor_timer_;
@@ -958,7 +971,20 @@ class ArcVmTest : public ::testing::Test {
   org::chromium::SpacedProxyMock* spaced_proxy_;
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 
+  base::OnceCallback<void(int64_t)> spaced_proxy_success_callback_;
+
  private:
+  bool HandleSwapVmRequest(SwapOperation operation) {
+    SwapVmRequest request;
+    request.set_operation(operation);
+    vm_->HandleSwapVmRequest(request, swap_vm_callback_.Create());
+    EXPECT_TRUE(swap_vm_callback_.latest_response_.has_value());
+    return swap_vm_callback_.latest_response_.has_value() &&
+           swap_vm_callback_.latest_response_.value().success();
+  }
+
+  FakeSwapVmCallback swap_vm_callback_;
+
   // Temporary directory where we will store our socket.
   base::ScopedTempDir temp_dir_;
 
@@ -1298,19 +1324,30 @@ TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy4DaysTarget) {
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByLowDiskPolicy) {
   // The usage prediction target is 2 days.
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize);
-  ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
-      .WillByDefault([](const std::string& in_path,
-                        base::OnceCallback<void(int64_t)> success_callback,
-                        base::OnceCallback<void(brillo::Error*)> error_callback,
-                        int timeout_ms) {
-        std::move(success_callback)
-            .Run(VmmSwapLowDiskPolicy::kTargetMinimumFreeDiskSpace +
-                 kGuestMemorySize - 1);
-      });
+  SpacedProxyReturnSuccessCallback(
+      VmmSwapLowDiskPolicy::kTargetMinimumFreeDiskSpace + kGuestMemorySize - 1);
 
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapAgainBeforeLowDiskPolicyResponse) {
+  SpacedProxyMoveSuccessCallback();
+  FakeSwapVmCallback swap_vm_callback;
+  SwapVmRequest request;
+  request.set_operation(SwapOperation::ENABLE);
+  vm_->HandleSwapVmRequest(request, swap_vm_callback.Create());
+  ASSERT_FALSE(swap_vm_callback.latest_response_.has_value());
+
+  // Another enable request is rejected while there is a pending request.
+  EXPECT_FALSE(EnableVmmSwap());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+
+  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
+  EXPECT_TRUE(swap_vm_callback.latest_response_.value().success());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapZeroTbwTarget) {
@@ -1400,6 +1437,53 @@ TEST_F(ArcVmTest, DisableVmmSwapWhileTrimming) {
   ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwapAbortEnabling) {
+  SpacedProxyMoveSuccessCallback();
+  FakeSwapVmCallback swap_vm_callback;
+  SwapVmRequest request;
+  request.set_operation(SwapOperation::ENABLE);
+  vm_->HandleSwapVmRequest(request, swap_vm_callback.Create());
+  ASSERT_FALSE(swap_vm_callback.latest_response_.has_value());
+  ASSERT_TRUE(DisableVmmSwap());
+
+  ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
+  EXPECT_FALSE(swap_vm_callback.latest_response_.value().success());
+
+  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwapAbortEnablingAndReenable) {
+  SpacedProxyMoveSuccessCallback();
+  FakeSwapVmCallback swap_vm_callback;
+  SwapVmRequest request;
+  request.set_operation(SwapOperation::ENABLE);
+  vm_->HandleSwapVmRequest(request, swap_vm_callback.Create());
+  ASSERT_FALSE(swap_vm_callback.latest_response_.has_value());
+  ASSERT_TRUE(DisableVmmSwap());
+
+  ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
+  EXPECT_FALSE(swap_vm_callback.latest_response_.value().success());
+  swap_vm_callback.latest_response_.reset();
+  base::OnceCallback<void(int64_t)> success_callback =
+      std::move(spaced_proxy_success_callback_);
+
+  // Reenable
+  vm_->HandleSwapVmRequest(request, swap_vm_callback.Create());
+  ASSERT_FALSE(swap_vm_callback.latest_response_.has_value());
+
+  // Obsolete spaced response.
+  std::move(success_callback).Run(10LL << 30);  // 10GiB
+  ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
+  EXPECT_TRUE(swap_vm_callback.latest_response_.value().success());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
+
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  // The spaced response is ignored.
+  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
 TEST_F(ArcVmTest, DisableVmmSwapWithoutEnable) {

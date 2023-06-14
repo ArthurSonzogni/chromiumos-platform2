@@ -1126,6 +1126,13 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnEnabled();
 
+  if (!pending_swap_vm_callback_.is_null()) {
+    SwapVmResponse response;
+    response.set_failure_reason("Previous enable request is being executed");
+    std::move(callback).Run(response);
+    return;
+  }
+
   if (is_vmm_swap_enabled_) {
     if ((base::Time::Now() - last_vmm_swap_out_at_) <
         kVmmSwapOutCoolingDownPeriod) {
@@ -1160,25 +1167,32 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   }
 
   if (!is_vmm_swap_enabled_) {
-    auto start_vmm_swap_enable =
-        base::BindOnce(&ArcVm::ApplyVmmSwapPolicyResult, base::Unretained(this),
-                       std::move(callback));
+    pending_swap_vm_callback_ = std::move(callback);
     vmm_swap_low_disk_policy_->CanEnable(
-        guest_memory_size_,
-        base::BindOnce(
-            [](base::OnceCallback<void(VmmSwapPolicyResult)>
-                   start_vmm_swap_enable,
-               bool can_enable) {
-              if (!can_enable) {
-                LOG(INFO) << "Enabling vmm-swap is rejected by low disk mode.";
-              }
-              std::move(start_vmm_swap_enable)
-                  .Run(can_enable ? VmmSwapPolicyResult::kPass
-                                  : VmmSwapPolicyResult::kLowDisk);
-            },
-            std::move(start_vmm_swap_enable)));
+        guest_memory_size_, base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
+                                           base::Unretained(this)));
   } else {
     ApplyVmmSwapPolicyResult(std::move(callback), VmmSwapPolicyResult::kPass);
+  }
+}
+
+void ArcVm::OnVmmSwapLowDiskPolicyResult(bool can_enable) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // `pending_swap_vm_callback_` can be nullopt when vmm-swap is disabled while
+  // it is waiting for a result from VmmSwapLowDiskPolicy.
+  // When consecutive requests (1) Enable (2) Disable (3) Enable arrive in a
+  // very short time, there can be a rare case that `pending_swap_vm_callback_`
+  // for (3) is present when VmmSwapLowDiskPolicy for (1) triggers an obsolete
+  // result. However responding to `pending_swap_vm_callback_` with an obsolete
+  // VmmSwapLowDiskPolicy result is not a problem because the disk free space
+  // unlikely change in the short time.
+  if (!pending_swap_vm_callback_.is_null()) {
+    if (!can_enable) {
+      LOG(INFO) << "Enabling vmm-swap is rejected by low disk mode.";
+    }
+    ApplyVmmSwapPolicyResult(std::move(pending_swap_vm_callback_),
+                             can_enable ? VmmSwapPolicyResult::kPass
+                                        : VmmSwapPolicyResult::kLowDisk);
   }
 }
 
@@ -1267,6 +1281,12 @@ bool ArcVm::DisableVmmSwap() {
   if (swap_state_monitor_timer_->IsRunning()) {
     LOG(INFO) << "Cancel swap state monitor";
     swap_state_monitor_timer_->Stop();
+  }
+  if (!pending_swap_vm_callback_.is_null()) {
+    LOG(INFO) << "Cancel pending enable vmm-swap";
+    SwapVmResponse response;
+    response.set_failure_reason("Aborted on disable vmm-swap");
+    std::move(pending_swap_vm_callback_).Run(response);
   }
   is_vmm_swap_enabled_ = false;
   return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str());
