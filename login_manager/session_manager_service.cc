@@ -423,6 +423,10 @@ base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
   return last_browser_restart_time_;
 }
 
+void SessionManagerService::SetMultiUserSessionStarted() {
+  browser_->SetMultiUserSessionStarted();
+}
+
 bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (!IsBrowser(status.si_pid))
     return false;

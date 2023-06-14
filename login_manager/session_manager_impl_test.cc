@@ -1297,6 +1297,20 @@ TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
   EXPECT_FALSE(error.get());
 }
 
+TEST_F(SessionManagerImplTest, StartSession_TwoUsers_MultiUserSession) {
+  // Test that starting an extra session on top of the primary user i.e.
+  // multi-user session, results in calling of |SetMultiUserSessionStarted()|.
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
+
+  EXPECT_CALL(manager_, SetMultiUserSessionStarted());
+  constexpr char kEmail2[] = "user2@somewhere";
+  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
+  EXPECT_FALSE(error.get());
+  VerifyAndClearExpectations();
+}
+
 TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
   ExpectStartSessionUnowned(kSaneEmail);
   brillo::ErrorPtr error;

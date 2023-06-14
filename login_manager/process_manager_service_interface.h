@@ -86,6 +86,10 @@ class ProcessManagerServiceInterface {
   // Returns the last time that the browser was restarted after exiting
   // (typically due to a crash).
   virtual base::TimeTicks GetLastBrowserRestartTime() = 0;
+
+  // Calls |BrowserJob::SetMultiUserSessionStarted()| so that |BrowserJob| can
+  // pass |kDisallowLacrosFlag| for subsequent Chrome runs.
+  virtual void SetMultiUserSessionStarted() = 0;
 };
 }  // namespace login_manager
 

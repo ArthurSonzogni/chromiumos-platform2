@@ -782,6 +782,10 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   if (is_first_real_user) {
     DCHECK(primary_user_account_id_.empty());
     primary_user_account_id_ = actual_account_id;
+  } else if (!is_incognito) {
+    // This means that |StartSessionEx()| is called for a non-primary user i.e.
+    // the device is entering a multi-user session.
+    manager_->SetMultiUserSessionStarted();
   }
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);

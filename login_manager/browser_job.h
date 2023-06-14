@@ -113,6 +113,10 @@ class BrowserJobInterface : public ChildJobInterface {
   virtual void SetBrowserDataBackwardMigrationArgsForUser(
       const std::string& userhash) = 0;
 
+  // Called when non-primary user i.e. secondary user logs in using multi-user
+  // session feature.
+  virtual void SetMultiUserSessionStarted() = 0;
+
   // Clears values set by |SetBrowserDataBackwardMigrationArgsForUser()|.
   virtual void ClearBrowserDataBackwardMigrationArgs() = 0;
 
@@ -147,6 +151,11 @@ class BrowserJobInterface : public ChildJobInterface {
   // The flag to pass to Chrome to tell which migration to run.
   // It is used together with |kBrowserDataBackwardMigrationForUserFlag|.
   static const char kBrowserDataBackwardMigrationModeFlag[];
+
+  // The flag to pass to Chrome to tell that Lacros should not be allowed.
+  // Specifically it is used in case there are more than two users currently
+  // logged in to the device i.e. in multi-user session.
+  static const char kDisallowLacrosFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -203,6 +212,7 @@ class BrowserJob : public BrowserJobInterface {
   void SetAdditionalEnvironmentVariables(
       const std::vector<std::string>& env_vars) override;
   void ClearPid() override;
+  void SetMultiUserSessionStarted() override;
 
   // Stores the current time as the time when the job was started.
   void RecordTime();
@@ -285,6 +295,11 @@ class BrowserJob : public BrowserJobInterface {
   // browser requires us to track the _first_ user to start a session.
   // There is no issue filed to address this.
   bool session_already_started_ = false;
+
+  // Indicates that there are more than two user sessions started i.e. in
+  // multi-user session. If this is true, `kDisallowLacrosFlag` will be passed
+  // to Chrome on restart.
+  bool multi_user_session_started_ = false;
 
   Config config_;
 

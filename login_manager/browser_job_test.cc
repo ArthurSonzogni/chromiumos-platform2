@@ -748,4 +748,12 @@ TEST_F(BrowserJobTest, SetDoubleMigration) {
                "Both forward and backward migration have been called");
 }
 
+TEST_F(BrowserJobTest, SetMultiUserSessionStarted) {
+  ExpectArgsNotToContainFlag(job_->ExportArgv(),
+                             BrowserJob::kDisallowLacrosFlag, "");
+  job_->SetMultiUserSessionStarted();
+  ExpectArgsToContainFlag(job_->ExportArgv(), BrowserJob::kDisallowLacrosFlag,
+                          "");
+}
+
 }  // namespace login_manager

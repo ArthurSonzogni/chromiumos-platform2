@@ -44,6 +44,7 @@ const char BrowserJobInterface::kBrowserDataMigrationModeFlag[] =
     "--browser-data-migration-mode=";
 const char BrowserJobInterface::kBrowserDataBackwardMigrationForUserFlag[] =
     "--browser-data-backward-migration-for-user=";
+const char BrowserJobInterface::kDisallowLacrosFlag[] = "--disallow-lacros";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -408,6 +409,10 @@ void BrowserJob::ClearPid() {
   subprocess_->ClearPid();
 }
 
+void BrowserJob::SetMultiUserSessionStarted() {
+  multi_user_session_started_ = true;
+}
+
 std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
 
@@ -492,6 +497,10 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   if (!extra_one_time_arguments_.empty()) {
     to_return.insert(to_return.end(), extra_one_time_arguments_.begin(),
                      extra_one_time_arguments_.end());
+  }
+
+  if (multi_user_session_started_) {
+    to_return.push_back(kDisallowLacrosFlag);
   }
 
   to_return.insert(to_return.end(), test_arguments_.begin(),

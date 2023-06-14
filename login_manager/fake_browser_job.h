@@ -79,6 +79,7 @@ class FakeBrowserJob : public BrowserJobInterface {
               (const std::string&),
               (override));
   MOCK_METHOD(void, ClearBrowserDataBackwardMigrationArgs, (), (override));
+  MOCK_METHOD(void, SetMultiUserSessionStarted, (), (override));
 
   bool RunInBackground() override;
   const std::string GetName() const override;

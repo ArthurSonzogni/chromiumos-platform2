@@ -172,6 +172,7 @@ class SessionManagerService
   bool IsBrowser(pid_t pid) override;
   std::optional<pid_t> GetBrowserPid() const override;
   base::TimeTicks GetLastBrowserRestartTime() override;
+  void SetMultiUserSessionStarted() override;
 
   // ChildExitHandler overrides:
   // Handles only browser exit (i.e. IsBrowser(pid) returns true).
