@@ -144,6 +144,7 @@ class DeviceTest : public testing::Test {
   static const char kDeviceName[];
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
+  static const int kOtherInterfaceIndex;
 
   void OnIPv4ConfigUpdated() {
     device_->GetPrimaryNetwork()->OnIPv4ConfigUpdated();
@@ -208,6 +209,7 @@ class DeviceTest : public testing::Test {
 const char DeviceTest::kDeviceName[] = "testdevice";
 const char DeviceTest::kDeviceAddress[] = "address";
 const int DeviceTest::kDeviceInterfaceIndex = 0;
+const int DeviceTest::kOtherInterfaceIndex = 255;
 
 TEST_F(DeviceTest, Contains) {
   EXPECT_TRUE(device_->store().Contains(kNameProperty));
@@ -344,6 +346,41 @@ TEST_F(DeviceTest, ConnectionUpdatedSuccessNoSelectedService) {
   // Network is connected (selected_service_ is nullptr in this case).
   SelectService(nullptr);
   TriggerConnectionUpdate();
+}
+
+TEST_F(DeviceTest, NetworkFailureOtherInterface) {
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
+  SelectService(service);
+  EXPECT_CALL(*service, IsConnected(_)).Times(0);
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
+  device_->OnNetworkStopped(kOtherInterfaceIndex, /*is_failure=*/true);
+}
+
+TEST_F(DeviceTest, ConnectionUpdatedOtherInterface) {
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
+  SelectService(service);
+  EXPECT_CALL(*service, IsConnected(_)).Times(0);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  device_->OnConnectionUpdated(kOtherInterfaceIndex);
+}
+
+TEST_F(DeviceTest, IPConfigsPropertyUpdatedOtherInterface) {
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
+  SelectService(service);
+  EXPECT_CALL(*service, IsConnected(_)).Times(0);
+  EXPECT_CALL(*GetDeviceMockAdaptor(), EmitRpcIdentifierArrayChanged(_, _))
+      .Times(0);
+  device_->OnIPConfigsPropertyUpdated(kOtherInterfaceIndex);
+}
+
+// Successful cases are tested in the DevicePortalDetectionTest suite.
+TEST_F(DeviceTest, OnNetworkValidationResultOtherInterface) {
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
+  SelectService(service);
+  EXPECT_CALL(*service, IsConnected(_)).Times(0);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  device_->OnNetworkValidationResult(kOtherInterfaceIndex,
+                                     PortalDetector::Result{});
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {

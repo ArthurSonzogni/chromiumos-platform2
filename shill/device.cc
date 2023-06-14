@@ -325,6 +325,14 @@ Network* Device::GetPrimaryNetwork() const {
   return implicit_network_.get();
 }
 
+bool Device::IsEventOnPrimaryNetwork(int interface_index) {
+  // The interface associated to the primary network may be different than the
+  // interface associated to the device when it was created (e.g. for Cellular
+  // devices using a multiplexed virtual network interface).
+  return (GetPrimaryNetwork() &&
+          GetPrimaryNetwork()->interface_index() == interface_index);
+}
+
 bool Device::Load(const StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
@@ -442,9 +450,7 @@ void Device::HelpRegisterConstDerivedUint64(base::StringPiece name,
 }
 
 void Device::OnConnectionUpdated(int interface_index) {
-  DCHECK(interface_index == interface_index_);
-
-  if (!selected_service_) {
+  if (!IsEventOnPrimaryNetwork(interface_index) || !selected_service_) {
     return;
   }
 
@@ -479,10 +485,10 @@ void Device::OnConnectionUpdated(int interface_index) {
 }
 
 void Device::OnNetworkStopped(int interface_index, bool is_failure) {
-  DCHECK(interface_index == interface_index_);
-  if (is_failure) {
-    OnIPConfigFailure();
+  if (!IsEventOnPrimaryNetwork(interface_index) || !is_failure) {
+    return;
   }
+  OnIPConfigFailure();
 }
 
 void Device::OnGetDHCPLease(int interface_index) {}
@@ -653,7 +659,9 @@ void Device::set_mac_address(const std::string& mac_address) {
 
 void Device::OnNetworkValidationResult(int interface_index,
                                        const PortalDetector::Result& result) {
-  DCHECK(interface_index == interface_index_);
+  if (!IsEventOnPrimaryNetwork(interface_index)) {
+    return;
+  }
 
   if (!selected_service_) {
     // A race can happen if the Service has disconnected in the meantime.
@@ -877,7 +885,9 @@ void Device::SetEnabledUnchecked(bool enable,
 }
 
 void Device::OnIPConfigsPropertyUpdated(int interface_index) {
-  DCHECK(interface_index == interface_index_);
+  if (!IsEventOnPrimaryNetwork(interface_index)) {
+    return;
+  }
   adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                           AvailableIPConfigs(nullptr));
 }

@@ -391,6 +391,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // service with Service::kFailureDHCP.
   virtual void OnIPConfigFailure();
 
+  // Check if the interface index provided corresponds to the index of the
+  // network interface associated to the primary network. Network events
+  // reported in other interfaces will be ignored by the Device class.
+  bool IsEventOnPrimaryNetwork(int interface_index);
+
   // Selects a service to be "current" -- i.e. link-state or configuration
   // events that happen to the device are attributed to this service. Also reset
   // old service state to Idle if its current state is not Failure and
