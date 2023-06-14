@@ -29,6 +29,7 @@ allow cros_spaced sysfs_dm:dir { open read search };
 allow cros_spaced sysfs_dm:{ file lnk_file } { getattr open read };
 
 allow cros_spaced cros_home_file_type:dir search;
+allow cros_spaced cros_run_daemon_store:dir search;
 
 allow cros_spaced cros_system_bus_socket:sock_file write;
 
@@ -54,7 +55,6 @@ dontaudit cros_spaced {
 
 dontaudit cros_spaced {
   audio_device
-  cros_run_daemon_store
   cros_shm
   devpts
   input_device
