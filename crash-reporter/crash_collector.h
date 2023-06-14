@@ -381,7 +381,7 @@ class CrashCollector {
   void StripSensitiveData(std::string* contents);
 
   // This is going away once the experiment is done.
-  // TODO(b/186659673): Validate daemon-store usage and remove this
+  // TODO(b/186659673): Validate daemon-store usage and remove this.
   std::optional<base::FilePath> GetCrashDirectoryInfoOld(
       uid_t process_euid,
       uid_t default_user_id,
@@ -668,9 +668,9 @@ struct InvocationInfo {
   base::RepeatingCallback<bool()> cb;
 };
 
-// Information required to initialize and invoke a collector
+// Information required to initialize and invoke a collector.
 struct CollectorInfo {
-  // Shared pointer to the collector
+  // Shared pointer to the collector.
   std::shared_ptr<CrashCollector> collector;
   // Initialization function. If none is specified, invoke the default
   // crash_collector Initialize().
