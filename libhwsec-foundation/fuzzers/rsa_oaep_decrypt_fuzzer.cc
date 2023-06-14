@@ -68,7 +68,7 @@ Environment::Environment() {
     for (int current_key_number : {1, 2}) {
       const base::FilePath key_file_path =
           base::FilePath(kStaticFilesPath)
-              .AppendASCII(base::StringPrintf("cryptohome_fuzzer_key_rsa_%d_%d",
+              .AppendASCII(base::StringPrintf("fuzzer_key_rsa_%d_%d",
                                               key_size, current_key_number));
       CHECK_LT(key_index, kRsaKeyCount);
       rsa_keys[key_index] = LoadRsaPrivateKeyFromPemFile(key_file_path);

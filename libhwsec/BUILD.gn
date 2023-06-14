@@ -405,8 +405,10 @@ if (use.fuzzer) {
       "openssl",
     ]
     deps = [
+      ":error_library",
+      ":hardware_abstraction_external_library",
       ":hardware_abstraction_internal_library",
-      ":libhwsec",
+      ":overalls_library",
     ]
   }
 }

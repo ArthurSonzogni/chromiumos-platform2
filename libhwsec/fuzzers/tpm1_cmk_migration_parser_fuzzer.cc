@@ -82,10 +82,10 @@ ScopedRSA LoadRsaPrivateKeyFromPemFile(const base::FilePath& pem_file_path) {
 Environment::Environment()
     : cmk_rsa(LoadRsaPrivateKeyFromPemFile(
           base::FilePath(kStaticFilesPath)
-              .AppendASCII("cryptohome_fuzzer_key_rsa_2048_1"))),
+              .AppendASCII("fuzzer_key_rsa_2048_1"))),
       migration_destination_rsa(LoadRsaPrivateKeyFromPemFile(
           base::FilePath(kStaticFilesPath)
-              .AppendASCII("cryptohome_fuzzer_key_rsa_2048_2"))) {
+              .AppendASCII("fuzzer_key_rsa_2048_2"))) {
   logging::SetMinLogLevel(logging::LOGGING_FATAL);
 }
 
