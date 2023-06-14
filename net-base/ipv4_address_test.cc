@@ -132,10 +132,14 @@ TEST(IPv4CIDR, CreateFromCIDRString) {
   ASSERT_TRUE(cidr3);
   EXPECT_EQ(cidr3->address(), IPv4Address(192, 168, 10, 1));
   EXPECT_EQ(cidr3->prefix_length(), 32);
+
+  const auto cidr4 = IPv4CIDR::CreateFromCIDRString("192.168.10.1");
+  ASSERT_TRUE(cidr4);
+  EXPECT_EQ(cidr4->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr4->prefix_length(), 32);
 }
 
 TEST(IPv4CIDR, CreateFromCIDRString_Fail) {
-  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1"));
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/-1"));
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/33"));
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10/24"));

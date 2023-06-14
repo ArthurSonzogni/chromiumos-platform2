@@ -99,11 +99,13 @@ class NET_BASE_EXPORT CIDR {
   static std::optional<CIDR> CreateFromCIDRString(
       const std::string& cidr_string) {
     const auto cidr_pair = SplitCIDRString(cidr_string);
-    if (!cidr_pair) {
-      return std::nullopt;
+    if (cidr_pair) {
+      return CreateFromStringAndPrefix(cidr_pair->first, cidr_pair->second);
     }
 
-    return CreateFromStringAndPrefix(cidr_pair->first, cidr_pair->second);
+    // If there is no prefix length in the string, then parse it as the address
+    // and use kMaxPrefixLength as default prefix length.
+    return CreateFromStringAndPrefix(cidr_string, kMaxPrefixLength);
   }
 
   // Creates the CIDR from the CIDR notation string and the prefix length.

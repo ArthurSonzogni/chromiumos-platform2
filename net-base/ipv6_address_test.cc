@@ -135,12 +135,16 @@ TEST(IPv6CIDR, CreateFromCIDRString) {
   ASSERT_TRUE(cidr3);
   EXPECT_EQ(cidr3->address(), address);
   EXPECT_EQ(cidr3->prefix_length(), 128);
+
+  const auto cidr4 = IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30");
+  ASSERT_TRUE(cidr4);
+  EXPECT_EQ(cidr4->address(), address);
+  EXPECT_EQ(cidr4->prefix_length(), 128);
 }
 
 TEST(IPv6CIDR, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("192.168.10.1"));
   EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("192.168.10.1/24"));
-  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30"));
   EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/-1"));
   EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/130"));
 }
