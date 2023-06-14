@@ -1895,6 +1895,83 @@
 
 </project>
 
+
+<project name="AudioPeripheralInfo">
+  <owner>chromeos-audio-bugs@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for audio peripheral popularity study. This is to get the list of top audio peripherals.
+  </summary>
+  <event name="Info">
+    <summary>
+      Emit before trying to use the device.
+    </summary>
+    <metric name="Type" type="int">
+      <summary>
+        enum CRAS_NODE_TYPE.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the device.
+      </summary>
+    </metric>
+  </event>
+</project>
+
+<project name="AudioPeripheral">
+  <owner>chromeos-audio-bugs@google.com</owner>
+  <id>per-project</id>
+  <summary>
+    Project for top audio peripherals running time and audio settings study.
+  </summary>
+<event name="Close">
+    <summary>
+      Emit when close the device.
+    </summary>
+    <metric name="Type" type="int">
+      <summary>
+        enum CRAS_NODE_TYPE.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB device.
+      </summary>
+    </metric>
+    <metric name="DeviceRuntime" type="int">
+      <summary>
+        The runtime is the duration between opening and closing a device. The value is recorded when the device is closed.
+      </summary>
+    </metric>
+    <metric name="SamplingRate" type="int">
+      <summary>
+        The sampling rate to open the device.
+      </summary>
+    </metric>
+    <metric name="Channel" type="int">
+      <summary>
+        The channel count to open the device.
+      </summary>
+    </metric>
+    <metric name="PCMFormat" type="int">
+      <summary>
+        The snd_pcm_format_t to open the device.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="TestProjectOne">
   <owner>tby@chromium.org</owner>
   <id>none</id>

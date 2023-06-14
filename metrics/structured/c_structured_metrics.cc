@@ -9,6 +9,9 @@
 #include "metrics/structured/c_structured_metrics.h"
 #include "metrics/structured/structured_events.h"
 
+namespace audio_peripheral = metrics::structured::events::audio_peripheral;
+namespace audio_peripheral_info =
+    metrics::structured::events::audio_peripheral_info;
 namespace bluetooth = metrics::structured::events::bluetooth;
 namespace bluetooth_device = metrics::structured::events::bluetooth_device;
 namespace bluetooth_chipset = metrics::structured::events::bluetooth_chipset;
@@ -162,5 +165,31 @@ extern "C" void BluetoothChipsetInfo(int vendor_id,
       .SetProductId(product_id)
       .SetTransport(transport)
       .SetChipsetString(chipset_string)
+      .Record();
+}
+
+extern "C" void AudioPeripheralInfo(int vendor_id, int product_id, int type) {
+  audio_peripheral_info::Info()
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetType(type)
+      .Record();
+}
+
+extern "C" void AudioPeripheralClose(int vendor_id,
+                                     int product_id,
+                                     int type,
+                                     int run_time,
+                                     int rate,
+                                     int channel,
+                                     int format) {
+  audio_peripheral::Close()
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetType(type)
+      .SetDeviceRuntime(run_time)
+      .SetSamplingRate(rate)
+      .SetChannel(channel)
+      .SetPCMFormat(format)
       .Record();
 }

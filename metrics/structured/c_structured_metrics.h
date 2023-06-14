@@ -98,6 +98,21 @@ BRILLO_EXPORT void BluetoothChipsetInfo(int vendor_id,
                                         int product_id,
                                         int transport,
                                         const char* chipset_string);
+
+// C wrapper for
+// metrics::structured::events::audio_peripheral_info::Info.
+BRILLO_EXPORT void AudioPeripheralInfo(int vendor_id, int product_id, int type);
+
+// C wrapper for
+// metrics::structured::events::audio_peripheral::Close.
+BRILLO_EXPORT void AudioPeripheralClose(int vendor_id,
+                                        int product_id,
+                                        int type,
+                                        int run_time,
+                                        int rate,
+                                        int channel,
+                                        int format);
+
 #if defined(__cplusplus)
 }
 #endif
