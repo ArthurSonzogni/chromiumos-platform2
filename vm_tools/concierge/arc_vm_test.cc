@@ -386,6 +386,17 @@ TEST(ArcVmParamsTest, GuestZramSize100) {
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=100"));
 }
 
+TEST(ArcVmParamsTest, GuestZramSizeMiB) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  request.set_guest_zram_size(100);
+  request.set_guest_zram_mib(100);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=104857600"));
+}
+
 TEST(ArcVmParamsTest, ChromeOsChannelStable) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());

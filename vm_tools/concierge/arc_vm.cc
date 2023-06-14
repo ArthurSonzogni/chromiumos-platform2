@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -1358,6 +1359,10 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
+  int64_t zram_size = request.guest_zram_mib() != 0
+                          ? request.guest_zram_mib() * MIB
+                          : request.guest_zram_size();
+
   std::vector<std::string> params = {
       "root=/dev/vda",
       "init=/init",
@@ -1397,7 +1402,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          request.enable_keyboard_shortcut_helper_integration()),
       base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",
                          request.enable_virtio_blk_data()),
-      base::StringPrintf("androidboot.zram_size=%d", request.guest_zram_size()),
+      base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size),
       base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
                          mini_instance_request.arc_switch_to_keymint()),
   };
@@ -1412,8 +1417,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
                        std::to_string(mglru_reclaim_swappiness));
     }
   }
-  LOG(INFO) << base::StringPrintf("Setting ARCVM guest's zram size to %d",
-                                  request.guest_zram_size());
+  LOG(INFO) << base::StringPrintf("Setting ARCVM guest's zram size to %" PRId64,
+                                  zram_size);
 
   if (request.enable_web_view_zygote_lazy_init())
     params.push_back("androidboot.arc.web_view_zygote.lazy_init=1");

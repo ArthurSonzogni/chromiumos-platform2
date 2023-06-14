@@ -412,8 +412,8 @@ message StartArcVmRequest {
   // ArcVM metrics memory PSI period, -1 if disabled
   int32 vm_memory_psi_period = 28;
 
-  // Size of Guest Zram in bytes
-  int32 guest_zram_size = 32;
+  // Size of Guest Zram in bytes. Deprecated, use guest_zram_mib instead.
+  int32 guest_zram_size = 32 [deprecated = true];
 
   // Likelihood of sending cold memory to swap.
   // Default value of zero means "unset" - will use the system default.
@@ -483,6 +483,9 @@ message StartArcVmRequest {
 
   // Whether vmm-swap of crosvm is enabled
   bool enable_vmm_swap = 43;
+
+  // Size of Guest Zram in MiB.
+  uint32 guest_zram_mib = 44;
 }
 
 enum VmStatus {
