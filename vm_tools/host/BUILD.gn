@@ -208,7 +208,10 @@ static_library("libconcierge") {
   ]
   defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
 
-  cflags_cc = [ "-Wthread-safety" ]
+  cflags_cc = [
+    "-Werror=deprecated-declarations",
+    "-Wthread-safety",
+  ]
   deps = [
     ":vm_concierge-adaptors",
     ":vm_concierge-protos",
