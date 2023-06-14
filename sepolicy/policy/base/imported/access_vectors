@@ -135,6 +135,9 @@ common cap2
 	wake_alarm
 	block_suspend
 	audit_read
+	perfmon
+	bpf
+	checkpoint_restore
 }
 
 #
@@ -430,6 +433,8 @@ inherits socket
 {
 	nlmsg_read
 	nlmsg_write
+	nlmsg_readpriv
+	nlmsg_getneigh
 }
 
 class netlink_tcpdiag_socket
@@ -593,6 +598,8 @@ class sctp_socket
 inherits socket
 {
 	node_bind
+	name_connect
+	association
 }
 
 class icmp_socket
