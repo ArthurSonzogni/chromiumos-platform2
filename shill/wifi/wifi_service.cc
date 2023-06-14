@@ -497,7 +497,8 @@ bool WiFiService::SetPassphrase(const std::string& passphrase, Error* error) {
   }
 
   if (!error->IsSuccess()) {
-    LOG(ERROR) << "Passphrase could not be set: " << error->message();
+    LOG(ERROR) << "Passphrase could not be set on service: " << log_name()
+               << " error: " << error->message();
     return false;
   }
 
@@ -1713,52 +1714,59 @@ void WiFiService::ParseWPAPassphrase(const std::string& passphrase,
       length <= IEEE_80211::kWPAAsciiMaxLen) {
     return;
   }
-  if (length == IEEE_80211::kWPAHexLen &&
-      base::HexStringToBytes(passphrase, &temp_bytes)) {
-    if (passphrase_bytes) {
-      base::HexStringToBytes(passphrase, passphrase_bytes);
-    }
+
+  if (length != IEEE_80211::kWPAHexLen) {
+    LOG(ERROR) << "InvalidPassphrase: Incorrect WPA hex Passphrase length: "
+               << length;
+    error->Populate(Error::kInvalidPassphrase);
     return;
   }
-  // None of the above.
-  error->Populate(Error::kInvalidPassphrase);
+
+  if (!base::HexStringToBytes(passphrase, &temp_bytes)) {
+    LOG(ERROR) << "InvalidPassphrase: Failed to parse WPA hex passphrase";
+    error->Populate(Error::kInvalidPassphrase);
+    return;
+  }
+
+  if (passphrase_bytes) {
+    base::HexStringToBytes(passphrase, passphrase_bytes);
+  }
 }
 
 // static
 bool WiFiService::CheckWEPIsHex(const std::string& passphrase, Error* error) {
   std::vector<uint8_t> passphrase_bytes;
-  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
-    return true;
-  } else {
+  if (!base::HexStringToBytes(passphrase, &passphrase_bytes)) {
     error->Populate(Error::kInvalidPassphrase);
+    LOG(ERROR) << "InvalidPassphrase: WEP Key is not Hex";
     return false;
   }
+  return true;
 }
 
 // static
 bool WiFiService::CheckWEPKeyIndex(const std::string& passphrase,
                                    Error* error) {
-  const auto kCaseInsensitive = base::CompareCase::INSENSITIVE_ASCII;
-  if (base::StartsWith(passphrase, "0:", kCaseInsensitive) ||
-      base::StartsWith(passphrase, "1:", kCaseInsensitive) ||
-      base::StartsWith(passphrase, "2:", kCaseInsensitive) ||
-      base::StartsWith(passphrase, "3:", kCaseInsensitive)) {
-    return true;
-  } else {
+  std::string wepPrefix = passphrase.substr(0, 2);
+  if ((wepPrefix != "0:" && wepPrefix != "1:" && wepPrefix != "2:" &&
+       wepPrefix != "3:")) {
     error->Populate(Error::kInvalidPassphrase);
+    LOG(ERROR) << "InvalidPassphrase: Invalid WEP Key Index: " << wepPrefix;
     return false;
   }
+  return true;
 }
 
 // static
 bool WiFiService::CheckWEPPrefix(const std::string& passphrase, Error* error) {
-  if (base::StartsWith(passphrase, "0x",
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    return true;
-  } else {
+  if (!base::StartsWith(passphrase, "0x",
+                        base::CompareCase::INSENSITIVE_ASCII)) {
     error->Populate(Error::kInvalidPassphrase);
+    LOG(ERROR) << "InvalidPassphrase: Incorrect WEP Prefix: "
+               << passphrase.substr(0, 2);
     return false;
   }
+  return true;
 }
 
 // static
