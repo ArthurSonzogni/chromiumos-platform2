@@ -94,6 +94,7 @@ config("compiler_defaults") {
   if (enable_werror) {
     cflags += [
       "-Werror",
+      # TODO(crbug.com/1082873): Reenable deprecated declarations.
       "-Wno-error=deprecated-declarations",
     ]
     if (use.cpp20) {

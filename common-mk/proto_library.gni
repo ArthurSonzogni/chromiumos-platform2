@@ -204,6 +204,7 @@ template("proto_library") {
 
       # Protobuf 3.11.4 generates deprecated declarations which lead to warnings
       # that shouldn't be treated as errors in generated code.
+      # TODO(crbug.com/1082873): Reenable deprecated declarations.
       "-Wno-deprecated-declarations",
     ]
   }
