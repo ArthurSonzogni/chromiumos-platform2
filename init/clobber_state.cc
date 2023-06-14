@@ -81,6 +81,9 @@ constexpr char kPsmDeviceActiveLocalPrefPath[] =
     "var/lib/private_computing/last_active_dates";
 constexpr char kPsmDeviceActivePreservePath[] =
     "unencrypted/preserve/last_active_dates";
+constexpr char kFlexLocalPath[] = "var/lib/flex_id/";
+constexpr char kFlexPreservePath[] = "unencrypted/preserve/flex/";
+constexpr char kFlexIdFile[] = "flex_id";
 
 // Size of string for volume group name.
 constexpr int kVolumeGroupNameSize = 16;
@@ -900,6 +903,10 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     // Preserve the latest GSC crash ID to prevent uploading previously seen GSC
     // crashes on every boot.
     stateful_paths.push_back("unencrypted/preserve/gsc_prev_crash_log_id");
+
+    // Preserve the Flex ID file on ChromeOS Flex devices.
+    stateful_paths.push_back(std::string(kFlexPreservePath) +
+                             std::string(kFlexIdFile));
   }
 
   // Preserve RMA state file in RMA mode.
@@ -1242,6 +1249,21 @@ void ClobberState::PreserveEncryptedFiles() {
   if (!base::CopyFile(psm_local_pref_file, psm_preserved_pref_file))
     LOG(ERROR) << "Error copying file. Source: " << psm_local_pref_file
                << " Target: " << psm_preserved_pref_file;
+
+  // Preserve the Flex ID file on ChromeOS Flex devices.
+  base::FilePath flex_path(root_path_.Append(kFlexLocalPath));
+  base::FilePath flex_preserve_path(stateful_.Append(kFlexPreservePath));
+  if (base::CreateDirectory(flex_preserve_path)) {
+    base::FilePath flex_id_file(flex_path.Append(kFlexIdFile));
+    base::FilePath flex_preserved_id_file(
+        flex_preserve_path.Append(kFlexIdFile));
+    if (!base::CopyFile(flex_id_file, flex_preserved_id_file)) {
+      LOG(ERROR) << "Error copying file. Source: " << flex_id_file
+                 << " Target: " << flex_preserved_id_file;
+    }
+  } else {
+    LOG(ERROR) << "Error creating directory: " << flex_preserve_path;
+  }
 }
 
 int ClobberState::Run() {

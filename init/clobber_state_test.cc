@@ -621,6 +621,7 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
+      "unencrypted/preserve/flex/flex_id",
       "unencrypted/preserve/gsc_prev_crash_log_id",
       "unencrypted/preserve/last_active_dates",
       "unencrypted/preserve/powerwash_count",
@@ -656,6 +657,7 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
+      "unencrypted/preserve/flex/flex_id",
       "unencrypted/preserve/gsc_prev_crash_log_id",
       "unencrypted/preserve/last_active_dates",
       "unencrypted/preserve/powerwash_count",
@@ -694,6 +696,7 @@ TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
       "unencrypted/preserve/chromad_migration_skip_oobe",
+      "unencrypted/preserve/flex/flex_id",
       "unencrypted/preserve/gsc_prev_crash_log_id",
       "unencrypted/preserve/last_active_dates",
       "unencrypted/preserve/powerwash_count",
@@ -753,6 +756,7 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img",
       "unencrypted/import_extensions/extensions/fileA.crx",
       "unencrypted/import_extensions/extensions/fileB.crx",
+      "unencrypted/preserve/flex/flex_id",
       "unencrypted/preserve/gsc_prev_crash_log_id",
       "unencrypted/preserve/last_active_dates",
       "unencrypted/preserve/powerwash_count",
@@ -2041,4 +2045,12 @@ TEST_F(PreserveEncryptedFilesTest, PsmPrefsArePreserved) {
   clobber_.PreserveEncryptedFiles();
   ASSERT_TRUE(base::PathExists(
       fake_stateful_.Append("unencrypted/preserve/last_active_dates")));
+}
+
+TEST_F(PreserveEncryptedFilesTest, FlexFilesArePreserved) {
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(
+      fake_root_.Append("var/lib/flex_id/flex_id"), "1234"));
+  clobber_.PreserveEncryptedFiles();
+  ASSERT_TRUE(base::PathExists(
+      fake_stateful_.Append("unencrypted/preserve/flex/flex_id")));
 }
