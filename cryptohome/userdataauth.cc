@@ -55,6 +55,7 @@
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor/with_driver.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/auth_session_protobuf.h"
@@ -3089,6 +3090,7 @@ void UserDataAuth::ListAuthFactors(
     return;
   }
 
+  std::vector<AuthFactorType> supported_auth_factors;
   if (is_persistent_user) {
     // Prepare the response for configured AuthFactors (with status) with all of
     // the auth factors from the disk.
@@ -3154,6 +3156,7 @@ void UserDataAuth::ListAuthFactors(
                                              configured_types) &&
           factor_driver.IsSupportedByHardware()) {
         reply.add_supported_auth_factors(proto_type);
+        supported_auth_factors.push_back(*type);
       }
     }
   } else if (is_ephemeral_user) {
@@ -3182,6 +3185,39 @@ void UserDataAuth::ListAuthFactors(
           auth_factor_driver_manager_->GetDriver(*type);
       if (factor_driver.IsLightAuthAllowed(AuthIntent::kVerifyOnly)) {
         reply.add_supported_auth_factors(proto_type);
+        supported_auth_factors.push_back(*type);
+      }
+    }
+  }
+
+  // For every supported auth factor type the user has, report the available
+  // auth intents.
+  for (AuthFactorType type : supported_auth_factors) {
+    user_data_auth::AuthIntentsForAuthFactorType* intents_for_type =
+        reply.add_auth_intents_for_types();
+    intents_for_type->set_type(AuthFactorTypeToProto(type));
+    const AuthFactorDriver& factor_driver =
+        auth_factor_driver_manager_->GetDriver(type);
+    for (AuthIntent intent : kAllAuthIntents) {
+      // Determine if this intent can be used with this factor type for this
+      // user. The check depends on the user type as full auth is only available
+      // for persistent users.
+      bool intent_is_allowed;
+      if (is_persistent_user) {
+        intent_is_allowed = factor_driver.IsFullAuthAllowed(intent) ||
+                            factor_driver.IsLightAuthAllowed(intent);
+      } else if (is_ephemeral_user) {
+        intent_is_allowed = factor_driver.IsLightAuthAllowed(intent);
+      } else {
+        intent_is_allowed = false;
+      }
+      // TODO(b/281878872): Update to distinguish between these three cases
+      // once support for dynamic intents is available.
+      if (intent_is_allowed) {
+        user_data_auth::AuthIntent proto_intent = AuthIntentToProto(intent);
+        intents_for_type->add_current(proto_intent);
+        intents_for_type->add_minimum(proto_intent);
+        intents_for_type->add_maximum(proto_intent);
       }
     }
   }
