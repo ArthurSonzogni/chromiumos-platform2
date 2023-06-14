@@ -11,7 +11,6 @@
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/tss.h>
 
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
 
@@ -56,10 +55,10 @@ inline constexpr int kTpmMigrateAsymkeyBlobSize =
     sizeof(uint32_t) /* for partPrivKeyLen */ +
     kMigratedCmkPrivateKeyRestPartSizeBytes /* for *partPrivKey */;
 
-HWSEC_EXPORT StatusOr<crypto::ScopedRSA> ParseRsaFromTpmPubkeyBlob(
+StatusOr<crypto::ScopedRSA> ParseRsaFromTpmPubkeyBlob(
     overalls::Overalls& overalls, const brillo::Blob& pubkey);
 
-HWSEC_EXPORT StatusOr<crypto::ScopedRSA> ExtractCmkPrivateKeyFromMigratedBlob(
+StatusOr<crypto::ScopedRSA> ExtractCmkPrivateKeyFromMigratedBlob(
     overalls::Overalls& overalls,
     const brillo::Blob& migrated_cmk_key12_blob,
     const brillo::Blob& migration_random_blob,
