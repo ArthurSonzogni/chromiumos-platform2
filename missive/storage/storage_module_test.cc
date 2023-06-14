@@ -113,6 +113,17 @@ class StorageModuleTest : public ::testing::Test {
     return event.result();
   }
 
+  Status CallFlush(scoped_refptr<StorageModule> module) {
+    test::TestEvent<Status> event;
+    module->Flush(SECURITY, event.cb());
+    return event.result();
+  }
+
+  void InjectStorageUnavailableError() {
+    ASSERT_TRUE(storage_module_);
+    storage_module_->InjectStorageUnavailableErrorForTesting();
+  }
+
   base::test::TaskEnvironment task_environment_;
   scoped_refptr<StorageModule> storage_module_;
 };
@@ -200,5 +211,18 @@ TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
 
   // Verify we can write to legacy storage module after switching.
   ASSERT_OK(CallAddRecord(legacy_storage_module));
+}
+
+TEST_F(StorageModuleTest, ExpectErrorIfStorageUnavailable) {
+  CreateStorageModule(/*legacy_storage_enabled=*/false);
+  InjectStorageUnavailableError();
+
+  const Status add_record_status = CallAddRecord(storage_module_);
+  EXPECT_FALSE(add_record_status.ok());
+  EXPECT_EQ(add_record_status.error_code(), error::UNAVAILABLE);
+
+  const Status flush_status = CallFlush(storage_module_);
+  EXPECT_FALSE(flush_status.ok());
+  EXPECT_EQ(flush_status.error_code(), error::UNAVAILABLE);
 }
 }  // namespace reporting

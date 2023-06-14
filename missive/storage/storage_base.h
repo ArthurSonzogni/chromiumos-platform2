@@ -111,6 +111,7 @@ class QueuesContainer
       return priority_hasher(priority) ^ guid_hasher(guid);
     }
   };
+
   using QueuesMap = std::unordered_map<std::tuple<Priority, GenerationGuid>,
                                        scoped_refptr<StorageQueue>,
                                        Hash>;

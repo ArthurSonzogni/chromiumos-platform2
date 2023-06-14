@@ -40,6 +40,9 @@
 
 namespace reporting {
 
+const Status kStorageUnavailableStatus =
+    Status(error::UNAVAILABLE, "Storage unavailable");
+
 StorageModule::StorageModule(
     const StorageOptions& options,
     bool legacy_storage_enabled,
@@ -71,6 +74,10 @@ void StorageModule::AddRecord(Priority priority,
                      [](scoped_refptr<StorageModule> self, Priority priority,
                         Record record, EnqueueCallback callback) {
                        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+                       if (!(self->storage_)) {
+                         std::move(callback).Run(kStorageUnavailableStatus);
+                         return;
+                       }
                        self->storage_->Write(priority, std::move(record),
                                              std::move(callback));
                      },
@@ -85,6 +92,10 @@ void StorageModule::Flush(Priority priority, FlushCallback callback) {
           [](scoped_refptr<StorageModule> self, Priority priority,
              FlushCallback callback) {
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (!(self->storage_)) {
+              std::move(callback).Run(kStorageUnavailableStatus);
+              return;
+            }
             self->storage_->Flush(priority, std::move(callback));
           },
           base::WrapRefCounted(this), priority, std::move(callback)));
@@ -98,6 +109,10 @@ void StorageModule::ReportSuccess(SequenceInformation sequence_information,
           [](scoped_refptr<StorageModule> self,
              SequenceInformation sequence_information, bool force) {
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (!(self->storage_)) {
+              LOG(ERROR) << kStorageUnavailableStatus.error_message();
+              return;
+            }
             self->storage_->Confirm(
                 std::move(sequence_information), force,
                 base::BindOnce([](Status status) {
@@ -116,6 +131,10 @@ void StorageModule::UpdateEncryptionKey(
           [](scoped_refptr<StorageModule> self,
              SignedEncryptionInfo signed_encryption_key) {
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (!(self->storage_)) {
+              LOG(ERROR) << kStorageUnavailableStatus.error_message();
+              return;
+            }
             self->storage_->UpdateEncryptionKey(
                 std::move(signed_encryption_key));
           },
@@ -236,10 +255,9 @@ void StorageModule::OnValueUpdate(bool is_enabled) {
             self->storage_->RegisterCompletionCallback(InitAsync(
                 self, is_enabled, std::move(when_set_storage_complete)));
 
-            // Drop reference to `Storage` object. This should trigger the
-            // registered callback above since there should only be one
-            // reference to it.
-            CHECK(self->storage_->HasOneRef());
+            // Drop reference to `Storage` object. At some point in the near
+            // future the registered callback above should trigger once
+            // remaining references are dropped from any scheduled tasks.
             self->storage_.reset();
           },
           base::WrapRefCounted(this), std::move(is_enabled)));
@@ -268,6 +286,10 @@ void StorageModule::GetStorageImplNameForTesting(
             std::move(callback).Run(self->storage_->ImplNameForTesting());
           },
           base::WrapRefCounted(this), std::move(callback)));
+}
+
+void StorageModule::InjectStorageUnavailableErrorForTesting() {
+  storage_.reset();
 }
 
 }  // namespace reporting

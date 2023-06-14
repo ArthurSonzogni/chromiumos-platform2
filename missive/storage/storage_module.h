@@ -131,6 +131,8 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   void GetStorageImplNameForTesting(
       base::OnceCallback<void(const char*)> callback) const;
 
+  void InjectStorageUnavailableErrorForTesting();
+
  private:
   friend class StorageModuleTest;
   friend base::RefCountedThreadSafe<StorageModule>;

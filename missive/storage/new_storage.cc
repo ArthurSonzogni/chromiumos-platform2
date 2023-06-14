@@ -482,6 +482,7 @@ void NewStorage::Confirm(SequenceInformation sequence_information,
           std::move(sequence_information), force),
       std::move(completion_cb), generation_guid);
 }
+
 class FlushContext : public TaskRunnerContext<Status> {
  public:
   FlushContext(scoped_refptr<NewStorage> storage,
