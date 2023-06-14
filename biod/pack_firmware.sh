@@ -5,6 +5,7 @@
 
 CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
 SCRIPT_ROOT="${CURRENT_DIR}/../../scripts"
+# shellcheck source=../../scripts/common.sh
 . "${SCRIPT_ROOT}/common.sh" || exit 1
 
 # Lookup table for default firmware version for RO.
@@ -47,7 +48,7 @@ get_fw_version_for_RO() {
   local board_name="${1}"
   local key
   local value
-  echo "${BOARD_TO_FACTORY_RO_VERSION}" | while read key value; do
+  echo "${BOARD_TO_FACTORY_RO_VERSION}" | while read -r key value; do
     if [[ "${key}" == "${board_name}" ]]; then
       echo "${value}"
     fi
@@ -57,7 +58,8 @@ get_fw_version_for_RO() {
 # verify_mp (file): Verify that |file| is signed by mp key.
 verify_mp() {
   local file="$1"
-  local version="$(futility verify "${file}" \
+  local version
+  version="$(futility verify "${file}" \
     | grep "Version:" \
     | grep -o "0x0000000[0-9]")"
   local expected
@@ -108,8 +110,8 @@ init() {
     DIRECTORY_NAME="${FLAGS_board}"
   fi
 
-  local gs_url_base="gs://chromeos-releases/${FLAGS_channel}-channel/"\
-"${DIRECTORY_NAME}"
+  local gs_url_base="gs://chromeos-releases/${FLAGS_channel}-channel/\
+${DIRECTORY_NAME}"
 
   GS_URL_BASE_RO="${gs_url_base}/${FLAGS_ro_version}"
   echo "Looking for RO part at URL: ${GS_URL_BASE_RO}"
@@ -148,7 +150,8 @@ get_ec_file_path() {
 
   # Normally there should be only one mp signed fp firmware, but in case there
   # are more, sort by version.
-  local file_name="$(gsutil ls "${url}" \
+  local file_name
+  file_name="$(gsutil ls "${url}" \
     | grep -E "chromeos_${version}_${FLAGS_board}-fp_mp(-v[0-9]+)?.bin$" \
     | sort -V \
     | tail -n1)"
@@ -173,13 +176,19 @@ process_ec_file() {
   verify_mp "${ec_rw}"
 
   # Print RO and RW versions.
-  local fmap_frid=($(dump_fmap -p "${ec_ro}" RO_FRID))
-  local fmap_fwid=($(dump_fmap -p "${ec_rw}" RW_FWID))
+  local fmap_frid
+  # shellcheck disable=SC2207
+  fmap_frid=($(dump_fmap -p "${ec_ro}" RO_FRID))
+  local fmap_fwid
+  # shellcheck disable=SC2207
+  fmap_fwid=($(dump_fmap -p "${ec_rw}" RW_FWID))
   # fmap_frid[0]="RO_FRID" fmap_frid[1]=offset fmap_frid[2]=size (decimal)
   # Same for fmap_fwid.
-  local ro_version_string="$(dd bs=1 skip="${fmap_frid[1]}" \
+  local ro_version_string
+  ro_version_string="$(dd bs=1 skip="${fmap_frid[1]}" \
     count="${fmap_frid[2]}" if="${ec_ro}" 2>/dev/null; echo)"
-  local rw_version_string="$(dd bs=1 skip="${fmap_fwid[1]}" \
+  local rw_version_string
+  rw_version_string="$(dd bs=1 skip="${fmap_fwid[1]}" \
     count="${fmap_fwid[2]}" if="${ec_rw}" 2>/dev/null; echo)"
 
   echo "Using FP firmware RO version: ${ro_version_string}"
@@ -196,7 +205,9 @@ process_ec_file() {
   # fmap_rw_section[0]="EC_RW"
   # fmap_rw_section[1]=offset
   # fmap_rw_section[2]=size (decimal)
-  local fmap_rw_section=($(dump_fmap -p "${ec_ro}" EC_RW))
+  local fmap_rw_section
+  # shellcheck disable=SC2207
+  fmap_rw_section=($(dump_fmap -p "${ec_ro}" EC_RW))
 
   # Inject RW into the existing RO file.
   echo "Merging files..."
