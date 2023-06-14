@@ -26,6 +26,7 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
  public:
   static std::optional<int> GetIdFromString(const char* id_str);
   static std::string GetStringFromId(int id);
+  static base::FilePath GetPathById(int id);
 
   // iio_device objects are kept alive by the IioContextImpl.
   IioDeviceImpl(IioContextImpl* ctx, iio_device* dev);

@@ -47,6 +47,11 @@ std::string IioDeviceImpl::GetStringFromId(int id) {
   return base::StringPrintf("%s%d", kDeviceIdPrefix, id);
 }
 
+// static
+base::FilePath IioDeviceImpl::GetPathById(int id) {
+  return base::FilePath(kSysDevString).Append(GetStringFromId(id));
+}
+
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
     : IioDevice(),
       context_(ctx),
@@ -113,8 +118,7 @@ int IioDeviceImpl::GetId() const {
 }
 
 base::FilePath IioDeviceImpl::GetPath() const {
-  std::string id_str = GetStringFromId(GetId());
-  auto path = base::FilePath(kSysDevString).Append(id_str);
+  auto path = GetPathById(GetId());
   CHECK(base::DirectoryExists(path));
   return path;
 }

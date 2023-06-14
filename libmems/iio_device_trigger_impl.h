@@ -22,6 +22,8 @@ class IioContextImpl;
 
 class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
  public:
+  static base::FilePath GetPathById(int id);
+
   // Return -1 for iio_sysfs_trigger
   static std::optional<int> GetIdFromString(const char* id_str);
   // Return iio_sysfs_trigger for -1

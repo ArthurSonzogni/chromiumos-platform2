@@ -38,6 +38,10 @@ std::string IioDeviceTriggerImpl::GetStringFromId(int id) {
   return base::StringPrintf("trigger%d", id);
 }
 
+base::FilePath IioDeviceTriggerImpl::GetPathById(int id) {
+  return base::FilePath(kSysDevString).Append(GetStringFromId(id));
+}
+
 IioDeviceTriggerImpl::IioDeviceTriggerImpl(IioContextImpl* ctx, iio_device* dev)
     : IioDevice(), context_(ctx), trigger_(dev) {
   CHECK(context_);
@@ -64,12 +68,12 @@ int IioDeviceTriggerImpl::GetId() const {
 }
 
 base::FilePath IioDeviceTriggerImpl::GetPath() const {
-  int id = GetId();
-  std::string id_str = std::string(kIioSysfsTrigger);
-  if (id >= 0)
-    id_str = GetStringFromId(id);
+  base::FilePath path;
+  if (GetId() >= 0)
+    path = GetPathById(GetId());
+  else
+    path = base::FilePath(kSysDevString).Append(std::string(kIioSysfsTrigger));
 
-  auto path = base::FilePath(kSysDevString).Append(id_str);
   CHECK(base::DirectoryExists(path));
   return path;
 }

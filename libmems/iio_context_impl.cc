@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/logging.h>
 
@@ -154,7 +155,7 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
 
   for (uint32_t i = 0; i < dev_count; ++i) {
     iio_device* dev = iio_context_get_device(ctx, i);
-    if (!dev) {
+    if (!dev || !base::DirectoryExists(T::GetPathById(i))) {
       LOG(WARNING) << "Unable to get " << i << "th device";
       continue;
     }
