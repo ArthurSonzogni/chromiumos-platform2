@@ -422,7 +422,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
                 ifname,
                 *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
                                                                 128),
-                new_uplink_ip->ToString())) {
+                *new_uplink_ip)) {
           LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
                        << " dev " << ifname << " src " << *new_uplink_ip;
         }
@@ -596,7 +596,7 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
   if (!datapath_->AddIPv6HostRoute(
           ifname_downlink,
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ip, 128),
-          uplink_ip_str)) {
+          uplink_ip)) {
     LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
                  << ifname_downlink << " src " << uplink_ip_str;
   }

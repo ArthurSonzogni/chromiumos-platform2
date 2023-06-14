@@ -1553,13 +1553,14 @@ bool Datapath::MaskInterfaceFlags(const std::string& ifname,
   return true;
 }
 
-bool Datapath::AddIPv6HostRoute(const std::string& ifname,
-                                const net_base::IPv6CIDR& ipv6_cidr,
-                                const std::string& src_addr) {
-  if (src_addr != "") {
-    return process_runner_->ip6(
-               "route", "replace",
-               {ipv6_cidr.ToString(), "dev", ifname, "src", src_addr}) == 0;
+bool Datapath::AddIPv6HostRoute(
+    const std::string& ifname,
+    const net_base::IPv6CIDR& ipv6_cidr,
+    const std::optional<net_base::IPv6Address>& src_addr) {
+  if (src_addr) {
+    return process_runner_->ip6("route", "replace",
+                                {ipv6_cidr.ToString(), "dev", ifname, "src",
+                                 src_addr->ToString()}) == 0;
   } else {
     return process_runner_->ip6("route", "replace",
                                 {ipv6_cidr.ToString(), "dev", ifname}) == 0;

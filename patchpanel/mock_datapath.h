@@ -159,7 +159,7 @@ class MockDatapath : public Datapath {
               AddIPv6HostRoute,
               (const std::string& ifname,
                const net_base::IPv6CIDR& ipv6_cidr,
-               const std::string& src_addr),
+               const std::optional<net_base::IPv6Address>& src_addr),
               (override));
   MOCK_METHOD(void,
               RemoveIPv6HostRoute,
