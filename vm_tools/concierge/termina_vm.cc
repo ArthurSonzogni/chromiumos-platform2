@@ -55,8 +55,7 @@ namespace concierge {
 namespace {
 
 // Features to enable.
-constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {
-    StartTerminaRequest::LXD_4_LTS};
+constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {};
 
 // How long to wait before timing out on shutdown RPCs.
 constexpr int64_t kShutdownTimeoutSeconds = 30;
