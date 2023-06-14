@@ -2148,7 +2148,8 @@ StartVmResponse Service::StartVmInternal(
   VmStartChecker::Status vm_start_checker_status =
       vm_start_checker->Wait(timeout);
   if (vm_start_checker_status != VmStartChecker::Status::READY) {
-    LOG(ERROR) << vm_start_checker_status;
+    LOG(ERROR) << "Error starting VM. VmStartCheckerStatus="
+               << vm_start_checker_status;
     response.set_failure_reason(std::to_string(vm_start_checker_status));
     return response;
   }
