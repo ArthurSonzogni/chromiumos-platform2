@@ -86,9 +86,10 @@ void NetworkBpfSkeleton::ScanFlowMap() {
       }
       if (active_sockets.find(next_key->sock) == active_sockets.end()) {
         event_flow_map_value.garbage_collect_me = true;
+        // Delay the deletion of flow map events. It may not be safe to
+        // delete elements while we're iterating through the map.
         flow_map_entries_to_delete.push_back(*next_key);
       }
-
       if (bpf_map__lookup_elem(skel_process_map, &cur_key->sock,
                                sizeof(cur_key->sock),
                                &event_flow.process_map_value,
@@ -97,19 +98,17 @@ void NetworkBpfSkeleton::ScanFlowMap() {
                       "flow entry.";
         continue;
       }
+      if (event_flow_map_value.garbage_collect_me) {
+        bpf_map__delete_elem(skel_process_map, &(next_key->sock),
+                             sizeof(next_key->sock), 0);
+      }
       default_bpf_skeleton_->callbacks_.ring_buffer_event_callback.Run(
           cros_event);
     }
   } while (rv == 0);
-
   // Garbage collect entries in the flow map.
   for (const auto& flow_key : flow_map_entries_to_delete) {
     bpf_map__delete_elem(skel_flow_map, &flow_key, sizeof(flow_key), 0);
-  }
-  // Garbage collect entries in the process map.
-  for (const auto& process_key : active_sockets) {
-    bpf_map__delete_elem(skel_process_map, &process_key, sizeof(process_key),
-                         0);
   }
 }
 
