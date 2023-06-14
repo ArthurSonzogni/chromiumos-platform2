@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <libsegmentation/feature_management.h>
 
@@ -38,29 +39,41 @@ void DumpFeatureList(const FeatureUsage usage) {
 }  // namespace segmentation
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(feature_level, 0, "return the feature level for the device");
-  DEFINE_bool(scope_level, 0, "return the scope level for the device");
+  DEFINE_bool(feature_level, false, "return the feature level for the device");
+  DEFINE_bool(scope_level, false, "return the scope level for the device");
   DEFINE_string(feature_list, "",
                 "list all supported features for a given subsystem: chrome, "
                 "chromeos, android");
   DEFINE_string(feature_name, "", "return true when the feature is supported");
   brillo::FlagHelper::Init(argc, argv, "Query the segmentation library");
 
+  const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->GetArgs().size() > 0) {
+    LOG(ERROR) << "Unknown extra command line arguments; exiting";
+    return EXIT_FAILURE;
+  }
+
+  segmentation::FeatureManagement feature_management;
   if (FLAGS_feature_level) {
     segmentation::DumpFeatureLevel();
   } else if (FLAGS_scope_level) {
     segmentation::DumpScopeLevel();
-  } else if (FLAGS_feature_name != "") {
+  } else if (!FLAGS_feature_name.empty()) {
     segmentation::DumpIsFeatureEnabled(FLAGS_feature_name);
-  } else if (FLAGS_feature_list != "") {
-    if (!FLAGS_feature_list.compare("chrome"))
+  } else if (!FLAGS_feature_list.empty()) {
+    if (!FLAGS_feature_list.compare("chrome")) {
       segmentation::DumpFeatureList(segmentation::USAGE_CHROME);
-    else if (!FLAGS_feature_list.compare("chromeos"))
+    } else if (!FLAGS_feature_list.compare("chromeos")) {
       segmentation::DumpFeatureList(segmentation::USAGE_LOCAL);
-    else if (!FLAGS_feature_list.compare("android"))
+    } else if (!FLAGS_feature_list.compare("android")) {
       segmentation::DumpFeatureList(segmentation::USAGE_ANDROID);
-    else
-      std::cerr << "Invalid subsystem" << std::endl;
+    } else {
+      LOG(ERROR) << "Invalid subsystem";
+      return EXIT_FAILURE;
+    }
+  } else {
+    LOG(ERROR) << "Please specify an option to control execution mode.";
+    return EXIT_FAILURE;
   }
   return 0;
 }
