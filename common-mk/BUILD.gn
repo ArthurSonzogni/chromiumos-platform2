@@ -109,6 +109,20 @@ config("compiler_defaults") {
       ]
     }
   }
+
+  # TODO(b/286954353): This is under experiment still. Please do not
+  # use this in production yet until we evaluate more.
+  if (use.lto_experiment) {
+    cflags += [ "-flto" ]
+    if (use.function_elimination_experiment) {
+      cflags += [
+        "-ffunction-sections",
+        "-fvirtual-function-elimination",
+      ]
+      ldflags += [ "-Wl,--gc-sections" ]
+    }
+  }
+
   if (use.cros_host) {
     defines += [ "NDEBUG" ]
   }
