@@ -72,19 +72,14 @@ SandboxedProcess::~SandboxedProcess() {
   Reset(0);
 }
 
-SandboxedProcess::SandboxedProcess(
-    const std::vector<std::string>& command,
-    const std::string& seccomp_filename,
-    const std::string& user,
-    uint64_t capabilities_mask,
-    const std::vector<base::FilePath>& readonly_mount_points,
-    const std::vector<base::FilePath>& writable_mount_points,
-    uint32_t sandbox_option)
-    : command_(command), readonly_mount_points_(readonly_mount_points) {
+SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
+                                   const std::string& seccomp_filename,
+                                   const Options& options)
+    : command_(command), readonly_mount_points_(options.readonly_mount_points) {
   // Per our security requirement, it is not allowed to invoke a sandboxed
   // process as root. In addition, minijail would refuse to start the subprocess
   // when the user is specified as root.
-  CHECK(user != "root")
+  CHECK(options.user != "root")
       << "Invoking a sandboxed process as root is not allowed.";
   auto seccomp_file =
       base::FilePath(kSeccompPolicyDirectory).Append(seccomp_filename);
@@ -102,13 +97,13 @@ SandboxedProcess::SandboxedProcess(
       // Create a new UTS/hostname namespace.
       "--uts",
       // Set user.
-      "-u", user,
+      "-u", options.user,
       // Set group. The group is assume to be the same as user.
-      "-g", user,
+      "-g", options.user,
       // Inherit all the supplementary groups of the user specified with -u.
       "-G",
       // Restrict capabilities.
-      "-c", base::StringPrintf("0x%" PRIx64, capabilities_mask),
+      "-c", base::StringPrintf("0x%" PRIx64, options.capabilities_mask),
       // Set the process’s no_new_privs bit.
       "-n",
       // Bind mount root.
@@ -140,33 +135,22 @@ SandboxedProcess::SandboxedProcess(
     sandbox_arguments_.push_back(seccomp_file.value());
   }
 
-  if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
+  if ((options.sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
     // Enter a new network namespace.
     sandbox_arguments_.push_back("-e");
   }
-  if (sandbox_option & MOUNT_DLC) {
+  if (options.sandbox_option & MOUNT_DLC) {
     // The arguments "-v -Kslave" could allow propagation of mounted DLC image.
     // Recursively bind mount "/run/imageloader" to access DLC.
     sandbox_arguments_.push_back("-k");
     sandbox_arguments_.push_back(
         "/run/imageloader,/run/imageloader,none,MS_BIND|MS_REC");
   }
-  for (const base::FilePath& f : writable_mount_points) {
+  for (const base::FilePath& f : options.writable_mount_points) {
     sandbox_arguments_.push_back("-b");
     sandbox_arguments_.push_back(f.value() + "," + f.value() + ",1");
   }
 }
-
-SandboxedProcess::SandboxedProcess(
-    const std::vector<std::string>& command,
-    const std::string& seccomp_filename,
-    const std::vector<base::FilePath>& readonly_mount_points)
-    : SandboxedProcess(command,
-                       seccomp_filename,
-                       kCrosHealthdSandboxUser,
-                       /*capabilities_mask=*/0x0,
-                       readonly_mount_points,
-                       /*writable_mount_points=*/{}) {}
 
 void SandboxedProcess::AddArg(const std::string& arg) {
   command_.push_back(arg);

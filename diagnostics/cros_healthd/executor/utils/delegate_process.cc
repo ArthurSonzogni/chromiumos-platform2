@@ -30,30 +30,9 @@ DelegateProcess::DelegateProcess() = default;
 
 DelegateProcess::~DelegateProcess() = default;
 
-DelegateProcess::DelegateProcess(
-    const std::string& seccomp_filename,
-    const std::string& user,
-    uint64_t capabilities_mask,
-    const std::vector<base::FilePath>& readonly_mount_points,
-    const std::vector<base::FilePath>& writable_mount_points)
-    : SandboxedProcess({kDelegateBinary},
-                       seccomp_filename,
-                       user,
-                       capabilities_mask,
-                       readonly_mount_points,
-                       writable_mount_points) {
-  Init();
-}
-
-DelegateProcess::DelegateProcess(
-    const std::string& seccomp_filename,
-    const std::vector<base::FilePath>& readonly_mount_points)
-    : SandboxedProcess(
-          {kDelegateBinary}, seccomp_filename, readonly_mount_points) {
-  Init();
-}
-
-void DelegateProcess::Init() {
+DelegateProcess::DelegateProcess(const std::string& seccomp_filename,
+                                 const SandboxedProcess::Options& options)
+    : SandboxedProcess({kDelegateBinary}, seccomp_filename, options) {
   mojo::ScopedMessagePipeHandle pipe = invitation_.AttachMessagePipe(0);
   remote_.Bind(mojo::PendingRemote<mojom::Delegate>(std::move(pipe), 0));
 }

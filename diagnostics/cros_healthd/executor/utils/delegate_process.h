@@ -33,13 +33,7 @@ namespace diagnostics {
 class DelegateProcess : public SandboxedProcess {
  public:
   DelegateProcess(const std::string& seccomp_filename,
-                  const std::string& user,
-                  uint64_t capabilities_mask,
-                  const std::vector<base::FilePath>& readonly_mount_points,
-                  const std::vector<base::FilePath>& writable_mount_points);
-  DelegateProcess(
-      const std::string& seccomp_filename,
-      const std::vector<base::FilePath>& readonly_mount_points = {});
+                  const SandboxedProcess::Options& options);
   ~DelegateProcess() override;
 
  public:
@@ -55,8 +49,6 @@ class DelegateProcess : public SandboxedProcess {
   DelegateProcess();
 
  private:
-  void Init();
-
   void StartAndIgnoreResult();
 
   mojo::Remote<ash::cros_healthd::mojom::Delegate> remote_;

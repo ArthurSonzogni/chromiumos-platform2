@@ -105,12 +105,13 @@ TEST_F(SandboxedProcessTest, Default) {
   MockSandboxedProcess process{
       /*command=*/expected_cmd,
       /*seccomp_filename=*/kTestSeccompName,
-      /*user=*/kTestUser,
-      /*capabilities_mask=*/kTestCapabilitiesMask,
-      /*readonly_mount_points=*/
-      {base::FilePath{kTestReadOnlyFile},
-       base::FilePath{kTestReadOnlyFileNotExist}},
-      /*writable_mount_points=*/{base::FilePath{kTestWritableFile}}};
+      SandboxedProcess::Options{
+          .user = kTestUser,
+          .capabilities_mask = kTestCapabilitiesMask,
+          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
+                                    base::FilePath{kTestReadOnlyFileNotExist}},
+          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+      }};
 
   SetUpExpectCallForMinijailParsing(process);
 
@@ -151,13 +152,14 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
   MockSandboxedProcess process{
       /*command=*/expected_cmd,
       /*seccomp_filename=*/kTestSeccompName,
-      /*user=*/kTestUser,
-      /*capabilities_mask=*/kTestCapabilitiesMask,
-      /*readonly_mount_points=*/
-      {base::FilePath{kTestReadOnlyFile},
-       base::FilePath{kTestReadOnlyFileNotExist}},
-      /*writable_mount_points=*/{base::FilePath{kTestWritableFile}},
-      /*sandbox_option=*/NO_ENTER_NETWORK_NAMESPACE};
+      SandboxedProcess::Options{
+          .user = kTestUser,
+          .capabilities_mask = kTestCapabilitiesMask,
+          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
+                                    base::FilePath{kTestReadOnlyFileNotExist}},
+          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+          .sandbox_option = NO_ENTER_NETWORK_NAMESPACE,
+      }};
 
   SetUpExpectCallForMinijailParsing(process);
 
@@ -172,13 +174,14 @@ TEST_F(SandboxedProcessTest, MOUNT_DLC) {
   MockSandboxedProcess process{
       /*command=*/expected_cmd,
       /*seccomp_filename=*/kTestSeccompName,
-      /*user=*/kTestUser,
-      /*capabilities_mask=*/kTestCapabilitiesMask,
-      /*readonly_mount_points=*/
-      {base::FilePath{kTestReadOnlyFile},
-       base::FilePath{kTestReadOnlyFileNotExist}},
-      /*writable_mount_points=*/{base::FilePath{kTestWritableFile}},
-      /*sandbox_option=*/MOUNT_DLC};
+      SandboxedProcess::Options{
+          .user = kTestUser,
+          .capabilities_mask = kTestCapabilitiesMask,
+          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
+                                    base::FilePath{kTestReadOnlyFileNotExist}},
+          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+          .sandbox_option = MOUNT_DLC,
+      }};
 
   SetUpExpectCallForMinijailParsing(process);
 

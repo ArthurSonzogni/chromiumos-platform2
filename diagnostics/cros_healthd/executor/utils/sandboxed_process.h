@@ -20,6 +20,7 @@ inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 
 // SandboxOption is used to customized minijail configuration. Default to
 // passing without option for highest security.
+// TODO(b/287409040): put options into |SandboxedProcess::Options|.
 enum SandboxOption {
   // Do not enter a new network namespace for minijail.
   NO_ENTER_NETWORK_NAMESPACE = 1 << 0,
@@ -33,29 +34,32 @@ enum SandboxOption {
 // * |command|: The command to be run.
 // * |seccomp_file|: The filename of the seccomp policy file under the default
 //     policy directory(/usr/share/policy/).
-// * |user|: The user to run the command. Default to |kCrosHealthdSandboxUser|.
-// * |capabilities_mask|: The capabilities mask. See linux headers
-//     "uapi/linux/capability.h". Default to |0| (no capability).
-// * |readonly_mount_points|: The paths to be mounted readonly. If a path
-//     doesn't exist it is ignored. Default to |{}|.
-// * |writable_mount_points|: The paths to be mounted writable. All the paths
-//     must exist, otherwise the process will fail to be run. Default to |{}|.
-// * |sandbox_option|: Open sandbox without certain flags, use bit-wise options
-//     from SandboxOption to customize. Default to 0 for maximum security.
+// * |options|: Extra options for minijail. See comments of the class |Options|.
 class SandboxedProcess : public brillo::ProcessImpl {
  public:
+  // The options
+  // * |user|: The user to run the command. Default to
+  //     |kCrosHealthdSandboxUser|.
+  // * |capabilities_mask|: The capabilities mask. See linux headers
+  //     "uapi/linux/capability.h". Default to |0| (no capability).
+  // * |readonly_mount_points|: The paths to be mounted readonly. If a path
+  //     doesn't exist it is ignored. Default to |{}|.
+  // * |writable_mount_points|: The paths to be mounted writable. All the paths
+  //     must exist, otherwise the process will fail to be run. Default to |{}|.
+  // * |sandbox_option|: Open sandbox without certain flags, use bit-wise
+  //     options from SandboxOption to customize. Default to 0 for maximum
+  //     security.
+  struct Options {
+    std::string user = kCrosHealthdSandboxUser;
+    uint64_t capabilities_mask = 0;
+    std::vector<base::FilePath> readonly_mount_points;
+    std::vector<base::FilePath> writable_mount_points;
+    uint32_t sandbox_option = 0;
+  };
+
   SandboxedProcess(const std::vector<std::string>& command,
                    const std::string& seccomp_filename,
-                   const std::string& user,
-                   uint64_t capabilities_mask,
-                   const std::vector<base::FilePath>& readonly_mount_points,
-                   const std::vector<base::FilePath>& writable_mount_points,
-                   uint32_t sandbox_option = 0);
-  SandboxedProcess(
-      const std::vector<std::string>& command,
-      const std::string& seccomp_filename,
-      const std::vector<base::FilePath>& readonly_mount_points = {});
-
+                   const Options& options);
   SandboxedProcess(const SandboxedProcess&) = delete;
   SandboxedProcess& operator=(const SandboxedProcess&) = delete;
 
