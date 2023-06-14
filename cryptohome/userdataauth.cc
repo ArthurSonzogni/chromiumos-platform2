@@ -2225,6 +2225,11 @@ bool UserDataAuth::OwnerUserExists() {
   return homedirs_->GetPlainOwner(&owner);
 }
 
+bool UserDataAuth::UnmountedAndroidUsersDoNotExist() {
+  AssertOnOriginThread();
+  return homedirs_->GetUnmountedAndroidDataCount() == 0;
+}
+
 void UserDataAuth::StartAuthSession(
     user_data_auth::StartAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>

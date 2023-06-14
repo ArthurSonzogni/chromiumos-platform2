@@ -1288,4 +1288,15 @@ void UserDataAuthAdaptor::DoResetApplicationContainer(
   response->Return(reply);
 }
 
+void UserDataAuthAdaptor::GetArcDiskFeatures(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetArcDiskFeaturesReply>> response,
+    const user_data_auth::GetArcDiskFeaturesRequest& in_request) {
+  user_data_auth::GetArcDiskFeaturesReply reply;
+  // Quota is not supported if there are one or more unmounted Android users.
+  // (b/181159107)
+  reply.set_quota_supported(service_->UnmountedAndroidUsersDoNotExist());
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

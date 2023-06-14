@@ -358,6 +358,11 @@ class UserDataAuthAdaptor
           user_data_auth::ResetApplicationContainerReply>> response,
       const user_data_auth::ResetApplicationContainerRequest& in_request);
 
+  void GetArcDiskFeatures(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetArcDiskFeaturesReply>> response,
+      const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
+
   // This is called by UserDataAuth to update the status of locked out users in
   // a passwordless login. This will create and send the signal.
   void AuthFactorStatusUpdateCallback(
@@ -411,6 +416,7 @@ class ArcQuotaAdaptor : public org::chromium::ArcQuotaInterface,
   // either the DBus Introspection XML
   // (cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml), or the protobuf
   // definition file (system_api/dbus/cryptohome/UserDataAuth.proto)
+  // TODO(b/229122701): Remove these methods after migrating them to spaced.
   void GetArcDiskFeatures(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetArcDiskFeaturesReply>> response,

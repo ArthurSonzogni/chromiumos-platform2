@@ -224,6 +224,7 @@ class UserDataAuth {
   bool IsLowEntropyCredentialSupported();
 
   // =============== ARC Quota Related Public Methods ===============
+  // TODO(b/229122701): Remove these methods after migrating them to spaced.
 
   // Return true is ARC Disk Quota is supported, false otherwise.
   bool IsArcQuotaSupported();
@@ -390,6 +391,11 @@ class UserDataAuth {
   // Returns true if and only if the loaded device policy specifies an owner
   // user.
   bool OwnerUserExists();
+
+  // Returns false if there are any unmounted Android users.
+  // TODO(b/229122701): Rename this to IsArcQuotaSupported() after deprecating
+  // the current IsArcQuotaSupported() method.
+  bool UnmountedAndroidUsersDoNotExist();
 
   // =============== Miscellaneous ===============
 
