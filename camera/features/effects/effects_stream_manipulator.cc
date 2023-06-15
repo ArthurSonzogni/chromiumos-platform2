@@ -1254,16 +1254,6 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
       new_config.segmentation_model_type = SegmentationModelType::kHd;
     } else if (segmentation_model_type == "full") {
       new_config.segmentation_model_type = SegmentationModelType::kFull;
-    } else if (segmentation_model_type == "256precise") {
-      new_config.segmentation_model_type = SegmentationModelType::k256Precise;
-    } else if (segmentation_model_type == "256fast") {
-      new_config.segmentation_model_type = SegmentationModelType::k256Fast;
-    } else if (segmentation_model_type == "384precise") {
-      new_config.segmentation_model_type = SegmentationModelType::k384Precise;
-    } else if (segmentation_model_type == "384fast") {
-      new_config.segmentation_model_type = SegmentationModelType::k384Fast;
-    } else if (segmentation_model_type == "512v4036") {
-      new_config.segmentation_model_type = SegmentationModelType::k512v4036;
     } else {
       LOGF(WARNING) << "Unknown Segmentation Model Type: "
                     << segmentation_model_type;
