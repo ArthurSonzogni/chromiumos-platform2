@@ -73,33 +73,6 @@ TEST(Ipv4, CreationAndStringConversion) {
   }
 }
 
-TEST(Ipv6, CreationAndStringConversion) {
-  struct {
-    std::string literal_address;
-    uint8_t bytes[16];
-  } test_cases[] = {
-      {"::", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-      {"2001:da8:ff:5002:1034:56ff:fe78:9abc",
-       {0x20, 0x01, 0xd, 0xa8, 0, 0xff, 0x50, 0x02, 0x10, 0x34, 0x56, 0xff,
-        0xfe, 0x78, 0x9a, 0xbc}},
-      {"fe80::1122",
-       {0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x22}},
-  };
-
-  for (auto const& test_case : test_cases) {
-    struct in6_addr addr = {};
-    memcpy(addr.s6_addr, test_case.bytes, sizeof(addr.s6_addr));
-    std::vector<uint8_t> bytes;
-    bytes.resize(16);
-    memcpy(bytes.data(), test_case.bytes, bytes.size());
-    EXPECT_EQ(test_case.literal_address, IPv6AddressToString(addr));
-    EXPECT_EQ(test_case.literal_address, IPv6AddressToString(bytes));
-    EXPECT_EQ(0, memcmp(addr.s6_addr,
-                        StringToIPv6Address(test_case.literal_address).s6_addr,
-                        sizeof(addr.s6_addr)));
-  }
-}
-
 TEST(Ipv4, CreationAndCidrStringConversion) {
   struct {
     std::string literal_address;
@@ -189,16 +162,6 @@ TEST(Ipv6, EUI64Addr) {
     char eui64_addr_str[INET6_ADDRSTRLEN];
     inet_ntop(AF_INET6, &addr, eui64_addr_str, INET6_ADDRSTRLEN);
     EXPECT_EQ(test_case.eui64_address, eui64_addr_str);
-  }
-}
-
-TEST(IPv6, IsIPv6PrefixEqual) {
-  // |addr1| and |addr2| has the same prefix up to the 45th bit.
-  struct in6_addr addr1 = StringToIPv6Address("2001:db8:0::52:0:1");
-  struct in6_addr addr2 = StringToIPv6Address("2001:db8:4::52:0:1");
-  int idx_prefix_equal = 45;
-  for (int i = 0; i <= 128; i++) {
-    EXPECT_EQ(i <= idx_prefix_equal, IsIPv6PrefixEqual(addr1, addr2, i));
   }
 }
 

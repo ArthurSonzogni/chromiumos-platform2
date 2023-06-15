@@ -102,31 +102,9 @@ std::string IPv4AddressToString(std::vector<uint8_t> addr) {
   return IPv4AddressToString(Ipv4Addr(addr[0], addr[1], addr[2], addr[3]));
 }
 
-std::string IPv6AddressToString(const struct in6_addr& addr) {
-  char buf[INET6_ADDRSTRLEN] = {0};
-  return !inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) ? "" : buf;
-}
-
-std::string IPv6AddressToString(const std::vector<uint8_t>& addr) {
-  if (addr.size() != 16) {
-    return "";
-  }
-  struct in6_addr in6_addr;
-  memcpy(in6_addr.s6_addr, addr.data(), sizeof(in6_addr.s6_addr));
-  return IPv6AddressToString(in6_addr);
-}
-
 struct in_addr StringToIPv4Address(const std::string& buf) {
   struct in_addr addr = {};
   if (!inet_pton(AF_INET, buf.c_str(), &addr)) {
-    memset(&addr, 0, sizeof(addr));
-  }
-  return addr;
-}
-
-struct in6_addr StringToIPv6Address(const std::string& buf) {
-  struct in6_addr addr = {};
-  if (!inet_pton(AF_INET6, buf.c_str(), &addr)) {
     memset(&addr, 0, sizeof(addr));
   }
   return addr;
@@ -147,74 +125,6 @@ std::string IPv4AddressToCidrString(std::vector<uint8_t> addr,
 std::string MacAddressToString(const MacAddress& addr) {
   return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
                             addr[2], addr[3], addr[4], addr[5]);
-}
-
-bool IsIPv6PrefixEqual(const struct in6_addr& a,
-                       const struct in6_addr& b,
-                       int32_t prefix_length) {
-  if (prefix_length > 128 || prefix_length < 0) {
-    LOG(ERROR) << "Invalid prefix length " << prefix_length;
-    return false;
-  }
-
-  int i = 0;
-  while (prefix_length > 8) {
-    if (a.s6_addr[i] != b.s6_addr[i]) {
-      return false;
-    }
-    prefix_length -= 8;
-    i++;
-  }
-  uint8_t mask = static_cast<uint8_t>(~((1 << (8 - prefix_length)) - 1));
-  return (a.s6_addr[i] & mask) == (b.s6_addr[i] & mask);
-}
-
-bool FindFirstIPv6Address(const std::string& ifname, struct in6_addr* address) {
-  struct ifaddrs* ifap;
-  struct ifaddrs* p;
-  bool found = false;
-
-  // Iterate through the linked list of all interface addresses to find
-  // the first IPv6 address for |ifname|.
-  if (getifaddrs(&ifap) < 0)
-    return false;
-
-  for (p = ifap; p; p = p->ifa_next) {
-    if (p->ifa_name != ifname || p->ifa_addr->sa_family != AF_INET6) {
-      continue;
-    }
-
-    if (address) {
-      struct sockaddr_in6* sa =
-          reinterpret_cast<struct sockaddr_in6*>(p->ifa_addr);
-      memcpy(address, &sa->sin6_addr, sizeof(*address));
-    }
-    found = true;
-    break;
-  }
-
-  freeifaddrs(ifap);
-  return found;
-}
-
-bool GenerateRandomIPv6Prefix(struct in6_addr* prefix, int len) {
-  std::mt19937 rng;
-  rng.seed(std::random_device()());
-  std::uniform_int_distribution<std::mt19937::result_type> randbyte(0, 255);
-
-  // TODO(cernekee): handle different prefix lengths
-  if (len != 64) {
-    LOG(DFATAL) << "Unexpected prefix length";
-    return false;
-  }
-
-  for (int i = 8; i < 16; i++) {
-    prefix->s6_addr[i] = static_cast<uint8_t>(randbyte(rng));
-  }
-
-  // Set the universal/local flag, similar to a RFC 4941 address.
-  prefix->s6_addr[8] |= 0x40;
-  return true;
 }
 
 bool GenerateEUI64Address(in6_addr* address,
