@@ -246,19 +246,21 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
 
   // Just verify that the username is a valid uuid because it
   // is random each time.
-  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
+  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
+                  .is_valid());
   base::FilePath username_file =
       daemon_store_directory_.Append(kSanitized).Append("username");
   ASSERT_TRUE(base::PathExists(username_file));
   std::string username;
   ASSERT_TRUE(base::ReadFileToString(username_file, &username));
-  EXPECT_TRUE(base::IsValidUuid(username));
+  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(username).is_valid());
 
   // Trigger callback again to verify the file is read from.
   SetDeviceUser("");
   registration_cb_.Run("started");
   task_environment_.FastForwardBy(base::Seconds(2));
-  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
+  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
+                  .is_valid());
 }
 
 TEST_F(DeviceUserTestFixture, TestLogout) {
