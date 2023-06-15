@@ -4,10 +4,13 @@
 
 #include "vm_tools/concierge/vmm_swap_metrics.h"
 
+#include <cstdint>
+#include <limits>
 #include <string>
 
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/memory/page_size.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/time/time.h>
@@ -15,6 +18,7 @@
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {
 
@@ -27,6 +31,8 @@ static constexpr char kMetricsActiveAfterEnableDuration[] =
     ".ActiveAfterEnableDuration";
 static constexpr char kMetricsInactiveNoEnableDuration[] =
     ".InactiveNoEnableDuration";
+static constexpr char kMetricsMinPagesInFile[] = ".MinPagesInFile";
+static constexpr char kMetricsAvgPagesInFile[] = ".AvgPagesInFile";
 static constexpr base::TimeDelta kHeartbeatDuration = base::Minutes(10);
 static constexpr int kDurationMinHours = 1;
 // Policies for vmm-swap (e.g. VmmSwapTbwPolicy, VmmSwapUsagePolicy) uses 4
@@ -36,6 +42,16 @@ static constexpr int kDurationMinHours = 1;
 static constexpr int kDurationMaxHours = 24 * 28;  // 28 days
 // The last bucket has less than 4 days size which is enough granularity.
 static constexpr int kDurationNumBuckets = 50;
+// Any memory savings less than 50MiB probably be considered a failure for
+// vmm-swap.
+static constexpr int kPagesInFileMin = (50LL * 1024 * 1024) / 4096;
+// We shrink the guest memory size just before enabling vmm-swap. The swap
+// file's max size shouldn't be more than 1GiB regardless of how much memory
+// the device has. If the file is larger than 2GiB, it means something is
+// probably going wrong.
+static constexpr int kPagesInFileMax = (2LL * 1024 * 1024 * 1024) / 4096;
+// The last bucket has less than 160 MiB size which is enough granularity.
+static constexpr int kPagesInFileNumBuckets = 50;
 
 std::string GetMetricsName(VmId::Type vm_type,
                            const std::string& unprefixed_metrics_name) {
@@ -55,6 +71,7 @@ VmmSwapMetrics::VmmSwapMetrics(
 void VmmSwapMetrics::OnSwappableIdleEnabled(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!heartbeat_timer_->IsRunning()) {
+    vmm_swap_out_metrics_.reset();
     heartbeat_timer_->Start(FROM_HERE, kHeartbeatDuration, this,
                             &VmmSwapMetrics::OnHeartbeat);
   }
@@ -88,6 +105,9 @@ void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
   // `OnSwappableIdleDisabled()`.
   ReportDurations(time);
 
+  ReportPagesInFile();
+  vmm_swap_out_metrics_.reset();
+
   vmm_swap_enable_time_.reset();
   if (swappable_idle_start_time_.has_value()) {
     // We may be here because the low disk policy disabled vmm-swap. In that
@@ -100,6 +120,12 @@ void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
 void VmmSwapMetrics::OnDestroy(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ReportDurations(time);
+  ReportPagesInFile();
+}
+
+void VmmSwapMetrics::SetFetchVmmSwapStatusFunction(FetchVmmSwapStatus func) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  fetch_vmm_swap_status_ = std::move(func);
 }
 
 void VmmSwapMetrics::OnHeartbeat() {
@@ -109,6 +135,43 @@ void VmmSwapMetrics::OnHeartbeat() {
           is_enabled_ ? State::kEnabled : State::kDisabled)) {
     LOG(ERROR) << "Failed to send vmm-swap state metrics";
   }
+  if (fetch_vmm_swap_status_.is_null()) {
+    return;
+  }
+  auto status_result = fetch_vmm_swap_status_.Run();
+  if (!status_result.has_value()) {
+    LOG(ERROR) << "Failed fetch vmm swap status for metrics: "
+               << status_result.error();
+    return;
+  }
+  if (status_result.value().state != SwapState::ACTIVE) {
+    return;
+  }
+
+  int64_t pages_in_file =
+      static_cast<int64_t>(status_result.value().metrics.swap_pages);
+  if (!vmm_swap_out_metrics_.has_value()) {
+    vmm_swap_out_metrics_ = VmmSwapOutMetrics{
+        .min_pages_in_file = pages_in_file,
+        .average_pages_in_file = static_cast<double>(pages_in_file),
+        .count_heartbeat = 1,
+    };
+    return;
+  }
+
+  VmmSwapOutMetrics& swap_out_metrics = vmm_swap_out_metrics_.value();
+  // The pages can be swapped out to file multiple times while vmm-swap is
+  // enabled because pages will gradually be faulted back into memory.
+  // pages_in_file is not always smaller than or equal to min_pages_in_file.
+  if (pages_in_file < swap_out_metrics.min_pages_in_file) {
+    swap_out_metrics.min_pages_in_file = pages_in_file;
+  }
+  double pages = swap_out_metrics.average_pages_in_file;
+  pages *= static_cast<double>(swap_out_metrics.count_heartbeat);
+  pages += static_cast<double>(pages_in_file);
+  pages /= static_cast<double>(swap_out_metrics.count_heartbeat + 1);
+  swap_out_metrics.average_pages_in_file = pages;
+  swap_out_metrics.count_heartbeat += 1;
 }
 
 void VmmSwapMetrics::ReportDurations(base::Time time) const {
@@ -138,6 +201,33 @@ void VmmSwapMetrics::ReportDurations(base::Time time) const {
       }
     }
   }
+}
+
+void VmmSwapMetrics::ReportPagesInFile() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!vmm_swap_out_metrics_.has_value()) {
+    return;
+  }
+  auto swap_out_metrics = vmm_swap_out_metrics_.value();
+  if (!SendPagesToUMA(kMetricsMinPagesInFile,
+                      swap_out_metrics.min_pages_in_file)) {
+    LOG(ERROR) << "Failed to send vmm-swap min pages in file metrics";
+  }
+  if (!SendPagesToUMA(
+          kMetricsAvgPagesInFile,
+          static_cast<int64_t>(swap_out_metrics.average_pages_in_file))) {
+    LOG(ERROR) << "Failed to send vmm-swap avg pages in file metrics";
+  }
+}
+
+bool VmmSwapMetrics::SendPagesToUMA(const std::string& unprefixed_metrics_name,
+                                    int64_t pages) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  int pages_4KiB = static_cast<int>((pages * base::GetPageSize()) / 4096);
+  return metrics_->SendToUMA(GetMetricsName(vm_type_, unprefixed_metrics_name),
+                             pages_4KiB, kPagesInFileMin, kPagesInFileMax,
+                             kPagesInFileNumBuckets);
 }
 
 bool VmmSwapMetrics::SendDurationToUMA(

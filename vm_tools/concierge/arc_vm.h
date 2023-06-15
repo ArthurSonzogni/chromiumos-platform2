@@ -241,6 +241,7 @@ class ArcVm final : public VmBaseImpl {
   void TrimVmmSwapMemory();
   void StartVmmSwapOut();
   void RunVmmSwapOutAfterTrim();
+  base::expected<SwapStatus, std::string> FetchVmmSwapStatus();
 
   std::vector<patchpanel::Client::VirtualDevice> network_devices_;
 

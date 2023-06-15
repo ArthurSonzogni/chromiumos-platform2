@@ -5,17 +5,21 @@
 #ifndef VM_TOOLS_CONCIERGE_VMM_SWAP_METRICS_H_
 #define VM_TOOLS_CONCIERGE_VMM_SWAP_METRICS_H_
 
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <base/functional/callback_forward.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <base/types/expected.h>
 #include <base/sequence_checker.h>
 #include <metrics/metrics_library.h>
 
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {
 
@@ -48,6 +52,19 @@ namespace vm_tools::concierge {
 // swappable-idle.
 // If reported values are mostly long, it indicates that the policies are
 // missing chances to enable vmm-swap.
+//
+// * "Memory.VmmSwap.<vm name>.MinPagesInFile"
+//
+// The minimum number of pages resident on disk any given point during the
+// vmm-swap period. Even if the actual page size is not 4KiB, it is recalculated
+// to be the number of 4KiB pages. This is sent when vmm-swap is disabled.
+//
+// * "Memory.VmmSwap.<vm name>.AvgPagesInFile"
+//
+// An lower bound estimate of the average number of pages resident on disk over
+// the duration of the vmm-swap period. Even if the actual page size is not
+// 4KiB, it is recalculated to be the number of 4KiB pages. This is sent when
+// vmm-swap is disabled.
 class VmmSwapMetrics final {
  public:
   VmmSwapMetrics(VmId::Type vm_type,
@@ -57,6 +74,9 @@ class VmmSwapMetrics final {
   VmmSwapMetrics(const VmmSwapMetrics&) = delete;
   VmmSwapMetrics& operator=(const VmmSwapMetrics&) = delete;
   ~VmmSwapMetrics() = default;
+
+  using FetchVmmSwapStatus =
+      base::RepeatingCallback<base::expected<SwapStatus, std::string>()>;
 
   // Enum showing whether the vmm-swap is enabled or not while it is
   // swappable-idle. This enum is used in UMA and defined at
@@ -82,9 +102,21 @@ class VmmSwapMetrics final {
   // When ArcVm shutdown.
   void OnDestroy(base::Time time = base::Time::Now());
 
+  // Set FetchVmmSwapStatus
+  void SetFetchVmmSwapStatusFunction(FetchVmmSwapStatus func);
+
  private:
+  struct VmmSwapOutMetrics {
+    int64_t min_pages_in_file;
+    double average_pages_in_file;
+    int64_t count_heartbeat;
+  };
+  void ClearPagesInFileCounters();
   void OnHeartbeat();
   void ReportDurations(base::Time time) const;
+  void ReportPagesInFile() const;
+  bool SendPagesToUMA(const std::string& unprefixed_metrics_name,
+                      int64_t pages) const;
   bool SendDurationToUMA(const std::string& unprefixed_metrics_name,
                          base::TimeDelta duration) const;
 
@@ -97,6 +129,10 @@ class VmmSwapMetrics final {
   std::optional<base::Time> swappable_idle_start_time_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::optional<base::Time> vmm_swap_enable_time_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::optional<VmmSwapOutMetrics> vmm_swap_out_metrics_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  FetchVmmSwapStatus fetch_vmm_swap_status_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Ensure calls are made on the right thread.

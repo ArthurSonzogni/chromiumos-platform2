@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/functional/bind.h>
+#include <base/memory/page_size.h>
 #include <base/time/time.h>
 #include <base/timer/mock_timer.h>
 #include <gmock/gmock.h>
@@ -14,9 +16,11 @@
 #include <metrics/metrics_library_mock.h>
 #include <vm_applications/apps.pb.h>
 
+#include "base/types/expected.h"
 #include "vm_tools/common/vm_id.h"
 
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::Return;
 
 namespace vm_tools::concierge {
@@ -29,6 +33,10 @@ static constexpr char kMetricsArcvmActiveAfterEnableDurationName[] =
     "Memory.VmmSwap.ARCVM.ActiveAfterEnableDuration";
 static constexpr char kMetricsArcvmInactiveNoEnableDurationName[] =
     "Memory.VmmSwap.ARCVM.InactiveNoEnableDuration";
+static constexpr char kMetricsArcvmMinPagesInFileName[] =
+    "Memory.VmmSwap.ARCVM.MinPagesInFile";
+static constexpr char kMetricsArcvmAvgPagesInFileName[] =
+    "Memory.VmmSwap.ARCVM.AvgPagesInFile";
 
 class VmmSwapMetricsTest : public ::testing::Test {
  protected:
@@ -37,6 +45,8 @@ class VmmSwapMetricsTest : public ::testing::Test {
     heartbeat_timer_ = std::make_unique<base::MockRepeatingTimer>();
 
     ON_CALL(*metrics_, SendEnumToUMA(_, _, _)).WillByDefault(Return(true));
+    // Ignore uninterested metrics.
+    EXPECT_CALL(*metrics_, SendToUMA(_, _, _, _, _)).Times(AnyNumber());
   }
 
   raw_ref<MetricsLibraryInterface> GetMetricsRef() {
@@ -45,6 +55,25 @@ class VmmSwapMetricsTest : public ::testing::Test {
 
   std::unique_ptr<MetricsLibraryMock> metrics_;
   std::unique_ptr<base::MockRepeatingTimer> heartbeat_timer_;
+};
+
+class FakeFetchVmmSwapStatus final {
+ public:
+  VmmSwapMetrics::FetchVmmSwapStatus Create() {
+    return base::BindRepeating(&FakeFetchVmmSwapStatus::Callback,
+                               base::Unretained(this));
+  }
+
+  bool result_ = false;
+  SwapStatus status_;
+
+ private:
+  base::expected<SwapStatus, std::string> Callback() {
+    if (result_) {
+      return status_;
+    }
+    return base::unexpected("fetch error");
+  }
 };
 }  // namespace
 
@@ -332,6 +361,140 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
       .Times(0);
   metrics.OnVmmSwapDisabled(now);
   metrics.OnSwappableIdleDisabled();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFile) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+  FakeFetchVmmSwapStatus loader;
+  loader.result_ = true;
+  loader.status_.state = SwapState::ACTIVE;
+  metrics.SetFetchVmmSwapStatusFunction(loader.Create());
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+
+  loader.status_.metrics.swap_pages = 100;
+  heartbeat_timer->Fire();
+  loader.status_.metrics.swap_pages = 26;
+  heartbeat_timer->Fire();
+  loader.status_.metrics.swap_pages = 51;
+  heartbeat_timer->Fire();
+
+  const int min_pages = (50LL * 1024 * 1024) / 4096;        // 50MiB
+  const int max_pages = (2LL * 1024 * 1024 * 1024) / 4096;  // 2GiB
+  const int buckets = 50;
+  const int min_pages_4KiB = 26 * base::GetPageSize() / 4096;
+  const int avg_pages_4KiB = 59 * base::GetPageSize() / 4096;
+  EXPECT_CALL(*metrics_,
+              SendToUMA(kMetricsArcvmMinPagesInFileName, min_pages_4KiB,
+                        min_pages, max_pages, buckets))
+      .Times(1);
+  EXPECT_CALL(*metrics_,
+              SendToUMA(kMetricsArcvmAvgPagesInFileName, avg_pages_4KiB,
+                        min_pages, max_pages, buckets))
+      .Times(1);
+  metrics.OnVmmSwapDisabled();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroy) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+  FakeFetchVmmSwapStatus loader;
+  loader.result_ = true;
+  loader.status_.state = SwapState::ACTIVE;
+  metrics.SetFetchVmmSwapStatusFunction(loader.Create());
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+
+  loader.status_.metrics.swap_pages = 100;
+  heartbeat_timer->Fire();
+
+  const int pages_4KiB = 100 * base::GetPageSize() / (4 << 10);
+  EXPECT_CALL(*metrics_,
+              SendToUMA(kMetricsArcvmMinPagesInFileName, pages_4KiB, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_,
+              SendToUMA(kMetricsArcvmAvgPagesInFileName, pages_4KiB, _, _, _))
+      .Times(1);
+  metrics.OnDestroy();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroyAfterDisabled) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+  FakeFetchVmmSwapStatus loader;
+  loader.result_ = true;
+  loader.status_.state = SwapState::ACTIVE;
+  metrics.SetFetchVmmSwapStatusFunction(loader.Create());
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+
+  loader.status_.metrics.swap_pages = 100;
+  heartbeat_timer->Fire();
+  metrics.OnVmmSwapDisabled();
+
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmMinPagesInFileName, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
+      .Times(0);
+  metrics.OnDestroy();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFileWithoutLoader) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+  heartbeat_timer->Fire();
+
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmMinPagesInFileName, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
+      .Times(0);
+  metrics.OnVmmSwapDisabled();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFileNotActive) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+  FakeFetchVmmSwapStatus loader;
+  loader.result_ = true;
+  loader.status_.state = SwapState::READY;
+  loader.status_.metrics.swap_pages = 100;
+  metrics.SetFetchVmmSwapStatusFunction(loader.Create());
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+  heartbeat_timer->Fire();
+
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmMinPagesInFileName, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
+      .Times(0);
+  metrics.OnVmmSwapDisabled();
+}
+
+TEST_F(VmmSwapMetricsTest, ReportPagesInFileFailToLoadStatus) {
+  base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
+  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+                                          std::move(heartbeat_timer_));
+  FakeFetchVmmSwapStatus loader;
+  loader.result_ = false;
+  metrics.SetFetchVmmSwapStatusFunction(loader.Create());
+  metrics.OnSwappableIdleEnabled();
+  metrics.OnVmmSwapEnabled();
+  heartbeat_timer->Fire();
+
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmMinPagesInFileName, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
+      .Times(0);
+  metrics.OnVmmSwapDisabled();
 }
 
 }  // namespace vm_tools::concierge

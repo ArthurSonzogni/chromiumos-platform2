@@ -290,6 +290,8 @@ ArcVm::ArcVm(Config config)
   if (config.vmm_swap_usage_path.has_value()) {
     vmm_swap_usage_policy_.Init(config.vmm_swap_usage_path.value());
   }
+  vmm_swap_metrics_->SetFetchVmmSwapStatusFunction(
+      base::BindRepeating(&ArcVm::FetchVmmSwapStatus, base::Unretained(this)));
 }
 
 ArcVm::~ArcVm() {
@@ -1352,6 +1354,15 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
       swap_state_monitor_timer_->Stop();
       return;
   }
+}
+
+base::expected<SwapStatus, std::string> ArcVm::FetchVmmSwapStatus() {
+  SwapStatus status;
+  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath().c_str(),
+                                           &status)) {
+    return base::unexpected("crosvm command error");
+  }
+  return status;
 }
 
 // static
