@@ -86,7 +86,6 @@ LEGACYLIST = {
     "media_capabilities",
     "media_perception",
     "mems_setup",
-    "metrics",
     "midis",
     "minios",
     "mist",
