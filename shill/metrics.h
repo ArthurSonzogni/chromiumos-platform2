@@ -2067,11 +2067,19 @@ class Metrics : public DefaultServiceObserver {
     int64_t tx_retries = kWiFiStructuredMetricsErrorValue;
     int64_t tx_failures = kWiFiStructuredMetricsErrorValue;
     int64_t rx_drops = kWiFiStructuredMetricsErrorValue;
+    int64_t inactive_time = kWiFiStructuredMetricsErrorValue;
+    int64_t fcs_errors = kWiFiStructuredMetricsErrorValue;
+    int64_t rx_mpdus = kWiFiStructuredMetricsErrorValue;
     int chain0_signal = kWiFiStructuredMetricsErrorValueRSSI;
     int chain0_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
     int chain1_signal = kWiFiStructuredMetricsErrorValueRSSI;
     int chain1_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
     int beacon_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
+    int signal = kWiFiStructuredMetricsErrorValueRSSI;
+    int signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
+    int noise = kWiFiStructuredMetricsErrorValueRSSI;
+    int last_ack_signal = kWiFiStructuredMetricsErrorValueRSSI;
+    int ack_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
     int64_t beacons_received = kWiFiStructuredMetricsErrorValue;
     int64_t beacons_lost = kWiFiStructuredMetricsErrorValue;
     int64_t expected_throughput = kWiFiStructuredMetricsErrorValue;
@@ -2139,6 +2147,30 @@ class Metrics : public DefaultServiceObserver {
         return false;
       }
       if (bt_active_scanning != other.bt_active_scanning) {
+        return false;
+      }
+      if (inactive_time != other.inactive_time) {
+        return false;
+      }
+      if (fcs_errors != other.fcs_errors) {
+        return false;
+      }
+      if (rx_mpdus != other.rx_mpdus) {
+        return false;
+      }
+      if (signal != other.signal) {
+        return false;
+      }
+      if (signal_avg != other.signal_avg) {
+        return false;
+      }
+      if (noise != other.noise) {
+        return false;
+      }
+      if (last_ack_signal != other.last_ack_signal) {
+        return false;
+      }
+      if (ack_signal_avg != other.ack_signal_avg) {
         return false;
       }
       return true;

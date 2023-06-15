@@ -1603,7 +1603,15 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetTXMode(report.tx.mode)
       .SetTXGuardInterval(report.tx.gi)
       .SetTXNSS(report.tx.nss)
-      .SetTXDCM(report.tx.dcm);
+      .SetTXDCM(report.tx.dcm)
+      .SetFCSErrors(report.fcs_errors)
+      .SetRXMPDUS(report.rx_mpdus)
+      .SetInactiveTime(report.inactive_time)
+      .SetNoise(report.noise)
+      .SetAckSignalAverage(report.ack_signal_avg)
+      .SetLastAckSignal(report.last_ack_signal)
+      .SetSignal(report.signal)
+      .SetSignalAverage(report.signal_avg);
 #if !defined(DISABLE_FLOSS)
   sm_report.SetBTEnabled(report.bt_enabled)
       .SetBTStack(report.bt_stack)
