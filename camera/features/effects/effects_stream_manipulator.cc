@@ -1012,6 +1012,8 @@ void EffectsStreamManipulatorImpl::OnFrameProcessed(int64_t timestamp,
 
   // Synchronously wait until the texture is consumed before the pipeline
   // recycles it.
+  glFinish();
+
   gl_thread_.PostTaskSync(
       FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::PostProcess,
                                 base::Unretained(this), timestamp, texture,
