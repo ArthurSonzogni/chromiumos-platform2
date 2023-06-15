@@ -160,7 +160,9 @@ int CameraClient::OpenDevice() {
 
   int ret = device_->Connect(device_info_.device_path);
   if (ret) {
-    LOGFID(ERROR, id_) << "Connect failed: " << base::safe_strerror(-ret);
+    LOGF(ERROR) << V4L2CameraDevice::GetModelName(device_info_.device_path)
+                << " id: " << id_
+                << ": Connect failed: " << base::safe_strerror(-ret);
     return ret;
   }
 
@@ -248,7 +250,8 @@ int CameraClient::ConfigureStreams(
 
   auto ret = StreamOn(streamon_params.value());
   if (!ret.has_value()) {
-    LOGFID(ERROR, id_) << "StreamOn failed";
+    LOGF(ERROR) << V4L2CameraDevice::GetModelName(device_info_.device_path)
+                << " id: " << id_ << ": StreamOn failed";
     StreamOff();
     return ret.error();
   }
@@ -1346,8 +1349,10 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     ret =
         device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
     if (ret) {
-      LOGFID_THROTTLED(ERROR, device_id_, 60)
-          << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
+      LOGF_THROTTLED(ERROR, 60)
+          << V4L2CameraDevice::GetModelName(device_info_.device_path)
+          << " id: " << device_id_
+          << ": GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
       return ret;
     }
     // If this is the first frame after stream on, just use it.
