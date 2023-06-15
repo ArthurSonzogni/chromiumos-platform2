@@ -20,19 +20,6 @@
         <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       </method>
 
-    <method name="AddFile">
-      <tp:docstring>
-        Adds file together with it's source to the database.
-      </tp:docstring>
-      <arg name="request" type="ay" direction="in">
-        Serialized AddFileRequest message.
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        Serialized AddFileResponse message.
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
     <method name="AddFiles">
       <tp:docstring>
         Adds files together with their sources to the database.

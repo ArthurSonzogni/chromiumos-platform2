@@ -62,10 +62,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // org::chromium::DlpInterface: (see org.chromium.Dlp.xml).
   std::vector<uint8_t> SetDlpFilesPolicy(
       const std::vector<uint8_t>& request_blob) override;
-  // TODO(b/286202080): Remove once client code use AddFiles.
-  void AddFile(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                   std::vector<uint8_t>>> response,
-               const std::vector<uint8_t>& request_blob) override;
   void AddFiles(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     std::vector<uint8_t>>> response,
                 const std::vector<uint8_t>& request_blob) override;
@@ -179,24 +175,12 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       bool allowed,
       const std::string& error_message);
 
-  // Callback on AddFile after adding to the database.
-  // TODO(b/286202080): Remove once client code use AddFiles.
-  void OnFileInserted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                          std::vector<uint8_t>>> response,
-                      const std::string& file_path,
-                      ino_t inode,
-                      bool success);
   // Callback on AddFiles after adding to the database.
   void OnFilesInserted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                            std::vector<uint8_t>>> response,
                        std::vector<base::FilePath> files_paths,
                        std::vector<ino_t> files_inodes,
                        bool success);
-  // Helper to reply on AddFile request.
-  // TODO(b/286202080): Remove once client code use AddFiles.
-  void ReplyOnAddFile(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                          std::vector<uint8_t>>> response,
-                      std::string error_message);
   // Helper to reply on AddFiles request.
   void ReplyOnAddFiles(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                            std::vector<uint8_t>>> response,

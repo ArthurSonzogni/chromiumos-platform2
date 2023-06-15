@@ -48,11 +48,11 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   adaptor->SetDlpFilesPolicy(
       SerializeMessageToVector(input.set_dlp_files_policy_request()));
 
-  adaptor->AddFile(
+  adaptor->AddFiles(
       std::make_unique<
           brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
           nullptr),
-      SerializeMessageToVector(input.add_file_request()));
+      SerializeMessageToVector(input.add_files_request()));
 
   adaptor->RequestFileAccess(
       std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<

@@ -182,45 +182,6 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
   return SerializeProto(response);
 }
 
-void DlpAdaptor::AddFile(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::vector<uint8_t>& request_blob) {
-  AddFileRequest request;
-
-  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
-  if (!parse_error.empty()) {
-    ReplyOnAddFile(std::move(response),
-                   "Failed to parse AddFile request: " + parse_error);
-    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
-    return;
-  }
-
-  LOG(INFO) << "Adding file to the database: " << request.file_path();
-
-  const ino_t inode = GetInodeValue(request.file_path());
-  if (!inode) {
-    ReplyOnAddFile(std::move(response), "Failed to get inode");
-    dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
-    return;
-  }
-
-  FileEntry file_entry = ConvertToFileEntry(inode, request);
-
-  if (!db_) {
-    LOG(WARNING) << "Database is not ready, pending addition of the file";
-    pending_files_to_add_.push_back(file_entry);
-    ReplyOnAddFile(std::move(response), std::string());
-    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
-    return;
-  }
-
-  db_->InsertFileEntry(
-      file_entry,
-      base::BindOnce(&DlpAdaptor::OnFileInserted, base::Unretained(this),
-                     std::move(response), request.file_path(), inode));
-}
-
 void DlpAdaptor::AddFiles(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
@@ -230,7 +191,7 @@ void DlpAdaptor::AddFiles(
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
     ReplyOnAddFiles(std::move(response),
-                    "Failed to parse AddFile request: " + parse_error);
+                    "Failed to parse AddFiles request: " + parse_error);
     dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     return;
   }
@@ -780,20 +741,6 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
 }
 
-void DlpAdaptor::OnFileInserted(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::string& file_path,
-    ino_t inode,
-    bool success) {
-  if (success) {
-    AddPerFileWatch({std::make_pair(base::FilePath(file_path), inode)});
-    ReplyOnAddFile(std::move(response), std::string());
-  } else {
-    ReplyOnAddFile(std::move(response), "Failed to add entry to database");
-  }
-}
-
 void DlpAdaptor::OnFilesInserted(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
@@ -805,23 +752,10 @@ void DlpAdaptor::OnFilesInserted(
     for (size_t i = 0; i < files_paths.size(); ++i) {
       AddPerFileWatch({std::make_pair(files_paths[i], files_inodes[i])});
     }
-    ReplyOnAddFile(std::move(response), std::string());
+    ReplyOnAddFiles(std::move(response), std::string());
   } else {
-    ReplyOnAddFile(std::move(response), "Failed to add entries to database");
+    ReplyOnAddFiles(std::move(response), "Failed to add entries to database");
   }
-}
-
-void DlpAdaptor::ReplyOnAddFile(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    std::string error_message) {
-  AddFileResponse response_proto;
-  if (!error_message.empty()) {
-    LOG(ERROR) << "Error while adding file: " << error_message;
-    dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);
-    response_proto.set_error_message(error_message);
-  }
-  response->Return(SerializeProto(response_proto));
 }
 
 void DlpAdaptor::ReplyOnAddFiles(
@@ -830,7 +764,7 @@ void DlpAdaptor::ReplyOnAddFiles(
     std::string error_message) {
   AddFilesResponse response_proto;
   if (!error_message.empty()) {
-    LOG(ERROR) << "Error while adding file: " << error_message;
+    LOG(ERROR) << "Error while adding files: " << error_message;
     dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);
     response_proto.set_error_message(error_message);
   }

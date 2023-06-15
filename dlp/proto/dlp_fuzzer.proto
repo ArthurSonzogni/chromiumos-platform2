@@ -12,7 +12,7 @@ import "dlp_service.proto";
 
 message DlpFuzzer {
   required SetDlpFilesPolicyRequest set_dlp_files_policy_request = 1;
-  required AddFileRequest add_file_request = 2;
+  required AddFilesRequest add_files_request = 2;
   required RequestFileAccessRequest request_file_access_request = 3;
   required GetFilesSourcesRequest get_files_sources_request = 4;
   required CheckFilesTransferRequest check_files_transfer_request = 5;
