@@ -4,6 +4,9 @@
 
 #include "patchpanel/proto_utils.h"
 
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+
 #include "patchpanel/arc_service.h"
 
 namespace patchpanel {
@@ -67,15 +70,19 @@ void FillDeviceDnsProxyProto(
     const std::map<std::string, std::string>& ipv6_addrs) {
   const auto& ipv4_it = ipv4_addrs.find(virtual_device.host_ifname());
   if (ipv4_it != ipv4_addrs.end()) {
-    in_addr ipv4_addr = StringToIPv4Address(ipv4_it->second);
-    output->set_dns_proxy_ipv4_addr(reinterpret_cast<const char*>(&ipv4_addr),
-                                    sizeof(in_addr));
+    const auto ipv4_addr =
+        net_base::IPv4Address::CreateFromString(ipv4_it->second);
+    if (ipv4_addr) {
+      output->set_dns_proxy_ipv4_addr(ipv4_addr->ToByteString());
+    }
   }
   const auto& ipv6_it = ipv6_addrs.find(virtual_device.host_ifname());
   if (ipv6_it != ipv6_addrs.end()) {
-    in6_addr ipv6_addr = StringToIPv6Address(ipv6_it->second);
-    output->set_dns_proxy_ipv6_addr(reinterpret_cast<const char*>(&ipv6_addr),
-                                    sizeof(in6_addr));
+    const auto ipv6_addr =
+        net_base::IPv6Address::CreateFromString(ipv6_it->second);
+    if (ipv6_addr) {
+      output->set_dns_proxy_ipv6_addr(ipv6_addr->ToByteString());
+    }
   }
 }
 
