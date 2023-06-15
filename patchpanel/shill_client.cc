@@ -14,6 +14,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/net_util.h"
 
@@ -578,10 +579,16 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 
   // Compares if the new IPv6 network is the same as the old one by checking
   // its prefix.
-  if (old_ip_config.ipv6_prefix_length == new_ip_config.ipv6_prefix_length &&
-      IsIPv6PrefixEqual(StringToIPv6Address(old_ip_config.ipv6_address),
-                        StringToIPv6Address(new_ip_config.ipv6_address),
-                        new_ip_config.ipv6_prefix_length)) {
+  const auto old_cidr = net_base::IPv6CIDR::CreateFromStringAndPrefix(
+      old_ip_config.ipv6_address, old_ip_config.ipv6_prefix_length);
+  const auto new_cidr = net_base::IPv6CIDR::CreateFromStringAndPrefix(
+      new_ip_config.ipv6_address, new_ip_config.ipv6_prefix_length);
+  if (!old_cidr && !new_cidr) {
+    return;
+  }
+  if (old_cidr && new_cidr &&
+      old_cidr->prefix_length() == new_cidr->prefix_length() &&
+      old_cidr->GetPrefixAddress() == new_cidr->GetPrefixAddress()) {
     return;
   }
   for (const auto& handler : ipv6_network_handlers_) {
