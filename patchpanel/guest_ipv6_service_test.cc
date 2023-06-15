@@ -39,10 +39,11 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
                     const std::optional<int>& mtu));
   MOCK_METHOD1(StopRAServer, bool(const std::string& ifname));
 
-  void FakeNDProxyNeighborDetectionSignal(int if_id, const in6_addr& ip6addr) {
+  void FakeNDProxyNeighborDetectionSignal(
+      int if_id, const net_base::IPv6Address& ip6addr) {
     NeighborDetectedSignal msg;
     msg.set_if_id(if_id);
-    msg.set_ip(&ip6addr, sizeof(in6_addr));
+    msg.set_ip(ip6addr.ToByteString());
     NDProxySignalMessage nm;
     *nm.mutable_neighbor_detected_signal() = msg;
     FeedbackMessage fm;
@@ -216,7 +217,7 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/128"),
           net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")));
   target.FakeNDProxyNeighborDetectionSignal(
-      101, StringToIPv6Address("2001:db8:0:100::abcd"));
+      101, *net_base::IPv6Address::CreateFromString("2001:db8:0:100::abcd"));
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
@@ -251,7 +252,7 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::abcd/128"),
           net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")));
   target.FakeNDProxyNeighborDetectionSignal(
-      101, StringToIPv6Address("2001:db8:0:200::abcd"));
+      101, *net_base::IPv6Address::CreateFromString("2001:db8:0:200::abcd"));
 
   EXPECT_CALL(
       *datapath_,
@@ -260,7 +261,7 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::9876/128"),
           net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")));
   target.FakeNDProxyNeighborDetectionSignal(
-      101, StringToIPv6Address("2001:db8:0:200::9876"));
+      101, *net_base::IPv6Address::CreateFromString("2001:db8:0:200::9876"));
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
