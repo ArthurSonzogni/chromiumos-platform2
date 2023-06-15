@@ -160,7 +160,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.RemoveIPv6Address(ifname, ipv6_addr_str);
   datapath.StartSourceIPv6PrefixEnforcement(shill_device);
   datapath.StopSourceIPv6PrefixEnforcement(shill_device);
-  datapath.UpdateSourceEnforcementIPv6Prefix(shill_device, ipv6_addr_str);
+  datapath.UpdateSourceEnforcementIPv6Prefix(shill_device, ipv6_cidr);
   datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device, ipv4_addr);
   datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device, ipv4_addr);
   datapath.AddRedirectDnsRule(shill_device, ipv4_addr.ToString());

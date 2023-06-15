@@ -78,7 +78,7 @@ bool PrepareRunPath() {
 }
 
 bool CreateConfigFile(const std::string& ifname,
-                      const std::string& prefix,
+                      const net_base::IPv6CIDR& prefix,
                       const std::vector<std::string>& rdnss,
                       const std::optional<int>& mtu) {
   std::vector<std::string> lines;
@@ -87,7 +87,8 @@ bool CreateConfigFile(const std::string& ifname,
   if (mtu) {
     lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
   }
-  lines.push_back(base::StringPrintf("  prefix %s/64 {", prefix.c_str()));
+  lines.push_back(
+      base::StringPrintf("  prefix %s {", prefix.ToString().c_str()));
   lines.push_back("    AdvOnLink off;");
   lines.push_back("    AdvAutonomous on;");
   lines.push_back("  };");
@@ -128,10 +129,13 @@ bool CreateConfigFile(const std::string& ifname,
 
 // TODO(b/228585272): Support prefix larger than /64
 // static
-net_base::IPv6Address GuestIPv6Service::IPAddressTo64BitPrefix(
+net_base::IPv6CIDR GuestIPv6Service::IPAddressTo64BitPrefix(
     const net_base::IPv6Address& addr) {
-  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr, 64)
-      ->GetPrefixAddress();
+  const int prefix_length = 64;
+  const auto prefix =
+      net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr, prefix_length)
+          ->GetPrefixAddress();
+  return *net_base::IPv6CIDR::CreateFromAddressAndPrefix(prefix, prefix_length);
 }
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
@@ -245,9 +249,9 @@ void GuestIPv6Service::StartForwarding(
   }
 
   if (forward_method == ForwardMethod::kMethodRAServer) {
-    if (!StartRAServer(
-            ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip).ToString(),
-            uplink_dns_[ifname_uplink], forward_record_[ifname_uplink].mtu)) {
+    if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip),
+                       uplink_dns_[ifname_uplink],
+                       forward_record_[ifname_uplink].mtu)) {
       LOG(WARNING) << "Failed to start RA server on downlink "
                    << ifname_downlink << " with uplink " << ifname_uplink
                    << " ip " << *uplink_ip;
@@ -430,8 +434,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
           StopRAServer(ifname_downlink);
         }
 
-        if (!StartRAServer(ifname_downlink, new_prefix.ToString(),
-                           uplink_dns_[ifname], forward_record_[ifname].mtu)) {
+        if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
+                           forward_record_[ifname].mtu)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
                        << *new_uplink_ip;
@@ -479,7 +483,7 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
       if (uplink_ip) {
         const auto prefix = IPAddressTo64BitPrefix(*uplink_ip);
         StopRAServer(ifname_downlink);
-        if (!StartRAServer(ifname_downlink, prefix.ToString(), sorted_dns,
+        if (!StartRAServer(ifname_downlink, prefix, sorted_dns,
                            it->second.mtu)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
@@ -615,7 +619,7 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
 }
 
 bool GuestIPv6Service::StartRAServer(const std::string& ifname,
-                                     const std::string& prefix,
+                                     const net_base::IPv6CIDR& prefix,
                                      const std::vector<std::string>& rdnss,
                                      const std::optional<int>& mtu) {
   return PrepareRunPath() && CreateConfigFile(ifname, prefix, rdnss, mtu) &&

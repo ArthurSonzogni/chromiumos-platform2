@@ -87,7 +87,7 @@ class GuestIPv6Service {
   void RegisterDownstreamNeighborIP(const std::string& ifname_downlink,
                                     const net_base::IPv6Address& ip);
 
-  static net_base::IPv6Address IPAddressTo64BitPrefix(
+  static net_base::IPv6CIDR IPAddressTo64BitPrefix(
       const net_base::IPv6Address& addr_str);
 
  protected:
@@ -97,7 +97,7 @@ class GuestIPv6Service {
       int32_t if_id_secondary);
 
   virtual bool StartRAServer(const std::string& ifname,
-                             const std::string& prefix,
+                             const net_base::IPv6CIDR& prefix,
                              const std::vector<std::string>& rdnss,
                              const std::optional<int>& mtu);
   virtual bool StopRAServer(const std::string& ifname);

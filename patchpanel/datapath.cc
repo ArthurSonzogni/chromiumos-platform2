@@ -1798,9 +1798,9 @@ void Datapath::StopSourceIPv6PrefixEnforcement(
 
 void Datapath::UpdateSourceEnforcementIPv6Prefix(
     const ShillClient::Device& shill_device,
-    const std::optional<std::string>& prefix) {
+    const std::optional<net_base::IPv6CIDR>& prefix) {
   VLOG(2) << __func__ << ": " << shill_device << ", {"
-          << (prefix ? prefix.value() : "") << "}";
+          << (prefix ? prefix->ToString() : "") << "}";
   if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter,
                   kEnforceSourcePrefixChain)) {
     LOG(ERROR) << "Failed to flush " << kEnforceSourcePrefixChain;
@@ -1808,9 +1808,9 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
   if (prefix) {
     if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
                         Iptables::Command::kA,
-                        {kEnforceSourcePrefixChain, "-s",
-                         prefix.value() + "/64", "-j", "RETURN", "-w"})) {
-      LOG(ERROR) << "Fail to add " + prefix.value() + "/64" + " RETURN rule in "
+                        {kEnforceSourcePrefixChain, "-s", prefix->ToString(),
+                         "-j", "RETURN", "-w"})) {
+      LOG(ERROR) << "Fail to add " + prefix->ToString() + " RETURN rule in "
                  << kEnforceSourcePrefixChain;
     }
   }

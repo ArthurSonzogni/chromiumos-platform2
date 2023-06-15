@@ -2103,7 +2103,9 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, "2001:db8:1:1::");
+  datapath.UpdateSourceEnforcementIPv6Prefix(
+      cell_device,
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::/64"));
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -F enforce_ipv6_src_prefix -w");
@@ -2122,7 +2124,9 @@ TEST(DatapathTest, PrefixEnforcement) {
                   "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
-  datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, "2001:db8:1:2::");
+  datapath.UpdateSourceEnforcementIPv6Prefix(
+      cell_device,
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::/64"));
 
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -D OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");

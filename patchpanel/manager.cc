@@ -311,8 +311,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   if (shill_device.type == ShillClient::Device::Type::kCellular) {
     // TODO(b/279871350): Support prefix shorter than /64.
     const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(*ipv6_address);
-    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device,
-                                                 prefix.ToString());
+    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
   }
 }
 
