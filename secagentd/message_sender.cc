@@ -69,8 +69,15 @@ void VlogEventForDebug(reporting::Destination destination,
       VLOG(1) << process_event->DebugString();
       break;
     }
+    case reporting::CROS_SECURITY_NETWORK: {
+      auto network_event =
+          google::protobuf::internal::down_cast<pb::XdrNetworkEvent*>(message);
+      VLOG(1) << "XdrNetworkEvent:";
+      VLOG(1) << network_event->DebugString();
+      break;
+    }
     default:
-      LOG(FATAL) << "Unknown destination: " << destination;
+      LOG(ERROR) << "Unknown destination: " << destination;
   }
   VLOG(1) << "Raw serialized message:";
   // GetQuotedJSONString just escapes the given string for cleaner output.
