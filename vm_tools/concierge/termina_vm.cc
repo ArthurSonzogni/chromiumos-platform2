@@ -1058,7 +1058,7 @@ std::string TerminaVm::PermissionToken() const {
   return permission_token_;
 }
 
-VmBaseImpl::Info TerminaVm::GetInfo() {
+VmBaseImpl::Info TerminaVm::GetInfo() const {
   VmBaseImpl::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),

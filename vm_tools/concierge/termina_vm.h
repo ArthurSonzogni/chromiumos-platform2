@@ -173,7 +173,7 @@ class TerminaVm final : public VmBaseImpl {
                    std::string* out_error) override;
 
   // The pid of the child process.
-  pid_t pid() { return process_.pid(); }
+  pid_t pid() const { return process_.pid(); }
 
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
@@ -217,7 +217,7 @@ class TerminaVm final : public VmBaseImpl {
   // by sending it a SIGKILL.  Returns true if the VM was shut down and false
   // otherwise.
   bool Shutdown() override;
-  VmBaseImpl::Info GetInfo() override;
+  VmBaseImpl::Info GetInfo() const override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

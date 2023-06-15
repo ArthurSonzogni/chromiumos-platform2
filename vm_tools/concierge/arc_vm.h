@@ -126,7 +126,7 @@ class ArcVm final : public VmBaseImpl {
 
   // VmBaseImpl overrides.
   bool Shutdown() override;
-  VmBaseImpl::Info GetInfo() override;
+  VmBaseImpl::Info GetInfo() const override;
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;

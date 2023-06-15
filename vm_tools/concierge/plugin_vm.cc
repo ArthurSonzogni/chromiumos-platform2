@@ -189,7 +189,7 @@ bool PluginVm::Shutdown() {
              pvm::dispatcher::VmOpResult::SUCCESS;
 }
 
-VmBaseImpl::Info PluginVm::GetInfo() {
+VmBaseImpl::Info PluginVm::GetInfo() const {
   VmBaseImpl::Info info = {
       .ipv4_address = subnet_->CIDRAtOffset(kGuestAddressOffset)
                           .value_or(net_base::IPv4CIDR())

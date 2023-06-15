@@ -52,7 +52,7 @@ class VmBaseImpl {
   virtual ~VmBaseImpl() = default;
 
   // The pid of the child process.
-  pid_t pid() { return process_.pid(); }
+  pid_t pid() const { return process_.pid(); }
 
   // The current status of the VM.
   enum class Status {
@@ -115,14 +115,14 @@ class VmBaseImpl {
     suspended_ = false;
   }
 
-  bool IsSuspended() { return suspended_; }
+  bool IsSuspended() const { return suspended_; }
 
   // Shuts down the VM. Returns true if the VM was successfully shut down and
   // false otherwise.
   virtual bool Shutdown() = 0;
 
   // Information about the VM.
-  virtual Info GetInfo() = 0;
+  virtual Info GetInfo() const = 0;
 
   // Returns balloon stats info retrieved from virtio-balloon device.
   virtual std::optional<BalloonStats> GetBalloonStats();

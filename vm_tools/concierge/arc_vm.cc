@@ -765,7 +765,7 @@ uint32_t ArcVm::IPv4Address() const {
   return 0;
 }
 
-VmBaseImpl::Info ArcVm::GetInfo() {
+VmBaseImpl::Info ArcVm::GetInfo() const {
   VmBaseImpl::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
