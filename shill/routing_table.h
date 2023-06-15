@@ -122,13 +122,6 @@ class RoutingTable {
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 
-  // Get the route to |destination| through |interface_index|.  If |callback|
-  // is not null, it will be invoked when the request-route response is
-  // received.
-  virtual bool RequestRouteToHost(const IPAddress& destination,
-                                  int interface_index,
-                                  QueryCallback callback);
-
   static uint32_t GetInterfaceTableId(int interface_index);
 
  protected:

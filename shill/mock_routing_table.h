@@ -46,10 +46,6 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD(void, FlushRoutesWithTag, (int), (override));
   MOCK_METHOD(bool, FlushCache, (), (override));
   MOCK_METHOD(void, ResetTable, (int), (override));
-  MOCK_METHOD(bool,
-              RequestRouteToHost,
-              (const IPAddress&, int, QueryCallback),
-              (override));
 };
 
 }  // namespace shill

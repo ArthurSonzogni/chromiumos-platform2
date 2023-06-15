@@ -589,37 +589,6 @@ bool RoutingTable::FlushCache() {
   return ret;
 }
 
-bool RoutingTable::RequestRouteToHost(const IPAddress& address,
-                                      int interface_index,
-                                      QueryCallback callback) {
-  // Make sure we don't get a cached response that is no longer valid.
-  FlushCache();
-
-  auto message = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeRoute, RTNLMessage::kModeQuery, NLM_F_REQUEST, 0, 0,
-      interface_index, address.family());
-  RTNLMessage::RouteStatus status;
-  status.dst_prefix = address.prefix();
-  message->set_route_status(status);
-  message->SetAttribute(RTA_DST, address.address());
-
-  if (interface_index != -1) {
-    message->SetAttribute(RTA_OIF,
-                          ByteString::CreateFromCPUUInt32(interface_index));
-  }
-
-  uint32_t seq;
-  if (!rtnl_handler_->SendMessage(std::move(message), &seq)) {
-    return false;
-  }
-
-  // Save the sequence number of the request so we can trigger the callback
-  // when we get a reply.
-  route_queries_.push_back(Query(seq, std::move(callback)));
-
-  return true;
-}
-
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         IPAddress::Family family,
                                         uint32_t metric,
