@@ -44,3 +44,16 @@ Observe the dump log file on your workstation to get a backtrace. Using
 scp dut:/var/spool/crash/vm_concierge.20230413.101819.53856.31734.dmp .
 tast symbolize vm_concierge.20230413.101819.53856.31734.dmp
 ```
+
+### When concierge fails to start up
+
+concierge is started via upstart on /etc/init/vm_concierge.conf. Failure is
+silent. Adding logging may help. Example:
+
+https://chromium-review.googlesource.com/c/chromiumos/platform2/+/3600040
+
+### When crosvm fails to start up
+
+Adding strace to crosvm may help sometimes. Example:
+
+https://chromium-review.googlesource.com/c/chromiumos/platform2/+/3205434
