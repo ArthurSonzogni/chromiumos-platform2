@@ -92,11 +92,7 @@ config("compiler_defaults") {
     libs += [ "stdc++fs" ]
   }
   if (enable_werror) {
-    cflags += [
-      "-Werror",
-      # TODO(crbug.com/1082873): Reenable deprecated declarations.
-      "-Wno-error=deprecated-declarations",
-    ]
+    cflags += [ "-Werror" ]
     if (use.cpp20) {
       cflags += [
         # TODO(b/217226507): reduce the scope of this error suppression or
