@@ -39,6 +39,7 @@
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 
 using ::testing::_;
+using ::testing::AnyNumber;
 
 namespace vm_tools {
 namespace concierge {
@@ -47,6 +48,10 @@ constexpr int kSeneschalServerPort = 3000;
 constexpr int kLcdDensity = 160;
 
 static constexpr char kMetricsArcvmStateName[] = "Memory.VmmSwap.ARCVM.State";
+static constexpr char kMetricsArcvmInactiveBeforeEnableDurationName[] =
+    "Memory.VmmSwap.ARCVM.InactiveBeforeEnableDuration";
+static constexpr char kMetricsArcvmActiveAfterEnableDurationName[] =
+    "Memory.VmmSwap.ARCVM.ActiveAfterEnableDuration";
 }  // namespace
 
 TEST(ArcVmParamsTest, NonDevModeKernelParams) {
@@ -1595,6 +1600,32 @@ TEST_F(ArcVmTest, HandleStatefulUpdateHeartbeatDisabledMetrics) {
                     static_cast<int>(VmmSwapMetrics::State::kDisabled), _))
       .Times(1);
   swap_metrics_heartbeat_timer_->Fire();
+}
+
+TEST_F(ArcVmTest, VmmSwapMetricsReportDurations) {
+  ASSERT_TRUE(EnableVmmSwap());
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendToUMA(kMetricsArcvmInactiveBeforeEnableDurationName, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(kMetricsArcvmActiveAfterEnableDurationName, _, _, _, _))
+      .Times(1);
+  ASSERT_TRUE(DisableVmmSwap());
+}
+
+TEST_F(ArcVmTest, VmmSwapMetricsReportDurationsOnDestroy) {
+  ASSERT_TRUE(EnableVmmSwap());
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendToUMA(kMetricsArcvmInactiveBeforeEnableDurationName, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(kMetricsArcvmActiveAfterEnableDurationName, _, _, _, _))
+      .Times(1);
+  vm_.reset();
 }
 
 }  // namespace concierge

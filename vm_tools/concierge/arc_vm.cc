@@ -295,6 +295,7 @@ ArcVm::ArcVm(Config config)
 ArcVm::~ArcVm() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnDestroy();
+  vmm_swap_metrics_->OnDestroy();
 
   Shutdown();
 }
@@ -1268,7 +1269,6 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
 
 void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  vmm_swap_metrics_->OnSwappableIdleDisabled();
   vmm_swap_usage_policy_.OnDisabled();
   if (DisableVmmSwap()) {
     response.set_success(true);
@@ -1276,6 +1276,7 @@ void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
     LOG(ERROR) << "Failure on crosvm swap command for disable";
     response.set_failure_reason("Failure on crosvm swap command for disable");
   }
+  vmm_swap_metrics_->OnSwappableIdleDisabled();
 }
 
 bool ArcVm::DisableVmmSwap() {
