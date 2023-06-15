@@ -28,9 +28,9 @@ void LogResetColorError(const std::optional<std::string>& err) {
 
 LedLitUpRoutine::LedLitUpRoutine(
     Context* context,
-    mojom::LedName name,
-    mojom::LedColor color,
-    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier)
+    mojom::DEPRECATED_LedName name,
+    mojom::DEPRECATED_LedColor color,
+    mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier)
     : context_(context),
       name_(name),
       color_(color),

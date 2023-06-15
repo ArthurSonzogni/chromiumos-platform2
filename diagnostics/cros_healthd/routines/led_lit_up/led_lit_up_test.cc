@@ -26,10 +26,11 @@ using ::testing::_;
 using ::testing::InvokeWithoutArgs;
 using ::testing::WithArg;
 
-class MockLedLitUpRoutineReplier : public mojom::LedLitUpRoutineReplier {
+class MockLedLitUpRoutineReplier
+    : public mojom::DEPRECATED_LedLitUpRoutineReplier {
  public:
   explicit MockLedLitUpRoutineReplier(
-      mojo::PendingReceiver<mojom::LedLitUpRoutineReplier> receiver)
+      mojo::PendingReceiver<mojom::DEPRECATED_LedLitUpRoutineReplier> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
     DCHECK(receiver_.is_bound());
   }
@@ -42,7 +43,7 @@ class MockLedLitUpRoutineReplier : public mojom::LedLitUpRoutineReplier {
   MOCK_METHOD(void, GetColorMatched, (GetColorMatchedCallback), (override));
 
  private:
-  mojo::Receiver<mojom::LedLitUpRoutineReplier> receiver_;
+  mojo::Receiver<mojom::DEPRECATED_LedLitUpRoutineReplier> receiver_;
 };
 
 class LedLitUpRoutineTest : public testing::Test {
@@ -52,16 +53,17 @@ class LedLitUpRoutineTest : public testing::Test {
   LedLitUpRoutineTest& operator=(const LedLitUpRoutineTest&) = delete;
 
   void CreateRoutine() {
-    mojo::PendingReceiver<mojom::LedLitUpRoutineReplier> replier_receiver;
-    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier_remote(
-        replier_receiver.InitWithNewPipeAndPassRemote());
+    mojo::PendingReceiver<mojom::DEPRECATED_LedLitUpRoutineReplier>
+        replier_receiver;
+    mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier>
+        replier_remote(replier_receiver.InitWithNewPipeAndPassRemote());
     mock_replier_ =
         std::make_unique<testing::StrictMock<MockLedLitUpRoutineReplier>>(
             std::move(replier_receiver));
     // The LED name and color are arbitrary for testing.
     routine_ = std::make_unique<LedLitUpRoutine>(
-        mock_context(), mojom::LedName::kBattery, mojom::LedColor::kRed,
-        std::move(replier_remote));
+        mock_context(), mojom::DEPRECATED_LedName::kBattery,
+        mojom::DEPRECATED_LedColor::kRed, std::move(replier_remote));
   }
 
   void StartRoutine() { routine_->Start(); }
@@ -88,8 +90,10 @@ class LedLitUpRoutineTest : public testing::Test {
 
   void SetReplierGetColorMatchedResponse(bool matched) {
     EXPECT_CALL(*mock_replier(), GetColorMatched(_))
-        .WillOnce([=](mojom::LedLitUpRoutineReplier::GetColorMatchedCallback
-                          callback) { std::move(callback).Run(matched); });
+        .WillOnce([=](mojom::DEPRECATED_LedLitUpRoutineReplier::
+                          GetColorMatchedCallback callback) {
+          std::move(callback).Run(matched);
+        });
   }
 
   base::test::TaskEnvironment* task_environment() { return &task_environment_; }

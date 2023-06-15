@@ -82,7 +82,8 @@ void WaitUntilEnterPressed() {
 }
 
 void HandleGetLedColorMatchedInvocation(
-    mojom::LedLitUpRoutineReplier::GetColorMatchedCallback callback) {
+    mojom::DEPRECATED_LedLitUpRoutineReplier::GetColorMatchedCallback
+        callback) {
   // Print a newline so we don't overwrite the progress percent.
   std::cout << '\n';
 
@@ -466,17 +467,18 @@ bool DiagActions::ActionRunPrivacyScreenRoutine(bool target_state) {
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
-bool DiagActions::ActionRunLedRoutine(mojom::LedName name,
-                                      mojom::LedColor color) {
-  mojo::PendingReceiver<mojom::LedLitUpRoutineReplier> replier_receiver;
-  mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier_remote(
+bool DiagActions::ActionRunLedRoutine(mojom::DEPRECATED_LedName name,
+                                      mojom::DEPRECATED_LedColor color) {
+  mojo::PendingReceiver<mojom::DEPRECATED_LedLitUpRoutineReplier>
+      replier_receiver;
+  mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier_remote(
       replier_receiver.InitWithNewPipeAndPassRemote());
   led_lit_up_routine_replier_ =
       std::make_unique<LedLitUpRoutineReplier>(std::move(replier_receiver));
   led_lit_up_routine_replier_->SetGetColorMatchedHandler(
       base::BindRepeating(&HandleGetLedColorMatchedInvocation));
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  cros_healthd_diagnostics_service_->RunLedLitUpRoutine(
+  cros_healthd_diagnostics_service_->DEPRECATED_RunLedLitUpRoutine(
       name, color, std::move(replier_remote), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }

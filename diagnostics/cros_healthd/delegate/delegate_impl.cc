@@ -55,39 +55,39 @@ ec::FpMode ToEcFpMode(mojom::FingerprintCaptureType type) {
   }
 }
 
-enum ec_led_id ToEcLedId(mojom::LedName name) {
+enum ec_led_id ToEcLedId(mojom::DEPRECATED_LedName name) {
   switch (name) {
-    case mojom::LedName::kBattery:
+    case mojom::DEPRECATED_LedName::kBattery:
       return EC_LED_ID_BATTERY_LED;
-    case mojom::LedName::kPower:
+    case mojom::DEPRECATED_LedName::kPower:
       return EC_LED_ID_POWER_LED;
-    case mojom::LedName::kAdapter:
+    case mojom::DEPRECATED_LedName::kAdapter:
       return EC_LED_ID_ADAPTER_LED;
-    case mojom::LedName::kLeft:
+    case mojom::DEPRECATED_LedName::kLeft:
       return EC_LED_ID_LEFT_LED;
-    case mojom::LedName::kRight:
+    case mojom::DEPRECATED_LedName::kRight:
       return EC_LED_ID_RIGHT_LED;
-    case mojom::LedName::kUnmappedEnumField:
+    case mojom::DEPRECATED_LedName::kUnmappedEnumField:
       LOG(WARNING) << "LedName UnmappedEnumField";
       return EC_LED_ID_COUNT;
   }
 }
 
-enum ec_led_colors ToEcLedColor(mojom::LedColor color) {
+enum ec_led_colors ToEcLedColor(mojom::DEPRECATED_LedColor color) {
   switch (color) {
-    case mojom::LedColor::kRed:
+    case mojom::DEPRECATED_LedColor::kRed:
       return EC_LED_COLOR_RED;
-    case mojom::LedColor::kGreen:
+    case mojom::DEPRECATED_LedColor::kGreen:
       return EC_LED_COLOR_GREEN;
-    case mojom::LedColor::kBlue:
+    case mojom::DEPRECATED_LedColor::kBlue:
       return EC_LED_COLOR_BLUE;
-    case mojom::LedColor::kYellow:
+    case mojom::DEPRECATED_LedColor::kYellow:
       return EC_LED_COLOR_YELLOW;
-    case mojom::LedColor::kWhite:
+    case mojom::DEPRECATED_LedColor::kWhite:
       return EC_LED_COLOR_WHITE;
-    case mojom::LedColor::kAmber:
+    case mojom::DEPRECATED_LedColor::kAmber:
       return EC_LED_COLOR_AMBER;
-    case mojom::LedColor::kUnmappedEnumField:
+    case mojom::DEPRECATED_LedColor::kUnmappedEnumField:
       LOG(WARNING) << "LedColor UnmappedEnumField";
       return EC_LED_COLOR_COUNT;
   }
@@ -211,8 +211,8 @@ void DelegateImpl::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   std::move(callback).Run(std::move(result), std::nullopt);
 }
 
-void DelegateImpl::SetLedColor(mojom::LedName name,
-                               mojom::LedColor color,
+void DelegateImpl::SetLedColor(mojom::DEPRECATED_LedName name,
+                               mojom::DEPRECATED_LedColor color,
                                SetLedColorCallback callback) {
   auto ec_led_id = ToEcLedId(name);
   if (ec_led_id == EC_LED_ID_COUNT) {
@@ -251,7 +251,7 @@ void DelegateImpl::SetLedColor(mojom::LedName name,
   std::move(callback).Run(std::nullopt);
 }
 
-void DelegateImpl::ResetLedColor(mojom::LedName name,
+void DelegateImpl::ResetLedColor(mojom::DEPRECATED_LedName name,
                                  ResetLedColorCallback callback) {
   auto ec_led_id = ToEcLedId(name);
   if (ec_led_id == EC_LED_ID_COUNT) {

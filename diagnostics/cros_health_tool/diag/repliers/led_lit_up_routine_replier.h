@@ -15,10 +15,11 @@
 namespace diagnostics {
 
 class LedLitUpRoutineReplier
-    : public ash::cros_healthd::mojom::LedLitUpRoutineReplier {
+    : public ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier {
  public:
   explicit LedLitUpRoutineReplier(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+      mojo::PendingReceiver<
+          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
           receiver);
   LedLitUpRoutineReplier(const LedLitUpRoutineReplier&) = delete;
   LedLitUpRoutineReplier& operator=(const LedLitUpRoutineReplier&) = delete;
@@ -30,7 +31,8 @@ class LedLitUpRoutineReplier
       const base::RepeatingCallback<void(GetColorMatchedCallback)>& handler);
 
  private:
-  mojo::Receiver<ash::cros_healthd::mojom::LedLitUpRoutineReplier> receiver_;
+  mojo::Receiver<ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
+      receiver_;
   base::RepeatingCallback<void(GetColorMatchedCallback)>
       get_color_matched_handler_;
 };

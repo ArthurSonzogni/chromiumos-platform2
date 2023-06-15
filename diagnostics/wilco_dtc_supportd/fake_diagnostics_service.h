@@ -120,12 +120,12 @@ class FakeDiagnosticsService final
   void RunFingerprintAliveRoutine(RunFingerprintAliveRoutineCallback) override;
   void RunPrivacyScreenRoutine(bool target_state,
                                RunPrivacyScreenRoutineCallback) override;
-  void RunLedLitUpRoutine(
-      ash::cros_healthd::mojom::LedName name,
-      ash::cros_healthd::mojom::LedColor color,
-      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-          replier,
-      RunLedLitUpRoutineCallback callback) override;
+  void DEPRECATED_RunLedLitUpRoutine(
+      ash::cros_healthd::mojom::DEPRECATED_LedName name,
+      ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+      mojo::PendingRemote<
+          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
+      DEPRECATED_RunLedLitUpRoutineCallback callback) override;
   void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
   void RunAudioSetVolumeRoutine(uint64_t node_id,
                                 uint8_t volume,

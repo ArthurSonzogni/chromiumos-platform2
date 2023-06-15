@@ -83,10 +83,11 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakePrivacyScreenRoutine(
       bool target_state) override;
   std::unique_ptr<DiagnosticRoutine> MakeLedLitUpRoutine(
-      ash::cros_healthd::mojom::LedName name,
-      ash::cros_healthd::mojom::LedColor color,
-      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-          replier) override;
+      ash::cros_healthd::mojom::DEPRECATED_LedName name,
+      ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+      mojo::PendingRemote<
+          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier)
+      override;
   std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy) override;
   std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(

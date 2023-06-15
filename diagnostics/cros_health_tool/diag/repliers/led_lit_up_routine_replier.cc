@@ -11,8 +11,8 @@
 namespace diagnostics {
 
 LedLitUpRoutineReplier::LedLitUpRoutineReplier(
-    mojo::PendingReceiver<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-        receiver)
+    mojo::PendingReceiver<
+        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> receiver)
     : receiver_{this /* impl */, std::move(receiver)},
       get_color_matched_handler_(
           base::BindRepeating([](GetColorMatchedCallback callback) {

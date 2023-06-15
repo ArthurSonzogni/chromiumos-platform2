@@ -225,11 +225,11 @@ void FakeDiagnosticsService::RunPrivacyScreenRoutine(
   NOTIMPLEMENTED();
 }
 
-void FakeDiagnosticsService::RunLedLitUpRoutine(
-    mojom::LedName name,
-    mojom::LedColor color,
-    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier,
-    RunLedLitUpRoutineCallback callback) {
+void FakeDiagnosticsService::DEPRECATED_RunLedLitUpRoutine(
+    mojom::DEPRECATED_LedName name,
+    mojom::DEPRECATED_LedColor color,
+    mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
+    DEPRECATED_RunLedLitUpRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 

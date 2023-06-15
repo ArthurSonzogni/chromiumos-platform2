@@ -493,11 +493,11 @@ void CrosHealthdDiagnosticsService::RunPrivacyScreenRoutine(
              mojom::DiagnosticRoutineEnum::kPrivacyScreen, std::move(callback));
 }
 
-void CrosHealthdDiagnosticsService::RunLedLitUpRoutine(
-    mojom::LedName name,
-    mojom::LedColor color,
-    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier,
-    RunLedLitUpRoutineCallback callback) {
+void CrosHealthdDiagnosticsService::DEPRECATED_RunLedLitUpRoutine(
+    mojom::DEPRECATED_LedName name,
+    mojom::DEPRECATED_LedColor color,
+    mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
+    DEPRECATED_RunLedLitUpRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeLedLitUpRoutine(name, color, std::move(replier)),
       mojom::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));

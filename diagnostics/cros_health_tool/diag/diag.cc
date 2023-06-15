@@ -38,37 +38,40 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 const struct {
   const char* readable_name;
-  mojom::LedName name;
-} kLedNameSwitches[] = {{"battery", mojom::LedName::kBattery},
-                        {"power", mojom::LedName::kPower},
-                        {"adapter", mojom::LedName::kAdapter},
-                        {"left", mojom::LedName::kLeft},
-                        {"right", mojom::LedName::kRight}};
+  mojom::DEPRECATED_LedName name;
+} kLedNameSwitches[] = {{"battery", mojom::DEPRECATED_LedName::kBattery},
+                        {"power", mojom::DEPRECATED_LedName::kPower},
+                        {"adapter", mojom::DEPRECATED_LedName::kAdapter},
+                        {"left", mojom::DEPRECATED_LedName::kLeft},
+                        {"right", mojom::DEPRECATED_LedName::kRight}};
 
 const struct {
   const char* readable_color;
-  mojom::LedColor color;
-} kLedColorSwitches[] = {
-    {"red", mojom::LedColor::kRed},     {"green", mojom::LedColor::kGreen},
-    {"blue", mojom::LedColor::kBlue},   {"yellow", mojom::LedColor::kYellow},
-    {"white", mojom::LedColor::kWhite}, {"amber", mojom::LedColor::kAmber}};
+  mojom::DEPRECATED_LedColor color;
+} kLedColorSwitches[] = {{"red", mojom::DEPRECATED_LedColor::kRed},
+                         {"green", mojom::DEPRECATED_LedColor::kGreen},
+                         {"blue", mojom::DEPRECATED_LedColor::kBlue},
+                         {"yellow", mojom::DEPRECATED_LedColor::kYellow},
+                         {"white", mojom::DEPRECATED_LedColor::kWhite},
+                         {"amber", mojom::DEPRECATED_LedColor::kAmber}};
 
-mojom::LedName LedNameFromString(const std::string& str) {
+mojom::DEPRECATED_LedName DEPRECATED_LedNameFromString(const std::string& str) {
   for (const auto& item : kLedNameSwitches) {
     if (str == item.readable_name) {
       return item.name;
     }
   }
-  return mojom::LedName::kUnmappedEnumField;
+  return mojom::DEPRECATED_LedName::kUnmappedEnumField;
 }
 
-mojom::LedColor LedColorFromString(const std::string& str) {
+mojom::DEPRECATED_LedColor DEPRECATED_LedColorFromString(
+    const std::string& str) {
   for (const auto& item : kLedColorSwitches) {
     if (str == item.readable_color) {
       return item.color;
     }
   }
-  return mojom::LedColor::kUnmappedEnumField;
+  return mojom::DEPRECATED_LedColor::kUnmappedEnumField;
 }
 
 void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
@@ -683,13 +686,14 @@ int LedLitUpMain(int argc, char** argv) {
   if (command_line->HasSwitch("force_cancel_at_percent"))
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
-  mojom::LedName name = LedNameFromString(FLAGS_led_name);
-  if (name == mojom::LedName::kUnmappedEnumField) {
+  mojom::DEPRECATED_LedName name = DEPRECATED_LedNameFromString(FLAGS_led_name);
+  if (name == mojom::DEPRECATED_LedName::kUnmappedEnumField) {
     std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
     return EXIT_FAILURE;
   }
-  mojom::LedColor color = LedColorFromString(FLAGS_led_color);
-  if (color == mojom::LedColor::kUnmappedEnumField) {
+  mojom::DEPRECATED_LedColor color =
+      DEPRECATED_LedColorFromString(FLAGS_led_color);
+  if (color == mojom::DEPRECATED_LedColor::kUnmappedEnumField) {
     std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
     return EXIT_FAILURE;
   }

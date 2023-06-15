@@ -20,10 +20,10 @@ class LedLitUpRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit LedLitUpRoutine(
       Context* context,
-      ash::cros_healthd::mojom::LedName name,
-      ash::cros_healthd::mojom::LedColor color,
-      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-          replier);
+      ash::cros_healthd::mojom::DEPRECATED_LedName name,
+      ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+      mojo::PendingRemote<
+          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier);
   LedLitUpRoutine(const LedLitUpRoutine&) = delete;
   LedLitUpRoutine& operator=(const LedLitUpRoutine&) = delete;
 
@@ -46,12 +46,13 @@ class LedLitUpRoutine final : public DiagnosticRoutineWithStatus {
   Context* context_;
 
   // The target LED.
-  ash::cros_healthd::mojom::LedName name_;
+  ash::cros_healthd::mojom::DEPRECATED_LedName name_;
   // The target color.
-  ash::cros_healthd::mojom::LedColor color_;
+  ash::cros_healthd::mojom::DEPRECATED_LedColor color_;
   // A replier that can answer whether the actual LED color matches the
   // expected color.
-  mojo::Remote<ash::cros_healthd::mojom::LedLitUpRoutineReplier> replier_;
+  mojo::Remote<ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
+      replier_;
 
   enum TestStep {
     kInitialize = 0,

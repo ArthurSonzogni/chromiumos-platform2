@@ -398,10 +398,10 @@ FakeCrosHealthdRoutineFactory::MakeEmmcLifetimeRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeLedLitUpRoutine(
-    ash::cros_healthd::mojom::LedName name,
-    ash::cros_healthd::mojom::LedColor color,
-    mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-        replier) {
+    ash::cros_healthd::mojom::DEPRECATED_LedName name,
+    ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+    mojo::PendingRemote<
+        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier) {
   return std::move(next_routine_);
 }
 

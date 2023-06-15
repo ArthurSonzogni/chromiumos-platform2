@@ -291,10 +291,10 @@ CrosHealthdRoutineFactoryImpl::MakePrivacyScreenRoutine(bool target_state) {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeLedLitUpRoutine(
-    ash::cros_healthd::mojom::LedName name,
-    ash::cros_healthd::mojom::LedColor color,
-    mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
-        replier) {
+    ash::cros_healthd::mojom::DEPRECATED_LedName name,
+    ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+    mojo::PendingRemote<
+        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier) {
   return std::make_unique<LedLitUpRoutine>(context_, name, color,
                                            std::move(replier));
 }

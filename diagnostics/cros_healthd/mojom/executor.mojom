@@ -283,7 +283,7 @@ interface Executor {
   //
   // The response:
   // * |err| - Error message if existed.
-  SetLedColor(LedName name, LedColor color) => (string? err);
+  SetLedColor(DEPRECATED_LedName name, DEPRECATED_LedColor color) => (string? err);
 
   // Switch the LED back to be automatically controlled by EC.
   //
@@ -292,7 +292,7 @@ interface Executor {
   //
   // The response:
   // * |err| - Error message if existed.
-  ResetLedColor(LedName name) => (string? err);
+  ResetLedColor(DEPRECATED_LedName name) => (string? err);
 
   // Obtains HCI device configuration of hci0 by running hciconfig and returns
   // the result.
