@@ -75,7 +75,6 @@ LEGACYLIST = {
     "iioservice",
     "image-burner",
     "imageloader",
-    "init",
     "installer",
     "libbrillo",
     "libchromeos-rs",
