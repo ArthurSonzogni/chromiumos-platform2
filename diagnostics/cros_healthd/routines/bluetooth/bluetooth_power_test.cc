@@ -65,10 +65,6 @@ class BluetoothPowerRoutineTest : public testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
-      if (!target_powered) {
-        EXPECT_CALL(mock_adapter_proxy_, powered())
-            .WillOnce(Return(current_powered));
-      }
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
           .WillOnce(Invoke(
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
@@ -146,6 +142,7 @@ TEST_F(BluetoothPowerRoutineTest, RoutineSuccess) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   SetVerifyPoweredCall(/*hci_result_powered=*/false,
                        /*dbus_result_powered=*/false);
@@ -153,6 +150,8 @@ TEST_F(BluetoothPowerRoutineTest, RoutineSuccess) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   SetVerifyPoweredCall(/*hci_result_powered=*/true,
                        /*dbus_result_powered=*/true);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
@@ -175,6 +174,8 @@ TEST_F(BluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOff) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   SetVerifyPoweredCall(/*hci_result_powered=*/true,
                        /*dbus_result_powered=*/true);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
@@ -191,9 +192,12 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off, but get unexpected powered in HCI level.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   SetVerifyPoweredCall(/*hci_result_powered=*/true,
                        /*dbus_result_powered=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -209,6 +213,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   SetVerifyPoweredCall(/*hci_result_powered=*/false,
                        /*dbus_result_powered=*/false);
@@ -216,6 +221,8 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   SetVerifyPoweredCall(/*hci_result_powered=*/true,
                        /*dbus_result_powered=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -232,8 +239,11 @@ TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredOff) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Failed to power off.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false,
                        /*is_success=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -257,6 +267,8 @@ TEST_F(BluetoothPowerRoutineTest, PreCheckFailed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -271,6 +283,7 @@ TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   // Set error return code.
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
@@ -281,6 +294,8 @@ TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
             result.err = "Failed to run hciconfig";
             std::move(callback).Run(result.Clone());
           })));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -296,6 +311,7 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Power off.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   // Set error return code.
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
@@ -306,6 +322,8 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
             result.out = "DOWN UP RUNNING";
             std::move(callback).Run(result.Clone());
           })));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -324,6 +342,8 @@ TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
       .Times(2)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   // Trigger timeout.

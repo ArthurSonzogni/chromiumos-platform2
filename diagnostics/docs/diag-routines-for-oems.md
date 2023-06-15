@@ -1394,8 +1394,7 @@ Errors:
 ### Bluetooth Power
 
 Checks whether the Bluetooth adapter can be powered off/on and the powered
-status is consistent in both HCI and D-Bus levels. The Bluetooth powered status
-is on after the routine is complete.
+status is consistent in both HCI and D-Bus levels.
 
 The Bluetooth power routine has no parameters.
 

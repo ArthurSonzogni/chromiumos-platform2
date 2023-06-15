@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
@@ -59,13 +60,21 @@ void BluetoothRoutineBase::RunPreCheck(
 
   // Ensure the adapter is not in discovery mode. We should avoid running
   // Bluetooth routines when the adapter is actively scaninng or pairing.
-  if (GetAdapter()->powered() && GetAdapter()->discovering()) {
+  initial_powered_state_ = GetAdapter()->powered();
+  if (initial_powered_state_.value() && GetAdapter()->discovering()) {
     std::move(on_failed).Run(mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kBluetoothRoutineFailedDiscoveryMode);
     return;
   }
 
   std::move(on_passed).Run();
+}
+
+void BluetoothRoutineBase::ResetPoweredState() {
+  if (!initial_powered_state_.has_value()) {
+    return;
+  }
+  EnsureAdapterPoweredState(initial_powered_state_.value(), base::DoNothing());
 }
 
 }  // namespace diagnostics
