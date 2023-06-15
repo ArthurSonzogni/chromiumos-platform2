@@ -353,8 +353,11 @@ const std::array kCommandLogs {
   Log{kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
   Log{kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
   Log{kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
-  Log{kCommand, "swap_info", "/usr/share/cros/init/swap.sh status 2>/dev/null",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kCommand, "swap_info",
+    "dbus-send --system --print-reply --fixed"
+    " --dest=org.chromium.SwapManagement /org/chromium/SwapManagement"
+    " org.chromium.SwapManagement.SwapStatus",
+    kRoot, kRoot},
   Log{kCommand, "system_log_stats",
     "echo 'BLOCK_SIZE=1024'; "
     "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",

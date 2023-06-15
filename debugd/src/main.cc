@@ -51,19 +51,6 @@ void enter_vfs_namespace() {
   const char kVpdPath[] = "/mnt/stateful_partition/unencrypted/cache/vpd";
   PCHECK(mj_call(minijail_bind(j.get(), kVpdPath, kVpdPath, 1)));
 
-  // debugd needs access to the stateful swap directory.
-  const base::FilePath kSwapWbDir(
-      "/mnt/stateful_partition/unencrypted/userspace_swap.tmp");
-  if (!base::PathExists(kSwapWbDir)) {
-    base::File::Error error;
-    if (!base::CreateDirectoryAndGetError(kSwapWbDir, &error)) {
-      LOG(FATAL) << "Unable to create " << kSwapWbDir << ":"
-                 << base::File::ErrorToString(error);
-    }
-  }
-  PCHECK(mj_call(minijail_bind(j.get(), kSwapWbDir.MaybeAsASCII().c_str(),
-                               kSwapWbDir.MaybeAsASCII().c_str(), 1)));
-
   minijail_remount_mode(j.get(), MS_SLAVE);
 
   PCHECK(mj_call(minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",

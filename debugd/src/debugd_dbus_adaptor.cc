@@ -75,7 +75,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   route_tool_ = std::make_unique<RouteTool>();
   shill_scripts_tool_ = std::make_unique<ShillScriptsTool>();
   storage_tool_ = std::make_unique<StorageTool>();
-  swap_tool_ = std::make_unique<SwapTool>();
   sysrq_tool_ = std::make_unique<SysrqTool>();
   systrace_tool_ = std::make_unique<SystraceTool>();
   tracepath_tool_ = std::make_unique<TracePathTool>();
@@ -477,54 +476,6 @@ bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
     return false;
   }
   return true;
-}
-
-bool DebugdDBusAdaptor::KstaledSetRatio(brillo::ErrorPtr* error,
-                                        uint8_t kstaled_ratio,
-                                        bool* out_result) {
-  *out_result = swap_tool_->KstaledSetRatio(error, kstaled_ratio);
-  return *out_result;
-}
-
-std::string DebugdDBusAdaptor::SwapEnable(int32_t size, bool change_now) {
-  return swap_tool_->SwapEnable(size, change_now);
-}
-
-std::string DebugdDBusAdaptor::SwapDisable(bool change_now) {
-  return swap_tool_->SwapDisable(change_now);
-}
-
-std::string DebugdDBusAdaptor::SwapStartStop(bool on) {
-  return swap_tool_->SwapStartStop(on);
-}
-
-std::string DebugdDBusAdaptor::SwapStatus() {
-  return swap_tool_->SwapStatus();
-}
-
-std::string DebugdDBusAdaptor::SwapSetParameter(
-    const std::string& parameter_name, int32_t parameter_value) {
-  return swap_tool_->SwapSetParameter(parameter_name, parameter_value);
-}
-
-std::string DebugdDBusAdaptor::SwapZramEnableWriteback(uint32_t size_mb) {
-  return swap_tool_->SwapZramEnableWriteback(size_mb);
-}
-
-std::string DebugdDBusAdaptor::SwapZramMarkIdle(uint32_t age) {
-  return swap_tool_->SwapZramMarkIdle(age);
-}
-
-std::string DebugdDBusAdaptor::SwapZramSetWritebackLimit(uint32_t limit) {
-  return swap_tool_->SwapZramSetWritebackLimit(limit);
-}
-
-std::string DebugdDBusAdaptor::InitiateSwapZramWriteback(uint32_t mode) {
-  return swap_tool_->InitiateSwapZramWriteback(mode);
-}
-
-std::string DebugdDBusAdaptor::SwapSetSwappiness(uint32_t swappiness_value) {
-  return swap_tool_->SwapSetSwappiness(swappiness_value);
 }
 
 std::string DebugdDBusAdaptor::SetU2fFlags(const std::string& flags) {

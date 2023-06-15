@@ -54,7 +54,6 @@
 #include "debugd/src/shill_scripts_tool.h"
 #include "debugd/src/simple_service_tool.h"
 #include "debugd/src/storage_tool.h"
-#include "debugd/src/swap_tool.h"
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
@@ -188,20 +187,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool EnableDevCoredumpUpload(brillo::ErrorPtr* error) override;
   bool DisableDevCoredumpUpload(brillo::ErrorPtr* error) override;
   std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores) override;
-  bool KstaledSetRatio(brillo::ErrorPtr* error,
-                       uint8_t kstaled_ratio,
-                       bool* out_result) override;
-  std::string SwapEnable(int32_t size, bool change_now) override;
-  std::string SwapDisable(bool change_now) override;
-  std::string SwapStartStop(bool on) override;
-  std::string SwapStatus() override;
-  std::string SwapSetParameter(const std::string& parameter_name,
-                               int32_t parameter_value) override;
-  std::string SwapZramEnableWriteback(uint32_t size_mb) override;
-  std::string SwapZramMarkIdle(uint32_t age) override;
-  std::string SwapZramSetWritebackLimit(uint32_t limit) override;
-  std::string InitiateSwapZramWriteback(uint32_t mode) override;
-  std::string SwapSetSwappiness(uint32_t swappiness_value) override;
   std::string SetU2fFlags(const std::string& flags) override;
   std::string GetU2fFlags() override;
   void ContainerStarted() override;
@@ -315,7 +300,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SchedulerConfigurationTool> scheduler_configuration_tool_;
   std::unique_ptr<ShillScriptsTool> shill_scripts_tool_;
   std::unique_ptr<StorageTool> storage_tool_;
-  std::unique_ptr<SwapTool> swap_tool_;
   std::unique_ptr<SysrqTool> sysrq_tool_;
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
