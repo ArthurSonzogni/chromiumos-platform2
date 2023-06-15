@@ -68,15 +68,19 @@ SecAgent::SecAgent(
 }
 
 void SecAgent::Activate() {
+  LOG(INFO) << absl::StrFormat(
+      "BypassPolicyForTesting:%d,"
+      "BypassEnqOkWaitForTesting:%d,HeartbeatPeriodSeconds:%d,"
+      "PluginBatchIntervalSeconds:%d,FeaturePollIntervalSeconds:%d",
+      bypass_policy_for_testing_, bypass_enq_ok_wait_for_testing_,
+      heartbeat_period_s_, plugin_batch_interval_s_, feature_poll_interval_s_);
   absl::Status result = message_sender_->Initialize();
   if (result != absl::OkStatus()) {
     LOG(ERROR) << result.message();
     std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
     return;
   }
-
   process_cache_->InitializeFilter();
-
   // This will post a task to run CheckPolicyAndFeature.
   policies_features_broker_->StartAndBlockForSync(
       base::Seconds(feature_poll_interval_s_));
