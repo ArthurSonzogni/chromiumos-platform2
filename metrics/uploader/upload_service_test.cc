@@ -184,6 +184,11 @@ TEST_F(UploadServiceTest, ExtractChannelFromString) {
 
   EXPECT_EQ(metrics::SystemProfileProto::CHANNEL_UNKNOWN,
             SystemProfileCache::ProtoChannelFromString("dev-channel test"));
+
+  EXPECT_EQ(metrics::SystemProfileProto::CHANNEL_STABLE,
+            SystemProfileCache::ProtoChannelFromString("lts-channel"));
+  EXPECT_EQ(metrics::SystemProfileProto::CHANNEL_STABLE,
+            SystemProfileCache::ProtoChannelFromString("ltc-channel"));
 }
 
 TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {

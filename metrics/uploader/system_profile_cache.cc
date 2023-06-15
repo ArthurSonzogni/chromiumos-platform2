@@ -226,6 +226,9 @@ metrics::SystemProfileProto_Channel SystemProfileCache::ProtoChannelFromString(
     return metrics::SystemProfileProto::CHANNEL_BETA;
   } else if (channel == "canary-channel") {
     return metrics::SystemProfileProto::CHANNEL_CANARY;
+  } else if (channel == "ltc-channel" || channel == "lts-channel") {
+    // The ltc and lts channels still report the channel as stable.
+    return metrics::SystemProfileProto::CHANNEL_STABLE;
   }
 
   DLOG(INFO) << "unknown channel: " << channel;
