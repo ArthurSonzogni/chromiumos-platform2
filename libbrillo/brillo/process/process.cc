@@ -527,7 +527,7 @@ int ProcessImpl::Run() {
   return Wait();
 }
 
-pid_t ProcessImpl::pid() {
+pid_t ProcessImpl::pid() const {
   return pid_;
 }
 

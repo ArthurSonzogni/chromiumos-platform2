@@ -162,7 +162,7 @@ class BRILLO_EXPORT Process {
   // Returns the pid of this process or else returns 0 if there is no
   // corresponding process (either because it has not yet been started
   // or has since exited).
-  virtual pid_t pid() = 0;
+  virtual pid_t pid() const = 0;
 
   // Sends |signal| to process and wait |timeout| seconds until it
   // dies.  If process is not a child, returns immediately with a
@@ -220,7 +220,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual bool Start();
   virtual int Wait();
   virtual int Run();
-  virtual pid_t pid();
+  virtual pid_t pid() const;
   virtual bool Kill(int signal, int timeout);
   virtual void Reset(pid_t pid);
   virtual bool ResetPidByFile(const std::string& pid_file);

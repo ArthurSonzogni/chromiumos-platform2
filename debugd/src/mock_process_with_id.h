@@ -48,7 +48,7 @@ class MockProcessWithId : public ProcessWithId {
   MOCK_METHOD(bool, Start, (), (override));
   MOCK_METHOD(int, Wait, (), (override));
   MOCK_METHOD(int, Run, (), (override));
-  MOCK_METHOD(pid_t, pid, (), (override));
+  MOCK_METHOD(pid_t, pid, (), (const, override));
   MOCK_METHOD(bool, Kill, (int signal, int), (override));
   MOCK_METHOD(void, Reset, (pid_t), (override));
   MOCK_METHOD(bool, ResetPidByFile, (const std::string&), (override));
