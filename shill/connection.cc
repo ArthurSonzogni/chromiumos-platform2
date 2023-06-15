@@ -470,7 +470,6 @@ void Connection::SetPriority(NetworkPriority priority) {
 
   priority_ = priority;
   UpdateRoutingPolicy();
-  routing_table_->FlushCache();
 }
 
 bool Connection::FixGatewayReachability(

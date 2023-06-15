@@ -25,6 +25,8 @@ class MockProcFsStub : public ProcFsStub {
               SetIPFlag,
               (IPAddress::Family, const std::string&, const std::string&),
               (override));
+
+  MOCK_METHOD(bool, FlushRoutingCache, (), (override));
 };
 }  // namespace shill
 

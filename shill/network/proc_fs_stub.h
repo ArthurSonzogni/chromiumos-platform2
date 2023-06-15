@@ -41,6 +41,10 @@ class ProcFsStub {
                           const std::string& flag,
                           const std::string& value);
 
+  // Flush the routing cache for all interfaces. Does not use member variables
+  // but declared non-static for mocking.
+  mockable bool FlushRoutingCache();
+
  private:
   const std::string interface_name_;
 };

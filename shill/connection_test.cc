@@ -430,14 +430,12 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
 
   // Set default priority and use DNS.
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(
       NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   // Set non-default priority and do not use DNS.
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityLow);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.ranking_order = 1});
 
   // Destruct cleanup.
@@ -472,7 +470,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
 
   // Set default priority and use DNS.
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(
       NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
 
@@ -480,7 +477,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
 
   // Set non-default priority and do not use DNS.
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityLow);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.ranking_order = 1});
 
   // Destruct cleanup.
@@ -514,7 +510,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
 
   // Set default priority and use DNS.
   AddPhysicalRoutingPolicyExpectations(device, kPriorityDefault, true);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.is_primary_physical = true,
                                            .is_primary_for_dns = true,
                                            .ranking_order = 0});
@@ -523,7 +518,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
 
   // Set non-default priority and do not use DNS.
   AddPhysicalRoutingPolicyExpectations(device, kPriorityLow, false);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.ranking_order = 1});
 
   // Destruct cleanup.
@@ -558,7 +552,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
 
   // Set default priority and use DNS.
   AddPhysicalRoutingPolicyExpectations(device, kPriorityDefault, true);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.is_primary_physical = true,
                                            .is_primary_for_dns = true,
                                            .ranking_order = 0});
@@ -566,7 +559,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
 
   // Set non-default priority and do not use DNS.
   AddPhysicalRoutingPolicyExpectations(device, kPriorityLow, false);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.ranking_order = 1});
 
   // Destruct cleanup.
@@ -629,13 +621,11 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(
       NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityLow);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(NetworkPriority{.ranking_order = 1});
 
   // Destruct cleanup.
@@ -753,7 +743,6 @@ TEST_F(ConnectionTest, AddConfigReverse) {
 
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
 
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(
       NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
   Mock::VerifyAndClearExpectations(&routing_table_);
@@ -794,7 +783,6 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
 
   // Change priority to make this the default service.
   AddNonPhysicalRoutingPolicyExpectations(device, kPriorityDefault);
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetPriority(
       NetworkPriority{.is_primary_for_dns = true, .ranking_order = 0});
 

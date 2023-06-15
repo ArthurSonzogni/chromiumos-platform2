@@ -304,6 +304,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   state_ = State::kIdle;
   connection_ = nullptr;
+  proc_fs_->FlushRoutingCache();
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
     for (auto* ev : event_handlers_) {
@@ -747,6 +748,7 @@ void Network::SetPriority(NetworkPriority priority) {
     return;
   }
   connection_->SetPriority(priority);
+  proc_fs_->FlushRoutingCache();
   network_applier_->ApplyDNS(priority,
                              ipconfig_ ? &ipconfig_->properties() : nullptr,
                              ip6config_ ? &ip6config_->properties() : nullptr);

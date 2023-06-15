@@ -111,9 +111,6 @@ class RoutingTable {
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutesWithTag(int tag);
 
-  // Flush the routing cache for all interfaces.
-  virtual bool FlushCache();
-
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 

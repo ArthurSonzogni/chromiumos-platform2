@@ -44,7 +44,6 @@ class MockRoutingTable : public RoutingTable {
               (override));
   MOCK_METHOD(void, FlushRoutes, (int), (override));
   MOCK_METHOD(void, FlushRoutesWithTag, (int), (override));
-  MOCK_METHOD(bool, FlushCache, (), (override));
   MOCK_METHOD(void, ResetTable, (int), (override));
 };
 

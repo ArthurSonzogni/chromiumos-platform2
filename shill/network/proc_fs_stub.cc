@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 
 namespace shill {
@@ -14,6 +15,10 @@ namespace {
 constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
 constexpr char kIPFlagVersion4[] = "ipv4";
 constexpr char kIPFlagVersion6[] = "ipv6";
+constexpr std::array<base::StringPiece, 2> kRouteFlushPaths = {
+    "/proc/sys/net/ipv4/route/flush",
+    "/proc/sys/net/ipv6/route/flush",
+};
 }  // namespace
 
 ProcFsStub::ProcFsStub(const std::string& interface_name)
@@ -46,5 +51,17 @@ bool ProcFsStub::SetIPFlag(IPAddress::Family family,
   }
 
   return true;
+}
+
+bool ProcFsStub::FlushRoutingCache() {
+  bool ret = true;
+  for (auto path : kRouteFlushPaths) {
+    if (!base::WriteFile(base::FilePath(path), "-1")) {
+      PLOG(ERROR) << "Cannot write to " << path;
+      ret = false;
+    }
+  }
+
+  return ret;
 }
 }  // namespace shill

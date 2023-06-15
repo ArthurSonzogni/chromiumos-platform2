@@ -50,8 +50,6 @@ base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
     LAZY_INSTANCE_INITIALIZER;
 
 const char kIpv6ProcPath[] = "/proc/sys/net/ipv6/conf";
-const char kIpv4RouteFlushPath[] = "/proc/sys/net/ipv4/route/flush";
-const char kIpv6RouteFlushPath[] = "/proc/sys/net/ipv6/route/flush";
 // Amount added to an interface index to come up with the routing table ID for
 // that interface.
 constexpr int kInterfaceTableIdIncrement = 1000;
@@ -196,7 +194,6 @@ void RoutingTable::RegisterDevice(int interface_index,
   if (base::WriteFile(path, ra_rt_table.c_str(), str_size) != str_size) {
     LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
   }
-  FlushCache();
 }
 
 void RoutingTable::DeregisterDevice(int interface_index,
@@ -217,7 +214,6 @@ void RoutingTable::DeregisterDevice(int interface_index,
     // case, the following error log will be spurious.
     LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
   }
-  FlushCache();
 }
 
 bool RoutingTable::AddRoute(int interface_index,
@@ -542,24 +538,6 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);
-}
-
-bool RoutingTable::FlushCache() {
-  static const char* const kPaths[] = {kIpv4RouteFlushPath,
-                                       kIpv6RouteFlushPath};
-  bool ret = true;
-
-  SLOG(2) << __func__;
-
-  for (auto path : kPaths) {
-    if (base::WriteFile(base::FilePath(path), "-1", 2) != 2) {
-      LOG(ERROR) << base::StringPrintf("Cannot write to route flush file %s",
-                                       path);
-      ret = false;
-    }
-  }
-
-  return ret;
 }
 
 bool RoutingTable::CreateBlackholeRoute(int interface_index,

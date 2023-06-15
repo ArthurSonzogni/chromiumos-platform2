@@ -71,4 +71,5 @@ void NetworkApplier::ApplyDNS(NetworkPriority priority,
   }
   resolver_->SetDNSFromLists(dns_servers, domain_search);
 }
+
 }  // namespace shill
