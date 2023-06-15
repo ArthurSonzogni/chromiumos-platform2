@@ -47,7 +47,10 @@ class RoutingPolicyService {
   virtual void FlushRules(int interface_index);
 
   // Returns the user traffic uids.
-  const std::vector<uint32_t>& GetUserTrafficUids();
+  virtual const std::vector<uint32_t>& GetUserTrafficUids();
+
+  // Returns shill uid used for critical system traffic.
+  virtual uint32_t GetShillUid();
 
  protected:
   RoutingPolicyService();

@@ -302,4 +302,8 @@ const std::vector<uint32_t>& RoutingPolicyService::GetUserTrafficUids() {
   return user_traffic_uids_;
 }
 
+uint32_t RoutingPolicyService::GetShillUid() {
+  return getuid();
+}
+
 }  // namespace shill

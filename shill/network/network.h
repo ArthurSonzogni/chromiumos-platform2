@@ -421,6 +421,10 @@ class Network {
   // Report the current IP type metrics (v4, v6 or dual-stack) to UMA.
   void ReportIPType();
 
+  // Helper function to prepare data and call corresponding NetworkApplier
+  // function.
+  void ApplyRoutingPolicy();
+
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
   // TODO(b/269401899): These getters should be deprecated. Instead, callers

@@ -27,7 +27,6 @@ class MockConnection : public Connection {
               UpdateFromIPConfig,
               (const IPConfig::Properties& properties),
               (override));
-  MOCK_METHOD(void, SetPriority, (NetworkPriority), (override));
   MOCK_METHOD(const std::string&, interface_name, (), (const, override));
   MOCK_METHOD(bool, IsIPv6, (), (override));
 };

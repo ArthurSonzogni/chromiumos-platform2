@@ -6,16 +6,60 @@
 
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ptr_util.h>
 
 #include "shill/ipconfig.h"
 #include "shill/network/network_priority.h"
+#include "shill/routing_policy_service.h"
+#include "shill/routing_table.h"
 
 namespace shill {
 
-NetworkApplier::NetworkApplier() : resolver_(Resolver::GetInstance()) {}
+namespace {
+// TODO(b/161507671) Use the constants defined in patchpanel::RoutingService at
+// platform2/patchpanel/routing_service.cc after the routing layer is migrated
+// to patchpanel.
+constexpr const uint32_t kFwmarkRoutingMask = 0xffff0000;
+
+RoutingPolicyEntry::FwMark GetFwmarkRoutingTag(int interface_index) {
+  return {.value = RoutingTable::GetInterfaceTableId(interface_index) << 16,
+          .mask = kFwmarkRoutingMask};
+}
+
+// The routing rule priority used for the default service, whether physical or
+// VPN.
+constexpr uint32_t kDefaultPriority = 10;
+// Space between the priorities of services. The Nth highest priority service
+// (starting from N=0) will have a rule priority of
+// |kDefaultPriority| + N*|kPriorityStep|.
+constexpr uint32_t kPriorityStep = 10;
+// An offset added to the priority of non-VPN services, so their rules comes
+// after the main table rule.
+constexpr uint32_t kPhysicalPriorityOffset = 1000;
+// Priority for rules corresponding to IPConfig::Properties::routes.
+// Allowed dsts rules are added right before the catchall rule. In this way,
+// existing traffic from a different interface will not be "stolen" by these
+// rules and sent out of the wrong interface, but the routes added to
+// |table_id| will not be ignored.
+constexpr uint32_t kDstRulePriority =
+    RoutingPolicyService::kRulePriorityMain - 3;
+// Priority for VPN rules routing traffic or specific uids with the routing
+// table of a VPN connection.
+constexpr uint32_t kVpnUidRulePriority =
+    RoutingPolicyService::kRulePriorityMain - 2;
+// Priority for the rule sending any remaining traffic to the default physical
+// interface.
+constexpr uint32_t kCatchallPriority =
+    RoutingPolicyService::kRulePriorityMain - 1;
+}  // namespace
+
+NetworkApplier::NetworkApplier()
+    : resolver_(Resolver::GetInstance()),
+      rule_table_(RoutingPolicyService::GetInstance()),
+      proc_fs_(std::make_unique<ProcFsStub>("")) {}
 
 NetworkApplier::~NetworkApplier() = default;
 
@@ -27,11 +71,20 @@ NetworkApplier* NetworkApplier::GetInstance() {
 
 // static
 std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
-    Resolver* resolver) {
+    Resolver* resolver,
+    RoutingPolicyService* rule_table,
+    std::unique_ptr<ProcFsStub> proc_fs) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new NetworkApplier());
   ptr->resolver_ = resolver;
+  ptr->rule_table_ = rule_table;
+  ptr->proc_fs_ = std::move(proc_fs);
   return ptr;
+}
+
+void NetworkApplier::Clear(int interface_index) {
+  rule_table_->FlushRules(interface_index);
+  proc_fs_->FlushRoutingCache();
 }
 
 void NetworkApplier::ApplyDNS(NetworkPriority priority,
@@ -70,6 +123,141 @@ void NetworkApplier::ApplyDNS(NetworkPriority priority,
     }
   }
   resolver_->SetDNSFromLists(dns_servers, domain_search);
+}
+
+void NetworkApplier::ApplyRoutingPolicy(
+    int interface_index,
+    const std::string& interface_name,
+    Technology technology,
+    NetworkPriority priority,
+    const std::vector<IPAddress>& all_addresses,
+    const std::vector<net_base::IPv4CIDR>& rfc3442_dsts) {
+  uint32_t rule_priority =
+      kDefaultPriority + priority.ranking_order * kPriorityStep;
+  uint32_t table_id = RoutingTable::GetInterfaceTableId(interface_index);
+  bool is_primary_physical = priority.is_primary_physical;
+  rule_table_->FlushRules(interface_index);
+
+  // b/180521518: IPv6 routing rules are always omitted for a Cellular
+  // connection that is not the primary physical connection. This prevents
+  // applications from accidentally using the Cellular network and causing data
+  // charges with IPv6 traffic when the primary physical connection is IPv4
+  // only.
+  bool no_ipv6 = technology == Technology::kCellular && !is_primary_physical;
+
+  // b/189952150: when |no_ipv6| is true and shill must prevent IPv6 traffic on
+  // this connection for applications, it is still necessary to ensure that some
+  // critical system IPv6 traffic can be routed. Example: shill portal detection
+  // probes when the network connection is IPv6 only. For the time being the
+  // only supported case is traffic from shill.
+  uint32_t shill_uid = rule_table_->GetShillUid();
+
+  // b/177620923 Add uid rules just before the default rule to route to the VPN
+  // interface any untagged traffic owner by a uid routed through VPN
+  // connections. These rules are necessary for consistency between source IP
+  // address selection algorithm that ignores iptables fwmark tagging rules, and
+  // the actual routing of packets that have been tagged in iptables PREROUTING.
+  if (technology == Technology::kVPN) {
+    for (const auto& uid : rule_table_->GetUserTrafficUids()) {
+      auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                       .SetPriority(kVpnUidRulePriority)
+                       .SetTable(table_id)
+                       .SetUid(uid);
+      rule_table_->AddRule(interface_index, entry);
+      rule_table_->AddRule(interface_index, entry.FlipFamily());
+    }
+  }
+
+  if (is_primary_physical) {
+    // Main routing table contains kernel-added routes for source address
+    // selection. Sending traffic there before all other rules for physical
+    // interfaces (but after any VPN rules) ensures that physical interface
+    // rules are not inadvertently too aggressive. Since this rule is static,
+    // add it as interface index -1 so it never get removed by FlushRules().
+    // Note that this rule could be added multiple times when default network
+    // changes, but since the rule itself is identical, there will only be one
+    // instance added into kernel.
+    auto main_table_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                               .SetPriority(kPhysicalPriorityOffset)
+                               .SetTable(RT_TABLE_MAIN);
+    rule_table_->AddRule(-1, main_table_rule);
+    rule_table_->AddRule(-1, main_table_rule.FlipFamily());
+    // Add a default routing rule to use the primary interface if there is
+    // nothing better.
+    // TODO(crbug.com/999589) Remove this rule.
+    auto catch_all_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                              .SetTable(table_id)
+                              .SetPriority(kCatchallPriority);
+    rule_table_->AddRule(interface_index, catch_all_rule);
+    rule_table_->AddRule(interface_index, catch_all_rule.FlipFamily());
+  }
+
+  if (technology != Technology::kVPN) {
+    rule_priority += kPhysicalPriorityOffset;
+  }
+
+  // Allow for traffic corresponding to this Connection to match with
+  // |table_id|. Note that this does *not* necessarily imply that the traffic
+  // will actually be routed through a route in |table_id|. For example, if the
+  // traffic matches one of the excluded destination addresses set up in
+  // SetupExcludedRoutes, then no routes in the per-Device table for this
+  // Connection will be used for that traffic.
+  for (const auto& dst_address : rfc3442_dsts) {
+    auto dst_addr_rule =
+        RoutingPolicyEntry::CreateFromDst(IPAddress(dst_address))
+            .SetPriority(kDstRulePriority)
+            .SetTable(table_id);
+    rule_table_->AddRule(interface_index, dst_addr_rule);
+  }
+
+  // Always set a rule for matching traffic tagged with the fwmark routing tag
+  // corresponding to this network interface.
+  auto fwmark_routing_entry =
+      RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+          .SetPriority(rule_priority)
+          .SetTable(table_id)
+          .SetFwMark(GetFwmarkRoutingTag(interface_index));
+  rule_table_->AddRule(interface_index, fwmark_routing_entry);
+  if (no_ipv6) {
+    fwmark_routing_entry.SetUid(shill_uid);
+  }
+  rule_table_->AddRule(interface_index, fwmark_routing_entry.FlipFamily());
+
+  // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
+  // be used without explicitly binding the socket.
+  auto oif_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                      .SetTable(table_id)
+                      .SetPriority(rule_priority)
+                      .SetOif(interface_name);
+  rule_table_->AddRule(interface_index, oif_rule);
+  if (no_ipv6) {
+    oif_rule.SetUid(shill_uid);
+  }
+  rule_table_->AddRule(interface_index, oif_rule.FlipFamily());
+
+  if (technology != Technology::kVPN) {
+    // Select the per-device table if the outgoing packet's src address matches
+    // the interface's addresses or the input interface is this interface.
+    for (const auto& address : all_addresses) {
+      auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(address)
+                              .SetTable(table_id)
+                              .SetPriority(rule_priority);
+      if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
+        if_addr_rule.SetUid(shill_uid);
+      }
+      rule_table_->AddRule(interface_index, if_addr_rule);
+    }
+    auto iif_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                        .SetTable(table_id)
+                        .SetPriority(rule_priority)
+                        .SetIif(interface_name);
+    rule_table_->AddRule(interface_index, iif_rule);
+    if (no_ipv6) {
+      iif_rule.SetUid(shill_uid);
+    }
+    rule_table_->AddRule(interface_index, iif_rule.FlipFamily());
+  }
+  proc_fs_->FlushRoutingCache();
 }
 
 }  // namespace shill

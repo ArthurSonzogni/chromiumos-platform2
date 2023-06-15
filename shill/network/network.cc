@@ -217,7 +217,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
     connection_ = CreateConnection();
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
-  connection_->UpdateRoutingPolicy(GetAddresses());
+  ApplyRoutingPolicy();
   network_applier_->ApplyDNS(priority_,
                              ipconfig_ ? &ipconfig_->properties() : nullptr,
                              ip6config_ ? &ip6config_->properties() : nullptr);
@@ -304,7 +304,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   state_ = State::kIdle;
   connection_ = nullptr;
-  proc_fs_->FlushRoutingCache();
+  network_applier_->Clear(interface_index_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
     for (auto* ev : event_handlers_) {
@@ -488,6 +488,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // handled above so it's guaranteed that there is no valid IPv4 lease.
       // Also see b/261681299.
       connection_ = nullptr;
+      network_applier_->Clear(interface_index_);
       SetupConnection(ip6config());
     }
     return;
@@ -597,7 +598,7 @@ void Network::OnIPv6AddressChanged() {
   // No matter whether the primary address changes, any address change will
   // need to trigger address-based routing rule to be updated.
   if (connection_) {
-    connection_->UpdateRoutingPolicy(GetAddresses());
+    ApplyRoutingPolicy();
   }
 
   std::string addresses_str;
@@ -747,12 +748,11 @@ void Network::SetPriority(NetworkPriority priority) {
   if (priority_ == priority) {
     return;
   }
-  connection_->SetPriority(priority);
-  proc_fs_->FlushRoutingCache();
+  priority_ = priority;
+  ApplyRoutingPolicy();
   network_applier_->ApplyDNS(priority,
                              ipconfig_ ? &ipconfig_->properties() : nullptr,
                              ip6config_ ? &ip6config_->properties() : nullptr);
-  priority_ = priority;
 }
 
 NetworkPriority Network::GetPriority() {
@@ -1161,6 +1161,26 @@ void Network::ReportIPType() {
     ip_type = Metrics::kIPTypeIPv6Only;
   }
   metrics_->SendEnumToUMA(Metrics::kMetricIPType, technology_, ip_type);
+}
+
+void Network::ApplyRoutingPolicy() {
+  std::vector<net_base::IPv4CIDR> rfc3442_dsts;
+  if (ipconfig_) {
+    for (const auto& route :
+         ipconfig_->properties().dhcp_classless_static_routes) {
+      const auto dst = net_base::IPv4CIDR::CreateFromStringAndPrefix(
+          route.host, route.prefix);
+      if (!dst) {
+        LOG(ERROR) << "Failed to parse static route destination address "
+                   << route.host << ", prefix length" << route.prefix;
+        continue;
+      }
+      rfc3442_dsts.push_back(*dst);
+    }
+  }
+  network_applier_->ApplyRoutingPolicy(interface_index_, interface_name_,
+                                       technology_, priority_, GetAddresses(),
+                                       rfc3442_dsts);
 }
 
 }  // namespace shill
