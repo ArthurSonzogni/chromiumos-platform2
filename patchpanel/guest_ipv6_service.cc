@@ -234,22 +234,23 @@ void GuestIPv6Service::StartForwarding(
   }
 
   const auto uplink_ip = GetUplinkIp(ifname_uplink);
-  if (uplink_ip) {
-    // Allow IPv6 address on uplink to be resolvable on the downlink
-    if (!datapath_->AddIPv6NeighborProxy(ifname_downlink,
-                                         uplink_ip->ToString())) {
-      LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << *uplink_ip
-                   << " proxy on dev " << ifname_downlink;
-    }
+  if (!uplink_ip) {
+    return;
+  }
 
-    if (forward_method == ForwardMethod::kMethodRAServer) {
-      if (!StartRAServer(
-              ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip).ToString(),
-              uplink_dns_[ifname_uplink], forward_record_[ifname_uplink].mtu)) {
-        LOG(WARNING) << "Failed to start RA server on downlink "
-                     << ifname_downlink << " with uplink " << ifname_uplink
-                     << " ip " << *uplink_ip;
-      }
+  // Allow IPv6 address on uplink to be resolvable on the downlink
+  if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, *uplink_ip)) {
+    LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << *uplink_ip
+                 << " proxy on dev " << ifname_downlink;
+  }
+
+  if (forward_method == ForwardMethod::kMethodRAServer) {
+    if (!StartRAServer(
+            ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip).ToString(),
+            uplink_dns_[ifname_uplink], forward_record_[ifname_uplink].mtu)) {
+      LOG(WARNING) << "Failed to start RA server on downlink "
+                   << ifname_downlink << " with uplink " << ifname_uplink
+                   << " ip " << *uplink_ip;
     }
   }
 }
@@ -290,7 +291,7 @@ void GuestIPv6Service::StopForwarding(
   // Remove ip neigh proxy entry
   const auto uplink_ip = GetUplinkIp(ifname_uplink);
   if (uplink_ip) {
-    datapath_->RemoveIPv6NeighborProxy(ifname_downlink, uplink_ip->ToString());
+    datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *uplink_ip);
   }
   // Remove downlink /128 routes
   for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
@@ -346,8 +347,7 @@ void GuestIPv6Service::StopUplink(
        forward_record_[ifname_uplink].downstream_ifnames) {
     // Remove ip neigh proxy entry
     if (uplink_ip) {
-      datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
-                                         uplink_ip->ToString());
+      datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *uplink_ip);
     }
     // Remove downlink /128 routes
     for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
@@ -401,11 +401,9 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
          forward_record_[ifname].downstream_ifnames) {
       // Update ip neigh proxy entries
       if (old_uplink_ip) {
-        datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
-                                           old_uplink_ip->ToString());
+        datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
       }
-      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink,
-                                           new_uplink_ip->ToString())) {
+      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, *new_uplink_ip)) {
         LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << *new_uplink_ip
                      << " proxy on dev " << ifname_downlink;
       }

@@ -1572,14 +1572,16 @@ void Datapath::RemoveIPv6HostRoute(const net_base::IPv6CIDR& ipv6_cidr) {
 }
 
 bool Datapath::AddIPv6NeighborProxy(const std::string& ifname,
-                                    const std::string& ipv6_addr) {
+                                    const net_base::IPv6Address& ipv6_addr) {
   return process_runner_->ip6("neighbor", "add",
-                              {"proxy", ipv6_addr, "dev", ifname}) == 0;
+                              {"proxy", ipv6_addr.ToString(), "dev", ifname}) ==
+         0;
 }
 
 void Datapath::RemoveIPv6NeighborProxy(const std::string& ifname,
-                                       const std::string& ipv6_addr) {
-  process_runner_->ip6("neighbor", "del", {"proxy", ipv6_addr, "dev", ifname});
+                                       const net_base::IPv6Address& ipv6_addr) {
+  process_runner_->ip6("neighbor", "del",
+                       {"proxy", ipv6_addr.ToString(), "dev", ifname});
 }
 
 bool Datapath::AddIPv6Address(const std::string& ifname,
