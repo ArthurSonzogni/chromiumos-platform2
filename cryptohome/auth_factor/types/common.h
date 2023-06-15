@@ -27,6 +27,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 
 #include <base/containers/span.h>
 #include <base/time/time.h>
@@ -172,22 +173,48 @@ class AfDriverNoPrepare : public virtual AuthFactorDriver {
 //   AfDriverFullAuthUnsupported: Does not support full authentication
 class AfDriverFullAuthDecrypt : public virtual AuthFactorDriver {
  private:
-  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
+  bool IsFullAuthSupported(AuthIntent auth_intent) const final;
 };
 class AfDriverFullAuthUnsupported : public virtual AuthFactorDriver {
  private:
-  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
+  bool IsFullAuthSupported(AuthIntent auth_intent) const final;
 };
 
 // Common implementation of the verifier functions for drivers which do not
 // support verifiers.
 class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
  private:
-  bool IsLightAuthAllowed(AuthIntent auth_intent) const final { return false; }
+  bool IsLightAuthSupported(AuthIntent auth_intent) const final {
+    return false;
+  }
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const final {
     return nullptr;
+  }
+};
+
+// Common implementation of GetIntentConfigurability that takes two lists of
+// intents as parameters: the first are the intents which are enabled by
+// default, the seconds are the intents which are disabled by default.
+//
+// The template parameters should be AuthIntentSequence types.
+template <typename EnabledIntents, typename DisabledIntents>
+class AfDriverWithConfigurableIntents : public virtual AuthFactorDriver {
+ private:
+  IntentConfigurability GetIntentConfigurability(
+      AuthIntent auth_intent) const override {
+    for (AuthIntent enabled_by_default_intent : EnabledIntents::kArray) {
+      if (auth_intent == enabled_by_default_intent) {
+        return IntentConfigurability::kEnabledByDefault;
+      }
+    }
+    for (AuthIntent disabled_by_default_intent : DisabledIntents::kArray) {
+      if (auth_intent == disabled_by_default_intent) {
+        return IntentConfigurability::kDisabledByDefault;
+      }
+    }
+    return IntentConfigurability::kNotConfigurable;
   }
 };
 

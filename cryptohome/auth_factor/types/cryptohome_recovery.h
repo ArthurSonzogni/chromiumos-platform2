@@ -33,6 +33,8 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::CryptohomeRecoveryMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
+      public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
+                                             AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
       public AfDriverNoExpiration {

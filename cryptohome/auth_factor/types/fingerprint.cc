@@ -74,7 +74,7 @@ void FingerprintAuthFactorDriver::PrepareForAuthenticate(
   bio_service_->StartAuthenticateSession(type(), username, std::move(callback));
 }
 
-bool FingerprintAuthFactorDriver::IsFullAuthAllowed(
+bool FingerprintAuthFactorDriver::IsFullAuthSupported(
     AuthIntent auth_intent) const {
   // Support decrypt only if it is explicitly enabled.
   if (auth_intent == AuthIntent::kDecrypt) {

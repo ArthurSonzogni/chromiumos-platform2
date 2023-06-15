@@ -81,8 +81,21 @@ class AuthFactorDriver {
   // lightweight authentication. The full authentication is when you do a
   // complete Authenticate sequence with the factor's underlying auth block
   // while the lightweight authentication is done via a CredentialVerifier.
-  virtual bool IsFullAuthAllowed(AuthIntent auth_intent) const = 0;
-  virtual bool IsLightAuthAllowed(AuthIntent auth_intent) const = 0;
+  virtual bool IsFullAuthSupported(AuthIntent auth_intent) const = 0;
+  virtual bool IsLightAuthSupported(AuthIntent auth_intent) const = 0;
+
+  // Specifies if the given intent is configurable for this driver. In general
+  // any factor which is configurable should be supported (it doesn't make sense
+  // to enable or disable an unsupported intent) but not-configurable intents
+  // can be both supported (and so "always available") or unsupported (and so
+  // "never available").
+  enum class IntentConfigurability {
+    kNotConfigurable,
+    kEnabledByDefault,
+    kDisabledByDefault,
+  };
+  virtual IntentConfigurability GetIntentConfigurability(
+      AuthIntent auth_intent) const = 0;
 
   // Creates a credential verifier for the specified type and input. Returns
   // null on failure or if verifiers are not supported by the driver.

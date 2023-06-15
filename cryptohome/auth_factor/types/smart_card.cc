@@ -36,7 +36,7 @@ bool SmartCardAuthFactorDriver::IsSupportedByHardware() const {
   return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
 }
 
-bool SmartCardAuthFactorDriver::IsLightAuthAllowed(
+bool SmartCardAuthFactorDriver::IsLightAuthSupported(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
 }

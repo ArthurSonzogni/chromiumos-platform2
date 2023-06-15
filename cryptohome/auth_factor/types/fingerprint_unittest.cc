@@ -453,14 +453,14 @@ TEST_F(FingerprintDriverTest, IsFullAuthDecryptUsesFlagFile) {
   EXPECT_CALL(platform_, FileExists(base::FilePath(
                              "/var/lib/cryptohome/fingerprint_decrypt_enable")))
       .WillOnce(Return(false));
-  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kDecrypt), IsFalse());
-  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kVerifyOnly), IsTrue());
+  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kDecrypt), IsFalse());
+  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kVerifyOnly), IsTrue());
 
   EXPECT_CALL(platform_, FileExists(base::FilePath(
                              "/var/lib/cryptohome/fingerprint_decrypt_enable")))
       .WillOnce(Return(true));
-  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kDecrypt), IsTrue());
-  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kVerifyOnly), IsTrue());
+  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kDecrypt), IsTrue());
+  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kVerifyOnly), IsTrue());
 }
 
 }  // namespace

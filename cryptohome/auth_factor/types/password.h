@@ -55,6 +55,8 @@ class PasswordAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::PasswordMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
+      public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
+                                             AuthIntentSequence<>>,
       public AfDriverNoDelay,
       public AfDriverNoExpiration {
  public:
@@ -62,7 +64,7 @@ class PasswordAuthFactorDriver final
 
  private:
   bool IsSupportedByHardware() const override;
-  bool IsLightAuthAllowed(AuthIntent auth_intent) const override;
+  bool IsLightAuthSupported(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const override;

@@ -3183,7 +3183,7 @@ void UserDataAuth::ListAuthFactors(
       }
       const AuthFactorDriver& factor_driver =
           auth_factor_driver_manager_->GetDriver(*type);
-      if (factor_driver.IsLightAuthAllowed(AuthIntent::kVerifyOnly)) {
+      if (factor_driver.IsLightAuthSupported(AuthIntent::kVerifyOnly)) {
         reply.add_supported_auth_factors(proto_type);
         supported_auth_factors.push_back(*type);
       }
@@ -3202,22 +3202,35 @@ void UserDataAuth::ListAuthFactors(
       // Determine if this intent can be used with this factor type for this
       // user. The check depends on the user type as full auth is only available
       // for persistent users.
-      bool intent_is_allowed;
+      bool intent_is_supported;
       if (is_persistent_user) {
-        intent_is_allowed = factor_driver.IsFullAuthAllowed(intent) ||
-                            factor_driver.IsLightAuthAllowed(intent);
+        intent_is_supported = factor_driver.IsFullAuthSupported(intent) ||
+                              factor_driver.IsLightAuthSupported(intent);
       } else if (is_ephemeral_user) {
-        intent_is_allowed = factor_driver.IsLightAuthAllowed(intent);
+        intent_is_supported = factor_driver.IsLightAuthSupported(intent);
       } else {
-        intent_is_allowed = false;
+        intent_is_supported = false;
       }
-      // TODO(b/281878872): Update to distinguish between these three cases
-      // once support for dynamic intents is available.
-      if (intent_is_allowed) {
+      // If the intent is supported, determine which of the "current, min, max"
+      // sets it belongs in based on the configuration.
+      if (intent_is_supported) {
         user_data_auth::AuthIntent proto_intent = AuthIntentToProto(intent);
-        intents_for_type->add_current(proto_intent);
-        intents_for_type->add_minimum(proto_intent);
+        // The maximum contains all supported intents, always add to it.
         intents_for_type->add_maximum(proto_intent);
+        // The minimum contains only the non-configurable supported intents.
+        AuthFactorDriver::IntentConfigurability intent_configurability =
+            factor_driver.GetIntentConfigurability(intent);
+        if (intent_configurability ==
+            AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
+          intents_for_type->add_minimum(proto_intent);
+        }
+        // The current set contains supported intents which are enabled.
+        // TODO(b/281878872): Update this to check the actual current setting
+        // for this intent rather than just using the default.
+        if (intent_configurability !=
+            AuthFactorDriver::IntentConfigurability::kDisabledByDefault) {
+          intents_for_type->add_current(proto_intent);
+        }
       }
     }
   }

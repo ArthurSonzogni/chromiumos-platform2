@@ -97,18 +97,19 @@ TEST_F(AuthFactorDriverManagerTest, IsPrepareRequired) {
                 "All types of AuthFactorType are not all included here");
 }
 
-// Test AuthFactorDriver::IsFullAuthAllowed. We do this here instead of in a
+// Test AuthFactorDriver::IsFullAuthSupported. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST_F(AuthFactorDriverManagerTest, IsFullAuthAllowed) {
+TEST_F(AuthFactorDriverManagerTest, IsFullAuthSupported) {
   auto decrypt_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kDecrypt);
+    return manager_.GetDriver(type).IsFullAuthSupported(AuthIntent::kDecrypt);
   };
   auto vonly_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kVerifyOnly);
+    return manager_.GetDriver(type).IsFullAuthSupported(
+        AuthIntent::kVerifyOnly);
   };
   auto webauthn_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kWebAuthn);
+    return manager_.GetDriver(type).IsFullAuthSupported(AuthIntent::kWebAuthn);
   };
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(false));
 
@@ -143,18 +144,19 @@ TEST_F(AuthFactorDriverManagerTest, IsFullAuthAllowed) {
                 "All types of AuthFactorType are not all included here");
 }
 
-// Test AuthFactorDriver::IsLightAuthAllowed. We do this here instead of in a
+// Test AuthFactorDriver::IsLightAuthSupported. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST_F(AuthFactorDriverManagerTest, IsLightAuthAllowed) {
+TEST_F(AuthFactorDriverManagerTest, IsLightAuthSupported) {
   auto decrypt_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kDecrypt);
+    return manager_.GetDriver(type).IsLightAuthSupported(AuthIntent::kDecrypt);
   };
   auto vonly_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kVerifyOnly);
+    return manager_.GetDriver(type).IsLightAuthSupported(
+        AuthIntent::kVerifyOnly);
   };
   auto webauthn_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kWebAuthn);
+    return manager_.GetDriver(type).IsLightAuthSupported(AuthIntent::kWebAuthn);
   };
 
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kPassword), IsFalse());
@@ -184,6 +186,69 @@ TEST_F(AuthFactorDriverManagerTest, IsLightAuthAllowed) {
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kUnspecified), IsFalse());
   EXPECT_THAT(vonly_allowed(AuthFactorType::kUnspecified), IsFalse());
   EXPECT_THAT(webauthn_allowed(AuthFactorType::kUnspecified), IsFalse());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::GetIntentConfigurability. We do this here instead of
+// in a per-driver test because the check is trivial enough that one test is
+// simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, GetIntentConfigurability) {
+  // Helpers for wrapping the different call parameters for
+  // GetIntentConfigurability and for the Eq matchers. This makes the
+  // EXPECT_THAT calls a little more table-like and easier to read.
+  auto decrypt = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetIntentConfigurability(
+        AuthIntent::kDecrypt);
+  };
+  auto vonly = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetIntentConfigurability(
+        AuthIntent::kVerifyOnly);
+  };
+  auto webauthn = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetIntentConfigurability(
+        AuthIntent::kWebAuthn);
+  };
+  auto IsNotConfigurable = []() {
+    return Eq(AuthFactorDriver::IntentConfigurability::kNotConfigurable);
+  };
+  auto IsEnabledByDefault = []() {
+    return Eq(AuthFactorDriver::IntentConfigurability::kEnabledByDefault);
+  };
+  auto IsDisabledByDefault = []() {
+    return Eq(AuthFactorDriver::IntentConfigurability::kDisabledByDefault);
+  };
+
+  EXPECT_THAT(decrypt(AuthFactorType::kPassword), IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kPin), IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kCryptohomeRecovery),
+              IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kKiosk), IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kSmartCard), IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kLegacyFingerprint), IsNotConfigurable());
+  EXPECT_THAT(decrypt(AuthFactorType::kFingerprint), IsDisabledByDefault());
+
+  EXPECT_THAT(vonly(AuthFactorType::kPassword), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kPin), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kCryptohomeRecovery), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kKiosk), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kSmartCard), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kLegacyFingerprint), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kFingerprint), IsEnabledByDefault());
+
+  EXPECT_THAT(webauthn(AuthFactorType::kPassword), IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kPin), IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kCryptohomeRecovery),
+              IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kKiosk), IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kSmartCard), IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kLegacyFingerprint),
+              IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kFingerprint), IsNotConfigurable());
+
+  EXPECT_THAT(decrypt(AuthFactorType::kUnspecified), IsNotConfigurable());
+  EXPECT_THAT(vonly(AuthFactorType::kUnspecified), IsNotConfigurable());
+  EXPECT_THAT(webauthn(AuthFactorType::kUnspecified), IsNotConfigurable());
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

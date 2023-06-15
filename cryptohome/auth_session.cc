@@ -477,7 +477,7 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   std::vector<AuthIntent> authorized_for;
   for (AuthIntent intent : kAuthorizedIntentsForFullAuth) {
-    if (factor_driver.IsFullAuthAllowed(intent)) {
+    if (factor_driver.IsFullAuthSupported(intent)) {
       authorized_for.push_back(intent);
     }
   }
@@ -1197,7 +1197,7 @@ void AuthSession::AuthenticateAuthFactor(
       }
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
-      if (!verifier || !factor_driver.IsLightAuthAllowed(auth_intent_)) {
+      if (!verifier || !factor_driver.IsLightAuthSupported(auth_intent_)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -1246,7 +1246,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
-      if (verifier && factor_driver.IsLightAuthAllowed(auth_intent_)) {
+      if (verifier && factor_driver.IsLightAuthSupported(auth_intent_)) {
         CryptohomeStatusOr<AuthInput> auth_input =
             CreateAuthInputForAuthentication(auth_input_proto,
                                              verifier->auth_factor_metadata());
@@ -1267,7 +1267,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // If we get here, we need to use full authentication. Make sure that it
       // is supported for this type of auth factor and intent.
-      if (!factor_driver.IsFullAuthAllowed(auth_intent_)) {
+      if (!factor_driver.IsFullAuthSupported(auth_intent_)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionSingleLabelFullAuthNotSupportedAuthAuthFactor),
@@ -1361,7 +1361,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // If we get here, we need to use full authentication. Make sure that it
       // is supported for this type of auth factor and intent.
-      if (!factor_driver.IsFullAuthAllowed(auth_intent_)) {
+      if (!factor_driver.IsFullAuthSupported(auth_intent_)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMultiLabelFullAuthNotSupportedAuthAuthFactor),

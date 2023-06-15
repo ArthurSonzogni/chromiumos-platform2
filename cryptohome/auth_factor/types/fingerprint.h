@@ -38,6 +38,9 @@ class FingerprintAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<auth_factor::FingerprintMetadata>,
+      public AfDriverWithConfigurableIntents<
+          AuthIntentSequence<AuthIntent::kVerifyOnly>,
+          AuthIntentSequence<AuthIntent::kDecrypt>>,
       public AfDriverNoCredentialVerifier {
  public:
   FingerprintAuthFactorDriver(
@@ -58,7 +61,7 @@ class FingerprintAuthFactorDriver final
   void PrepareForAuthenticate(
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
-  bool IsFullAuthAllowed(AuthIntent auth_intent) const override;
+  bool IsFullAuthSupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   bool IsDelaySupported() const override;

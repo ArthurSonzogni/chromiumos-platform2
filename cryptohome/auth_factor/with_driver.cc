@@ -50,7 +50,8 @@ base::flat_set<AuthIntent> GetSupportedIntents(
   // available.
   base::flat_set<AuthIntent> supported_intents;
   for (AuthIntent intent : kAllAuthIntents) {
-    if (driver.IsFullAuthAllowed(intent) || driver.IsLightAuthAllowed(intent)) {
+    if (driver.IsFullAuthSupported(intent) ||
+        driver.IsLightAuthSupported(intent)) {
       supported_intents.insert(intent);
     }
   }

@@ -17,7 +17,7 @@ bool PasswordAuthFactorDriver::IsSupportedByHardware() const {
   return true;
 }
 
-bool PasswordAuthFactorDriver::IsLightAuthAllowed(
+bool PasswordAuthFactorDriver::IsLightAuthSupported(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
 }

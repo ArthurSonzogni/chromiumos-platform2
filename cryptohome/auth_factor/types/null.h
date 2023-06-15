@@ -30,6 +30,8 @@ class NullAuthFactorDriver final
       public AfDriverWithBlockTypes<>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthUnsupported,
+      public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
+                                             AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
       public AfDriverNoExpiration {
