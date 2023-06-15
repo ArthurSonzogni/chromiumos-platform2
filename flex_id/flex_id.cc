@@ -22,6 +22,8 @@ namespace {
 
 constexpr char kFlexIdPrefix[] = "Flex-";
 constexpr char kFlexIdFile[] = "var/lib/flex_id/flex_id";
+constexpr char kPreservedFlexIdFile[] =
+    "mnt/stateful_partition/unencrypted/preserve/flex/flex_id";
 constexpr char kClientIdFile[] = "var/lib/client_id/client_id";
 constexpr char kUuidPath[] = "proc/sys/kernel/random/uuid";
 constexpr char kLegacyClientIdFile[] =
@@ -129,6 +131,19 @@ std::optional<std::string> FlexIdGenerator::ReadFlexId() {
   }
 
   return flex_id;
+}
+
+std::optional<std::string> FlexIdGenerator::TryPreservedFlexId() {
+  std::optional<std::string> preserved_flex_id;
+  const base::FilePath preserved_flex_id_path =
+      base_path_.Append(kPreservedFlexIdFile);
+
+  if (!(preserved_flex_id = ReadAndTrimFile(preserved_flex_id_path)))
+    return std::nullopt;
+  if (preserved_flex_id.value().empty())
+    return std::nullopt;
+
+  return preserved_flex_id;
 }
 
 std::optional<std::string> FlexIdGenerator::TryClientId() {
@@ -274,7 +289,9 @@ std::optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
     return flex_id;
   }
 
-  if ((flex_id = TryClientId())) {
+  if ((flex_id = TryPreservedFlexId())) {
+    LOG(INFO) << "Using preserved flex_id for flex_id: " << flex_id.value();
+  } else if ((flex_id = TryClientId())) {
     LOG(INFO) << "Using client_id for flex_id: " << flex_id.value();
   } else if ((flex_id = TryLegacy())) {
     LOG(INFO) << "Using CloudReady legacy for flex_id: " << flex_id.value();

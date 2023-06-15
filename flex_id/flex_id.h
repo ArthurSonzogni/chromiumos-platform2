@@ -25,6 +25,11 @@ class FlexIdGenerator {
   // the flex_id.
   std::optional<std::string> ReadFlexId();
 
+  // Reads the contents of
+  // mnt/stateful_partition/unencrypted/preserve/flex/flex_id which is
+  // where the flex_id is preserved when performing a powerwash.
+  std::optional<std::string> TryPreservedFlexId();
+
   // Reads the contents of var/lib/client_id/client_id which is
   // what flex_id was originally called.
   std::optional<std::string> TryClientId();

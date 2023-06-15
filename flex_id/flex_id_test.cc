@@ -14,6 +14,7 @@ namespace flex_id {
 namespace {
 
 constexpr char kGoodFlexId[] = "good_example_flex_id";
+constexpr char kPreservedFlexId[] = "an_oldie_but_a_goodie_flex_id";
 constexpr char kClientId[] = "reven-client_id";
 constexpr char kLegacyClientId[] = "CloudReady-aa:aa:aa:11:22:33";
 constexpr char kUuid[] = "fc71ace7-5fbb-4108-a2f5-b48a98635aeb";
@@ -58,6 +59,14 @@ class FlexIdTest : public ::testing::Test {
                           modalias));
   }
 
+  void CreatePreservedFlexId() {
+    base::FilePath preserved_flex_id_path =
+        test_path_.Append("mnt/stateful_partition/unencrypted/preserve/flex");
+    CHECK(base::CreateDirectory(preserved_flex_id_path));
+    CHECK(base::WriteFile(preserved_flex_id_path.Append("flex_id"),
+                          kPreservedFlexId));
+  }
+
   void CreateClientId() {
     base::FilePath client_id_path = test_path_.Append("var/lib/client_id");
     CHECK(base::CreateDirectory(client_id_path));
@@ -92,6 +101,13 @@ class FlexIdTest : public ::testing::Test {
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
 };
+
+TEST_F(FlexIdTest, PreservedFlexId) {
+  EXPECT_FALSE(flex_id_generator_->TryPreservedFlexId());
+
+  CreatePreservedFlexId();
+  EXPECT_EQ(flex_id_generator_->TryPreservedFlexId(), kPreservedFlexId);
+}
 
 TEST_F(FlexIdTest, ClientId) {
   EXPECT_FALSE(flex_id_generator_->TryClientId());
@@ -225,6 +241,12 @@ TEST_F(FlexIdTest, GenerateAndSaveFlexId) {
   CreateClientId();
   EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
   EXPECT_EQ(flex_id_generator_->ReadFlexId().value(), kClientId);
+
+  // preserved flex_id should take priority over a client_id
+  DeleteFlexId();
+  CreatePreservedFlexId();
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(), kPreservedFlexId);
 }
 
 }  // namespace flex_id
