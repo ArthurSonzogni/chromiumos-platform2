@@ -14,7 +14,7 @@ use libc::{c_void, eventfd, read, write, POLLIN};
 use serde::{Deserialize, Serialize};
 
 use crate::generate_scoped_event;
-use crate::sys::unix::duration_to_timespec;
+use crate::sys::duration_to_timespec;
 use crate::sys::{
     errno_result, AsRawDescriptor, FromRawDescriptor, IntoRawDescriptor, RawDescriptor, Result,
     SafeDescriptor,

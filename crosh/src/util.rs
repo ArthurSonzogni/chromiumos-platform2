@@ -23,7 +23,7 @@ use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::chromeos;
 use libchromeos::sys::error;
-use libchromeos::sys::unix::{clear_signal_handler, register_signal_handler};
+use libchromeos::sys::{clear_signal_handler, register_signal_handler};
 use regex::Regex;
 
 // 25 seconds is the default timeout for dbus-send.

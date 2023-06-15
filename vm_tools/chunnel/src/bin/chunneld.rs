@@ -20,7 +20,7 @@ use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::unix::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
+use libchromeos::sys::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use libchromeos::sys::{block_signal, pipe};
 use libchromeos::syslog;
 use log::{error, warn};
@@ -61,7 +61,7 @@ const IDENT: &str = "chunneld";
 #[derive(Debug)]
 enum Error {
     BindVsock(io::Error),
-    BlockSigpipe(libchromeos::sys::signal::Error),
+    BlockSigpipe(libchromeos::sys::SignalError),
     ConnectChunnelFailure(String),
     CreateProtobusService(dbus::Error),
     DBusGetSystemBus(DBusError),

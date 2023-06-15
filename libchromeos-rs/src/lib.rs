@@ -47,7 +47,7 @@ use std::os::unix::io::FromRawFd;
 use std::os::unix::net::UnixDatagram;
 
 use libc::{socketpair, AF_UNIX, FIOCLEX, SOCK_SEQPACKET};
-use sys::unix::ioctl;
+use sys::ioctl;
 
 pub fn new_seqpacket_pair() -> sys::Result<(UnixDatagram, UnixDatagram)> {
     let mut fds = [0, 0];

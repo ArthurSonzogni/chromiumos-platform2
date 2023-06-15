@@ -33,7 +33,7 @@ use std::sync::Arc;
 use std::thread;
 
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::unix::vsock::*;
+use libchromeos::sys::vsock::*;
 use libchromeos::syslog;
 
 const DEFAULT_BUFFER_SIZE: usize = 8192;

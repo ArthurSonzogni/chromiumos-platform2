@@ -44,14 +44,14 @@ use libchromeos::sys::net::TcpSocket;
 use libchromeos::sys::net::UnixSeqpacket;
 use libchromeos::sys::net::UnixSeqpacketListener;
 use libchromeos::sys::pipe;
-use libchromeos::sys::unix::vsock::AddrParseError;
-use libchromeos::sys::unix::vsock::SocketAddr as VSocketAddr;
-use libchromeos::sys::unix::vsock::ToSocketAddr;
-use libchromeos::sys::unix::vsock::VsockCid;
-use libchromeos::sys::unix::vsock::VsockListener;
-use libchromeos::sys::unix::vsock::VsockSocket;
-use libchromeos::sys::unix::vsock::VsockStream;
-use libchromeos::sys::unix::vsock::VMADDR_PORT_ANY;
+use libchromeos::sys::vsock::AddrParseError;
+use libchromeos::sys::vsock::SocketAddr as VSocketAddr;
+use libchromeos::sys::vsock::ToSocketAddr;
+use libchromeos::sys::vsock::VsockCid;
+use libchromeos::sys::vsock::VsockListener;
+use libchromeos::sys::vsock::VsockSocket;
+use libchromeos::sys::vsock::VsockStream;
+use libchromeos::sys::vsock::VMADDR_PORT_ANY;
 use thiserror::Error as ThisError;
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
@@ -730,8 +730,8 @@ pub mod tests {
     use assert_matches::assert_matches;
     use libchromeos::scoped_path::get_temp_path;
     use libchromeos::scoped_path::ScopedPath;
-    use libchromeos::sys::unix::vsock::VsockCid;
-    use libchromeos::sys::unix::vsock::VMADDR_PORT_ANY;
+    use libchromeos::sys::vsock::VsockCid;
+    use libchromeos::sys::vsock::VMADDR_PORT_ANY;
 
     use super::*;
 

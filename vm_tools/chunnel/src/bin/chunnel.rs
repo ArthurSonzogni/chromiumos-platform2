@@ -23,7 +23,7 @@ const IDENT: &str = "chunnel";
 #[remain::sorted]
 #[derive(Debug)]
 enum Error {
-    BlockSigpipe(libchromeos::sys::unix::signal::Error),
+    BlockSigpipe(libchromeos::sys::SignalError),
     ConnectSocket(StreamSocketError),
     Forward(ForwarderError),
     PollContextDelete(libchromeos::sys::Error),

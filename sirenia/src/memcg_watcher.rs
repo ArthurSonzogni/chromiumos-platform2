@@ -41,7 +41,7 @@ use libc::CLOCK_MONOTONIC;
 use libc::IN_MODIFY;
 use libc::O_NONBLOCK;
 use libc::TFD_CLOEXEC;
-use libchromeos::sys::unix::round_up_to_page_size;
+use libchromeos::sys::round_up_to_page_size;
 use libsirenia::linux::events::EventMultiplexer;
 use libsirenia::linux::events::EventSource;
 use libsirenia::linux::events::Mutator;

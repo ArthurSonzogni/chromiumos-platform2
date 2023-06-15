@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
-use libchromeos::sys::unix::register_signal_handler;
+use libchromeos::sys::register_signal_handler;
 use libchromeos::sys::{debug, error, info, syslog};
 use tiny_http::{ClientConnection, Stream};
 

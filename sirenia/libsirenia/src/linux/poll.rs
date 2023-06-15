@@ -32,8 +32,8 @@ use libc::EPOLL_CLOEXEC;
 use libc::EPOLL_CTL_ADD;
 use libc::EPOLL_CTL_DEL;
 use libc::EPOLL_CTL_MOD;
+use libchromeos::sys::errno_result;
 use libchromeos::sys::handle_eintr_errno;
-use libchromeos::sys::unix::errno_result;
 use libchromeos::sys::Result;
 use log::warn;
 

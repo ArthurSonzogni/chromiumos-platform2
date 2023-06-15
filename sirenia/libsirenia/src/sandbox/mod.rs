@@ -263,7 +263,7 @@ mod tests {
     use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
-    use libchromeos::sys::unix::pipe;
+    use libchromeos::sys::pipe;
 
     use super::*;
     use crate::transport::CROS_CONNECTION_ERR_FD;

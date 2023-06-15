@@ -472,7 +472,7 @@ mod tests {
     use std::rc::Rc;
 
     use libchromeos::deprecated::EventFd;
-    use libchromeos::sys::unix::pipe;
+    use libchromeos::sys::pipe;
 
     use super::*;
 

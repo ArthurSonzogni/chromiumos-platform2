@@ -10,8 +10,8 @@ use std::env::current_exe;
 use getopts;
 use getopts::Matches;
 use getopts::Options;
-use libchromeos::sys::unix::vsock::SocketAddr as VSocketAddr;
-use libchromeos::sys::unix::vsock::VsockCid;
+use libchromeos::sys::vsock::SocketAddr as VSocketAddr;
+use libchromeos::sys::vsock::VsockCid;
 use thiserror::Error as ThisError;
 
 use crate::build_info::BUILD_TIMESTAMP;
