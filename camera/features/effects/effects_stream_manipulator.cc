@@ -222,6 +222,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     StreamContext* stream_context = nullptr;
     uint32_t frame_number = 0;
     std::optional<CameraBufferPool::Buffer> yuv_buffer;
+    std::optional<CameraBufferPool::Buffer> yuv_buffer_copy;
+    SharedImage yuv_image_copy;
     bool yuv_stream_appended = false;
     bool blob_result_pending = false;
     bool blob_intermediate_yuv_pending = false;
@@ -301,6 +303,10 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
                    GLuint texture,
                    uint32_t width,
                    uint32_t height);
+  bool ProcessStillCapture(uint32_t frame_number,
+                           const Camera3StreamBuffer& result_buffer,
+                           const SharedImage* result_image,
+                           bool* result_buffer_appended);
 
   std::unique_ptr<ReloadableConfigFile> config_;
   base::FilePath config_file_path_;
@@ -650,7 +656,9 @@ bool EffectsStreamManipulatorImpl::OnConfiguredStreams(
               .height = blob_stream->height,
               .format = base::checked_cast<uint32_t>(blob_stream->format),
               .usage = blob_stream->usage,
-              .max_num_buffers = blob_stream->max_buffers,
+              // Double the maximum number of buffers since we may make a copy
+              // of each YUV buffer.
+              .max_num_buffers = blob_stream->max_buffers * 2,
           });
       // If we created the YUV stream for this blob stream, don't forward it to
       // the client.
@@ -860,28 +868,14 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       continue;
     }
 
-    // If this buffer is appended by us as the YUV input for a blob stream, we
-    // will not return it to the client.
-    StreamContext* blob_stream_context = nullptr;
-    for (auto& s : stream_contexts_) {
-      if (s->yuv_stream_for_blob == result_buffer.stream()) {
-        blob_stream_context = s.get();
-        break;
-      }
-    }
-
     bool yuv_stream_appended = false;
-    if (blob_stream_context) {
-      if (CaptureContext* blob_capture_context =
-              blob_stream_context->GetCaptureContext(result.frame_number())) {
-        yuv_stream_appended = blob_capture_context->yuv_stream_appended;
-        if (!last_set_effect_config_.HasEnabledEffects() &&
-            blob_capture_context->blob_intermediate_yuv_pending) {
-          still_capture_processor_->QueuePendingYuvImage(
-              result.frame_number(), *result_buffer.buffer(), base::ScopedFD());
-          blob_capture_context->blob_intermediate_yuv_pending = false;
-        }
-      }
+    if (!last_set_effect_config_.HasEnabledEffects() &&
+        !ProcessStillCapture(result.frame_number(), result_buffer,
+                             /*result_image=*/nullptr, &yuv_stream_appended)) {
+      LOGF(ERROR) << "Failed to process YUV for still capture on frame "
+                  << result.frame_number();
+      // TODO(kamesan): Fail the blob capture queued to the still capture
+      // processor.
     }
 
     auto [it, inserted] =
@@ -1092,26 +1086,14 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
 
   base::AutoLock lock(stream_contexts_lock_);
 
-  // If this buffer is the YUV input for a blob stream, feed it into the still
-  // capture processor.
-  StreamContext* blob_stream_context = nullptr;
-  for (auto& s : stream_contexts_) {
-    if (s->yuv_stream_for_blob == result_buffer.stream) {
-      blob_stream_context = s.get();
-      break;
-    }
-  }
-  if (blob_stream_context) {
-    if (CaptureContext* blob_capture_context =
-            blob_stream_context->GetCaptureContext(
-                process_context->frame_number)) {
-      if (blob_capture_context->blob_intermediate_yuv_pending) {
-        still_capture_processor_->QueuePendingYuvImage(
-            process_context->frame_number, *result_buffer.buffer,
-            base::ScopedFD());
-        blob_capture_context->blob_intermediate_yuv_pending = false;
-      }
-    }
+  if (!ProcessStillCapture(process_context->frame_number,
+                           process_context->result_buffer,
+                           &process_context->yuv_image,
+                           &process_context->result_buffer_appended)) {
+    LOGF(ERROR) << "Failed to process YUV for still capture on frame "
+                << process_context->frame_number;
+    // TODO(kamesan): Fail the blob capture queued to the still capture
+    // processor.
   }
 
   if (StreamContext* stream_context = GetStreamContext(result_buffer.stream)) {
@@ -1341,6 +1323,91 @@ void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
   EffectsMetricsData metrics_copy(metrics_);
   metrics_ = EffectsMetricsData();
   metrics_uploader_->UploadMetricsData(std::move(metrics_copy));
+}
+
+bool EffectsStreamManipulatorImpl::ProcessStillCapture(
+    uint32_t frame_number,
+    const Camera3StreamBuffer& result_buffer,
+    const SharedImage* result_image,
+    bool* result_buffer_appended) {
+  stream_contexts_lock_.AssertAcquired();
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  TRACE_EFFECTS("frame_number", frame_number);
+
+  StreamContext* stream_context = nullptr;
+  for (auto& s : stream_contexts_) {
+    if (s->yuv_stream_for_blob == result_buffer.stream()) {
+      stream_context = s.get();
+      break;
+    }
+  }
+  if (!stream_context) {
+    return true;
+  }
+  CaptureContext* capture_context =
+      stream_context->GetCaptureContext(frame_number);
+  if (!capture_context) {
+    return true;
+  }
+  *result_buffer_appended = capture_context->yuv_stream_appended;
+
+  DCHECK(capture_context->blob_intermediate_yuv_pending);
+  capture_context->blob_intermediate_yuv_pending = false;
+
+  buffer_handle_t queued_buffer = *result_buffer.buffer();
+  base::ScopedFD release_fence;
+
+  // If the still capture YUV is not appended, make a copy for processing
+  // blob so we can return it at the same time.
+  if (!capture_context->yuv_stream_appended) {
+    // Create shared image on the result buffer if there's not one.
+    SharedImage yuv_image;
+    if (!result_image) {
+      yuv_image = SharedImage::CreateFromBuffer(*result_buffer.buffer(),
+                                                Texture2D::Target::kTarget2D,
+                                                /*separate_yuv_textures=*/true);
+      if (!yuv_image.IsValid()) {
+        LOGF(ERROR) << "Failed to create YUV shared image for frame "
+                    << frame_number;
+        metrics_.RecordError(CameraEffectError::kGPUImageInitializationFailed);
+        return false;
+      }
+      result_image = &yuv_image;
+    }
+
+    capture_context->yuv_buffer_copy =
+        stream_context->yuv_buffer_pool->RequestBuffer();
+    if (!capture_context->yuv_buffer_copy) {
+      LOGF(ERROR) << "Failed to allocate YUV buffer for frame " << frame_number;
+      metrics_.RecordError(CameraEffectError::kBufferAllocationError);
+      return false;
+    }
+    capture_context->yuv_image_copy = SharedImage::CreateFromBuffer(
+        *capture_context->yuv_buffer_copy->handle(),
+        Texture2D::Target::kTarget2D,
+        /*separate_yuv_textures=*/true);
+    if (!capture_context->yuv_image_copy.IsValid()) {
+      LOGF(ERROR) << "Failed to initialize GPU image for frame "
+                  << frame_number;
+      metrics_.RecordError(CameraEffectError::kGPUImageInitializationFailed);
+      return false;
+    }
+    if (!image_processor_->YUVToYUV(
+            result_image->y_texture(), result_image->uv_texture(),
+            capture_context->yuv_image_copy.y_texture(),
+            capture_context->yuv_image_copy.uv_texture())) {
+      LOGF(ERROR) << "Failed to copy image with GPU for frame " << frame_number;
+      metrics_.RecordError(CameraEffectError::kYUVConversionFailed);
+      return false;
+    }
+
+    queued_buffer = *capture_context->yuv_buffer_copy->handle();
+    release_fence = EglFence().GetNativeFd();
+  }
+
+  still_capture_processor_->QueuePendingYuvImage(frame_number, queued_buffer,
+                                                 std::move(release_fence));
+  return true;
 }
 
 }  // namespace cros
