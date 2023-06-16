@@ -135,7 +135,7 @@
       <tp:docstring>
         Destroys a disk image.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DestroyDiskImageRequest"/>
@@ -577,7 +577,7 @@
       <tp:docstring>
         Stops VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::StopVmRequest"/>
@@ -594,7 +594,7 @@
       <tp:docstring>
         Stops all running VMs.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
     <method name="SuspendVm">
       <tp:docstring>

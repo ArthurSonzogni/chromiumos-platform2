@@ -30,6 +30,7 @@
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
+#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools::concierge {
 
@@ -60,7 +61,6 @@ class PluginVm final : public VmBaseImpl {
   ~PluginVm() override;
 
   // VmBaseImpl overrides.
-  bool Shutdown() override;
   VmBaseImpl::Info GetInfo() const override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm) override {
@@ -118,6 +118,10 @@ class PluginVm final : public VmBaseImpl {
     return 0;
   }
 
+ protected:
+  // VmBaseImpl overrides.
+  std::vector<StopStep> GetStopSteps(StopType type) override;
+
  private:
   explicit PluginVm(Config config);
   PluginVm(const PluginVm&) = delete;
@@ -132,12 +136,37 @@ class PluginVm final : public VmBaseImpl {
   bool CreateUsbListeningSocket();
   void HandleUsbControlResponse();
 
-  // Attempt to stop VM.
-  bool StopVm();
-
   void OnListenFileCanReadWithoutBlocking();
   void OnVmFileCanReadWithoutBlocking();
   void OnVmFileCanWriteWithoutBlocking();
+
+  // Gets the sequence to cleanly shutdown the VM.
+  std::vector<StopStep> GetShutdownSteps();
+
+  // Gets the sequence to suspend the VM.
+  std::vector<StopStep> GetSuspendSteps();
+
+  // Cleans up resources used by the VM. Called before shutdown or if the VM
+  // exited unexpectedly.
+  void ResourceCleanup(base::OnceClosure callback);
+
+  // Initiates shutdown via the pvm dispatcher. Runs callback when the shutdown
+  // response is received from the dispatcher.
+  void InitiateShutdownViaPvmDispatcher(base::OnceClosure callback);
+
+  // Run upon receiving a shutdown response from the pvm dispatcher.
+  void OnDispatcherShutdownResponse(base::OnceClosure callback,
+                                    pvm::dispatcher::VmOpResult result);
+
+  // Initiates suspend via the pvm dispatcher. Runss callback when the suspend
+  // response is received from the dispatcher or the timeout is reached.
+  void InitiateSuspendViaPvmDispatcher(std::optional<base::TimeTicks> deadline,
+                                       base::OnceClosure callback);
+
+  // Run upon receiving a suspend response from the pvm dispatcher
+  void OnDispatcherSuspendResponse(base::TimeTicks deadline,
+                                   base::OnceClosure callback,
+                                   pvm::dispatcher::VmOpResult result);
 
   // This VM ID. It is used to communicate with the dispatcher to request
   // VM state changes.
@@ -187,6 +216,9 @@ class PluginVm final : public VmBaseImpl {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> usb_vm_read_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       usb_vm_write_watcher_;
+
+  // This should be the last member of the class.
+  base::WeakPtrFactory<PluginVm> weak_ptr_factory_;
 };
 
 }  // namespace vm_tools::concierge

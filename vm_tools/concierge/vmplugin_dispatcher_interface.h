@@ -45,12 +45,14 @@ bool IsVmShutDown(scoped_refptr<dbus::Bus> bus,
                   const VmId& vm_id,
                   bool* result);
 
-VmOpResult ShutdownVm(scoped_refptr<dbus::Bus> bus,
-                      dbus::ObjectProxy* proxy,
-                      const VmId& vm_id);
-VmOpResult SuspendVm(scoped_refptr<dbus::Bus> bus,
-                     dbus::ObjectProxy* proxy,
-                     const VmId& vm_id);
+void ShutdownVm(scoped_refptr<dbus::Bus> bus,
+                dbus::ObjectProxy* proxy,
+                const VmId& vm_id,
+                base::OnceCallback<void(VmOpResult)> callback);
+void SuspendVm(scoped_refptr<dbus::Bus> bus,
+               dbus::ObjectProxy* proxy,
+               const VmId& vm_id,
+               base::OnceCallback<void(VmOpResult)> callback);
 
 void RegisterVmToolsChangedCallbacks(
     dbus::ObjectProxy* proxy,

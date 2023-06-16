@@ -64,9 +64,6 @@ constexpr int64_t kStartTerminaTimeoutSeconds = 150;
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 10;
 
-// How long to wait before timing out on child process exits.
-constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
-
 // The maximum GPU shader cache disk usage, interpreted by Mesa. For details
 // see MESA_GLSL_CACHE_MAX_SIZE at https://docs.mesa3d.org/envvars.html.
 constexpr char kGpuCacheSizeString[] = "50M";
@@ -120,10 +117,11 @@ TerminaVm::TerminaVm(Config config)
       vm_permission_service_proxy_(config.vm_permission_service_proxy),
       classification_(config.classification),
       storage_ballooning_(config.storage_ballooning),
-      socket_(std::move(config.socket)) {}
+      socket_(std::move(config.socket)),
+      weak_ptr_factory_(this) {}
 
 TerminaVm::~TerminaVm() {
-  Shutdown();
+  ResourceCleanup(base::DoNothing());
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::Create(Config config) {
@@ -353,20 +351,30 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
   return false;
 }
 
-grpc::Status TerminaVm::SendVMShutdownMessage() {
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kShutdownTimeoutSeconds, GPR_TIMESPAN)));
-
-  vm_tools::EmptyMessage empty;
-  return stub_->Shutdown(&ctx, empty, &empty);
+std::vector<VmBaseImpl::StopStep> TerminaVm::GetStopSteps(StopType) {
+  // For Termina VMs the stop reason doesn't matter. The shutdown sequence is
+  // always the same.
+  std::vector<StopStep> steps;
+  steps.emplace_back(base::BindOnce(&TerminaVm::ResourceCleanup,
+                                    weak_ptr_factory_.GetWeakPtr()),
+                     base::Milliseconds(0));
+  steps.emplace_back(base::BindOnce(&TerminaVm::SendShutdownToMaitred,
+                                    weak_ptr_factory_.GetWeakPtr()),
+                     kChildExitTimeout);
+  steps.emplace_back(
+      base::BindOnce(&TerminaVm::StopViaCrosvm, weak_ptr_factory_.GetWeakPtr()),
+      kChildExitTimeout);
+  steps.emplace_back(base::BindOnce(&TerminaVm::KillVmProcess,
+                                    weak_ptr_factory_.GetWeakPtr(), SIGTERM),
+                     kChildExitTimeout);
+  steps.emplace_back(base::BindOnce(&TerminaVm::KillVmProcess,
+                                    weak_ptr_factory_.GetWeakPtr(), SIGKILL),
+                     kChildExitTimeout);
+  return steps;
 }
 
-bool TerminaVm::Shutdown() {
-  // Notify arc-patchpanel that the VM is down.
-  // This should run before the process existence check below since we still
-  // want to release the network resources on crash.
+void TerminaVm::ResourceCleanup(base::OnceClosure callback) {
+  // Notify patchpanel that the VM is down.
   // Note the client will only be null during testing.
   if (network_client_ &&
       !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
@@ -378,58 +386,49 @@ bool TerminaVm::Shutdown() {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
   }
 
-  // Do a check here to make sure the process is still around.  It may have
-  // crashed and we don't want to be waiting around for an RPC response that's
-  // never going to come.  kill with a signal value of 0 is explicitly
-  // documented as a way to check for the existence of a process.
-  if (!CheckProcessExists(process_.pid())) {
-    // The process is already gone.
-    process_.Release();
-    return true;
+  std::move(callback).Run();
+}
+
+void TerminaVm::SendShutdownToMaitred(base::OnceClosure callback) {
+  shutdown_request_context_ = std::make_unique<grpc::ClientContext>();
+  shutdown_request_context_->set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kShutdownTimeoutSeconds, GPR_TIMESPAN)));
+  shutdown_request_message_ = std::make_unique<vm_tools::EmptyMessage>();
+
+  // Ideally this could just be passed to the grpc callback, but grpc only
+  // accepts a std::function which does not allow for additional parameters.
+  on_maitred_shutdown_response_received_ = std::move(callback);
+
+  stub_->async()->Shutdown(
+      shutdown_request_context_.get(), shutdown_request_message_.get(),
+      shutdown_request_message_.get(), [this](grpc::Status status) {
+        // This lambda runs on the gRPC thread. Posting a task to a task runner
+        // is thread safe, and capturing 'this' is also safe because the VM
+        // class enforces that the VM is properly stopped before destruction.
+        // This VM cannot be properly shutdown until this lambda finishes
+        // running.
+
+        // TODO(b/289456807): Switch to using brillo's async handle
+        main_thread_task_runner_->PostTask(
+            FROM_HERE,
+            base::BindOnce(&TerminaVm::OnGrpcShutdownResponseOrTimeout,
+                           weak_ptr_factory_.GetWeakPtr(), status));
+      });
+  return;
+}
+
+void TerminaVm::OnGrpcShutdownResponseOrTimeout(grpc::Status status) {
+  if (!status.ok()) {
+    LOG(WARNING) << "Shutdown RPC failed for VM " << vsock_cid_
+                 << " with error "
+                 << "code " << status.error_code() << ": "
+                 << status.error_message();
+  } else {
+    LOG(INFO) << "Termina VM graceful shutdown response received.";
   }
 
-  grpc::Status status = SendVMShutdownMessage();
-  // brillo::ProcessImpl doesn't provide a timed wait function and while the
-  // Shutdown RPC may have been successful we can't really trust crosvm to
-  // actually exit.  This may result in an untimed wait() blocking indefinitely.
-  // Instead, do a timed wait here and only return success if the process
-  // _actually_ exited as reported by the kernel, which is really the only
-  // thing we can trust here.
-  if (status.ok() && WaitForChild(process_.pid(), kChildExitTimeout)) {
-    process_.Release();
-    return true;
-  }
-
-  LOG(WARNING) << "Shutdown RPC failed for VM " << vsock_cid_ << " with error "
-               << "code " << status.error_code() << ": "
-               << status.error_message();
-
-  // Try to shut it down via the crosvm socket.
-  Stop();
-
-  // We can't actually trust the exit codes that crosvm gives us so just see if
-  // it exited.
-  if (WaitForChild(process_.pid(), kChildExitTimeout)) {
-    process_.Release();
-    return true;
-  }
-
-  LOG(WARNING) << "Failed to stop VM " << vsock_cid_ << " via crosvm socket";
-
-  // Kill the process with SIGTERM.
-  if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
-    return true;
-  }
-
-  LOG(WARNING) << "Failed to kill VM " << vsock_cid_ << " with SIGTERM";
-
-  // Kill it with fire.
-  if (process_.Kill(SIGKILL, kChildExitTimeout.InSeconds())) {
-    return true;
-  }
-
-  LOG(ERROR) << "Failed to kill VM " << vsock_cid_ << " with SIGKILL";
-  return false;
+  std::move(on_maitred_shutdown_response_received_).Run();
 }
 
 bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,

@@ -92,6 +92,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Handles a SIGTERM.
   void HandleSigterm();
 
+  // Finishes handling sigterm after is stopped.
+  void SigtermVmStopComplete(bool success);
+
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   //
   // Returns false if any preconditions are not met for Start*Vm.
@@ -132,13 +135,23 @@ class Service final : public org::chromium::VmConciergeInterface,
       const vm_tools::concierge::StartArcVmRequest& request) override;
 
   // Handles a request to stop a VM.
-  StopVmResponse StopVm(const StopVmRequest& request) override;
+  void StopVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+          response_sender,
+      const StopVmRequest& request) override;
 
   // Handles a request to stop a VM.
-  bool StopVmInternal(const VmId& vm_id, VmStopReason reason);
-  // Wrapper to post |StopVmInternal| as a task. Only difference is that we
-  // ignore the return value here.
-  void StopVmInternalAsTask(VmId vm_id, VmStopReason reason);
+  // Runs callback when the operation is complete with true if the VM
+  // successfully stopped, or false otherwise.
+  void StopVmInternal(
+      const VmId& vm_id,
+      VmStopReason reason,
+      base::OnceCallback<void(VmBaseImpl::StopResult)> callback);
+  void OnStopVmComplete(
+      const VmId vm_id,
+      VmStopReason reason,
+      base::OnceCallback<void(VmBaseImpl::StopResult)> callback,
+      VmBaseImpl::StopResult result);
 
   // Handles a request to suspend a VM.
   SuspendVmResponse SuspendVm(const SuspendVmRequest& request) override;
@@ -147,8 +160,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   ResumeVmResponse ResumeVm(const ResumeVmRequest& request) override;
 
   // Handles a request to stop all running VMs.
-  void StopAllVmsImpl(VmStopReason reason);
-  void StopAllVms() override;
+  void StopAllVms(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+                      response_sender) override;
+  void StopAllVmsImpl(VmStopReason reason,
+                      base::OnceCallback<void(bool)> callback);
+  void OnAllVmsStopped(base::OnceCallback<void(bool)> callback,
+                       std::vector<VmBaseImpl::StopResult>);
 
   // Handles a request to get VM info.
   GetVmInfoResponse GetVmInfo(const GetVmInfoRequest& request) override;
@@ -175,8 +192,16 @@ class Service final : public org::chromium::VmConciergeInterface,
       CreateDiskImageRequest request, base::ScopedFD in_fd);
 
   // Handles a request to destroy a disk image.
-  DestroyDiskImageResponse DestroyDiskImage(
-      const DestroyDiskImageRequest& request) override;
+  void DestroyDiskImage(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            DestroyDiskImageResponse>> response_sender,
+                        const DestroyDiskImageRequest& request) override;
+  void FinishDestroyDiskImageAfterVmStopped(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          DestroyDiskImageResponse>> response_sender,
+      const DestroyDiskImageRequest& request,
+      VmBaseImpl::StopResult stop_result);
+  DestroyDiskImageResponse FinishDestroyDiskImage(
+      const DestroyDiskImageRequest& request);
 
   // Handles a request to resize a disk image.
   ResizeDiskImageResponse ResizeDiskImage(
@@ -562,6 +587,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The vmm swap TBW (total bytes written) policy managing TBW from each VM on
   // vmm-swap. This is instantiated by Service and shared with each VM.
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Contains a queue of VM stop requests that should be run when any VM stop
+  // sequence finishes. This queue is used to retry stop sequences of different
+  // StopTypes if a StopVmRequest is started while a VM is already stopping.
+  std::vector<base::OnceClosure> queued_stop_vm_requests_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // This should be the last member of the class.

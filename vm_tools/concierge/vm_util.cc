@@ -12,7 +12,6 @@
 #include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -283,42 +282,6 @@ bool SetPgid() {
   }
 
   return true;
-}
-
-bool WaitForChild(pid_t child, base::TimeDelta timeout) {
-  const base::Time deadline = base::Time::Now() + timeout;
-  while (true) {
-    pid_t ret = waitpid(child, nullptr, WNOHANG);
-    if (ret == child || (ret < 0 && errno == ECHILD)) {
-      // Either the child exited or it doesn't exist anymore.
-      return true;
-    }
-
-    // ret == 0 means that the child is still alive
-    if (ret < 0) {
-      PLOG(ERROR) << "Failed to wait for child process";
-      return false;
-    }
-
-    base::Time now = base::Time::Now();
-    if (deadline <= now) {
-      // Timed out.
-      return false;
-    }
-    usleep(100);
-  }
-}
-
-bool CheckProcessExists(pid_t pid) {
-  if (pid == 0)
-    return false;
-
-  // Try to reap child process in case it just exited.
-  waitpid(pid, nullptr, WNOHANG);
-
-  // kill() with a signal value of 0 is explicitly documented as a way to
-  // check for the existence of a process.
-  return kill(pid, 0) >= 0 || errno != ESRCH;
 }
 
 std::optional<BalloonStats> GetBalloonStats(

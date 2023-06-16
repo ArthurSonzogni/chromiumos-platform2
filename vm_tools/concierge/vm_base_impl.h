@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -49,7 +50,7 @@ class VmBaseImpl {
 
   VmBaseImpl(const VmBaseImpl&) = delete;
   VmBaseImpl& operator=(const VmBaseImpl&) = delete;
-  virtual ~VmBaseImpl() = default;
+  virtual ~VmBaseImpl();
 
   // The pid of the child process.
   pid_t pid() const { return process_.pid(); }
@@ -59,6 +60,19 @@ class VmBaseImpl {
     STARTING,
     RUNNING,
     STOPPED,
+  };
+
+  // The types of stop sequences.
+  enum class StopType {
+    GRACEFUL,
+    FORCEFUL,
+  };
+
+  // Possible results of a stop sequence.
+  enum class StopResult {
+    FAILURE,
+    STOPPING,
+    SUCCESS,
   };
 
   // Information about a virtual machine.
@@ -99,6 +113,18 @@ class VmBaseImpl {
     bool storage_ballooning;
   };
 
+  // Asynchronously stop the VM. Runs |callback| with the success value.
+  // If the VM is currently stopping, |callback| is immediately run with false.
+  // VM implementations supply a list of steps to perform to stop the VM.
+  // Depending on the StopType, these steps can include both graceful and
+  // forceful methods. After each step, a check is performed to see if the VM is
+  // still alive with a timeout specified by the VM implementation. If the
+  // timeout is exceeded, the next step in the Stop sequence is executed. It is
+  // up to the VM implementation to make sure the worst case stop time for an
+  // unresponsive VM is reasonable and that the individual steps do not block.
+  void PerformStopSequence(StopType type,
+                           base::OnceCallback<void(StopResult)> callback);
+
   using SwapVmCallback = base::OnceCallback<void(SwapVmResponse response)>;
   using AggressiveBalloonCallback =
       base::OnceCallback<void(AggressiveBalloonResponse response)>;
@@ -117,9 +143,8 @@ class VmBaseImpl {
 
   bool IsSuspended() const { return suspended_; }
 
-  // Shuts down the VM. Returns true if the VM was successfully shut down and
-  // false otherwise.
-  virtual bool Shutdown() = 0;
+  // Returns true if the VM is currently performing its stop sequence.
+  bool IsStopping() { return !!stop_complete_callback_; }
 
   // Information about the VM.
   virtual Info GetInfo() const = 0;
@@ -223,6 +248,9 @@ class VmBaseImpl {
 
   const std::string& GetVmSocketPath() const;
 
+  // How long to wait before timing out on child process exits.
+  static constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
@@ -234,9 +262,8 @@ class VmBaseImpl {
   // Starts |process_| with |args|. Returns true iff started successfully.
   bool StartProcess(base::StringPairs args);
 
-  // Stops this VM
-  // Returns true on success, false otherwise
-  bool Stop() const;
+  // Attempts to stop the VM via the crosvm control socket.
+  void StopViaCrosvm(base::OnceClosure callback);
 
   // Suspends this VM
   // Returns true on success, false otherwise
@@ -250,6 +277,26 @@ class VmBaseImpl {
   // this VM. Returns 0 if there is no seneschal server associated with this
   // VM.
   uint32_t seneschal_server_handle() const;
+
+  // A stop step performs a specific part of the stopping process. It runs
+  // the supplied callback upon completion. The corresponding timeout is how
+  // long to wait for the VM process to exit after running the step.
+  struct StopStep {
+    base::OnceCallback<void(base::OnceClosure)> task;
+    base::TimeDelta exit_timeout;
+  };
+
+  // VM implementations supply one or more steps that must be called in order to
+  // stop the VM. After every step, a check with a specified timeout is
+  // performed to see if the VM is alive. If it is still alive, the next step
+  // will be called.
+  // Depending on the stop type a VM may have a different sequence of actions
+  // to take to shut down.
+  virtual std::vector<StopStep> GetStopSteps(StopType type) = 0;
+
+  // Attempts to directly kill the VM process with the supplied signal then runs
+  // the supplied callback.
+  void KillVmProcess(int signal, base::OnceClosure callback);
 
   // DBus client for the networking service.
   std::unique_ptr<patchpanel::Client> network_client_;
@@ -271,6 +318,22 @@ class VmBaseImpl {
   std::unique_ptr<BalloonPolicyInterface> balloon_policy_;
 
  private:
+  // Performs the necessary steps to stop the VM.
+  void PerformStopSequenceInternal(StopType type,
+                                   std::vector<StopStep>::iterator next_step);
+
+  // Checks for the VM's exit until deadline is reached.
+  // Runs OnStopSequenceComplete(true) if the VM exits, or timeout_callback
+  // if the VM fails to exit before the timeout.
+  void CheckForExit(base::TimeTicks deadline,
+                    base::OnceClosure timeout_callback);
+
+  // Called once the VM stop sequence is finished.
+  void OnStopSequenceComplete(StopResult result);
+
+  // Returns true if the VM process is running. False otherwise.
+  bool IsRunning();
+
   // Handle the device going to suspend.
   virtual void HandleSuspendImminent() = 0;
 
@@ -283,6 +346,15 @@ class VmBaseImpl {
 
   // Whether the VM is currently suspended.
   bool suspended_ = false;
+
+  // Stores the callback to be run upon the stop sequence finishing.
+  base::OnceCallback<void(StopResult)> stop_complete_callback_;
+
+  // The ordered list of steps that must be run to stop the VM.
+  std::vector<StopStep> stop_steps_;
+
+  // This should be the last member of the class.
+  base::WeakPtrFactory<VmBaseImpl> weak_ptr_factory_;
 };
 
 }  // namespace vm_tools::concierge

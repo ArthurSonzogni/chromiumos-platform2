@@ -38,6 +38,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/barrier_callback.h>
 #include <base/base64url.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -67,6 +68,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <base/uuid.h>
@@ -1642,11 +1644,15 @@ void Service::HandleChildExit() {
     });
 
     if (iter != vms_.end()) {
-      // Notify that the VM has exited.
-      NotifyVmStopped(iter->first, iter->second->GetInfo().cid, VM_EXITED);
+      // If the VM is already shutting down, we can safely ignore this signal
+      // since the shutdown sequence will handle necessary cleanup.
+      if (iter->second->IsStopping()) {
+        continue;
+      }
 
-      // Now remove it from the vm list.
-      vms_.erase(iter);
+      // Handle cleanup related to the VM stopping
+      OnStopVmComplete(iter->first, VM_EXITED, base::DoNothing(),
+                       VmBaseImpl::StopResult::SUCCESS);
     }
   }
 
@@ -1663,9 +1669,14 @@ void Service::HandleChildExit() {
 void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
-  StopAllVmsImpl(SERVICE_SHUTDOWN);
+  StopAllVmsImpl(SERVICE_SHUTDOWN,
+                 base::BindOnce(&Service::SigtermVmStopComplete,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Service::SigtermVmStopComplete(bool) {
   if (!quit_closure_.is_null()) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, std::move(quit_closure_));
   }
 }
@@ -2260,34 +2271,52 @@ StartVmResponse Service::StartVmInternal(
   return response;
 }
 
-StopVmResponse Service::StopVm(const StopVmRequest& request) {
+void Service::StopVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+        response_sender,
+    const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StopVmResponse response;
-
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_sender->Return(response);
+    return;
   }
 
   VmId vm_id(request.owner_id(), request.name());
 
-  if (!StopVmInternal(vm_id, STOP_VM_REQUESTED)) {
-    LOG(ERROR) << "Unable to shut down VM";
-    response.set_failure_reason("Unable to shut down VM");
-  } else {
-    response.set_success(true);
-  }
-  return response;
+  StopVmInternal(vm_id, STOP_VM_REQUESTED,
+                 base::BindOnce(
+                     [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            StopVmResponse>> response_sender,
+                        VmBaseImpl::StopResult result) {
+                       StopVmResponse response;
+                       response.set_success(true);
+
+                       if (result != VmBaseImpl::StopResult::SUCCESS) {
+                         LOG(ERROR) << "Unable to shut down VM";
+                         response.set_success(false);
+                         response.set_failure_reason("Unable to shut down VM");
+                       }
+
+                       response_sender->Return(response);
+                     },
+                     std::move(response_sender)));
 }
 
-bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
+void Service::StopVmInternal(
+    const VmId& vm_id,
+    VmStopReason reason,
+    base::OnceCallback<void(VmBaseImpl::StopResult)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     // This is not an error to Chrome
-    return true;
+    std::move(callback).Run(VmBaseImpl::StopResult::SUCCESS);
+    return;
   }
   std::unique_ptr<VmBaseImpl>& vm = iter->second;
   VmBaseImpl::Info info = vm->GetInfo();
@@ -2300,89 +2329,125 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   // Notify that we are about to stop a VM.
   NotifyVmStopping(vm_id, info.cid);
 
-  if (!vm->Shutdown()) {
-    return false;
+  VmBaseImpl::StopType stop_type = VmBaseImpl::StopType::FORCEFUL;
+
+  // If a a specific VM was requested to be stopped, or if this is a stop for a
+  // disk image operation, attempt a graceful shutdown.
+  if (reason == STOP_VM_REQUESTED || reason == DESTROY_DISK_IMAGE_REQUESTED) {
+    stop_type = VmBaseImpl::StopType::GRACEFUL;
+  }
+
+  iter->second->PerformStopSequence(
+      stop_type,
+      base::BindOnce(&Service::OnStopVmComplete, weak_ptr_factory_.GetWeakPtr(),
+                     vm_id, reason, std::move(callback)));
+}
+
+void Service::OnStopVmComplete(
+    const VmId vm_id,
+    VmStopReason reason,
+    base::OnceCallback<void(VmBaseImpl::StopResult)> callback,
+    VmBaseImpl::StopResult result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // If the VM is already stopping, the stop request should be retried later. It
+  // can't be retried immediately because it will just immediately return
+  // STOPPING again. To do this, queue the same stop request to be run again
+  // when a VM stop sequence finishes. If the VM is already stopped, or was
+  // already destroyed, the callback will immediately be run with success.
+  if (result == VmBaseImpl::StopResult::STOPPING) {
+    queued_stop_vm_requests_.emplace_back(
+        base::BindOnce(&Service::StopVmInternal, weak_ptr_factory_.GetWeakPtr(),
+                       vm_id, reason, std::move(callback)));
+    return;
+  }
+
+  // When a VM stop sequence finishes, start all stop requests that were waiting
+  // on a VM stop sequence to finish.
+  for (base::OnceClosure& stop_vm_request : queued_stop_vm_requests_) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(stop_vm_request)));
+  }
+  queued_stop_vm_requests_.clear();
+
+  if (result != VmBaseImpl::StopResult::SUCCESS) {
+    std::move(callback).Run(result);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "VM not found after shutdown";
+    std::move(callback).Run(VmBaseImpl::StopResult::FAILURE);
+    return;
   }
 
   // Notify that we have stopped a VM.
-  NotifyVmStopped(vm_id, info.cid, reason);
+  NotifyVmStopped(vm_id, iter->second->GetInfo().cid, reason);
 
   vms_.erase(iter);
-  return true;
-}
-
-void Service::StopVmInternalAsTask(VmId vm_id, VmStopReason reason) {
-  StopVmInternal(vm_id, reason);
-}
-
-// Wrapper to destroy VM in another thread
-class VMDelegate : public base::PlatformThread::Delegate {
- public:
-  VMDelegate() = default;
-  ~VMDelegate() override = default;
-  VMDelegate& operator=(VMDelegate&& other) = default;
-  explicit VMDelegate(const Service&) = delete;
-  VMDelegate& operator=(const Service&) = delete;
-  explicit VMDelegate(VmBaseImpl* vm) : vm_(vm) {}
-  void ThreadMain() override { vm_->Shutdown(); }
-
- private:
-  VmBaseImpl* vm_;
-};
-
-void Service::StopAllVms() {
-  StopAllVmsImpl(STOP_ALL_VMS_REQUESTED);
+  std::move(callback).Run(result);
   return;
 }
 
-void Service::StopAllVmsImpl(VmStopReason reason) {
+void Service::StopAllVms(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_sender) {
+  // Dropping the success value for StopAllVms is fine because historically
+  // StopAllVms has not been allowed to fail.
+  StopAllVmsImpl(
+      STOP_ALL_VMS_REQUESTED,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+                 response_sender,
+             bool) { response_sender->Return(); },
+          std::move(response_sender)));
+}
+
+void Service::StopAllVmsImpl(VmStopReason reason,
+                             base::OnceCallback<void(bool)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Received StopAllVms request";
 
-  struct ThreadContext {
-    base::PlatformThreadHandle handle;
-    VMDelegate delegate;
-  };
-  std::vector<ThreadContext> ctxs(vms_.size());
-
-  // Spawn a thread for each VM to shut it down.
-  int i = 0;
-  for (auto& vm : vms_) {
-    ThreadContext& ctx = ctxs[i++];
-
-    const VmId& id = vm.first;
-    VmBaseImpl* vm_base_impl = vm.second.get();
-    VmBaseImpl::Info info = vm_base_impl->GetInfo();
-
-    // Notify that we are about to stop a VM.
-    NotifyVmStopping(id, info.cid);
-
-    // The VM will be destructred in the new thread, stopping it normally (and
-    // then forcibly) it if it hasn't stopped yet.
-    //
-    // Would you just take a lambda function? Why do we need the Delegate?...
-    ctx.delegate = VMDelegate(vm_base_impl);
-    base::PlatformThread::Create(0, &ctx.delegate, &ctx.handle);
+  // No VMs to stop.
+  if (vms_.size() == 0) {
+    std::move(callback).Run(true);
+    return;
   }
 
-  i = 0;
+  // StopAllVms is only complete once a response has been received from
+  // every VM.
+  const base::RepeatingCallback<void(VmBaseImpl::StopResult)>
+      vms_barrier_callback = base::BarrierCallback<VmBaseImpl::StopResult>(
+          vms_.size(),
+          base::BindOnce(&Service::OnAllVmsStopped,
+                         weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+
   for (auto& vm : vms_) {
-    ThreadContext& ctx = ctxs[i++];
-    base::PlatformThread::Join(ctx.handle);
-
     const VmId& id = vm.first;
-    VmBaseImpl* vm_base_impl = vm.second.get();
-    VmBaseImpl::Info info = vm_base_impl->GetInfo();
 
-    // Notify that we have stopped a VM.
-    NotifyVmStopped(id, info.cid, reason);
+    // Post a task to stop the VM.
+    // Don't stop it inline because if it is already stopped, then it will be
+    // removed from vms_ inline which breaks this loop.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Service::StopVmInternal, weak_ptr_factory_.GetWeakPtr(),
+                       id, reason, vms_barrier_callback));
   }
+}
+
+void Service::OnAllVmsStopped(base::OnceCallback<void(bool)> callback,
+                              std::vector<VmBaseImpl::StopResult>) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // All VMs have been stopped (or failed to stop).
+  LOG(INFO) << "StopAllVms request compelted with " << vms_.size()
+            << " vms remaining alive.";
+
+  // If there are still live VMs, the stop request failed.
+  bool success = vms_.size() == 0;
 
   vms_.clear();
 
-  if (!ctxs.empty()) {
-    LOG(INFO) << "Stopped all Vms";
-  }
+  std::move(callback).Run(success);
 }
 
 SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
@@ -3029,7 +3094,9 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
   return response;
 }
 
-DestroyDiskImageResponse Service::DestroyDiskImage(
+void Service::DestroyDiskImage(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DestroyDiskImageResponse>> response_sender,
     const DestroyDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3038,23 +3105,51 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    return response;
+    response_sender->Return(response);
+    return;
   }
 
   // Stop the associated VM if it is still running.
   auto iter = FindVm(request.cryptohome_id(), request.vm_name());
-  if (iter != vms_.end()) {
-    LOG(INFO) << "Shutting down VM";
 
-    if (!StopVmInternal(VmId(request.cryptohome_id(), request.vm_name()),
-                        DESTROY_DISK_IMAGE_REQUESTED)) {
-      LOG(ERROR) << "Unable to shut down VM";
-
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason("Unable to shut down VM");
-      return response;
-    }
+  // VM is already gone. Proceed with destroy
+  if (iter == vms_.end()) {
+    return response_sender->Return(FinishDestroyDiskImage(request));
   }
+
+  LOG(INFO) << "Shutting down VM";
+
+  StopVmInternal(VmId(request.cryptohome_id(), request.vm_name()),
+                 DESTROY_DISK_IMAGE_REQUESTED,
+                 base::BindOnce(&Service::FinishDestroyDiskImageAfterVmStopped,
+                                base::Unretained(this),
+                                std::move(response_sender), request));
+}
+
+void Service::FinishDestroyDiskImageAfterVmStopped(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DestroyDiskImageResponse>> response_sender,
+    const DestroyDiskImageRequest& request,
+    VmBaseImpl::StopResult stop_result) {
+  // TODO(kalutes) retry stop with FORCEFUL
+
+  if (stop_result != VmBaseImpl::StopResult::SUCCESS) {
+    LOG(ERROR) << "Unable to stop VM";
+
+    DestroyDiskImageResponse response;
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Unable to stop VM");
+    return response_sender->Return(response);
+  }
+
+  response_sender->Return(FinishDestroyDiskImage(request));
+}
+
+DestroyDiskImageResponse Service::FinishDestroyDiskImage(
+    const DestroyDiskImageRequest& request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  DestroyDiskImageResponse response;
 
   // Delete shader cache best-effort. Shadercached is only distributed to boards
   // if borealis enabled. There is no way to check VM type easily unless we turn
