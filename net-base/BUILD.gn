@@ -26,6 +26,7 @@ pkg_config("target_defaults") {
 
 shared_library("libnet-base") {
   sources = [
+    "ip_address.cc",
     "ip_address_utils.cc",
     "ipv4_address.cc",
     "ipv6_address.cc",
@@ -47,6 +48,7 @@ if (use.test) {
   executable("libnet-base-testrunner") {
     run_test = true
     sources = [
+      "ip_address_test.cc",
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
     ]
