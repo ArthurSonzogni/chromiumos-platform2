@@ -6,6 +6,15 @@
 # Installs a booted refvm image to the internal disk.
 set -eux -o pipefail
 
+# Save stdout and stderr
+exec 4>&1
+exec 5>&2
+
+# Split output between stdout for interactive use and the console for tests.
+exec 3> >(awk '{print "install-refvm: " $0}' > /dev/console)
+exec > >(tee --ignore-interrupts /proc/self/fd/3)
+exec 2> >(tee --ignore-interrupts /proc/self/fd/3 >&2)
+
 echo "Installing reference VM..."
 
 DISK_CONFIG_TEMPLATE="/usr/local/share/refvm/disk_config.tpl"
@@ -37,7 +46,7 @@ end_install() {
 
   if [[ "${interactive}" == true && "${success}" == false ]]; then
     echo "Starting a shell for debugging."
-    exec bash
+    exec bash >&4 2>&5
   fi
 
   if [[ "${interactive}" == true ]]; then
@@ -45,6 +54,12 @@ end_install() {
   fi
 
   systemctl poweroff
+
+  # Close pipes and wait for the processes handling logs to exit
+  exec 1>&-
+  exec 2>&-
+  exec 3>&-
+  wait
 }
 trap end_install EXIT
 
