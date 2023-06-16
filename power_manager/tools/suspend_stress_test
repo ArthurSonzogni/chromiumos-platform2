@@ -145,7 +145,11 @@ has_s2idle() {
 # Returns the S0ix residency counter as returned by the kernel.
 # The driver that provides these counters depends on the platform.
 get_s0ix_count() {
-  if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
+  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ]; then
+    # From Tigerlake with kernel >= 5.4
+    awk '/S0i3/ {print $2}' < /sys/kernel/debug/pmc_core/substate_residencies \
+      | tail -n 1
+  elif [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
     # Kabylake / Skylake systems.
     cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec
   elif [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
@@ -217,7 +221,8 @@ fi
 check_s0ix_errors=0
 check_s2idle_errors=0
 if check_powerd_config --suspend_to_idle; then
-  if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
+  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ] || \
+     [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
      [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ] || \
      [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
     check_s0ix_errors=1
