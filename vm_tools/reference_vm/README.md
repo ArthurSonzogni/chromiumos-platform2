@@ -21,8 +21,10 @@ pip3 install --user virt-firmware
 ## Build instructions
 
 ```
-./build.py --cros-version CROS_VERSION
+sudo ./build.py
 ```
+
+`sudo` is required for loopback device use.
 
 ## UEFI variables preparation
 

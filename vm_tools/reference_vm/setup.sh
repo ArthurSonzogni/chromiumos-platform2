@@ -2,7 +2,10 @@
 # Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
+#
+# setup.sh is run inside a chroot of the refvm image to configure it.
+# It's launched by build.py.
+#
 set -eux -o pipefail
 
 CROS_PACKAGES=(

@@ -90,8 +90,8 @@ def main():
         image_path, "wb"
     ) as image:
         temp_dir = pathlib.Path(temp_dir_name)
-        image.seek(image_size - 1)
-        image.write(b"\0")
+        image.seek(image_size)
+        image.truncate()
         image.seek(0)
         with setup_loop(loop_file=image_path, vg_name=args.vg_name) as loop:
             disk_vars, fstab = setup_storage(
@@ -123,6 +123,7 @@ def main():
                     print("Install complete, syncing")
                     subprocess.run(["sync"])
 
+    print(f"Built image '{image_path}' ({os.path.getsize(image_path)} bytes)")
 
 def get_latest_cros_version(bucket: str) -> int:
     res = requests.get(
