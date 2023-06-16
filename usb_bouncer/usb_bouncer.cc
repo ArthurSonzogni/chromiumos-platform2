@@ -251,27 +251,34 @@ int HandleReportError(const Configuration& config,
   base::FilePath normalized_devpath = root_dir.Append("sys").Append(
       usb_bouncer::StripLeadingPathSeparators(devpath));
 
-  if (!base::DirectoryExists(normalized_devpath))
-    return EXIT_FAILURE;
+  if (!base::DirectoryExists(normalized_devpath)) {
+    // If the device sysfs path is no longer available, record the error code.
+    if (subsystem == "usb")
+      usb_bouncer::StructuredMetricsHubError(abs(error_code), 0, 0, 0, "", 0);
+    else if (subsystem == "pci")
+      usb_bouncer::StructuredMetricsXhciError(abs(error_code), 0);
+  } else {
+    if (subsystem == "usb") {
+      if (base::PathExists(normalized_devpath.Append("bInterfaceClass"))) {
+        normalized_devpath =
+            usb_bouncer::GetInterfaceDevice(normalized_devpath);
+      }
 
-  if (subsystem == "usb") {
-    if (base::PathExists(normalized_devpath.Append("bInterfaceClass")))
-      normalized_devpath = usb_bouncer::GetInterfaceDevice(normalized_devpath);
+      if (normalized_devpath.empty() ||
+          !base::PathExists(normalized_devpath.Append("bDeviceClass"))) {
+        return EXIT_FAILURE;
+      }
 
-    if (normalized_devpath.empty() ||
-        !base::PathExists(normalized_devpath.Append("bDeviceClass"))) {
-      return EXIT_FAILURE;
+      usb_bouncer::StructuredMetricsHubError(
+          abs(error_code), usb_bouncer::GetVendorId(normalized_devpath),
+          usb_bouncer::GetProductId(normalized_devpath),
+          usb_bouncer::GetDeviceClass(normalized_devpath),
+          usb_bouncer::GetUsbTreePath(normalized_devpath),
+          usb_bouncer::GetConnectedDuration(normalized_devpath));
+    } else if (subsystem == "pci") {
+      usb_bouncer::StructuredMetricsXhciError(
+          abs(error_code), usb_bouncer::GetPciDeviceClass(normalized_devpath));
     }
-
-    usb_bouncer::StructuredMetricsHubError(
-        abs(error_code), usb_bouncer::GetVendorId(normalized_devpath),
-        usb_bouncer::GetProductId(normalized_devpath),
-        usb_bouncer::GetDeviceClass(normalized_devpath),
-        usb_bouncer::GetUsbTreePath(normalized_devpath),
-        usb_bouncer::GetConnectedDuration(normalized_devpath));
-  } else if (subsystem == "pci") {
-    usb_bouncer::StructuredMetricsXhciError(
-        abs(error_code), usb_bouncer::GetPciDeviceClass(normalized_devpath));
   }
 
   return EXIT_SUCCESS;
