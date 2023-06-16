@@ -60,7 +60,6 @@ constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
 constexpr char kCrosEcDevice[] = "/dev/cros_ec";
 constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
-constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
 constexpr char kDrmDevice[] = "/dev/dri";
 constexpr char kCrashSenderBinary[] = "/sbin/crash_sender";
 constexpr char kInputDevice[] = "/dev/input";

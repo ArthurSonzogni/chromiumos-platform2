@@ -37,6 +37,13 @@ inline constexpr char kCrosMeiPath[] = "/dev/mei0";
 
 }  // namespace psr
 
+namespace path {
+
+// Path of the cache file for fio test.
+constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
+
+}  // namespace path
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_

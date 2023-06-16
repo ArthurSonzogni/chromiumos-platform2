@@ -17,11 +17,16 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
+#include <spaced/proto_bindings/spaced.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
+#include <spaced/dbus-proxies.h>
 
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/mojo_utils.h"
 
 namespace diagnostics {
@@ -104,11 +109,15 @@ void DiskReadRoutineV2::RunNextStep() {
           base::BindOnce(&DiskReadRoutineV2::HandleRemoveTestFileResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
-    case kCheckFreeSpace:
-      context_->executor()->GetFioTestDirectoryFreeSpace(
+    case kCheckFreeSpace: {
+      auto [on_success, on_error] = SplitDbusCallback(
           base::BindOnce(&DiskReadRoutineV2::CheckStorageSpace,
                          weak_ptr_factory_.GetWeakPtr()));
+      context_->spaced_proxy()->GetFreeDiskSpaceAsync(
+          base::FilePath(path::kFioCacheFile).DirName().value(),
+          std::move(on_success), std::move(on_error));
       break;
+    }
     case kFioPrepare:
       context_->executor()->RunFio(
           mojom::FioJobArgument::NewPrepare(
@@ -162,16 +171,16 @@ void DiskReadRoutineV2::HandleRemoveTestFileResponse(
   RunNextStep();
 }
 
-void DiskReadRoutineV2::CheckStorageSpace(
-    std::optional<uint64_t> free_space_byte) {
+void DiskReadRoutineV2::CheckStorageSpace(brillo::Error* err,
+                                          int64_t free_space_byte) {
   CHECK(step_ == kCheckFreeSpace);
 
-  if (!free_space_byte.has_value()) {
+  if (err || free_space_byte < 0) {
     RaiseException("Failed to retrieve free storage space");
     return;
   }
   const uint32_t free_space_mib =
-      static_cast<uint32_t>(free_space_byte.value() / 1024 / 1024);
+      static_cast<uint32_t>(free_space_byte / 1024 / 1024);
 
   // Ensure DUT has sufficient storage space and prevent storage space state
   // from falling into low state during test.

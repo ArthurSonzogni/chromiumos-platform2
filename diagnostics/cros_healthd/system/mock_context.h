@@ -32,6 +32,7 @@ class AttestationProxyMock;
 class debugdProxyMock;
 class PowerManagerProxyMock;
 class TpmManagerProxyMock;
+class SpacedProxyMock;
 
 namespace cras {
 class ControlProxyMock;
@@ -79,6 +80,7 @@ class MockContext final : public Context {
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
   brillo::MockUdev* mock_udev() const;
   brillo::MockUdevMonitor* mock_udev_monitor() const;
+  org::chromium::SpacedProxyMock* mock_spaced_proxy() const;
 
   MOCK_METHOD(const base::Time, time, (), (const, override));
 

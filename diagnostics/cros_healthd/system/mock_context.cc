@@ -14,6 +14,9 @@
 #include <power_manager/dbus-proxy-mocks.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <spaced/proto_bindings/spaced.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs spaced.pb.h
+#include <spaced/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
@@ -47,6 +50,7 @@ MockContext::MockContext() {
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
   udev_ = std::make_unique<brillo::MockUdev>();
   udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
+  spaced_proxy_ = std::make_unique<org::chromium::SpacedProxyMock>();
 
   CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
@@ -149,6 +153,10 @@ brillo::MockUdev* MockContext::mock_udev() const {
 
 brillo::MockUdevMonitor* MockContext::mock_udev_monitor() const {
   return static_cast<brillo::MockUdevMonitor*>(udev_monitor_.get());
+}
+
+org::chromium::SpacedProxyMock* MockContext::mock_spaced_proxy() const {
+  return static_cast<org::chromium::SpacedProxyMock*>(spaced_proxy_.get());
 }
 
 }  // namespace diagnostics

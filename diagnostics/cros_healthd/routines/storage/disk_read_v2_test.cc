@@ -14,6 +14,9 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <spaced/proto_bindings/spaced.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs spaced.pb.h
+#include <spaced/dbus-proxy-mocks.h>
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
@@ -45,7 +48,7 @@ class DiskReadRoutineV2Test : public testing::Test {
   void SetUp() override {
     // Set sufficient free space.
     SetGetFioTestDirectoryFreeSpaceResponse(
-        /*free_space_byte=*/static_cast<uint64_t>(10240 /*MiB*/) * 1024 * 1024);
+        /*free_space_byte=*/static_cast<int64_t>(10240 /*MiB*/) * 1024 * 1024);
 
     auto routine = DiskReadRoutineV2::Create(
         &mock_context_,
@@ -85,11 +88,22 @@ class DiskReadRoutineV2Test : public testing::Test {
   }
 
   void SetGetFioTestDirectoryFreeSpaceResponse(
-      std::optional<uint64_t> free_space_byte) {
-    ON_CALL(*mock_executor(), GetFioTestDirectoryFreeSpace(_))
-        .WillByDefault(WithArg<0>(Invoke(
-            [=](mojom::Executor::GetFioTestDirectoryFreeSpaceCallback
-                    callback) { std::move(callback).Run(free_space_byte); })));
+      std::optional<int64_t> free_space_byte) {
+    if (free_space_byte.has_value()) {
+      ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
+          .WillByDefault(
+              WithArg<1>(Invoke([=](base::OnceCallback<void(int64_t /*reply*/)>
+                                        success_callback) {
+                std::move(success_callback).Run(free_space_byte.value());
+              })));
+    } else {
+      ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
+          .WillByDefault(WithArg<2>(Invoke(
+              [](base::OnceCallback<void(brillo::Error*)> error_callback) {
+                auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+                std::move(error_callback).Run(error.get());
+              })));
+    }
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
@@ -124,6 +138,9 @@ class DiskReadRoutineV2Test : public testing::Test {
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
+  org::chromium::SpacedProxyMock* mock_spaced_proxy() {
+    return mock_context_.mock_spaced_proxy();
+  }
 
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;

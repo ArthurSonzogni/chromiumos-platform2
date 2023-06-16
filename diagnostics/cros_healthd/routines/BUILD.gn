@@ -41,6 +41,7 @@ pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [
     "iioservice_ipc",
     "libmojo",
+    "libspaced",
     "re2",
   ]
 }
@@ -123,6 +124,8 @@ if (use.test) {
       "iioservice_ipc",
       "libdebugd-client",
       "libdebugd-client-test",
+      "libspaced",
+      "libspaced-test",
       "mojo_service_manager",
     ]
   }

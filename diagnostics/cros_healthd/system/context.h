@@ -38,6 +38,7 @@ class AttestationProxyInterface;
 class debugdProxyInterface;
 class PowerManagerProxyInterface;
 class TpmManagerProxyInterface;
+class SpacedProxyInterface;
 
 namespace cras {
 class ControlProxyInterface;
@@ -166,6 +167,11 @@ class Context {
   ResourceQueue* memory_cpu_resource_queue() const {
     return memory_cpu_resource_queue_.get();
   }
+  // Use the object returned by spaced_proxy() to get the disk information from
+  // spaced.
+  org::chromium::SpacedProxyInterface* spaced_proxy() const {
+    return spaced_proxy_.get();
+  }
 
  protected:
   Context();
@@ -213,6 +219,7 @@ class Context {
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;
+  std::unique_ptr<org::chromium::SpacedProxyInterface> spaced_proxy_;
 
   // The resource queue for jobs using either cpu or memory resources.
   std::unique_ptr<ResourceQueue> memory_cpu_resource_queue_;

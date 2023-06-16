@@ -22,6 +22,9 @@
 #include <power_manager/dbus-proxies.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <spaced/proto_bindings/spaced.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
+#include <spaced/dbus-proxies.h>
 
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
@@ -85,6 +88,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       std::make_unique<org::chromium::PowerManagerProxy>(dbus_bus);
   tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
+  spaced_proxy_ = std::make_unique<org::chromium::SpacedProxy>(dbus_bus);
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.

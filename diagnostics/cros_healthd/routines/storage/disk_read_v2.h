@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/tick_clock.h>
 #include <base/types/expected.h>
+#include <brillo/errors/error.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -51,7 +52,7 @@ class DiskReadRoutineV2 final : public BaseRoutineControl {
 
   // Handle the response of free disk space of cache directory from the executor
   // and check if the storage is sufficient to run the routine.
-  void CheckStorageSpace(std::optional<uint64_t> free_space_byte);
+  void CheckStorageSpace(brillo::Error* err, int64_t free_space_byte);
 
   // Handle the response of running fio prepare from the executor.
   void HandleFioPrepareResponse(ScopedProcessControl& process_control,
