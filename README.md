@@ -32,12 +32,12 @@ copies.
 | [biod](./biod/) | Biometrics daemon |
 | [bootid-logger](./bootid-logger/) | Simple command to record the current boot id to the log. |
 | [bootlockbox](./bootlockbox/) | Daemon and client for boot lockbox service.|
+| [bootsplash](./bootsplash/) | Frecon-based animated boot splash service |
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
 | [camera](./camera/) | ChromeOS Camera daemon |
 | [cecservice](./cecservice/) | Service for switching CEC enabled TVs on and off |
 | [cfm-dfu-notification](./cfm-dfu-notification/) | CFM specific library for DFU notifications |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |
-| [chargesplash](./chargesplash/) | Frecon-based charging indicator |
 | [chromeos-common-script](./chromeos-common-script/) | Shared scripts for partitions and basic disk information |
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
 | [chromeos-dbus-bindings](./chromeos-dbus-bindings/) | Simplifies the implementation of D-Bus daemons and proxies |

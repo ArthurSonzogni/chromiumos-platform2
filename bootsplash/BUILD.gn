@@ -5,9 +5,9 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":chargesplash" ]
+  deps = [ ":bootsplash" ]
   if (use.test) {
-    deps += [ ":chargesplash_testrunner" ]
+    deps += [ ":bootsplash_testrunner" ]
   }
 }
 
@@ -19,7 +19,7 @@ pkg_config("target_defaults") {
   ]
 }
 
-static_library("libchargesplash") {
+static_library("libbootsplash") {
   sources = [
     "frecon.cc",
     "test_util.cc",
@@ -27,17 +27,17 @@ static_library("libchargesplash") {
   configs += [ ":target_defaults" ]
 }
 
-executable("chargesplash") {
+executable("bootsplash") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libchargesplash" ]
+  deps = [ ":libbootsplash" ]
 }
 
 if (use.test) {
   pkg_config("libchrome_test_config") {
     pkg_deps = [ "libchrome-test" ]
   }
-  executable("chargesplash_testrunner") {
+  executable("bootsplash_testrunner") {
     sources = [ "frecon_test.cc" ]
     run_test = true
     configs += [
@@ -46,7 +46,7 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":libchargesplash",
+      ":libbootsplash",
       "//common-mk/testrunner",
     ]
   }

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHARGESPLASH_TEST_UTIL_H_
-#define CHARGESPLASH_TEST_UTIL_H_
+#ifndef BOOTSPLASH_TEST_UTIL_H_
+#define BOOTSPLASH_TEST_UTIL_H_
 
 #include <string>
 
-namespace chargesplash {
+namespace bootsplash {
 
 // Get a path, potentially modified by a sysroot for testing.
 std::string GetPath(const std::string& path);
@@ -15,6 +15,6 @@ std::string GetPath(const std::string& path);
 // Set the sysroot for the purposes of testing.
 void SetSysrootForTesting(const std::string& sysroot);
 
-}  // namespace chargesplash
+}  // namespace bootsplash
 
-#endif  // CHARGESPLASH_TEST_UTIL_H_
+#endif  // BOOTSPLASH_TEST_UTIL_H_

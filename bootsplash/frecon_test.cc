@@ -12,8 +12,8 @@
 #include <base/process/launch.h>
 #include <gtest/gtest.h>
 
-#include "chargesplash/frecon.h"
-#include "chargesplash/test_util.h"
+#include "bootsplash/frecon.h"
+#include "bootsplash/test_util.h"
 
 namespace {
 
@@ -38,7 +38,7 @@ class FreconTest : public ::testing::Test {
     ASSERT_TRUE(base::WriteFile(frecon_path, kFakeFreconProgram));
     ASSERT_TRUE(base::SetPosixFilePermissions(frecon_path, 0755));
 
-    chargesplash::SetSysrootForTesting(fake_sysroot_.GetPath().MaybeAsASCII());
+    bootsplash::SetSysrootForTesting(fake_sysroot_.GetPath().MaybeAsASCII());
   }
 
  protected:
@@ -47,13 +47,13 @@ class FreconTest : public ::testing::Test {
 
 // Test frecon process can be initialized and destroyed.
 TEST_F(FreconTest, TestInitFrecon) {
-  auto frecon = chargesplash::Frecon();
+  auto frecon = bootsplash::Frecon();
   EXPECT_TRUE(frecon.InitFrecon());
 }
 
 // Test writing to frecon and to an output file.
 TEST_F(FreconTest, TestWriteToMultipleOutputs) {
-  auto frecon = chargesplash::Frecon();
+  auto frecon = bootsplash::Frecon();
   EXPECT_TRUE(frecon.InitFrecon());
 
   std::stringstream output;
@@ -61,7 +61,7 @@ TEST_F(FreconTest, TestWriteToMultipleOutputs) {
   frecon.Write("some text");
   EXPECT_EQ(output.str(), "some text");
 
-  auto file_path = base::FilePath(chargesplash::GetPath("/run/frecon/vt0"));
+  auto file_path = base::FilePath(bootsplash::GetPath("/run/frecon/vt0"));
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(file_path, &file_contents));
   EXPECT_EQ(file_contents, "some text");
@@ -70,11 +70,11 @@ TEST_F(FreconTest, TestWriteToMultipleOutputs) {
 // Test that, when initializing frecon, if there is already a frecon
 // running, we terminate it first.
 TEST_F(FreconTest, TestTerminateRunningFrecon) {
-  std::vector<std::string> argv = {chargesplash::GetPath("/sbin/frecon")};
+  std::vector<std::string> argv = {bootsplash::GetPath("/sbin/frecon")};
   std::string output;
   EXPECT_TRUE(base::GetAppOutputAndError(argv, &output));
 
-  auto frecon = chargesplash::Frecon();
+  auto frecon = bootsplash::Frecon();
   EXPECT_TRUE(frecon.InitFrecon());
 }
 

@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "chargesplash/test_util.h"
+#include "bootsplash/test_util.h"
 
 namespace {
 
@@ -12,7 +12,7 @@ std::string sysroot_ = "";  // NOLINT(runtime/string)
 
 }  // namespace
 
-namespace chargesplash {
+namespace bootsplash {
 
 std::string GetPath(const std::string& path) {
   return sysroot_ + path;
@@ -22,4 +22,4 @@ void SetSysrootForTesting(const std::string& sysroot) {
   sysroot_ = sysroot;
 }
 
-}  // namespace chargesplash
+}  // namespace bootsplash

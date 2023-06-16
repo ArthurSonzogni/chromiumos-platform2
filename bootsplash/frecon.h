@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHARGESPLASH_FRECON_H_
-#define CHARGESPLASH_FRECON_H_
+#ifndef BOOTSPLASH_FRECON_H_
+#define BOOTSPLASH_FRECON_H_
 
 #include <fstream>
 #include <string>
 #include <vector>
 
-namespace chargesplash {
+namespace bootsplash {
 
 class Frecon {
  public:
@@ -37,6 +37,6 @@ class Frecon {
   std::vector<std::ostream*> outputs_;
 };
 
-}  // namespace chargesplash
+}  // namespace bootsplash
 
-#endif  // CHARGESPLASH_FRECON_H_
+#endif  // BOOTSPLASH_FRECON_H_

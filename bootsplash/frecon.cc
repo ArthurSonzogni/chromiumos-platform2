@@ -13,9 +13,9 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 
-#include "chargesplash/test_util.h"
+#include "bootsplash/test_util.h"
 
-#include "chargesplash/frecon.h"
+#include "bootsplash/frecon.h"
 
 namespace {
 
@@ -24,7 +24,7 @@ constexpr char kFreconPidfile[] = "/run/frecon/pid";
 constexpr char kFreconVt[] = "/run/frecon/vt0";
 
 int GetRunningFreconPid() {
-  std::ifstream pidfile(chargesplash::GetPath(kFreconPidfile));
+  std::ifstream pidfile(bootsplash::GetPath(kFreconPidfile));
 
   if (!pidfile.is_open()) {
     // Frecon is not running.
@@ -39,7 +39,7 @@ int GetRunningFreconPid() {
 
 }  // namespace
 
-namespace chargesplash {
+namespace bootsplash {
 
 bool Frecon::InitFrecon() {
   int pid = GetRunningFreconPid();
@@ -99,4 +99,4 @@ Frecon::~Frecon() {
   }
 }
 
-}  // namespace chargesplash
+}  // namespace bootsplash
