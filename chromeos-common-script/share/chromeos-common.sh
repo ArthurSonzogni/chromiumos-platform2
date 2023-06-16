@@ -391,7 +391,15 @@ get_fixed_dst_drive() {
 }
 
 # Check if rootfs is mounted on a removable device.
+# Returns 0 for a removable device, otherwise returns 1.
 rootdev_removable() {
+  # Use the is_running_from_installer program if it exists. This is
+  # needed to support boards that don't have a fixed destination drive.
+  if [ -e "/usr/sbin/is_running_from_installer" ]; then
+    [ "$(is_running_from_installer)" != "no" ]
+    return $?
+  fi
+
   local dst_drive
   dst_drive="$(get_fixed_dst_drive)"
   local root_drive
