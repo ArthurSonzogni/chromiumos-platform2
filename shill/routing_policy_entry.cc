@@ -8,6 +8,8 @@
 
 #include <utility>
 
+#include <base/strings/stringprintf.h>
+
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);
 }
@@ -86,6 +88,39 @@ RoutingPolicyEntry& RoutingPolicyEntry::FlipFamily() {
   }
 
   return *this;
+}
+
+std::ostream& operator<<(std::ostream& os, const RoutingPolicyEntry& entry) {
+  os << "{" << IPAddress::GetAddressFamilyName(entry.dst.family()) << " "
+     << entry.priority << ": ";
+  if (entry.invert_rule) {
+    os << "not ";
+  }
+  os << "from ";
+  if (!entry.src.IsDefault()) {
+    os << entry.src.ToString() << " ";
+  } else {
+    os << "all ";
+  }
+  if (!entry.dst.IsDefault()) {
+    os << "to " << entry.dst.ToString() << " ";
+  }
+  if (entry.fw_mark) {
+    os << base::StringPrintf("fwmark 0x%08x/0x%08x ", entry.fw_mark->value,
+                             entry.fw_mark->mask);
+  }
+  if (entry.iif_name) {
+    os << "iif " << *entry.iif_name << " ";
+  }
+  if (entry.oif_name) {
+    os << "oif " << *entry.oif_name << " ";
+  }
+  if (entry.uid_range) {
+    os << "uidrange " << entry.uid_range->start << "-" << entry.uid_range->end
+       << " ";
+  }
+  os << "lookup " << entry.table << "}";
+  return os;
 }
 
 // clang-format off

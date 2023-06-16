@@ -67,6 +67,9 @@ struct RoutingPolicyEntry {
   bool invert_rule = false;
 };
 
+// Print out an entry in a format similar to that of ip rule.
+std::ostream& operator<<(std::ostream& os, const RoutingPolicyEntry& entry);
+
 }  // namespace shill
 
 #endif  // SHILL_ROUTING_POLICY_ENTRY_H_
