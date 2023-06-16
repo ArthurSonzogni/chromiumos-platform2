@@ -20,9 +20,18 @@
 namespace hwsec {
 
 template <>
+struct FuzzedObject<Key> {
+  Key operator()(FuzzedDataProvider& provider) const {
+    return Key{
+        .token = FuzzedObject<KeyToken>()(provider),
+    };
+  }
+};
+
+template <>
 struct FuzzedObject<ScopedKey> {
   ScopedKey operator()(FuzzedDataProvider& provider) const {
-    return ScopedKey(Key{.token = FuzzedObject<KeyToken>()(provider)},
+    return ScopedKey(FuzzedObject<Key>()(provider),
                      FuzzedObject<MiddlewareDerivative>()(provider));
   }
 };
@@ -55,6 +64,31 @@ struct FuzzedObject<ECCPublicInfo> {
         .nid = FuzzedObject<int>()(provider),
         .x_point = FuzzedObject<brillo::Blob>()(provider),
         .y_point = FuzzedObject<brillo::Blob>()(provider),
+    };
+  }
+};
+
+template <>
+struct FuzzedObject<KeyManagement::CreateKeyOptions> {
+  KeyManagement::CreateKeyOptions operator()(
+      FuzzedDataProvider& provider) const {
+    return KeyManagement::CreateKeyOptions{
+        .allow_software_gen = FuzzedObject<bool>()(provider),
+        .allow_decrypt = FuzzedObject<bool>()(provider),
+        .allow_sign = FuzzedObject<bool>()(provider),
+        .rsa_modulus_bits = FuzzedObject<std::optional<uint32_t>>()(provider),
+        .rsa_exponent = FuzzedObject<std::optional<brillo::Blob>>()(provider),
+        .ecc_nid = FuzzedObject<std::optional<uint32_t>>()(provider),
+    };
+  }
+};
+
+template <>
+struct FuzzedObject<KeyManagement::LoadKeyOptions> {
+  KeyManagement::LoadKeyOptions operator()(FuzzedDataProvider& provider) const {
+    return KeyManagement::LoadKeyOptions{
+        .auto_reload = FuzzedObject<bool>()(provider),
+        .lazy_expiration_time = FuzzedObject<base::TimeDelta>()(provider),
     };
   }
 };

@@ -17,6 +17,7 @@
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <base/notreached.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -242,6 +243,13 @@ struct FuzzedObject<crypto::ScopedEC_POINT> {
         hwsec_foundation::Sha256(FuzzedObject<brillo::SecureBlob>()(provider)));
 
     return ec_256->MultiplyWithGenerator(*private_key, context.get());
+  }
+};
+
+template <>
+struct FuzzedObject<base::TimeDelta> {
+  base::TimeDelta operator()(FuzzedDataProvider& provider) const {
+    return base::Microseconds(provider.ConsumeIntegral<int64_t>());
   }
 };
 

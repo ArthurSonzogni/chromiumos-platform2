@@ -20,6 +20,7 @@ enum class DigestAlgorithm {
   kSha256,
   kSha384,
   kSha512,
+  kMaxValue = kSha512,
 };
 
 struct ParsedDigestInfo {

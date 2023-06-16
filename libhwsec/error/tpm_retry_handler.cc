@@ -25,7 +25,9 @@ TPMRetryHandler::TPMRetryHandler()
     : remaining_try_count_(kMaxTryCount), current_delay_(kInitialRetry) {}
 
 void TPMRetryHandler::DelayAndUpdate() {
+#if !USE_FUZZER
   base::PlatformThread::Sleep(current_delay_);
+#endif
   current_delay_ *= kRetryMultiplier;
   remaining_try_count_--;
 }

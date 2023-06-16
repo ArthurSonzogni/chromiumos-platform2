@@ -26,6 +26,16 @@ struct FuzzedObject<Storage::ReadyState> {
   }
 };
 
+template <>
+struct FuzzedObject<Storage::LockOptions> {
+  Storage::LockOptions operator()(FuzzedDataProvider& provider) const {
+    return Storage::LockOptions{
+        .read_lock = provider.ConsumeBool(),
+        .write_lock = provider.ConsumeBool(),
+    };
+  }
+};
+
 }  // namespace hwsec
 
 #endif  // LIBHWSEC_FUZZED_STORAGE_H_
