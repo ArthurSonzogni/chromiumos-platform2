@@ -66,8 +66,9 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
     }
   }
 
-  return MemoryInfo{memory_map_kib[kMemTotalName], memory_map_kib[kMemFreeName],
-                    memory_map_kib[kMemAvailableName]};
+  return MemoryInfo{.total_memory_kib = memory_map_kib[kMemTotalName],
+                    .free_memory_kib = memory_map_kib[kMemFreeName],
+                    .available_memory_kib = memory_map_kib[kMemAvailableName]};
 }
 
 }  // namespace
