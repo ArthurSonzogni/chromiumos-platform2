@@ -477,6 +477,11 @@ const std::array kFeedbackLogs {
   Log{kCommand, "amd_stb", "hexdump -e '2/4 \"%08x \" \"\n\"' "
     "/sys/kernel/debug/amd_pmc/stb_read",
     kRoot, kRoot},
+#if USE_ARCVM
+  Log{kCommand, "arcvm_psi", "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c "
+        "'cat /proc/pressure/memory'", kRoot, kRoot, Log::kDefaultMaxBytes,
+        LogTool::Encoding::kUtf8},
+#endif  // USE_ARCVM
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   Log{kCommand, "borealis_frames_summary", "timeout -s KILL 5s "
@@ -507,6 +512,7 @@ const std::array kFeedbackLogs {
       "/usr/bin/connectivity show-feedback devices"},
   Log{kCommand, "network-services",
       "/usr/bin/connectivity show-feedback services"},
+  Log{kFile, "psi", "/proc/pressure/memory"},
   Log{kCommand, "shill_connection_diagnostic",
     "croslog --show-cursor=false --identifier=shill"
     "  --grep='Connection issue:' --quiet | tail -n 3"},
