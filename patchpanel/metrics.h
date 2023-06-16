@@ -15,6 +15,9 @@ constexpr char kArcServiceUmaEventMetrics[] = "Network.Patchpanel.ArcService";
 // feature.
 constexpr char kTetheringDHCPServerUmaEventMetrics[] =
     "Network.Patchpanel.Tethering.DHCPServer";
+// UMA metrics name for ARC WiFi multicast active time.
+constexpr char kMulticastActiveTimeMetrics[] =
+    "Network.Multicast.ARC.ActiveTime";
 
 // UMA metrics events for |kDbusUmaEventMetrics|;
 enum class DbusUmaEvent {

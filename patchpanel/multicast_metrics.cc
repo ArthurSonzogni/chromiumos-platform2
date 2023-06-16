@@ -17,7 +17,9 @@
 #include <base/logging.h>
 #include "base/strings/string_piece.h"
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
+#include "patchpanel/metrics.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -27,6 +29,11 @@ namespace {
 
 // Poll delay to fetch multicast packet count and report to UMA.
 constexpr base::TimeDelta kPollDelay = base::Minutes(2);
+
+// If interval between two records spend more than kPollDelay +
+// kPollDelayJitter, it means there is a suspend and we should discard the
+// data.
+constexpr base::TimeDelta kPollDelayJitter = base::Seconds(10);
 
 std::optional<MulticastMetrics::Type> ShillDeviceTypeToMulticastMetricsType(
     ShillClient::Device::Type type) {
@@ -73,8 +80,9 @@ static constexpr auto kAccepted = base::MakeFixedFlatSet<
 
 }  // namespace
 
-MulticastMetrics::MulticastMetrics(MulticastCountersService* counters_service)
-    : counters_service_(counters_service) {
+MulticastMetrics::MulticastMetrics(MulticastCountersService* counters_service,
+                                   MetricsLibraryInterface* metrics)
+    : counters_service_(counters_service), metrics_lib_(metrics) {
   pollers_.emplace(Type::kTotal, std::make_unique<Poller>(Type::kTotal, this));
   pollers_.emplace(Type::kEthernet,
                    std::make_unique<Poller>(Type::kEthernet, this));
@@ -195,6 +203,22 @@ MulticastMetrics::GetCounters(Type type) {
   return ret;
 }
 
+void MulticastMetrics::SendARCActiveTimeMetrics(
+    base::TimeDelta multicast_enabled_duration,
+    base::TimeDelta wifi_enabled_duration) {
+  if (!metrics_lib_) {
+    LOG(ERROR) << "Metrics client is not valid";
+    return;
+  }
+  if (wifi_enabled_duration.InSeconds() == 0) {
+    return;
+  }
+  metrics_lib_->SendPercentageToUMA(
+      kMulticastActiveTimeMetrics,
+      static_cast<int>((100 * multicast_enabled_duration.InSeconds() /
+                        wifi_enabled_duration.InSeconds())));
+}
+
 MulticastMetrics::Poller::Poller(MulticastMetrics::Type type,
                                  MulticastMetrics* metrics)
     : type_(type), metrics_(metrics) {}
@@ -215,6 +239,8 @@ void MulticastMetrics::Poller::Start(base::StringPiece ifname) {
   }
 
   StartTimer();
+  total_arc_multicast_enabled_duration_ = base::Seconds(0);
+  total_arc_wifi_connection_duration_ = base::Seconds(0);
 }
 
 void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
@@ -227,6 +253,12 @@ void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
     return;
   }
   StopTimer();
+
+  UpdateARCActiveTimeDuration(IsARCForwardingEnabled());
+  if (type_ == MulticastMetrics::Type::kARC) {
+    metrics_->SendARCActiveTimeMetrics(total_arc_multicast_enabled_duration_,
+                                       total_arc_wifi_connection_duration_);
+  }
 }
 
 void MulticastMetrics::Poller::UpdateARCState(bool running) {
@@ -257,7 +289,14 @@ void MulticastMetrics::Poller::UpdateARCForwarderState(bool enabled) {
     return;
   }
 
-  // Restart polling to reset timer.
+  // We add all time intervals between ARC multicast forwarder state update
+  // to wifi connection duration, and only add those between enable and disable
+  // of ARC multicast forwarder to multicast enabled duration.
+  // Since update active time duration is based on previous ARC forwarder
+  // state, negate enable state here.
+  UpdateARCActiveTimeDuration(!enabled);
+
+  // Restart polling to emit different metrics.
   StopTimer();
   StartTimer();
 }
@@ -273,6 +312,7 @@ void MulticastMetrics::Poller::StartTimer() {
     return;
   }
   packet_counts_ = *packet_counts;
+  last_record_timepoint_ = base::Time::Now();
   timer_.Start(FROM_HERE, kPollDelay, this, &MulticastMetrics::Poller::Record);
 }
 
@@ -301,6 +341,9 @@ void MulticastMetrics::Poller::Record() {
   packet_counts_ = *packet_counts;
 
   // TODO(jasongustaman): Record packet count diff to UMA.
+
+  // Update active time duration based on ARC forwarder state.
+  UpdateARCActiveTimeDuration(IsARCForwardingEnabled());
   switch (type_) {
     case MulticastMetrics::Type::kTotal:
     case MulticastMetrics::Type::kEthernet:
@@ -324,6 +367,22 @@ bool MulticastMetrics::Poller::IsTimerRunning() {
 
 bool MulticastMetrics::Poller::IsARCForwardingEnabled() {
   return arc_fwd_enabled_;
+}
+
+void MulticastMetrics::Poller::UpdateARCActiveTimeDuration(
+    bool prev_arc_multicast_fwd_running) {
+  auto duration = base::Time::Now() - last_record_timepoint_;
+  last_record_timepoint_ = base::Time::Now();
+
+  // When system is suspended the time elapsed from last checkpoint
+  // will be longer than usual and we should discard the data.
+  if (duration > (kPollDelay + kPollDelayJitter)) {
+    return;
+  }
+  total_arc_wifi_connection_duration_ += duration;
+  if (prev_arc_multicast_fwd_running) {
+    total_arc_multicast_enabled_duration_ += duration;
+  }
 }
 
 }  // namespace patchpanel

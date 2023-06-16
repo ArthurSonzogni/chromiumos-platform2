@@ -15,6 +15,7 @@
 #include "base/strings/string_piece.h"
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
@@ -46,7 +47,8 @@ class MulticastMetrics {
     kARC = 3,
   };
 
-  explicit MulticastMetrics(MulticastCountersService* counters_service);
+  explicit MulticastMetrics(MulticastCountersService* counters_service,
+                            MetricsLibraryInterface* metrics);
   MulticastMetrics(const MulticastMetrics&) = delete;
   MulticastMetrics& operator=(const MulticastMetrics&) = delete;
   ~MulticastMetrics() = default;
@@ -76,6 +78,10 @@ class MulticastMetrics {
   std::optional<
       std::map<MulticastCountersService::MulticastProtocolType, uint64_t>>
   GetCounters(Type type);
+
+  // Send active time UMA metrics.
+  void SendARCActiveTimeMetrics(base::TimeDelta multicast_enabled_duration,
+                                base::TimeDelta wifi_enabled_duration);
 
  private:
   // Handles polling to fetch and report UMA metrics.
@@ -110,6 +116,11 @@ class MulticastMetrics {
     bool IsTimerRunning();
     bool IsARCForwardingEnabled();
 
+    // Update elapsed time for WiFi connected duration and ARC multicast enabled
+    // duration when time elapsed since last recorded timepoint is within
+    // kPollDelay + kPollDelayJitter to avoid recording during a suspend.
+    void UpdateARCActiveTimeDuration(bool prev_arc_multicast_fwd_running);
+
    private:
     // Start and stop timer for polling counters. These methods also update
     // packet counts.
@@ -141,6 +152,17 @@ class MulticastMetrics {
     // Timer to continuously calls fetch packet count and report to UMA. When
     // this is destroyed, the continuous call is stopped as well.
     base::RepeatingTimer timer_;
+
+    // Total duration of multicast enabled period during a WiFi connection, used
+    // for multicast active time metrics.
+    base::TimeDelta total_arc_multicast_enabled_duration_;
+
+    // Total duration of a WiFi connection, used for multicast active time
+    // metrics.
+    base::TimeDelta total_arc_wifi_connection_duration_;
+
+    // Timepoint when last multicast active time metric was recorded.
+    base::Time last_record_timepoint_;
   };
 
   FRIEND_TEST(MulticastMetricsTest, BaseState);
@@ -152,12 +174,18 @@ class MulticastMetrics {
   FRIEND_TEST(MulticastMetricsTest, ARC_StartStop);
   FRIEND_TEST(MulticastMetricsTest, ARC_ForwardingStateChanges);
   FRIEND_TEST(MulticastMetricsTest, ARC_StartStopWithForwardingChanges);
+  FRIEND_TEST(MulticastMetricsTest, ARC_SendActiveTimeMetrics);
+  FRIEND_TEST(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsNoStop);
+  FRIEND_TEST(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsARCNotRunning);
 
   MulticastCountersService* counters_service_;
 
   // Pollers to handle each metrics type and poll. This is instantiated at the
   // constructor of the class.
   base::flat_map<Type, std::unique_ptr<Poller>> pollers_;
+
+  // UMA metrics client.
+  MetricsLibraryInterface* metrics_lib_;
 };
 
 }  // namespace patchpanel

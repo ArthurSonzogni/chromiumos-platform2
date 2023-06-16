@@ -13,11 +13,14 @@
 #include <gtest/gtest.h>
 #include <net-base/ipv4_address.h>
 
+#include "metrics/metrics_library_mock.h"
+#include "patchpanel/metrics.h"
 #include "patchpanel/mock_multicast_counters_service.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
 using net_base::IPv4CIDR;
+using ::testing::_;
 using testing::Return;
 
 namespace patchpanel {
@@ -26,7 +29,9 @@ namespace {
 class MulticastMetricsTest : public testing::Test {
  protected:
   void SetUp() override {
-    multicast_metrics_ = std::make_unique<MulticastMetrics>(&counters_service_);
+    mock_metrics_lib_ = std::make_unique<MetricsLibraryMock>();
+    multicast_metrics_ = std::make_unique<MulticastMetrics>(
+        &counters_service_, mock_metrics_lib_.get());
 
     EXPECT_CALL(counters_service_, GetCounters())
         .WillRepeatedly(
@@ -34,8 +39,10 @@ class MulticastMetricsTest : public testing::Test {
   }
 
   MockMulticastCountersService counters_service_;
+  std::unique_ptr<MetricsLibraryMock> mock_metrics_lib_;
   std::unique_ptr<MulticastMetrics> multicast_metrics_;
-  base::test::SingleThreadTaskEnvironment task_environment;
+  base::test::SingleThreadTaskEnvironment task_environment{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 }  // namespace
@@ -229,5 +236,79 @@ TEST_F(MulticastMetricsTest, ARC_StartStopWithForwardingChanges) {
 
 // TODO(jasongustaman): Add multicast counters unit test alongside emitting the
 // metrics.
+
+TEST_F(MulticastMetricsTest, ARC_SendActiveTimeMetrics) {
+  // Test active time metrics will be sent if ARC poller is started and
+  // stopped.
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendPercentageToUMA(kMulticastActiveTimeMetrics, 50))
+      .Times(1);
+  ShillClient::Device device;
+  device.ifname = "wlan0";
+  device.type = ShillClient::Device::Type::kWifi;
+  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+
+  // WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+
+  // ARC started.
+  multicast_metrics_->OnARCStarted();
+  task_environment.FastForwardBy(base::Minutes(2));
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  multicast_metrics_->OnARCWiFiForwarderStarted();
+  task_environment.FastForwardBy(base::Minutes(2));
+
+  // WiFi device stopped.
+  multicast_metrics_->OnPhysicalDeviceRemoved(device);
+}
+
+TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsNoStop) {
+  // Test active time metrics will not be sent if ARC poller is not
+  // stopped.
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendPercentageToUMA(kMulticastActiveTimeMetrics, _))
+      .Times(0);
+  ShillClient::Device device;
+  device.ifname = "wlan0";
+  device.type = ShillClient::Device::Type::kWifi;
+  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+
+  // WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+
+  // ARC started.
+  multicast_metrics_->OnARCStarted();
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+  task_environment.FastForwardBy(base::Minutes(2));
+
+  multicast_metrics_->OnARCWiFiForwarderStarted();
+  multicast_metrics_->OnARCWiFiForwarderStopped();
+}
+
+TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsARCNotRunning) {
+  // Test active time metrics will not be sent if ARC is not running.
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendPercentageToUMA(kMulticastActiveTimeMetrics, _))
+      .Times(0);
+  ShillClient::Device device;
+  device.ifname = "wlan0";
+  device.type = ShillClient::Device::Type::kWifi;
+  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+
+  // WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+
+  // ARC started.
+  multicast_metrics_->OnARCStarted();
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+  task_environment.FastForwardBy(base::Minutes(2));
+
+  // ARC stopped.
+  multicast_metrics_->OnARCStopped();
+
+  // WiFi device removed.
+  multicast_metrics_->OnPhysicalDeviceRemoved(device);
+}
 
 }  // namespace patchpanel
