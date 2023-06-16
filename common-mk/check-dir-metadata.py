@@ -67,7 +67,6 @@ LEGACYLIST = {
     "dlp",
     "dns-proxy",
     "easy-unlock",
-    "featured",
     "glib-bridge",
     "goldfishd",
     "hardware_verifier",
