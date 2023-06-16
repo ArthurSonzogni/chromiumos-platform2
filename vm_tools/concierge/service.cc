@@ -85,7 +85,6 @@
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <spaced/dbus-proxies.h>
 #include <spaced/disk_usage_proxy.h>
-#include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>

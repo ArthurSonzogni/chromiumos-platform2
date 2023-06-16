@@ -40,7 +40,6 @@
 #include <chromeos/constants/vm_tools.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vboot/crossystem.h>
-#include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"

@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <vm_applications/apps.pb.h>
+
 namespace vm_tools {
 
 namespace apps {
