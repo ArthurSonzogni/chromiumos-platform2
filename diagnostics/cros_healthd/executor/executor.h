@@ -119,8 +119,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                   receiver) override;
   void RemoveFioTestFile(RemoveFioTestFileCallback callback) override;
-  void GetFioTestDirectoryFreeSpace(
-      GetFioTestDirectoryFreeSpaceCallback callback) override;
   void GetConnectedHdmiConnectors(
       GetConnectedHdmiConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;

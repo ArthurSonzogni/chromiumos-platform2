@@ -60,7 +60,6 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     "${_arch}/ec_lid_angle-seccomp.policy",
     "${_arch}/evdev-seccomp.policy",
     "${_arch}/fingerprint-seccomp.policy",
-    "${_arch}/healthd_free_disk_space-seccomp.policy",
     "${_arch}/psr-seccomp.policy",
     "${_arch}/readonly-fetchers-seccomp.policy",
   ]

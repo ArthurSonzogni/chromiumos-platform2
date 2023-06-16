@@ -90,16 +90,6 @@ interface Delegate {
   // * |err| - Error message if existed.
   GetPsr() => (PsrInfo result, string? err);
 
-  // Get the free disk space in bytes on the volume containing |path|.
-  //
-  // The request:
-  // * |path| - Target path.
-  //
-  // The response:
-  // * |free_space_byte| - Free disk space in bytes.
-  //
-  GetAmountOfFreeDiskSpace(string path) => (uint64? free_space_byte);
-
   // Returns a map of connector_ids to display info that records the
   // active HDMI connectors.
   //
