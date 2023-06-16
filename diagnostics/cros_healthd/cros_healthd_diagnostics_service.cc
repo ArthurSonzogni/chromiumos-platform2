@@ -580,6 +580,18 @@ void CrosHealthdDiagnosticsService::RunAudioDriverRoutine(
              mojom::DiagnosticRoutineEnum::kAudioDriver, std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunUfsLifetimeRoutine(
+    RunUfsLifetimeRoutineCallback callback) {
+  auto ufs_lifetime_routine = std::make_unique<RoutineAdapter>(
+      mojom::RoutineArgument::Tag::kUfsLifetime);
+  routine_service_->CreateRoutine(
+      mojom::RoutineArgument::NewUfsLifetime(
+          mojom::UfsLifetimeRoutineArgument::New()),
+      ufs_lifetime_routine->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(ufs_lifetime_routine),
+             mojom::DiagnosticRoutineEnum::kUfsLifetime, std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojom::DiagnosticRoutineEnum routine_enum,
@@ -669,6 +681,8 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
+      // TODO(b/277876991): Add check for UFS in system config.
+      mojom::DiagnosticRoutineEnum::kUfsLifetime,
   };
 
   if (context_->system_config()->HasBattery()) {

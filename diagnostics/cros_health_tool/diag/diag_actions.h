@@ -99,6 +99,7 @@ class DiagActions final {
   bool ActionRunBluetoothPairingRoutine(const std::string& peripheral_id);
   bool ActionRunPowerButtonRoutine(uint32_t timeout_seconds);
   bool ActionRunAudioDriverRoutine();
+  bool ActionRunUfsLifetimeRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

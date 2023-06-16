@@ -555,6 +555,13 @@ bool DiagActions::ActionRunAudioDriverRoutine() {
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
+bool DiagActions::ActionRunUfsLifetimeRoutine() {
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunUfsLifetimeRoutine(
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

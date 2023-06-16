@@ -164,6 +164,8 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultPowerButton;
     case mojom::DiagnosticRoutineEnum::kAudioDriver:
       return metrics_name::kDiagnosticResultAudioDriver;
+    case mojom::DiagnosticRoutineEnum::kUfsLifetime:
+      return metrics_name::kDiagnosticResultUfsLifetime;
   }
 }
 

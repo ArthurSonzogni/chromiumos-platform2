@@ -96,6 +96,8 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPowerButton},
     {"audio_driver",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioDriver},
+    {"ufs_lifetime",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kUfsLifetime},
 };
 
 }  // namespace diagnostics

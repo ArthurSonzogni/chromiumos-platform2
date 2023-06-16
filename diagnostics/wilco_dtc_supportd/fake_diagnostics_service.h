@@ -148,6 +148,7 @@ class FakeDiagnosticsService final
   void RunPowerButtonRoutine(uint32_t timeout_seconds,
                              RunPowerButtonRoutineCallback callback) override;
   void RunAudioDriverRoutine(RunAudioDriverRoutineCallback callback) override;
+  void RunUfsLifetimeRoutine(RunUfsLifetimeRoutineCallback callback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

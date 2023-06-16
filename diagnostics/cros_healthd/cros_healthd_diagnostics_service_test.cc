@@ -92,6 +92,7 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
+      mojom::DiagnosticRoutineEnum::kUfsLifetime,
   };
 }
 

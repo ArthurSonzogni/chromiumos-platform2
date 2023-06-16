@@ -286,4 +286,9 @@ void FakeDiagnosticsService::RunAudioDriverRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunUfsLifetimeRoutine(
+    RunUfsLifetimeRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

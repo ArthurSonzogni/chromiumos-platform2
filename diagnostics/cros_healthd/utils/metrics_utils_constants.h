@@ -145,6 +145,8 @@ inline constexpr char kDiagnosticResultPowerButton[] =
     "ChromeOS.Healthd.DiagnosticResult.PowerButton";
 inline constexpr char kDiagnosticResultAudioDriver[] =
     "ChromeOS.Healthd.DiagnosticResult.AudioDriver";
+inline constexpr char kDiagnosticResultUfsLifetime[] =
+    "ChromeOS.Healthd.DiagnosticResult.UfsLifetime";
 
 }  // namespace metrics_name
 }  // namespace diagnostics

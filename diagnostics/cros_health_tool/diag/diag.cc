@@ -807,6 +807,10 @@ int AudioDriverV1Main(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(AudioDriverRoutine)
 }
 
+int UfsLifetimeV1Main(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(UfsLifetimeRoutine)
+}
+
 const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     // V2 routines.
     {"audio_driver", AudioDriverMain},
@@ -863,6 +867,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_pairing", BluetoothPairingMain},
     {"power_button", PowerButtonMain},
     {"audio_driver_v1", AudioDriverV1Main},
+    {"ufs_lifetime_v1", UfsLifetimeV1Main},
 };
 
 void PrintHelp() {
