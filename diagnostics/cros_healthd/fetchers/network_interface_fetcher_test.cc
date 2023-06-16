@@ -35,6 +35,8 @@ using IwCommand = mojom::Executor::IwCommand;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Invoke;
+using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Return;
 using ::testing::WithArg;
 
@@ -143,6 +145,7 @@ TEST_F(NetworkInterfaceFetcherTest, FetchNetworkInterfaceInfo) {
 
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
+  ASSERT_THAT(network_infos, Not(IsEmpty()));
   const auto& network_info = network_infos.at(0);
 
   ASSERT_FALSE(network_info.is_null());
@@ -214,6 +217,7 @@ TEST_F(NetworkInterfaceFetcherTest, WirelessNotConnected) {
   auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
+  ASSERT_THAT(network_infos, Not(IsEmpty()));
   const auto& network_info = network_infos.at(0);
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
@@ -246,6 +250,7 @@ TEST_F(NetworkInterfaceFetcherTest, MissingPowerSchemeFile) {
   auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
+  ASSERT_THAT(network_infos, Not(IsEmpty()));
   const auto& network_info = network_infos.at(0);
 
   ASSERT_FALSE(network_info.is_null());
@@ -266,6 +271,7 @@ TEST_F(NetworkInterfaceFetcherTest, MissingRxBitrateSetToZero) {
   auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
+  ASSERT_THAT(network_infos, Not(IsEmpty()));
   const auto& network_info = network_infos.at(0);
   ASSERT_FALSE(network_info.is_null());
   EXPECT_TRUE(network_info->is_wireless_interface_info());
