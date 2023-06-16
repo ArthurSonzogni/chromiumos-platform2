@@ -931,6 +931,18 @@ bool IsExternalDevice(base::FilePath normalized_devpath) {
       return true;
   }
 
+  auto dev_components = normalized_devpath.GetComponents();
+  auto it = dev_components.begin();
+  base::FilePath dev(*it++);
+  for (; it != dev_components.end(); it++) {
+    dev = dev.Append(*it);
+    if (base::ReadFileToString(dev.Append("removable"), &removable)) {
+      base::TrimWhitespaceASCII(removable, base::TRIM_ALL, &removable);
+      if (removable == "removable")
+        return true;
+    }
+  }
+
   std::string panel;
   if (base::ReadFileToString(
           normalized_devpath.Append("physical_location/panel"), &panel)) {
