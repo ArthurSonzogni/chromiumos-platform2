@@ -47,6 +47,10 @@ class MockBacklightController : public BacklightController,
               (const PowerManagementPolicy& policy),
               (override));
   MOCK_METHOD(void, HandleDisplayServiceStart, (), (override));
+  MOCK_METHOD(void,
+              HandleBatterySaverModeChange,
+              (const BatterySaverModeState& state),
+              (override));
   MOCK_METHOD(void, SetDimmedForInactivity, (bool dimmed), (override));
   MOCK_METHOD(void, SetOffForInactivity, (bool off), (override));
   MOCK_METHOD(void, SetSuspended, (bool suspended), (override));

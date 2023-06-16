@@ -79,6 +79,8 @@ class ExternalBacklightController
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void HandleDisplayServiceStart() override;
+  void HandleBatterySaverModeChange(
+      const BatterySaverModeState& state) override;
   void SetDimmedForInactivity(bool dimmed) override;
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;

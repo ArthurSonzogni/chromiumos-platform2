@@ -370,6 +370,8 @@ Daemon::~Daemon() {
     audio_client_->RemoveObserver(this);
   if (power_supply_)
     power_supply_->RemoveObserver(this);
+
+  battery_saver_controller_.RemoveObserver(this);
 }
 
 void Daemon::Init() {
@@ -552,6 +554,7 @@ void Daemon::Init() {
                                  DisplayMode::NORMAL, prefs_.get());
 
   battery_saver_controller_.Init(*dbus_wrapper_);
+  battery_saver_controller_.AddObserver(this);
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
@@ -1256,6 +1259,15 @@ void Daemon::OnPowerStatusUpdate() {
               << "A observed charge rate)";
     ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
   }
+}
+
+void Daemon::OnBatterySaverStateChanged(const BatterySaverModeState& state) {
+  TRACE_EVENT("power", "OnBatterySaverStateChanged");
+
+  // TODO(sxm): Collect metrics somewhere around here.
+
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleBatterySaverModeChange(state);
 }
 
 void Daemon::InitDBus() {

@@ -102,6 +102,8 @@ class InternalBacklightController : public BacklightController,
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void HandleDisplayServiceStart() override;
+  void HandleBatterySaverModeChange(
+      const BatterySaverModeState& state) override;
   void SetDimmedForInactivity(bool dimmed) override;
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
@@ -192,6 +194,7 @@ class InternalBacklightController : public BacklightController,
   bool suspended_ = false;
   bool shutting_down_ = false;
   bool forced_off_ = false;
+  bool battery_saver_ = false;
 
   // Time at which Init() was called.
   base::TimeTicks init_time_;
@@ -262,6 +265,10 @@ class InternalBacklightController : public BacklightController,
   // at the lower end of the range and less at the upper end. (Initialized to a
   // const value in c'tor.)
   double level_to_percent_exponent_;
+
+  // Percentage, in the range [0.0, 100.0], to which we dim the backlight when
+  // battery saver is enabled.
+  double battery_saver_brightness_percent_;
 
   // |backlight_|'s current brightness level (or the level to which it's
   // transitioning).

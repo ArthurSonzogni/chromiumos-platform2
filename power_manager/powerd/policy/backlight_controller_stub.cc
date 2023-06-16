@@ -22,6 +22,7 @@ void BacklightControllerStub::ResetStats() {
   policy_changes_.clear();
   display_service_starts_ = 0;
   wake_notification_reports_ = 0;
+  battery_saver_changes_ = 0;
 }
 
 void BacklightControllerStub::NotifyObservers(
@@ -90,6 +91,11 @@ void BacklightControllerStub::HandlePolicyChange(
 
 void BacklightControllerStub::HandleDisplayServiceStart() {
   display_service_starts_++;
+}
+
+void BacklightControllerStub::HandleBatterySaverModeChange(
+    const BatterySaverModeState& state) {
+  battery_saver_changes_++;
 }
 
 void BacklightControllerStub::SetDimmedForInactivity(bool dimmed) {

@@ -313,6 +313,15 @@ void KeyboardBacklightController::HandlePolicyChange(
 
 void KeyboardBacklightController::HandleDisplayServiceStart() {}
 
+void KeyboardBacklightController::HandleBatterySaverModeChange(
+    const BatterySaverModeState& state) {
+  TRACE_EVENT("power",
+              "KeyboardBacklightController::HandleBatterySaverModeChange");
+  forced_off_ = state.enabled();
+  UpdateState(Transition::SLOW,
+              BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
+}
+
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)
     return;

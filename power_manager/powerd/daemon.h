@@ -106,6 +106,7 @@ class Daemon;
 
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
+               public policy::BatterySaverController::Observer,
                public policy::InputEventHandler::Delegate,
                public policy::Suspender::Delegate,
                public policy::WifiController::Delegate,
@@ -211,6 +212,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
+
+  // Overridden from policy::BatterySaverController:
+  void OnBatterySaverStateChanged(const BatterySaverModeState& state) override;
 
   // Overridden from system::DBusWrapperInterface::Observer:
   void OnDBusNameOwnerChanged(const std::string& name,

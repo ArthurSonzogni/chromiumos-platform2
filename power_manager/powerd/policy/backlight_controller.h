@@ -14,6 +14,7 @@
 #include "base/functional/callback_forward.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
+#include "power_manager/proto_bindings/battery_saver.pb.h"
 
 namespace power_manager {
 
@@ -87,6 +88,11 @@ class BacklightController {
   // Handles Chrome starting (as detected by the ownership of its D-Bus object
   // changing).
   virtual void HandleDisplayServiceStart() = 0;
+
+  // Handles battery saver mode change. Triggers when transitioning between
+  // battery saver mode enabled/disabled.
+  virtual void HandleBatterySaverModeChange(
+      const BatterySaverModeState& state) = 0;
 
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this

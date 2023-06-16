@@ -89,6 +89,8 @@ class BacklightControllerStub : public policy::BacklightController {
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void HandleDisplayServiceStart() override;
+  void HandleBatterySaverModeChange(
+      const BatterySaverModeState& state) override;
   void SetDimmedForInactivity(bool dimmed) override;
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
@@ -124,6 +126,7 @@ class BacklightControllerStub : public policy::BacklightController {
   std::vector<PowerManagementPolicy> policy_changes_;
   int display_service_starts_ = 0;
   int wake_notification_reports_ = 0;
+  int battery_saver_changes_ = 0;
 
   bool dimmed_ = false;
   bool off_ = false;

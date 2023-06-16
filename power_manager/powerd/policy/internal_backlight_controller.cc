@@ -49,6 +49,10 @@ const double kDimmedBrightnessFraction = 0.1;
 // just use 1.0 to give us a linear scale.
 const double kDefaultLevelToPercentExponent = 0.5;
 
+// Default brightness ratio used for battery saver.
+// TODO(sxm): Implement downstream model-level brightness overrides.
+const double kDefaultBatterySaverBrightnessFraction = 0.2;
+
 // Returns the animation duration for |transition|.
 base::TimeDelta TransitionToTimeDelta(
     BacklightController::Transition transition) {
@@ -138,6 +142,8 @@ InternalBacklightController::InternalBacklightController()
     : clock_(new Clock),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
+      battery_saver_brightness_percent_(kDefaultBatterySaverBrightnessFraction *
+                                        100.0),
       weak_ptr_factory_(this) {}
 
 InternalBacklightController::~InternalBacklightController() = default;
@@ -158,10 +164,11 @@ void InternalBacklightController::Init(
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
+  auto real_max_level = static_cast<double>(max_level_);
+
   if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_)) {
-    min_visible_level_ =
-        static_cast<int64_t>(lround(kDefaultMinVisibleBrightnessFraction *
-                                    static_cast<double>(max_level_)));
+    min_visible_level_ = static_cast<int64_t>(
+        lround(kDefaultMinVisibleBrightnessFraction * real_max_level));
   }
   min_visible_level_ = std::min(
       std::max(min_visible_level_, static_cast<int64_t>(1)), max_level_);
@@ -223,13 +230,16 @@ void InternalBacklightController::Init(
       break;
     default:
       level_to_percent_exponent_ =
-          static_cast<double>(max_level_) >= kMinLevelsForNonLinearMapping
+          real_max_level >= kMinLevelsForNonLinearMapping
               ? kDefaultLevelToPercentExponent
               : 1.0;
   }
 
-  dimmed_brightness_percent_ = ClampPercentToVisibleRange(LevelToPercent(
-      lround(kDimmedBrightnessFraction * static_cast<double>(max_level_))));
+  dimmed_brightness_percent_ = ClampPercentToVisibleRange(
+      LevelToPercent(lround(kDimmedBrightnessFraction * real_max_level)));
+
+  battery_saver_brightness_percent_ = ClampPercentToVisibleRange(LevelToPercent(
+      lround(kDefaultBatterySaverBrightnessFraction * real_max_level)));
 
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseScreenBrightnessMethod,
@@ -389,6 +399,13 @@ void InternalBacklightController::HandlePolicyChange(
 void InternalBacklightController::HandleDisplayServiceStart() {
   display_power_setter_->SetDisplayPower(display_power_state_,
                                          base::TimeDelta());
+}
+
+void InternalBacklightController::HandleBatterySaverModeChange(
+    const BatterySaverModeState& state) {
+  // TODO(sxm): Dimmed brightness levels might be too dark on low-nit screens.
+  battery_saver_ = state.enabled();
+  UpdateState(BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
 }
 
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -737,6 +754,13 @@ void InternalBacklightController::UpdateState(
     brightness_percent =
         std::min(GetUndimmedBrightnessPercent(),
                  dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
+
+    if (battery_saver_ &&
+        brightness_percent > battery_saver_brightness_percent_ &&
+        cause != BacklightBrightnessChange_Cause_USER_REQUEST) {
+      brightness_percent = battery_saver_brightness_percent_;
+    }
+
     const bool turning_on =
         display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
         current_level_ == 0;

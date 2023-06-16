@@ -177,6 +177,11 @@ void ExternalBacklightController::HandleDisplayServiceStart() {
   NotifyObservers(BacklightBrightnessChange_Cause_OTHER);
 }
 
+void ExternalBacklightController::HandleBatterySaverModeChange(
+    const BatterySaverModeState& state) {
+  // TODO(sxm): Figure out how to distinguish USB-powered displays and dim here.
+}
+
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed != dimmed_for_inactivity_) {
     dimmed_for_inactivity_ = dimmed;
