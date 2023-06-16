@@ -55,8 +55,6 @@ EventsHandler::ScopedEventsHandler EventsHandler::Create(
     libmems::IioDevice* iio_device) {
   ScopedEventsHandler handler(nullptr, EventsHandlerDeleter);
 
-  iio_device->EnableAllEvents();
-
   handler.reset(new EventsHandler(std::move(ipc_task_runner),
                                   std::move(event_task_runner), iio_device));
   return handler;
@@ -105,6 +103,7 @@ void EventsHandler::ResetWithReasonOnThread(
   // TODO(crbug/1414799): Reset with reason when mojo::RemoteSet supports it.
   events_observers_.Clear();
   enabled_indices_.clear();
+  enabled_indices_count_.clear();
 
   StopEventWatcherOnThread();
 }
@@ -118,6 +117,19 @@ void EventsHandler::AddClientOnThread(
   enabled_indices_[events_observers_.Add(std::move(events_observer))] =
       iio_event_indices;
 
+  for (int32_t index : iio_event_indices) {
+    if (enabled_indices_count_[index]++ == 0) {
+      auto* event = iio_device_->GetEvent(index);
+      if (!event) {
+        LOGF(ERROR) << "Invalid event index: " << index;
+        continue;
+      }
+
+      if (!event->SetEnabledAndCheck(true))
+        LOGF(ERROR) << "Failed to enable event: " << index;
+    }
+  }
+
   if (!watcher_.get())
     SetEventWatcherOnThread();
 }
@@ -127,7 +139,24 @@ void EventsHandler::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
 
   LOGF(ERROR) << "EventsObserver disconnected. RemoteSetElementId: " << id;
 
-  enabled_indices_.erase(id);
+  auto it = enabled_indices_.find(id);
+  if (it == enabled_indices_.end())
+    return;
+
+  for (int32_t index : it->second) {
+    if (--enabled_indices_count_[index] == 0) {
+      auto* event = iio_device_->GetEvent(index);
+      if (!event) {
+        LOGF(ERROR) << "Invalid event index: " << index;
+        continue;
+      }
+
+      if (!event->SetEnabledAndCheck(false))
+        LOGF(ERROR) << "Failed to disable event: " << index;
+    }
+  }
+
+  enabled_indices_.erase(it);
   if (enabled_indices_.empty())
     StopEventWatcherOnThread();
 }

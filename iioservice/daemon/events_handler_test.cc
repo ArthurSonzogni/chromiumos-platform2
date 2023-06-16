@@ -107,7 +107,7 @@ TEST_F(EventsHandlerTest, AddClient) {
   // No events in this test
   device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
 
-  handler_->AddClient({3}, GetRemote());  // timestamp
+  handler_->AddClient({3}, GetRemote());
   handler_->AddClient({3}, GetRemote());  // Can be called multiple times.
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(receiver_set_.size(), 2);
@@ -120,6 +120,9 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
   // clients added.
   device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
 
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FALSE(device_->GetEvent(i)->IsEnabled());
+
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
     int k = base::RandInt(0, libmems::fakes::kEventNumber - 1);
@@ -130,8 +133,8 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
   }
 
   std::vector<std::set<int32_t>> clients = {
-      {0, 1},
       {0},
+      {0, 1},
   };
 
   for (size_t i = 0; i < clients.size(); ++i) {
@@ -153,6 +156,21 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
 
   // Wait until all observers receive all events.
   base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(device_->GetEvent(0)->IsEnabled());
+  EXPECT_TRUE(device_->GetEvent(1)->IsEnabled());
+  EXPECT_FALSE(device_->GetEvent(2)->IsEnabled());
+  EXPECT_FALSE(device_->GetEvent(3)->IsEnabled());
+
+  observers_.pop_back();
+
+  // Wait until |device_| disables event index 1.
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(device_->GetEvent(0)->IsEnabled());
+  EXPECT_FALSE(device_->GetEvent(1)->IsEnabled());
+  EXPECT_FALSE(device_->GetEvent(2)->IsEnabled());
+  EXPECT_FALSE(device_->GetEvent(3)->IsEnabled());
 
   for (const auto& observer : observers_)
     EXPECT_TRUE(observer->FinishedObserving());

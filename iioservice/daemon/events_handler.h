@@ -72,6 +72,8 @@ class EventsHandler {
 
   mojo::RemoteSet<cros::mojom::SensorDeviceEventsObserver> events_observers_;
   std::map<mojo::RemoteSetElementId, std::vector<int32_t>> enabled_indices_;
+  // Count each event indices by number of clients enabling them.
+  std::map<int32_t, int> enabled_indices_count_;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
