@@ -43,12 +43,12 @@ std::ostream& operator<<(
                 << "}";
 }
 
-std::optional<AutoDnatTarget> GetAutoDNATTarget(Device::Type guest_type) {
+std::optional<AutoDNATTarget> GetAutoDNATTarget(Device::Type guest_type) {
   switch (guest_type) {
     case Device::Type::kTerminaVM:
-      return AutoDnatTarget::kCrostini;
+      return AutoDNATTarget::kCrostini;
     case Device::Type::kParallelsVM:
-      return AutoDnatTarget::kParallels;
+      return AutoDNATTarget::kParallels;
     default:
       return std::nullopt;
   }

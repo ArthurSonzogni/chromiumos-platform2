@@ -1410,7 +1410,7 @@ TEST(DatapathTest, AddInboundIPv4DNATArc) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, eth_device,
+  datapath.AddInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1432,7 +1432,7 @@ TEST(DatapathTest, RemoveInboundIPv4DNATArc) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, eth_device,
+  datapath.RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 
@@ -1454,7 +1454,7 @@ TEST(DatapathTest, AddInboundIPv4DNATCrostini) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, eth_device,
+  datapath.AddInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1476,7 +1476,7 @@ TEST(DatapathTest, RemoveInboundIPv4DNATCrostini) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kCrostini, eth_device,
+  datapath.RemoveInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 
@@ -1498,7 +1498,7 @@ TEST(DatapathTest, AddInboundIPv4DNATParallelsVm) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, eth_device,
+  datapath.AddInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
                               IPv4Address(1, 2, 3, 4));
 }
 
@@ -1520,7 +1520,7 @@ TEST(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
   eth_device.ifname = "eth0";
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kParallels, eth_device,
+  datapath.RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
                                  IPv4Address(1, 2, 3, 4));
 }
 

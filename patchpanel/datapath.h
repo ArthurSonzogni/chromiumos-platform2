@@ -172,7 +172,7 @@ enum class IpFamily {
 
 // List of possible guest targets for automatic forwarding rules applied to
 // unsolicited ingress traffic not accepted on the host.
-enum class AutoDnatTarget {
+enum class AutoDNATTarget {
   kArc,
   kCrostini,
   kParallels,
@@ -414,10 +414,10 @@ class Datapath {
   // associated with |auto_dnat_target|. These rules allow inbound connections
   // to transparently reach Android Apps listening on a network port inside ARC
   // or Linux binaries listening on a network port inside Crostini.
-  virtual void AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+  virtual void AddInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                                   const ShillClient::Device& shill_device,
                                   const net_base::IPv4Address& ipv4_addr);
-  virtual void RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+  virtual void RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                                      const ShillClient::Device& shill_device,
                                      const net_base::IPv4Address& ipv4_addr);
 

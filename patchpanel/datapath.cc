@@ -91,9 +91,9 @@ constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
 // IPv4 nat PREROUTING chains for forwarding ingress traffic to different types
 // of hosted guests with the corresponding hierarchy.
-constexpr char kApplyAutoDnatToArcChain[] = "apply_auto_dnat_to_arc";
-constexpr char kApplyAutoDnatToCrostiniChain[] = "apply_auto_dnat_to_crostini";
-constexpr char kApplyAutoDnatToParallelsChain[] =
+constexpr char kApplyAutoDNATToArcChain[] = "apply_auto_dnat_to_arc";
+constexpr char kApplyAutoDNATToCrostiniChain[] = "apply_auto_dnat_to_crostini";
+constexpr char kApplyAutoDNATToParallelsChain[] =
     "apply_auto_dnat_to_parallels";
 // nat PREROUTING chain for egress traffic from downstream guests.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
@@ -101,8 +101,8 @@ constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
 // nat POSTROUTING chains for egress traffic from processes running on the host.
-constexpr char kSnatChromeDnsChain[] = "snat_chrome_dns";
-constexpr char kSnatUserDnsChain[] = "snat_user_dns";
+constexpr char kSNATChromeDnsChain[] = "snat_chrome_dns";
+constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -140,14 +140,14 @@ TrafficSource DownstreamNetworkInfoTrafficSource(
   return TrafficSource::kTetherDownstream;
 }
 
-std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
+std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {
   switch (auto_dnat_target) {
-    case AutoDnatTarget::kArc:
-      return kApplyAutoDnatToArcChain;
-    case AutoDnatTarget::kCrostini:
-      return kApplyAutoDnatToCrostiniChain;
-    case AutoDnatTarget::kParallels:
-      return kApplyAutoDnatToParallelsChain;
+    case AutoDNATTarget::kArc:
+      return kApplyAutoDNATToArcChain;
+    case AutoDNATTarget::kCrostini:
+      return kApplyAutoDNATToCrostiniChain;
+    case AutoDNATTarget::kParallels:
+      return kApplyAutoDNATToParallelsChain;
   }
 }
 
@@ -233,10 +233,10 @@ void Datapath::Start() {
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain},
       // Set up nat chains for SNAT-ing egress DNS queries to the DNS proxy
       // instances.
-      {IpFamily::kDual, Iptables::Table::kNat, kSnatChromeDnsChain},
+      {IpFamily::kDual, Iptables::Table::kNat, kSNATChromeDnsChain},
       // For the case of non-Chrome "user" DNS queries, there is already an IPv4
       // SNAT rule with the ConnectNamespace. Only IPv6 USER SNAT is needed.
-      {IpFamily::kIPv6, Iptables::Table::kNat, kSnatUserDnsChain},
+      {IpFamily::kIPv6, Iptables::Table::kNat, kSNATUserDnsChain},
       // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS
       // queries of system services. When a VPN is connected, a query routed
       // through a physical network is redirected to the primary nameserver of
@@ -246,9 +246,9 @@ void Datapath::Start() {
       // These chains are only created for IPv4 since downstream guests obtain
       // their own addresses for IPv6.
       {IpFamily::kIPv4, Iptables::Table::kNat, kIngressPortForwardingChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToParallelsChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToArcChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToCrostiniChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToParallelsChain},
       // Create filter subchains for managing the egress firewall VPN rules.
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain},
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain},
@@ -292,11 +292,11 @@ void Datapath::Start() {
       // ARC default ingress forwarding is always first, Crostini second, and
       // Parallels VM last.
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDnatToArcChain},
+       kApplyAutoDNATToArcChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDnatToCrostiniChain},
+       kApplyAutoDNATToCrostiniChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDnatToParallelsChain},
+       kApplyAutoDNATToParallelsChain},
       // When VPN lockdown is enabled, a REJECT rule must stop
       // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
       // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
@@ -454,13 +454,13 @@ void Datapath::Start() {
   }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::kDual, Iptables::Command::kA, "POSTROUTING", /*ifname=*/"",
-          kSnatChromeDnsChain, Fwmark::FromSource(TrafficSource::kChrome),
+          kSNATChromeDnsChain, Fwmark::FromSource(TrafficSource::kChrome),
           kFwmarkAllSourcesMask, /*redirect_on_mark=*/true)) {
     LOG(ERROR) << "Failed to add jump rule for chrome DNS SNAT";
   }
   if (!ModifyRedirectDnsJumpRule(IpFamily::kIPv6, Iptables::Command::kA,
                                  "POSTROUTING", /*ifname=*/"",
-                                 kSnatUserDnsChain, kFwmarkRouteOnVpn,
+                                 kSNATUserDnsChain, kFwmarkRouteOnVpn,
                                  kFwmarkVpnMask, /*redirect_on_mark=*/true)) {
     LOG(ERROR) << "Failed to add jump rule for user DNS SNAT";
   }
@@ -531,13 +531,13 @@ void Datapath::ResetIptables() {
                  "PREROUTING", kIngressPortForwardingChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDnatToArcChain, /*iif=*/"", /*oif=*/"",
+                 "PREROUTING", kApplyAutoDNATToArcChain, /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDnatToCrostiniChain, /*iif=*/"",
+                 "PREROUTING", kApplyAutoDNATToCrostiniChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDnatToParallelsChain, /*iif=*/"",
+                 "PREROUTING", kApplyAutoDNATToParallelsChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kRedirectDefaultDnsChain, /*iif=*/"", /*oif=*/"",
@@ -587,13 +587,13 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain, true},
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain, true},
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain, true},
-      {IpFamily::kDual, Iptables::Table::kNat, kSnatChromeDnsChain, true},
-      {IpFamily::kIPv6, Iptables::Table::kNat, kSnatUserDnsChain, true},
+      {IpFamily::kDual, Iptables::Table::kNat, kSNATChromeDnsChain, true},
+      {IpFamily::kIPv6, Iptables::Table::kNat, kSNATUserDnsChain, true},
       {IpFamily::kIPv4, Iptables::Table::kNat, kRedirectDnsChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain,
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToArcChain, true},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToCrostiniChain,
        true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToParallelsChain,
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToParallelsChain,
        true},
   };
   for (const auto& op : resetOps) {
@@ -1051,7 +1051,7 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
       }
     }
   }
-  if (!ModifyDnsProxyMasquerade(family, op, kSnatChromeDnsChain)) {
+  if (!ModifyDnsProxyMasquerade(family, op, kSNATChromeDnsChain)) {
     success = false;
   }
   return success;
@@ -1149,7 +1149,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       // Add MASQUERADE rule for user traffic.
       if (family == IpFamily::kIPv6 &&
           !ModifyDnsProxyMasquerade(family, Iptables::Command::kA,
-                                    kSnatUserDnsChain)) {
+                                    kSNATUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
         return false;
       }
@@ -1209,7 +1209,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       ModifyDnsRedirectionSkipVpnRule(family, Iptables::Command::kD);
       if (family == IpFamily::kIPv6) {
         ModifyDnsProxyMasquerade(family, Iptables::Command::kD,
-                                 kSnatUserDnsChain);
+                                 kSNATUserDnsChain);
       }
       break;
     }
@@ -1368,11 +1368,11 @@ void Datapath::StopRoutingDevice(const std::string& int_ifname) {
   RemoveChain(IpFamily::kDual, Iptables::Table::kMangle, subchain);
 }
 
-void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+void Datapath::AddInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                                   const ShillClient::Device& shill_device,
                                   const IPv4Address& ipv4_addr) {
   const std::string ipv4_addr_str = ipv4_addr.ToString();
-  const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
+  const std::string chain = AutoDNATTargetChainName(auto_dnat_target);
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
   if (process_runner_->iptables(
@@ -1403,11 +1403,11 @@ void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
   }
 }
 
-void Datapath::RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+void Datapath::RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                                      const ShillClient::Device& shill_device,
                                      const IPv4Address& ipv4_addr) {
   const std::string ipv4_addr_str = ipv4_addr.ToString();
-  const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
+  const std::string chain = AutoDNATTargetChainName(auto_dnat_target);
   process_runner_->iptables(
       Iptables::Table::kNat, Iptables::Command::kD,
       {chain, "-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",

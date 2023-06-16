@@ -516,7 +516,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
 
   datapath_->StartRoutingDevice(shill_device, device->host_ifname(),
                                 TrafficSource::kArc);
-  datapath_->AddInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device,
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device,
                                 device->config().guest_ipv4_addr());
 
   std::string virtual_device_ifname;
@@ -588,7 +588,7 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
     datapath_->RemoveInterface(ArcVethHostName(shill_device.ifname));
 
   datapath_->StopRoutingDevice(device->host_ifname());
-  datapath_->RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, shill_device,
+  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device,
                                    device->config().guest_ipv4_addr());
   datapath_->RemoveBridge(device->host_ifname());
 

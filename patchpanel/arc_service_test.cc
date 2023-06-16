@@ -119,7 +119,7 @@ TEST_F(ArcServiceTest, NotStarted_AddDevice) {
                                  StrEq("arc_eth0"), TrafficSource::kArc))
       .Times(0);
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"), _))
       .Times(0);
 
@@ -137,12 +137,12 @@ TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
                                  StrEq("arc_eth0"), TrafficSource::kArc))
       .Times(0);
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"), _))
       .Times(0);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0"))).Times(0);
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDnatTarget::kArc,
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                     ShillDeviceHasInterfaceName("eth0"), _))
       .Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(0);
@@ -325,7 +325,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
@@ -458,7 +458,7 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
@@ -504,7 +504,7 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
@@ -625,7 +625,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDnatTarget::kArc,
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                     ShillDeviceHasInterfaceName("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
@@ -665,7 +665,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->AddDevice(eth_dev);
@@ -706,7 +706,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
@@ -769,7 +769,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
@@ -810,7 +810,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
@@ -826,7 +826,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("wlan0"),
                                  StrEq("arc_wlan0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("wlan0"),
                                  IPv4Address(100, 115, 92, 14)));
 
@@ -842,7 +842,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth1"),
                                  StrEq("arc_eth1"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth1"),
                                  IPv4Address(100, 115, 92, 10)));
 
@@ -919,7 +919,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->AddDevice(eth_dev);
@@ -937,7 +937,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDnatTarget::kArc,
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                     ShillDeviceHasInterfaceName("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
@@ -967,7 +967,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
@@ -1006,7 +1006,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
               StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
                                  StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDnatTarget::kArc,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                  ShillDeviceHasInterfaceName("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
@@ -1016,7 +1016,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDnatTarget::kArc,
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                     ShillDeviceHasInterfaceName("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));

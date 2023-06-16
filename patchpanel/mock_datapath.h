@@ -113,13 +113,13 @@ class MockDatapath : public Datapath {
               (override));
   MOCK_METHOD(void,
               AddInboundIPv4DNAT,
-              (AutoDnatTarget auto_dnat_target,
+              (AutoDNATTarget auto_dnat_target,
                const ShillClient::Device& shill_device,
                const net_base::IPv4Address& ipv4_addr),
               (override));
   MOCK_METHOD(void,
               RemoveInboundIPv4DNAT,
-              (AutoDnatTarget auto_dnat_target,
+              (AutoDNATTarget auto_dnat_target,
                const ShillClient::Device& shill_device,
                const net_base::IPv4Address& ipv4_addr),
               (override));
