@@ -22,7 +22,10 @@ group("all") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":libhwsec_tpm1_cmk_migration_parser_fuzzer" ]
+    deps += [
+      ":libhwsec_tpm1_cmk_migration_parser_fuzzer",
+      ":libhwsec_tpm2_backend_fuzzer",
+    ]
   }
 }
 
@@ -409,6 +412,27 @@ if (use.fuzzer) {
       ":hardware_abstraction_external_library",
       ":hardware_abstraction_internal_library",
       ":overalls_library",
+    ]
+  }
+
+  executable("libhwsec_tpm2_backend_fuzzer") {
+    sources = [ "fuzzers/tpm2_backend_fuzzer.cc" ]
+    configs += [
+      ":libhwsec_tpm2_config",
+      ":target_defaults",
+      "//common-mk:test",
+      "//common-mk/common_fuzzer",
+    ]
+    libs = [ "trunks_test" ]
+    deps = [
+      ":error_library",
+      ":hardware_abstraction_external_library",
+      ":hardware_abstraction_internal_library",
+    ]
+    pkg_deps = [
+      "libchrome-test",
+      "libcrossystem-test",
+      "libtpm_manager-client-test",
     ]
   }
 }
