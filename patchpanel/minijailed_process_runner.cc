@@ -77,10 +77,17 @@ int MinijailedProcessRunner::RunSyncDestroy(
   pid_t pid;
   int fd_stdout = -1;
   int* stdout_p = output ? &fd_stdout : nullptr;
+  int fd_stderr = -1;
+  int* stderr_p = log_failures ? &fd_stderr : nullptr;
   bool ran = mj->RunPipesAndDestroy(jail, args, &pid, /*stdin=*/nullptr,
-                                    stdout_p, /*stderr=*/nullptr);
+                                    stdout_p, stderr_p);
   if (output) {
     *output = ReadBlockingFDToStringAndClose(base::ScopedFD(fd_stdout));
+  }
+  std::string stderr_buf;
+  if (log_failures) {
+    stderr_buf = ReadBlockingFDToStringAndClose(base::ScopedFD(fd_stderr));
+    base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
   }
 
   int status = 0;
@@ -100,6 +107,9 @@ int MinijailedProcessRunner::RunSyncDestroy(
     } else {
       LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
                    << "' exited with unknown status " << status;
+    }
+    if (!stderr_buf.empty()) {
+      LOG(WARNING) << "stderr: " << stderr_buf;
     }
   }
   return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;

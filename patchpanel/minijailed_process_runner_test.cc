@@ -49,7 +49,7 @@ TEST(MinijailProcessRunnerTest, modprobe_all) {
                       _,
                       ElementsAre(StrEq("/sbin/modprobe"), StrEq("-a"),
                                   StrEq("module1"), StrEq("module2"), nullptr),
-                      _, nullptr, nullptr, nullptr))
+                      _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
@@ -72,7 +72,7 @@ TEST(MinijailProcessRunnerTest, ip) {
                       _,
                       ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
                                   StrEq("arg1"), StrEq("arg2"), nullptr),
-                      _, nullptr, nullptr, nullptr))
+                      _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
@@ -96,7 +96,7 @@ TEST(MinijailProcessRunnerTest, ip6) {
               _,
               ElementsAre(StrEq("/bin/ip"), StrEq("-6"), StrEq("obj"),
                           StrEq("cmd"), StrEq("arg1"), StrEq("arg2"), nullptr),
-              _, nullptr, nullptr, nullptr))
+              _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
@@ -118,7 +118,7 @@ TEST(MinijailProcessRunnerTest, iptables) {
               _,
               ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"), StrEq("filter"),
                           StrEq("-A"), StrEq("arg1"), StrEq("arg2"), nullptr),
-              _, nullptr, nullptr, nullptr))
+              _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
@@ -141,7 +141,7 @@ TEST(MinijailProcessRunnerTest, ip6tables) {
                              ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
                                          StrEq("mangle"), StrEq("-I"),
                                          StrEq("arg1"), StrEq("arg2"), nullptr),
-                             _, nullptr, nullptr, nullptr))
+                             _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
