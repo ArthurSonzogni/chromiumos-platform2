@@ -45,6 +45,10 @@ class UserCollector : public UserCollectorBase {
     return SetUpInternal(false /* enabled */, false /* early */);
   }
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   // Set (override the default) core file pattern.
   void set_core_pattern_file(const std::string& pattern) {
     core_pattern_file_ = pattern;

@@ -78,6 +78,9 @@ constexpr char kChromeProcessTypeKey[] = "ptype";
 // https://source.chromium.org/chromium/chromium/src/+/main:components/crash/core/app/crashpad.cc
 constexpr char kChromeProcessTypeBrowserValue[] = "browser";
 
+// The name of the session_manager executable used to compute crash severity.
+constexpr char kSessionManagerExecName[] = "session_manager";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string& exec);
@@ -205,6 +208,21 @@ void UserCollector::FinishCrash(const base::FilePath& meta_path,
 
   if (vm_support)
     vm_support->FinishCrash(meta_path);
+}
+
+CrashCollector::ComputedCrashSeverity UserCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  if (exec_name == kSessionManagerExecName) {
+    return ComputedCrashSeverity{
+        .crash_severity = CrashSeverity::kFatal,
+        .product_group = Product::kPlatform,
+    };
+  }
+
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kError,
+      .product_group = Product::kPlatform,
+  };
 }
 
 // Return the string that should be used for the kernel's core_pattern file.

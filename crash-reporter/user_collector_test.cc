@@ -673,6 +673,26 @@ TEST_F(UserCollectorTest, HandleSyscall) {
                      std::string("sig=") + exec + "-seccomp-violation-read"));
 }
 
+TEST_F(UserCollectorTest, ComputeSeverity_SessionManagerExecutable) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("session_manager");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
+TEST_F(UserCollectorTest, ComputeSeverity_NotSessionManagerExecutable) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("not session_manager");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kError);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
 struct CopyStdinToCoreFileTestParams {
   std::string test_name;
   std::string input;
