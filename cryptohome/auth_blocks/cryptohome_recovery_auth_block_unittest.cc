@@ -70,7 +70,7 @@ void SetupMockHwsec(NiceMock<hwsec::MockCryptohomeFrontend>& hwsec) {
 class CryptohomeRecoveryAuthBlockTest : public testing::Test {
  public:
   CryptohomeRecoveryAuthBlockTest()
-      : ledger_info_(FakeRecoveryMediatorCrypto::GetLedgerInfo()) {}
+      : ledger_info_(FakeRecoveryMediatorCrypto::GetFakeLedgerInfo()) {}
 
   void SetUp() override {
     ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(

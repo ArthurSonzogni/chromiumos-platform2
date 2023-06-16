@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/base64url.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
@@ -23,6 +24,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptorecovery/inclusion_proof_test_util.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -42,51 +44,34 @@ namespace cryptohome {
 namespace cryptorecovery {
 namespace {
 
-// Hard-coded development ledger info, including the public key, name and key
-// hash. It mirrors the value from the server.
-constexpr char kDevLedgerName[] = "ChromeOSLedgerOwnerPrototype";
-constexpr uint32_t kDevLedgerPublicKeyHash = 2517252912;
-constexpr char kDevLedgerPublicKey[] =
-    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUL2cKW4wHEdyWDjjJktxkijFOKJZ8rflR-Sfb-"
-    "ToowJtLyNOBh6wj0anP4kP4llXK4HMZoJDKy9texKJl2UOog==";
+// Hard-coded development ledger info and keys. Do not use them in
+// production! Keys were generated at random using
+// EllipticCurve::GenerateKeysAsSecureBlobs method and converted to hex /
+// base64.
+constexpr char kFakeLedgerName[] = "FakeRecoveryMediatorLedgerName";
+constexpr uint32_t kFakeLedgerPublicKeyHash = 1234567890;
+constexpr char kFakeLedgerPublicKeyBase64[] =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0_"
+    "pCyErRdVCEMEF3AlT2U4qLbTG1rReoeNnujUeO5iavvfn2Ag8h6vCkCjUUrKjlTCPPSSUQzkEO"
+    "M0EFO03dkw==";
+constexpr char kFakeLedgerPrivateKeyHex[] =
+    "4201905D75370DE422EE988412F1AD2929D5252B49FF88B6286552865EE380F0";
 
-static const char kFakePublicLedgerEntryHex[] =
-    "A46E6C6F675F656E7472795F686173685820CC1CAB36511F9D6BFFB6456F69C1711021F8CC"
-    "BB57D6699496A1FFCF634B1AFD707075626C69635F74696D657374616D701A6302C7006B72"
-    "65636F766572795F6964784035306161633730663632343064343031333266366335336233"
-    "66643036373533326336323331336537626162316136323531656261363964643432386266"
-    "35356E736368656D615F76657273696F6E01";
-static const char kFakePrivateLogEntryHex[] =
-    "A6746F6E626F617264696E675F6D6574615F64617461A86A626F6172645F6E616D656A6661"
-    "6B655F626F6172646F63727970746F686F6D655F7573657275313233343536373839303132"
-    "3334353637383930317463727970746F686F6D655F757365725F74797065016E6465766963"
-    "655F757365725F69647366616B655F6465766963655F757365725F69646B666F726D5F6661"
-    "63746F727066616B655F666F726D5F666163746F726B7265636F766572795F696478403530"
-    "61616337306636323430643430313332663663353362336664303637353332633632333133"
-    "6537626162316136323531656261363964643432386266353568726C7A5F636F64656D6661"
-    "6B655F726C7A5F636F64656E736368656D615F76657273696F6E01707075626C69635F7469"
-    "6D657374616D701A6302C7006E726571756573746F725F757365726073726571756573746F"
-    "725F757365725F74797065006E736368656D615F76657273696F6E016974696D657374616D"
-    "701A630353B2";
-static const char kFakeCheckpointNote[] =
-    "4368726F6D654F535265636F766572794C65646765723A300A35353232390A4E5666354534"
-    "7A784673415053346C4345387830636253576C7A41624E5131466A66784F33725861336F51"
-    "3D0A0AE28094204368726F6D654F534C65646765724F776E657250726F746F74797065206C"
-    "676F374D444245416941454C6269427164463049477A375175322B43597A42317443595131"
-    "7531372B4E4242327A34507652596967496747562B574A4A5A5749386E674F594855326366"
-    "536B4A7A6A68596E653644684266617A4C52414A535363493D0A";
-static const std::vector<std::string> kFakeInclusionProof = {
-    "F734AB286204006B2E5C952DAB4BFC837ED17875951792D3E86461001441D399",
-    "671BBA77614BCD7691C54BFC54D08D03EEC359BB1CF54F625A1000D2510F1366",
-    "674E325245DE026F05108D2946A5DF171FF956C5CEABCC08861A078AABD3F0E7",
-    "92480585A66FE91C79A8A9AC8F63D264B3578932FD40C08F9C7EE6C7A2092546",
-    "3C053DAF88CE9F704D9262C931BF67D90C0BBAB40A70F45876B50A473A5DBECB",
-    "66ED0FE23561B763E01067565A033745298C6E5CD42E3BB4C040AE216436D0B7",
-    "2F24697A3C1E07ADF113A7E3E3B44E9715FEAB348A597531EE9228BFEBDCBBA9",
-    "50A2C261699FCA0945111D791EE3517278A08F40C3B0FBF9FE71D431074B1A85",
-    "6FF294619FF205B18BA3CA72DE41A6A7C02B7004535B98B87F376886D79E3445",
-    "BE3AA0DAFC1996A14A342F39A6CF0947E6E6DFB07FB59CBDF7A6A8E2AC68171D",
-    "8608FB09D409AF849A9074D306A4FF5A3ABBE2DBACF0EE9EDC540854C3437EA9"};
+// Hardcoded fake mediator and epoch public and private keys. Do not use them in
+// production! Keys were generated at random using
+// EllipticCurve::GenerateKeysAsSecureBlobs method and converted to hex.
+constexpr char kFakeMediatorPublicKeyHex[] =
+    "3059301306072A8648CE3D020106082A8648CE3D030107034200041C66FD08151D1C34EA50"
+    "03F7C24557D2E4802535AA4F65EDBE3CD495CFE060387D00D5D25D859B26C5134F1AD00F22"
+    "30EAB72A47F46DF23407CF68FB18C509DE";
+constexpr char kFakeMediatorPrivateKeyHex[] =
+    "B7A01DA624ECF448D9F7E1B07236EA2930A17C9A31AD60E43E01A8FEA934AB1C";
+constexpr char kFakeEpochPrivateKeyHex[] =
+    "2DC064DBE7473CE2E617C689E3D1D71568E1B09EA6CEC5CB4463A66C06F1B535";
+constexpr char kFakeEpochPublicKeyHex[] =
+    "3059301306072A8648CE3D020106082A8648CE3D030107034200045D8393CDEF671228CB0D"
+    "8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EFD44F6786CAE7ADEB8E26A3"
+    "55CD9714F59C78F063A3CA3A7D74877A8A";
 
 brillo::SecureBlob GetMediatorShareHkdfInfo() {
   return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
@@ -135,66 +120,22 @@ bool GenerateRecoveryRequestProto(
   return true;
 }
 
-bool HexStringToBlob(const std::string& input, brillo::Blob* output) {
-  brillo::SecureBlob secure_blob;
-  if (!brillo::SecureBlob::HexStringToSecureBlob(input, &secure_blob)) {
-    LOG(ERROR) << "Failed to convert hex to SecureBlob";
-    return false;
-  }
-  std::string str = secure_blob.to_string();
-  *output = brillo::Blob(str.begin(), str.end());
-  return true;
+brillo::SecureBlob GetFakeLedgerPublicKeyBase64() {
+  return brillo::SecureBlob(kFakeLedgerPublicKeyBase64);
 }
 
-bool CreateFakeLedgerSignedProof(LedgerSignedProof* ledger_signed_proof) {
-  LoggedRecord logged_record;
-  if (!HexStringToBlob(kFakePublicLedgerEntryHex,
-                       &logged_record.public_ledger_entry)) {
-    LOG(ERROR) << "Failed to convert fake public ledger entry hex to Blob";
+bool GetFakeLedgerPublicKey(brillo::SecureBlob* key) {
+  std::string ledger_public_key_decoded;
+  if (!base::Base64UrlDecode(GetFakeLedgerPublicKeyBase64().to_string(),
+                             base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                             &ledger_public_key_decoded)) {
+    LOG(ERROR) << "Failed at decoding from url base64.";
     return false;
   }
-  if (!HexStringToBlob(kFakePrivateLogEntryHex,
-                       &logged_record.private_log_entry)) {
-    LOG(ERROR) << "Failed to convert fake private log entry hex to Blob";
-    return false;
-  }
-  logged_record.leaf_index = 55228;
-
-  if (!HexStringToBlob(kFakeCheckpointNote,
-                       &ledger_signed_proof->checkpoint_note)) {
-    LOG(ERROR) << "Failed to convert fake checkpoint note hex to Blob";
-    return false;
-  }
-  for (const std::string& hex_string : kFakeInclusionProof) {
-    brillo::Blob blob;
-    if (!HexStringToBlob(hex_string, &blob)) {
-      LOG(ERROR) << "Failed to convert fake inclusion proof hex to Blob";
-      return false;
-    }
-    ledger_signed_proof->inclusion_proof.push_back(blob);
-  }
-
-  ledger_signed_proof->logged_record = logged_record;
+  *key = brillo::SecureBlob(ledger_public_key_decoded);
   return true;
 }
-
 }  // namespace
-
-// Hardcoded fake mediator and epoch public and private keys. Do not use them in
-// production! Keys were generated at random using
-// EllipticCurve::GenerateKeysAsSecureBlobs method and converted to hex.
-static const char kFakeMediatorPublicKeyHex[] =
-    "3059301306072A8648CE3D020106082A8648CE3D030107034200041C66FD08151D1C34EA50"
-    "03F7C24557D2E4802535AA4F65EDBE3CD495CFE060387D00D5D25D859B26C5134F1AD00F22"
-    "30EAB72A47F46DF23407CF68FB18C509DE";
-static const char kFakeMediatorPrivateKeyHex[] =
-    "B7A01DA624ECF448D9F7E1B07236EA2930A17C9A31AD60E43E01A8FEA934AB1C";
-static const char kFakeEpochPrivateKeyHex[] =
-    "2DC064DBE7473CE2E617C689E3D1D71568E1B09EA6CEC5CB4463A66C06F1B535";
-static const char kFakeEpochPublicKeyHex[] =
-    "3059301306072A8648CE3D020106082A8648CE3D030107034200045D8393CDEF671228CB0D"
-    "8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EFD44F6786CAE7ADEB8E26A3"
-    "55CD9714F59C78F063A3CA3A7D74877A8A";
 
 std::unique_ptr<FakeRecoveryMediatorCrypto>
 FakeRecoveryMediatorCrypto::Create() {
@@ -216,10 +157,72 @@ FakeRecoveryMediatorCrypto::FakeRecoveryMediatorCrypto(EllipticCurve ec)
     : ec_(std::move(ec)) {}
 
 // static
-LedgerInfo FakeRecoveryMediatorCrypto::GetLedgerInfo() {
-  return LedgerInfo{.name = kDevLedgerName,
-                    .key_hash = kDevLedgerPublicKeyHash,
-                    .public_key = brillo::SecureBlob(kDevLedgerPublicKey)};
+bool FakeRecoveryMediatorCrypto::GetFakeLedgerPrivateKey(EC_KEY* key) {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+  std::optional<EllipticCurve> ec =
+      EllipticCurve::Create(RecoveryCrypto::kCurve, context.get());
+  if (!ec) {
+    LOG(ERROR) << "Failed to create EllipticCurve";
+    return false;
+  }
+
+  if (EC_KEY_set_group(key, ec->GetGroup()) != 1) {
+    LOG(ERROR) << "Failed to set EC group";
+    return false;
+  }
+
+  brillo::SecureBlob priv_key_blob;
+  if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeLedgerPrivateKeyHex,
+                                                 &priv_key_blob)) {
+    LOG(ERROR) << "Failed to convert hex to SecureBlob";
+    return false;
+  }
+  crypto::ScopedBIGNUM key_bn = SecureBlobToBigNum(priv_key_blob);
+  if (!key_bn) {
+    LOG(ERROR) << "Failed to convert key_bn to BIGNUM";
+    return false;
+  }
+  if (!EC_KEY_set_private_key(key, key_bn.get())) {
+    LOG(ERROR) << "Failed to set private key";
+    return false;
+  }
+
+  brillo::SecureBlob pub_key_blob;
+  if (!GetFakeLedgerPublicKey(&pub_key_blob)) {
+    LOG(ERROR) << "Failed to get public key";
+    return false;
+  }
+  crypto::ScopedEC_POINT pub_key =
+      ec->DecodeFromSpkiDer(pub_key_blob, context.get());
+  if (!pub_key) {
+    LOG(ERROR) << "Failed to convert pub_key_blob to EC_POINT";
+    return false;
+  }
+
+  if (!EC_KEY_set_public_key(key, pub_key.get())) {
+    LOG(ERROR) << "Failed to set public key";
+    return false;
+  }
+
+  // EC_KEY_check_key performs various sanity checks on the EC_KEY object to
+  // confirm that it is valid.
+  if (!EC_KEY_check_key(key)) {
+    LOG(ERROR) << "Failed to create valid key";
+    return false;
+  }
+
+  return true;
+}
+
+// static
+LedgerInfo FakeRecoveryMediatorCrypto::GetFakeLedgerInfo() {
+  return LedgerInfo{.name = kFakeLedgerName,
+                    .key_hash = kFakeLedgerPublicKeyHash,
+                    .public_key = GetFakeLedgerPublicKeyBase64()};
 }
 
 // static
@@ -483,7 +486,18 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   ResponsePayload response_payload;
   HsmResponseAssociatedData response_ad;
   response_ad.response_payload_salt = salt;
-  if (!CreateFakeLedgerSignedProof(&response_ad.ledger_signed_proof)) {
+
+  crypto::ScopedEC_Key ledger_priv_key(EC_KEY_new());
+  if (!ledger_priv_key) {
+    LOG(ERROR) << "Failed to allocate EC_KEY structure";
+    return false;
+  }
+  if (!GetFakeLedgerPrivateKey(ledger_priv_key.get())) {
+    return false;
+  }
+  if (!GenerateFakeLedgerSignedProofForTesting(
+          {ledger_priv_key.get()}, GetFakeLedgerInfo(),
+          &response_ad.ledger_signed_proof)) {
     LOG(ERROR) << "Unable to create fake ledger signed proof";
     return false;
   }

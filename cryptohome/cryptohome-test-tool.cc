@@ -7,13 +7,17 @@
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <string>
 
+#include <absl/strings/numbers.h>
 #include <base/at_exit.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
@@ -50,6 +54,7 @@ using cryptohome::cryptorecovery::DecryptResponsePayloadRequest;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
+using cryptohome::cryptorecovery::LedgerInfo;
 using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using cryptohome::cryptorecovery::RecoveryRequest;
@@ -66,6 +71,9 @@ const ObfuscatedUsername& GetTestObfuscatedUsername() {
 
 constexpr char kFakeGaiaId[] = "123456789012345678901";
 constexpr char kFakeUserDeviceId[] = "fake_user_device_id";
+constexpr char kLedgerInfoNameKey[] = "name";
+constexpr char kLedgerInfoKeyHashKey[] = "key_hash";
+constexpr char kLedgerInfoPubKeyKey[] = "public_key";
 
 bool GenerateOnboardingMetadata(const FilePath& file_path,
                                 RecoveryCryptoImpl* recovery_crypto,
@@ -92,6 +100,39 @@ const hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
     recovery_crypto = hwsec_factory->GetRecoveryCryptoFrontend();
   }
   return recovery_crypto.get();
+}
+
+std::optional<LedgerInfo> LoadLedgerInfoFromJsonFile(
+    const FilePath& file_path) {
+  std::string contents_string;
+  if (!base::ReadFileToString(file_path, &contents_string)) {
+    LOG(ERROR) << "Failed to read from file " << file_path.value() << ".";
+    return std::nullopt;
+  }
+  if (contents_string.empty()) {
+    LOG(ERROR) << "File is empty: " << file_path.value() << ".";
+    return std::nullopt;
+  }
+  auto result = base::JSONReader::Read(contents_string);
+  if (!result || !result->is_dict()) {
+    LOG(ERROR) << "Could not read JSON content: " << contents_string;
+    return std::nullopt;
+  }
+  auto name = result->GetDict().FindString(kLedgerInfoNameKey);
+  auto key_hash = result->GetDict().FindString(kLedgerInfoKeyHashKey);
+  auto public_key = result->GetDict().FindString(kLedgerInfoPubKeyKey);
+  if (!name || !key_hash || !public_key) {
+    LOG(ERROR) << "Could not read JSON fields: " << contents_string;
+    return std::nullopt;
+  }
+  uint32_t key_hash_val;
+  if (!absl::SimpleAtoi(*key_hash, &key_hash_val)) {
+    LOG(ERROR) << "key_hash is not a number: " << key_hash;
+    return std::nullopt;
+  }
+  return LedgerInfo{.name = *name,
+                    .key_hash = key_hash_val,
+                    .public_key = SecureBlob(*public_key)};
 }
 
 bool CheckMandatoryFlag(const std::string& flag_name,
@@ -336,6 +377,7 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& ephemeral_pub_key_in_file_path,
     const FilePath& destination_share_in_file_path,
     const FilePath& extended_pcr_bound_destination_share_in_file_path,
+    const FilePath& ledger_info_in_file_path,
     const FilePath& recovery_secret_out_file_path,
     Platform* platform) {
   SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
@@ -382,6 +424,16 @@ bool DoRecoveryCryptoDecryptAction(
     return false;
   }
 
+  LedgerInfo ledger_info = FakeRecoveryMediatorCrypto::GetFakeLedgerInfo();
+  if (!ledger_info_in_file_path.empty()) {
+    auto parsed_info = LoadLedgerInfoFromJsonFile(ledger_info_in_file_path);
+    if (!parsed_info) {
+      LOG(ERROR) << "Failed to read ledger info.";
+      return false;
+    }
+    ledger_info = parsed_info.value();
+  }
+
   HsmResponsePlainText response_plain_text;
   CryptoStatus decrypt_result = recovery_crypto->DecryptResponsePayload(
       DecryptResponsePayloadRequest(
@@ -389,7 +441,7 @@ bool DoRecoveryCryptoDecryptAction(
            .epoch_response = epoch_response,
            .recovery_response_proto = recovery_response_proto,
            .obfuscated_username = GetTestObfuscatedUsername(),
-           .ledger_info = FakeRecoveryMediatorCrypto::GetLedgerInfo()}),
+           .ledger_info = ledger_info}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     LOG(ERROR) << "Failed to decrypt response payload "
@@ -430,6 +482,24 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
   CHECK(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
   return WriteHexFileLogged(mediator_pub_key_out_file_path, mediator_pub_key);
+}
+
+bool DoRecoveryCryptoGetLedgerInfoAction(
+    const FilePath& ledger_info_out_file_path) {
+  LedgerInfo ledger_info = FakeRecoveryMediatorCrypto::GetFakeLedgerInfo();
+  auto dict =
+      base::Value::Dict()
+          .Set(kLedgerInfoNameKey, ledger_info.name)
+          // Convert the key hash to string, for easier parsing by the test,
+          // since it doesn't need to read/change the content.
+          .Set(kLedgerInfoKeyHashKey, std::to_string(*ledger_info.key_hash))
+          .Set(kLedgerInfoPubKeyKey, ledger_info.public_key->to_string());
+  std::string ledger_info_json;
+  if (!base::JSONWriter::Write(dict, &ledger_info_json)) {
+    LOG(ERROR) << "Failed to write to json.";
+    return false;
+  }
+  return base::WriteFile(ledger_info_out_file_path, ledger_info_json);
 }
 
 bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
@@ -585,6 +655,11 @@ int main(int argc, char* argv[]) {
       epoch_response_in_file, "",
       "Path to the file containing the hex-encoded Cryptohome Recovery "
       "epoch response proto.");
+  DEFINE_string(ledger_info_in_file, "",
+                "Path to the file containing the ledger info in JSON format.");
+  DEFINE_string(
+      ledger_info_out_file, "",
+      "Path to the file where to store the ledger info in JSON format.");
   DEFINE_string(
       gaia_rapt_in_file, "",
       "Path to the file containing the hex-encoded Gaia RAPT to be added to "
@@ -706,6 +781,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),
           FilePath(FLAGS_extended_pcr_bound_destination_share_in_file),
+          FilePath(FLAGS_ledger_info_in_file),
           FilePath(FLAGS_recovery_secret_out_file), &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_get_fake_epoch") {
@@ -719,6 +795,12 @@ int main(int argc, char* argv[]) {
                            FLAGS_mediator_pub_key_out_file)) {
       success = cryptohome::DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
           FilePath(FLAGS_mediator_pub_key_out_file));
+    }
+  } else if (FLAGS_action == "recovery_crypto_get_fake_ledger_info") {
+    if (CheckMandatoryFlag("ledger_info_out_file",
+                           FLAGS_ledger_info_out_file)) {
+      success = cryptohome::DoRecoveryCryptoGetLedgerInfoAction(
+          FilePath(FLAGS_ledger_info_out_file));
     }
   } else {
     LOG(ERROR) << "Unknown --action.";

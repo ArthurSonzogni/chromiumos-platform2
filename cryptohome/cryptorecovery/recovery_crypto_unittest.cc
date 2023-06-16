@@ -105,7 +105,7 @@ SecureBlob GenerateScalar() {
 class RecoveryCryptoTest : public testing::Test {
  public:
   RecoveryCryptoTest()
-      : ledger_info_(FakeRecoveryMediatorCrypto::GetLedgerInfo()) {
+      : ledger_info_(FakeRecoveryMediatorCrypto::GetFakeLedgerInfo()) {
     onboarding_metadata_.cryptohome_user_type = UserType::kGaiaId;
     onboarding_metadata_.cryptohome_user = kFakeGaiaId;
     onboarding_metadata_.device_user_id = kFakeDeviceId;

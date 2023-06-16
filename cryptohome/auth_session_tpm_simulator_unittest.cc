@@ -275,7 +275,7 @@ CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
       *request.mutable_auth_input()->mutable_cryptohome_recovery_input();
   input.set_epoch_response(epoch_response.SerializeAsString());
   input.set_recovery_response(recovery_response.SerializeAsString());
-  auto ledger_info = FakeRecoveryMediatorCrypto::GetLedgerInfo();
+  auto ledger_info = FakeRecoveryMediatorCrypto::GetFakeLedgerInfo();
   input.mutable_ledger_info()->set_name(ledger_info.name);
   input.mutable_ledger_info()->set_key_hash(ledger_info.key_hash.value());
   input.mutable_ledger_info()->set_public_key(

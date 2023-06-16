@@ -78,7 +78,7 @@ struct LedgerInfo {
   std::string name;
   // Ledger's public key hash.
   hwsec::ExplicitInit<uint32_t> key_hash;
-  // Ledger's public key.
+  // Ledger's public key, base64 encoded.
   hwsec::ExplicitInit<brillo::SecureBlob> public_key;
 };
 
