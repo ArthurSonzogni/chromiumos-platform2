@@ -8,14 +8,11 @@
 // Do not add to this list.
 pub use crosvm_base::add_fd_flags;
 pub use crosvm_base::block_signal;
-pub use crosvm_base::debug;
 pub use crosvm_base::errno_result;
-pub use crosvm_base::error;
 pub use crosvm_base::getpid;
 pub use crosvm_base::gettid;
 pub use crosvm_base::handle_eintr;
 pub use crosvm_base::handle_eintr_errno;
-pub use crosvm_base::info;
 pub use crosvm_base::ioctl;
 pub use crosvm_base::ioctl_io_nr;
 pub use crosvm_base::ioctl_ior_nr;
@@ -33,7 +30,6 @@ pub use crosvm_base::set_rt_prio_limit;
 pub use crosvm_base::set_rt_round_robin;
 pub use crosvm_base::signal::Error as SignalError;
 pub use crosvm_base::syscall;
-pub use crosvm_base::syslog;
 pub use crosvm_base::unblock_signal;
 pub use crosvm_base::unix::clear_signal_handler;
 pub use crosvm_base::unix::duration_to_timespec;
@@ -46,7 +42,6 @@ pub use crosvm_base::unix::wait_for_interrupt;
 pub use crosvm_base::unix::KillOnDrop;
 pub use crosvm_base::unix::Pid;
 pub use crosvm_base::unix::SharedMemory;
-pub use crosvm_base::warn;
 pub use crosvm_base::AsRawDescriptor;
 pub use crosvm_base::Error;
 pub use crosvm_base::FromRawDescriptor;
@@ -60,3 +55,14 @@ pub use crosvm_base::Result;
 pub use crosvm_base::SafeDescriptor;
 pub use crosvm_base::ScmSocket;
 pub use crosvm_base::Terminal;
+
+#[deprecated = "Use log::debug instead."]
+pub use log::debug;
+#[deprecated = "Use log::error instead."]
+pub use log::error;
+#[deprecated = "Use log::info instead."]
+pub use log::info;
+#[deprecated = "Use log::trace instead."]
+pub use log::trace;
+#[deprecated = "Use log::warn instead."]
+pub use log::warn;

@@ -20,7 +20,8 @@ use std::time::Duration;
 
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::sys::register_signal_handler;
-use libchromeos::sys::{debug, error, info, syslog};
+use libchromeos::sys::{debug, error, info};
+use libchromeos::syslog;
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;
@@ -197,7 +198,7 @@ impl Daemon {
 }
 
 fn run() -> Result<()> {
-    syslog::init().map_err(Error::Syslog)?;
+    syslog::init("ippusb_bridge".to_string(), true).map_err(Error::Syslog)?;
     let argv: Vec<String> = std::env::args().collect();
     let args = match Args::parse(&argv).map_err(Error::ParseArgs)? {
         None => return Ok(()),
