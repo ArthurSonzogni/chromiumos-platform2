@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
+#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -92,7 +93,6 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
-      mojom::DiagnosticRoutineEnum::kUfsLifetime,
   };
 }
 
@@ -124,6 +124,11 @@ std::set<mojom::DiagnosticRoutineEnum> GetSmartCtlRoutines() {
 std::set<mojom::DiagnosticRoutineEnum> GetMmcRoutines() {
   return std::set<mojom::DiagnosticRoutineEnum>{
       mojom::DiagnosticRoutineEnum::kEmmcLifetime};
+}
+
+std::set<mojom::DiagnosticRoutineEnum> GetUfsRoutines() {
+  return std::set<mojom::DiagnosticRoutineEnum>{
+      mojom::DiagnosticRoutineEnum::kUfsLifetime};
 }
 
 // Tests for the CrosHealthdDiagnosticsService class.
@@ -269,6 +274,23 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetMmcRoutines())
     expected_routines.erase(r);
+
+  EXPECT_EQ(reply_set, expected_routines);
+}
+
+// Test that GetAvailableRoutines returns the expected list of routines when
+// storage type is UFS.
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesStorageTypeUfs) {
+  mock_context()->fake_cros_config()->SetString(
+      cros_config_path::kHardwareProperties, cros_config_property::kStorageType,
+      cros_config_value::kStorageTypeUfs);
+  CreateService();
+  auto reply = ExecuteGetAvailableRoutines();
+  std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
+
+  auto expected_routines = GetAllAvailableRoutines();
+  for (const auto r : GetUfsRoutines())
+    expected_routines.insert(r);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
