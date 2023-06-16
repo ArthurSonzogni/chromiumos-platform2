@@ -40,7 +40,7 @@ def main():
     ap.add_argument(
         "-s",
         "--size",
-        default=20,
+        default=10,
         type=int,
         help="image size in GiB (default: %(default)s)",
     )

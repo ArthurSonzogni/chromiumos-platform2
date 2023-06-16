@@ -136,8 +136,8 @@ EOF
   touch /var/lib/systemd/linger/chronos
 
   # Run the refvm installer on startup, if the appropriate OEM string is set.
-  # We do this in bashrc so that install messages are shown in the terminal.
-  cat << EOF >> /home/chronos/.bashrc
+  # We do this in .profile so that install messages are shown in the terminal.
+  cat << EOF >> /home/chronos/.profile
 if sudo dmidecode -t 11 -q | grep -q refvm:install=true; then
   exec sudo /usr/local/bin/install-refvm
 fi

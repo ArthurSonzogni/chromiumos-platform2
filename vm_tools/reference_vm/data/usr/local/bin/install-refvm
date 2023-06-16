@@ -14,6 +14,40 @@ TARGET="${TMPDIR}/target"
 mkdir -p "${TMPDIR}"
 export TMPDIR
 
+interactive=true
+if dmidecode -t 11 -q | grep -q refvm:noninteractive=true; then
+  interactive=false
+fi
+
+success=false
+
+end_install() {
+  # Cleanup
+  if [[ -e "/dev/${src_vg}/root-snap" ]]; then
+    lvremove -y "/dev/${src_vg}/root-snap"
+  fi
+  journalctl --flush
+  umount -q /etc/lvm || true
+
+  if [[ "${success}" == true ]]; then
+    echo "Installation successful."
+  else
+    echo "Installation failed."
+  fi
+
+  if [[ "${interactive}" == true && "${success}" == false ]]; then
+    echo "Starting a shell for debugging."
+    exec bash
+  fi
+
+  if [[ "${interactive}" == true ]]; then
+    read -r -p "Press ENTER to shut down the installer."
+  fi
+
+  systemctl poweroff
+}
+trap end_install EXIT
+
 # Avoid logging to disk during installation.
 journalctl --relinquish-var
 
@@ -85,13 +119,6 @@ chroot "${TARGET}" grub-install --uefi-secure-boot
 chroot "${TARGET}" update-grub
 chroot "${TARGET}" update-initramfs -u
 
-# Cleanup
 umount -R "${TARGET}"
-if [[ "${src_lv}" == "root-snap" ]]; then
-  lvremove -y "/dev/${src_vg}/root-snap"
-fi
-journalctl --flush
-umount -q /etc/lvm || true
 
-echo "Installation successful"
-systemctl poweroff
+success=true
