@@ -256,12 +256,13 @@ class PowerSupplyInterface {
   // Sets if the Adaptive Charging heuristic currently has the feature enabled.
   virtual void SetAdaptiveChargingHeuristicEnabled(bool enabled) = 0;
 
-  // Starts Adaptive Charging logic. |target_time| is the current estimate for
-  // when Adaptive Charging will allow the battery to finish charging to full.
+  // Starts Adaptive Charging logic. |target_time_to_full| is the current
+  // estimate for how long until Adaptive Charging will allow the battery to
+  // finish charging to full.
   // |hold_percent| is the what to set
   // |power_status_.display_battery_percentage| to while Adaptive Charging is
   // delaying the charge.
-  virtual void SetAdaptiveCharging(const base::TimeTicks& target_time,
+  virtual void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
                                    double hold_percent) = 0;
 
   // Clears |adaptive_charging_hold_percent_|.
@@ -385,7 +386,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void SetSuspended(bool suspended) override;
   void SetAdaptiveChargingSupported(bool supported) override;
   void SetAdaptiveChargingHeuristicEnabled(bool enabled) override;
-  void SetAdaptiveCharging(const base::TimeTicks& target_time,
+  void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
                            double hold_percent) override;
   void ClearAdaptiveChargingChargeDelay() override;
 
@@ -621,9 +622,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Adaptive Charging is delaying charge.
   double adaptive_charging_hold_percent_ = 100.0;
 
-  // The expected time that the battery will be full, for when Adaptive Charging
-  // is delaying charge.
-  base::TimeTicks adaptive_charging_target_full_time_;
+  // The expected delay until the battery will be full, for when Adaptive
+  // Charging is delaying charge.
+  base::TimeDelta adaptive_charging_target_time_to_full_;
 
   // Indicates if the system supports Adaptive Charging.
   bool adaptive_charging_supported_ = false;

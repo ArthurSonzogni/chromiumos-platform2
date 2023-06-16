@@ -1167,7 +1167,11 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
 
   if (AtHoldPercent(status.display_battery_percentage)) {
     if (state_ == AdaptiveChargingState::ACTIVE && is_sustain_set_) {
-      power_supply_->SetAdaptiveCharging(target_full_charge_time_,
+      base::TimeDelta target_time_until_full =
+          target_full_charge_time_ == base::TimeTicks::Max()
+              ? base::TimeDelta()
+              : target_full_charge_time_ - clock_.GetCurrentBootTime();
+      power_supply_->SetAdaptiveCharging(target_time_until_full,
                                          static_cast<double>(display_percent_));
     }
 

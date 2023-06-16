@@ -39,8 +39,8 @@ void PowerSupplyStub::SetAdaptiveChargingSupported(bool supported) {}
 
 void PowerSupplyStub::SetAdaptiveChargingHeuristicEnabled(bool enabled) {}
 
-void PowerSupplyStub::SetAdaptiveCharging(const base::TimeTicks& target_time,
-                                          double hold_percent) {}
+void PowerSupplyStub::SetAdaptiveCharging(
+    const base::TimeDelta& target_time_to_full, double hold_percent) {}
 
 void PowerSupplyStub::ClearAdaptiveChargingChargeDelay() {}
 

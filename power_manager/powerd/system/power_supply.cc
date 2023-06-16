@@ -753,11 +753,10 @@ void PowerSupply::SetAdaptiveChargingHeuristicEnabled(bool enabled) {
   adaptive_charging_heuristic_enabled_ = enabled;
 }
 
-void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
-                                      double hold_percent) {
+void PowerSupply::SetAdaptiveCharging(
+    const base::TimeDelta& target_time_to_full, double hold_percent) {
   DCHECK(adaptive_charging_supported_);
-  DCHECK(target_time != base::TimeTicks());
-  adaptive_charging_target_full_time_ = target_time;
+  adaptive_charging_target_time_to_full_ = target_time_to_full;
   adaptive_charging_hold_percent_ = hold_percent;
   adaptive_delaying_charge_ = true;
 }
@@ -765,7 +764,7 @@ void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
 void PowerSupply::ClearAdaptiveChargingChargeDelay() {
   adaptive_delaying_charge_ = false;
   adaptive_charging_heuristic_enabled_ = false;
-  adaptive_charging_target_full_time_ = base::TimeTicks();
+  adaptive_charging_target_time_to_full_ = base::TimeDelta();
 }
 
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
@@ -989,13 +988,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
     if (adaptive_delaying_charge_) {
       status.display_battery_percentage = adaptive_charging_hold_percent_;
-      // If `adaptive_charging_target_full_time_` is the max value, there's no
-      // current target for fully charging, and the expected value to be set in
-      // this case is 0.
-      status.battery_time_to_full =
-          adaptive_charging_target_full_time_ == base::TimeTicks::Max()
-              ? base::TimeDelta()
-              : adaptive_charging_target_full_time_ - now;
+      // If `adaptive_charging_target_time_to_full_` is the zero value, there's
+      // no current target for fully charging.
+      status.battery_time_to_full = adaptive_charging_target_time_to_full_;
     }
   }
 

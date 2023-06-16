@@ -2317,8 +2317,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
   PowerStatus status;
   double hold_charge = 0.8;
   base::TimeDelta target_time_delta = base::Hours(4);
-  power_supply_->SetAdaptiveCharging(
-      test_api_->GetCurrentTime() + target_time_delta, hold_charge);
+  power_supply_->SetAdaptiveCharging(target_time_delta, hold_charge);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(hold_charge, status.display_battery_percentage);
   EXPECT_EQ(target_time_delta.InHours(), status.battery_time_to_full.InHours());
@@ -2333,9 +2332,9 @@ TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
 }
 
 // Check that we set the battery_time_to_full to 0 when the
-// `adaptive_charging_target_full_time_` is the max value (Chrome expects 0 in
-// this case, when we don't have a time estimate yet).
-TEST_F(PowerSupplyTest, AdaptiveChargingMaxTargetTime) {
+// `adaptive_charging_target_time_to_full_` is zero (Chrome interprets this as a
+// max delay).
+TEST_F(PowerSupplyTest, AdaptiveChargingZeroTargetTime) {
   WriteDefaultValues(PowerSource::BATTERY);
   Init();
 
@@ -2345,7 +2344,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingMaxTargetTime) {
 
   PowerStatus status;
   double hold_charge = 0.8;
-  power_supply_->SetAdaptiveCharging(base::TimeTicks::Max(), hold_charge);
+  power_supply_->SetAdaptiveCharging(base::TimeDelta(), hold_charge);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(base::TimeDelta(), status.battery_time_to_full);
 }
