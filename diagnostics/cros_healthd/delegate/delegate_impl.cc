@@ -446,9 +446,6 @@ void DelegateImpl::GetConnectedHdmiConnectors(
   for (auto connector_id : hdmi_connector_ids) {
     hdmi_connectors[connector_id] =
         display_util.GetExternalDisplayInfo(connector_id);
-    auto name = hdmi_connectors[connector_id]->display_name.has_value()
-                    ? hdmi_connectors[connector_id]->display_name.value()
-                    : "unknown";
   }
 
   std::move(callback).Run(std::move(hdmi_connectors), std::nullopt);
