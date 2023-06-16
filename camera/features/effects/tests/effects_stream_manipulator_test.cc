@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "camera/common/stream_manipulator.h"
 #include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_hal3_helpers.h"
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
 #include "ml_core/dlc/dlc_loader.h"
@@ -89,6 +91,10 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
     loop = std::make_unique<base::RunLoop>();
 
     stream_config_.AppendStream(&yuv_720_stream);
+
+    output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+        yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
+        yuv_720_stream.usage);
   }
 
   StreamManipulator::RuntimeOptions runtime_options_;
@@ -100,7 +106,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   ScopedBufferHandle output_buffer_;
   std::vector<Camera3StreamBuffer> output_buffers_;
 
-  void ConfigureStreams(camera3_stream_t* stream);
+  void InitialiseStreamManipulator();
   void ProcessFileThroughStreamManipulator(base::FilePath infile,
                                            base::FilePath outfile,
                                            int num_repeats);
@@ -115,6 +121,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   std::unique_ptr<GpuImageProcessor> image_processor_;
 
   base::test::TaskEnvironment task_environment_;
+  base::WaitableEvent frame_processed_;
 };
 
 void EffectsStreamManipulatorTest::WaitForEffectSetAndReset() {
@@ -124,10 +131,29 @@ void EffectsStreamManipulatorTest::WaitForEffectSetAndReset() {
   loop = std::make_unique<base::RunLoop>();
 }
 
-void EffectsStreamManipulatorTest::ConfigureStreams(camera3_stream_t* stream) {
-  // Create output buffer.
-  output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-      stream->width, stream->height, stream->format, stream->usage);
+void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
+  stream_manipulator_ = EffectsStreamManipulator::Create(
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
+
+  base::RepeatingCallback<void(Camera3CaptureDescriptor)> result_cb =
+      base::BindRepeating(
+          [](base::WaitableEvent& frame_processed,
+             Camera3CaptureDescriptor descriptor) {
+            // resume only after the requested frame is processed
+            if (descriptor.num_output_buffers() >= 1) {
+              frame_processed.Signal();
+            }
+          },
+          std::ref(frame_processed_));
+
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = result_cb,
+                                   .notify_callback = base::DoNothing()});
+
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
+  stream_manipulator_->OnConfiguredStreams(&stream_config_);
 }
 
 void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
@@ -146,20 +172,16 @@ void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
             .release_fence = -1,
         }));
     result.SetOutputBuffers(std::move(output_buffers_));
-
-    base::WaitableEvent frame_processed;
     stream_manipulator_->GetTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(
                        [](StreamManipulator* stream_manipulator,
-                          Camera3CaptureDescriptor result,
-                          base::WaitableEvent& frame_processed) {
+                          Camera3CaptureDescriptor result) {
                          ASSERT_TRUE(stream_manipulator->ProcessCaptureResult(
                              std::move(result)));
-                         frame_processed.Signal();
                        },
-                       stream_manipulator_.get(), std::move(result),
-                       std::ref(frame_processed)));
-    frame_processed.Wait();
+                       stream_manipulator_.get(), std::move(result)));
+    frame_processed_.Wait();
+    frame_processed_.Reset();
   }
 
   if (outfile != base::FilePath("")) {
@@ -236,16 +258,7 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
   config->replace_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
+  InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
@@ -265,16 +278,7 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
   config->blur_level = mojom::BlurLevel::kMaximum;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
+  InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
@@ -293,17 +297,7 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
   config->relight_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
-
+  InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
@@ -318,16 +312,7 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
 }
 
 TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
+  InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -341,16 +326,7 @@ TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
 
 TEST_F(EffectsStreamManipulatorTest,
        RotateThroughEffectsWhileProcessingFrames) {
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
+  InitialiseStreamManipulator();
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
       yuv_720_stream.usage);
@@ -399,19 +375,8 @@ TEST_F(EffectsStreamManipulatorTest, OpenCLCacheStartup) {
   mojom::EffectsConfigPtr config = mojom::EffectsConfig::New();
   config->blur_enabled = true;
   config->replace_enabled = true;
-
   runtime_options_.SetEffectsConfig(std::move(config));
-
-  stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
-  stream_manipulator_->Initialize(
-      nullptr,
-      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
-                                   .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
-
-  ConfigureStreams(&yuv_720_stream);
+  InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
 }

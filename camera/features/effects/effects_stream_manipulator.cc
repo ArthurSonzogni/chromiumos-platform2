@@ -871,6 +871,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         break;
       }
     }
+
     bool yuv_stream_appended = false;
     if (blob_stream_context) {
       blob_capture_context =
@@ -981,6 +982,7 @@ void EffectsStreamManipulatorImpl::RenderEffect(
   auto [it, inserted] = process_contexts_.emplace(
       std::make_pair(timestamp, std::move(process_context)));
   DCHECK(inserted);
+
   if (!pipeline_->ProcessFrame(timestamp,
                                it->second->rgba_image.texture().handle(),
                                it->second->rgba_image.texture().width(),
