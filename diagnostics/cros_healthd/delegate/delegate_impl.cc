@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <fcntl.h>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -332,7 +333,7 @@ void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
 }
 
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
-  auto mei_path = base::FilePath(::psr::kCrosMeiPath);
+  auto mei_path = base::FilePath(psr::kCrosMeiPath);
   auto fd = base::ScopedFD(
       HANDLE_EINTR(open(mei_path.value().c_str(), O_RDWR, S_IRUSR | S_IWUSR)));
   auto result = mojom::PsrInfo::New();

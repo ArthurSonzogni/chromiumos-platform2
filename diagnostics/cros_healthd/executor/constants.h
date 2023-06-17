@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
 
+namespace diagnostics {
+
 namespace cpu_msr {
 // The msr address for IA32_TME_CAPABILITY (0x981), used to report tme telemetry
 // data.
@@ -34,5 +36,7 @@ namespace psr {
 inline constexpr char kCrosMeiPath[] = "/dev/mei0";
 
 }  // namespace psr
+
+}  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
