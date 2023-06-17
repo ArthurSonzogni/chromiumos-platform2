@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "base/strings/stringprintf.h"
+#include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>

@@ -29,7 +29,6 @@
 #include <libec/mkbp_event.h>
 #include <libec/motion_sense_command_lid_angle.h>
 
-#include "base/notreached.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"

@@ -16,7 +16,6 @@
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
-#include "base/notreached.h"
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
