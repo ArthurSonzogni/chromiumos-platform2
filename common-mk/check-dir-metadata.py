@@ -82,7 +82,6 @@ LEGACYLIST = {
     "login_manager",
     "media_capabilities",
     "media_perception",
-    "mems_setup",
     "midis",
     "minios",
     "mist",
