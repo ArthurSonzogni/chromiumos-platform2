@@ -78,7 +78,6 @@ LEGACYLIST = {
     "libchromeos-rs",
     "libchromeos-ui",
     "libcontainer",
-    "libmems",
     "libpasswordprovider",
     "login_manager",
     "media_capabilities",
