@@ -469,6 +469,39 @@
       ]
     },
     {
+      "_comment": "/var/run/arc/file-syncer is base for arc-file-syncer",
+      "destination": "/proc/sys/kernel/perf_cpu_time_max_percent",
+      "type": "bind",
+      "source": "/var/run/arc/file-syncer/perf_cpu_time_max_percent",
+      "options": [
+        "bind"
+      ]
+    },
+    {
+      "destination": "/proc/sys/kernel/perf_event_max_sample_rate",
+      "type": "bind",
+      "source": "/var/run/arc/file-syncer/perf_event_max_sample_rate",
+      "options": [
+        "bind"
+      ]
+    },
+    {
+      "destination": "/proc/sys/kernel/perf_event_mlock_kb",
+      "type": "bind",
+      "source": "/var/run/arc/file-syncer/perf_event_mlock_kb",
+      "options": [
+        "bind"
+      ]
+    },
+    {
+      "destination": "/proc/sys/kernel/perf_event_paranoid",
+      "type": "bind",
+      "source": "/var/run/arc/file-syncer/perf_event_paranoid",
+      "options": [
+        "bind"
+      ]
+    },
+    {
       "destination": "/config/sdcardfs",
       "type": "bind",
       "source": "/sys/kernel/config/sdcardfs",

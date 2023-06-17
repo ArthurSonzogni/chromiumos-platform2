@@ -1,0 +1,35 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":arc-file-syncer",
+    ":install_init",
+  ]
+}
+
+pkg_config("target_defaults_pkg_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libselinux",
+  ]
+}
+
+config("target_defaults") {
+  configs = [ ":target_defaults_pkg_config" ]
+}
+
+executable("arc-file-syncer") {
+  sources = [ "arc_file_syncer.cc" ]
+  install_path = "bin"
+  configs += [ ":target_defaults" ]
+}
+
+install_config("install_init") {
+  sources = [ "init/arc-file-syncer.conf" ]
+  install_path = "/etc/init"
+}
