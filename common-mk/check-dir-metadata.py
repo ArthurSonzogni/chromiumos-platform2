@@ -72,7 +72,6 @@ LEGACYLIST = {
     "goldfishd",
     "hardware_verifier",
     "hiberman",
-    "iioservice",
     "image-burner",
     "imageloader",
     "installer",
