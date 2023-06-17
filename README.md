@@ -54,6 +54,7 @@ copies.
 | [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
 | [dev-install](./dev-install/) | Tools & settings for managing the developer environment on the device |
+| [device_management](./device_management/) | Daemon for handling device management related attributes (e.g. fwmp, install_attributes etc) |
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
 | [discod](./discod/) | Control Loop for behavioural storage devices features (e.g. UFS Write Booster) |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |
@@ -61,7 +62,6 @@ copies.
 | [dlp](./dlp/) | Date Leak Prevention (DLP) daemon |
 | [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
-| [enterprise](./enterprise/) | Daemon for handling enterprise related values |
 | [faced](./faced/) | Face Authentication Daemon |
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
 | [featured](./featured/) | Feature daemon for enabling and managing platform features |
