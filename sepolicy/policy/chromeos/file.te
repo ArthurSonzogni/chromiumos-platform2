@@ -94,7 +94,7 @@ type cros_dlcservice_exec, exec_type, file_type, cros_file_type, cros_system_fil
 type cros_dnsproxyd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dugong_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_easy_unlock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_enterprised_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_device_managementd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ipf_ufd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ipfhostd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_featured_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
