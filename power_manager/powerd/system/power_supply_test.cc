@@ -2382,6 +2382,41 @@ TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
   EXPECT_FALSE(proto.adaptive_delaying_charge());
 }
 
+TEST_F(PowerSupplyTest, ChargeLimitEnabled) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  double actual_charge = 0.75;
+  double hold_percent = 80.0;
+  PowerStatus status;
+  PowerSupplyProperties proto;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+  power_supply_->SetChargeLimited(hold_percent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(status.display_battery_percentage, hold_percent);
+  EXPECT_TRUE(status.charge_limited);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_TRUE(proto.charge_limited());
+
+  // Test that we don't override the display percentage if the actual charge is
+  // greater than the hold percent.
+  actual_charge = 0.9;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_NE(status.display_battery_percentage, hold_percent);
+  EXPECT_TRUE(status.charge_limited);
+
+  // Test that clearing the Charge Limit works.
+  actual_charge = 0.3;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->ClearChargeLimited();
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_NE(status.display_battery_percentage, hold_percent);
+  EXPECT_FALSE(status.charge_limited);
+}
+
 // Test that barreljack AC is ignored when configured with no barreljack
 TEST_F(PowerSupplyTest, BarreljackNotPresent) {
   TestObserver observer(power_supply_.get());

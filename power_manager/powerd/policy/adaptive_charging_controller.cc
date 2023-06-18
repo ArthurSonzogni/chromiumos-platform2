@@ -1216,6 +1216,22 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
     }
   }
 
+  // Charge Limit works for both full power chargers (AC) and low power chargers
+  // (USB).
+  if (charge_limit_enabled_ &&
+      (status.external_power == PowerSupplyProperties_ExternalPower_AC ||
+       status.external_power == PowerSupplyProperties_ExternalPower_USB)) {
+    if (AtHoldPercent(status.display_battery_percentage)) {
+      power_supply_->SetChargeLimited(static_cast<double>(display_percent_));
+    } else {
+      // Clear Charge Limit state for the `power_supply_` if we dropped below
+      // the hold percent range. This can happen with Charge Limit with low
+      // power chargers, so we don't want to show the display percent override
+      // if the system discharges too much.
+      power_supply_->ClearChargeLimited();
+    }
+  }
+
   // Only collect information for metrics, etc. if plugged into a full powered
   // charge (denoted as PowerSupplyProperties_ExternalPower_AC) since that's the
   // only time that Adaptive Charging will be active.
@@ -1563,6 +1579,7 @@ void AdaptiveChargingController::StartChargeLimit() {
 void AdaptiveChargingController::StopChargeLimit() {
   LOG(INFO) << "Stopping Charge Limit.";
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  power_supply_->ClearChargeLimited();
   is_sustain_set_ = false;
 }
 

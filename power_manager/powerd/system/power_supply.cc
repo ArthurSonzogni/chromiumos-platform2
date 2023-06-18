@@ -349,6 +349,7 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     proto->set_adaptive_charging_heuristic_enabled(
         status.adaptive_charging_heuristic_enabled);
     proto->set_adaptive_delaying_charge(status.adaptive_delaying_charge);
+    proto->set_charge_limited(status.charge_limited);
 
     // Cros_healthd is interested in the following items for reporting
     // telemetry data.
@@ -767,6 +768,18 @@ void PowerSupply::ClearAdaptiveChargingChargeDelay() {
   adaptive_charging_target_time_to_full_ = base::TimeDelta();
 }
 
+void PowerSupply::SetChargeLimited(double hold_percent) {
+  // Adaptive Charging and Charge Limit should not be active at the same time.
+  DCHECK(!adaptive_delaying_charge_);
+  DCHECK(adaptive_charging_supported_);
+  charge_limited_ = true;
+  adaptive_charging_hold_percent_ = hold_percent;
+}
+
+void PowerSupply::ClearChargeLimited() {
+  charge_limited_ = false;
+}
+
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
   VLOG(1) << "Got udev event for " << event.device_info.sysname;
   // Bail out of the update if the available power sources didn't actually
@@ -985,12 +998,16 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     status.adaptive_charging_heuristic_enabled =
         adaptive_charging_heuristic_enabled_;
     status.adaptive_delaying_charge = adaptive_delaying_charge_;
+    status.charge_limited = charge_limited_;
 
     if (adaptive_delaying_charge_) {
       status.display_battery_percentage = adaptive_charging_hold_percent_;
       // If `adaptive_charging_target_time_to_full_` is the zero value, there's
       // no current target for fully charging.
       status.battery_time_to_full = adaptive_charging_target_time_to_full_;
+    } else if (charge_limited_ && status.display_battery_percentage <=
+                                      adaptive_charging_hold_percent_) {
+      status.display_battery_percentage = adaptive_charging_hold_percent_;
     }
   }
 

@@ -225,6 +225,10 @@ struct PowerStatus {
 
   // Indicates if Adaptive Charging is currently delaying charge to the battery.
   bool adaptive_delaying_charge = false;
+
+  // Indicates if Charge Limit is currently holding the charge at or discharging
+  // down to |adaptive_charging_hold_percent_|.
+  bool charge_limited = false;
 };
 
 // Fetches the system's power status, e.g. whether on AC or battery, charge and
@@ -269,6 +273,15 @@ class PowerSupplyInterface {
   // |power_status_.display_battery_percentage| is no longer held at
   // |adaptive_charging_hold_percent_|.
   virtual void ClearAdaptiveChargingChargeDelay() = 0;
+
+  // Sets if Charge Limit is currently maintaining |hold_percent| charge. This
+  // indicates that |hold_percent| should be shown as the current display
+  // battery percentage.
+  virtual void SetChargeLimited(double hold_percent) = 0;
+
+  // Clears the charge limit, meaning that the display battery percentage should
+  // no longer be locked to the |hold_percent| set via |SetChargeLimited|.
+  virtual void ClearChargeLimited() = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -389,6 +402,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
                            double hold_percent) override;
   void ClearAdaptiveChargingChargeDelay() override;
+  void SetChargeLimited(double hold_percent) override;
+  void ClearChargeLimited() override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -634,6 +649,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Set to true when charge is delayed by Adaptive Charging.
   bool adaptive_delaying_charge_ = false;
+
+  // Set to true when charging is stopped by Charge Limit.
+  bool charge_limited_ = false;
 
   // Calls HandlePollTimeout().
   base::OneShotTimer poll_timer_;

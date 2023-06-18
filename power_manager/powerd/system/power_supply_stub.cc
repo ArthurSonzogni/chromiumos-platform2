@@ -44,4 +44,8 @@ void PowerSupplyStub::SetAdaptiveCharging(
 
 void PowerSupplyStub::ClearAdaptiveChargingChargeDelay() {}
 
+void PowerSupplyStub::SetChargeLimited(double hold_percent) {}
+
+void PowerSupplyStub::ClearChargeLimited() {}
+
 }  // namespace power_manager::system

@@ -43,6 +43,8 @@ class PowerSupplyStub : public PowerSupplyInterface {
   void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
                            double hold_percent) override;
   void ClearAdaptiveChargingChargeDelay() override;
+  void SetChargeLimited(double hold_percent) override;
+  void ClearChargeLimited() override;
 
  private:
   // Result to return from RefreshImmediately().
