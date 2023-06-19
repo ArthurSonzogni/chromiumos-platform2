@@ -275,6 +275,11 @@ class BRILLO_EXPORT Client {
   // pair with a valid ScopedFD and the ConnectedNamespace response
   // received if the request succeeded. Closing the ScopedFD will teardown the
   // veth and routing setup and free the allocated IPv4 subnet.
+  // If |outbound_ifname| is defined, it must be the kInterfaceProperty value of
+  // a shill Device. If the shill Device uses interface multiplexing (Cellular),
+  // ConnectNamespace is implicitly configured with the primary multiplexed
+  // interface.
+  // TODO(b/273744897): Migrate ConnectNamespace to use a patchpanel Network id.
   virtual std::pair<base::ScopedFD, ConnectedNamespace> ConnectNamespace(
       pid_t pid,
       const std::string& outbound_ifname,
@@ -312,6 +317,10 @@ class BRILLO_EXPORT Client {
   // proxy. This should only be called by 'dns-proxy'. If successful, it returns
   // a ScopedFD. The rules lifetime is tied to the file descriptor. This returns
   // an invalid file descriptor upon failure.
+  // |input_ifname| must be the kInterfaceProperty value of a shill Device.
+  // If the shill Device uses interface multiplexing (Cellular), RedirectDns is
+  // implicitly configured with the primary multiplexed interface.
+  // TODO(b/273744897): Migrate ConnectNamespace to use a patchpanel Network id.
   virtual base::ScopedFD RedirectDns(
       DnsRedirectionRequestType type,
       const std::string& input_ifname,

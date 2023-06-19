@@ -224,6 +224,13 @@ void Proxy::OnPatchpanelReady(bool success) {
   // new PID namespace.
   // The default proxy (only) needs to use the VPN, if applicable, the others
   // expressly need to avoid it.
+  // TODO(b/273744897): Use the patchpanel Network id of the shill Device that
+  // this Proxy is associated to. Until the Network id is available, using the
+  // shill's Device kInterfaceProperty is consistent with patchpanel's tracking
+  // of shill's Devices. For multiplexed Cellular interfaces, patchpanel is
+  // responsible for using the correct multiplexed network interface
+  // (b/273741099). Callers of ConnectNamespace are expected to use the shill's
+  // Device kInterfaceProperty.
   auto res = patchpanel_->ConnectNamespace(
       getpid(), opts_.ifname, true /* forward_user_traffic */,
       opts_.type == Type::kDefault /* route_on_vpn */, traffic_source);
@@ -576,6 +583,10 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       return;
 
     case Type::kARC:
+      // TODO(b/273744897): Change this checks to compare the Network id
+      // associated with the shill's Device (primary Network) once patchpanel
+      // Network ids are available and once dnsproxy uses the patchpanel
+      // Network id.
       if (opts_.ifname != device->ifname)
         return;
 
@@ -1025,7 +1036,23 @@ void Proxy::StartGuestDnsRedirection(
       return;
     case patchpanel::Client::GuestType::kArcContainer:
     case patchpanel::Client::GuestType::kArcVm:
+      // b/273741099: For multiplexed Cellular interfaces, patchpanel is
+      // responsible for advertasing the shill's Device kInterfaceProperty
+      // instead of the primary multiplexed interface, and consumers of
+      // patchpanel::VirtualDevice are expected to use the shill's Device
+      // kInterfaceProperty.
+      // TODO(b/273744897): Change this checks to compare the Network id
+      // associated with the shill's Device (primary Network) once patchpanel
+      // Network ids are available and once dnsproxy uses the patchpanel
+      // Network id.
       if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
+        // TODO(b/273744897): Use the patchpanel Network id of the shill Device
+        // that this Proxy is associated to. Until the Network id is available,
+        // using the shill's Device kInterfaceProperty is consistent with
+        // patchpanel's tracking of shill's Devices. For multiplexed Cellular
+        // interfaces, patchpanel is responsible for using the correct
+        // multiplexed network interface. Callers of RedirectDNS are expected to
+        // use the shill's Device kInterfaceProperty.
         StartDnsRedirection(device.ifname, sa_family);
       }
       return;
@@ -1048,6 +1075,10 @@ void Proxy::StopGuestDnsRedirection(
       // will also be removed. This will undo the created firewall rules.
       // However, if IPv6 is removed, firewall rules created need to be
       // removed.
+      // TODO(b/273744897): Change this checks to compare the Network id
+      // associated with the shill's Device (primary Network) once patchpanel
+      // Network ids are available and once dnsproxy uses the patchpanel
+      // Network id.
       if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
         StopDnsRedirection(device.ifname, sa_family);
       }

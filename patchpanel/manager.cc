@@ -342,6 +342,12 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
     StopForwarding(shill_device, virtual_device.host_ifname());
   }
 
+  // TODO(b/273741099): For multiplexed Cellular interfaces, callers expect
+  // patchpanel to advertise the ARC virtual device as associated with the
+  // shill Device kInterfaceProperty value. Here patchpanel must find the
+  // ShillClient::Device associated with this ARC virtual device and make sure
+  // that the primary multiplxed interface is changed to the shill Device
+  // kInterfaceProperty value.
   client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
@@ -446,6 +452,12 @@ GetDevicesResponse Manager::GetDevices() const {
     FillDeviceProto(*arc_device, dev);
     FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
                             dns_proxy_ipv6_addrs_);
+    // TODO(b/273741099): For multiplexed Cellular interfaces, callers expect
+    // patchpanel to advertise the ARC virtual device as associated with the
+    // shill Device kInterfaceProperty value. Here patchpanel must find the
+    // ShillClient::Device associated with this ARC virtual device and make sure
+    // that the primary multiplxed interface is changed to the shill Device
+    // kInterfaceProperty value.
   }
 
   for (const auto* crosvm_device : cros_svc_->GetDevices()) {
@@ -507,6 +519,9 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   using shill::IPAddress;
 
+  // b/273741099: For multiplexed Cellular interfaces, callers expect patchpanel
+  // to accept a shill Device kInterfaceProperty value and swap it with the name
+  // of the primary multiplexed interface.
   const auto* shill_device =
       shill_client_->GetDevice(request.upstream_ifname());
   if (!shill_device) {
@@ -607,9 +622,14 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   }
 
   // Get the ConnectedNamespace outbound shill Device.
+  // TODO(b/273744897): Migrate ConnectNamespace to use a patchpanel Network id
+  // instead of the interface name of the shill Device.
   const std::string& outbound_ifname = request.outbound_physical_device();
   ShillClient::Device current_outbound_device;
   if (!outbound_ifname.empty()) {
+    // b/273741099: For multiplexed Cellular interfaces, callers expect
+    // patchpanel to accept a shill Device kInterfaceProperty value and swap it
+    // with the name of the primary multiplexed interface.
     auto* shill_device = shill_client_->GetDevice(outbound_ifname);
     if (!shill_device) {
       LOG(ERROR) << __func__ << ": no shill Device for upstream ifname "
@@ -814,6 +834,13 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
     return false;
   }
 
+  // TODO(b/273741099): For multiplexed Cellular interfaces, callers expect
+  // patchpanel to accept a shill Device kInterfaceProperty value and swap it
+  // with the name of the primary multiplexed interface. Here patchpanel must
+  // find the ShillClient::Device matching the request's input_ifname value and
+  // set the internal DnsRedirectionRule to target the primary multiplexed
+  // interface.
+  // TODO(b/273744897): Replace input_ifname with the patchpanel Network id.
   DnsRedirectionRule rule{.type = request.type(),
                           .input_ifname = request.input_ifname(),
                           .proxy_address = request.proxy_address(),
