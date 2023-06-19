@@ -54,6 +54,36 @@ class FakeSystemUtils : public SystemUtilsImpl {
 
 }  // namespace
 
+TEST(DeviceIdentifierGeneratorStaticTest,
+     ParseMachineInfoRecordsFirstValueForDuplicatedKey) {
+  const std::string machine_info_file_contents =
+      "\"root_disk_serial_number\"=\"sn_1\"\n"
+      "\"root_disk_serial_number\"=\"sn_2\"\n";
+  std::map<std::string, std::string> map;
+  DeviceIdentifierGenerator::ParseMachineInfo(machine_info_file_contents, &map);
+  ASSERT_EQ("sn_1", map["root_disk_serial_number"]);
+}
+
+TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
+  std::map<std::string, std::string> params;
+  EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
+      "\"serial_number\"=\"fake-machine-serial-number\"\n"
+      "# This is a comment.\n"
+      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n"
+      "\"serial_number\"=\"key_collision\"\n"
+      "\"stable_device_secret_DO_NOT_SHARE\"="
+      "\"11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\"\n",
+      &params));
+  EXPECT_EQ(3, params.size());
+  EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
+  EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
+}
+
+TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
+  std::map<std::string, std::string> params;
+  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", &params));
+}
+
 class DeviceIdentifierGeneratorTest : public ::testing::Test {
  public:
   DeviceIdentifierGeneratorTest()
@@ -256,26 +286,6 @@ TEST_F(DeviceIdentifierGeneratorTest, MissingDiskSerialNumber) {
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER,
             last_state_key_generation_status_);
   EXPECT_EQ(0, state_keys_.size());
-}
-
-TEST_F(DeviceIdentifierGeneratorTest, ParseMachineInfoSuccess) {
-  std::map<std::string, std::string> params;
-  EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
-      "\"serial_number\"=\"fake-machine-serial-number\"\n"
-      "# This is a comment.\n"
-      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n"
-      "\"serial_number\"=\"key_collision\"\n"
-      "\"stable_device_secret_DO_NOT_SHARE\"="
-      "\"11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\"\n",
-      &params));
-  EXPECT_EQ(3, params.size());
-  EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
-  EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
-}
-
-TEST_F(DeviceIdentifierGeneratorTest, ParseMachineInfoFailure) {
-  std::map<std::string, std::string> params;
-  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", &params));
 }
 
 }  // namespace login_manager

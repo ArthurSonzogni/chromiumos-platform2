@@ -9,12 +9,17 @@ UI_MACHINE_INFO_FILE=/run/session_manager/machine-info
 # Just continue if one of the commands below fails.
 set +e
 
-# Grab full VPD data from dump_vpd_log, which contains the machine
-# serial number and echo group code.
-dump_vpd_log --full --stdout > "${UI_MACHINE_INFO_FILE}"
+# Create an empty file so that we can simply append to it.
+true > "${UI_MACHINE_INFO_FILE}"
 
-# Grab the disk serial number from the udev database.
+# Grab the disk serial number from the udev database before the VPD is dumped.
+# This prevents someone overriding its value through the VPD.
 ROOTDEV=$(rootdev -s -d || true)
 udevadm info --query=property --name="${ROOTDEV}" |
     awk -F = '/^ID_SERIAL=/ { print "\"root_disk_serial_number\"=\"" $2 "\""}' \
     >> "${UI_MACHINE_INFO_FILE}"
+
+# Grab full VPD data from dump_vpd_log, which contains the machine
+# serial number on ChromeOS devices, as well as the echo group code.
+# TODO(drcrash): Filter down this information to what is strictly necessary.
+dump_vpd_log --full --stdout >> "${UI_MACHINE_INFO_FILE}"
