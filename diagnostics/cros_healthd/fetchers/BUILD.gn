@@ -20,6 +20,7 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
     "libcros_config",
     "libdebugd-client",
     "libmojo",
+    "libspaced",
     "libudev",
     "protobuf",
     "re2",
@@ -73,6 +74,8 @@ if (use.test) {
       "libcros_config",
       "libdebugd-client",
       "libdebugd-client-test",
+      "libspaced",
+      "libspaced-test",
       "mojo_service_manager",
       "system_api",
     ]

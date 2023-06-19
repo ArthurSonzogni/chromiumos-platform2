@@ -15,7 +15,6 @@
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -50,7 +49,6 @@ class FetchAggregator final {
   InputFetcher input_fetcher_;
   MemoryFetcher memory_fetcher_;
   NetworkFetcher network_fetcher_;
-  StatefulPartitionFetcher stateful_partition_fetcher_;
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
 
