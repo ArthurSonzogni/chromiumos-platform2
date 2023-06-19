@@ -17,6 +17,8 @@
 #include <sys/resource.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -974,6 +976,94 @@ void Init::Worker::Spawn(struct ChildInfo info,
   sigprocmask(SIG_SETMASK, &omask, nullptr);
 }
 
+// Returns the inode of `path`. Follows symlinks i.e. if `path` is a symlink
+// returns the inode of whatever the symlink points to.
+ino_t GetInode(const base::FilePath& path) {
+  struct stat st;
+  if (stat(path.value().c_str(), &st) != 0) {
+    return 0;
+  }
+  return st.st_ino;
+}
+
+// Given a file with text in the format used by /proc/PID/cmdline i.e. a bunch
+// of null-separated strings, read it into a string replacing null bytes with
+// spaces. This is a lossy conversion if args have spaces within them.
+std::string ReadCmdline(const base::FilePath& path) {
+  // Embedded nulls seem to confuse the base:: string functions so we don't get
+  // to use them :'(. Instead read it as bytes then step through byte-by-byte
+  // converting+replacing as we go. cmdline is user-controlled data but all the
+  // bits we care about are ASCII so we don't need to deal with complicated text
+  // encodings. Similarly, all the bits we care about don't have arguments with
+  // spaces so we don't need to worry about that either.
+  auto cmdline = base::ReadFileToBytes(path);
+  std::string ret = "";
+  if (!cmdline) {
+    // Error
+    return ret;
+  }
+  ret.reserve(cmdline->size());
+  for (auto b : *cmdline) {
+    if (b == '\0') {
+      ret.push_back(' ');
+    } else {
+      ret.push_back(b);
+    }
+  }
+  return ret;
+}
+
+// Sanitises an in-container cmdline by stripping bits which could contain PII.
+std::string SanitiseCmdline(const std::string& cmdline,
+                            ino_t root_inode,
+                            ino_t proc_inode) {
+  if (cmdline == "") {
+    // Unable to read the cmdline. Error reading file, etc.
+    return "unknown process";
+  }
+  if (root_inode == proc_inode) {
+    // /ns/mnt inodes match, so the process is _not_ inside a mount namespace,
+    // so it's not inside a container. So we can log the entire cmdline.
+    return cmdline;
+  }
+  if (cmdline.find("/opt/google") != string::npos) {
+    // A Google-provided binary but the last args could be user-supplied e.g.
+    // running their app under Sommelier. So only logs the first few
+    // components - just enough to tell if this is sommelier/garcon/etc.
+    int offset = 0;
+    for (int n = 0; n < 3 && offset != string::npos; n++) {
+      offset = cmdline.find(" ", offset + 1);
+    }
+    return cmdline.substr(0, offset);
+  }
+  // Arbitrary container process, cmdline could have anything. Don't log to be
+  // safe.
+  return "container process";
+}
+
+// Logs the provided `pids` as having timed out while waiting on them to shut
+// down. Will log just the PID for user processes inside the container, will log
+// PID and full cmdline for vm-level process, will log truncated cmdline or
+// Google-supplied in-container processes.
+void LogTimedOutProcesses(const std::set<pid_t>& pids) {
+  // Get inode of /proc/1/ns/mnt (follow the symlink)
+  auto root_inode = GetInode(base::FilePath("/proc/1/ns/mnt"));
+  if (root_inode == 0) {
+    // Unable to continue, bail without logging anything other than an error
+    // message.
+    PLOG(ERROR) << "Unable to get inode for root mount namespace";
+  }
+
+  for (auto pid : pids) {
+    auto path = base::FilePath("/proc").Append(base::NumberToString(pid));
+
+    auto cmdline = SanitiseCmdline(ReadCmdline(path.Append("cmdline")),
+                                   root_inode, GetInode(path.Append("ns/mnt")));
+    LOG(ERROR) << "Timed out waiting for " << cmdline << " (PID=" << pid
+               << ") to shut down";
+  }
+}
+
 void Init::Worker::Shutdown(int notify_fd) {
   DCHECK_NE(notify_fd, -1);
 
@@ -1005,7 +1095,10 @@ void Init::Worker::Shutdown(int notify_fd) {
   WaitForChildren(std::move(pids), base::Time::Now() + kShutdownTimeout);
 
   // Kill anything left with SIGKILL.
-  BroadcastSignal(SIGKILL, nullptr);
+  BroadcastSignal(SIGKILL, &pids);
+
+  // Log any processes which took too long to shut down and had to be killed.
+  LogTimedOutProcesses(pids);
 
   // Detach loopback devices.
   DetachLoopback();
