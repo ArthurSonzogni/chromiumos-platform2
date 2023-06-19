@@ -28,6 +28,7 @@ class NET_BASE_EXPORT IPAddress {
   // address format.
   static std::optional<IPAddress> CreateFromString(
       const std::string& address_string);
+  static std::optional<IPAddress> CreateFromString(const char* address_string);
 
   // Creates the IPAddress from the raw byte buffer. |bytes| points to the
   // front of the byte buffer, and |bytes_length| is the length of the buffer.

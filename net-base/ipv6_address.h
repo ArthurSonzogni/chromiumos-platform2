@@ -31,6 +31,8 @@ class NET_BASE_EXPORT IPv6Address {
   // TODO(b/269983153): Add a fuzzer test for this method.
   static std::optional<IPv6Address> CreateFromString(
       const std::string& address_string);
+  static std::optional<IPv6Address> CreateFromString(
+      const char* address_string);
 
   // Creates the IPv6Address from the raw byte buffer. |bytes| points to the
   // front of the byte buffer, and |bytes_length| is the length of the buffer.

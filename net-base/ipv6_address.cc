@@ -15,8 +15,14 @@ namespace net_base {
 // static
 std::optional<IPv6Address> IPv6Address::CreateFromString(
     const std::string& address_string) {
+  return CreateFromString(address_string.c_str());
+}
+
+// static
+std::optional<IPv6Address> IPv6Address::CreateFromString(
+    const char* address_string) {
   DataType data;
-  if (inet_pton(AF_INET6, address_string.c_str(), data.data()) <= 0) {
+  if (inet_pton(AF_INET6, address_string, data.data()) <= 0) {
     return std::nullopt;
   }
   return IPv6Address(data);

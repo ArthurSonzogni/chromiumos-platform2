@@ -11,6 +11,12 @@ namespace net_base {
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
     const std::string& address_string) {
+  return CreateFromString(address_string.c_str());
+}
+
+// static
+std::optional<IPAddress> IPAddress::CreateFromString(
+    const char* address_string) {
   const auto ipv4 = IPv4Address::CreateFromString(address_string);
   if (ipv4) {
     return IPAddress(*ipv4);

@@ -31,6 +31,8 @@ class NET_BASE_EXPORT IPv4Address {
   // TODO(b/269983153): Add a fuzzer test for this method.
   static std::optional<IPv4Address> CreateFromString(
       const std::string& address_string);
+  static std::optional<IPv4Address> CreateFromString(
+      const char* address_string);
 
   // Creates the IPv4Address from the raw byte buffer. |bytes| points to the
   // front of the byte buffer, and |bytes_length| is the length of the buffer.
