@@ -16,6 +16,8 @@
 
 #include <base/memory/weak_ptr.h>
 #include <dbus/object_path.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <shill/dbus-proxies.h>
 
 #include "patchpanel/system.h"
@@ -31,33 +33,29 @@ namespace patchpanel {
 class ShillClient {
  public:
   // IPConfig for a shill Device. If the shill Device does not have a valid
-  // ipv4/ipv6 config, the corresponding fields will be empty or 0.
+  // ipv4/ipv6 config, the corresponding fields will be empty or std::nullopt.
   // TODO(jiejiang): add the following fields into this struct:
   // - IPv4 search domains
   // - IPv6 search domains
   // - MTU (one only per network)
   struct IPConfig {
-    int ipv4_prefix_length{0};
-    std::string ipv4_address;
+    std::optional<net_base::IPv4CIDR> ipv4_cidr;
     std::string ipv4_gateway;
     std::vector<std::string> ipv4_dns_addresses;
 
-    int ipv6_prefix_length{0};
     // Note due to the limitation of shill, we will only get one IPv6 address
     // from it. This address should be the privacy address for device with type
     // of ethernet or wifi.
-    std::string ipv6_address;
+    std::optional<net_base::IPv6CIDR> ipv6_cidr;
     std::string ipv6_gateway;
     std::vector<std::string> ipv6_dns_addresses;
     bool operator==(const IPConfig& b) const {
-      return ipv4_prefix_length == b.ipv4_prefix_length &&
-             ipv4_address == b.ipv4_address && ipv4_gateway == b.ipv4_gateway &&
+      return ipv4_cidr == b.ipv4_cidr && ipv4_gateway == b.ipv4_gateway &&
              std::set<std::string>(ipv4_dns_addresses.begin(),
                                    ipv4_dns_addresses.end()) ==
                  std::set<std::string>(b.ipv4_dns_addresses.begin(),
                                        b.ipv4_dns_addresses.end()) &&
-             ipv6_prefix_length == b.ipv6_prefix_length &&
-             ipv6_address == b.ipv6_address && ipv6_gateway == b.ipv6_gateway &&
+             ipv6_cidr == b.ipv6_cidr && ipv6_gateway == b.ipv6_gateway &&
              std::set<std::string>(ipv6_dns_addresses.begin(),
                                    ipv6_dns_addresses.end()) ==
                  std::set<std::string>(b.ipv6_dns_addresses.begin(),

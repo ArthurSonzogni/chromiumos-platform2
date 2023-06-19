@@ -475,8 +475,8 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
 
   // New physical device eth0.
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
-  eth_dev.ipconfig.ipv4_prefix_length = 24;
-  eth_dev.ipconfig.ipv4_address = "192.168.1.16";
+  eth_dev.ipconfig.ipv4_cidr =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.16/24");
   eth_dev.ipconfig.ipv4_gateway = "192.168.1.1";
   eth_dev.ipconfig.ipv4_dns_addresses = {"192.168.1.1", "8.8.8.8"};
   svc->AddDevice(eth_dev);
@@ -513,13 +513,13 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
   ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
-  EXPECT_EQ("192.168.1.16",
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_address);
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.16/24"),
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_cidr);
   EXPECT_EQ("192.168.1.1",
             shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
 
-  eth_dev.ipconfig.ipv4_prefix_length = 16;
-  eth_dev.ipconfig.ipv4_address = "172.16.0.72";
+  eth_dev.ipconfig.ipv4_cidr =
+      *net_base::IPv4CIDR::CreateFromCIDRString("172.16.0.72/16");
   eth_dev.ipconfig.ipv4_gateway = "172.16.0.1";
   eth_dev.ipconfig.ipv4_dns_addresses = {"172.17.1.1"};
   svc->UpdateDeviceIPConfig(eth_dev);
@@ -534,8 +534,8 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
       .WillOnce(Return(true));
   svc->Stop(kTestPID);
   ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
-  EXPECT_EQ("172.16.0.72",
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_address);
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("172.16.0.72/16"),
+            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_cidr);
   EXPECT_EQ("172.16.0.1",
             shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
 }

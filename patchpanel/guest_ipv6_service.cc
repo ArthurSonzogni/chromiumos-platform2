@@ -377,17 +377,17 @@ void GuestIPv6Service::StopUplink(
 
 void GuestIPv6Service::OnUplinkIPv6Changed(
     const ShillClient::Device& upstream_shill_device) {
-  const auto new_uplink_ip = net_base::IPv6Address::CreateFromString(
-      upstream_shill_device.ipconfig.ipv6_address);
-  if (!new_uplink_ip) {
+  if (!upstream_shill_device.ipconfig.ipv6_cidr) {
     return;
   }
+  const auto new_uplink_ip =
+      upstream_shill_device.ipconfig.ipv6_cidr->address();
 
   const std::string& ifname = upstream_shill_device.ifname;
   const auto old_uplink_ip = GetUplinkIp(ifname);
   VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {"
           << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
-          << *new_uplink_ip << "}";
+          << new_uplink_ip << "}";
   if (old_uplink_ip == new_uplink_ip) {
     return;
   }
@@ -407,8 +407,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       if (old_uplink_ip) {
         datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
       }
-      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, *new_uplink_ip)) {
-        LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << *new_uplink_ip
+      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, new_uplink_ip)) {
+        LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << new_uplink_ip
                      << " proxy on dev " << ifname_downlink;
       }
 
@@ -419,14 +419,14 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
                 ifname,
                 *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
                                                                 128),
-                *new_uplink_ip)) {
+                new_uplink_ip)) {
           LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
-                       << " dev " << ifname << " src " << *new_uplink_ip;
+                       << " dev " << ifname << " src " << new_uplink_ip;
         }
       }
 
       if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
-        const auto new_prefix = IPAddressTo64BitPrefix(*new_uplink_ip);
+        const auto new_prefix = IPAddressTo64BitPrefix(new_uplink_ip);
         if (old_uplink_ip) {
           if (IPAddressTo64BitPrefix(*old_uplink_ip) == new_prefix) {
             continue;
@@ -438,13 +438,13 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
                            forward_record_[ifname].mtu)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
-                       << *new_uplink_ip;
+                       << new_uplink_ip;
         }
       }
     }
   }
 
-  uplink_ips_[ifname] = *new_uplink_ip;
+  uplink_ips_[ifname] = new_uplink_ip;
 }
 
 void GuestIPv6Service::UpdateUplinkIPv6DNS(

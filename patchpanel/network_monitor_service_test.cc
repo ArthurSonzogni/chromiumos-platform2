@@ -210,9 +210,8 @@ class NeighborLinkMonitorTest : public testing::Test {
 
 TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = "1.2.3.5";
-  ipconfig.ipv4_prefix_length = 24;
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
 
   // On ipconfig changed, the link monitor should send only one dump request, to
@@ -225,8 +224,7 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
 
 TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv6_address = "2401::1";
-  ipconfig.ipv6_prefix_length = 64;
+  ipconfig.ipv6_cidr = *net_base::IPv6CIDR::CreateFromCIDRString("2401::1/64");
   ipconfig.ipv6_gateway = "fe80::1";
   ipconfig.ipv6_dns_addresses = {"fe80::2"};
 
@@ -246,9 +244,8 @@ TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
 TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
   // Only the gateway should be in the watching list.
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = "1.2.3.5";
-  ipconfig.ipv4_prefix_length = 24;
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   // Creates a RTNL message about the NUD state of the gateway is NUD_REACHABLE
@@ -279,10 +276,9 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
 
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = "1.2.3.5";
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
-  ipconfig.ipv4_prefix_length = 24;
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   ipconfig.ipv4_dns_addresses = {"1.2.3.7"};
@@ -318,10 +314,9 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
 
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = "1.2.3.5";
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
-  ipconfig.ipv4_prefix_length = 24;
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   // No dump request is expected.
@@ -332,9 +327,8 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
 
 TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = "1.2.3.5";
-  ipconfig.ipv4_prefix_length = 24;
 
   fake_neighbor_event_handler_.Enable();
 
@@ -365,8 +359,7 @@ TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
 
 TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_address = "1.2.3.4";
-  ipconfig.ipv4_prefix_length = 24;
+  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
 
   fake_neighbor_event_handler_.Enable();
 

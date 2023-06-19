@@ -14,9 +14,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
-#include <net-base/ipv6_address.h>
-
-#include "patchpanel/net_util.h"
+#include <net-base/ip_address.h>
 
 namespace patchpanel {
 
@@ -355,24 +353,24 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
                    << "]: IPConfig properties is missing Address";
       continue;
     }
-    const std::string& address = it->second.TryGet<std::string>();
-    if (address.empty()) {
+    const std::string& address_str = it->second.TryGet<std::string>();
+    if (address_str.empty()) {
       // On IPv6 only networks, dhcp is expected to fail, nevertheless shill
       // will still expose a mostly empty IPConfig object. On dual stack
       // networks, the IPv6 configuration may be available before dhcp has
       // finished. Avoid logging spurious WARNING messages in these two cases.
       continue;
     }
-    auto ip_family = GetIpFamily(address);
-    if (ip_family != AF_INET && ip_family != AF_INET6) {
+    const auto address = net_base::IPAddress::CreateFromString(address_str);
+    if (!address) {
       LOG(WARNING) << "[" << device.value()
-                   << "]: IPConfig Address property was invalid: " << address;
+                   << "]: IPConfig Address property was invalid: "
+                   << address_str;
       continue;
     }
-    const bool is_ipv4 = ip_family == AF_INET;
+    const bool is_ipv4 = (address->GetFamily() == net_base::IPFamily::kIPv4);
     const std::string method = is_ipv4 ? "IPv4" : "IPv6";
-    if ((is_ipv4 && !ipconfig.ipv4_address.empty()) ||
-        (!is_ipv4 && !ipconfig.ipv6_address.empty())) {
+    if ((is_ipv4 && ipconfig.ipv4_cidr) || (!is_ipv4 && ipconfig.ipv6_cidr)) {
       LOG(WARNING) << "[" << device.value() << "]: "
                    << "Duplicated IPconfig for " << method;
       continue;
@@ -424,13 +422,13 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 
     // Fills the IPConfig struct according to the type.
     if (is_ipv4) {
-      ipconfig.ipv4_prefix_length = prefix_length;
-      ipconfig.ipv4_address = address;
+      ipconfig.ipv4_cidr = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          *address->ToIPv4Address(), prefix_length);
       ipconfig.ipv4_gateway = gateway;
       ipconfig.ipv4_dns_addresses = dns_addresses;
     } else {  // AF_INET6
-      ipconfig.ipv6_prefix_length = prefix_length;
-      ipconfig.ipv6_address = address;
+      ipconfig.ipv6_cidr = net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+          *address->ToIPv6Address(), prefix_length);
       ipconfig.ipv6_gateway = gateway;
       ipconfig.ipv6_dns_addresses = dns_addresses;
     }
@@ -579,10 +577,8 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 
   // Compares if the new IPv6 network is the same as the old one by checking
   // its prefix.
-  const auto old_cidr = net_base::IPv6CIDR::CreateFromStringAndPrefix(
-      old_ip_config.ipv6_address, old_ip_config.ipv6_prefix_length);
-  const auto new_cidr = net_base::IPv6CIDR::CreateFromStringAndPrefix(
-      new_ip_config.ipv6_address, new_ip_config.ipv6_prefix_length);
+  const auto& old_cidr = old_ip_config.ipv6_cidr;
+  const auto& new_cidr = new_ip_config.ipv6_cidr;
   if (!old_cidr && !new_cidr) {
     return;
   }
@@ -591,6 +587,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
       old_cidr->GetPrefixAddress() == new_cidr->GetPrefixAddress()) {
     return;
   }
+
   for (const auto& handler : ipv6_network_handlers_) {
     handler.Run(device_it->second);
   }
@@ -609,14 +606,14 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(std::ostream& stream,
                          const ShillClient::IPConfig& ipconfig) {
-  return stream << "{ ipv4_addr: "
-                << OrDefault(ipconfig.ipv4_address, "0.0.0.0") << "/"
-                << ipconfig.ipv4_prefix_length << ", ipv4_gateway: "
+  return stream << "{ ipv4_cidr: "
+                << ipconfig.ipv4_cidr.value_or(net_base::IPv4CIDR())
+                << ", ipv4_gateway: "
                 << OrDefault(ipconfig.ipv4_gateway, "0.0.0.0")
                 << ", ipv4_dns: ["
                 << base::JoinString(ipconfig.ipv4_dns_addresses, ",")
-                << "], ipv6_addr: " << OrDefault(ipconfig.ipv6_address, "::")
-                << "/" << ipconfig.ipv6_prefix_length
+                << "], ipv6_cidr: "
+                << ipconfig.ipv6_cidr.value_or(net_base::IPv6CIDR())
                 << ", ipv6_gateway: " << OrDefault(ipconfig.ipv6_gateway, "::")
                 << ", ipv6_dns: ["
                 << base::JoinString(ipconfig.ipv6_dns_addresses, ",") << "]}";

@@ -207,7 +207,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
                               "down1", *net_base::IPv6Address::CreateFromString(
                                            "2001:db8:0:100::1234")))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:100::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(
@@ -231,7 +232,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   target.StopForwarding(up1_dev, "down1");
 
   // OnUplinkIPv6Changed -> StartForwarding
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:200::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(
@@ -308,7 +310,8 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
                                         "2001:db8:0:200::/64"),
                                     std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:200::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target, StartRAServer("down2",
@@ -356,7 +359,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
                                         "2001:db8:0:200::/64"),
                                     std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:200::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
@@ -365,7 +369,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
                                         "2001:db8:0:100::/64"),
                                     std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:100::abcd";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
@@ -389,7 +394,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
                                         "2001:db8:0:200::/64"),
                                     std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:200::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   // Update DNS should trigger RA server restart.
@@ -436,7 +442,8 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
 
-  up1_dev.ipconfig.ipv6_address = "2001:db8:0:200::1234";
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(

@@ -191,12 +191,16 @@ void NeighborLinkMonitor::OnIPConfigChanged(
   const auto old_watching_entries = std::move(watching_entries_);
   watching_entries_.clear();
 
-  if (!ipconfig.ipv4_address.empty())
-    AddWatchingEntries(ipconfig.ipv4_prefix_length, ipconfig.ipv4_address,
+  if (ipconfig.ipv4_cidr) {
+    AddWatchingEntries(ipconfig.ipv4_cidr->prefix_length(),
+                       ipconfig.ipv4_cidr->address().ToString(),
                        ipconfig.ipv4_gateway, ipconfig.ipv4_dns_addresses);
-  if (!ipconfig.ipv6_address.empty())
-    AddWatchingEntries(ipconfig.ipv6_prefix_length, ipconfig.ipv6_address,
+  }
+  if (ipconfig.ipv6_cidr) {
+    AddWatchingEntries(ipconfig.ipv6_cidr->prefix_length(),
+                       ipconfig.ipv6_cidr->address().ToString(),
                        ipconfig.ipv6_gateway, ipconfig.ipv6_dns_addresses);
+  }
 
   if (watching_entries_.empty()) {
     LOG(INFO) << "Stop due to empty watching list on " << ifname_;
