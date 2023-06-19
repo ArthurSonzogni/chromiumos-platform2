@@ -54,6 +54,11 @@ class DeviceManagementServiceAdaptor
           device_management::InstallAttributesGetStatusReply>> response,
       const device_management::InstallAttributesGetStatusRequest& request)
       override;
+  void EnterpriseOwnedGetStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          device_management::EnterpriseOwnedGetStatusReply>> response,
+      const device_management::EnterpriseOwnedGetStatusRequest& request)
+      override;
   void GetFirmwareManagementParameters(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           device_management::GetFirmwareManagementParametersReply>> response,

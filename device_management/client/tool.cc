@@ -37,6 +37,7 @@ constexpr char kInstallAttributesIsSecure[] = "install_attributes_is_secure";
 constexpr char kInstallAttributesIsInvalid[] = "install_attributes_is_invalid";
 constexpr char kInstallAttributesIsFirstInstall[] =
     "install_attributes_is_first_install";
+constexpr char kEnterpriseOwnedGetStatus[] = "enterprise_owned_get_status";
 
 constexpr char kActionList[] = R"(
   get_firmware_management_parameters
@@ -51,6 +52,7 @@ constexpr char kActionList[] = R"(
   install_attributes_is_secure
   install_attributes_is_invalid
   install_attributes_is_first_install
+  enterprise_owned_get_status
 )";
 
 constexpr char kUsage[] = R"(
@@ -91,6 +93,8 @@ Commands:
       Prints 1 if the status is INVALID, 0 otherwise.
   install_attributes_is_first_install
       Prints 1 if the status is FIRST_INSTALL, 0 otherwise.
+  enterprise_owned_get_status
+      Prints 1 if the device is enterprise owned, 0 otherwise.
 )";
 }  // namespace actions
 }  // namespace device_management
@@ -184,6 +188,11 @@ int main(int argc, char** argv) {
     if (!device_management_client->IsFirstInstallInstallAttributes()) {
       LOG(ERROR) << __func__
                  << ": failed to call IsFirstInstallInstallAttributes()";
+      return EXIT_FAILURE;
+    }
+  } else if (action == device_management::actions::kEnterpriseOwnedGetStatus) {
+    if (!device_management_client->GetEnterpriseOwnedStatus()) {
+      LOG(ERROR) << __func__ << ": failed to call GetEnterpriseOwnedStatus()";
       return EXIT_FAILURE;
     }
   } else {

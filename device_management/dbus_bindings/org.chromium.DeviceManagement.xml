@@ -70,6 +70,19 @@
         </arg>
     </method>
 
+    <method name="EnterpriseOwnedGetStatus">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::EnterpriseOwnedGetStatusRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::EnterpriseOwnedGetStatusReply" />
+        </arg>
+    </method>
+
     <method name="GetFirmwareManagementParameters">
         <annotation name="org.chromium.DBus.Method.Kind"
                     value="async"/>

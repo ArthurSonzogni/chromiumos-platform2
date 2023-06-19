@@ -389,6 +389,26 @@ bool DeviceManagementClient::IsFirstInstallInstallAttributes() {
   return true;
 }
 
+bool DeviceManagementClient::GetEnterpriseOwnedStatus() {
+  device_management::EnterpriseOwnedGetStatusRequest req;
+  device_management::EnterpriseOwnedGetStatusReply reply;
+  brillo::ErrorPtr error;
+  if (!device_management_proxy_->EnterpriseOwnedGetStatus(req, &reply, &error,
+                                                          timeout_ms) ||
+      error) {
+    printer_->PrintFormattedHumanOutput(
+        "EnterpriseOwnedGetStatus() call failed: %s.\n",
+        BrilloErrorToString(error.get()).c_str());
+    return false;
+  }
+  bool result =
+      (reply.error() != device_management::DeviceManagementErrorCode::
+                            DEVICE_MANAGEMENT_ERROR_NOT_ENTERPRISED_OWNED);
+  printer_->PrintFormattedHumanOutput("EnterpriseOwnedGetStatus(): %d\n",
+                                      static_cast<int>(result));
+  return true;
+}
+
 bool DeviceManagementClient::GetFWMP() {
   base::ElapsedTimer timer;
   device_management::GetFirmwareManagementParametersRequest request;

@@ -53,6 +53,8 @@ class DeviceManagementClient {
 
   virtual bool IsFirstInstallInstallAttributes();
 
+  virtual bool GetEnterpriseOwnedStatus();
+
   virtual bool GetFWMP();
 
   virtual bool SetFWMP(const base::CommandLine* cl);

@@ -88,6 +88,21 @@ void DeviceManagementServiceAdaptor::InstallAttributesGetStatus(
   response->Return(reply);
 }
 
+void DeviceManagementServiceAdaptor::EnterpriseOwnedGetStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        device_management::EnterpriseOwnedGetStatusReply>> response,
+    const device_management::EnterpriseOwnedGetStatusRequest& request) {
+  VLOG(1) << __func__;
+  device_management::EnterpriseOwnedGetStatusReply reply;
+  CHECK(service_);
+  bool status = service_->IsEnterpriseOwned();
+  if (!status) {
+    reply.set_error(
+        device_management::DEVICE_MANAGEMENT_ERROR_NOT_ENTERPRISED_OWNED);
+  }
+  response->Return(reply);
+}
+
 void DeviceManagementServiceAdaptor::GetFirmwareManagementParameters(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         device_management::GetFirmwareManagementParametersReply>> response,
