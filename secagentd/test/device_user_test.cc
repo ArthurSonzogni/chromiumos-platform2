@@ -308,7 +308,8 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
   registration_cb_.Run("started");
   task_environment_.FastForwardBy(base::Seconds(2));
 
-  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
+  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
+                  .is_valid());
 }
 
 TEST_F(DeviceUserTestFixture, TestGuestUser) {
