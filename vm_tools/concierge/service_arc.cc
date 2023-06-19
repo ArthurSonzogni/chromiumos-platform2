@@ -16,20 +16,16 @@
 #include <base/strings/string_util.h>
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
-#include <metrics/metrics_library.h>
 #include <chromeos/constants/vm_tools.h>
-#include <vm_applications/apps.pb.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
-#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
-#include "vm_tools/concierge/vmm_swap_metrics.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -593,9 +589,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vsock_cid = vsock_cid,
       .network_client = std::move(network_client),
       .seneschal_server_proxy = std::move(server_proxy),
-      .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
-          VmId::Type::ARCVM,
-          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
       .vmm_swap_low_disk_policy = std::move(vmm_swap_low_disk_policy),
       .vmm_swap_tbw_policy =
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),

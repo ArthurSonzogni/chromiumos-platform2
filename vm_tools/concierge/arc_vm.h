@@ -33,7 +33,6 @@
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
-#include "vm_tools/concierge/vmm_swap_metrics.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 #include "vm_tools/concierge/vmm_swap_usage_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -77,8 +76,6 @@ class ArcVm final : public VmBaseImpl {
     uint32_t vsock_cid;
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
-    // The metrics sender for vmm-swap feature.
-    std::unique_ptr<VmmSwapMetrics> vmm_swap_metrics;
     std::unique_ptr<VmmSwapLowDiskPolicy> vmm_swap_low_disk_policy;
     const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
     // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
@@ -289,8 +286,6 @@ class ArcVm final : public VmBaseImpl {
 
   bool is_vmm_swap_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
   base::Time last_vmm_swap_out_at_ GUARDED_BY_CONTEXT(sequence_checker_);
-  std::unique_ptr<VmmSwapMetrics> vmm_swap_metrics_
-      GUARDED_BY_CONTEXT(sequence_checker_);
   // Timer used to run vmm-swap policy. All operations for vmm-swap policy runs
   // on the main thread.
   std::unique_ptr<base::OneShotTimer> swap_policy_timer_
