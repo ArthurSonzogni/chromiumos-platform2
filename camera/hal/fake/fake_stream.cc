@@ -105,8 +105,8 @@ std::unique_ptr<FakeStream> FakeStream::Create(Size size,
               return base::WrapUnique(
                   new StaticFakeStream(std::move(input_buffer)));
             } else if (extension == ".y4m") {
-              return base::WrapUnique(
-                  new Y4mFakeStream(spec.path, spec.scale_mode));
+              return base::WrapUnique(new Y4mFakeStream(
+                  spec.path, spec.scale_mode, spec.loop_mode));
             } else {
               LOGF(WARNING) << "Unknown file extension: " << extension;
               return nullptr;

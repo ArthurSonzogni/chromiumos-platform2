@@ -40,8 +40,13 @@ static const char kY4mHeaderMagic[] = "YUV4MPEG2";
 }  // namespace
 
 Y4mFakeStream::Y4mFakeStream(const base::FilePath& file_path,
-                             ScaleMode scale_mode)
-    : file_path_(file_path), scale_mode_(scale_mode) {}
+                             ScaleMode scale_mode,
+                             LoopMode loop_mode)
+    : file_path_(file_path), scale_mode_(scale_mode), loop_mode_(loop_mode) {
+  if (loop_mode_ == LoopMode::kPingPong) {
+    playback_info_ = PlaybackInfo();
+  }
+}
 
 bool Y4mFakeStream::ParseY4mHeader(const std::string& header) {
   auto tokenizer = base::StringTokenizer(header, " ");
@@ -192,16 +197,63 @@ std::unique_ptr<FrameBuffer> Y4mFakeStream::ReadNextFrameI420() {
   auto temp_u_plane = mapped_temp_buffer->plane(1);
   auto temp_v_plane = mapped_temp_buffer->plane(2);
 
+  // TODO(pihsun): Extract loop mode logic to outer layer when we have more
+  // than one video fake streams.
+  if (loop_mode_ == LoopMode::kPingPong) {
+    if (playback_info_->status == PlaybackInfo::Status::kFirstPass) {
+      playback_info_->frame_start_offsets.push_back(
+          file_.Seek(base::File::Whence::FROM_CURRENT, 0));
+    } else {
+      if (file_.Seek(base::File::Whence::FROM_BEGIN,
+                     playback_info_->GetNextFrameOffset()) == -1) {
+        LOGF(WARNING) << "Failed to seek to next frame";
+        return nullptr;
+      }
+    }
+  }
+
   // Note that sizeof() includes the ending '\0', and we also want to read one
   // more byte for the newline character.
   std::string header(kY4mFrameDelimiterLength, '\0');
   if (!file_.ReadAtCurrentPosAndCheck(
           {reinterpret_cast<uint8_t*>(header.data()), header.size()})) {
-    // End of file, rewind and try again.
-    if (file_.Seek(base::File::Whence::FROM_BEGIN, first_frame_byte_index_) ==
-        -1) {
-      LOGF(WARNING) << "Failed to rewind to first frame";
-      return nullptr;
+    // End of file.
+    if (loop_mode_ == LoopMode::kPingPong) {
+      if (playback_info_->status != PlaybackInfo::Status::kFirstPass) {
+        // We seek directly to the correct frame offset after first pass, so
+        // this should never happen.
+        LOGF(WARNING) << "Unexpected EOF when reading frame header";
+        return nullptr;
+      }
+      // The last frame start offset is the one just pushed above which points
+      // to EOF. Remove it.
+      playback_info_->frame_start_offsets.pop_back();
+      if (playback_info_->frame_start_offsets.empty()) {
+        LOGF(WARNING) << "Video is empty";
+        return nullptr;
+      }
+      if (playback_info_->frame_start_offsets.size() == 1) {
+        // Only one frame, always play forward.
+        playback_info_->next_frame_number = 0;
+        playback_info_->status = PlaybackInfo::Status::kForward;
+      } else {
+        playback_info_->next_frame_number =
+            playback_info_->frame_start_offsets.size() - 2;
+        playback_info_->status = PlaybackInfo::Status::kReverse;
+      }
+      // Seek to the correct offset.
+      if (file_.Seek(base::File::Whence::FROM_BEGIN,
+                     playback_info_->GetNextFrameOffset()) == -1) {
+        LOGF(WARNING) << "Failed to seek to next frame";
+        return nullptr;
+      }
+    } else {
+      // Rewind and try again.
+      if (file_.Seek(base::File::Whence::FROM_BEGIN, first_frame_byte_index_) ==
+          -1) {
+        LOGF(WARNING) << "Failed to rewind to first frame";
+        return nullptr;
+      }
     }
     if (!file_.ReadAtCurrentPosAndCheck(
             {reinterpret_cast<uint8_t*>(header.data()), header.size()})) {
@@ -243,6 +295,28 @@ std::unique_ptr<FrameBuffer> Y4mFakeStream::ReadNextFrameI420() {
   if (!file_.ReadAtCurrentPosAndCheck({temp_v_plane.addr, temp_v_plane.size})) {
     LOGF(WARNING) << "Failed to read frame v plane";
     return nullptr;
+  }
+
+  if (loop_mode_ == LoopMode::kPingPong) {
+    size_t num_frames = playback_info_->frame_start_offsets.size();
+    CHECK_GE(num_frames, 0);
+    if (num_frames != 1) {
+      if (playback_info_->status == PlaybackInfo::Status::kForward) {
+        if (playback_info_->next_frame_number == num_frames - 1) {
+          playback_info_->next_frame_number = num_frames - 2;
+          playback_info_->status = PlaybackInfo::Status::kReverse;
+        } else {
+          playback_info_->next_frame_number++;
+        }
+      } else if (playback_info_->status == PlaybackInfo::Status::kReverse) {
+        if (playback_info_->next_frame_number == 0) {
+          playback_info_->next_frame_number = 1;
+          playback_info_->status = PlaybackInfo::Status::kForward;
+        } else {
+          playback_info_->next_frame_number--;
+        }
+      }
+    }
   }
 
   return temp_buffer;

@@ -27,11 +27,15 @@ constexpr char kHeightKey[] = "height";
 constexpr char kFrameRatesKey[] = "frame_rates";
 constexpr char kFramesKey[] = "frames";
 constexpr char kPathKey[] = "path";
-constexpr char kScaleModeKey[] = "scale_mode";
 
+constexpr char kScaleModeKey[] = "scale_mode";
 constexpr char kScaleModeStretch[] = "stretch";
 constexpr char kScaleModeCover[] = "cover";
 constexpr char kScaleModeContain[] = "contain";
+
+constexpr char kLoopModeKey[] = "loop_mode";
+constexpr char kLoopModeLoop[] = "loop";
+constexpr char kLoopModePingPong[] = "ping_pong";
 
 // Default fps ranges, this conform to the minimal required fps ranges as in
 // https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics#CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
@@ -46,13 +50,30 @@ FramesSpec ParseFramesSpec(const DictWithPath& frames_value) {
         scale_mode = ScaleMode::kCover;
       } else if (*scale_mode_str == kScaleModeContain) {
         scale_mode = ScaleMode::kContain;
-      } else if (*scale_mode_str != kScaleModeStretch) {
+      } else if (*scale_mode_str == kScaleModeStretch) {
+        scale_mode = ScaleMode::kStretch;
+      } else {
         LOGF(WARNING) << "invalid scale mode " << *scale_mode_str << " at "
                       << frames_value.path << "." << kScaleModeKey
                       << ", fallback to stretch";
       }
     }
-    return FramesFileSpec{base::FilePath(*path), scale_mode};
+
+    LoopMode loop_mode = LoopMode::kLoop;
+    if (auto loop_mode_str =
+            GetValue<std::string>(frames_value, kLoopModeKey)) {
+      if (*loop_mode_str == kLoopModeLoop) {
+        loop_mode = LoopMode::kLoop;
+      } else if (*loop_mode_str == kLoopModePingPong) {
+        loop_mode = LoopMode::kPingPong;
+      } else {
+        LOGF(WARNING) << "invalid loop mode " << *loop_mode_str << " at "
+                      << frames_value.path << "." << kScaleModeKey
+                      << ", fallback to loop";
+      }
+    }
+
+    return FramesFileSpec{base::FilePath(*path), scale_mode, loop_mode};
   }
   return FramesTestPatternSpec();
 }

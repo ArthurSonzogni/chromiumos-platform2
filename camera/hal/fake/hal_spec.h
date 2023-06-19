@@ -30,6 +30,16 @@ enum class ScaleMode {
   kCover,
 };
 
+// Specify how to loop the given video.
+enum class LoopMode {
+  // Loop the video normally.
+  kLoop,
+  // Loop the video back and forth between the first and the last frame. If the
+  // video frames are [1,2,...,N], then the frames played back will be
+  // [1,2,...,N-1,N,N-1,...,2,1,2,...]
+  kPingPong,
+};
+
 struct SupportedFormatSpec {
   int width = 0;
   int height = 0;
@@ -47,9 +57,12 @@ struct SupportedFormatSpec {
 struct FramesFileSpec {
   base::FilePath path;
   ScaleMode scale_mode;
+  // How to loop if the given file is video. Has no effect on image file.
+  LoopMode loop_mode;
 
   bool operator==(const FramesFileSpec& rhs) const {
-    return path == rhs.path && scale_mode == rhs.scale_mode;
+    return path == rhs.path && scale_mode == rhs.scale_mode &&
+           loop_mode == rhs.loop_mode;
   }
   bool operator!=(const FramesFileSpec& rhs) const { return !(*this == rhs); }
 };
