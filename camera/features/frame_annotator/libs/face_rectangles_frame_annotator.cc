@@ -7,15 +7,19 @@
 #include "features/frame_annotator/libs/face_rectangles_frame_annotator.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/check.h>
 #include <base/strings/stringprintf.h>
 #include <skia/core/SkFont.h>
 #include <skia/core/SkPath.h>
 #include <skia/core/SkTypeface.h>
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/face_detector_client_cros_wrapper.h"
 
 namespace cros {
 
@@ -59,8 +63,51 @@ bool FaceRectanglesFrameAnnotator::Initialize(
 bool FaceRectanglesFrameAnnotator::ProcessCaptureResult(
     const Camera3CaptureDescriptor* result) {
   auto faces = result->feature_metadata().faces;
+  // Get faces from FaceDetectionStreamManipulator if available, otherwise
+  // read capture metadata to get face detection result from HAL.
   if (faces.has_value()) {
     cached_faces_ = std::move(*faces);
+  } else {
+    auto scores = result->GetMetadata<uint8_t>(ANDROID_STATISTICS_FACE_SCORES);
+    size_t face_count = scores.size();
+    if (face_count > 0) {
+      // [..., x1_i, y1_i, x2_i, y2_i, ...], i = face index.
+      auto rects =
+          result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES);
+      DCHECK(rects.size() == face_count * 4);
+      cached_faces_ = std::vector<human_sensing::CrosFace>(face_count);
+      for (size_t i = 0; i < face_count; ++i) {
+        cached_faces_[i].bounding_box.x1 = static_cast<float>(rects[i * 4]);
+        cached_faces_[i].bounding_box.y1 =
+            static_cast<float>(rects[(i * 4) + 1]);
+        cached_faces_[i].bounding_box.x2 =
+            static_cast<float>(rects[(i * 4) + 2]);
+        cached_faces_[i].bounding_box.y2 =
+            static_cast<float>(rects[(i * 4) + 3]);
+        cached_faces_[i].confidence = static_cast<float>(scores[i]) / 100.0;
+      }
+      // [.., left_eye_x_i, left_eye_y_i, right_eye_x_i, right_eye_y_i,
+      //  mouth_center_x_i, mouth_center_y_i, ...], i = face index.
+      auto landmarks =
+          result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_LANDMARKS);
+      if (landmarks.size() > 0) {
+        DCHECK(landmarks.size() == face_count * 6);
+        for (size_t i = 0; i < face_count; i++) {
+          cached_faces_[i].landmarks.push_back(human_sensing::Landmark{
+              .x = static_cast<float>(landmarks[i * 6]),
+              .y = static_cast<float>(landmarks[(i * 6) + 1]),
+              .type = human_sensing::Landmark::Type::kLeftEye});
+          cached_faces_[i].landmarks.push_back(human_sensing::Landmark{
+              .x = static_cast<float>(landmarks[(i * 6) + 2]),
+              .y = static_cast<float>(landmarks[(i * 6) + 3]),
+              .type = human_sensing::Landmark::Type::kRightEye});
+          cached_faces_[i].landmarks.push_back(human_sensing::Landmark{
+              .x = static_cast<float>(landmarks[(i * 6) + 4]),
+              .y = static_cast<float>(landmarks[(i * 6) + 5]),
+              .type = human_sensing::Landmark::Type::kMouthCenter});
+        }
+      }
+    }
   }
   return true;
 }
