@@ -211,13 +211,25 @@ class CustomParametersForDev {
   std::optional<const std::string> ObtainSpecialParameter(
       const std::string& key);
 
+  // Parameters before crosvm command itself. Useful for adding things like
+  // strace.
+  std::vector<std::string> ObtainPrecrosvmParams() const {
+    return precrosvm_params_;
+  }
+  // Parameters before crosvm's `run` command.
+  base::StringPairs ObtainPrerunParams() const { return prerun_params_; }
+
  private:
+  // Command line parameters before `run` option.
+  base::StringPairs prerun_params_{};
+  // Command line before `crosvm`
+  std::vector<std::string> precrosvm_params_{};
   // Command line parameter prefix to 'crosvm run' to remove.
-  std::vector<std::string> prefix_to_remove_{};
+  std::vector<std::string> run_prefix_to_remove_{};
   // Command line parameters for 'crosvm run' to prepend.
-  base::StringPairs params_to_prepend_{};
+  base::StringPairs run_params_to_prepend_{};
   // Command line parameters to 'crosvm run' to add.
-  base::StringPairs params_to_add_{};
+  base::StringPairs run_params_to_add_{};
   // Other special handling.
   std::map<std::string, std::string> special_parameters_{};
   bool initialized_{false};

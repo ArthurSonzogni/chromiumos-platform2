@@ -20,10 +20,12 @@ using testing::StrEq;
 namespace vm_tools {
 namespace concierge {
 namespace {
+
 void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
   CustomParametersForDev custom(data);
   custom.Apply(args);
 }
+
 std::string JoinStringPairs(const base::StringPairs& pairs) {
   std::string result;
   for (auto& pair : pairs) {

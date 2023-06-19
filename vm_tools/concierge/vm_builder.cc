@@ -304,16 +304,30 @@ VmBuilder& VmBuilder::SetVmmSwapDir(base::FilePath vmm_swap_dir) {
 
 base::StringPairs VmBuilder::BuildVmArgs(
     CustomParametersForDev* devparams) const {
-  base::StringPairs args = BuildRunParams();
+  base::StringPairs post_run_args = BuildRunParams();
 
   // Early-return when BuildRunParams() failed.
-  if (args.empty())
-    return args;
+  if (post_run_args.empty())
+    return post_run_args;
 
-  if (devparams)
-    devparams->Apply(&args);
+  base::StringPairs pre_run_args;
+  std::vector<std::string> pre_crosvm_args;
 
-  args.emplace(args.begin(), kCrosvmBin, "run");
+  if (devparams) {
+    devparams->Apply(&post_run_args);
+    pre_run_args = devparams->ObtainPrerunParams();
+    pre_crosvm_args = devparams->ObtainPrecrosvmParams();
+  }
+
+  base::StringPairs args;
+  for (const auto& arg : pre_crosvm_args) {
+    args.emplace_back(arg, "");
+  }
+  args.emplace_back(kCrosvmBin, "");
+  args.insert(args.end(), pre_run_args.begin(), pre_run_args.end());
+
+  args.emplace_back("run", "");
+  args.insert(args.end(), post_run_args.begin(), post_run_args.end());
 
   // Kernel should be at the end.
   if (!kernel_.empty())

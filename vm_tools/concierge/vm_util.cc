@@ -526,19 +526,31 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
     base::StringPiece value =
         base::TrimWhitespaceASCII(param_pair.second, base::TRIM_ALL);
 
+    // Handle prerun: flags for flags before `run`.
+    if (line.substr(0, 7) == "prerun:") {
+      prerun_params_.emplace_back(key.substr(7), std::move(value));
+      continue;
+    }
+
+    // Add params before crosvm invocation.
+    if (line.substr(0, 10) == "precrosvm:") {
+      precrosvm_params_.emplace_back(line.substr(10));
+      continue;
+    }
+
     switch (line[0]) {
       case '!':
         // Line contains a prefix key. Remove all args with this prefix.
-        prefix_to_remove_.emplace_back(line.substr(1));
+        run_prefix_to_remove_.emplace_back(line.substr(1));
         break;
       case '^':
         // Parameter to be prepended before run, expected to be ^--key=value
         // format.
-        params_to_prepend_.emplace_back(key.substr(1), std::move(value));
+        run_params_to_prepend_.emplace_back(key.substr(1), std::move(value));
         break;
       case '-':
         // Parameter expected to be --key=value format.
-        params_to_add_.emplace_back(std::move(key), std::move(value));
+        run_params_to_add_.emplace_back(std::move(key), std::move(value));
         break;
       default:
         // KEY=VALUE pair.
@@ -552,15 +564,15 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
 void CustomParametersForDev::Apply(base::StringPairs* args) {
   if (!initialized_)
     return;
-  for (const auto& prefix : prefix_to_remove_) {
+  for (const auto& prefix : run_prefix_to_remove_) {
     base::EraseIf(*args, [&prefix](const auto& pair) {
       return base::StartsWith(pair.first, prefix);
     });
   }
-  for (const auto& param : params_to_prepend_) {
+  for (const auto& param : run_params_to_prepend_) {
     args->emplace(args->begin(), param.first, param.second);
   }
-  for (const auto& param : params_to_add_) {
+  for (const auto& param : run_params_to_add_) {
     args->emplace_back(param.first, param.second);
   }
 }

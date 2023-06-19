@@ -54,6 +54,14 @@ https://chromium-review.googlesource.com/c/chromiumos/platform2/+/3600040
 
 ### When crosvm fails to start up
 
-Adding strace to crosvm may help sometimes. Example:
+Adding strace to crosvm may help sometimes. For arcvm, `arcvm_dev.conf` can be
+used like this:
 
+```
+precrosvm:/usr/local/bin/strace
+precrosvm:-f
+precrosvm:-o=/run/vm/crosvm_strace
+```
+
+For others, code change is needed, like:
 https://chromium-review.googlesource.com/c/chromiumos/platform2/+/3205434
