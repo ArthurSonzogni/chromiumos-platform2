@@ -6,8 +6,10 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 
+#include <base/check.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/page_size.h>
@@ -33,6 +35,8 @@ static constexpr char kMetricsInactiveNoEnableDuration[] =
     ".InactiveNoEnableDuration";
 static constexpr char kMetricsMinPagesInFile[] = ".MinPagesInFile";
 static constexpr char kMetricsAvgPagesInFile[] = ".AvgPagesInFile";
+static constexpr char kMetricsPageAverageDurationInFile[] =
+    ".PageAverageDurationInFile";
 static constexpr base::TimeDelta kHeartbeatDuration = base::Minutes(10);
 static constexpr int kDurationMinHours = 1;
 // Policies for vmm-swap (e.g. VmmSwapTbwPolicy, VmmSwapUsagePolicy) uses 4
@@ -42,6 +46,15 @@ static constexpr int kDurationMinHours = 1;
 static constexpr int kDurationMaxHours = 24 * 28;  // 28 days
 // The last bucket has less than 4 days size which is enough granularity.
 static constexpr int kDurationNumBuckets = 50;
+// The heartbeat runs every 10 minutes. If the most pages lives in the file only
+// less than 10 minutes, that is a signal that vmm-swap is not effective.
+static constexpr int kDurationInFileMinSeconds = 10 * 60;  // 10 minutes
+// Policies for vmm-swap (e.g. VmmSwapTbwPolicy, VmmSwapUsagePolicy) uses 4
+// weeks of history to decide when to enable vmm-swap. If most of pages lives in
+// the file more than 4 weeks, vmm-swap works well enough.
+static constexpr int kDurationInFileMaxSeconds = 28 * 24 * 3600;  // 28 days
+// The last bucket has less than 5 days size which is enough granularity.
+static constexpr int kDurationInFileNumBuckets = 50;
 // Any memory savings less than 50MiB probably be considered a failure for
 // vmm-swap.
 static constexpr int kPagesInFileMin = (50LL * 1024 * 1024) / 4096;
@@ -96,6 +109,28 @@ void VmmSwapMetrics::OnVmmSwapEnabled(base::Time time) {
   }
 }
 
+void VmmSwapMetrics::OnPreVmmSwapOut(int64_t written_pages, base::Time time) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!vmm_swap_out_metrics_.has_value()) {
+    vmm_swap_out_metrics_ = VmmSwapOutMetrics{
+        .last_swap_out_time = time,
+        .min_pages_in_file = written_pages,
+        .pages_in_file = written_pages,
+        .total_pages_swapped_in = 0,
+        .average_pages_in_file = static_cast<double>(written_pages),
+        .page_total_duration_in_file_seconds = 0,
+        .count_heartbeat = 1,
+    };
+  } else {
+    VmmSwapOutMetrics& swap_out_metrics = vmm_swap_out_metrics_.value();
+    swap_out_metrics.page_total_duration_in_file_seconds +=
+        (time - swap_out_metrics.last_swap_out_time).InSecondsF() *
+        static_cast<double>(swap_out_metrics.pages_in_file);
+    swap_out_metrics.last_swap_out_time = time;
+    swap_out_metrics.pages_in_file = written_pages;
+  }
+}
+
 void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_enabled_ = false;
@@ -105,7 +140,7 @@ void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
   // `OnSwappableIdleDisabled()`.
   ReportDurations(time);
 
-  ReportPagesInFile();
+  ReportPagesInFile(time);
   vmm_swap_out_metrics_.reset();
 
   vmm_swap_enable_time_.reset();
@@ -120,7 +155,7 @@ void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
 void VmmSwapMetrics::OnDestroy(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ReportDurations(time);
-  ReportPagesInFile();
+  ReportPagesInFile(time);
 }
 
 void VmmSwapMetrics::SetFetchVmmSwapStatusFunction(FetchVmmSwapStatus func) {
@@ -151,15 +186,24 @@ void VmmSwapMetrics::OnHeartbeat() {
   int64_t pages_in_file =
       static_cast<int64_t>(status_result.value().metrics.swap_pages);
   if (!vmm_swap_out_metrics_.has_value()) {
-    vmm_swap_out_metrics_ = VmmSwapOutMetrics{
-        .min_pages_in_file = pages_in_file,
-        .average_pages_in_file = static_cast<double>(pages_in_file),
-        .count_heartbeat = 1,
-    };
+    LOG(ERROR) << "Metrics heartbeat executed without "
+                  "VmmSwapMetrics::OnPreVmmSwapOut()";
     return;
   }
 
   VmmSwapOutMetrics& swap_out_metrics = vmm_swap_out_metrics_.value();
+  int64_t pages_swapped_in = swap_out_metrics.pages_in_file - pages_in_file;
+  if (pages_swapped_in >= 0) {
+    swap_out_metrics.page_total_duration_in_file_seconds +=
+        (base::Time::Now() - swap_out_metrics.last_swap_out_time).InSecondsF() *
+        static_cast<double>(pages_swapped_in);
+    swap_out_metrics.total_pages_swapped_in += pages_swapped_in;
+    swap_out_metrics.pages_in_file = pages_in_file;
+  } else {
+    LOG(WARNING)
+        << "pages in file increased without VmmSwapMetrics::OnPreVmmSwapOut()";
+  }
+
   // The pages can be swapped out to file multiple times while vmm-swap is
   // enabled because pages will gradually be faulted back into memory.
   // pages_in_file is not always smaller than or equal to min_pages_in_file.
@@ -203,7 +247,7 @@ void VmmSwapMetrics::ReportDurations(base::Time time) const {
   }
 }
 
-void VmmSwapMetrics::ReportPagesInFile() const {
+void VmmSwapMetrics::ReportPagesInFile(base::Time time) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!vmm_swap_out_metrics_.has_value()) {
     return;
@@ -217,6 +261,25 @@ void VmmSwapMetrics::ReportPagesInFile() const {
           kMetricsAvgPagesInFile,
           static_cast<int64_t>(swap_out_metrics.average_pages_in_file))) {
     LOG(ERROR) << "Failed to send vmm-swap avg pages in file metrics";
+  }
+  int64_t total_pages =
+      swap_out_metrics.pages_in_file + swap_out_metrics.total_pages_swapped_in;
+  double average_seconds = 0;
+  if (total_pages > 0) {
+    double total_seconds =
+        swap_out_metrics.page_total_duration_in_file_seconds +
+        static_cast<double>(
+            (time - swap_out_metrics.last_swap_out_time).InSeconds() *
+            swap_out_metrics.pages_in_file);
+    average_seconds = total_seconds / static_cast<double>(total_pages);
+  }
+  if (average_seconds < 0) {
+    LOG(ERROR) << "duration in file for UMA is negative";
+  } else if (!metrics_->SendToUMA(
+                 GetMetricsName(vm_type_, kMetricsPageAverageDurationInFile),
+                 static_cast<int>(average_seconds), kDurationInFileMinSeconds,
+                 kDurationInFileMaxSeconds, kDurationInFileNumBuckets)) {
+    LOG(ERROR) << "Failed to send vmm-swap avg duration pages in file metrics";
   }
 }
 

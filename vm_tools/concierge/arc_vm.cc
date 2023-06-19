@@ -1344,6 +1344,7 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
       // fails or needs to be aborted.
       vmm_swap_tbw_policy_->Record(status.metrics.staging_pages *
                                    base::GetPageSize());
+      vmm_swap_metrics_->OnPreVmmSwapOut(status.metrics.staging_pages);
 
       CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath());
       last_vmm_swap_out_at_ = base::Time::Now();

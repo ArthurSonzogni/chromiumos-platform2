@@ -56,6 +56,8 @@ static constexpr char kMetricsArcvmMinPagesInFileName[] =
     "Memory.VmmSwap.ARCVM.MinPagesInFile";
 static constexpr char kMetricsArcvmAvgPagesInFileName[] =
     "Memory.VmmSwap.ARCVM.AvgPagesInFile";
+static constexpr char kMetricsArcvmPageAverageDurationInFileName[] =
+    "Memory.VmmSwap.ARCVM.PageAverageDurationInFile";
 }  // namespace
 
 TEST(ArcVmParamsTest, NonDevModeKernelParams) {
@@ -1681,6 +1683,10 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportDurationsOnDestroy) {
 
 TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFile) {
   ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 60;
+  swap_state_monitor_timer_->Fire();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::ACTIVE;
   FakeCrosvmControl::Get()->vmm_swap_status_.metrics.swap_pages = 100;
   swap_metrics_heartbeat_timer_->Fire();
@@ -1688,18 +1694,25 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFile) {
   swap_metrics_heartbeat_timer_->Fire();
 
   const int min_pages_4KiB = 50 * base::GetPageSize() / (4 << 10);
-  const int avg_pages_4KiB = 75 * base::GetPageSize() / (4 << 10);
+  const int avg_pages_4KiB = 70 * base::GetPageSize() / (4 << 10);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmMinPagesInFileName,
                                            min_pages_4KiB, _, _, _))
       .Times(1);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmAvgPagesInFileName,
                                            avg_pages_4KiB, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(kMetricsArcvmPageAverageDurationInFileName, _, _, _, _))
       .Times(1);
   ASSERT_TRUE(DisableVmmSwap());
 }
 
 TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFileOnDestroy) {
   ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 60;
+  swap_state_monitor_timer_->Fire();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::ACTIVE;
   FakeCrosvmControl::Get()->vmm_swap_status_.metrics.swap_pages = 100;
   swap_metrics_heartbeat_timer_->Fire();
@@ -1707,12 +1720,15 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFileOnDestroy) {
   swap_metrics_heartbeat_timer_->Fire();
 
   const int min_pages_4KiB = 50 * base::GetPageSize() / (4 << 10);
-  const int avg_pages_4KiB = 75 * base::GetPageSize() / (4 << 10);
+  const int avg_pages_4KiB = 70 * base::GetPageSize() / (4 << 10);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmMinPagesInFileName,
                                            min_pages_4KiB, _, _, _))
       .Times(1);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmAvgPagesInFileName,
                                            avg_pages_4KiB, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(kMetricsArcvmPageAverageDurationInFileName, _, _, _, _))
       .Times(1);
   vm_.reset();
 }

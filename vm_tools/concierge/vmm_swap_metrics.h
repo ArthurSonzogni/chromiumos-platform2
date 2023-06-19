@@ -65,6 +65,14 @@ namespace vm_tools::concierge {
 // the duration of the vmm-swap period. Even if the actual page size is not
 // 4KiB, it is recalculated to be the number of 4KiB pages. This is sent when
 // vmm-swap is disabled.
+//
+// * "Memory.VmmSwap.<vm name>.PageAverageDurationInFile"
+//
+// The average duration of each page of the guest memory lives in the swap file.
+// We expect most cold pages live in the swap file for a long time and hot pages
+// are not swapped out but kept in the memory. The durations are measured every
+// 10 minutes to estimate the average duration. This is sent when vmm-swap is
+// disabled.
 class VmmSwapMetrics final {
  public:
   VmmSwapMetrics(VmId::Type vm_type,
@@ -96,6 +104,9 @@ class VmmSwapMetrics final {
 
   // When vmm-swap is enabled.
   void OnVmmSwapEnabled(base::Time time = base::Time::Now());
+  // When vmm-swap write pages into disk.
+  void OnPreVmmSwapOut(int64_t written_pages,
+                       base::Time time = base::Time::Now());
   // When vmm-swap is disabled. Vmm-swap can be disabled not only by SwapVm DBus
   // method but also by low disk signals.
   void OnVmmSwapDisabled(base::Time time = base::Time::Now());
@@ -107,14 +118,18 @@ class VmmSwapMetrics final {
 
  private:
   struct VmmSwapOutMetrics {
+    base::Time last_swap_out_time;
     int64_t min_pages_in_file;
+    int64_t pages_in_file;
+    int64_t total_pages_swapped_in;
     double average_pages_in_file;
+    double page_total_duration_in_file_seconds;
     int64_t count_heartbeat;
   };
   void ClearPagesInFileCounters();
   void OnHeartbeat();
   void ReportDurations(base::Time time) const;
-  void ReportPagesInFile() const;
+  void ReportPagesInFile(base::Time time) const;
   bool SendPagesToUMA(const std::string& unprefixed_metrics_name,
                       int64_t pages) const;
   bool SendDurationToUMA(const std::string& unprefixed_metrics_name,
