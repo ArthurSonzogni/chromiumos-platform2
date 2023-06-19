@@ -940,8 +940,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     args.push_back("--suspend_to_idle");
   }
 
-  wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
-
   // Sync filesystems since outstanding operations can significantly delay
   // freeze, causing it to time out.
   sync();
@@ -960,6 +958,8 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
   }
+
+  wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
 
   const int exit_code =
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
