@@ -101,7 +101,8 @@ int main(int argc, char** argv) {
   DEFINE_bool(inherit_env, false, "Inherit the current environment variables");
   DEFINE_string(default_user, "chronos", "Default login user");
   DEFINE_bool(allow_to_switch_user, true,
-              "Allow to switch to another user on login");
+              "Allows logging in as a user (including root) other than the "
+              "default user");
 
   brillo::FlagHelper::Init(argc, argv, "vsh daemon");
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();

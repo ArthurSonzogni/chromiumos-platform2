@@ -52,35 +52,6 @@
 
 using std::string;
 
-namespace {
-
-// Path to lsb-release file.
-constexpr char kLsbReleasePath[] = "/etc/lsb-release";
-
-// Chrome OS release track.
-constexpr char kChromeosReleaseTrackKey[] = "CHROMEOS_RELEASE_TRACK";
-
-// String denoting a test image.
-constexpr char kTestImageChannel[] = "testimage-channel";
-
-bool IsTestImage() {
-  brillo::KeyValueStore store;
-  if (!store.Load(base::FilePath(kLsbReleasePath))) {
-    LOG(ERROR) << "Could not read lsb-release";
-    return false;
-  }
-
-  std::string release;
-  if (!store.GetString(kChromeosReleaseTrackKey, &release)) {
-    // If the key isn't set, then assume not a test image.
-    return false;
-  }
-
-  return release == kTestImageChannel;
-}
-
-}  // namespace
-
 namespace vm_tools {
 namespace vsh {
 
@@ -126,7 +97,7 @@ bool VshForwarder::Init() {
       user = default_user_;
     }
 
-    if (user != default_user_ && !IsTestImage()) {
+    if (user != default_user_ && !allow_to_switch_user_) {
       LOG(ERROR) << "Only " << default_user_
                  << " is allowed login on the VM shell";
       SendConnectionResponse(
