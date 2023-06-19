@@ -24,6 +24,7 @@
 
 namespace {
 
+using hwsec::KeyRestriction;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::ElementsAre;

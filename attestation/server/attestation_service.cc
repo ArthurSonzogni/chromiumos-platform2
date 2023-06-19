@@ -32,6 +32,7 @@
 #include <crypto/sha2.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec/structures/key.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/objects.h>
@@ -50,6 +51,7 @@ extern "C" {
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec::DeviceConfig;
+using hwsec::KeyRestriction;
 using hwsec::TPMError;
 
 namespace {

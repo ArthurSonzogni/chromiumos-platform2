@@ -26,6 +26,7 @@
 #include <gtest/gtest_prod.h>
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec/structures/key.h>
 #include <policy/libpolicy.h>
 
 #include "attestation/common/crypto_utility.h"
@@ -451,7 +452,7 @@ class AttestationService : public AttestationInterface {
                  const std::string& key_label,
                  KeyType key_type,
                  KeyUsage key_usage,
-                 KeyRestriction key_restriction,
+                 hwsec::KeyRestriction key_restriction,
                  CertifiedKey* key);
 
   // Finds the |key| associated with |username| and |key_label|. Returns false

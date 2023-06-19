@@ -20,6 +20,11 @@ enum class KeyAlgoType {
   kEcc,
 };
 
+enum class KeyRestriction {
+  kUnrestricted,
+  kRestricted,
+};
+
 struct Key {
   NoDefault<KeyToken> token;
 };

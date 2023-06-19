@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/attestation/mock_frontend.h>
 #include <libhwsec/factory/mock_factory.h>
+#include <libhwsec/structures/key.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/mock_device_policy.h>
@@ -38,6 +39,7 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
+using hwsec::KeyRestriction;
 using hwsec::TPMError;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::testing::ReturnError;

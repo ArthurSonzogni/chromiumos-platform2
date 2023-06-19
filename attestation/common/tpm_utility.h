@@ -14,13 +14,9 @@
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
+#include <libhwsec/structures/key.h>
 
 namespace attestation {
-
-enum class KeyRestriction {
-  kUnrestricted,
-  kRestricted,
-};
 
 // A class which provides helpers for TPM-related tasks.
 class TpmUtility {
@@ -80,7 +76,7 @@ class TpmUtility {
   virtual bool CreateCertifiedKey(
       KeyType key_type,
       KeyUsage key_usage,
-      KeyRestriction key_restriction,
+      hwsec::KeyRestriction key_restriction,
       std::optional<CertificateProfile> profile_hint,
       const std::string& identity_key_blob,
       const std::string& external_data,

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <libhwsec/structures/key.h>
 
 namespace attestation {
 
@@ -52,7 +53,7 @@ class MockTpmUtility : public TpmUtility {
               CreateCertifiedKey,
               (KeyType,
                KeyUsage,
-               KeyRestriction,
+               hwsec::KeyRestriction,
                std::optional<CertificateProfile>,
                const std::string&,
                const std::string&,

@@ -17,6 +17,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec/structures/key.h>
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/rsa.h>
@@ -36,6 +37,7 @@
   LOG(severity) << "TPM error 0x" << std::hex << result << " (" \
                 << Trspi_Error_String(result) << "): "
 
+using hwsec::KeyRestriction;
 using hwsec_foundation::CreateRSAFromNumber;
 using hwsec_foundation::kWellKnownExponent;
 using trousers::ScopedTssContext;

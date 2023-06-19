@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/threading/thread.h>
+#include <libhwsec/structures/key.h>
 #include <trunks/trunks_factory_impl.h>
 
 namespace attestation {
@@ -47,7 +48,7 @@ class TpmUtilityV2 : public TpmUtilityCommon {
                                std::string* credential) override;
   bool CreateCertifiedKey(KeyType key_type,
                           KeyUsage key_usage,
-                          KeyRestriction key_restriction,
+                          hwsec::KeyRestriction key_restriction,
                           std::optional<CertificateProfile> profile_hint,
                           const std::string& identity_key_blob,
                           const std::string& external_data,
