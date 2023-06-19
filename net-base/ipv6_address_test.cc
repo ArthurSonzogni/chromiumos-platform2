@@ -86,8 +86,7 @@ TEST(IPv4Address, In6Addr) {
 
 TEST(IPv6AddressTest, CreateFromBytes) {
   const auto expected = IPv6Address(kGoodData);
-  EXPECT_EQ(*IPv6Address::CreateFromBytes(kGoodData.data(), kGoodData.size()),
-            expected);
+  EXPECT_EQ(*IPv6Address::CreateFromBytes(kGoodData), expected);
 }
 
 TEST(IPv6AddressTest, IsZero) {

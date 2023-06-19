@@ -51,16 +51,14 @@ TEST(IPAddressTest, CreateFromString) {
 
 TEST(IPAddressTest, CreateFromBytes) {
   constexpr uint8_t ipv4_bytes[4] = {192, 168, 10, 1};
-  const auto ipv4_addr =
-      *IPAddress::CreateFromBytes(ipv4_bytes, std::size(ipv4_bytes));
+  const auto ipv4_addr = *IPAddress::CreateFromBytes(ipv4_bytes);
   EXPECT_EQ(ipv4_addr.GetFamily(), IPFamily::kIPv4);
   EXPECT_EQ(ipv4_addr.ToString(), "192.168.10.1");
 
   constexpr uint8_t ipv6_bytes[16] = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
                                       0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
                                       0x7e, 0xbf, 0x14, 0xc5};
-  const auto ipv6_addr =
-      *IPAddress::CreateFromBytes(ipv6_bytes, std::size(ipv6_bytes));
+  const auto ipv6_addr = *IPAddress::CreateFromBytes(ipv6_bytes);
   EXPECT_EQ(ipv6_addr.GetFamily(), IPFamily::kIPv6);
   EXPECT_EQ(ipv6_addr.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
 }

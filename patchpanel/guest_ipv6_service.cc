@@ -549,8 +549,7 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   const NDProxySignalMessage& msg = fm.ndproxy_signal();
   if (msg.has_neighbor_detected_signal()) {
     const auto& inner_msg = msg.neighbor_detected_signal();
-    const auto ip = net_base::IPv6Address::CreateFromBytes(
-        inner_msg.ip().data(), inner_msg.ip().size());
+    const auto ip = net_base::IPv6Address::CreateFromBytes(inner_msg.ip());
     if (!ip) {
       LOG(ERROR) << "Failed to create IPv6Address from NeighborDetectedSignal,"
                  << " size=" << inner_msg.ip().size() << " instead of "

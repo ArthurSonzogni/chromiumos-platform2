@@ -213,7 +213,8 @@ std::optional<IPv4Address> IPAddress::ToIPv4Address() const {
     return std::nullopt;
   }
 
-  return IPv4Address::CreateFromBytes(GetConstData(), GetLength());
+  return IPv4Address::CreateFromBytes(
+      base::make_span(GetConstData(), GetLength()));
 }
 
 std::optional<IPv6Address> IPAddress::ToIPv6Address() const {
@@ -221,7 +222,8 @@ std::optional<IPv6Address> IPAddress::ToIPv6Address() const {
     return std::nullopt;
   }
 
-  return IPv6Address::CreateFromBytes(GetConstData(), GetLength());
+  return IPv6Address::CreateFromBytes(
+      base::make_span(GetConstData(), GetLength()));
 }
 
 std::optional<IPv4CIDR> IPAddress::ToIPv4CIDR() const {

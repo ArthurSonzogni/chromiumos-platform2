@@ -31,14 +31,21 @@ std::optional<IPAddress> IPAddress::CreateFromString(
 }
 
 // static
-std::optional<IPAddress> IPAddress::CreateFromBytes(const uint8_t* bytes,
-                                                    size_t byte_length) {
-  const auto ipv4 = IPv4Address::CreateFromBytes(bytes, byte_length);
+std::optional<IPAddress> IPAddress::CreateFromBytes(
+    base::span<const char> bytes) {
+  return CreateFromBytes(base::span<const uint8_t>(
+      reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()));
+}
+
+// static
+std::optional<IPAddress> IPAddress::CreateFromBytes(
+    base::span<const uint8_t> bytes) {
+  const auto ipv4 = IPv4Address::CreateFromBytes(bytes);
   if (ipv4) {
     return IPAddress(*ipv4);
   }
 
-  const auto ipv6 = IPv6Address::CreateFromBytes(bytes, byte_length);
+  const auto ipv6 = IPv6Address::CreateFromBytes(bytes);
   if (ipv6) {
     return IPAddress(*ipv6);
   }

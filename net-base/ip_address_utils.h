@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 
 #include "net-base/export.h"
 
@@ -24,14 +25,13 @@ NET_BASE_EXPORT std::optional<std::pair<std::string, int>> SplitCIDRString(
     const std::string& address_string);
 
 template <typename Address>
-std::optional<Address> CreateAddressFromBytes(const uint8_t* bytes,
-                                              size_t byte_length) {
-  if (byte_length != Address::kAddressLength) {
+std::optional<Address> CreateAddressFromBytes(base::span<const uint8_t> bytes) {
+  if (bytes.size() != Address::kAddressLength) {
     return std::nullopt;
   }
 
   typename Address::DataType data;
-  std::copy_n(bytes, Address::kAddressLength, data.begin());
+  std::copy_n(bytes.data(), Address::kAddressLength, data.begin());
   return Address(data);
 }
 

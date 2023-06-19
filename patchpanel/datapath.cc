@@ -2302,8 +2302,8 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     info->enable_ipv4_dhcp = true;
     if (ipv4_config.has_ipv4_subnet()) {
       // Fill the parameters from protobuf.
-      const auto ipv4_addr = IPv4Address::CreateFromBytes(
-          ipv4_config.gateway_addr().data(), ipv4_config.gateway_addr().size());
+      const auto ipv4_addr =
+          IPv4Address::CreateFromBytes(ipv4_config.gateway_addr());
       const auto ipv4_cidr =
           (ipv4_addr)
               ? IPv4CIDR::CreateFromAddressAndPrefix(
@@ -2311,11 +2311,9 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
                     static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()))
               : std::nullopt;
       const auto ipv4_dhcp_start_addr =
-          IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr().data(),
-                                       ipv4_config.dhcp_start_addr().size());
+          IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr());
       const auto ipv4_dhcp_end_addr =
-          IPv4Address::CreateFromBytes(ipv4_config.dhcp_end_addr().data(),
-                                       ipv4_config.dhcp_end_addr().size());
+          IPv4Address::CreateFromBytes(ipv4_config.dhcp_end_addr());
       if (!ipv4_cidr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
         LOG(ERROR) << "Invalid arguments, gateway_addr: "
                    << ipv4_config.gateway_addr()
@@ -2339,8 +2337,7 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
 
     // Fill the DNS server.
     for (const auto& ip_str : ipv4_config.dns_servers()) {
-      const auto ip =
-          IPv4Address::CreateFromBytes(ip_str.c_str(), ip_str.length());
+      const auto ip = IPv4Address::CreateFromBytes(ip_str);
       if (!ip) {
         LOG(WARNING) << "Invalid DNS server, length of IP: " << ip_str.length();
       } else {

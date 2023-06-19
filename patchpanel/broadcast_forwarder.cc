@@ -166,8 +166,8 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   // Interface address is added.
   if (msg.HasAttribute(IFA_ADDRESS)) {
     shill::ByteString b(msg.GetAttribute(IFA_ADDRESS));
-    const auto addr =
-        net_base::IPv4Address::CreateFromBytes(b.GetConstData(), b.GetLength());
+    const auto addr = net_base::IPv4Address::CreateFromBytes(
+        base::make_span(b.GetConstData(), b.GetLength()));
     if (!addr) {
       LOG(WARNING) << "Expected IFA_ADDRESS length "
                    << net_base::IPv4Address::kAddressLength << " but got "
@@ -180,8 +180,8 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   // Broadcast address is added.
   if (msg.HasAttribute(IFA_BROADCAST)) {
     shill::ByteString b(msg.GetAttribute(IFA_BROADCAST));
-    const auto broadaddr =
-        net_base::IPv4Address::CreateFromBytes(b.GetConstData(), b.GetLength());
+    const auto broadaddr = net_base::IPv4Address::CreateFromBytes(
+        base::make_span(b.GetConstData(), b.GetLength()));
     if (!broadaddr) {
       LOG(WARNING) << "Expected IFA_BROADCAST length "
                    << net_base::IPv4Address::kAddressLength << " but got "

@@ -195,10 +195,10 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
   out->host_ipv4_addr = ConvertUint32ToIPv4Address(in.host_ipv4_addr());
   out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
 
-  out->dns_proxy_ipv4_addr = net_base::IPv4Address::CreateFromBytes(
-      in.dns_proxy_ipv4_addr().data(), in.dns_proxy_ipv4_addr().size());
-  out->dns_proxy_ipv6_addr = net_base::IPv6Address::CreateFromBytes(
-      in.dns_proxy_ipv6_addr().data(), in.dns_proxy_ipv6_addr().size());
+  out->dns_proxy_ipv4_addr =
+      net_base::IPv4Address::CreateFromBytes(in.dns_proxy_ipv4_addr());
+  out->dns_proxy_ipv6_addr =
+      net_base::IPv6Address::CreateFromBytes(in.dns_proxy_ipv6_addr());
 
   switch (in.guest_type()) {
     case patchpanel::NetworkDevice::ARC:
@@ -226,8 +226,7 @@ std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
   auto out = std::make_optional<Client::NetworkClientInfo>();
   std::copy(in.mac_addr().begin(), in.mac_addr().end(),
             std::back_inserter(out->mac_addr));
-  const auto ipv4_addr = net_base::IPv4Address::CreateFromBytes(
-      in.ipv4_addr().data(), in.ipv4_addr().size());
+  const auto ipv4_addr = net_base::IPv4Address::CreateFromBytes(in.ipv4_addr());
   if (!ipv4_addr) {
     LOG(ERROR) << "Failed to convert protobuf bytes to IPv4Address. size="
                << in.ipv4_addr().size();
@@ -235,8 +234,7 @@ std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
   }
   out->ipv4_addr = *ipv4_addr;
   for (const auto& in_ipv6_addr : in.ipv6_addresses()) {
-    const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(
-        in_ipv6_addr.data(), in_ipv6_addr.size());
+    const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(in_ipv6_addr);
     if (!ipv6_addr) {
       LOG(ERROR) << "Failed to convert protobuf bytes to IPv6Address. size="
                  << in_ipv6_addr.size();
@@ -254,8 +252,8 @@ std::optional<Client::DownstreamNetwork> ConvertDownstreamNetwork(
   auto out = std::make_optional<Client::DownstreamNetwork>();
   out->ifname = in.downstream_ifname();
   out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
-  const auto ipv4_gateway_addr = net_base::IPv4Address::CreateFromBytes(
-      in.ipv4_gateway_addr().data(), in.ipv4_gateway_addr().size());
+  const auto ipv4_gateway_addr =
+      net_base::IPv4Address::CreateFromBytes(in.ipv4_gateway_addr());
   if (!ipv4_gateway_addr) {
     LOG(ERROR) << "Failed to create IPv4Address for gateway address: size="
                << in.ipv4_gateway_addr().size();

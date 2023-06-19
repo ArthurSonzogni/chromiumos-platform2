@@ -96,8 +96,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const std::vector<uint8_t> ipv6_addr_bytes =
       provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
   const int ipv6_prefix_len = provider.ConsumeIntegralInRange<int>(0, 128);
-  const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(
-                             ipv6_addr_bytes.data(), ipv6_addr_bytes.size())
+  const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(ipv6_addr_bytes)
                              .value_or(net_base::IPv6Address());
   const auto ipv6_cidr = *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
       ipv6_addr, ipv6_prefix_len);

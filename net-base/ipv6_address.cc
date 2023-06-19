@@ -29,9 +29,15 @@ std::optional<IPv6Address> IPv6Address::CreateFromString(
 }
 
 // static
-std::optional<IPv6Address> IPv6Address::CreateFromBytes(const uint8_t* bytes,
-                                                        size_t byte_length) {
-  return CreateAddressFromBytes<IPv6Address>(bytes, byte_length);
+std::optional<IPv6Address> IPv6Address::CreateFromBytes(
+    base::span<const char> bytes) {
+  return CreateFromBytes(base::span<const uint8_t>(
+      reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()));
+}
+// static
+std::optional<IPv6Address> IPv6Address::CreateFromBytes(
+    base::span<const uint8_t> bytes) {
+  return CreateAddressFromBytes<IPv6Address>(bytes);
 }
 
 IPv6Address::IPv6Address(const struct in6_addr& addr) {

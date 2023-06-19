@@ -93,8 +93,7 @@ constexpr int kInvalidDiskIndex = -1;
 std::unique_ptr<patchpanel::Subnet> MakeSubnet(
     const patchpanel::Client::IPv4Subnet& subnet) {
   const std::optional<net_base::IPv4Address> addr =
-      net_base::IPv4Address::CreateFromBytes(subnet.base_addr.data(),
-                                             subnet.base_addr.size());
+      net_base::IPv4Address::CreateFromBytes(subnet.base_addr);
   if (!addr) {
     return nullptr;
   }

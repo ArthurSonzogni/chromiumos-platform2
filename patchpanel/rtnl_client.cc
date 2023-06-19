@@ -101,9 +101,9 @@ std::map<Address, MacAddress> GetNeighborMacTable(
           for (; RTA_OK(rt_attr, rt_attr_len);
                rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
             if (rt_attr->rta_type == NDA_DST) {
-              addr = Address::CreateFromBytes(
+              addr = Address::CreateFromBytes(base::make_span(
                   reinterpret_cast<const char*>(RTA_DATA(rt_attr)),
-                  Address::kAddressLength);
+                  Address::kAddressLength));
             } else if (rt_attr->rta_type == NDA_LLADDR) {
               mac_addr = MacAddress();
               std::copy_n(reinterpret_cast<const uint8_t*>(RTA_DATA(rt_attr)),

@@ -625,8 +625,7 @@ std::optional<net_base::IPv6Address> NDProxy::GetLinkLocalAddress(int ifindex) {
       continue;
     }
 
-    const auto addr = net_base::IPv6Address::CreateFromBytes(
-        line_address.data(), line_address.size());
+    const auto addr = net_base::IPv6Address::CreateFromBytes(line_address);
     if (addr) {
       return addr;
     }

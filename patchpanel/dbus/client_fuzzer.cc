@@ -24,15 +24,15 @@ class Environment {
 net_base::IPv4Address ConsumeIPv4Address(FuzzedDataProvider& provider) {
   const auto bytes =
       provider.ConsumeBytes<uint8_t>(net_base::IPv4Address::kAddressLength);
-  return net_base::IPv4Address::CreateFromBytes(bytes.data(), bytes.size())
-      .value_or(net_base::IPv4Address());
+  return net_base::IPv4Address::CreateFromBytes(bytes).value_or(
+      net_base::IPv4Address());
 }
 
 net_base::IPv6Address ConsumeIPv6Address(FuzzedDataProvider& provider) {
   const auto bytes =
       provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
-  return net_base::IPv6Address::CreateFromBytes(bytes.data(), bytes.size())
-      .value_or(net_base::IPv6Address());
+  return net_base::IPv6Address::CreateFromBytes(bytes).value_or(
+      net_base::IPv6Address());
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {

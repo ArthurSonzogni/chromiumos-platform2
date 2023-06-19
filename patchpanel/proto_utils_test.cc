@@ -60,8 +60,7 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
@@ -100,8 +99,7 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
@@ -142,8 +140,7 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
@@ -183,8 +180,7 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
@@ -225,8 +221,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
@@ -267,8 +262,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr().c_str(),
-                proto_device.ipv4_subnet().addr().size()));
+                proto_device.ipv4_subnet().addr()));
   ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),

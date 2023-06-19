@@ -9,6 +9,8 @@
 #include <string>
 #include <variant>
 
+#include <base/containers/span.h>
+
 #include "net-base/export.h"
 #include "net-base/ipv4_address.h"
 #include "net-base/ipv6_address.h"
@@ -30,19 +32,12 @@ class NET_BASE_EXPORT IPAddress {
       const std::string& address_string);
   static std::optional<IPAddress> CreateFromString(const char* address_string);
 
-  // Creates the IPAddress from the raw byte buffer. |bytes| points to the
-  // front of the byte buffer, and |bytes_length| is the length of the buffer.
-  // The caller should guarantee the data between [bytes, bytes + bytes_length)
-  // is valid memory.
-  // Returns std::nullopt if |bytes_length| is not the same as
+  // Creates the IPAddress from the raw byte buffer |bytes|.
+  // Returns std::nullopt if |bytes|'s size is not the same as
   // IPv4Address::kAddressLength or IPv6Address::kAddressLength.
-  static std::optional<IPAddress> CreateFromBytes(const char* bytes,
-                                                  size_t bytes_length) {
-    return CreateFromBytes(reinterpret_cast<const uint8_t*>(bytes),
-                           bytes_length);
-  }
-  static std::optional<IPAddress> CreateFromBytes(const uint8_t* bytes,
-                                                  size_t bytes_length);
+  static std::optional<IPAddress> CreateFromBytes(base::span<const char> bytes);
+  static std::optional<IPAddress> CreateFromBytes(
+      base::span<const uint8_t> bytes);
 
   explicit constexpr IPAddress(const IPv4Address& address)
       : address_(address) {}
