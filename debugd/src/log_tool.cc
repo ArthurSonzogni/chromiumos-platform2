@@ -528,6 +528,12 @@ const std::array kFeedbackLogs {
   Log{kCommand, "wifi_driver_errors_count",
     "croslog --since=-7200 --show-cursor=false --identifier=kernel"
     " --priority=err --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
+#if USE_ARCVM
+    Log{kCommand, "arcvm_zram_mm_stat", "/usr/bin/nsenter -t1 -m "
+      "/usr/sbin/android-sh -c 'cat /sys/block/zram0/mm_stat'", kRoot, kRoot},
+    Log{kCommand, "arcvm_zram_stat", "/usr/bin/nsenter -t1 -m "
+      "/usr/sbin/android-sh -c 'cat /sys/block/zram0/stat'", kRoot, kRoot},
+#endif  // USE_ARCVM
 };
 // clang-format on
 
