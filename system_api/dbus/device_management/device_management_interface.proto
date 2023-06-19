@@ -32,6 +32,7 @@ enum DeviceManagementErrorCode {
   DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED = 4;
   DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_SET_FAILED = 5;
   DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED = 6;
+  DEVICE_MANAGEMENT_ERROR_NOT_ENTERPRISED_OWNED = 7;
 }
 
 // ----------------- Install Attributes Interface -----------------
@@ -113,6 +114,16 @@ message InstallAttributesGetStatusReply {
 
   // The state the install attributes are in.
   InstallAttributesState state = 4;
+}
+
+// Input parameters of EnterpriseOwnedGetStatus()
+message EnterpriseOwnedGetStatusRequest {}
+
+// Output parameters of EnterpriseOwnedGetStatus()
+message EnterpriseOwnedGetStatusReply {
+  // If there's anything goes wrong while retrieving enterprise_owned status,
+  // then this will be set.
+  DeviceManagementErrorCode error = 1;
 }
 
 // ----------------- Firmware Management Parameters Interface -----------------
