@@ -22,6 +22,7 @@
 #include <optional>
 #include <utility>
 
+#include <absl/strings/str_split.h>
 #include <base/base64.h>
 #include <base/containers/cxx20_erase.h>
 #include <base/files/file_path.h>
@@ -516,42 +517,32 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
     if (line.empty() || line[0] == '#')
       continue;
 
-    // Line contains a prefix key. Remove all args with this prefix.
-    if (line[0] == '!' && line.size() > 1) {
-      const base::StringPiece prefix = line.substr(1, line.size() - 1);
-      prefix_to_remove_.emplace_back(prefix);
-      continue;
-    }
+    // Split line with first = sign. --key=value and KEY=VALUE parameters both
+    // use = to split. value will be an empty string in case of '--key'.
+    std::pair<std::string_view, std::string_view> param_pair =
+        absl::StrSplit(std::string_view(line), absl::MaxSplits('=', 1));
+    base::StringPiece key =
+        base::TrimWhitespaceASCII(param_pair.first, base::TRIM_ALL);
+    base::StringPiece value =
+        base::TrimWhitespaceASCII(param_pair.second, base::TRIM_ALL);
 
-    // Line contains a key only. Append or prepend the whole line.
-    base::StringPairs pairs;
-    if (line[0] == '^' && line.size() > 1) {
-      const base::StringPiece param = line.substr(1, line.size() - 1);
-      if (!base::SplitStringIntoKeyValuePairs(param, '=', '\n', &pairs)) {
-        params_to_prepend_.emplace_back(param, "");
-        continue;
-      }
-    } else if (!base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs)) {
-      params_to_add_.emplace_back(std::move(line), "");
-      continue;
-    }
-
-    // Line contains a key-value pair.
-    base::TrimWhitespaceASCII(pairs[0].first, base::TRIM_ALL, &pairs[0].first);
-    base::TrimWhitespaceASCII(pairs[0].second, base::TRIM_ALL,
-                              &pairs[0].second);
     switch (line[0]) {
+      case '!':
+        // Line contains a prefix key. Remove all args with this prefix.
+        prefix_to_remove_.emplace_back(line.substr(1));
+        break;
       case '^':
-        params_to_prepend_.emplace_back(std::move(pairs[0].first),
-                                        std::move(pairs[0].second));
+        // Parameter to be prepended before run, expected to be ^--key=value
+        // format.
+        params_to_prepend_.emplace_back(key.substr(1), std::move(value));
         break;
       case '-':
-        params_to_add_.emplace_back(std::move(pairs[0].first),
-                                    std::move(pairs[0].second));
+        // Parameter expected to be --key=value format.
+        params_to_add_.emplace_back(std::move(key), std::move(value));
         break;
       default:
-        special_parameters_.emplace(std::move(pairs[0].first),
-                                    std::move(pairs[0].second));
+        // KEY=VALUE pair.
+        special_parameters_.emplace(std::move(key), std::move(value));
         break;
     }
   }
