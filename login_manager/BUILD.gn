@@ -60,6 +60,8 @@ pkg_config("target_defaults") {
     "USE_NSS_CERTS=1",
     "USE_SYSTEMD=${use.systemd}",
     "USE_APPLY_LANDLOCK_POLICY=${use.apply_landlock_policy}",
+    "USE_APPLY_NO_NEW_PRIVS=0",
+    "USE_ENABLE_CROSH_SUDO=0",
     "USE_USER_SESSION_ISOLATION=${use.user_session_isolation}",
   ]
 }

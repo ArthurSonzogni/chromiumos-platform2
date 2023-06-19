@@ -21,6 +21,7 @@
 #include <base/posix/file_descriptor_shuffle.h>
 #include <base/process/launch.h>
 #include <base/time/time.h>
+#include <vboot/crossystem.h>
 
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -36,6 +37,21 @@ namespace {
 // Checks if Landlock sandboxing should be applied.
 bool ShouldApplyLandlockPolicy() {
   return !!USE_APPLY_LANDLOCK_POLICY;
+}
+
+// Checks if no_new_privs should be applied.
+bool ShouldApplyNoNewPrivs() {
+  return !!USE_APPLY_NO_NEW_PRIVS;
+}
+
+//  Checks if sudo in Dev mode should be allowed.
+bool ShouldEnableCroshSudo() {
+  return !!USE_ENABLE_CROSH_SUDO;
+}
+
+// Returns true if the system is in Developer mode.
+bool IsDevMode() {
+  return VbGetSystemPropertyInt("cros_debug") == 1;
 }
 
 }  // anonymous namespace
@@ -112,6 +128,13 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
   sigset_t filled_sigset, old_sigset;
   sigfillset(&filled_sigset);
   CHECK_EQ(0, sigprocmask(SIG_SETMASK, &filled_sigset, &old_sigset));
+
+  // Set no_new_privs if configured and the system is in Verified mode. We
+  // don’t set this if we’re in Dev and ShouldEnableCroshSudo is set, because
+  // the user will need new_privs for sudo commands.
+  if (ShouldApplyNoNewPrivs() && !(IsDevMode() && ShouldEnableCroshSudo())) {
+    minijail_no_new_privs(j.get());
+  }
 
   pid_t child_pid = 0;
   bool success = system_->RunInMinijail(j, args, env_vars, &child_pid);
