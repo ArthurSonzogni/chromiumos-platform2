@@ -180,6 +180,15 @@ ConnectionAttemptTypeToMetrics(CellularServiceRefPtr service) {
   return MetricsType::kAutoConnect;
 }
 
+std::vector<ApnList::ApnType> ConnectionApnTypesToMetrics(
+    ApnList::ApnType apn_type) {
+  std::vector<ApnList::ApnType> connection_apn_types;
+  // TODO(b:249372214): Add existing connections. We might be able to sort them
+  // using the LastConnected property.
+  connection_apn_types.push_back(apn_type);
+  return connection_apn_types;
+}
+
 }  // namespace
 
 // static
@@ -1287,6 +1296,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.subscription_error_seen = subscription_error_seen_[iccid];
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
+  result.connection_apn_types = ConnectionApnTypesToMetrics(apn_type);
   metrics()->NotifyDetailedCellularConnectionResult(result);
 
   // Update if we reported subscription error for this card so that

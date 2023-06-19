@@ -658,6 +658,20 @@
         this card.
       </summary>
     </metric>
+    <metric name="connection_apn_types" type="int">
+      <summary>
+        Indicates the APN type used in the connection attemp, and the APN
+        types of all other connected bearers. Each APN type is represented
+        by a digit, and the order of the digits represents the connection order
+        from first on the left, to last on the right.
+        For example, a value of 23 indicates that a Default connection exists,
+        and a new connection attempt is tried with a DUN APN.
+        Below are the supported digit values:
+        IA = 1
+        DEFAULT = 2
+        DUN = 3
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

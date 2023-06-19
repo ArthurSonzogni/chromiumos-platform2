@@ -1819,6 +1819,7 @@ class Metrics : public DefaultServiceObserver {
     std::string detailed_error;
     std::string uuid;
     shill::Stringmap apn_info;
+    std::vector<ApnList::ApnType> connection_apn_types;
     IPConfigMethod ipv4_config_method;
     IPConfigMethod ipv6_config_method;
     std::string home_mccmnc;

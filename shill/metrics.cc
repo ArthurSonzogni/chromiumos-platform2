@@ -1092,6 +1092,26 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   if (ApnList::IsTetheringApn(result.apn_info)) {
     apn_types |= static_cast<uint32_t>(CellularApnType::kCellularApnTypeDun);
   }
+  // Each APN type in connection_apn_types is represented by a digit, and the
+  // order of the digits represent the connection order from first on the left,
+  // to last on the right. For example, a value of 23 indicates that a Default
+  // connection exists, and a new connection attempt is tried with a DUN APN.
+  uint32_t connection_apn_types = 0;
+  for (auto& apn_type : result.connection_apn_types) {
+    uint digit = 0;
+    switch (apn_type) {
+      case ApnList::ApnType::kAttach:
+        digit = 1;
+        break;
+      case ApnList::ApnType::kDefault:
+        digit = 2;
+        break;
+      case ApnList::ApnType::kDun:
+        digit = 3;
+        break;
+    }
+    connection_apn_types = connection_apn_types * 10 + digit;
+  }
 
   if (device_metrics != nullptr) {
     base::TimeDelta elapsed_time;
@@ -1105,6 +1125,7 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           << " apn:" << apn_name << " apn_source:" << apn_source
           << " use_apn_revamp_ui: " << result.use_apn_revamp_ui
           << " apn_types: " << apn_types
+          << " connection_apn_types: " << connection_apn_types
           << " ipv4:" << static_cast<int>(result.ipv4_config_method)
           << " ipv6:" << static_cast<int>(result.ipv6_config_method)
           << " home_mccmnc:" << result.home_mccmnc
@@ -1142,7 +1163,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Setuse_apn_revamp_ui(result.use_apn_revamp_ui)
           .Setconnection_attempt_type(
               static_cast<int>(result.connection_attempt_type))
-          .Setsubscription_error_seen(result.subscription_error_seen);
+          .Setsubscription_error_seen(result.subscription_error_seen)
+          .Setconnection_apn_types(connection_apn_types);
 
   std::optional<int64_t> gid1 = IntGid1(result.gid1);
   if (gid1.has_value()) {
