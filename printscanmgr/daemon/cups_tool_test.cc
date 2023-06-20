@@ -298,7 +298,8 @@ TEST(CupsToolTest, InvalidPPDTooSmall) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
                                                            empty_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, InvalidPPDBadGzip) {
@@ -313,7 +314,8 @@ TEST(CupsToolTest, InvalidPPDBadGzip) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
                                                            bad_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, InvalidPPDBadContents) {
@@ -334,7 +336,8 @@ TEST(CupsToolTest, InvalidPPDBadContents) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
                                                            bad_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, ManualMissingURI) {
@@ -351,7 +354,8 @@ TEST(CupsToolTest, ManualMissingURI) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", /*uri=*/"",
                                                            good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_BAD_URI);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_BAD_URI);
 }
 
 TEST(CupsToolTest, ManualMissingName) {
@@ -369,7 +373,7 @@ TEST(CupsToolTest, ManualMissingName) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest(
               /*name=*/"", "ipp://127.0.0.1:631/ipp/print", good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, ManualUnknownError) {
@@ -388,7 +392,8 @@ TEST(CupsToolTest, ManualUnknownError) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest(
               "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_LPADMIN_FAILURE);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_LPADMIN_FAILURE);
 }
 
 TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
@@ -407,7 +412,8 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest(
               "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, ManualNotAutoConf) {
@@ -426,7 +432,7 @@ TEST(CupsToolTest, ManualNotAutoConf) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest(
               "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, ManualUnhandledError) {
@@ -445,14 +451,14 @@ TEST(CupsToolTest, ManualUnhandledError) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest(
               "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingURI) {
   CupsTool cups;
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest("test", /*uri=*/""));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingName) {
@@ -465,7 +471,7 @@ TEST(CupsToolTest, AutoMissingName) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           /*name=*/"", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoUnreasonableUri) {
@@ -478,7 +484,8 @@ TEST(CupsToolTest, AutoUnreasonableUri) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           /*name=*/"", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_BAD_URI);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_BAD_URI);
 }
 
 TEST(CupsToolTest, AddAutoConfiguredPrinter) {
@@ -491,7 +498,7 @@ TEST(CupsToolTest, AddAutoConfiguredPrinter) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_SUCCESS);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_SUCCESS);
 }
 
 TEST(CupsToolTest, AutoUnknownError) {
@@ -505,7 +512,8 @@ TEST(CupsToolTest, AutoUnknownError) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_AUTOCONF_FAILURE);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_AUTOCONF_FAILURE);
 }
 
 TEST(CupsToolTest, AutoFatalError) {
@@ -519,7 +527,7 @@ TEST(CupsToolTest, AutoFatalError) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoIoError) {
@@ -533,7 +541,8 @@ TEST(CupsToolTest, AutoIoError) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_IO_ERROR);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_IO_ERROR);
 }
 
 TEST(CupsToolTest, AutoMemoryAllocError) {
@@ -547,7 +556,8 @@ TEST(CupsToolTest, AutoMemoryAllocError) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_MEMORY_ALLOC_ERROR);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_MEMORY_ALLOC_ERROR);
 }
 
 TEST(CupsToolTest, AutoInvalidPpd) {
@@ -561,7 +571,7 @@ TEST(CupsToolTest, AutoInvalidPpd) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoServerUnreachable) {
@@ -575,7 +585,7 @@ TEST(CupsToolTest, AutoServerUnreachable) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoPrinterUnreachable) {
@@ -589,7 +599,8 @@ TEST(CupsToolTest, AutoPrinterUnreachable) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_UNREACHABLE);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_UNREACHABLE);
 }
 
 TEST(CupsToolTest, AutoPrinterWrongResponse) {
@@ -603,7 +614,8 @@ TEST(CupsToolTest, AutoPrinterWrongResponse) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_WRONG_RESPONSE);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_WRONG_RESPONSE);
 }
 
 TEST(CupsToolTest, AutoPrinterNotAutoConf) {
@@ -617,7 +629,8 @@ TEST(CupsToolTest, AutoPrinterNotAutoConf) {
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest(
           "test", "ipp://127.0.0.1:631/ipp/print"));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_NOT_AUTOCONF);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_NOT_AUTOCONF);
 }
 
 TEST(CupsToolTest, FoomaticPPD) {
@@ -639,7 +652,7 @@ TEST(CupsToolTest, FoomaticPPD) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
                                                            foomatic_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_SUCCESS);
+  EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_SUCCESS);
 }
 
 TEST(CupsToolTest, FoomaticError) {
@@ -660,7 +673,8 @@ TEST(CupsToolTest, FoomaticError) {
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
                                                            foomatic_ppd));
-  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
+  EXPECT_EQ(response.result(),
+            AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, RemovePrinter) {

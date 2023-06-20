@@ -100,38 +100,42 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
   return ret;
 }
 
-// Translates a return code from lpadmin to a CupsResult value.
-CupsResult LpadminReturnCodeToCupsResult(int return_code, bool autoconf) {
+// Translates a return code from lpadmin to an AddPrinterResult value.
+AddPrinterResult LpadminReturnCodeToAddPrinterResult(int return_code,
+                                                     bool autoconf) {
   if (return_code != 0)
     LOG(WARNING) << "lpadmin failed: " << return_code;
 
   switch (return_code) {
     case 0:  // OK
-      return CupsResult::CUPS_RESULT_SUCCESS;
+      return AddPrinterResult::ADD_PRINTER_RESULT_SUCCESS;
     case 1:  // UNKNOWN_ERROR
-      return (autoconf ? CupsResult::CUPS_RESULT_AUTOCONF_FAILURE
-                       : CupsResult::CUPS_RESULT_LPADMIN_FAILURE);
+      return (autoconf
+                  ? AddPrinterResult::ADD_PRINTER_RESULT_CUPS_AUTOCONF_FAILURE
+                  : AddPrinterResult::ADD_PRINTER_RESULT_CUPS_LPADMIN_FAILURE);
     case 2:  // WRONG_PARAMETERS
-      return CupsResult::CUPS_RESULT_FATAL;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL;
     case 3:  // IO_ERROR
-      return CupsResult::CUPS_RESULT_IO_ERROR;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_IO_ERROR;
     case 4:  // MEMORY_ALLOC_ERROR
-      return CupsResult::CUPS_RESULT_MEMORY_ALLOC_ERROR;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_MEMORY_ALLOC_ERROR;
     case 5:  // INVALID_PPD_FILE
-      return (autoconf ? CupsResult::CUPS_RESULT_FATAL
-                       : CupsResult::CUPS_RESULT_INVALID_PPD);
+      return (autoconf ? AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL
+                       : AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
     case 6:  // SERVER_UNREACHABLE
-      return CupsResult::CUPS_RESULT_FATAL;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL;
     case 7:  // PRINTER_UNREACHABLE
-      return CupsResult::CUPS_RESULT_PRINTER_UNREACHABLE;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_UNREACHABLE;
     case 8:  // PRINTER_WRONG_RESPONSE
-      return CupsResult::CUPS_RESULT_PRINTER_WRONG_RESPONSE;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_WRONG_RESPONSE;
     case 9:  // PRINTER_NOT_AUTOCONFIGURABLE
-      return (autoconf ? CupsResult::CUPS_RESULT_PRINTER_NOT_AUTOCONF
-                       : CupsResult::CUPS_RESULT_FATAL);
+      return (
+          autoconf
+              ? AddPrinterResult::ADD_PRINTER_RESULT_CUPS_PRINTER_NOT_AUTOCONF
+              : AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
     default:
       // unexpected return code
-      return CupsResult::CUPS_RESULT_FATAL;
+      return AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL;
   }
 }
 
@@ -162,27 +166,28 @@ CupsAddAutoConfiguredPrinterResponse CupsTool::AddAutoConfiguredPrinter(
   const std::string uri = request.uri();
   if (!IppEverywhereURI(uri)) {
     LOG(WARNING) << "IPP, IPPS or IPPUSB required for IPP Everywhere: " << uri;
-    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
     return response;
   }
 
   if (!CupsTool::UriSeemsReasonable(uri)) {
     LOG(WARNING) << "Invalid URI: " << uri;
-    response.set_result(CupsResult::CUPS_RESULT_BAD_URI);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_BAD_URI);
     return response;
   }
 
   const std::string name = request.name();
   if (name.empty()) {
     LOG(WARNING) << "Missing printer name";
-    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
     return response;
   }
 
   LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
   const int ret =
       lp_tools_->Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
-  response.set_result(LpadminReturnCodeToCupsResult(ret, /*autoconf=*/true));
+  response.set_result(
+      LpadminReturnCodeToAddPrinterResult(ret, /*autoconf=*/true));
   return response;
 }
 
@@ -194,21 +199,21 @@ CupsAddManuallyConfiguredPrinterResponse CupsTool::AddManuallyConfiguredPrinter(
       request.ppd_contents().begin(), request.ppd_contents().end());
   if (TestPPD(*lp_tools_.get(), ppd_contents) != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
-    response.set_result(CupsResult::CUPS_RESULT_INVALID_PPD);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_INVALID_PPD);
     return response;
   }
 
   const std::string uri = request.uri();
   if (!CupsTool::UriSeemsReasonable(uri)) {
     LOG(WARNING) << "Invalid URI: " << uri;
-    response.set_result(CupsResult::CUPS_RESULT_BAD_URI);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_BAD_URI);
     return response;
   }
 
   const std::string name = request.name();
   if (name.empty()) {
     LOG(WARNING) << "Missing printer name";
-    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    response.set_result(AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
     return response;
   }
 
@@ -216,7 +221,7 @@ CupsAddManuallyConfiguredPrinterResponse CupsTool::AddManuallyConfiguredPrinter(
   const int result = lp_tools_->Lpadmin(
       {"-v", uri, "-p", name, "-P", "-", "-E"}, &ppd_contents);
   response.set_result(
-      LpadminReturnCodeToCupsResult(result, /*autoconf=*/false));
+      LpadminReturnCodeToAddPrinterResult(result, /*autoconf=*/false));
   return response;
 }
 
