@@ -16,17 +16,6 @@
 
 namespace {
 constexpr char kPDRevisionRegex[] = R"((\d)\.\d)";
-
-// We don't want to display VID in the logs, so zero it out.
-uint32_t ObfuscatedIdHeaderVDO(uint32_t id_header_vdo) {
-  return id_header_vdo & ~typecd::kIdHeaderVDOVidMask;
-}
-
-// We don't want to display PID in the logs, so zero it out.
-uint32_t ObfuscatedProductVDO(uint32_t product_vdo) {
-  return product_vdo & ~typecd::kProductVDOPidMaskWithOffset;
-}
-
 }  // namespace
 
 namespace typecd {
@@ -67,8 +56,7 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(product, &product_vdo))
     return;
-  LOG(INFO) << type_ << " Product VDO: " << std::hex << std::setfill('0')
-            << std::setw(8) << ObfuscatedProductVDO(product_vdo);
+  LOG(INFO) << type_ << " Product VDO: " << FormatHexString(product_vdo, 8);
 
   if (!ReadHexFromPath(cert_stat, &cert_stat_vdo))
     return;
@@ -76,8 +64,7 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(id_header, &id_header_vdo))
     return;
-  LOG(INFO) << type_ << " Id Header VDO: " << std::hex << std::setfill('0')
-            << std::setw(8) << ObfuscatedIdHeaderVDO(id_header_vdo);
+  LOG(INFO) << type_ << " Id Header VDO: " << FormatHexString(id_header_vdo, 8);
 
   if (!ReadHexFromPath(product_type1, &product_type_vdo1))
     return;
