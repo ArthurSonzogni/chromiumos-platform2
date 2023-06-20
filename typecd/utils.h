@@ -5,6 +5,8 @@
 #ifndef TYPECD_UTILS_H_
 #define TYPECD_UTILS_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 
 namespace typecd {
@@ -15,6 +17,11 @@ namespace typecd {
 // Returns:
 //   True on success, False otherwise.
 bool ReadHexFromPath(const base::FilePath& path, uint32_t* val);
+
+// Helper function to create a string to print a value in hexidecimal. The
+// string returned by FormatHexString will be zero-padded up to the provided
+// width.
+std::string FormatHexString(uint32_t val, int width);
 
 }  // namespace typecd
 

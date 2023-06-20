@@ -4,6 +4,8 @@
 
 #include "typecd/utils.h"
 
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 #include <base/files/file_util.h>
@@ -27,6 +29,12 @@ bool ReadHexFromPath(const base::FilePath& path, uint32_t* val) {
   }
 
   return true;
+}
+
+std::string FormatHexString(uint32_t val, int width) {
+  std::stringstream out;
+  out << std::hex << std::setfill('0') << std::setw(width) << val;
+  return out.str();
 }
 
 }  // namespace typecd

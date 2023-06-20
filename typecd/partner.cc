@@ -15,6 +15,7 @@
 
 #include "typecd/pd_vdo_constants.h"
 #include "typecd/port.h"
+#include "typecd/utils.h"
 
 namespace {
 
@@ -68,7 +69,9 @@ bool Partner::AddAltMode(const base::FilePath& mode_syspath) {
 
   alt_modes_.emplace(index, std::move(alt_mode));
 
-  LOG(INFO) << "Added alt mode for port " << port << " index " << index;
+  LOG(INFO) << "Added SOP alt mode. Port: " << port << ", Index: " << index
+            << ", SVID: " << FormatHexString(alt_modes_[index]->GetSVID(), 4)
+            << ", VDO: " << FormatHexString(alt_modes_[index]->GetVDO(), 8);
 
   return true;
 }
