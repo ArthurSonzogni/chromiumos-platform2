@@ -465,6 +465,14 @@ bool KernelCollector::Collect(bool use_saved_lsb) {
   return (CollectRamoopsCrash() || found_efi_crash);
 }
 
+CrashCollector::ComputedCrashSeverity KernelCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kFatal,
+      .product_group = Product::kPlatform,
+  };
+}
+
 // Returns file path for corresponding efi crash part.
 base::FilePath KernelCollector::EfiCrash::GetFilePath(uint32_t part) const {
   return collector_.dump_path_.Append(

@@ -584,6 +584,16 @@ TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
   WatchdogOnlyLastBootHelper(console_ramoops_file_old());
 }
 
+TEST_F(KernelCollectorTest, ComputeSeverity) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("any executable");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
 class KernelCollectorSavedLsbTest : public KernelCollectorTest,
                                     public ::testing::WithParamInterface<bool> {
 };

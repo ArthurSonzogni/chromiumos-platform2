@@ -46,6 +46,10 @@ class KernelCollector : public CrashCollector {
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }
   kernel_util::ArchKind arch() const { return arch_; }
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
  protected:
   // This class represents single EFI crash.
   class EfiCrash {
