@@ -85,6 +85,17 @@ Each `CameraSpec` is a dictionary, containing the following keys:
       resolution while maintaining the aspect ratio. The result image will be
       center aligned and the excessive area cropped.
 
+  * `loop_mode` (string, default to `loop`):
+    How the video is looped. This has no effect if `path` is an image. Can be
+    either:
+
+    * `loop`: Loop indefinitely normally. The video playback will starts again
+      from the first frame after the last frame is played.
+
+    * `ping_pong`: Loop indefinitely, but play the video back and forth.
+      If the video frames are labeled with 1 to N, then the played frames
+      will be 1,2,...,N-1,N,N-1,...,2,1,2,...
+
 A sample config file is as follows:
 ```json
 {
