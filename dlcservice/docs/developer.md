@@ -142,7 +142,7 @@ If your service/daemon uses minijail, you will have to:
     permissions. Please refer to [sandboxing].
 
 If your service/daemon also starts on `starting system-services`:
-*   Please add an additional stanza that says `and stopped imageloader-init`.
+*   Please add an additional stanza that says `and started dlcservice`.
 
 On a locally built test build|image, calling dlcservice API does not download
 the DLC (no DLC is being served), unless the DLC is preloaded using
