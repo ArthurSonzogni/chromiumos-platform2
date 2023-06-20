@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_forward.h>
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
@@ -26,7 +27,6 @@
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/functional/callback_forward.h"
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"
