@@ -21,7 +21,7 @@ namespace {
 
 // Versions supported by sommelier.
 constexpr uint32_t kTextInputManagerVersion = 1;
-constexpr uint32_t kTextInputExtensionVersion = 9;
+constexpr uint32_t kTextInputExtensionVersion = 11;
 constexpr uint32_t kTextInputX11Version = 1;
 
 }  // namespace
@@ -350,6 +350,8 @@ static const struct zcr_extended_text_input_v1_interface
         ForwardRequest<zcr_extended_text_input_v1_set_focus_reason>,
         ForwardRequest<zcr_extended_text_input_v1_set_input_type>,
         ForwardRequest<zcr_extended_text_input_v1_set_surrounding_text_support>,
+        ForwardRequest<
+            zcr_extended_text_input_v1_set_surrounding_text_offset_utf16>,
 };
 
 static void sl_extended_text_input_set_preedit_region(
@@ -420,6 +422,18 @@ static void sl_extended_text_input_set_virtual_keyboard_occluded_bounds(
       host->resource, x, y, width, height);
 }
 
+static void sl_extended_text_input_confirm_preedit(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    uint32_t selection_behaviour) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_confirm_preedit(host->resource,
+                                                  selection_behaviour);
+}
+
 static const struct zcr_extended_text_input_v1_listener
     sl_extended_text_input_listener = {
         sl_extended_text_input_set_preedit_region,
@@ -427,6 +441,7 @@ static const struct zcr_extended_text_input_v1_listener
         sl_extended_text_input_add_grammar_fragment,
         sl_extended_text_input_set_autocorrect_range,
         sl_extended_text_input_set_virtual_keyboard_occluded_bounds,
+        sl_extended_text_input_confirm_preedit,
 };
 
 static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
