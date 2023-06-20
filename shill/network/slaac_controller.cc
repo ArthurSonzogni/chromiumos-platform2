@@ -40,11 +40,6 @@ void SLAACController::Start() {
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
 
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "1");
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "0");
-
   proc_fs_->SetIPFlag(
       IPAddress::kFamilyIPv6,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
@@ -54,6 +49,13 @@ void SLAACController::Start() {
                       ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
   proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagUseTempAddr,
                       ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
+
+  // Flip kIPFlagDisableIPv6, forcing kernel to send an RS. Note this needs to
+  // be done after setting kIPFlagAcceptRouterAdvertisements.
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "1");
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "0");
 }
 
 void SLAACController::RegisterCallback(UpdateCallback update_callback) {
