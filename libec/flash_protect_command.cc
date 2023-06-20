@@ -171,4 +171,10 @@ uint32_t FlashProtectCommand::Command() const {
   return flash_protect_command_v1_->Command();
 }
 
+uint32_t FlashProtectCommand::Result() const {
+  if (GetVersion() == 2)
+    return flash_protect_command_v2_->Result();
+  return flash_protect_command_v1_->Result();
+}
+
 }  // namespace ec

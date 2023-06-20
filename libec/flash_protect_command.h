@@ -83,6 +83,7 @@ class BRILLO_EXPORT FlashProtectCommand : public EcCommandInterface {
   uint32_t Version() const override;
   uint32_t Command() const override;
 
+  uint32_t Result() const;
   uint32_t GetVersion() const;
 
   static std::string ParseFlags(flash_protect::Flags flags);
