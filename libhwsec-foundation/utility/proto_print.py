@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 # Copyright 2015 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -558,7 +556,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     for input_path in args.input_files:
-        with open(input_path) as input_file:
+        with open(input_path, encoding="utf-8") as input_file:
             package, imports, messages, enums = ParseProto(input_file)
         package_dir = package
         if args.package_dir != "":
@@ -568,8 +566,8 @@ def main():
         impl_file_name = "print_%s_proto.cc" % proto_name
         header_file_path = os.path.join(args.output_dir, header_file_name)
         impl_file_path = os.path.join(args.output_dir, impl_file_name)
-        with open(header_file_path, "w") as header_file:
-            with open(impl_file_path, "w") as impl_file:
+        with open(header_file_path, "w", encoding="utf-8") as header_file:
+            with open(impl_file_path, "w", encoding="utf-8") as impl_file:
                 GenerateFileHeaders(
                     proto_name,
                     package,
