@@ -609,6 +609,35 @@ bool GetDiskPathFromName(
   }
 }
 
+// Helper function to return the filesystem type of a given file/path. If no
+// file system exists, or if the function fails, it will return an empty string.
+std::string GetFilesystem(const base::FilePath& disk_location) {
+  std::string output;
+  blkid_cache blkid_cache;
+  // No cache file is used as it should always query information from
+  // the device, i.e. setting cache file to /dev/null.
+  if (blkid_get_cache(&blkid_cache, "/dev/null") != 0) {
+    LOG(ERROR) << "Failed to initialize blkid cache handler";
+    return output;
+  }
+  blkid_dev dev = blkid_get_dev(blkid_cache, disk_location.value().c_str(),
+                                BLKID_DEV_NORMAL);
+  if (!dev) {
+    LOG(ERROR) << "Failed to get device for '" << disk_location.value().c_str()
+               << "'";
+    blkid_put_cache(blkid_cache);
+    return output;
+  }
+
+  char* filesystem_type =
+      blkid_get_tag_value(blkid_cache, "TYPE", disk_location.value().c_str());
+  if (filesystem_type) {
+    output = filesystem_type;
+  }
+  blkid_put_cache(blkid_cache);
+  return output;
+}
+
 bool CheckVmExists(const std::string& vm_name,
                    const std::string& cryptohome_id,
                    base::FilePath* out_path = nullptr,
@@ -1256,13 +1285,15 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
     uint64_t min_size;
     uint64_t available_space;
     auto iter = FindVm(cryptohome_id, image_name);
-    if (iter == vms_.end()) {
-      // VM may not be running - in this case, we can't determine min_size or
-      // available_space, so report 0 for unknown.
-      min_size = 0;
-      available_space = 0;
-    } else {
-      min_size = iter->second->GetMinDiskSize();
+    // VM may not be running - in this case, we can't determine min_size or
+    // available_space, so report 0 for unknown.
+    min_size = 0;
+    available_space = 0;
+    if (iter != vms_.end()) {
+      // GetMinDiskSize relies on btrfs specific functions.
+      if (GetFilesystem(path) == "btrfs") {
+        min_size = iter->second->GetMinDiskSize();
+      }
       available_space = iter->second->GetAvailableDiskSpace();
     }
 
@@ -1682,35 +1713,6 @@ void Service::HandleSigterm() {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, std::move(quit_closure_));
   }
-}
-
-// Helper function to return the filesystem type of a given file/path. If no
-// file system exists, or if the function fails, it will return an empty string.
-std::string GetFilesystem(const base::FilePath& disk_location) {
-  std::string output;
-  blkid_cache blkid_cache;
-  // No cache file is used as it should always query information from
-  // the device, i.e. setting cache file to /dev/null.
-  if (blkid_get_cache(&blkid_cache, "/dev/null") != 0) {
-    LOG(ERROR) << "Failed to initialize blkid cache handler";
-    return output;
-  }
-  blkid_dev dev = blkid_get_dev(blkid_cache, disk_location.value().c_str(),
-                                BLKID_DEV_NORMAL);
-  if (!dev) {
-    LOG(ERROR) << "Failed to get device for '" << disk_location.value().c_str()
-               << "'";
-    blkid_put_cache(blkid_cache);
-    return output;
-  }
-
-  char* filesystem_type =
-      blkid_get_tag_value(blkid_cache, "TYPE", disk_location.value().c_str());
-  if (filesystem_type) {
-    output = filesystem_type;
-  }
-  blkid_put_cache(blkid_cache);
-  return output;
 }
 
 void Service::StartVm(dbus::MethodCall* method_call,
