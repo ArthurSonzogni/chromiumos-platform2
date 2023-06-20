@@ -9,6 +9,7 @@
 
 #include <base/no_destructor.h>
 #include <base/task/sequenced_task_runner.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -50,8 +51,9 @@ void CameraDiagnosticsClient::Bind() {
     return;
   }
   CameraMojoChannelManager::FromToken(mojo_manager_token_)
-      ->BindServiceToMojoServiceManager(
-          "CameraDiagnostics", remote_.BindNewPipeAndPassReceiver().PassPipe());
+      ->RequestServiceFromMojoServiceManager(
+          /*service_name=*/chromeos::mojo_services::kCrosCameraDiagnostics,
+          remote_.BindNewPipeAndPassReceiver().PassPipe());
   remote_.set_disconnect_handler(base::BindOnce(
       &CameraDiagnosticsClient::OnDisconnect, base::Unretained(this)));
 }

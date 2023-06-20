@@ -69,10 +69,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
           on_construct_callback,
       Callback on_error_callback) override;
 
-  void BindServiceToMojoServiceManager(
-      const std::string& service_name,
-      mojo::ScopedMessagePipeHandle receiver) override;
-
   void RequestServiceFromMojoServiceManager(
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) override;

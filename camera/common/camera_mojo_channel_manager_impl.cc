@@ -192,17 +192,6 @@ void CameraMojoChannelManagerImpl::RegisterSensorHalClient(
                      base::Unretained(this)));
 }
 
-void CameraMojoChannelManagerImpl::BindServiceToMojoServiceManager(
-    const std::string& service_name, mojo::ScopedMessagePipeHandle receiver) {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-  if (!dispatcher_.is_bound()) {
-    LOGF(ERROR) << "Dispatcher is not bound!";
-    return;
-  }
-  dispatcher_->BindServiceToMojoServiceManager(service_name,
-                                               std::move(receiver));
-}
-
 void CameraMojoChannelManagerImpl::RequestServiceFromMojoServiceManager(
     const std::string& service_name, mojo::ScopedMessagePipeHandle receiver) {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());

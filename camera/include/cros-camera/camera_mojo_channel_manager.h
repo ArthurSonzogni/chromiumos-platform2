@@ -95,10 +95,6 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
           on_construct_callback,
       Callback on_error_callback) = 0;
 
-  virtual void BindServiceToMojoServiceManager(
-      const std::string& service_name,
-      mojo::ScopedMessagePipeHandle remote) = 0;
-
   virtual void RequestServiceFromMojoServiceManager(
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) = 0;
