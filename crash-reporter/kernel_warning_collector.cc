@@ -352,6 +352,28 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   return true;
 }
 
+CrashCollector::ComputedCrashSeverity KernelWarningCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  ComputedCrashSeverity computed_severity{
+      .crash_severity = CrashSeverity::kUnspecified,
+      .product_group = Product::kPlatform,
+  };
+
+  // Note that kKernelAth10kErrorExecName is not covered yet.
+  // TODO(b/288895335): Add logic to set crash severity of
+  // kKernelAth10kErrorExecName to kWarning.
+  if (exec_name == kSMMUFaultExecName) {
+    computed_severity.crash_severity = CrashSeverity::kError;
+  } else if ((exec_name == kKernelIwlwifiErrorExecName) ||
+             (exec_name == kWifiWarningExecName) ||
+             (exec_name == kGenericWarningExecName) ||
+             (exec_name == kSuspendWarningExecName)) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+  }
+
+  return computed_severity;
+}
+
 // static
 CollectorInfo KernelWarningCollector::GetHandlerInfo(
     int32_t weight,

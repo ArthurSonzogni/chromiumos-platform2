@@ -40,6 +40,10 @@ class KernelWarningCollector : public CrashCollector {
   // Collects warning.
   bool Collect(int weight, WarningType type);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(int32_t weight,
                                       bool kernel_warning,
                                       bool kernel_wifi_warning,

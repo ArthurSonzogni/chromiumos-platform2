@@ -490,3 +490,30 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
       test_crash_directory_, "kernel_iwlwifi_error.*.meta",
       "upload_var_weight=50"));
 }
+
+class KernelWarningCollectorCrashSeverityTest
+    : public KernelWarningCollectorTest,
+      public ::testing::WithParamInterface<
+          test_util::ComputeCrashSeverityTestParams> {};
+
+TEST_P(KernelWarningCollectorCrashSeverityTest, ComputeCrashSeverity) {
+  const test_util::ComputeCrashSeverityTestParams& test_case = GetParam();
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity(test_case.exec_name);
+
+  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    KernelWarningCollectorCrashSeverityTestSuite,
+    KernelWarningCollectorCrashSeverityTest,
+    testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
+        {"kernel-smmu-fault", CrashCollector::CrashSeverity::kError},
+        {"kernel-iwlwifi-error", CrashCollector::CrashSeverity::kWarning},
+        {"kernel-wifi-warning", CrashCollector::CrashSeverity::kWarning},
+        {"kernel-warning", CrashCollector::CrashSeverity::kWarning},
+        {"kernel-suspend-warning", CrashCollector::CrashSeverity::kWarning},
+        {"another executable", CrashCollector::CrashSeverity::kUnspecified},
+    }));
