@@ -11,6 +11,8 @@
 #ifndef CRASH_REPORTER_EC_COLLECTOR_H_
 #define CRASH_REPORTER_EC_COLLECTOR_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 
 #include "crash-reporter/crash_collector.h"
@@ -34,6 +36,10 @@ class ECCollector : public CrashCollector {
   // a valid dump (even if there were problems storing the dump), false
   // otherwise.
   bool Collect(bool use_saved_lsb);
+
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
 
  private:
   friend class ECCollectorTest;

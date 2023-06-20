@@ -115,3 +115,11 @@ bool ECCollector::Collect(bool use_saved_lsb) {
 
   return true;
 }
+
+CrashCollector::ComputedCrashSeverity ECCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kFatal,
+      .product_group = Product::kPlatform,
+  };
+}

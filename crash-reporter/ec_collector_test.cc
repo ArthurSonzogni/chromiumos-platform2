@@ -108,6 +108,16 @@ TEST_F(ECCollectorTest, TestInvalid) {
   ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
 }
 
+TEST_F(ECCollectorTest, ComputeSeverity) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("any executable");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
 class ECCollectorSavedLsbTest : public ECCollectorTest,
                                 public ::testing::WithParamInterface<bool> {};
 
