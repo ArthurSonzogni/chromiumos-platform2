@@ -170,7 +170,7 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
 
  private:
   std::string id_;
-  bool enabled_;
+  bool enabled_ = false;
   bool scan_elements_enabled_ = false;
   std::map<std::string, std::string> text_attributes_;
   std::map<std::string, int64_t> numeric_attributes_;
@@ -200,7 +200,7 @@ class LIBMEMS_EXPORT FakeIioEvent : public IioEvent {
  private:
   bool dir_turn_ = true;
 
-  bool enabled_;
+  bool enabled_ = false;
   std::map<std::string, std::string> text_attributes_;
 };
 
