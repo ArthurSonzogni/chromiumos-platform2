@@ -23,6 +23,9 @@ namespace shill {
 class RTNLHandler;
 class RTNLListener;
 
+// A singleton maintains an in-process copy of the kernel routing policy data
+// base (RPDB). Offers the ability for other modules to modify RPDB, adding and
+// removing routing policy entries (often referred as routing rules).
 class RoutingPolicyService {
  public:
   // Priority of the rule sending all traffic to the local routing table.
@@ -66,8 +69,9 @@ class RoutingPolicyService {
   bool ParseRoutingPolicyMessage(const RTNLMessage& message,
                                  RoutingPolicyEntry* entry);
 
+  // Maps from interface ids to the routing policy entries associated with the
+  // interface.
   PolicyTables policy_tables_;
-  std::set<int> managed_interfaces_;
 
   std::unique_ptr<RTNLListener> rule_listener_;
 

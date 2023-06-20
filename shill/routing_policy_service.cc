@@ -4,6 +4,12 @@
 
 #include "shill/routing_policy_service.h"
 
+#include <algorithm>
+#include <array>
+#include <string>
+#include <vector>
+
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 
@@ -35,7 +41,7 @@ static_assert(
 // service is not active, traffic from these users will blackholed.
 // Currently the "user traffic" as defined by these usernames does not include
 // e.g. Android apps or system processes like the update engine.
-constexpr std::array<const char*, 9> kUserTrafficUsernames = {
+constexpr std::array<base::StringPiece, 9> kUserTrafficUsernames = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
     "cups",            // built-in printing using the cups daemon
@@ -57,7 +63,7 @@ std::vector<uint32_t> ComputeUserTrafficUids() {
   std::vector<uint32_t> uids;
   for (const auto& username : kUserTrafficUsernames) {
     uid_t uid;
-    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr)) {
+    if (!brillo::userdb::GetUserInfo(std::string(username), &uid, nullptr)) {
       LOG(WARNING) << "Unable to look up UID for " << username;
       continue;
     }
@@ -93,7 +99,6 @@ void RoutingPolicyService::Start() {
 void RoutingPolicyService::Stop() {
   SLOG(2) << __func__;
 
-  managed_interfaces_.clear();
   rule_listener_.reset();
 }
 
@@ -113,11 +118,10 @@ void RoutingPolicyService::RuleMsgHandler(const RTNLMessage& message) {
 
   // If this rule matches one of our known rules, ignore it.  Otherwise,
   // assume it is left over from an old run and delete it.
-  for (auto& table : policy_tables_) {
-    for (auto nent = table.second.begin(); nent != table.second.end(); ++nent) {
-      if (*nent == entry) {
-        return;
-      }
+  for (const auto& table : policy_tables_) {
+    if (std::find(table.second.begin(), table.second.end(), entry) !=
+        table.second.end()) {
+      return;
     }
   }
 

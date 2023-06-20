@@ -7,6 +7,8 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/logging.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
@@ -23,11 +25,12 @@ namespace shill {
 
 class RoutingPolicyServiceTest : public Test {
  public:
-  RoutingPolicyServiceTest() : rule_table_(new RoutingPolicyService()) {}
-
   void SetUp() override {
+    // Using `new` to access a non-public constructor.
+    rule_table_ =
+        base::WrapUnique<RoutingPolicyService>(new RoutingPolicyService());
     rule_table_->rtnl_handler_ = &rtnl_handler_;
-    ON_CALL(rtnl_handler_, DoSendMessage(_, _)).WillByDefault(Return(true));
+    ON_CALL(rtnl_handler_, DoSendMessage).WillByDefault(Return(true));
   }
 
   void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
