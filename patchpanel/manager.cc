@@ -393,10 +393,14 @@ bool Manager::ArcStartup(pid_t pid) {
   msg.set_arc_pid(pid);
   SendGuestMessage(msg);
 
+  multicast_metrics_->OnARCStarted();
+
   return true;
 }
 
 void Manager::ArcShutdown() {
+  multicast_metrics_->OnARCStopped();
+
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC);
@@ -418,10 +422,14 @@ std::optional<std::vector<const Device::Config*>> Manager::ArcVmStartup(
   msg.set_arcvm_vsock_cid(cid);
   SendGuestMessage(msg);
 
+  multicast_metrics_->OnARCStarted();
+
   return arc_svc_->GetDeviceConfigs();
 }
 
 void Manager::ArcVmShutdown(uint32_t cid) {
+  multicast_metrics_->OnARCStopped();
+
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC_VM);
@@ -1071,6 +1079,13 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
                      ForwardingSet{.multicast = true});
     }
   }
+
+  // Notify multicast metrics for forwarder state change.
+  if (android_wifi_multicast_lock_held_) {
+    multicast_metrics_->OnARCWiFiForwarderStarted();
+  } else {
+    multicast_metrics_->OnARCWiFiForwarderStopped();
+  }
 }
 
 void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
@@ -1105,6 +1120,16 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
       StopForwarding(*upstream_device, device->host_ifname(),
                      ForwardingSet{.multicast = true});
     }
+  }
+
+  // Notify multicast metrics for forwarder state change.
+  if (!android_wifi_multicast_lock_held_) {
+    return;
+  }
+  if (is_arc_interactive_) {
+    multicast_metrics_->OnARCWiFiForwarderStarted();
+  } else {
+    multicast_metrics_->OnARCWiFiForwarderStopped();
   }
 }
 }  // namespace patchpanel

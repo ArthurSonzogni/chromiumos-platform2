@@ -135,4 +135,88 @@ TEST_F(MulticastMetricsTest, MultipleDeviceChanges_StartStop) {
   EXPECT_FALSE(multicast_metrics_->pollers_[Type::kEthernet]->IsTimerRunning());
 }
 
+TEST_F(MulticastMetricsTest, ARC_StartStop) {
+  ShillClient::Device device;
+  device.ifname = "wlan0";
+  device.type = ShillClient::Device::Type::kWifi;
+  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+
+  // WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC started.
+  multicast_metrics_->OnARCStarted();
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // WiFi device stopped.
+  multicast_metrics_->OnPhysicalDeviceRemoved(device);
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC stopped.
+  multicast_metrics_->OnARCStopped();
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+}
+
+TEST_F(MulticastMetricsTest, ARC_ForwardingStateChanges) {
+  // Base ARC state.
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC multicast forwarders started.
+  multicast_metrics_->OnARCWiFiForwarderStarted();
+  EXPECT_TRUE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC multicast forwarders stopped.
+  multicast_metrics_->OnARCWiFiForwarderStopped();
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+}
+
+TEST_F(MulticastMetricsTest, ARC_StartStopWithForwardingChanges) {
+  ShillClient::Device device;
+  device.ifname = "wlan0";
+  device.type = ShillClient::Device::Type::kWifi;
+  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+
+  // ARC started.
+  multicast_metrics_->OnARCStarted();
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC WiFi device added.
+  multicast_metrics_->OnPhysicalDeviceAdded(device);
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+
+  // ARC multicast forwarders started.
+  multicast_metrics_->OnARCWiFiForwarderStarted();
+  EXPECT_TRUE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC multicast forwarders stopped.
+  multicast_metrics_->OnARCWiFiForwarderStopped();
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_TRUE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+
+  // ARC WiFi device stopped.
+  multicast_metrics_->OnPhysicalDeviceRemoved(device);
+  EXPECT_FALSE(
+      multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
+  EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
+}
+
 }  // namespace patchpanel

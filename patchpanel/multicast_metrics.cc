@@ -61,10 +61,22 @@ void MulticastMetrics::OnIPConfigsChanged(const ShillClient::Device& device) {
   if (!type) {
     return;
   }
+
+  // Handle network technology specific pollers.
   if (device.IsConnected()) {
     Start(*type, device.ifname);
   } else {
     Stop(*type, device.ifname);
+  }
+
+  // Handle ARC pollers.
+  if (device.type != ShillClient::Device::Type::kWifi) {
+    return;
+  }
+  if (device.IsConnected()) {
+    Start(Type::kARC, device.ifname);
+  } else {
+    Stop(Type::kARC, device.ifname);
   }
 }
 
@@ -74,8 +86,18 @@ void MulticastMetrics::OnPhysicalDeviceAdded(
   if (!type) {
     return;
   }
+
+  // Handle network technology specific pollers.
   if (device.IsConnected()) {
     Start(*type, device.ifname);
+  }
+
+  // Handle ARC pollers.
+  if (device.type != ShillClient::Device::Type::kWifi) {
+    return;
+  }
+  if (device.IsConnected()) {
+    Start(Type::kARC, device.ifname);
   }
 }
 
@@ -85,7 +107,31 @@ void MulticastMetrics::OnPhysicalDeviceRemoved(
   if (!type) {
     return;
   }
+
+  // Handle network technology specific pollers.
   Stop(*type, device.ifname);
+
+  // Handle ARC pollers.
+  if (device.type != ShillClient::Device::Type::kWifi) {
+    return;
+  }
+  Stop(Type::kARC, device.ifname);
+}
+
+void MulticastMetrics::OnARCStarted() {
+  pollers_[Type::kARC]->UpdateARCState(/*running=*/true);
+}
+
+void MulticastMetrics::OnARCStopped() {
+  pollers_[Type::kARC]->UpdateARCState(/*running=*/false);
+}
+
+void MulticastMetrics::OnARCWiFiForwarderStarted() {
+  pollers_[Type::kARC]->UpdateARCForwarderState(/*enabled=*/true);
+}
+
+void MulticastMetrics::OnARCWiFiForwarderStopped() {
+  pollers_[Type::kARC]->UpdateARCForwarderState(/*enabled=*/false);
 }
 
 MulticastMetrics::Poller::Poller(MulticastMetrics::Type type,
@@ -101,6 +147,11 @@ void MulticastMetrics::Poller::Start(base::StringPiece ifname) {
   if (ifnames_.size() > 1) {
     return;
   }
+  // For ARC, poll is only started whenever there is at least one WiFi interface
+  // connected and ARC is running. Keep track of the states.
+  if (type_ == MulticastMetrics::Type::kARC && !arc_running_) {
+    return;
+  }
 
   // TODO(jasongustaman): Set current packet count by from counters service.
   mdns_packet_count_ = 0;
@@ -114,10 +165,48 @@ void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
   if (num_removed == 0 || !ifnames_.empty()) {
     return;
   }
+  if (type_ == MulticastMetrics::Type::kARC && !arc_running_) {
+    return;
+  }
 
   timer_.Stop();
   mdns_packet_count_ = 0;
   ssdp_packet_count_ = 0;
+}
+
+void MulticastMetrics::Poller::UpdateARCState(bool running) {
+  if (arc_running_ == running) {
+    return;
+  }
+  arc_running_ = running;
+
+  // Do nothing if there is no active WiFi device.
+  if (ifnames_.empty()) {
+    return;
+  }
+
+  if (arc_running_) {
+    timer_.Start(FROM_HERE, kPollDelay, this,
+                 &MulticastMetrics::Poller::Record);
+  } else {
+    timer_.Stop();
+  }
+  mdns_packet_count_ = 0;
+  ssdp_packet_count_ = 0;
+}
+
+void MulticastMetrics::Poller::UpdateARCForwarderState(bool enabled) {
+  if (arc_fwd_enabled_ == enabled) {
+    return;
+  }
+  arc_fwd_enabled_ = enabled;
+
+  if (timer_.IsRunning()) {
+    // Restart polling to emit different metrics.
+    timer_.Reset();
+    mdns_packet_count_ = 0;
+    ssdp_packet_count_ = 0;
+  }
 }
 
 void MulticastMetrics::Poller::Record() {
@@ -146,6 +235,10 @@ base::flat_set<std::string> MulticastMetrics::Poller::ifnames() {
 
 bool MulticastMetrics::Poller::IsTimerRunning() {
   return timer_.IsRunning();
+}
+
+bool MulticastMetrics::Poller::IsARCForwardingEnabled() {
+  return arc_fwd_enabled_;
 }
 
 }  // namespace patchpanel

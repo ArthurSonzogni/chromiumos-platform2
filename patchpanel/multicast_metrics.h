@@ -59,6 +59,16 @@ class MulticastMetrics {
   void OnPhysicalDeviceAdded(const ShillClient::Device& device);
   void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
 
+  // Track ARC state to emit ARC metrics.
+  void OnARCStarted();
+  void OnARCStopped();
+
+  // Restart polling on ARC multicast forwarder state changed. This method is
+  // expected to only be called for WiFi. When polling is not running, this
+  // method does nothing.
+  void OnARCWiFiForwarderStarted();
+  void OnARCWiFiForwarderStopped();
+
  private:
   // Handles polling to fetch and report UMA metrics.
   class Poller {
@@ -77,14 +87,31 @@ class MulticastMetrics {
     void Start(base::StringPiece ifname);
     void Stop(base::StringPiece ifname);
 
+    // Multicast metrics are only emitted when ARC is running.
+    void UpdateARCState(bool running);
+
+    // When ARC multicast forwarding state changed, different metrics are
+    // supposed to be emitted. Restart the poll with the new state. For ARC
+    // multicast, "active" and "inactive" metrics are  expected to be emitted.
+    void UpdateARCForwarderState(bool enabled);
+
     void Record();
 
     // Added for testing.
     base::flat_set<std::string> ifnames();
     bool IsTimerRunning();
+    bool IsARCForwardingEnabled();
 
    private:
     MulticastMetrics::Type type_;
+
+    // Indicates whether or not ARC is running. ARC metrics are only emitted
+    // when ARC is running.
+    bool arc_running_ = false;
+
+    // Indicates whether or not multicast forwarder is running for ARC. When it
+    // is not running, ARC is expected to not get multicast packets.
+    bool arc_fwd_enabled_ = false;
 
     // Active interface names. Poll is started whenever this is not empty and
     // stopped whenever this is empty. For metrics that does not track interface
@@ -109,6 +136,9 @@ class MulticastMetrics {
   FRIEND_TEST(MulticastMetricsTest, IPConfigChanges_StartStop);
   FRIEND_TEST(MulticastMetricsTest, DeviceChanges_StartStop);
   FRIEND_TEST(MulticastMetricsTest, MultipleDeviceChanges_StartStop);
+  FRIEND_TEST(MulticastMetricsTest, ARC_StartStop);
+  FRIEND_TEST(MulticastMetricsTest, ARC_ForwardingStateChanges);
+  FRIEND_TEST(MulticastMetricsTest, ARC_StartStopWithForwardingChanges);
 
   // Pollers to handle each metrics type and poll. This is instantiated at the
   // constructor of the class.
