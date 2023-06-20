@@ -7,7 +7,7 @@ use log::debug;
 
 pub mod common;
 
-// mod handle_dlc_state_changed_test;
+mod handle_dlc_state_changed_test;
 mod handle_install_test;
 mod handle_prepare_shader_cache_test;
 mod handle_purge_test;
