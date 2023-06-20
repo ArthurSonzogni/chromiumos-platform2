@@ -52,10 +52,6 @@ class RoutingTableTest : public Test {
     return &routing_table_->tables_;
   }
 
-  std::deque<RoutingTable::Query>* GetQueries() {
-    return &routing_table_->route_queries_;
-  }
-
   void SendRouteEntry(RTNLMessage::Mode mode,
                       uint32_t interface_index,
                       const RoutingTableEntry& entry);
@@ -101,16 +97,6 @@ class RoutingTableTest : public Test {
 
     void UnreachedTarget(int interface_index, const RoutingTableEntry& entry) {
       CHECK(false);
-    }
-
-    RoutingTable::QueryCallback mocked_callback() {
-      return base::BindOnce(&QueryCallbackTarget::MockedTarget,
-                            base::Unretained(this));
-    }
-
-    RoutingTable::QueryCallback unreached_callback() {
-      return base::BindOnce(&QueryCallbackTarget::UnreachedTarget,
-                            weak_ptr_factory_.GetWeakPtr());
     }
 
    private:

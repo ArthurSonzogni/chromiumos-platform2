@@ -414,34 +414,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  if (!route_queries_.empty() && entry.protocol == RTPROT_UNSPEC) {
-    SLOG(3) << __func__ << ": Message seq: " << message.seq() << " mode "
-            << message.mode()
-            << ", next query seq: " << route_queries_.front().sequence;
-
-    // Purge queries that have expired (sequence number of this message is
-    // greater than that of the head of the route query sequence).  Do the
-    // math in a way that's roll-over independent.
-    const auto kuint32max = std::numeric_limits<uint32_t>::max();
-    while (route_queries_.front().sequence - message.seq() > kuint32max / 2) {
-      LOG(ERROR) << __func__ << ": Purging un-replied route request sequence "
-                 << route_queries_.front().sequence << " (< " << message.seq()
-                 << ")";
-      route_queries_.pop_front();
-      if (route_queries_.empty())
-        return;
-    }
-
-    Query& query = route_queries_.front();
-    if (query.sequence == message.seq()) {
-      if (!query.callback.is_null()) {
-        SLOG(2) << "Running query callback.";
-        std::move(query.callback).Run(interface_index, entry);
-      }
-      route_queries_.pop_front();
-    }
-    return;
-  } else if (entry.protocol == RTPROT_RA) {
+  if (entry.protocol == RTPROT_RA) {
     // The kernel sends one of these messages pretty much every time it
     // connects to another IPv6 host.  The only interesting message is the
     // one containing the default gateway.

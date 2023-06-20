@@ -5,7 +5,6 @@
 #ifndef SHILL_ROUTING_TABLE_H_
 #define SHILL_ROUTING_TABLE_H_
 
-#include <deque>
 #include <memory>
 #include <set>
 #include <string>
@@ -33,10 +32,6 @@ class RTNLListener;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
-  // Callback for RequestRouteToHost completion.
-  using QueryCallback = base::OnceCallback<void(
-      int interface_index, const RoutingTableEntry& entry)>;
-
   // Used to detect default route added by kernel when receiving RA.
   // Note that since 5.18 kernel this value will become configurable through
   // net.ipv6.conf.all.ra_defrtr_metric and we need to be sure this value
@@ -136,15 +131,6 @@ class RoutingTable {
   using RouteTableEntryVector = std::vector<RoutingTableEntry>;
   using RouteTables = std::unordered_map<int, RouteTableEntryVector>;
 
-  struct Query {
-    Query() : sequence(0) {}
-    Query(uint32_t sequence_in, QueryCallback callback_in)
-        : sequence(sequence_in), callback(std::move(callback_in)) {}
-
-    uint32_t sequence;
-    QueryCallback callback;
-  };
-
   // Add an entry to the kernel routing table without modifying the internal
   // routing-table bookkeeping.
   bool AddRouteToKernelTable(int interface_index,
@@ -169,7 +155,6 @@ class RoutingTable {
   std::set<int> managed_interfaces_;
 
   std::unique_ptr<RTNLListener> route_listener_;
-  std::deque<Query> route_queries_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;
