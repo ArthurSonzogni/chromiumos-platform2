@@ -125,6 +125,7 @@ _IUSE = [
     "local_ml_core_internal",
     "login_apply_no_new_privs",
     "login_enable_crosh_sudo",
+    "lvm_migration",
     "lvm_stateful_partition",
     "manage_efi_boot_entries",
     "metrics_uploader",

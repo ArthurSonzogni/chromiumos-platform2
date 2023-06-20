@@ -21,6 +21,8 @@ struct Flags {
   // Indicates built with USE=fsverity. Used when mounting the stateful
   // partition.
   bool fsverity;
+  // Indicates whether stateful migration to lvm is allowed.
+  bool lvm_migration;
   // Indicates built with USE=lvm_stateful_partition. Used when mounting the
   // stateful partition.
   bool lvm_stateful;

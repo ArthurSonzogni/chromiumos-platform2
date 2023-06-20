@@ -32,13 +32,14 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
-    "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_DIRENCRYPTION=${use.direncryption}",
     "USE_ENCRYPTED_REBOOT_VAULT=${use.encrypted_reboot_vault}",
     "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
-    "USE_TPM2=${use.tpm2}",
     "USE_FSVERITY=${use.fsverity}",
+    "USE_LVM_MIGRATION=${use.lvm_migration}",
+    "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_PRJQUOTA=${use.prjquota}",
+    "USE_TPM2=${use.tpm2}",
   ]
   pkg_deps = [
     "libbrillo",

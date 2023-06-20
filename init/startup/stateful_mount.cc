@@ -346,6 +346,21 @@ void StatefulMount::ClobberStateful(
   platform_->Clobber(clobber_args);
 }
 
+bool StatefulMount::AttemptStatefulMigration() {
+  platform_->BootAlert("stateful_thinpool_migration");
+
+  brillo::ProcessImpl thinpool_migrator;
+  thinpool_migrator.AddArg("/sbin/thinpool_migrator");
+  thinpool_migrator.AddArg(state_dev_.value());
+
+  if (!thinpool_migrator.Run()) {
+    LOG(ERROR) << "Failed to run thinpool migrator";
+    return false;
+  }
+
+  return true;
+}
+
 void StatefulMount::MountStateful() {
   base::FilePath root_dev;
   // Prepare to mount stateful partition.
@@ -404,6 +419,7 @@ void StatefulMount::MountStateful() {
 
     std::optional<bool> lvm_stateful = flags_.lvm_stateful;
     bool lvm_enable = lvm_stateful.value_or(false);
+    bool should_mount_lvm = false;
     if (lvm_enable) {
       // Attempt to get a valid volume group name.
       bootstat_.LogEvent("pre-lvm-activation");
@@ -452,17 +468,30 @@ void StatefulMount::MountStateful() {
               ClobberStateful({"fast", "keepimg"},
                               "'Invalid unencrypted logical volume'");
             }
-
-            state_dev_ = root_.Append("dev")
-                             .Append(volume_group_->GetName())
-                             .Append("unencrypted");
-            dev_image_ = root_.Append("dev")
-                             .Append(volume_group_->GetName())
-                             .Append("dev-image");
+            should_mount_lvm = true;
           }
+        }
+      } else if (flags_.lvm_migration) {
+        // Attempt to migrate to thinpool if migration is enabled: if the
+        // migration fails, then we expect the stateful partition to be back to
+        // its original state.
+
+        if (!AttemptStatefulMigration()) {
+          LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
+        } else {
+          should_mount_lvm = true;
         }
       }
       bootstat_.LogEvent("lvm-activation-complete");
+    }
+
+    if (should_mount_lvm) {
+      state_dev_ = root_.Append("dev")
+                       .Append(volume_group_->GetName())
+                       .Append("unencrypted");
+      dev_image_ = root_.Append("dev")
+                       .Append(volume_group_->GetName())
+                       .Append("dev-image");
     }
 
     EnableExt4Features();

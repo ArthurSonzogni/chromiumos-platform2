@@ -51,6 +51,7 @@ class StatefulMount {
   void ClobberStateful(const std::vector<std::string>& clobber_args,
                        const std::string& clobber_message);
 
+  bool AttemptStatefulMigration();
   void MountStateful();
 
   bool DevUpdateStatefulPartition(const std::string& args);

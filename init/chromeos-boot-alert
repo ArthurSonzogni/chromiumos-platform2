@@ -250,6 +250,12 @@ mode_update_fwupd_firmware() {
   show_assets_message "update_fwupd_firmware"
 }
 
+# Show a message indicating that we're doing an unspecificed update that can
+# take upto a few minutes.
+mode_stateful_thinpool_migration() {
+  show_assets_message "update_firmware_slow_extra_warning"
+}
+
 # Main initialization and dispatcher
 main() {
   # process args

@@ -137,6 +137,7 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   // Note: encrypted_reboot_vault is disabled only for Gale
   // to be able to use openssl 1.1.1.
   flags->encrypted_reboot_vault = USE_ENCRYPTED_REBOOT_VAULT;
+  flags->lvm_migration = USE_LVM_MIGRATION;
   flags->lvm_stateful = USE_LVM_STATEFUL_PARTITION;
 }
 
