@@ -59,7 +59,10 @@ pkg_config("target_defaults") {
     "USE_CR50_ONBOARD=${use.cr50_onboard}",
     "USE_TI50_ONBOARD=${use.ti50_onboard}",
   ]
-  cflags = [ "-Wconsumed" ]
+  cflags = [
+    "-Wconsumed",
+    "-Wno-error=deprecated-declarations",
+  ]
 }
 
 # A library for just the protobufs.
