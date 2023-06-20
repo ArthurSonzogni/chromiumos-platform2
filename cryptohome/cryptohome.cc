@@ -14,10 +14,12 @@
 #include <unistd.h>
 
 #include <cstdarg>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -99,6 +101,11 @@ enum class OutputFormat {
   // written to standard output, in serialized binary format. Any other
   // informational output will be written to standard error.
   kBinaryProtobuf,
+  // This format is the same as Binary protobuf format, except that a delimiter
+  // will be used before printing the protobuf. This delimiter could be used to
+  // split the output
+  // generated in this format.
+  kDelimitedBinaryProtobuf,
 };
 
 class Printer {
@@ -123,6 +130,19 @@ class Printer {
       case OutputFormat::kBinaryProtobuf:
         protobuf.SerializeToOstream(&std::cout);
         return;
+      case OutputFormat::kDelimitedBinaryProtobuf:
+        std::string binary_protobuf;
+        if (!protobuf.SerializeToString(&binary_protobuf)) {
+          return;
+        }
+        uint32_t proto_size = binary_protobuf.size();
+        // Convert the size to bytes
+        for (size_t i = 0; i < sizeof(uint32_t); ++i) {
+          std::cout << static_cast<unsigned char>(proto_size);
+          proto_size >>= 8;
+        }
+        std::cout << binary_protobuf;
+        return;
     }
   }
   // Print a human-oriented text string to output.
@@ -132,6 +152,7 @@ class Printer {
         std::cout << str;
         return;
       case OutputFormat::kBinaryProtobuf:
+      case OutputFormat::kDelimitedBinaryProtobuf:
         std::cerr << str;
         return;
     }
@@ -153,6 +174,7 @@ class Printer {
         std::cout.flush();
         return;
       case OutputFormat::kBinaryProtobuf:
+      case OutputFormat::kDelimitedBinaryProtobuf:
         std::cout.flush();
         std::cerr.flush();
         return;
@@ -171,8 +193,10 @@ constexpr char kSyslogSwitch[] = "syslog";
 constexpr struct {
   const char* name;
   const OutputFormat format;
-} kOutputFormats[] = {{"default", OutputFormat::kDefault},
-                      {"binary-protobuf", OutputFormat::kBinaryProtobuf}};
+} kOutputFormats[] = {
+    {"default", OutputFormat::kDefault},
+    {"binary-protobuf", OutputFormat::kBinaryProtobuf},
+    {"delimited-binary-protobuf", OutputFormat::kDelimitedBinaryProtobuf}};
 constexpr char kOutputFormatSwitch[] = "output-format";
 constexpr char kActionSwitch[] = "action";
 constexpr const char* kActions[] = {"unmount",
@@ -220,6 +244,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "add_auth_factor",
                                     "authenticate_auth_factor",
                                     "authenticate_with_status_update",
+                                    "start_auth_session_with_status_update",
                                     "fetch_status_update",
                                     "update_auth_factor",
                                     "remove_auth_factor",
@@ -278,6 +303,7 @@ enum ActionEnum {
   ACTION_ADD_AUTH_FACTOR,
   ACTION_AUTHENTICATE_AUTH_FACTOR,
   ACTION_AUTHENTICATE_WITH_STATUS_UPDATE,
+  ACTION_START_AUTH_SESSION_WITH_STATUS_UPDATE,
   ACTION_FETCH_STATUS_UPDATE,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
@@ -499,6 +525,34 @@ bool BuildStartAuthSessionRequest(
     req.set_intent(intent);
   }
   return true;
+}
+
+int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
+                     Printer* printer,
+                     const base::CommandLine* cl,
+                     int timeout_ms) {
+  user_data_auth::StartAuthSessionRequest req;
+  if (!BuildStartAuthSessionRequest(*printer, *cl, req)) {
+    return 1;
+  }
+
+  user_data_auth::StartAuthSessionReply reply;
+  brillo::ErrorPtr error;
+  if (!proxy->StartAuthSession(req, &reply, &error, timeout_ms) || error) {
+    printer->PrintFormattedHumanOutput(
+        "StartAuthSession call failed: %s.\n",
+        BrilloErrorToString(error.get()).c_str());
+    return 1;
+  }
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    printer->PrintHumanOutput("Auth session failed to start.\n");
+    return static_cast<int>(reply.error());
+  }
+
+  printer->PrintReplyProtobuf(reply);
+  printer->PrintHumanOutput("Auth session start succeeded.\n");
+  return 0;
 }
 
 bool BuildAuthFactor(Printer& printer,
@@ -1007,6 +1061,27 @@ void OnAuthFactorStatusUpdateSignalConnected(
     return;
   }
   *ret_code = signal_connected_callback.Run();
+}
+
+int StartAuthSessionWithStatusUpdate(
+    Printer* printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy* proxy,
+    int start_auth_session_timeout_ms) {
+  // Signals are emitted as soon as an action that leads to a signal is called,
+  // so we need to ensure the signal is connected first. As a result the request
+  // will be sent once the signal is connected. In order to receive the signal
+  // properly, the CLI will be blocked until the signal is received.
+  int ret_code = 1;
+  base::RunLoop run_loop;
+  proxy->RegisterAuthFactorStatusUpdateSignalHandler(
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, printer, &run_loop),
+      base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
+                     &ret_code, printer,
+                     base::BindRepeating(StartAuthSession, proxy, printer, cl,
+                                         start_auth_session_timeout_ms)));
+  run_loop.Run();
+  return ret_code;
 }
 
 int DoAuthenticateWithStatusUpdate(
@@ -2251,28 +2326,10 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
-    user_data_auth::StartAuthSessionRequest req;
-    if (!BuildStartAuthSessionRequest(printer, *cl, req)) {
-      return 1;
+    int ret = StartAuthSession(&userdataauth_proxy, &printer, cl, timeout_ms);
+    if (ret > 0) {
+      return ret;
     }
-
-    user_data_auth::StartAuthSessionReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.StartAuthSession(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "StartAuthSession call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Auth session failed to start.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    printer.PrintReplyProtobuf(reply);
-    printer.PrintHumanOutput("Auth session start succeeded.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INVALIDATE_AUTH_SESSION],
                  action.c_str())) {
@@ -2517,6 +2574,12 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     return DoAuthenticateWithStatusUpdate(printer, cl, userdataauth_proxy,
                                           misc_proxy);
+  } else if (!strcmp(
+                 switches::kActions
+                     [switches::ACTION_START_AUTH_SESSION_WITH_STATUS_UPDATE],
+                 action.c_str())) {
+    return StartAuthSessionWithStatusUpdate(&printer, cl, &userdataauth_proxy,
+                                            timeout_ms);
   } else if (!strcmp(switches::kActions[switches::ACTION_FETCH_STATUS_UPDATE],
                      action.c_str())) {
     return FetchStatusUpdateSignal(printer, userdataauth_proxy);
