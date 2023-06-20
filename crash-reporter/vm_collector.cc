@@ -67,6 +67,14 @@ bool VmCollector::Collect(pid_t pid) {
   return true;
 }
 
+CrashCollector::ComputedCrashSeverity VmCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kError,
+      .product_group = Product::kPlatform,
+  };
+}
+
 // static
 CollectorInfo VmCollector::GetHandlerInfo(bool vm_crash, int32_t vm_pid) {
   auto vm_collector = std::make_shared<VmCollector>();

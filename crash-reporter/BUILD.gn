@@ -435,6 +435,7 @@ if (use.test) {
       "unclean_shutdown_collector_test.cc",
       "user_collector_test.cc",
       "util_test.cc",
+      "vm_collector_test.cc",
       "vm_support_mock.h",
     ]
     configs += [

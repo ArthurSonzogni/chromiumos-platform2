@@ -5,6 +5,8 @@
 #ifndef CRASH_REPORTER_VM_COLLECTOR_H_
 #define CRASH_REPORTER_VM_COLLECTOR_H_
 
+#include <string>
+
 #include "crash-reporter/crash_collector.h"
 
 // Collector for processing crashes inside a VM. This collector runs on the host
@@ -14,6 +16,10 @@ class VmCollector : public CrashCollector {
  public:
   VmCollector();
   bool Collect(pid_t pid);
+
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
 
   static CollectorInfo GetHandlerInfo(bool vm_crash, int32_t vm_pid);
 
