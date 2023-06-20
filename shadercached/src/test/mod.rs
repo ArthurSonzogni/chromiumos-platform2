@@ -11,7 +11,7 @@ pub mod common;
 mod handle_install_test;
 // mod handle_prepare_shader_cache_test;
 // mod handle_purge_test;
-// mod handle_uninstall_test;
+mod handle_uninstall_test;
 // mod handle_unmount_test;
 // mod handle_vm_stopped_test;
 // mod periodic_dlc_handler_test;
