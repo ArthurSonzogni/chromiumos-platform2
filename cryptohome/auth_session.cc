@@ -61,6 +61,7 @@
 #include "cryptohome/error/reporting.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/features.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/keyset_management.h"
@@ -336,7 +337,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   // ephemeral, in which case there will be no persistent directory but the user
   // still "exists" so long as they remain active.
   bool persistent_user_exists =
-      backing_apis.keyset_management->UserExists(obfuscated_username);
+      backing_apis.platform->DirectoryExists(UserPath(obfuscated_username));
   UserSession* user_session = backing_apis.user_session_map->Find(account_id);
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;

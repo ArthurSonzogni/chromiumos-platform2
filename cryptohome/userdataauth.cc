@@ -3075,8 +3075,9 @@ void UserDataAuth::ListAuthFactors(
   ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
   UserSession* user_session = sessions_->Find(username);  // May be null!
   // If the user does not exist, we cannot return auth factors for it.
-  bool is_persistent_user = (user_session && !user_session->IsEphemeral()) ||
-                            keyset_management_->UserExists(obfuscated_username);
+  bool is_persistent_user =
+      (user_session && !user_session->IsEphemeral()) ||
+      platform_->DirectoryExists(UserPath(obfuscated_username));
   bool is_ephemeral_user = user_session && user_session->IsEphemeral();
   if (!is_persistent_user && !is_ephemeral_user) {
     ReplyWithError(

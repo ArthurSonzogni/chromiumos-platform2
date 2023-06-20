@@ -671,7 +671,7 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 
   // Setting the expectation that there is no persistent user but there is an
   // active ephemeral one.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
   user_session_map_.Add(kFakeUsername, std::move(user_session));
@@ -690,7 +690,7 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
   // Setup.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
       kFakeUsername, flags, AuthIntent::kDecrypt, backing_apis_);
 
@@ -1654,7 +1654,7 @@ TEST_F(AuthSessionTest, ExtensionTest) {
 // scenario.
 TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
   // Setup.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Add the user session. Expect that no verification calls are made.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
@@ -2564,7 +2564,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -2663,7 +2663,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -2763,7 +2763,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -2862,7 +2862,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -2956,7 +2956,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -3067,7 +3067,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -3169,7 +3169,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -3331,7 +3331,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -3468,7 +3468,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
       SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
@@ -4305,7 +4305,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
   }
 
   // Set up mocks for the now-existing user.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Obtain AuthSession for authentication.
   AuthSession new_auth_session(
       {.username = kFakeUsername,

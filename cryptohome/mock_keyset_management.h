@@ -57,7 +57,6 @@ class MockKeysetManagement : public KeysetManagement {
               RemoveLECredentials,
               (const ObfuscatedUsername&),
               (override));
-  MOCK_METHOD(bool, UserExists, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               LoadVaultKeysetForUser,
               (const ObfuscatedUsername&, int),

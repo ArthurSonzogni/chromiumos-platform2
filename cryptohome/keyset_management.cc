@@ -620,12 +620,6 @@ void KeysetManagement::RemoveLECredentials(
   return;
 }
 
-bool KeysetManagement::UserExists(
-    const ObfuscatedUsername& obfuscated_username) {
-  base::FilePath user_dir = UserPath(obfuscated_username);
-  return platform_->DirectoryExists(user_dir);
-}
-
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 base::Time KeysetManagement::GetPerIndexTimestampFileData(
     const ObfuscatedUsername& obfuscated, int index) {

@@ -2874,7 +2874,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
       "foo@example.com");
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
       .WillOnce(Return(new NiceMock<MockFileEnumerator>));
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
@@ -3074,7 +3074,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
   KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
 
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
@@ -3137,7 +3137,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
 
   // Add persistent auth factors.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
@@ -3204,7 +3204,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
   start_auth_session_req_->set_flags(
       user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
 
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, "password-verifier-label",
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()}));
@@ -3245,7 +3245,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3299,7 +3299,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
@@ -3344,7 +3344,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
@@ -3409,7 +3409,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3432,7 +3432,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
@@ -3459,7 +3459,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
 TEST_F(UserDataAuthExTest,
        ListAuthFactorsUserExistsWithNoFactorsButUssEnabled) {
   SetUserSecretStashExperimentForTesting(true);
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
@@ -3487,7 +3487,7 @@ TEST_F(UserDataAuthExTest,
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
 
   // Set up mocks for a few of VKs. We deliberately have the second not work to
   // test that the listing correctly skips it.
@@ -3611,7 +3611,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   SetUserSecretStashExperimentForTesting(false);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -3765,7 +3765,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
 
   // Set up standard start authsession parameters, we'll be calling this a few
   // times during the test.
@@ -3785,7 +3785,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   EXPECT_THAT(start_reply_future_1.Get().user_exists(), false);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
@@ -3885,7 +3885,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
 
   // Set up standard start authsession parameters, we'll be calling this a few
   // times during the test.
@@ -3905,7 +3905,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   EXPECT_THAT(start_reply_future_1.Get().user_exists(), false);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Add uss auth factors, we should be able to list them.
 
   // Add uss auth factors, we should be able to list them.
@@ -4009,7 +4009,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4141,7 +4141,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4271,7 +4271,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   SetUserSecretStashExperimentForTesting(false);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.

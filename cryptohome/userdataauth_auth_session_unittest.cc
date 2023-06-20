@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cryptohome/auth_factor/types/manager.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -368,7 +369,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
-    ON_CALL(keyset_management_, UserExists(SanitizeUserName(username)))
+    ON_CALL(platform_, DirectoryExists(UserPath(SanitizeUserName(username))))
         .WillByDefault(Return(true));
   }
 
@@ -751,7 +752,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
   // `PreparePersistentVault`. Sets up all necessary mocks. Returns an
   // authenticated AuthSession, or null on failure.
   AuthSession* CreateAndPrepareUserVault() {
-    EXPECT_CALL(keyset_management_, UserExists(SanitizeUserName(kUsername)))
+    EXPECT_CALL(platform_,
+                DirectoryExists(UserPath(SanitizeUserName(kUsername))))
         .WillRepeatedly(Return(false));
 
     std::string serialized_token;
@@ -870,8 +872,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVault) {
 
   // ... or regular.
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername2);
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -991,8 +993,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1153,8 +1155,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
 
   // But a different regular mount succeeds.
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername3);
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1206,8 +1208,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1272,8 +1274,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1307,8 +1309,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1341,8 +1343,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1393,8 +1395,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretWithBroadcastId) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1450,8 +1452,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange. Mock VK decryption to return a failure.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1495,8 +1497,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange. Set up a fake VK without authentication mocks.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1547,8 +1549,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
 
   // Act. Omit setting `auth_session_id` in the `request`.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -1570,8 +1572,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(false));
 
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -1594,8 +1596,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(false));
   std::string auth_session_id;
   {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -1631,8 +1633,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(false));
   std::string serialized_token;
   {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -1667,8 +1669,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(false));
   std::string serialized_token;
   {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -1713,8 +1715,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kConfiguredKeyLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1754,8 +1756,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1795,8 +1797,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
@@ -1839,7 +1841,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk =
@@ -1913,7 +1915,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk =
@@ -1986,7 +1988,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultAndEphemeral) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk =
@@ -2056,7 +2058,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultMultiMount) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk =
@@ -2114,7 +2116,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultMultiMount) {
   const ObfuscatedUsername obfuscated_username2 = SanitizeUserName(kUsername2);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username2))
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username2)))
       .WillRepeatedly(Return(true));
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk2 =
@@ -2373,8 +2375,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   const SerializedVaultKeyset serialized_vk2 =
@@ -2439,8 +2441,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
 
@@ -2497,8 +2499,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
 
@@ -2555,8 +2557,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   const SerializedVaultKeyset serialized_vk2 =
@@ -2626,8 +2628,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},

@@ -79,9 +79,6 @@ class KeysetManagement {
   virtual std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
       const ObfuscatedUsername& obfuscated_user, int index) const;
 
-  // Checks if the directory containing user keys exists.
-  virtual bool UserExists(const ObfuscatedUsername& obfuscated_username);
-
   // This function should be called after successful authentication.
   // Populate a value to |vault_keyset|'s reset seed if it is missing, but
   // doesn't save. Returns true if the seed is added, returns false if there is
