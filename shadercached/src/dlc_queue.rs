@@ -34,9 +34,9 @@ fn remove_from_queue<T: std::cmp::PartialEq>(queue: &mut VecDeque<T>, to_remove:
 }
 
 impl DlcQueue {
-    pub fn queue_install(self: &mut DlcQueue, steam_app_id: &SteamAppId) {
+    pub fn queue_install(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> Option<SteamAppId> {
         if self.installing.contains(steam_app_id) {
-            return;
+            return None;
         }
 
         remove_from_queue(&mut self.uninstall_queue, steam_app_id);
@@ -48,8 +48,10 @@ impl DlcQueue {
         if self.install_queue.len() > MAX_INSTALL_QUEUE_SIZE {
             if let Some(removed) = self.install_queue.pop_back() {
                 debug!("Max install queue size reached, removed {}", removed);
+                return Some(removed);
             }
         }
+        None
     }
 
     pub fn next_to_install(self: &mut DlcQueue) -> Option<SteamAppId> {

@@ -104,7 +104,9 @@ pub async fn handle_install<D: DbusConnectionTrait>(
         }
         // Queue install and upon installation completion, mount if queued.
         let mut dlc_queue = dlc_queue.write().await;
-        dlc_queue.queue_install(&request.steam_app_id);
+        if let Some(dequeued_game) = dlc_queue.queue_install(&request.steam_app_id) {
+            shader_cache_mount.dequeue_mount(&dequeued_game);
+        }
         return Ok(response.write_to_bytes()?);
     }
 
