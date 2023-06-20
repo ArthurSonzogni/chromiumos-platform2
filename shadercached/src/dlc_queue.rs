@@ -127,6 +127,10 @@ impl DlcQueue {
         &self.installing
     }
 
+    pub fn clear_installing(&mut self) {
+        self.installing.clear();
+    }
+
     pub fn add_installing(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> bool {
         self.installing.insert(*steam_app_id)
     }

@@ -44,6 +44,21 @@ fn create_mock_mesa_shader_cache_sf(base_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn generate_mount_list(mock_gpu_cache: &TempDir, steam_app_id: SteamAppId) -> String {
+    format!(
+        "/some/path on {} (some,options)\n",
+        mock_gpu_cache
+            .path()
+            .join("render_server")
+            .join("mesa_shader_cache_sf")
+            .join(&*MESA_VERSION_HASH)
+            .join(format!("anv_{:04x}", *GPU_DEVICE_ID))
+            .join(steam_app_id.to_string())
+            .to_str()
+            .unwrap()
+    )
+}
+
 pub fn mock_gpucache() -> Result<TempDir> {
     let mock_gpu_cache = tempfile::tempdir()?;
     let render_server_path = mock_gpu_cache.path().join("render_server");

@@ -14,7 +14,7 @@ mod handle_purge_test;
 mod handle_uninstall_test;
 mod handle_unmount_test;
 mod handle_vm_stopped_test;
-// mod periodic_dlc_handler_test;
+mod periodic_dlc_handler_test;
 
 #[ctor]
 fn global_init() {

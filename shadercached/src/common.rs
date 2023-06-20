@@ -8,7 +8,10 @@ use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 pub type SteamAppId = u64;
 
+#[cfg(not(test))]
 pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+#[cfg(test)]
+pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(10);
 
 pub const DLC_HANDLER_INTERVAL: Duration = Duration::from_millis(1000);
 pub const MAX_CONCURRENT_DLC_INSTALLS: usize = 1;
