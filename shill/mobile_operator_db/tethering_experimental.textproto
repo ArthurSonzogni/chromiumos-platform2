@@ -266,3 +266,24 @@ mno {
     }
   }
 }
+
+mno {
+  data {
+    uuid : "61a4d944-e4cf-49d3-b674-ab7fc4e82e69"
+    country : "fr"
+    localized_name {
+      name : "Free Mobile"
+    }
+    mccmnc : "20815"
+    tethering_allowed: true
+    mobile_apn {
+      apn : "free"
+      localized_name {
+        name : "Free-Mobile"
+      }
+      username : "free"
+      password : "free"
+      type : DEFAULT
+    }
+  }
+}
