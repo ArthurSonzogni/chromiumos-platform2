@@ -6,6 +6,7 @@
 #define LIBHWSEC_MIDDLEWARE_MIDDLEWARE_H_
 
 #include <memory>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -17,6 +18,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/single_thread_task_runner.h>
@@ -24,6 +26,7 @@
 #include <base/threading/thread.h>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/error/tpm_retry_handler.h"
 #include "libhwsec/middleware/function_name.h"
 #include "libhwsec/middleware/middleware_derivative.h"
@@ -272,10 +275,7 @@ class Middleware {
     for (TPMRetryHandler retry_handler;;) {
       SubClassResult<decltype(Func)> result = (sub->*Func)(args...);
 
-      if (middleware->metrics_) {
-        middleware->metrics_->SendFuncResultToUMA(GetFuncName<Func>(),
-                                                  result.status());
-      }
+      TrackFuncResult(GetFuncName<Func>(), middleware->metrics_.get(), result);
 
       if (retry_handler.HandleResult(result, *middleware->backend_, args...)) {
         return result;
@@ -349,10 +349,7 @@ class Middleware {
       return;
     }
 
-    if (middleware->metrics_) {
-      middleware->metrics_->SendFuncResultToUMA(GetFuncName<Func>(),
-                                                result.status());
-    }
+    TrackFuncResult(GetFuncName<Func>(), middleware->metrics_.get(), result);
 
     if (retry_handler->HandleResult(result, *middleware->backend_,
                                     std::get<I>(*args)...)) {
@@ -381,6 +378,30 @@ class Middleware {
           ForwareParameter(std::move(args))...);
     } else {
       static_assert(always_false_v<decltype(Func)>, "Unsupported function!");
+    }
+  }
+
+  template <typename Result>
+  static void TrackFuncResult(const std::string& function_name,
+                              Metrics* metrics,
+                              Result& result) {
+    using hwsec_foundation::status::MakeStatus;
+
+    std::string sim_name = SimplifyFuncName(function_name);
+
+    if (metrics) {
+      metrics->SendFuncResultToUMA(sim_name, result.status());
+    }
+
+    if (!result.ok()) {
+      Status status = std::move(result).err_status();
+      TPMRetryAction action = status->ToTPMRetryAction();
+      status = MakeStatus<TPMError>(
+                   base::StringPrintf("%s(%s)", sim_name.c_str(),
+                                      GetTPMRetryActionName(action)),
+                   action)
+                   .Wrap(std::move(status));
+      result = std::move(status);
     }
   }
 

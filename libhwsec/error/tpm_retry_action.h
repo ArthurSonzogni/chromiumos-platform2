@@ -5,6 +5,8 @@
 #ifndef LIBHWSEC_ERROR_TPM_RETRY_ACTION_H_
 #define LIBHWSEC_ERROR_TPM_RETRY_ACTION_H_
 
+#include "libhwsec/hwsec_export.h"
+
 namespace hwsec {
 
 enum class TPMRetryAction {
@@ -62,6 +64,9 @@ enum class TPMRetryAction {
   // The max value should equal to the last item.
   kMaxValue = kSpaceNotFound,
 };
+
+// Gets the name of retry action.
+const char* HWSEC_EXPORT GetTPMRetryActionName(TPMRetryAction action);
 
 }  // namespace hwsec
 

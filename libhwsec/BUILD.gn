@@ -78,6 +78,7 @@ source_set("error_library") {
     "error/tpm_error.cc",
     "error/tpm_manager_error.cc",
     "error/tpm_nvram_error.cc",
+    "error/tpm_retry_action.cc",
   ]
   deps = []
   if (use.tpm2 || use.fuzzer || use.test) {
@@ -266,6 +267,7 @@ source_set("hardware_abstraction_internal_library") {
     "frontend/recovery_crypto/frontend_impl.cc",
     "frontend/u2fd/frontend_impl.cc",
     "frontend/u2fd/vendor_frontend_impl.cc",
+    "middleware/function_name.cc",
     "middleware/metrics.cc",
     "platform/platform_impl.cc",
     "proxy/proxy.cc",
@@ -455,6 +457,7 @@ if (use.test) {
       "frontend/chaps/frontend_impl_test.cc",
       "frontend/oobe_config/frontend_impl_test.cc",
       "middleware/function_name_test.cc",
+      "middleware/metrics_test.cc",
       "proxy/proxy_for_test.cc",
     ]
     configs += [

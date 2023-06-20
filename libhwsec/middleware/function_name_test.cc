@@ -6,6 +6,8 @@
 
 #include <type_traits>
 
+#include <base/base64.h>
+#include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -60,6 +62,15 @@ TEST_F(FunctionNameTest, AnonymousFunctionName) {
 
 TEST_F(FunctionNameTest, LambdaFunctionName) {
   EXPECT_EQ(GetFuncName<&MagicTestLambda>(), "hwsec::MagicTestLambda");
+}
+
+TEST_F(FunctionNameTest, SimplifyFuncName) {
+  EXPECT_EQ(SimplifyFuncName(GetFuncName<&MagicTestLambda>()),
+            "MagicTestLambda");
+  EXPECT_EQ(SimplifyFuncName(GetFuncName<&State::IsReady>()), "State.IsReady");
+  EXPECT_EQ(SimplifyFuncName(GetFuncName<&State::IsEnabled>()),
+            "State.IsEnabled");
+  EXPECT_EQ(SimplifyFuncName(GetFuncName<&TestFunction>()), "TestFunction");
 }
 
 }  // namespace hwsec

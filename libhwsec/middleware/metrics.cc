@@ -16,7 +16,8 @@
 #include "libhwsec/status.h"
 
 namespace {
-constexpr char kHwsecMetricsPrefix[] = "Platform.Libhwsec.RetryAction";
+constexpr char kHwsecMetricsPrefix[] = "Platform.Libhwsec.RetryAction.";
+constexpr size_t kHwsecMetricsPrefixLength = sizeof(kHwsecMetricsPrefix) - 1;
 }  // namespace
 
 namespace hwsec {
@@ -30,23 +31,16 @@ bool Metrics::SendFuncResultToUMA(const std::string& func_name,
     action = status->ToTPMRetryAction();
   }
 
-  std::vector<std::string> func_splits = base::SplitString(
-      func_name, "::", base::WhitespaceHandling::TRIM_WHITESPACE,
-      base::SplitResult::SPLIT_WANT_NONEMPTY);
+  std::string current_uma = kHwsecMetricsPrefix + func_name;
 
-  std::string current_uma = kHwsecMetricsPrefix;
   bool result = true;
-  result &= metrics_->SendEnumToUMA(current_uma, action);
 
-  for (const std::string& split : func_splits) {
-    // Ignore the "hwsec" namespace.
-    if (split == "hwsec") {
-      continue;
-    }
-
-    current_uma += ".";
-    current_uma += split;
+  while (current_uma.size() > kHwsecMetricsPrefixLength) {
     result &= metrics_->SendEnumToUMA(current_uma, action);
+
+    size_t pos = current_uma.find_last_of('.');
+    CHECK_NE(pos, std::string::npos);
+    current_uma.resize(pos);
   }
 
   return result;

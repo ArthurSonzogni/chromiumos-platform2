@@ -22,6 +22,11 @@ namespace hwsec {
 class Metrics : private MetricsLibrary {
  public:
   Metrics() = default;
+
+  // The constructor for testing purpose.
+  explicit Metrics(MetricsLibraryInterface* testing_metrics)
+      : metrics_(testing_metrics) {}
+
   Metrics(const Metrics&) = delete;
 
   bool SendFuncResultToUMA(const std::string& func_name, const Status& status);

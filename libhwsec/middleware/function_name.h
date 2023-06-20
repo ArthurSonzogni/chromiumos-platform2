@@ -5,14 +5,10 @@
 #ifndef LIBHWSEC_MIDDLEWARE_FUNCTION_NAME_H_
 #define LIBHWSEC_MIDDLEWARE_FUNCTION_NAME_H_
 
-#include <memory>
+#include <deque>
 #include <string>
-#include <type_traits>
-#include <utility>
 
-#include <base/no_destructor.h>
 #include <brillo/type_name_undecorate.h>
-#include <re2/re2.h>
 
 #ifndef BUILD_LIBHWSEC
 #error "Don't include this file outside libhwsec!"
@@ -31,24 +27,17 @@ namespace hwsec {
 template <auto Func>
 struct FuncWrapper {};
 
-inline constexpr const char kFuncWrapMatchRule[] =
-    R"(hwsec::FuncWrapper<&\(*((\(anonymous namespace\)|[\w:])*)[()<>])";
+// Input: hwsec::FuncWrapper<&hwsec::State::IsReady<...>>
+// Output: hwsec::State::IsReady
+std::string ExtractFuncName(const std::string& func_name);
 
-inline const re2::RE2& GetFuncWrapperRE() {
-  static const base::NoDestructor<re2::RE2> rule(kFuncWrapMatchRule);
-  return *rule;
-}
+// Input: hwsec::State::IsReady
+// Output: State.IsReady
+std::string SimplifyFuncName(const std::string& func_name);
 
 template <auto Func>
 inline std::string GetFuncName() {
-  std::string func_name = brillo::GetUndecoratedTypeName<FuncWrapper<Func>>();
-  std::string result;
-
-  if (!re2::RE2::PartialMatch(func_name, GetFuncWrapperRE(), &result)) {
-    return func_name;
-  }
-
-  return result;
+  return ExtractFuncName(brillo::GetUndecoratedTypeName<FuncWrapper<Func>>());
 }
 
 }  // namespace hwsec
