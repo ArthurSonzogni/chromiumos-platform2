@@ -4,20 +4,23 @@
 
 // Collections of methods to send D-BUS signals
 
-use crate::dbus_constants;
+use crate::{dbus_constants, dbus_wrapper::DbusConnectionTrait};
 use anyhow::{anyhow, Result};
-use dbus::{channel::Sender, nonblock::SyncConnection};
 use libchromeos::sys::debug;
 use std::sync::Arc;
 use system_api::shadercached::ShaderCacheMountStatus;
 
-pub fn signal_mount_status(
+pub fn signal_mount_status<D: DbusConnectionTrait>(
     mount_status_many: Vec<ShaderCacheMountStatus>,
-    conn: &Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<()> {
     let mut errors: Vec<String> = vec![];
     for status in mount_status_many {
-        if let Err(e) = emit_signal(&status, dbus_constants::MOUNT_STATUS_CHANGED_SIGNAL, conn) {
+        if let Err(e) = emit_signal(
+            &status,
+            dbus_constants::MOUNT_STATUS_CHANGED_SIGNAL,
+            dbus_conn.clone(),
+        ) {
             errors.push(e.to_string());
         }
     }
@@ -29,10 +32,10 @@ pub fn signal_mount_status(
     }
 }
 
-fn emit_signal(
+fn emit_signal<D: DbusConnectionTrait>(
     to_emit: &(impl protobuf::Message + std::fmt::Debug),
     signal_name: &str,
-    conn: &Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<()> {
     // Tell Cicerone shader cache has been (un)mounted, so that it can continue
     // process calls.
@@ -48,7 +51,8 @@ fn emit_signal(
             .map_err(|e| anyhow!("Failed to parse protobuf: {}", e))?,
     );
     debug!("Sending {} signal.. {:?}", signal_name, to_emit);
-    conn.send(mounted_signal)
+    dbus_conn
+        .send(mounted_signal)
         .map_err(|_| anyhow!("Failed to send signal"))?;
     Ok(())
 }

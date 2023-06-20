@@ -21,6 +21,8 @@ impl ShaderCacheMount {
         // Add game to foz_db_list so that mesa can start using the directory
         // for precompiled cache. Adding game to list must happen after the
         // directory has been created and mounted.
+        debug!("Adding game {} to foz db list", steam_app_id);
+
         if !self.foz_blob_db_list_path.exists() {
             return Err(anyhow!("Missing foz blob file"));
         }

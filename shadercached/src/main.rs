@@ -5,8 +5,11 @@
 #[macro_use]
 extern crate lazy_static;
 
+#[cfg(test)]
+mod test;
+
 mod common;
-mod dbus_constants;
+mod dbus_wrapper;
 mod dlc_queue;
 mod service;
 mod shader_cache_mount;
@@ -18,6 +21,7 @@ use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
+use dbus_wrapper::dbus_constants;
 use libchromeos::sys::{debug, error, info, warn};
 use libchromeos::syslog;
 use tokio::signal::unix::{signal, SignalKind};
@@ -71,6 +75,7 @@ pub async fn main() -> Result<()> {
         error!("Lost connection to D-Bus: {}", err);
         panic!("Lost connection to D-Bus: {}", err);
     });
+    let dbus_conn = dbus_wrapper::DbusConnection::new(c.clone());
 
     // Get the service name from system D-Bus.
     c.request_name(dbus_constants::SERVICE_NAME, false, true, false)
@@ -87,9 +92,9 @@ pub async fn main() -> Result<()> {
 
     // D-Bus interface for ShaderCache service
     let iface_token = cr.register(dbus_constants::INTERFACE_NAME, |builder| {
-        let c_handle_install = c.clone();
         let mount_map_handle_install = mount_map.clone();
         let dlc_queue_handle_install = dlc_queue.clone();
+        let dbus_conn_handle_install = dbus_conn.clone();
         // Method Install
         builder.method_with_cr_async(
             dbus_constants::INSTALL_METHOD,
@@ -101,7 +106,7 @@ pub async fn main() -> Result<()> {
                     raw_bytes,
                     mount_map_handle_install.clone(),
                     dlc_queue_handle_install.clone(),
-                    c_handle_install.clone(),
+                    dbus_conn_handle_install.clone(),
                 );
                 async move {
                     match handler.await.map_err(to_method_err) {
@@ -131,8 +136,8 @@ pub async fn main() -> Result<()> {
             },
         );
 
-        let c_clone3 = c.clone();
-        let mount_map_clone3 = mount_map.clone();
+        let dbus_conn_handle_purge = dbus_conn.clone();
+        let mount_map_handle_purge = mount_map.clone();
         // Method Purge
         builder.method_with_cr_async(
             dbus_constants::PURGE_METHOD,
@@ -140,8 +145,11 @@ pub async fn main() -> Result<()> {
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 info!("Received purge request");
-                let handler =
-                    service::handle_purge(raw_bytes, mount_map_clone3.clone(), c_clone3.clone());
+                let handler = service::handle_purge(
+                    raw_bytes,
+                    mount_map_handle_purge.clone(),
+                    dbus_conn_handle_purge.clone(),
+                );
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok(result)),
@@ -151,7 +159,7 @@ pub async fn main() -> Result<()> {
             },
         );
 
-        let mount_map_clone4 = mount_map.clone();
+        let mount_map_handle_unmount = mount_map.clone();
         // Method umount only
         builder.method_with_cr_async(
             dbus_constants::UNMOUNT_METHOD,
@@ -159,7 +167,7 @@ pub async fn main() -> Result<()> {
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 debug!("Received unmount request");
-                let handler = service::handle_unmount(raw_bytes, mount_map_clone4.clone());
+                let handler = service::handle_unmount(raw_bytes, mount_map_handle_unmount.clone());
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok(result)),
@@ -169,7 +177,7 @@ pub async fn main() -> Result<()> {
             },
         );
 
-        let mount_map_clone5 = mount_map.clone();
+        let mount_map_handle_prepare_shader_cache = mount_map.clone();
         // Method umount only
         builder.method_with_cr_async(
             dbus_constants::PREPARE_SHADER_CACHE_METHOD,
@@ -177,8 +185,10 @@ pub async fn main() -> Result<()> {
             ("prepare_shader_cache_response_proto",),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 debug!("Received prepare shader cache request");
-                let handler =
-                    service::handle_prepare_shader_cache(raw_bytes, mount_map_clone5.clone());
+                let handler = service::handle_prepare_shader_cache(
+                    raw_bytes,
+                    mount_map_handle_prepare_shader_cache.clone(),
+                );
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok((result,))),
@@ -191,7 +201,7 @@ pub async fn main() -> Result<()> {
     cr.insert(dbus_constants::PATH_NAME, &[iface_token], ());
 
     // Periodic unmounter
-    let c_clone_unmounter = c.clone();
+    let dbus_conn_unmounter = dbus_conn.clone();
     let mount_map_unmounter = mount_map.clone();
     tokio::spawn(async move {
         // Periodic unmount
@@ -209,9 +219,10 @@ pub async fn main() -> Result<()> {
                     status.vm_owner_id = vm_id.vm_owner_id.clone();
                 }
 
-                if let Err(e) =
-                    service::signal::signal_mount_status(mount_statuses, &c_clone_unmounter)
-                {
+                if let Err(e) = service::signal::signal_mount_status(
+                    mount_statuses,
+                    dbus_conn_unmounter.clone(),
+                ) {
                     error!("{}", e);
                 }
             }
@@ -219,7 +230,7 @@ pub async fn main() -> Result<()> {
     });
 
     // DLC handler
-    let c_clone_dlc_handler = c.clone();
+    let dbus_conn_dlc_handler = dbus_conn.clone();
     let mount_map_dlc_handler = mount_map.clone();
     let dlc_queue_dlc_handler = dlc_queue.clone();
     tokio::spawn(async move {
@@ -234,7 +245,7 @@ pub async fn main() -> Result<()> {
                 service::periodic_dlc_handler(
                     mount_map_dlc_handler.clone(),
                     dlc_queue_dlc_handler.clone(),
-                    c_clone_dlc_handler.clone(),
+                    dbus_conn_dlc_handler.clone(),
                 )
                 .await;
             }
@@ -264,7 +275,7 @@ pub async fn main() -> Result<()> {
     );
     // For sending signals, we still have to use existing object with correct
     // service name.
-    let c_send = c.clone();
+    let dbus_conn_dlc_listener = dbus_conn.clone();
     let mount_map_dlc_listener = mount_map.clone();
     let dlc_queue_dlc_listener = dlc_queue.clone();
     // |msg_match| should remain in this scope to serve
@@ -276,7 +287,7 @@ pub async fn main() -> Result<()> {
                 raw_bytes,
                 mount_map_dlc_listener.clone(),
                 dlc_queue_dlc_listener.clone(),
-                c_send.clone(),
+                dbus_conn_dlc_listener.clone(),
             ));
             true
         });
@@ -311,16 +322,16 @@ pub async fn main() -> Result<()> {
         "Matching Spaced signal: {}",
         mr_spaced_stateful_disk_space_update.match_str()
     );
-    let mount_spaced_listener = mount_map.clone();
-    let c_spaced_listener = c.clone();
+    let mount_map_spaced_listener = mount_map.clone();
+    let dbus_conn_spaced_listener = dbus_conn.clone();
     let spaced_match = c_listen
         .add_match(mr_spaced_stateful_disk_space_update)
         .await?
         .cb(move |_, (raw_bytes,): (Vec<u8>,)| {
             tokio::spawn(service::handle_disk_space_update(
                 raw_bytes,
-                mount_spaced_listener.clone(),
-                c_spaced_listener.clone(),
+                mount_map_spaced_listener.clone(),
+                dbus_conn_spaced_listener.clone(),
             ));
             true
         });

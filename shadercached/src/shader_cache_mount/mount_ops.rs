@@ -14,15 +14,61 @@ use crate::common::*;
 
 use anyhow::{anyhow, Result};
 use libchromeos::sys::debug;
-use std::process::{Command, Stdio};
-use std::{fs, path::Path};
+use std::fs;
 
-fn get_mount_list() -> Result<String> {
-    let output = Command::new("mount").stdout(Stdio::piped()).output()?;
-    let mount_list = String::from_utf8(output.stdout)?;
+pub mod helpers {
+    #[cfg(test)]
+    use mockall::automock;
+    #[cfg_attr(test, automock)]
+    pub mod privileged_ops {
+        #![allow(dead_code)]
 
-    Ok(mount_list)
+        use anyhow::{anyhow, Result};
+        use libchromeos::sys::debug;
+        use std::process::{Command, Stdio};
+
+        pub fn get_mount_list() -> Result<String> {
+            let output = Command::new("mount").stdout(Stdio::piped()).output()?;
+            let mount_list = String::from_utf8(output.stdout)?;
+
+            Ok(mount_list)
+        }
+
+        pub fn bind_mount(src: &str, dst: &str) -> Result<()> {
+            debug!("Mounting {} into {}", src, dst);
+            let exit_status = Command::new("mount")
+                .arg("--bind")
+                .arg(src)
+                .arg(dst)
+                .spawn()?
+                .wait()?;
+            if exit_status.success() {
+                return Ok(());
+            }
+            Err(anyhow!(
+                "Process failed with code {}",
+                exit_status.code().unwrap_or(-1)
+            ))
+        }
+
+        pub fn unmount(path: &str) -> Result<()> {
+            debug!("Unmounting {}", path);
+            let exit_status = Command::new("umount").arg(path).spawn()?.wait()?;
+            if exit_status.success() {
+                return Ok(());
+            }
+            Err(anyhow!(
+                "Process failed with code {}",
+                exit_status.code().unwrap_or(-1)
+            ))
+        }
+    }
 }
+
+#[cfg(test)]
+use helpers::mock_privileged_ops as privileged_ops;
+#[cfg(not(test))]
+use helpers::privileged_ops;
 
 impl ShaderCacheMount {
     pub(super) fn unmount(self: &ShaderCacheMount, steam_app_id: SteamAppId) -> Result<()> {
@@ -36,23 +82,13 @@ impl ShaderCacheMount {
             return Ok(());
         }
 
-        debug!("Unmounting {}", path);
-
-        let mut unmount_cmd = Command::new("umount").arg(&path).spawn()?;
-        let exit_status = unmount_cmd.wait()?;
-
-        if !exit_status.success() {
-            return Err(anyhow!(
-                "Unmount failed with code {}",
-                exit_status.code().unwrap_or(-1)
-            ));
-        }
-
+        privileged_ops::unmount(&path)?;
         fs::remove_dir(&path)?;
         Ok(())
     }
 
     pub fn bind_mount_dlc(self: &ShaderCacheMount, steam_app_id: SteamAppId) -> Result<()> {
+        debug!("Bind mounting dlc for {}", steam_app_id);
         // Mount the shader cache DLC for the requested Steam application ID
         let src = self.dlc_content_path(steam_app_id)?;
         // destination path has been created at handle_install, which may involve
@@ -68,25 +104,9 @@ impl ShaderCacheMount {
             // mounted without re-mounting the directory.
             debug!("Path {} is already mounted, skipping", dst);
             return Ok(());
-        }
+        };
 
-        debug!("Mounting {} into {}", src, dst);
-
-        let mut mount_cmd = Command::new("mount")
-            .arg("--bind")
-            .arg(src)
-            .arg(dst)
-            .spawn()?;
-        let exit_status = mount_cmd.wait()?;
-
-        if !exit_status.success() {
-            return Err(anyhow!(
-                "Mount failed with code {}",
-                exit_status.code().unwrap_or(-1)
-            ));
-        }
-
-        Ok(())
+        privileged_ops::bind_mount(&src, &dst)
     }
 
     pub fn local_precompiled_cache_path(&self) -> Result<String> {
@@ -99,7 +119,7 @@ impl ShaderCacheMount {
 
     fn dlc_content_path(&self, steam_app_id: SteamAppId) -> Result<String> {
         // Generate DLC content
-        let path = Path::new(IMAGE_LOADER)
+        let path = IMAGE_LOADER
             .join(steam_app_id_to_dlc(steam_app_id))
             .join("package/root")
             .join(self.get_relative_mesa_cache_path()?);
@@ -122,15 +142,14 @@ impl ShaderCacheMount {
         steam_app_id: SteamAppId,
         mount_list: Option<&str>,
     ) -> Result<bool> {
+        debug!("Checking if {} is mounted", steam_app_id);
         if let Some(mount_list) = mount_list {
             return Ok(
                 mount_list.contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?)
             );
         }
-        Ok(
-            get_mount_list()?
-                .contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?),
-        )
+        Ok(privileged_ops::get_mount_list()?
+            .contains(&self.get_str_absolute_mount_destination_path(steam_app_id)?))
     }
 
     fn is_any_mounted(&self, mount_list: &str) -> Result<bool> {
@@ -164,7 +183,7 @@ impl ShaderCacheMountMap {
             let mut still_mounted = false;
             {
                 let mount_map = self.read().await;
-                let mount_list = get_mount_list()?;
+                let mount_list = privileged_ops::get_mount_list()?;
                 for shader_cache_mount in mount_map.values() {
                     still_mounted = if let Some(steam_app_id) = steam_app_id {
                         shader_cache_mount.is_game_mounted(steam_app_id, Some(&mount_list))?

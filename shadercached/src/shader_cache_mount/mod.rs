@@ -9,12 +9,14 @@
 
 mod map;
 mod mesa_path_constants;
-mod mount_ops;
+pub mod mount_ops;
 mod queue_ops;
 
+use anyhow::Context;
 pub use map::*;
 
 use crate::common::*;
+use crate::dbus_wrapper::DbusConnectionTrait;
 use crate::service;
 use mesa_path_constants::*;
 
@@ -56,7 +58,7 @@ impl ShaderCacheMount {
         // need to worry about paths before that.
         let render_server_path = vm_gpu_cache_path.join(GPU_RENDER_SERVER_PATH);
         let vm_name_encoded = base64::encode_config(&vm_id.vm_name, base64::URL_SAFE);
-        let precompiled_cache_path = Path::new(CRYPTO_HOME)
+        let precompiled_cache_path = CRYPTO_HOME
             .join(&vm_id.vm_owner_id)
             .join(PRECOMPILED_CACHE_DIR)
             .join(vm_name_encoded);
@@ -80,11 +82,11 @@ impl ShaderCacheMount {
         Ok(())
     }
 
-    pub async fn setup_mount_destination(
+    pub async fn setup_mount_destination<D: DbusConnectionTrait>(
         &self,
         vm_id: &VmId,
         steam_app_id: SteamAppId,
-        conn: Arc<dbus::nonblock::SyncConnection>,
+        dbus_conn: Arc<D>,
     ) -> Result<()> {
         debug!(
             "Setting up mount destination for {:?}, game {}",
@@ -105,7 +107,7 @@ impl ShaderCacheMount {
                 // ShaderCacheMount. This detaches this module's dependency
                 // on service module. This may involve splitting path creation
                 // and setting up permissions.
-                service::add_shader_cache_group_permission(vm_id, conn).await?;
+                service::add_shader_cache_group_permission(vm_id, dbus_conn).await?;
                 fs::create_dir(dst_path)?;
                 debug!("Successfully created mount directory on retry");
             }
@@ -201,7 +203,8 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
 }
 
 fn get_single_file(path: &Path) -> Result<OsString> {
-    let mut entries = fs::read_dir(path)?;
+    let mut entries =
+        fs::read_dir(path).context(format!("Failed to find single file at {:?}", path))?;
     let entry = entries.next();
     if entries.next().is_some() {
         return Err(anyhow!("Multiple directories found under: {:?}", path));
@@ -220,6 +223,17 @@ fn has_file(path: &Path, file_name: &str) -> Result<bool> {
         }
     }
     Ok(false)
+}
+
+#[cfg(test)]
+impl ShaderCacheMount {
+    // Methods for tests only
+    pub fn get_mount_queue(&self) -> &HashSet<SteamAppId> {
+        &self.mount_queue
+    }
+    pub fn get_unmount_queue(&self) -> &HashSet<SteamAppId> {
+        &self.unmount_queue
+    }
 }
 
 #[cfg(test)]

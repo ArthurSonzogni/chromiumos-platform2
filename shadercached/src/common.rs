@@ -3,13 +3,8 @@
 // found in the LICENSE file.
 
 use anyhow::{anyhow, Result};
-use libchromeos::sys::warn;
 use regex::Regex;
-use std::{
-    collections::HashMap,
-    process::{Command, Stdio},
-    time::Duration,
-};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 pub type SteamAppId = u64;
 
@@ -17,15 +12,32 @@ pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
 
 pub const DLC_HANDLER_INTERVAL: Duration = Duration::from_millis(1000);
 pub const MAX_CONCURRENT_DLC_INSTALLS: usize = 1;
+// Limit the number of DLC installation queue to:
+// - Prevent 'hogging' DlcService. DlcService does not support parallel
+//   downloads or queues yet.
+// - Prevent the user from increasing shadercached memory footprint infinitely.
+//   VM user can queue shader cache DLC installations by design.
 pub const MAX_INSTALL_QUEUE_SIZE: usize = 5;
 
-pub const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
 pub const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
-pub const IMAGE_LOADER: &str = "/run/imageloader";
 
 // GPU device id reported by the pcie ID
+#[cfg(test)]
 lazy_static! {
+    pub static ref IMAGE_LOADER: PathBuf = tempfile::tempdir().unwrap().into_path();
+    pub static ref CRYPTO_HOME: PathBuf = tempfile::tempdir().unwrap().into_path();
+    pub static ref GPU_DEVICE_ID: u16 = 0x9a40;
+}
+
+#[cfg(not(test))]
+lazy_static! {
+    pub static ref IMAGE_LOADER: PathBuf = std::path::Path::new("/run/imageloader").to_path_buf();
+    pub static ref CRYPTO_HOME: PathBuf =
+        std::path::Path::new("/run/daemon-store/shadercached").to_path_buf();
     pub static ref GPU_DEVICE_ID: u16 = get_gpu_device_id().unwrap_or(0);
+}
+
+lazy_static! {
     pub static ref GPU_DEVICE_DLC_VARIANT: &'static str = {
         // These suffixes are non-technical names to create buckets for each
         // device id variants per board.
@@ -93,7 +105,10 @@ pub fn dlc_to_steam_app_id(dlc_name: &str) -> Result<SteamAppId> {
     Err(anyhow!("Not a valid DLC"))
 }
 
+#[cfg(not(test))]
 fn get_gpu_device_id() -> Result<u16> {
+    use libchromeos::sys::warn;
+    use std::process::{Command, Stdio};
     // This function is called only once to initialize pub lazy static constant
     // GPU_DEVICE_ID, so we don't need to make the Regex object static.
     let regex = Regex::new(r"\[([0-9a-f]{4})\]").unwrap();
@@ -130,15 +145,15 @@ mod tests {
     fn test_steam_app_id_to_dlc() {
         assert_eq!(
             super::steam_app_id_to_dlc(32),
-            "borealis-shader-cache-32-dlc-axe"
+            "borealis-shader-cache-32-dlc-batrider"
         );
         assert_eq!(
             super::steam_app_id_to_dlc(123),
-            "borealis-shader-cache-123-dlc-axe"
+            "borealis-shader-cache-123-dlc-batrider"
         );
         assert_eq!(
             super::steam_app_id_to_dlc(0000),
-            "borealis-shader-cache-0-dlc-axe"
+            "borealis-shader-cache-0-dlc-batrider"
         );
     }
 
@@ -149,7 +164,7 @@ mod tests {
             32
         );
         assert_eq!(
-            super::dlc_to_steam_app_id("borealis-shader-cache-000-dlc-axe").unwrap(),
+            super::dlc_to_steam_app_id("borealis-shader-cache-000-dlc-batrider").unwrap(),
             0
         );
         assert_eq!(

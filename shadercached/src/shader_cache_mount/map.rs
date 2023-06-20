@@ -17,6 +17,16 @@ pub struct VmId {
     pub vm_owner_id: String,
 }
 
+#[cfg(test)]
+impl VmId {
+    pub fn new(vm_name: &str, vm_owner_id: &str) -> VmId {
+        VmId {
+            vm_name: vm_name.to_string(),
+            vm_owner_id: vm_owner_id.to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ShaderCacheMountMap {
     map: RwLock<HashMap<VmId, ShaderCacheMount>>,

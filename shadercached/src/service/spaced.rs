@@ -8,18 +8,28 @@ use std::{
     sync::Arc,
 };
 
-use super::helper::unsafe_quota::{set_quota_limited, set_quota_normal};
 use crate::{
     common::{CRYPTO_HOME, PRECOMPILED_CACHE_DIR},
+    dbus_wrapper::DbusConnectionTrait,
     shader_cache_mount::{ShaderCacheMountMapPtr, VmId},
 };
-use dbus::nonblock::SyncConnection;
 use libchromeos::sys::{debug, info, warn};
 
 use anyhow::Result;
 use system_api::spaced::{StatefulDiskSpaceState, StatefulDiskSpaceUpdate};
 use tokio::sync::Mutex;
 
+#[cfg(test)]
+use super::helper::unsafe_ops::mock_quota::{set_quota_limited, set_quota_normal};
+#[cfg(not(test))]
+use super::helper::unsafe_ops::quota::{set_quota_limited, set_quota_normal};
+
+#[cfg(test)]
+lazy_static! {
+    pub static ref PURGED: Mutex<bool> = Mutex::new(false);
+    pub static ref LIMITED_QUOTA_PATHS: Mutex<HashSet<PathBuf>> = Mutex::new(HashSet::new());
+}
+#[cfg(not(test))]
 lazy_static! {
     static ref PURGED: Mutex<bool> = Mutex::new(false);
     static ref LIMITED_QUOTA_PATHS: Mutex<HashSet<PathBuf>> = Mutex::new(HashSet::new());
@@ -38,7 +48,7 @@ fn delete_all_files(path: &Path) -> Result<()> {
 
 fn get_all_precompiled_cache_dir() -> Result<Vec<PathBuf>> {
     let mut dirs: Vec<PathBuf> = vec![];
-    for dir_entry in (std::fs::read_dir(CRYPTO_HOME)?).flatten() {
+    for dir_entry in (std::fs::read_dir(CRYPTO_HOME.as_path())?).flatten() {
         let user_cryptohome = dir_entry.path();
         dirs.push(user_cryptohome.join(PRECOMPILED_CACHE_DIR))
     }
@@ -83,7 +93,7 @@ pub async fn delete_precompiled_cache(
     let _mount_map = mount_map.write().await;
 
     let encoded_vm_name = base64::encode_config(&vm_id.vm_name, base64::URL_SAFE);
-    let path = Path::new(CRYPTO_HOME)
+    let path = CRYPTO_HOME
         .join(&vm_id.vm_owner_id)
         .join(PRECOMPILED_CACHE_DIR)
         .join(encoded_vm_name);
@@ -102,10 +112,10 @@ pub async fn delete_precompiled_cache(
     Ok(dirs_to_clear)
 }
 
-pub async fn handle_disk_space_update(
+pub async fn handle_disk_space_update<D: DbusConnectionTrait>(
     raw_bytes: Vec<u8>,
     mount_map: ShaderCacheMountMapPtr,
-    conn: Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<()> {
     let update_signal: StatefulDiskSpaceUpdate = protobuf::Message::parse_from_bytes(&raw_bytes)
         .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
@@ -134,8 +144,11 @@ pub async fn handle_disk_space_update(
             // uninstallation fails.
             *is_purged = true;
             // Purge all shader cache DLCs, only once until recovery
-            super::unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), conn.clone())
-                .await?;
+            super::unmount_and_uninstall_all_shader_cache_dlcs(
+                mount_map.clone(),
+                dbus_conn.clone(),
+            )
+            .await?;
         } else {
             // spaced will continue sending signals if the disk stays near full.
             // Clean up downloaded shader cache contents.

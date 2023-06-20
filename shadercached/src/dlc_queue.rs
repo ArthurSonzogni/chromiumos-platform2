@@ -56,7 +56,7 @@ impl DlcQueue {
         if let Some(app_id) = self.install_queue.pop_front() {
             // Add the item to installing set, so that we know what is being
             // installed preemptively.
-            self.add_installing(&app_id);
+            self.installing.insert(app_id);
             return Some(app_id);
         }
         None
@@ -68,10 +68,6 @@ impl DlcQueue {
 
     pub fn remove_installing(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> bool {
         self.installing.remove(steam_app_id)
-    }
-
-    fn add_installing(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> bool {
-        self.installing.insert(*steam_app_id)
     }
 
     pub fn queue_uninstall_multi(self: &mut DlcQueue, ids: &HashSet<SteamAppId>) {
@@ -113,4 +109,23 @@ pub fn new_queue() -> DlcQueuePtr {
         installing: HashSet::new(),
         uninstall_queue: VecDeque::new(),
     }))
+}
+
+#[cfg(test)]
+impl DlcQueue {
+    pub fn get_install_queue(&self) -> &VecDeque<SteamAppId> {
+        &self.install_queue
+    }
+
+    pub fn get_uninstall_queue(&self) -> &VecDeque<SteamAppId> {
+        &self.uninstall_queue
+    }
+
+    pub fn get_installing_set(&self) -> &HashSet<SteamAppId> {
+        &self.installing
+    }
+
+    pub fn add_installing(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> bool {
+        self.installing.insert(*steam_app_id)
+    }
 }

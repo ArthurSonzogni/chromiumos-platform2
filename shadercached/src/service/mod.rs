@@ -11,20 +11,19 @@ mod concierge;
 mod dlc;
 pub mod helper;
 pub mod signal;
-mod spaced;
+pub mod spaced;
 
 use crate::common::*;
+use crate::dbus_wrapper::DbusConnectionTrait;
 use crate::dlc_queue::DlcQueuePtr;
 use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
-use helper::unsafe_quota::set_quota_normal;
 
 use anyhow::{anyhow, Result};
-use dbus::{nonblock::SyncConnection, MethodErr};
+use dbus::MethodErr;
 use libchromeos::sys::{debug, error, warn};
 use protobuf::Message;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 use system_api::shadercached::{
     InstallRequest, InstallResponse, PrepareShaderCacheRequest, PrepareShaderCacheResponse,
     PurgeRequest, UninstallRequest, UnmountRequest,
@@ -38,13 +37,16 @@ pub use dlc::mount_dlc;
 pub use dlc::periodic_dlc_handler;
 pub use spaced::handle_disk_space_update;
 
-pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
+#[cfg(test)]
+use helper::unsafe_ops::mock_quota::set_quota_normal;
+#[cfg(not(test))]
+use helper::unsafe_ops::quota::set_quota_normal;
 
-pub async fn handle_install(
+pub async fn handle_install<D: DbusConnectionTrait>(
     raw_bytes: Vec<u8>,
     mount_map: ShaderCacheMountMapPtr,
     dlc_queue: DlcQueuePtr,
-    conn: Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<std::vec::Vec<u8>> {
     let request: InstallRequest = Message::parse_from_bytes(&raw_bytes)?;
 
@@ -59,7 +61,8 @@ pub async fn handle_install(
     // cache in shadercached.
     if !mut_mount_map.contains_key(&vm_id) {
         let vm_gpu_cache_path =
-            Path::new(&concierge::get_vm_gpu_cache_path(&vm_id, conn.clone()).await?).to_path_buf();
+            Path::new(&concierge::get_vm_gpu_cache_path(&vm_id, dbus_conn.clone()).await?)
+                .to_path_buf();
         mut_mount_map.insert(
             vm_id.clone(),
             ShaderCacheMount::new(vm_gpu_cache_path, &vm_id)?,
@@ -112,7 +115,7 @@ pub async fn handle_install(
     );
     if request.mount && !response.mounted {
         // Mount if dlc is not mounted already
-        response.mounted = mount_dlc(request.steam_app_id, mount_map.clone(), conn.clone())
+        response.mounted = mount_dlc(request.steam_app_id, mount_map.clone(), dbus_conn.clone())
             .await
             .is_ok();
         debug!("Mounting result: {}", response.mounted);
@@ -123,7 +126,7 @@ pub async fn handle_install(
 fn is_dlc_installed(steam_app_id: SteamAppId) -> bool {
     // /run/imageloader/<dlc_name>/package must exist for DLC to be
     // installed.
-    Path::new(IMAGE_LOADER)
+    IMAGE_LOADER
         .join(steam_app_id_to_dlc(steam_app_id))
         .join("package")
         .exists()
@@ -136,9 +139,9 @@ pub async fn handle_uninstall(raw_bytes: Vec<u8>, dlc_queue: DlcQueuePtr) -> Res
     Ok(())
 }
 
-pub async fn unmount_and_uninstall_all_shader_cache_dlcs(
+pub async fn unmount_and_uninstall_all_shader_cache_dlcs<D: DbusConnectionTrait>(
     mount_map: ShaderCacheMountMapPtr,
-    conn: Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<()> {
     mount_map.clear_all_mounts(None).await?;
     mount_map
@@ -148,15 +151,15 @@ pub async fn unmount_and_uninstall_all_shader_cache_dlcs(
     // TODO(b/270262568): Queue DLC uninstallations instead of waiting for
     // unmounts. Ensure to disallow mounts during the period and allow mounts
     // after completed.
-    dlc::uninstall_all_shader_cache_dlcs(conn.clone()).await?;
+    dlc::uninstall_all_shader_cache_dlcs(dbus_conn.clone()).await?;
 
     Ok(())
 }
 
-pub async fn handle_purge(
+pub async fn handle_purge<D: DbusConnectionTrait>(
     raw_bytes: Vec<u8>,
     mount_map: ShaderCacheMountMapPtr,
-    conn: Arc<SyncConnection>,
+    dbus_conn: Arc<D>,
 ) -> Result<()> {
     let request: PurgeRequest = protobuf::Message::parse_from_bytes(&raw_bytes)?;
 
@@ -167,7 +170,7 @@ pub async fn handle_purge(
         // it cannot know if Borealis is still in use for other users. This
         // means another user may have to redownload the DLC, which is fine for
         // now.
-        unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), conn.clone()).await?;
+        unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), dbus_conn.clone()).await?;
     }
     let vm_id = VmId {
         vm_name: request.vm_name,
@@ -199,14 +202,15 @@ pub async fn handle_prepare_shader_cache(
     // TODO(b/271776528): insert ShaderCacheMount here once we support local RW
     // shader cache in shadercached.
     let shader_cache_mount = ShaderCacheMount::new(PathBuf::new(), &vm_id)?;
-    let path = shader_cache_mount.local_precompiled_cache_path()?;
-    if !Path::new(&path).exists() {
-        std::fs::create_dir_all(&path)?;
+    let path_str = shader_cache_mount.local_precompiled_cache_path()?;
+    let path = Path::new(&path_str);
+    if !path.exists() {
+        std::fs::create_dir_all(&path_str)?;
     }
-    if let Err(e) = set_quota_normal(&path) {
-        warn!("Failed to set quota for {}: {}", path, e);
+    if let Err(e) = set_quota_normal(path) {
+        warn!("Failed to set quota for {}: {}", path_str, e);
     }
-    response.precompiled_cache_path = path;
+    response.precompiled_cache_path = path_str;
 
     Ok(response.write_to_bytes()?)
 }
