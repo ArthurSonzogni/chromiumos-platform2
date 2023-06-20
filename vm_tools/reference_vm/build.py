@@ -3,8 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""
-Build a VM disk image that can boot as a guest on ChromeOS with VM integrations.
+"""Build a VM disk image that can boot as a guest on ChromeOS with VM
+integrations.
 """
 
 import argparse
@@ -121,13 +121,15 @@ def main():
                     )
 
                     print("Install complete, syncing")
-                    subprocess.run(["sync"])
+                    subprocess.run(["sync"], check=True)
 
     print(f"Built image '{image_path}' ({os.path.getsize(image_path)} bytes)")
 
+
 def get_latest_cros_version(bucket: str) -> int:
     res = requests.get(
-        f"https://storage.googleapis.com/storage/v1/b/{bucket}/o?delimiter=/&matchGlob=**/"
+        f"https://storage.googleapis.com/storage/v1/b/{bucket}/o"
+        "?delimiter=/&matchGlob=**/"
     )
     res.raise_for_status()
     # The returned prefixes include a trailing /, remove it.
