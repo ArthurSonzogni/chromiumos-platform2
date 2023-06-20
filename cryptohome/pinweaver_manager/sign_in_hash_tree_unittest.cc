@@ -10,7 +10,7 @@
 #include <gtest/gtest_prod.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/sign_in_hash_tree.h"
+#include "cryptohome/pinweaver_manager/sign_in_hash_tree.h"
 
 using ::testing::_;
 using ::testing::Expectation;

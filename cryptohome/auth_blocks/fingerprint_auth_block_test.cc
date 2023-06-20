@@ -24,8 +24,8 @@
 #include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/le_credential_manager.h"
-#include "cryptohome/mock_le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
 namespace cryptohome {
 namespace {

@@ -23,7 +23,7 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::ErrorActionSet;

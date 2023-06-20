@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_LE_CREDENTIAL_ERROR_H_
-#define CRYPTOHOME_LE_CREDENTIAL_ERROR_H_
+#ifndef CRYPTOHOME_ERROR_LE_CREDENTIAL_ERROR_H_
+#define CRYPTOHOME_ERROR_LE_CREDENTIAL_ERROR_H_
 
 namespace cryptohome {
 
@@ -39,4 +39,4 @@ enum LECredError {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_LE_CREDENTIAL_ERROR_H_
+#endif  // CRYPTOHOME_ERROR_LE_CREDENTIAL_ERROR_H_

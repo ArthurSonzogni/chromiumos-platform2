@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/sign_in_hash_tree.h"
+#include "cryptohome/pinweaver_manager/sign_in_hash_tree.h"
 
 #include <fcntl.h>
 

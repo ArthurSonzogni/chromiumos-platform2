@@ -38,7 +38,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"

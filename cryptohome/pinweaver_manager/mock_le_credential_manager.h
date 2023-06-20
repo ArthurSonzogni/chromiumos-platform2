@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOCK_LE_CREDENTIAL_MANAGER_H_
-#define CRYPTOHOME_MOCK_LE_CREDENTIAL_MANAGER_H_
+#ifndef CRYPTOHOME_PINWEAVER_MANAGER_MOCK_LE_CREDENTIAL_MANAGER_H_
+#define CRYPTOHOME_PINWEAVER_MANAGER_MOCK_LE_CREDENTIAL_MANAGER_H_
 
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 #include <string>
 #include <optional>
@@ -81,4 +81,4 @@ class MockLECredentialManager : public LECredentialManager {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_MOCK_LE_CREDENTIAL_MANAGER_H_
+#endif  // CRYPTOHOME_PINWEAVER_MANAGER_MOCK_LE_CREDENTIAL_MANAGER_H_

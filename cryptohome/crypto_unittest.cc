@@ -29,8 +29,8 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.h"
 

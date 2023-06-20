@@ -15,7 +15,7 @@
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/le_credential_error.h"
+#include "cryptohome/error/le_credential_error.h"
 
 namespace cryptohome {
 

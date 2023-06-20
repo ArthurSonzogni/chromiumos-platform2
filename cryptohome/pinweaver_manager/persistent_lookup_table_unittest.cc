@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/persistent_lookup_table.h"
+#include "cryptohome/pinweaver_manager/persistent_lookup_table.h"
 
 using ::testing::_;
 

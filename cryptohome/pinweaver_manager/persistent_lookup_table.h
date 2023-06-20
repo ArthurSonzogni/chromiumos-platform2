@@ -1,8 +1,8 @@
 // Copyright 2018 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef CRYPTOHOME_PERSISTENT_LOOKUP_TABLE_H_
-#define CRYPTOHOME_PERSISTENT_LOOKUP_TABLE_H_
+#ifndef CRYPTOHOME_PINWEAVER_MANAGER_PERSISTENT_LOOKUP_TABLE_H_
+#define CRYPTOHOME_PINWEAVER_MANAGER_PERSISTENT_LOOKUP_TABLE_H_
 
 #include <map>
 #include <string>
@@ -143,4 +143,4 @@ class PersistentLookupTable {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_PERSISTENT_LOOKUP_TABLE_H_
+#endif  // CRYPTOHOME_PINWEAVER_MANAGER_PERSISTENT_LOOKUP_TABLE_H_

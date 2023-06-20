@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 
 #include <fcntl.h>
 
@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
@@ -939,7 +940,7 @@ bool LECredentialManagerImpl::ReplayResetTree() {
   LOG(INFO) << "Replaying tree reset";
 
   hash_tree_.reset();
-  if (!base::DeletePathRecursively(basedir_)) {
+  if (!brillo::DeletePathRecursively(basedir_)) {
     PLOG(ERROR) << "Failed to delete disk hash tree during replay.";
     ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk,
                    LE_CRED_ERROR_HASH_TREE);

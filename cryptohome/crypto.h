@@ -24,7 +24,7 @@
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
 

@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/mock_le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;

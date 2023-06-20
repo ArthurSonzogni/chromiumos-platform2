@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_SIGN_IN_HASH_TREE_H_
-#define CRYPTOHOME_SIGN_IN_HASH_TREE_H_
+#ifndef CRYPTOHOME_PINWEAVER_MANAGER_SIGN_IN_HASH_TREE_H_
+#define CRYPTOHOME_PINWEAVER_MANAGER_SIGN_IN_HASH_TREE_H_
 
 #include <stdint.h>
 
@@ -19,7 +19,7 @@
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>
 
-#include "cryptohome/persistent_lookup_table.h"
+#include "cryptohome/pinweaver_manager/persistent_lookup_table.h"
 
 namespace cryptohome {
 
@@ -334,4 +334,4 @@ class SignInHashTree {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_SIGN_IN_HASH_TREE_H_
+#endif  // CRYPTOHOME_PINWEAVER_MANAGER_SIGN_IN_HASH_TREE_H_

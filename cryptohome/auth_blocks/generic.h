@@ -35,7 +35,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/util/async_init.h"
 

@@ -28,8 +28,8 @@
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/user_secret_stash/mock_user_metadata.h"
 #include "cryptohome/util/async_init.h"
 

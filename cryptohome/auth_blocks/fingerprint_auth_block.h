@@ -17,7 +17,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {

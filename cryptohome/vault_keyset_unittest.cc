@@ -41,8 +41,8 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {

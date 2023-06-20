@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#include "cryptohome/le_credential_error.h"
+#include "cryptohome/error/le_credential_error.h"
 
 namespace cryptohome {
 

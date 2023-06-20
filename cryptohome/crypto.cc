@@ -36,7 +36,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;

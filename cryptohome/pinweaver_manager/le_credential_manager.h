@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_LE_CREDENTIAL_MANAGER_H_
-#define CRYPTOHOME_LE_CREDENTIAL_MANAGER_H_
+#ifndef CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_H_
+#define CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_H_
 
 #include <map>
 #include <optional>
@@ -164,4 +164,4 @@ class LECredentialManager {
 
 };  // namespace cryptohome
 
-#endif  // CRYPTOHOME_LE_CREDENTIAL_MANAGER_H_
+#endif  // CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_H_

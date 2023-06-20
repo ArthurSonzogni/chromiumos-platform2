@@ -13,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
@@ -20,10 +21,10 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/error/le_credential_error.h"
 #include "cryptohome/error/utilities.h"
-#include "cryptohome/le_credential_error.h"
-#include "cryptohome/le_credential_manager.h"
-#include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 
 using ::hwsec_foundation::GetSecureRandom;
 
@@ -179,7 +180,7 @@ class LECredentialManagerImplUnitTest : public testing::Test {
 
   // Fills the on-disk hash tree with the contents of |snapshot_path|.
   void RestoreSnapshot(base::FilePath snapshot_path) {
-    ASSERT_TRUE(base::DeletePathRecursively(CredDirPath()));
+    ASSERT_TRUE(brillo::DeletePathRecursively(CredDirPath()));
     ASSERT_TRUE(base::CopyDirectory(snapshot_path.Append(kCredDirName),
                                     temp_dir_.GetPath(), true));
   }

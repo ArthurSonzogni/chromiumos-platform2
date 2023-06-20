@@ -45,7 +45,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
-#include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"

@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_LE_CREDENTIAL_MANAGER_IMPL_H_
-#define CRYPTOHOME_LE_CREDENTIAL_MANAGER_IMPL_H_
+#ifndef CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_IMPL_H_
+#define CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_IMPL_H_
 
-#include "cryptohome/le_credential_manager.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 #include <map>
 #include <memory>
@@ -14,7 +14,7 @@
 
 #include <libhwsec/frontend/pinweaver/frontend.h>
 
-#include "cryptohome/sign_in_hash_tree.h"
+#include "cryptohome/pinweaver_manager/sign_in_hash_tree.h"
 
 namespace cryptohome {
 
@@ -261,4 +261,4 @@ class LECredentialManagerImpl : public LECredentialManager {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_LE_CREDENTIAL_MANAGER_IMPL_H_
+#endif  // CRYPTOHOME_PINWEAVER_MANAGER_LE_CREDENTIAL_MANAGER_IMPL_H_

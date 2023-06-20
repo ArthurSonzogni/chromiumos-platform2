@@ -36,9 +36,9 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
