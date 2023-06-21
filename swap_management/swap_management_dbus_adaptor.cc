@@ -14,13 +14,21 @@
 #include <dbus/object_path.h>
 
 namespace swap_management {
+// Metrics file needs to be in stateful partition since it could be replayed in
+// next boot time.
+constexpr char kSwapMetricsFile[] = "/var/lib/swap/swap_metrics";
+
 SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
     scoped_refptr<dbus::Bus> bus,
     std::unique_ptr<base::OneShotTimer> shutdown_timer)
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
       swap_tool_(std::make_unique<SwapTool>()),
-      shutdown_timer_(std::move(shutdown_timer)) {}
+      shutdown_timer_(std::move(shutdown_timer)) {
+  // Replay metrics left from last boot;
+  metrics_.Replay(kSwapMetricsFile);
+  metrics_.SetOutputFile(kSwapMetricsFile);
+}
 
 SwapManagementDBusAdaptor::~SwapManagementDBusAdaptor() {
   if (shutdown_timer_)
