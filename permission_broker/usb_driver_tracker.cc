@@ -168,10 +168,10 @@ std::optional<std::string> UsbDriverTracker::RegisterClient(
 
   dev_fds_.emplace(client_id,
                    UsbInterfaces{.path = path,
-                                 .controller = std::move(controller),
                                  .interfaces = {},
                                  .fd = std::move(fd),
-                                 .lifeline_fd = std::move(dup_lifeline_fd)});
+                                 .lifeline_fd = std::move(dup_lifeline_fd),
+                                 .controller = std::move(controller)});
 
   return client_id;
 }

@@ -108,10 +108,10 @@ class UsbDriverTracker {
     // Note we have this structure take ownership of the |controller| and
     // |lifeline_fd| to keep readable callback registered.
     base::FilePath path;
-    std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
     std::vector<uint8_t> interfaces;
     base::ScopedFD fd;  // Client's open path file descriptor.
     base::ScopedFD lifeline_fd;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   };
 
   using ClientMap = std::map<std::string /* client_id */, UsbInterfaces>;
