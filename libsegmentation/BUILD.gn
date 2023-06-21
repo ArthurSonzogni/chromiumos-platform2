@@ -145,6 +145,9 @@ if (use.test) {
       "feature_management_impl_test.cc",
       "feature_management_test.cc",
     ]
+    if (use.feature_management) {
+      sources += [ "feature_management_util_test.cc" ]
+    }
     configs += [
       "//common-mk:test",
       ":target_defaults",

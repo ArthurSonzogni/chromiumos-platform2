@@ -38,6 +38,10 @@ class BRILLO_EXPORT FeatureManagementUtil {
   // Converts scope level from the internal proto to the external API.
   static FeatureManagementInterface::ScopeLevel ConvertProtoScopeLevel(
       libsegmentation::DeviceInfo_ScopeLevel scope_level);
+
+  // Implement base8192 decoding used by hwid.
+  // Returns a string of '0' and '1' suitable for decoding.
+  static std::optional<std::string> DecodeHWID(const std::string& hwid);
 };
 
 }  // namespace segmentation

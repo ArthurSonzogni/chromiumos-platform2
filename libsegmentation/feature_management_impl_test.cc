@@ -97,8 +97,8 @@ features {
 }
 */
 
-constexpr const char kOsVersion[] = "1234.0.0";
-uint32_t kCurrentVersionHash = base::PersistentHash(kOsVersion);
+constexpr char kOsVersion[] = "1234.0.0";
+const uint32_t kCurrentVersionHash = base::PersistentHash(kOsVersion);
 
 // Test fixture for testing feature management.
 class FeatureManagementImplTest : public ::testing::Test {
