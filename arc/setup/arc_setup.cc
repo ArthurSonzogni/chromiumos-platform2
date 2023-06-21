@@ -576,6 +576,38 @@ std::optional<base::FilePath> GetConfigPath(brillo::CrosConfigInterface& config,
   return base::FilePath(value);
 }
 
+void RemoveStaleDataDirectory(brillo::SafeFD& root_fd,
+                              const base::FilePath& path) {
+  // To protect itself, base::SafeFD::RmDir() uses a default maximum
+  // recursion depth of 256. In this case, we are deleting the user's
+  // arbitrary filesystem and want to be more generous. However, RmDir()
+  // uses one fd per path level when recursing so we will have the max
+  // number of fds per process as an upper bound (default 1024). Leave a
+  // 25% buffer below this default 1024 limit to give lots of room for
+  // incidental usage elsewhere in the process. Use this everywhere here
+  // for consistency.
+  constexpr int kRmdirMaxDepth = 768;
+
+  brillo::SafeFD::SafeFDResult parent_dir =
+      root_fd.OpenExistingDir(path.DirName());
+  if (brillo::SafeFD::IsError(parent_dir.second)) {
+    if (parent_dir.second != brillo::SafeFD::Error::kDoesNotExist) {
+      LOG(ERROR) << "Errors while claeaning old data from " << path
+                 << ": failed to open the parent directory";
+    }
+    return;
+  }
+
+  brillo::SafeFD::Error err =
+      parent_dir.first.Rmdir(path.BaseName().value(), true /*recursive*/,
+                             kRmdirMaxDepth, true /*keep_going*/);
+  if (brillo::SafeFD::IsError(err) &&
+      err != brillo::SafeFD::Error::kDoesNotExist) {
+    LOG(ERROR) << "Errors while cleaning old data from " << path
+               << ": failed to remove the directory";
+  }
+}
+
 }  // namespace
 
 // A struct that holds all the FilePaths ArcSetup uses.
@@ -2531,47 +2563,24 @@ void ArcSetup::RemoveDataInLvm() {
 }
 
 void ArcSetup::OnRemoveStaleData() {
-  // To protect itself, base::SafeFD::RmDir() uses a default maximum
-  // recursion depth of 256. In this case, we are deleting the user's
-  // arbitrary filesystem and want to be more generous. However, RmDir()
-  // uses one fd per path level when recursing so we will have the max
-  // number of fds per process as an upper bound (default 1024). Leave a
-  // 25% buffer below this default 1024 limit to give lots of room for
-  // incidental usage elsewhere in the process. Use this everywhere here
-  // for consistency.
-  constexpr int kRmdirMaxDepth = 768;
-
   brillo::SafeFD root = brillo::SafeFD::Root().first;
+  if (!root.is_valid()) {
+    LOG(ERROR) << "Errors while cleaning old data: failed to open the root "
+                  "directory";
+    return;
+  }
 
   if (USE_ARCVM) {
     // On ARCVM, stale *.odex files are kept in /data/vendor/arc.
-    base::FilePath arcvm_stale_odex = arc_paths_->android_data_directory.Append(
-        "data/vendor/arc/old_arc_executables_pre_ota");
-    brillo::SafeFD parent_dir =
-        root.OpenExistingDir(arcvm_stale_odex.DirName()).first;
-    brillo::SafeFD::Error err = parent_dir.Rmdir(
-        arcvm_stale_odex.BaseName().value(), true /*recursive*/, kRmdirMaxDepth,
-        true /*keep_going*/);
-    if (brillo::SafeFD::IsError(err) &&
-        err != brillo::SafeFD::Error::kDoesNotExist) {
-      LOG(ERROR) << "Errors while cleaning old data from "
-                 << arcvm_stale_odex.value();
-    }
+    const base::FilePath arcvm_stale_odex_path =
+        arc_paths_->android_data_directory.Append(
+            "data/vendor/arc/old_arc_executables_pre_ota");
+    RemoveStaleDataDirectory(root, arcvm_stale_odex_path);
   }
 
   // Moving data to android_data_old no longer has race conditions so it is safe
   // to delete the entire directory.
-  brillo::SafeFD parent_dir =
-      root.OpenExistingDir(arc_paths_->android_data_old_directory.DirName())
-          .first;
-  brillo::SafeFD::Error err = parent_dir.Rmdir(
-      arc_paths_->android_data_old_directory.BaseName().value(),
-      true /*recursive*/, kRmdirMaxDepth, true /*keep_going*/);
-  if (brillo::SafeFD::IsError(err) &&
-      err != brillo::SafeFD::Error::kDoesNotExist) {
-    LOG(ERROR) << "Errors while cleaning old data from "
-               << arc_paths_->android_data_old_directory.value();
-  }
+  RemoveStaleDataDirectory(root, arc_paths_->android_data_old_directory);
 }
 
 void ArcSetup::OnPrepareHostGeneratedDir() {
