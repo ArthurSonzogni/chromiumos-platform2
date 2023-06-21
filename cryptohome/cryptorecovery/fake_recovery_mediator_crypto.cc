@@ -441,6 +441,12 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     LOG(ERROR) << "Unable to deserialize hsm_plain_text_cbor";
     return false;
   }
+  HsmAssociatedData hsm_associated_data;
+  if (!DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                            &hsm_associated_data)) {
+    LOG(ERROR) << "Unable to deserialize hsm_payload.associated_data";
+    return false;
+  }
 
   crypto::ScopedBIGNUM mediator_share_bn =
       SecureBlobToBigNum(hsm_plain_text.mediator_share);
@@ -497,6 +503,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
   if (!GenerateFakeLedgerSignedProofForTesting(
           {ledger_priv_key.get()}, GetFakeLedgerInfo(),
+          hsm_associated_data.onboarding_meta_data,
           &response_ad.ledger_signed_proof)) {
     LOG(ERROR) << "Unable to create fake ledger signed proof";
     return false;

@@ -148,7 +148,8 @@ class RecoveryCryptoTest : public testing::Test {
                                  SecureBlob* destination_share,
                                  SecureBlob* channel_priv_key,
                                  SecureBlob* ephemeral_pub_key,
-                                 CryptoRecoveryRpcResponse* response_proto) {
+                                 CryptoRecoveryRpcResponse* response_proto,
+                                 HsmPayload* hsm_payload) {
     // Generates HSM payload that would be persisted on a chromebook.
     GenerateHsmPayloadRequest generate_hsm_payload_request(
         {.mediator_pub_key = mediator_pub_key_,
@@ -162,6 +163,7 @@ class RecoveryCryptoTest : public testing::Test {
     *recovery_key = generate_hsm_payload_response.recovery_key;
     *channel_priv_key =
         generate_hsm_payload_response.encrypted_channel_priv_key;
+    *hsm_payload = generate_hsm_payload_response.hsm_payload;
 
     // Start recovery process.
     GenerateRecoveryRequestRequest generate_recovery_request_input_param(
@@ -240,13 +242,19 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
       epoch_pub_key_, epoch_priv_key_, mediator_priv_key_, recovery_request,
       &response_proto));
 
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(
+      generate_hsm_payload_response.hsm_payload.associated_data,
+      &hsm_associated_data));
+
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key =
            generate_hsm_payload_response.encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -316,6 +324,11 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
       /*epoch_pub_key=*/random_key, epoch_priv_key_, mediator_priv_key_,
       recovery_request, &response_proto));
 
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(
+      generate_hsm_payload_response.hsm_payload.associated_data,
+      &hsm_associated_data));
+
   // `DecryptResponsePayload` fails if invalid epoch value was used for
   // `MediateRequestPayload`.
   DecryptResponsePayloadRequest decrypt_response_payload_request(
@@ -324,7 +337,8 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   auto status = recovery_->DecryptResponsePayload(
       decrypt_response_payload_request, &response_plain_text);
@@ -336,16 +350,22 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   ASSERT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -374,16 +394,22 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key, response_cbor;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -410,16 +436,22 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key, response_cbor;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -446,16 +478,22 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key, response_cbor;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -484,16 +522,22 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key, response_cbor;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -619,19 +663,25 @@ TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
   SecureBlob recovery_key, destination_share, channel_priv_key,
       ephemeral_pub_key, response_cbor;
   CryptoRecoveryRpcResponse response_proto;
+  HsmPayload hsm_payload;
   GenerateSecretsAndMediate(&recovery_key, &destination_share,
                             &channel_priv_key, &ephemeral_pub_key,
-                            &response_proto);
+                            &response_proto, &hsm_payload);
 
   // Generate fake error response.
   response_proto.set_error_code(RecoveryError::RECOVERY_ERROR_FATAL);
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                                   &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
-       .ledger_info = ledger_info_});
+       .ledger_info = ledger_info_,
+       .hsm_associated_data = hsm_associated_data});
   HsmResponsePlainText response_plain_text;
   auto status = recovery_->DecryptResponsePayload(
       decrypt_response_payload_request, &response_plain_text);

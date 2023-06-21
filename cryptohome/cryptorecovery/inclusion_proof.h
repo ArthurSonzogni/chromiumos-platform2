@@ -15,7 +15,8 @@ namespace cryptorecovery {
 // and root hash. Requires 0 <= index < size.
 [[nodiscard]] bool VerifyInclusionProof(
     const LedgerSignedProof& ledger_signed_proof,
-    const LedgerInfo& ledger_info);
+    const LedgerInfo& ledger_info,
+    const OnboardingMetadata& metadata);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome

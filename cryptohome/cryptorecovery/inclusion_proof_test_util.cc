@@ -4,6 +4,7 @@
 
 #include "cryptohome/cryptorecovery/inclusion_proof_test_util.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/cryptorecovery/inclusion_proof_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
@@ -143,31 +145,62 @@ bool MarshalAndSignCheckPointForTesting(
   return true;
 }
 
+std::optional<LoggedRecord> CreateLoggedRecord(
+    const OnboardingMetadata& metadata) {
+  // TODO(b/281486839): Generate the timestamps.
+  PrivateLogEntry priv_entry{
+      .onboarding_meta_data = metadata,
+      .public_timestamp = 0,
+      .timestamp = 0,
+  };
+  PublicLedgerEntry pub_entry{
+      .public_timestamp = 0,
+      .recovery_id = metadata.recovery_id,
+  };
+  brillo::Blob serialized_priv_entry;
+  if (!SerializePrivateLogEntryToCbor(priv_entry, &serialized_priv_entry)) {
+    LOG(ERROR) << "Failed to serialize private entry";
+    return std::nullopt;
+  }
+  pub_entry.log_entry_hash = hwsec_foundation::Sha256(serialized_priv_entry);
+
+  brillo::Blob serialized_pub_entry;
+  if (!SerializePublicLedgerEntryToCbor(pub_entry, &serialized_pub_entry)) {
+    LOG(ERROR) << "Failed to serialize public entry";
+    return std::nullopt;
+  }
+
+  return LoggedRecord{
+      .serialized_public_ledger_entry = serialized_pub_entry,
+      .public_ledger_entry = pub_entry,
+      .serialized_private_log_entry = serialized_priv_entry,
+      .private_log_entry = priv_entry,
+  };
+}
+
 }  // namespace
 
 bool GenerateFakeLedgerSignedProofForTesting(
     const std::vector<EC_KEY*>& fake_ledger_private_keys,
     const LedgerInfo& ledger_info,
+    const OnboardingMetadata& metadata,
     LedgerSignedProof* ledger_signed_proof) {
-  // TODO(b/281486839): Pass metadata and create a real public ledger entry.
-  brillo::Blob public_ledger_entry =
-      brillo::BlobFromString("fake-public-entry");
+  auto record = CreateLoggedRecord(metadata);
+  if (!record.has_value()) {
+    LOG(ERROR) << "Failed to generate a logged record";
+    return false;
+  }
+  ledger_signed_proof->logged_record = record.value();
 
   std::vector<brillo::Blob> inclusion_proof;
   int64_t leaf_index;
   int64_t size;
   brillo::Blob root_hash;
   GenerateFakeInclusionProofForTesting(
-      /*leaf=*/public_ledger_entry, &inclusion_proof, &leaf_index, &size,
-      &root_hash);
-
-  LoggedRecord record{
-      .public_ledger_entry = public_ledger_entry,
-      // TODO(b/281486839): Pass metadata and create a real private log entry.
-      .private_log_entry = brillo::BlobFromString("fake-private-entry"),
-      .leaf_index = leaf_index,
-  };
-  ledger_signed_proof->logged_record = record;
+      /*leaf=*/ledger_signed_proof->logged_record
+          .serialized_public_ledger_entry,
+      &inclusion_proof, &leaf_index, &size, &root_hash);
+  ledger_signed_proof->logged_record.leaf_index = leaf_index;
   ledger_signed_proof->inclusion_proof = inclusion_proof;
 
   Checkpoint check_point{

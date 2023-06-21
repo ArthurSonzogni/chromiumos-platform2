@@ -51,12 +51,58 @@ enum class UserType {
   kGaiaId = 1,
 };
 
+// `OnboardingMetadata` contains essential information that needs to be
+// available during the Recovery workflow. This information is used by the
+// Recovery Service and may be recorded in the Ledger.
+struct OnboardingMetadata {
+  UserType cryptohome_user_type = UserType::kUnknown;
+  // Format of `cryptohome_user` is determined by `cryptohome_user_type` enum.
+  std::string cryptohome_user;
+  // Unique ID tied to the user's cryptohome on the device
+  std::string device_user_id;
+  std::string board_name;
+  std::string form_factor;
+  std::string rlz_code;
+  // Generated anew after each successful recovery, hex-encoded sha-256 hash
+  // string.
+  std::string recovery_id;
+};
+
+bool operator==(const OnboardingMetadata& lhs, const OnboardingMetadata& rhs);
+bool operator!=(const OnboardingMetadata& lhs, const OnboardingMetadata& rhs);
+
+// PublicLedgerEntry is the structure of the ledger messages logging the
+// recoveries.
+struct PublicLedgerEntry {
+  // Sha-256 hash of the cbor serialized PrivateLogEntry.
+  brillo::Blob log_entry_hash;
+  // Public timestamp, derived from the private timestamp entry, and truncated
+  // for privacy reasons.
+  int64_t public_timestamp = 0;
+  // Copy of PrivateLogEntry.onboarding_meta_data.recovery_id.
+  std::string recovery_id;
+};
+
+// PrivateLogEntry is the structure of messages logged in the private
+// database associated to the ledger, and whose hashes appear in public ledger
+// entries.
+struct PrivateLogEntry {
+  OnboardingMetadata onboarding_meta_data;
+  // Same as the timestamp in the public entry, derived from Timestamp and
+  // truncated for privacy reasons.
+  int64_t public_timestamp = 0;
+  // Full timestamp, unix time.
+  int64_t timestamp = 0;
+};
+
 // LoggedRecord is included in LedgerSignedProof of HsmResponseAssociatedData.
 struct LoggedRecord {
   // Leaf content (serialized PublicLedgerEntry).
-  brillo::Blob public_ledger_entry;
+  brillo::Blob serialized_public_ledger_entry;
+  PublicLedgerEntry public_ledger_entry;
   // Serialized private log entry.
-  brillo::Blob private_log_entry;
+  brillo::Blob serialized_private_log_entry;
+  PrivateLogEntry private_log_entry;
   // Leaf index of this record in the tree.
   int64_t leaf_index = -1;
 };
@@ -80,23 +126,6 @@ struct LedgerInfo {
   hwsec::ExplicitInit<uint32_t> key_hash;
   // Ledger's public key, base64 encoded.
   hwsec::ExplicitInit<brillo::SecureBlob> public_key;
-};
-
-// `OnboardingMetadata` contains essential information that needs to be
-// available during the Recovery workflow. This information is used by the
-// Recovery Service and may be recorded in the Ledger.
-struct OnboardingMetadata {
-  UserType cryptohome_user_type = UserType::kUnknown;
-  // Format of `cryptohome_user` is determined by `cryptohome_user_type` enum.
-  std::string cryptohome_user;
-  // Unique ID tied to the user's cryptohome on the device
-  std::string device_user_id;
-  std::string board_name;
-  std::string form_factor;
-  std::string rlz_code;
-  // Generated anew after each successful recovery, hex-encoded sha-256 hash
-  // string.
-  std::string recovery_id;
 };
 
 // `associated_data` for the HSM payload.

@@ -17,6 +17,7 @@
 
 #include "cryptohome/cryptorecovery/inclusion_proof_test_util.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 using ::hwsec_foundation::CreateBigNumContext;
@@ -38,12 +39,40 @@ constexpr char kDevLedgerPublicKey[] =
 
 // Hardcoded inclusion proof data, generated on the server using the dev ledger
 // info.
+// HEX-encoded serialized CBOR with content:
+// {
+//     "log_entry_hash": h
+//     'CC1CAB36511F9D6BFFB6456F69C1711021F8CCBB57D6699496A1FFCF634B1AFD',
+//     "public_timestamp": 1661126400,
+//     "recovery_id":
+//     "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+//     "schema_version": 1
+// }
 constexpr char kFakePublicLedgerEntryHex[] =
     "A46E6C6F675F656E7472795F686173685820CC1CAB36511F9D6BFFB6456F69C1711021F8CC"
     "BB57D6699496A1FFCF634B1AFD707075626C69635F74696D657374616D701A6302C7006B72"
     "65636F766572795F6964784035306161633730663632343064343031333266366335336233"
     "66643036373533326336323331336537626162316136323531656261363964643432386266"
     "35356E736368656D615F76657273696F6E01";
+// HEX-encoded serialized CBOR with content:
+// {
+//     "onboarding_meta_data": {
+//         "board_name": "fake_board",
+//         "cryptohome_user": "123456789012345678901",
+//         "cryptohome_user_type": 1,
+//         "device_user_id": "fake_device_user_id",
+//         "form_factor": "fake_form_factor",
+//         "recovery_id":
+//         "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+//         "rlz_code": "fake_rlz_code",
+//         "schema_version": 1
+//     },
+//     "public_timestamp": 1661126400,
+//     "requestor_user": "",
+//     "requestor_user_type": 0,
+//     "schema_version": 1,
+//     "timestamp": 1661162418
+// }
 constexpr char kFakePrivateLogEntryHex[] =
     "A6746F6E626F617264696E675F6D6574615F64617461A86A626F6172645F6E616D656A6661"
     "6B655F626F6172646F63727970746F686F6D655F7573657275313233343536373839303132"
@@ -76,6 +105,16 @@ const char* kFakeInclusionProof[] = {
     "BE3AA0DAFC1996A14A342F39A6CF0947E6E6DFB07FB59CBDF7A6A8E2AC68171D",
     "8608FB09D409AF849A9074D306A4FF5A3ABBE2DBACF0EE9EDC540854C3437EA9"};
 constexpr uint64_t kFakeLeafIndex = 55228;
+const OnboardingMetadata kFakeMetadata{
+    .cryptohome_user_type = UserType::kGaiaId,
+    .cryptohome_user = "123456789012345678901",
+    .device_user_id = "fake_device_user_id",
+    .board_name = "fake_board",
+    .form_factor = "fake_form_factor",
+    .rlz_code = "fake_rlz_code",
+    .recovery_id =
+        "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+};
 
 bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
   std::string str;
@@ -91,13 +130,24 @@ bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
 bool GetDevLedgerSignedProof(LedgerSignedProof* ledger_signed_proof) {
   LoggedRecord logged_record;
   if (!HexStringToBlob(kFakePublicLedgerEntryHex,
-                       &logged_record.public_ledger_entry)) {
+                       &logged_record.serialized_public_ledger_entry)) {
     LOG(ERROR) << "Failed to convert fake public ledger entry hex to Blob";
     return false;
   }
+  if (!DeserializePublicLedgerEntryFromCbor(
+          logged_record.serialized_public_ledger_entry,
+          &logged_record.public_ledger_entry)) {
+    LOG(ERROR) << "Failed to deserialize fake public ledger entry";
+    return false;
+  }
   if (!HexStringToBlob(kFakePrivateLogEntryHex,
-                       &logged_record.private_log_entry)) {
-    LOG(ERROR) << "Failed to convert fake private log entry hex to Blob";
+                       &logged_record.serialized_private_log_entry)) {
+    LOG(ERROR) << "Failed to deserialize fake private log entry";
+    return false;
+  }
+  if (!DeserializePrivateLogEntryFromCbor(
+          logged_record.serialized_private_log_entry,
+          &logged_record.private_log_entry)) {
     return false;
   }
   logged_record.leaf_index = kFakeLeafIndex;
@@ -179,8 +229,23 @@ TEST(InclusionProofTest, SuccessFromGeneratedData) {
                   .public_key = public_key};
   LedgerSignedProof generated_proof;
   ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
-      {generated_ledger_keys.get()}, info, &generated_proof));
-  EXPECT_TRUE(VerifyInclusionProof(generated_proof, info));
+      {generated_ledger_keys.get()}, info, kFakeMetadata, &generated_proof));
+  EXPECT_TRUE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
+}
+
+TEST(InclusionProofTest, FailedWithWrongMetadata) {
+  auto generated_ledger_keys = GenerateKeyPair();
+  brillo::SecureBlob public_key;
+  ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
+  LedgerInfo info{.name = "fake-ledger-name",
+                  .key_hash = 1234567890,
+                  .public_key = public_key};
+  LedgerSignedProof generated_proof;
+  ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
+      {generated_ledger_keys.get()}, info, kFakeMetadata, &generated_proof));
+  auto verify_metadata = kFakeMetadata;
+  verify_metadata.cryptohome_user = "different-cryptohome-user";
+  EXPECT_FALSE(VerifyInclusionProof(generated_proof, info, verify_metadata));
 }
 
 TEST(InclusionProofTest, FailedWithWrongSignature) {
@@ -192,25 +257,30 @@ TEST(InclusionProofTest, FailedWithWrongSignature) {
                   .public_key = public_key};
   LedgerSignedProof generated_proof;
   ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
-      {generated_ledger_keys.get()}, info, &generated_proof));
-  EXPECT_FALSE(VerifyInclusionProof(
-      generated_proof, LedgerInfo{.name = "different-fake-ledger-name",
-                                  .key_hash = info.key_hash,
-                                  .public_key = info.public_key}));
+      {generated_ledger_keys.get()}, info, kFakeMetadata, &generated_proof));
+  EXPECT_FALSE(
+      VerifyInclusionProof(generated_proof,
+                           LedgerInfo{.name = "different-fake-ledger-name",
+                                      .key_hash = info.key_hash,
+                                      .public_key = info.public_key},
+                           kFakeMetadata));
 
   EXPECT_FALSE(VerifyInclusionProof(generated_proof,
                                     LedgerInfo{.name = info.name,
                                                .key_hash = 9876543210,
-                                               .public_key = info.public_key}));
+                                               .public_key = info.public_key},
+                                    kFakeMetadata));
 
   auto different_generated_ledger_keys = GenerateKeyPair();
   brillo::SecureBlob different_public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(different_generated_ledger_keys,
                                         &different_public_key));
-  EXPECT_FALSE(VerifyInclusionProof(
-      generated_proof, LedgerInfo{.name = info.name,
-                                  .key_hash = info.key_hash,
-                                  .public_key = different_public_key}));
+  EXPECT_FALSE(
+      VerifyInclusionProof(generated_proof,
+                           LedgerInfo{.name = info.name,
+                                      .key_hash = info.key_hash,
+                                      .public_key = different_public_key},
+                           kFakeMetadata));
 }
 
 // Can successfully verify inclusion proof if it's signed with multiple keys.
@@ -233,23 +303,23 @@ TEST(InclusionProofTest, SuccessWithMultipleSignatures) {
     LedgerSignedProof generated_proof;
     ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
         {old_generated_ledger_keys.get(), new_generated_ledger_keys.get()},
-        info, &generated_proof));
-    EXPECT_TRUE(VerifyInclusionProof(generated_proof, info));
+        info, kFakeMetadata, &generated_proof));
+    EXPECT_TRUE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
   }
   // Verifiable signature followed by not verifiable signature.
   {
     LedgerSignedProof generated_proof;
     ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
         {new_generated_ledger_keys.get(), old_generated_ledger_keys.get()},
-        info, &generated_proof));
-    EXPECT_TRUE(VerifyInclusionProof(generated_proof, info));
+        info, kFakeMetadata, &generated_proof));
+    EXPECT_TRUE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
   }
 }
 
 TEST(InclusionProofTest, SuccessFromHardcodedData) {
   LedgerSignedProof proof;
   ASSERT_TRUE(GetDevLedgerSignedProof(&proof));
-  EXPECT_TRUE(VerifyInclusionProof(proof, GetDevLedgerInfo()));
+  EXPECT_TRUE(VerifyInclusionProof(proof, GetDevLedgerInfo(), kFakeMetadata));
 }
 
 }  // namespace cryptorecovery

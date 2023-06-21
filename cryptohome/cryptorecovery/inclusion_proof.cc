@@ -26,6 +26,7 @@
 #include <openssl/x509.h>
 
 #include "cryptohome/cryptorecovery/inclusion_proof_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
@@ -312,10 +313,83 @@ bool CalculateRootHash(const brillo::Blob& leaf,
   return true;
 }
 
+std::string GetOnboardingMetadataDiff(const OnboardingMetadata& expected,
+                                      const OnboardingMetadata& actual) {
+  std::vector<std::string> messages;
+  if (expected.cryptohome_user_type != actual.cryptohome_user_type) {
+    messages.push_back(base::StringPrintf(
+        "cryptohome_user_type: expected '%d' but got '%d'",
+        expected.cryptohome_user_type, actual.cryptohome_user_type));
+  }
+  if (expected.cryptohome_user != actual.cryptohome_user) {
+    messages.push_back(base::StringPrintf(
+        "cryptohome_user: expected '%s' but got '%s'",
+        expected.cryptohome_user.c_str(), actual.cryptohome_user.c_str()));
+  }
+  if (expected.device_user_id != actual.device_user_id) {
+    messages.push_back(base::StringPrintf(
+        "device_user_id: expected '%s' but got '%s'",
+        expected.device_user_id.c_str(), actual.device_user_id.c_str()));
+  }
+  if (expected.board_name != actual.board_name) {
+    messages.push_back(base::StringPrintf(
+        "board_name: expected '%s' but got '%s'", expected.board_name.c_str(),
+        actual.board_name.c_str()));
+  }
+  if (expected.form_factor != actual.form_factor) {
+    messages.push_back(base::StringPrintf(
+        "form_factor: expected '%s' but got '%s'", expected.form_factor.c_str(),
+        actual.form_factor.c_str()));
+  }
+  if (expected.rlz_code != actual.rlz_code) {
+    messages.push_back(
+        base::StringPrintf("rlz_code: expected '%s' but got '%s'",
+                           expected.rlz_code.c_str(), actual.rlz_code.c_str()));
+  }
+  if (expected.recovery_id != actual.recovery_id) {
+    messages.push_back(base::StringPrintf(
+        "recovery_id: expected '%s' but got '%s'", expected.recovery_id.c_str(),
+        actual.recovery_id.c_str()));
+  }
+  return base::JoinString(messages, "; ");
+}
+
+bool VerifyMetadata(const LoggedRecord& logged_record,
+                    const OnboardingMetadata& metadata) {
+  if (metadata.recovery_id != logged_record.public_ledger_entry.recovery_id) {
+    LOG(ERROR) << "Recovery id in public ledger entry doesn't match.";
+    return false;
+  }
+
+  if (metadata != logged_record.private_log_entry.onboarding_meta_data) {
+    LOG(ERROR) << "Onboarding metadata in private log entry doesn't match: "
+               << GetOnboardingMetadataDiff(
+                      metadata,
+                      logged_record.private_log_entry.onboarding_meta_data);
+    return false;
+  }
+
+  brillo::Blob private_log_hash = hwsec_foundation::Sha256(
+      brillo::Blob(logged_record.serialized_private_log_entry));
+  if (private_log_hash != logged_record.public_ledger_entry.log_entry_hash) {
+    LOG(ERROR) << "Log entry hash in public ledger entry doesn't match.";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
-                          const LedgerInfo& ledger_info) {
+                          const LedgerInfo& ledger_info,
+                          const OnboardingMetadata& metadata) {
+  // Check the metadata.
+  if (!VerifyMetadata(ledger_signed_proof.logged_record, metadata)) {
+    LOG(ERROR) << "Failed to verify metadata.";
+    return false;
+  }
+
   // Parse checkpoint note.
   Checkpoint check_point;
   if (!ParseCheckPoint(
@@ -327,10 +401,11 @@ bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
 
   // Calculate tree root.
   brillo::Blob calculated_root_hash;
-  if (!CalculateRootHash(ledger_signed_proof.logged_record.public_ledger_entry,
-                         ledger_signed_proof.inclusion_proof,
-                         ledger_signed_proof.logged_record.leaf_index,
-                         check_point.size, &calculated_root_hash)) {
+  if (!CalculateRootHash(
+          ledger_signed_proof.logged_record.serialized_public_ledger_entry,
+          ledger_signed_proof.inclusion_proof,
+          ledger_signed_proof.logged_record.leaf_index, check_point.size,
+          &calculated_root_hash)) {
     LOG(ERROR) << "Failed to calculate root hash.";
     return false;
   }

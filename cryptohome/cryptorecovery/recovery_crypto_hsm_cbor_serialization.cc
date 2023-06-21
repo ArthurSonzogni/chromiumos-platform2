@@ -4,8 +4,8 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -22,8 +22,9 @@ namespace cryptorecovery {
 
 namespace {
 
+template <typename Alloc>
 bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
-                      brillo::SecureBlob* blob_cbor) {
+                      std::vector<uint8_t, Alloc>* blob_cbor) {
   std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
   if (!serialized) {
@@ -34,7 +35,9 @@ bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
   return true;
 }
 
-std::optional<cbor::Value> ReadCborMap(const brillo::SecureBlob& map_cbor) {
+template <typename Alloc>
+std::optional<cbor::Value> ReadCborMap(
+    const std::vector<uint8_t, Alloc>& map_cbor) {
   cbor::Reader::DecoderError error_code;
   cbor::Reader::Config config;
   config.error_code_out = &error_code;
@@ -96,6 +99,24 @@ bool FindStringValueInCborMap(const cbor::Value::MapValue& map,
   return true;
 }
 
+bool FindIntegerValueInCborMap(const cbor::Value::MapValue& map,
+                               const std::string& key,
+                               int64_t* result) {
+  const auto entry = map.find(cbor::Value(key));
+  if (entry == map.end()) {
+    LOG(ERROR) << "No `" << key << "` entry in the CBOR map.";
+    return false;
+  }
+  if (!entry->second.is_integer()) {
+    LOG(ERROR) << "Wrongly formatted `" << key
+               << "` entry in the CBOR map (expected string).";
+    return false;
+  }
+
+  *result = entry->second.GetInteger();
+  return true;
+}
+
 cbor::Value::MapValue ConvertAeadPayloadToCborMap(const AeadPayload& payload) {
   cbor::Value::MapValue result;
 
@@ -144,25 +165,19 @@ bool ConvertCborMapToAeadPayload(const cbor::Value::MapValue& aead_payload_map,
 
 bool ConvertCborMapToOnboardingMetadata(
     const cbor::Value::MapValue& metadata_map, OnboardingMetadata* metadata) {
-  const auto user_type_entry =
-      metadata_map.find(cbor::Value(kCryptohomeUserType));
-  if (user_type_entry == metadata_map.end()) {
-    LOG(ERROR) << "No " << kCryptohomeUserType << " entry in the CBOR map.";
-    return false;
+  int64_t user_type_value;
+  if (!FindIntegerValueInCborMap(metadata_map, kCryptohomeUserType,
+                                 &user_type_value)) {
+    LOG(ERROR) << "Failed to get user type from the onboarding metadata map.";
   }
-  if (!user_type_entry->second.is_integer()) {
-    LOG(ERROR) << "Wrongly formatted " << kCryptohomeUserType
-               << " entry in the CBOR map.";
-    return false;
-  }
+
   UserType user_type;
-  switch (user_type_entry->second.GetInteger()) {
+  switch (user_type_value) {
     case static_cast<int>(UserType::kGaiaId):
       user_type = UserType::kGaiaId;
       break;
     default:
-      LOG(ERROR) << "User Type is unknown: "
-                 << user_type_entry->second.GetInteger();
+      LOG(ERROR) << "User Type is unknown: " << user_type_value;
       user_type = UserType::kUnknown;
       break;
   }
@@ -255,10 +270,10 @@ cbor::Value::MapValue ConvertLedgerSignedProofToCborMap(
   logged_record_map.emplace(kSchemaVersion, kLoggedRecordSchemaVersion);
   logged_record_map.emplace(
       kPublicLedgerEntryProof,
-      ledger_signed_proof.logged_record.public_ledger_entry);
+      ledger_signed_proof.logged_record.serialized_public_ledger_entry);
   logged_record_map.emplace(
       kPrivateLogEntryProof,
-      ledger_signed_proof.logged_record.private_log_entry);
+      ledger_signed_proof.logged_record.serialized_private_log_entry);
   logged_record_map.emplace(
       kLeafIndex, cbor::Value(ledger_signed_proof.logged_record.leaf_index));
 
@@ -274,38 +289,125 @@ cbor::Value::MapValue ConvertLedgerSignedProofToCborMap(
   return ledger_signed_proof_map;
 }
 
-bool ConvertCborMapToLoggedRecord(
-    const cbor::Value::MapValue& logged_record_map,
-    LoggedRecord* logged_record) {
-  brillo::Blob public_ledger_entry;
-  if (!FindBytestringValueInCborMap(logged_record_map, kPublicLedgerEntryProof,
-                                    &public_ledger_entry)) {
+bool ConvertCborToPublicLedgerEntry(const brillo::Blob& entry_cbor,
+                                    PublicLedgerEntry* public_ledger_entry) {
+  const auto& cbor = ReadCborMap(entry_cbor);
+  if (!cbor) {
+    return false;
+  }
+  brillo::Blob log_entry_hash;
+  if (!FindBytestringValueInCborMap(cbor->GetMap(), kLogEntryHash,
+                                    &log_entry_hash)) {
+    LOG(ERROR)
+        << "Failed to get public ledger entry from the logged record map.";
+    return false;
+  }
+  std::string recovery_id;
+  if (!FindStringValueInCborMap(cbor->GetMap(), kRecoveryId, &recovery_id)) {
     LOG(ERROR)
         << "Failed to get public ledger entry from the logged record map.";
     return false;
   }
 
-  brillo::Blob private_log_entry;
+  int64_t pub_timestamp;
+  if (!FindIntegerValueInCborMap(cbor->GetMap(), kPublicTimestamp,
+                                 &pub_timestamp)) {
+    LOG(ERROR) << "Failed to get public timestamp from the logged record map.";
+  }
+
+  public_ledger_entry->public_timestamp = pub_timestamp;
+  public_ledger_entry->log_entry_hash = log_entry_hash;
+  public_ledger_entry->recovery_id = recovery_id;
+
+  return true;
+}
+
+bool ConvertCborToPrivateLogEntry(const brillo::Blob& entry_cbor,
+                                  PrivateLogEntry* private_log_entry) {
+  const auto& cbor = ReadCborMap(entry_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const auto& cbor_map = cbor->GetMap();
+  int64_t timestamp;
+  if (!FindIntegerValueInCborMap(cbor->GetMap(), kTimestamp, &timestamp)) {
+    LOG(ERROR) << "Failed to get timestamp from the private log map.";
+  }
+  int64_t pub_timestamp;
+  if (!FindIntegerValueInCborMap(cbor->GetMap(), kPublicTimestamp,
+                                 &pub_timestamp)) {
+    LOG(ERROR) << "Failed to get public timestamp from the private log map.";
+  }
+
+  const auto onboarding_meta_data_entry =
+      cbor_map.find(cbor::Value(kOnboardingMetaData));
+  if (onboarding_meta_data_entry == cbor_map.end()) {
+    LOG(ERROR) << "No " << kOnboardingMetaData
+               << " entry in the private log entry map.";
+    return false;
+  }
+  if (!onboarding_meta_data_entry->second.is_map()) {
+    LOG(ERROR) << "Wrongly formatted " << kOnboardingMetaData
+               << " entry in the private log entry map.";
+    return false;
+  }
+  if (!ConvertCborMapToOnboardingMetadata(
+          onboarding_meta_data_entry->second.GetMap(),
+          &private_log_entry->onboarding_meta_data)) {
+    LOG(ERROR) << "Failed to deserialize Onboarding metadata from CBOR.";
+    return false;
+  }
+
+  private_log_entry->timestamp = timestamp;
+  private_log_entry->public_timestamp = pub_timestamp;
+
+  return true;
+}
+
+bool ConvertCborMapToLoggedRecord(
+    const cbor::Value::MapValue& logged_record_map,
+    LoggedRecord* logged_record) {
+  brillo::Blob serialized_public_ledger_entry;
+  if (!FindBytestringValueInCborMap(logged_record_map, kPublicLedgerEntryProof,
+                                    &serialized_public_ledger_entry)) {
+    LOG(ERROR)
+        << "Failed to get public ledger entry from the logged record map.";
+    return false;
+  }
+
+  brillo::Blob serialized_private_log_entry;
   if (!FindBytestringValueInCborMap(logged_record_map, kPrivateLogEntryProof,
-                                    &private_log_entry)) {
+                                    &serialized_private_log_entry)) {
     LOG(ERROR) << "Failed to get private log entry from the logged record map.";
     return false;
   }
 
-  const auto leaf_index_entry = logged_record_map.find(cbor::Value(kLeafIndex));
-  if (leaf_index_entry == logged_record_map.end()) {
-    LOG(ERROR) << "No " << kLeafIndex << " entry in the logged record map.";
-    return false;
+  int64_t leaf_index;
+  if (!FindIntegerValueInCborMap(logged_record_map, kLeafIndex, &leaf_index)) {
+    LOG(ERROR) << "Failed to get leaf index from the logged record map.";
   }
-  if (!leaf_index_entry->second.is_integer()) {
-    LOG(ERROR) << "Wrongly formatted " << kLeafIndex
-               << " entry in the logged record map.";
+
+  PublicLedgerEntry public_entry;
+  if (!ConvertCborToPublicLedgerEntry(serialized_public_ledger_entry,
+                                      &public_entry)) {
+    LOG(ERROR) << "Failed to convert public ledger entry CBOR.";
     return false;
   }
 
-  logged_record->public_ledger_entry = public_ledger_entry;
-  logged_record->private_log_entry = private_log_entry;
-  logged_record->leaf_index = leaf_index_entry->second.GetInteger();
+  PrivateLogEntry private_entry;
+  if (!ConvertCborToPrivateLogEntry(serialized_private_log_entry,
+                                    &private_entry)) {
+    LOG(ERROR) << "Failed to convert private log entry CBOR.";
+    return false;
+  }
+  logged_record->public_ledger_entry = std::move(public_entry);
+  logged_record->private_log_entry = std::move(private_entry);
+
+  logged_record->serialized_public_ledger_entry =
+      serialized_public_ledger_entry;
+  logged_record->serialized_private_log_entry = serialized_private_log_entry;
+  logged_record->leaf_index = leaf_index;
   return true;
 }
 
@@ -394,6 +496,9 @@ const char kResponseHsmMetaData[] = "hsm_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
 const char kPublicLedgerEntryProof[] = "public_ledger_entry";
 const char kPrivateLogEntryProof[] = "private_log_entry";
+const char kLogEntryHash[] = "log_entry_hash";
+const char kTimestamp[] = "timestamp";
+const char kPublicTimestamp[] = "public_timestamp";
 const char kLeafIndex[] = "leaf_index";
 const char kCheckpointNote[] = "checkpoint_note";
 const char kInclusionProof[] = "inclusion_proof";
@@ -588,6 +693,34 @@ bool SerializeHsmPayloadToCbor(const HsmPayload& hsm_payload,
 
   if (!SerializeCborMap(hsm_payload_map, serialized_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM payload to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool SerializePublicLedgerEntryToCbor(
+    const PublicLedgerEntry& public_ledger_entry,
+    brillo::Blob* serialized_cbor) {
+  cbor::Value::MapValue map;
+  map.emplace(kLogEntryHash, public_ledger_entry.log_entry_hash);
+  map.emplace(kPublicTimestamp, public_ledger_entry.public_timestamp);
+  map.emplace(kRecoveryId, public_ledger_entry.recovery_id);
+  if (!SerializeCborMap(map, serialized_cbor)) {
+    LOG(ERROR) << "Failed to serialize public ledger entry to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool SerializePrivateLogEntryToCbor(const PrivateLogEntry& private_log_entry,
+                                    brillo::Blob* serialized_cbor) {
+  cbor::Value::MapValue map;
+  map.emplace(kPublicTimestamp, private_log_entry.public_timestamp);
+  map.emplace(kTimestamp, private_log_entry.timestamp);
+  map.emplace(kOnboardingMetaData, ConvertOnboardingMetadataToCborMap(
+                                       private_log_entry.onboarding_meta_data));
+  if (!SerializeCborMap(map, serialized_cbor)) {
+    LOG(ERROR) << "Failed to serialize private log entry to CBOR";
     return false;
   }
   return true;
@@ -863,7 +996,7 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
   LedgerSignedProof ledger_signed_proof;
   if (!ConvertCborMapToLedgerSignedProof(
           ledger_signed_proof_entry->second.GetMap(), &ledger_signed_proof)) {
-    LOG(ERROR) << "Failed to deserialize Response payload from CBOR.";
+    LOG(ERROR) << "Failed to deserialize LedgerSignedProof from CBOR.";
     return false;
   }
 
@@ -896,6 +1029,20 @@ bool DeserializeEpochMetadataFromCbor(
 
   epoch_metadata->meta_data_cbor = std::move(cbor.value());
   return true;
+}
+
+bool DeserializePublicLedgerEntryFromCbor(
+    const brillo::Blob& public_ledger_entry_cbor,
+    PublicLedgerEntry* public_ledger_entry) {
+  return ConvertCborToPublicLedgerEntry(public_ledger_entry_cbor,
+                                        public_ledger_entry);
+}
+
+bool DeserializePrivateLogEntryFromCbor(
+    const brillo::Blob& private_log_entry_cbor,
+    PrivateLogEntry* private_log_entry) {
+  return ConvertCborToPrivateLogEntry(private_log_entry_cbor,
+                                      private_log_entry);
 }
 
 bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,

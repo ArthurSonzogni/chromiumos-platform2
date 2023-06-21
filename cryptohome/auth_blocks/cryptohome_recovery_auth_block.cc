@@ -380,6 +380,33 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
         nullptr, std::nullopt);
     return;
   }
+
+  // Deserialize HSM payload from CryptohomeRecoveryAuthBlockState.
+  cryptorecovery::HsmPayload hsm_payload;
+  if (!cryptorecovery::DeserializeHsmPayloadFromCbor(auth_state->hsm_payload,
+                                                     &hsm_payload)) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockFailedReadPayloadInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot, PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
+  }
+
+  cryptorecovery::HsmAssociatedData hsm_associated_data;
+  if (!cryptorecovery::DeserializeHsmAssociatedDataFromCbor(
+          hsm_payload.associated_data, &hsm_associated_data)) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockFailedReadADInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot, PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
+  }
   HsmResponsePlainText response_plain_text;
   CryptoStatus decrypt_result = recovery->DecryptResponsePayload(
       cryptorecovery::DecryptResponsePayloadRequest(
@@ -391,7 +418,8 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                {.name = cryptohome_recovery_auth_input.ledger_name,
                 .key_hash = cryptohome_recovery_auth_input.ledger_key_hash,
                 .public_key =
-                    cryptohome_recovery_auth_input.ledger_public_key.value()}}),
+                    cryptohome_recovery_auth_input.ledger_public_key.value()},
+           .hsm_associated_data = hsm_associated_data}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     std::move(callback).Run(

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/writer.h>
 #include <crypto/scoped_openssl_types.h>
@@ -59,6 +60,65 @@ const char kFakeMetadataCborValue[] = "fake metadata cbor value";
 const char kFakeResponsePayloadWithOutOfOrderKeyHex[] =
     "A4637461674866616B65207461676261644766616B652061646263745066616B6520636970"
     "68657220746578746269764766616B65206976";
+// HEX-encoded serialized CBOR with content:
+// {
+//     "log_entry_hash": h
+//     'CC1CAB36511F9D6BFFB6456F69C1711021F8CCBB57D6699496A1FFCF634B1AFD',
+//     "public_timestamp": 1661126400,
+//     "recovery_id":
+//     "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+//     "schema_version": 1
+// }
+constexpr char kFakePublicLedgerEntryHex[] =
+    "A46E6C6F675F656E7472795F686173685820CC1CAB36511F9D6BFFB6456F69C1711021F8CC"
+    "BB57D6699496A1FFCF634B1AFD707075626C69635F74696D657374616D701A6302C7006B72"
+    "65636F766572795F6964784035306161633730663632343064343031333266366335336233"
+    "66643036373533326336323331336537626162316136323531656261363964643432386266"
+    "35356E736368656D615F76657273696F6E01";
+// HEX-encoded serialized CBOR with content:
+// {
+//     "onboarding_meta_data": {
+//         "board_name": "fake_board",
+//         "cryptohome_user": "123456789012345678901",
+//         "cryptohome_user_type": 1,
+//         "device_user_id": "fake_device_user_id",
+//         "form_factor": "fake_form_factor",
+//         "recovery_id":
+//         "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+//         "rlz_code": "fake_rlz_code",
+//         "schema_version": 1
+//     },
+//     "public_timestamp": 1661126400,
+//     "requestor_user": "",
+//     "requestor_user_type": 0,
+//     "schema_version": 1,
+//     "timestamp": 1661162418
+// }
+constexpr char kFakePrivateLogEntryHex[] =
+    "A6746F6E626F617264696E675F6D6574615F64617461A86A626F6172645F6E616D656A6661"
+    "6B655F626F6172646F63727970746F686F6D655F7573657275313233343536373839303132"
+    "3334353637383930317463727970746F686F6D655F757365725F74797065016E6465766963"
+    "655F757365725F69647366616B655F6465766963655F757365725F69646B666F726D5F6661"
+    "63746F727066616B655F666F726D5F666163746F726B7265636F766572795F696478403530"
+    "61616337306636323430643430313332663663353362336664303637353332633632333133"
+    "6537626162316136323531656261363964643432386266353568726C7A5F636F64656D6661"
+    "6B655F726C7A5F636F64656E736368656D615F76657273696F6E01707075626C69635F7469"
+    "6D657374616D701A6302C7006E726571756573746F725F757365726073726571756573746F"
+    "725F757365725F74797065006E736368656D615F76657273696F6E016974696D657374616D"
+    "701A630353B2";
+constexpr int kFakeTimestamp = 1661162418;
+constexpr int kFakePublicTimestamp = 1661126400;
+const OnboardingMetadata kFakeMetadata{
+    .cryptohome_user_type = UserType::kGaiaId,
+    .cryptohome_user = "123456789012345678901",
+    .device_user_id = "fake_device_user_id",
+    .board_name = "fake_board",
+    .form_factor = "fake_form_factor",
+    .rlz_code = "fake_rlz_code",
+    .recovery_id =
+        "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
+};
+
 bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
                              brillo::SecureBlob* serialized_cbor_map) {
   return SerializeCborForTesting(cbor::Value(map), serialized_cbor_map);
@@ -274,10 +334,15 @@ class RecoveryRequestCborHelperTest : public testing::Test {
 
 class ResponsePayloadCborHelperTest : public testing::Test {
  public:
-  ResponsePayloadCborHelperTest() {
+  ResponsePayloadCborHelperTest() = default;
+
+  void SetUp() override {
     LoggedRecord logged_record;
-    logged_record.public_ledger_entry = kFakePublicLedgerEntry;
-    logged_record.private_log_entry = kFakePrivateLogEntry;
+    ASSERT_TRUE(
+        base::HexStringToBytes(kFakePublicLedgerEntryHex,
+                               &logged_record.serialized_public_ledger_entry));
+    ASSERT_TRUE(base::HexStringToBytes(
+        kFakePrivateLogEntryHex, &logged_record.serialized_private_log_entry));
     ledger_signed_proof_.logged_record = logged_record;
     ledger_signed_proof_.checkpoint_note = kFakeCheckpointNote;
     ledger_signed_proof_.inclusion_proof = kFakeInclusionProof;
@@ -291,13 +356,31 @@ class ResponsePayloadCborHelperTest : public testing::Test {
       CreateSecureRandomBlob(kEc256PrivKeySize);
   const brillo::SecureBlob salt_{kFakeResponseSalt};
 
-  const std::vector<uint8_t> kFakePublicLedgerEntry = {100, 200, 250};
-  const std::vector<uint8_t> kFakePrivateLogEntry = {100, 200, 250};
   const std::vector<uint8_t> kFakeCheckpointNote = {100, 200, 250};
   const std::vector<std::vector<uint8_t>> kFakeInclusionProof = {
       std::vector<uint8_t>({100, 200, 250})};
   LedgerSignedProof ledger_signed_proof_;
 };
+
+TEST_F(ResponsePayloadCborHelperTest, DeserializePublicLedgerEntryFromCbor) {
+  auto serialized_entry =
+      ledger_signed_proof_.logged_record.serialized_public_ledger_entry;
+  PublicLedgerEntry public_ledger_entry;
+  EXPECT_TRUE(DeserializePublicLedgerEntryFromCbor(serialized_entry,
+                                                   &public_ledger_entry));
+  EXPECT_EQ(public_ledger_entry.recovery_id, kFakeMetadata.recovery_id);
+  EXPECT_EQ(public_ledger_entry.public_timestamp, kFakePublicTimestamp);
+}
+
+TEST_F(ResponsePayloadCborHelperTest, DeserializePrivateLogEntryFromCbor) {
+  auto serialized_entry =
+      ledger_signed_proof_.logged_record.serialized_private_log_entry;
+  PrivateLogEntry private_log_entry;
+  EXPECT_TRUE(
+      DeserializePrivateLogEntryFromCbor(serialized_entry, &private_log_entry));
+  EXPECT_EQ(private_log_entry.public_timestamp, kFakePublicTimestamp);
+  EXPECT_EQ(private_log_entry.timestamp, kFakeTimestamp);
+}
 
 // Verifies serialization of HSM payload associated data to CBOR.
 TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
@@ -828,8 +911,29 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeAssociatedData) {
   EXPECT_EQ(response_ad.response_payload_salt, salt_);
   EXPECT_EQ(response_ad.ledger_signed_proof.checkpoint_note,
             kFakeCheckpointNote);
-  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.public_ledger_entry,
-            kFakePublicLedgerEntry);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record
+                .serialized_public_ledger_entry,
+            ledger_signed_proof_.logged_record.serialized_public_ledger_entry);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record
+                .serialized_private_log_entry,
+            ledger_signed_proof_.logged_record.serialized_private_log_entry);
+  EXPECT_EQ(
+      response_ad.ledger_signed_proof.logged_record.private_log_entry.timestamp,
+      kFakeTimestamp);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .public_timestamp,
+            kFakePublicTimestamp);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.private_log_entry
+                .onboarding_meta_data,
+            kFakeMetadata);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.public_ledger_entry
+                .recovery_id,
+            kFakeMetadata.recovery_id);
+  EXPECT_EQ(response_ad.ledger_signed_proof.logged_record.public_ledger_entry
+                .public_timestamp,
+            kFakePublicTimestamp);
+  // Note: Don't check the map size, as the CBOR sent from the server may
+  // contain additional fields.
 }
 
 // Verifies that deserialization of Response payload associated data from CBOR

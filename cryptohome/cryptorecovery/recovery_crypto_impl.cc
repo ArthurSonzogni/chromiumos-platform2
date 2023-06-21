@@ -852,7 +852,8 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
 
   // Verify inclusion proof.
   if (!VerifyInclusionProof(response_ad.ledger_signed_proof,
-                            request.ledger_info)) {
+                            request.ledger_info,
+                            request.hsm_associated_data.onboarding_meta_data)) {
     LOG(ERROR) << "Unable to verify inclusion proof";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadLedgerSignedProof),

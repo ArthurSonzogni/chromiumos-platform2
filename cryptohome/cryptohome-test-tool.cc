@@ -52,6 +52,7 @@ using cryptohome::cryptorecovery::CryptoRecoveryRpcRequest;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcResponse;
 using cryptohome::cryptorecovery::DecryptResponsePayloadRequest;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
+using cryptohome::cryptorecovery::HsmAssociatedData;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::LedgerInfo;
@@ -378,10 +379,12 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& destination_share_in_file_path,
     const FilePath& extended_pcr_bound_destination_share_in_file_path,
     const FilePath& ledger_info_in_file_path,
+    const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& recovery_secret_out_file_path,
     Platform* platform) {
   SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
-      destination_share, extended_pcr_bound_destination_share;
+      destination_share, extended_pcr_bound_destination_share,
+      serialized_hsm_payload;
   if (!ReadHexFileToSecureBlobLogged(recovery_response_in_file_path,
                                      &recovery_response) ||
       !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
@@ -390,6 +393,8 @@ bool DoRecoveryCryptoDecryptAction(
                                      &ephemeral_pub_key) ||
       !ReadHexFileToSecureBlobLogged(destination_share_in_file_path,
                                      &destination_share) ||
+      !ReadHexFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
+                                     &serialized_hsm_payload) ||
       !ReadHexFileToSecureBlobLogged(
           extended_pcr_bound_destination_share_in_file_path,
           &extended_pcr_bound_destination_share)) {
@@ -417,6 +422,19 @@ bool DoRecoveryCryptoDecryptAction(
     }
   }
 
+  HsmPayload hsm_payload;
+  if (!DeserializeHsmPayloadFromCbor(serialized_hsm_payload, &hsm_payload)) {
+    LOG(ERROR) << "Failed to deserialize HSM payload.";
+    return false;
+  }
+
+  HsmAssociatedData hsm_associated_data;
+  if (!DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                            &hsm_associated_data)) {
+    LOG(ERROR) << "Failed to deserialize HSM payload AD.";
+    return false;
+  }
+
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
       RecoveryCryptoImpl::Create(GetRecoveryCryptoFrontend(), platform);
   if (!recovery_crypto) {
@@ -441,7 +459,8 @@ bool DoRecoveryCryptoDecryptAction(
            .epoch_response = epoch_response,
            .recovery_response_proto = recovery_response_proto,
            .obfuscated_username = GetTestObfuscatedUsername(),
-           .ledger_info = ledger_info}),
+           .ledger_info = ledger_info,
+           .hsm_associated_data = hsm_associated_data}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     LOG(ERROR) << "Failed to decrypt response payload "
@@ -772,6 +791,8 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag(
             "extended_pcr_bound_destination_share_in_file",
             FLAGS_extended_pcr_bound_destination_share_in_file) &&
+        CheckMandatoryFlag("serialized_hsm_payload_in_file",
+                           FLAGS_serialized_hsm_payload_in_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
       success = cryptohome::DoRecoveryCryptoDecryptAction(
@@ -782,6 +803,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_destination_share_in_file),
           FilePath(FLAGS_extended_pcr_bound_destination_share_in_file),
           FilePath(FLAGS_ledger_info_in_file),
+          FilePath(FLAGS_serialized_hsm_payload_in_file),
           FilePath(FLAGS_recovery_secret_out_file), &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_get_fake_epoch") {

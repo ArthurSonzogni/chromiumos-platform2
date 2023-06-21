@@ -1343,6 +1343,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockNoRecoveryResponseInDerive = 1915,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockNoLedgerPubKeyInDerive = 1916,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockFailedReadPayloadInDerive = 1917,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockFailedReadADInDerive = 1918,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2100
   //// See location_db.py for more info.

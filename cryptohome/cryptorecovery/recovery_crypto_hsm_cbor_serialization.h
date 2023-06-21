@@ -40,6 +40,9 @@ extern const char kResponseHsmMetaData[];
 extern const char kResponsePayloadSalt[];
 extern const char kPublicLedgerEntryProof[];
 extern const char kPrivateLogEntryProof[];
+extern const char kLogEntryHash[];
+extern const char kTimestamp[];
+extern const char kPublicTimestamp[];
 extern const char kLeafIndex[];
 extern const char kCheckpointNote[];
 extern const char kInclusionProof[];
@@ -117,6 +120,15 @@ extern const int kLedgerSignedProofSchemaVersion;
 [[nodiscard]] bool SerializeHsmPayloadToCbor(
     const HsmPayload& hsm_payload, brillo::SecureBlob* serialized_cbor);
 
+// Constructs cbor-encoded binary blob from PublicLedgerEntry.
+[[nodiscard]] bool SerializePublicLedgerEntryToCbor(
+    const PublicLedgerEntry& public_ledger_entry,
+    brillo::Blob* serialized_cbor);
+
+// Constructs cbor-encoded binary blob from PrivateLogEntry.
+[[nodiscard]] bool SerializePrivateLogEntryToCbor(
+    const PrivateLogEntry& private_log_entry, brillo::Blob* serialized_cbor);
+
 // Extracts data from HSM payload cbor.
 [[nodiscard]] bool DeserializeHsmPayloadFromCbor(
     const brillo::SecureBlob& serialized_cbor, HsmPayload* hsm_payload);
@@ -163,6 +175,16 @@ extern const int kLedgerSignedProofSchemaVersion;
 [[nodiscard]] bool DeserializeEpochMetadataFromCbor(
     const brillo::SecureBlob& epoch_metadata_cbor,
     EpochMetadata* epoch_metadata);
+
+// Extracts data from PublicLedgerEntry cbor.
+[[nodiscard]] bool DeserializePublicLedgerEntryFromCbor(
+    const brillo::Blob& public_ledger_entry_cbor,
+    PublicLedgerEntry* public_ledger_entry);
+
+// Extracts data from PrivateLogEntry cbor.
+[[nodiscard]] bool DeserializePrivateLogEntryFromCbor(
+    const brillo::Blob& private_log_entry_cbor,
+    PrivateLogEntry* private_log_entry);
 
 //============================================================================
 // The methods below are for testing only.

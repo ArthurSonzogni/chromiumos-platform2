@@ -20,6 +20,7 @@ namespace cryptorecovery {
 [[nodiscard]] bool GenerateFakeLedgerSignedProofForTesting(
     const std::vector<EC_KEY*>& fake_ledger_private_keys,
     const LedgerInfo& ledger_info,
+    const OnboardingMetadata& metadata,
     LedgerSignedProof* ledger_signed_proof);
 
 }  // namespace cryptorecovery
