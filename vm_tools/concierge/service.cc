@@ -256,6 +256,11 @@ constexpr uint64_t kTbwTargetForVmmSwapPerDay = 550 * 1024 * 1024;  // 550 MiB
 constexpr char kVmmSwapTbwHistoryFilePath[] =
     "/var/lib/vm_concierge/vmm_swap_policy/tbw_history";
 
+// Maximum size of logs to send through D-Bus. Must be less than the maximum
+// D-Bus array length (64 MiB) and the configured maximum message size for the
+// system bus (usually 32 MiB).
+constexpr int64_t kMaxGetVmLogsSize = 30 * 1024 * 1024;  // 30 MiB
+
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
   std::optional<base::ScopedFD> kernel_fd;
@@ -4698,14 +4703,31 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
       GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogFileExt);
 
   std::vector<base::FilePath> paths;
+  int64_t remaining_log_space = kMaxGetVmLogsSize;
   if (base::PathExists(log_path)) {
+    int64_t size;
+    bool ok = base::GetFileSize(log_path, &size);
+    if (!ok) {
+      *error =
+          brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED, "Failed to get log size");
+      return false;
+    }
+    remaining_log_space -= size;
     paths.push_back(log_path);
 
     for (int i = 1; i <= 5; i++) {
       base::FilePath older_log_path =
           log_path.AddExtension(base::NumberToString(i));
 
-      if (base::PathExists(older_log_path)) {
+      // Don't read older logs if the total log size read is above the limit.
+      if (base::PathExists(older_log_path) && remaining_log_space > 0) {
+        ok = base::GetFileSize(older_log_path, &size);
+        if (!ok) {
+          break;
+        }
+
+        remaining_log_space -= size;
         paths.push_back(older_log_path);
       } else {
         break;
@@ -4719,7 +4741,14 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
       continue;
     }
 
-    response->mutable_log()->append(file_contents);
+    std::string_view contents_view{file_contents};
+    // Truncate the earliest log, if it would exceed the log size limit.
+    if (remaining_log_space < 0) {
+      contents_view.remove_prefix(-remaining_log_space);
+      remaining_log_space = 0;
+    }
+
+    response->mutable_log()->append(contents_view);
   }
 
   return true;
