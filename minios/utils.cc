@@ -4,14 +4,19 @@
 
 #include "minios/utils.h"
 
+#include <cstdint>
 #include <cstdio>
+#include <istream>
 #include <memory>
+#include <optional>
+#include <string>
 #include <tuple>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
 #include "minios/minios.h"
@@ -30,6 +35,11 @@ const char kTarCompressFlags[] = "-czhf";
 
 const std::vector<std::string> kFilesToCompress{
     "/var/log/update_engine.log", "/var/log/upstart.log", "/var/log/messages"};
+// NOLINTNEXTLINE
+const std::string kFutilityShowCmd[]{"/usr/bin/futility", "show", "-P"};
+const char kKeyblockSizePrefix[] = "kernel::keyblock::size::";
+const char kKernelPreambleSizePrefix[] = "kernel::preamble::size::";
+const char kKernelBodySizePrefix[] = "kernel::body::size::";
 }  // namespace
 
 namespace minios {
@@ -231,6 +241,81 @@ int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
                                          .input = console.value(),
                                          .output = console.value(),
                                      });
+}
+
+// Helper function to step through futility output and return integer values.
+std::optional<uint64_t> ParseFutilityOutputInt(
+    const std::string& futility_output, const std::string& key) {
+  std::string line;
+  std::istringstream ft_output(futility_output);
+  // Tokenize the key.
+  auto key_tok = base::SplitStringUsingSubstr(key, "::", base::TRIM_WHITESPACE,
+                                              base::SPLIT_WANT_NONEMPTY);
+  // Step through the provided output one line at a time.
+  while (std::getline(ft_output, line)) {
+    // Tokenize the line.
+    auto line_tok = base::SplitStringUsingSubstr(
+        line, "::", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    // The line will only have 1 more element than the key (the value).
+    if (line_tok.size() == key_tok.size() + 1 &&
+        std::equal(line_tok.begin(), line_tok.end() - 1, key_tok.begin())) {
+      uint64_t val;
+      if (!base::StringToUint64(line_tok.back(), &val)) {
+        LOG(ERROR) << "Parsed value was not a number " << line_tok.back();
+        return std::nullopt;
+      }
+      return val;
+    }
+  }
+
+  LOG(ERROR) << "No Match found for key " << key;
+  return std::nullopt;
+}
+
+// Kernel sizes are calculated by parsing out and adding together keyblock
+// size, kernel preamble size and kernel body size. Failure to find any of
+// them, or if any are set to 0 returns a nullopt, otherwise returns the sum
+// of those numbers.
+std::optional<uint64_t> KernelSize(
+    std::unique_ptr<ProcessManagerInterface> process_manager,
+    const base::FilePath& device) {
+  std::vector<std::string> futility_show_command{begin(kFutilityShowCmd),
+                                                 end(kFutilityShowCmd)};
+  futility_show_command.push_back(device.value().c_str());
+
+  int return_code = 0;
+  std::string std_out, std_err;
+  // Run futility command for a given path to begin parsing output.
+  if (!process_manager->RunCommandWithOutput(
+          futility_show_command, &return_code, &std_out, &std_err) ||
+      return_code != 0) {
+    LOG(ERROR) << "Failed to run futility command, code: " << return_code;
+    return std::nullopt;
+  }
+
+  const auto keyblock_size =
+      ParseFutilityOutputInt(std_out, kKeyblockSizePrefix);
+  if (!keyblock_size.has_value() || keyblock_size.value() == 0) {
+    LOG(ERROR) << "Keyblock size not found, or invalid";
+    return std::nullopt;
+  }
+
+  auto kernel_preamble_size =
+      ParseFutilityOutputInt(std_out, kKernelPreambleSizePrefix);
+  if (!kernel_preamble_size.has_value() || kernel_preamble_size.value() == 0) {
+    LOG(ERROR) << "Kernel preamble size not found, or invalid";
+    return std::nullopt;
+  }
+
+  auto kernel_body_size =
+      ParseFutilityOutputInt(std_out, kKernelBodySizePrefix);
+  if (!kernel_body_size.has_value() || kernel_body_size.value() == 0) {
+    LOG(ERROR) << "Kernel body size not found, or invalid";
+    return std::nullopt;
+  }
+
+  return keyblock_size.value() + kernel_preamble_size.value() +
+         kernel_body_size.value();
 }
 
 }  // namespace minios

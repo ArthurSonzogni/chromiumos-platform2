@@ -5,7 +5,9 @@
 #ifndef MINIOS_UTILS_H_
 #define MINIOS_UTILS_H_
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 
@@ -82,6 +84,11 @@ bool MountStatefulPartition(ProcessManagerInterface* process_manager);
 // Returns the result of running a `tar` command.
 int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
                  const base::FilePath& archive_path = kDefaultArchivePath);
+
+// Calculate kernel size.
+std::optional<uint64_t> KernelSize(
+    std::unique_ptr<ProcessManagerInterface> process_manager,
+    const base::FilePath& device);
 
 }  // namespace minios
 #endif  // MINIOS_UTILS_H__

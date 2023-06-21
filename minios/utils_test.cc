@@ -19,7 +19,10 @@
 namespace minios {
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::HasSubstr;
+using ::testing::Optional;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 class UtilTest : public ::testing::Test {
@@ -191,6 +194,7 @@ TEST(UtilsTest, MountStatefulPartitionTest) {
   EXPECT_FALSE(MountStatefulPartition(mock_process_manager_.get()));
   EXPECT_FALSE(MountStatefulPartition(nullptr));
 }
+
 TEST(UtilsTest, CompressLogsTest) {
   auto mock_process_manager = std::make_unique<MockProcessManager>();
   const auto archive_path = "/path/to/store/archive";
@@ -201,6 +205,83 @@ TEST(UtilsTest, CompressLogsTest) {
   EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _));
 
   CompressLogs(std::move(mock_process_manager), base::FilePath{archive_path});
+}
+
+TEST(UtilsTest, KernelSizeTest) {
+  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  const auto device_path = "/dev/device0p1";
+  std::vector<std::string> expected_cmd = {"/usr/bin/futility", "show", "-P",
+                                           device_path};
+  const std::string futility_output =
+      std::string{"kernel_partition::/dev/nvme0n1p9\n"} +
+      std::string{"kernel::keyblock::size::1\n"} +
+      std::string{"kernel::preamble::size::10\n"} +
+      std::string{"kernel::preamble::body::load_address::0x100000\n"} +
+      std::string{"kernel::body::size::100\n"};
+
+  EXPECT_CALL(*mock_process_manager,
+              RunCommandWithOutput(expected_cmd, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                      testing::Return(true)));
+
+  EXPECT_THAT(
+      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
+      Optional(111));
+}
+
+TEST(UtilsTest, KernelSizeFailuresTest) {
+  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  const auto device_path = "/dev/device0p1";
+  std::vector<std::string> expected_cmd = {"/usr/bin/futility", "show", "-P",
+                                           device_path};
+  // Test out empty string.
+  std::string futility_output = "";
+  mock_process_manager = std::make_unique<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager,
+              RunCommandWithOutput(expected_cmd, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                      testing::Return(true)));
+  EXPECT_EQ(
+      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
+      std::nullopt);
+
+  // Missing kernel body size.
+  futility_output = std::string{"kernel::keyblock::size::2232\n"} +
+                    std::string{"kernel::preamble::size::63304\n"};
+  mock_process_manager = std::make_unique<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager,
+              RunCommandWithOutput(expected_cmd, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                      testing::Return(true)));
+  EXPECT_EQ(
+      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
+      std::nullopt);
+
+  // 0 kernel body size.
+  futility_output = std::string{"kernel::keyblock::size::2232\n"} +
+                    std::string{"kernel::preamble::size::63304\n"} +
+                    std::string{"kernel::body::size::0\n"};
+  mock_process_manager = std::make_unique<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager,
+              RunCommandWithOutput(expected_cmd, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                      testing::Return(true)));
+  EXPECT_EQ(
+      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
+      std::nullopt);
+
+  // Non number value for keyblock size.
+  futility_output = std::string{"keyblock::size::bad_val\n"} +
+                    std::string{"kernel::preamble::size::63304\n"} +
+                    std::string{"kernel::preamble::body::size::50\n"};
+  mock_process_manager = std::make_unique<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager,
+              RunCommandWithOutput(expected_cmd, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                      testing::Return(true)));
+  EXPECT_EQ(
+      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
+      std::nullopt);
 }
 
 }  // namespace minios
