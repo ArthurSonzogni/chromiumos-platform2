@@ -86,6 +86,10 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   bool CacheDeviceInfo();
 
   // Check hardware requirement based on feature level
+  // Currently for feature level 1 device, we need:
+  // - 8GB of RAM
+  // - 128GB SSD
+  // See go/cros-tiering-prd for reference.
   bool Check_HW_Requirement(const DeviceSelection& selection);
 
   // Cache valid device information read from the stateful partition.

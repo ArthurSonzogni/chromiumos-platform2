@@ -7,12 +7,6 @@
 #include <optional>
 #include <string>
 
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-
-#include <linux/fs.h>
-
 #include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -283,7 +277,30 @@ bool FeatureManagementImpl::Check_HW_Requirement(
     return false;
   }
 
-  // TODO(b:273339247)
+  // Feature level 1:
+  // DRAM > 8GB
+  // Obtain the size of the physical memory of the system.
+  const size_t k8GB = 8 * 1024 * 1024 * 1024ULL;
+  if (base::SysInfo::AmountOfPhysicalMemory() < k8GB)
+    return false;
+
+  // SSD > 128GB
+  // sysinfo AmountOfTotalDiskSpace can not be used, it returns the size of the
+  // underlying filesystem.
+  std::optional<base::FilePath> root_device =
+      FeatureManagementUtil::GetDefaultRoot(base::FilePath("/"));
+  if (!root_device)
+    return false;
+
+  std::optional<int64_t> size =
+      FeatureManagementUtil::GetDiskSpace(*root_device);
+  if (!size)
+    return false;
+
+  const size_t k128GB = 128 * 1024 * 1024 * 1024ULL;
+  if (*size < k128GB)
+    return false;
+
   return true;
 }
 

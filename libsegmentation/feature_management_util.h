@@ -11,6 +11,7 @@
 #include <brillo/brillo_export.h>
 
 #include "base/files/file.h"
+#include <base/values.h>
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
 
@@ -42,6 +43,21 @@ class BRILLO_EXPORT FeatureManagementUtil {
   // Implement base8192 decoding used by hwid.
   // Returns a string of '0' and '1' suitable for decoding.
   static std::optional<std::string> DecodeHWID(const std::string& hwid);
+
+  // Return the size of a block device.
+  // dev format is '/dev/sda', '/dev/nvme0n1', '/dev/mmcblk0', ...
+  // TODO(b:176492189): Move to a common library
+  static std::optional<int64_t> GetDiskSpace(const base::FilePath& dev);
+
+  // Find the fixed block device on the device.
+  // It may not be the device the rootfs is when we run ChromeOS from a
+  // removable device.
+  // The block device will be for example /dev/sda, /dev/mmcblk1, ...
+  // TODO(b:176492189): Move to a common library
+  // root is the usual '/', unless we are unit testing. In that case.
+  // root points to a temporary directory set up for testing.
+  static std::optional<base::FilePath> GetDefaultRoot(
+      const base::FilePath& root);
 };
 
 }  // namespace segmentation
