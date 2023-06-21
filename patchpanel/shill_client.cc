@@ -70,9 +70,13 @@ void RunDefaultNetworkListeners(
 }
 
 bool IsActiveDevice(const ShillClient::Device& device) {
-  // TODO(b/273741099): For Cellular Device, check if the primary multiplexed
-  // interface is known.
-  return true;
+  // By default all new non-Cellular shill Devices are active.
+  if (device.type != ShillClient::Device::Type::kCellular) {
+    return true;
+  }
+  // b/273741099: A Cellular Device is active iff it has a primary multiplexed
+  // interface.
+  return device.primary_multiplexed_interface.has_value();
 }
 }  // namespace
 
