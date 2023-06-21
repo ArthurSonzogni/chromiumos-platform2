@@ -896,6 +896,7 @@ In the tables below,
 | battery-stabilized-after-line-power-disconnected-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | battery-stabilized-after-resume-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | battery-stabilized-after-startup-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| charge-limit-enabled | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | charging-ports | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | cutoff-power-ua | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | defer-external-display-timeout | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |

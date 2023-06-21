@@ -191,6 +191,9 @@ extern const char kAdaptiveChargingEnabledPref[];
 // If true, slow charging in Adaptive Charging will be enabled.
 extern const char kSlowAdaptiveChargingEnabledPref[];
 
+// If true, always limit battery charge to the Adaptive Charging hold percent.
+extern const char kChargeLimitEnabledPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];
