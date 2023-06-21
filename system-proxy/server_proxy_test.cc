@@ -124,11 +124,11 @@ class ServerProxyTest : public ::testing::Test {
     server_proxy_->Init();
   }
   // SystemProxyAdaptor instance that creates fake worker processes.
+  base::ScopedFD stdin_read_fd_, stdin_write_fd_, stdout_read_fd_,
+      stdout_write_fd_;
   std::unique_ptr<MockServerProxy> server_proxy_;
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
   brillo::BaseMessageLoop brillo_loop_{task_executor_.task_runner()};
-  base::ScopedFD stdin_read_fd_, stdin_write_fd_, stdout_read_fd_,
-      stdout_write_fd_;
 };
 
 TEST_F(ServerProxyTest, FetchCredentials) {
