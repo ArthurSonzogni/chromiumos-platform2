@@ -7,29 +7,15 @@
 
 #include <memory>
 #include <string>
+#include <sys/wait.h>
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/brillo_export.h>
+#include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/stateful_metadata.h>
 
 namespace thinpool_migrator {
-
-// Thinpool migration state.
-enum class MigrationState {
-  // By default, the migration begins in this state. Even in absence of
-  // a migration marker, this step is re-entrant.
-  kNotStarted = 0,
-  // The filesystem has already been resized to accommodate for thinpool
-  // metadata.
-  kFilesystemResized = 1,
-  // The partition header has been copied to the end of the filesystem.
-  kPartitionHeaderCopied = 2,
-  // The thinpool metadata has been persisted.
-  kThinpoolMetadataPersisted = 3,
-  // Migration completed.
-  kCompleted = 4,
-};
 
 // Thinpool migrator converts an existing partition with a filesystem on
 // it into a thinpool with one thinly provisioned logical volume.
@@ -61,7 +47,7 @@ class BRILLO_EXPORT ThinpoolMigrator {
   bool PersistLvmMetadata();
 
   // Update migration state.
-  void SetState(MigrationState state) { current_state_ = state; }
+  void SetState(MigrationStatus::State state);
 
   // Revert migration. Until the last stage of the migration, the entire process
   // is reversible. If writing the superblock fails and the device does not have
@@ -73,8 +59,14 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // Expand filesystem to take up the entire stateful partition again.
   bool ExpandStatefulFilesystem();
 
-  // Get migration state
-  MigrationState GetState() const { return current_state_; }
+  MigrationStatus::State GetState() const { return status_.state(); }
+  int64_t GetTries() const { return status_.tries(); }
+
+  void set_tries_for_testing(int64_t tries) { status_.set_tries(tries); }
+
+  void set_state_for_testing(MigrationStatus::State state) {
+    status_.set_state(state);
+  }
 
  protected:
   // ResizeStatefulFilesyste is used for making space for the thinpool's
@@ -95,12 +87,21 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // Duplicates the header of the device.
   virtual bool DuplicateHeader(uint64_t from, uint64_t to, uint64_t size);
 
+  // Retrieves the migration status from VPD.
+  virtual bool RetrieveMigrationStatus();
+
+  // Persist migration status into VPD. Note that writes to VPD take time: ~1.4s
+  // if the key does not exist and ~0.4 if the key exists. To speed up
+  // migration, set up the vpd key asynchronously ahead of time.
+  virtual bool PersistMigrationStatus();
+
  private:
   // Generates the payload to be written to at the beginning of the stateful
   // partition.
   std::string GeneratePhysicalVolumePayload();
 
-  MigrationState current_state_;
+  MigrationStatus status_;
+
   const base::FilePath block_device_;
 
   std::unique_ptr<StatefulMetadata> stateful_metadata_;

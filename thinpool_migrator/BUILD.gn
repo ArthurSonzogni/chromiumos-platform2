@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
     ":install_headers",
     ":libthinpool_migrator",
     ":libthinpool_migrator_pc",
+    ":migration_status_proto",
     ":thinpool_migrator",
   ]
 
@@ -22,6 +24,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcrypto",
+    "protobuf",
   ]
 }
 
@@ -39,6 +42,7 @@ shared_library("libthinpool_migrator") {
     "thinpool_migrator.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":migration_status_proto" ]
   install_path = "lib"
 }
 
@@ -56,6 +60,14 @@ install_config("install_headers") {
     "thinpool_migrator.h",
   ]
   install_path = "/usr/include/thinpool_migrator"
+}
+
+proto_library("migration_status_proto") {
+  proto_in_dir = "./proto/"
+  proto_out_dir = "include/thinpool_migrator"
+  sources = [ "${proto_in_dir}/migration_status.proto" ]
+  standalone = true
+  use_pic = true
 }
 
 if (use.test) {

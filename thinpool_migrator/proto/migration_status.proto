@@ -1,0 +1,29 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+package thinpool_migrator;
+
+message MigrationStatus {
+  enum State {
+    // By default, the migration begins in this state. Even in absence of
+    // a migration marker, this step is re-entrant.
+    NOT_STARTED = 0;
+    // The filesystem has already been resized to accommodate for thinpool
+    // metadata.
+    FILESYSTEM_RESIZED = 1;
+    // The partition header has been copied to the end of the filesystem.
+    PARTITION_HEADER_COPIED = 2;
+    // The thinpool metadata has been persisted.
+    THINPOOL_METADATA_PERSISTED = 3;
+    // Migration completed.
+    COMPLETED = 4;
+  }
+
+  State state = 1;
+  int64 tries = 2;
+}
