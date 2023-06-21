@@ -83,11 +83,25 @@ class ShillClient {
       kWifi,
     };
 
+    // Technology type of this Device.
     Type type;
+    // Index of the network interface used for the packet datapath. This is
+    // always derived from the interface name by querying the kernel directly.
     int ifindex;
+    // Name of the network interface used for the packet datapath. This
+    // currently corresponds to the shill Device kInterfaceProperty value.
     std::string ifname;
+    // The DBus path of the shill Service currently selected by the shill
+    // Device, if any.
     std::string service_path;
+    // IP configuration for this shill Device. For multiplexed Cellular Devices
+    // this corresponds to the IP configuration of the primary network
+    // interface.
     IPConfig ipconfig;
+    // Interface name of the primary multiplexed interface. Only defined for
+    // Cellular Devices. For Cellular Device not using multiplexing, this value
+    // is equivalent to the kInterfaceProperty value.
+    std::optional<std::string> primary_multiplexed_interface;
   };
 
   // Client callback for learning when shill default logical network changes.

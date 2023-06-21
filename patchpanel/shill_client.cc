@@ -466,6 +466,21 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   }
   output->ifname = interface_it->second.TryGet<std::string>();
 
+  if (output->type == Device::Type::kCellular) {
+    const auto& it = props.find(shill::kPrimaryMultiplexedInterfaceProperty);
+    if (it == props.end()) {
+      LOG(WARNING) << "shill Device properties is missing "
+                   << shill::kPrimaryMultiplexedInterfaceProperty << " for "
+                   << device_path.value();
+    } else {
+      const auto primary_multiplexed_interface =
+          it->second.TryGet<std::string>();
+      if (!primary_multiplexed_interface.empty()) {
+        output->primary_multiplexed_interface = primary_multiplexed_interface;
+      }
+    }
+  }
+
   output->ifindex = system_->IfNametoindex(output->ifname);
   if (output->ifindex > 0) {
     if_nametoindex_[output->ifname] = output->ifindex;
@@ -525,11 +540,10 @@ void ShillClient::OnDevicePropertyChangeRegistration(
 void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                                          const std::string& property_name,
                                          const brillo::Any& property_value) {
-  // TODO(b/273741099) If kPrimaryMultiplexedInterfaceProperty changed, update
-  // the Cellular Device and advertise it as a new Device.
-
-  if (property_name != shill::kIPConfigsProperty)
+  if (property_name != shill::kIPConfigsProperty &&
+      property_name != shill::kPrimaryMultiplexedInterfaceProperty) {
     return;
+  }
 
   const auto& device_it = devices_.find(device_path);
   if (device_it == devices_.end()) {
@@ -537,6 +551,10 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                  << " property for unknown Device " << device_path.value();
     return;
   }
+
+  // TODO(b/273741099): If kPrimaryMultiplexedInterfaceProperty has changed for
+  // a Cellular Device using multiplexing, ShillClient must reevaluate all shill
+  // Devices and ensure this Cellular Device is advertised as added or removed.
 
   IPConfig old_ip_config = device_it->second.ipconfig;
 
@@ -591,9 +609,15 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
-  return stream << "{ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
-                << ", type: " << DeviceTypeName(dev.type)
-                << ", service: " << dev.service_path << "}";
+  stream << "{ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
+         << ", type: " << DeviceTypeName(dev.type)
+         << ", service: " << dev.service_path;
+  if (dev.type == ShillClient::Device::Type::kCellular) {
+    stream << ", primary_multiplexed_interface: "
+           << dev.primary_multiplexed_interface.value_or("none");
+  }
+  stream << "}";
+  return stream;
 }
 
 std::ostream& operator<<(std::ostream& stream,
