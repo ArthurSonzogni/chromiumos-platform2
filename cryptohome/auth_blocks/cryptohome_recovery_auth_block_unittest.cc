@@ -208,7 +208,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   DeriveTestFuture derive_result;
   auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
-  ASSERT_TRUE(result.IsReady());
+  ASSERT_TRUE(derive_result.IsReady());
   auto [derived_status, derived_key_blobs, suggested_action] =
       derive_result.Take();
 
@@ -292,7 +292,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   DeriveTestFuture derive_result;
   auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
-  ASSERT_TRUE(result.IsReady());
+  ASSERT_TRUE(derive_result.IsReady());
   auto [derived_status, derived_key_blobs, suggested_action] =
       derive_result.Take();
 
