@@ -121,6 +121,7 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
 SamplesHandler::~SamplesHandler() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
 
+  watcher_.reset();
   iio_device_->FreeBuffer();
   if (requested_frequency_ > 0.0 &&
       !iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0))
