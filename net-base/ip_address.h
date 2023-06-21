@@ -70,8 +70,67 @@ class NET_BASE_EXPORT IPAddress {
   std::variant<IPv4Address, IPv6Address> address_;
 };
 
+// Represents an family-agnostic IP CIDR, either a IPv4 or a IPv6 CIDR.
+class NET_BASE_EXPORT IPCIDR {
+ public:
+  // Creates the CIDR from either IPv4 or IPv6 CIDR notation.
+  // Returns std::nullopt if the string format is invalid.
+  static std::optional<IPCIDR> CreateFromCIDRString(
+      const std::string& cidr_string);
+
+  // Creates the CIDR from the IP address notation string and the prefix length.
+  // Returns std::nullopt if the string format or the prefix length is invalid.
+  static std::optional<IPCIDR> CreateFromStringAndPrefix(
+      const std::string& address_string, int prefix_length);
+
+  // Creates the CIDR from the Address and the prefix length. Returns
+  // std::nullopt if the prefix length is invalid.
+  static std::optional<IPCIDR> CreateFromAddressAndPrefix(
+      const IPAddress& address, int prefix_length);
+
+  explicit constexpr IPCIDR(const IPv4CIDR& cidr) : cidr_(cidr) {}
+  explicit constexpr IPCIDR(const IPv6CIDR& cidr) : cidr_(cidr) {}
+
+  // Getter methods for the internal data.
+  IPAddress address() const;
+  int prefix_length() const;
+
+  bool operator==(const IPCIDR& rhs) const;
+  bool operator!=(const IPCIDR& rhs) const;
+
+  // Returns the family of the CIDR.
+  IPFamily GetFamily() const;
+
+  // Converts to the family-specific classes. Returns std::nullopt if the IP
+  // family is not the same.
+  std::optional<IPv4CIDR> ToIPv4CIDR() const;
+  std::optional<IPv6CIDR> ToIPv6CIDR() const;
+
+  // Creates the Address that has all the high-order of prefix length bits set.
+  IPAddress ToNetmask() const;
+
+  // Returns an address that represents the network-part of the address,
+  // i.e, the address with all but the prefix bits masked out.
+  IPAddress GetPrefixAddress() const;
+
+  // Returns the broadcast address for the IP address, by setting all of the
+  // host-part bits to 1.
+  IPAddress GetBroadcast() const;
+
+  // Returns true is the address |b| is in the same subnet with |*this| CIDR.
+  bool InSameSubnetWith(const IPAddress& b) const;
+
+  // Returns the string in the CIDR notation.
+  std::string ToString() const;
+
+ private:
+  std::variant<IPv4CIDR, IPv6CIDR> cidr_;
+};
+
 NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
                                          const IPAddress& address);
+
+NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os, const IPCIDR& cidr);
 
 }  // namespace net_base
 #endif  // NET_BASE_IP_ADDRESS_H_
