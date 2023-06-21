@@ -8,7 +8,6 @@ group("seccomp") {
   deps = [
     ":diagnostics_seccomp",
     ":diagnostics_seccomp_delegate",
-    ":diagnostics_seccomp_healthd",
   ]
 }
 
@@ -43,6 +42,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
   _arch = getenv("ARCH")
   sources = [
     "${_arch}/btmon-seccomp.policy",
+    "${_arch}/cros_healthd-seccomp.policy",
     "${_arch}/fio-seccomp.policy",
     "${_arch}/hciconfig-seccomp.policy",
     "${_arch}/healthd_rm-seccomp.policy",
@@ -89,15 +89,4 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     required_syscalls += [ "process_vm_readv" ]
   }
   denied_syscalls = BASE_DENIED_SYSCALLS
-}
-
-# TODO(b/182964589): Merge this back to diagnostics_seccomp once we can remove
-# execve seccomp.
-install_and_check_seccomp_policy("diagnostics_seccomp_healthd") {
-  _arch = getenv("ARCH")
-  sources = [ "${_arch}/cros_healthd-seccomp.policy" ]
-  install_path = "seccomp_policy"
-
-  required_syscalls = BASE_REQUIRED_SYSCALLS
-  denied_syscalls = []
 }
