@@ -5,6 +5,8 @@
 #include "missive/storage/storage_configuration.h"
 
 #include <base/containers/span.h>
+#include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -54,16 +56,38 @@ constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
 
 }  // namespace
 
+StorageOptions::MultiGenerational::MultiGenerational() {
+  for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
+    is_multi_generational_[priority].store(false);
+  }
+}
+
+bool StorageOptions::MultiGenerational::get(Priority priority) const {
+  CHECK_LT(priority, Priority_ARRAYSIZE);
+  return is_multi_generational_[priority].load();
+}
+
+void StorageOptions::MultiGenerational::set(Priority priority, bool state) {
+  CHECK_LT(priority, Priority_ARRAYSIZE);
+  const bool was_multigenerational =
+      is_multi_generational_[priority].exchange(state);
+  LOG_IF(WARNING, was_multigenerational != state)
+      << "Priority " << Priority_Name(priority) << " switched to "
+      << (state ? "multi" : "single") << "-generational state";
+}
+
 StorageOptions::StorageOptions(
     base::RepeatingCallback<void(Priority, QueueOptions&)>
         modify_queue_options_for_tests)
     : key_check_period_(kDefaultKeyCheckPeriod),  // 1 second by default
+      is_multi_generational_(base::MakeRefCounted<MultiGenerational>()),
       memory_resource_(base::MakeRefCounted<ResourceManager>(
           4u * 1024uLL * 1024uLL)),  // 4 MiB by default
       disk_space_resource_(base::MakeRefCounted<ResourceManager>(
           64u * 1024uLL * 1024uLL)),  // 64 MiB by default.
       modify_queue_options_for_tests_(modify_queue_options_for_tests) {}
-StorageOptions::StorageOptions(const StorageOptions& options) = default;
+
+StorageOptions::StorageOptions(const StorageOptions& other) = default;
 StorageOptions::~StorageOptions() = default;
 
 QueueOptions StorageOptions::PopulateQueueOptions(Priority priority) const {
@@ -121,7 +145,7 @@ QueueOptions StorageOptions::ProduceQueueOptions(Priority priority) const {
 StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
     const {
   QueuesOptionsList queue_options_list;
-  // Create queue option for each priority and add to the list
+  // Create queue option for each priority and add to the list.
   for (const auto priority : kPriorityOrder) {
     queue_options_list.emplace_back(priority, ProduceQueueOptions(priority));
   }

@@ -9,26 +9,25 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 
-#include "base/check.h"
-#include "base/functional/callback_forward.h"
-#include "base/location.h"
-#include "base/sequence_checker.h"
-#include "base/task/bind_post_task.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/new_storage.h"
-#include "missive/storage/storage.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
@@ -160,17 +159,15 @@ void StorageModule::Create(
           signature_verification_dev_flag));
 
   // Initialize `instance`.
-  InitAsync(instance, legacy_storage_enabled, std::move(callback)).Run();
+  InitAsync(instance, std::move(callback)).Run();
 }
 
 // static
 base::OnceClosure StorageModule::InitAsync(
     scoped_refptr<StorageModule> instance,
-    bool legacy_storage_enabled,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   return VerifyQueuesAreEmptyAsync(instance->queues_container_)
-      .Then(InitStorageAsync(instance, legacy_storage_enabled,
-                             std::move(callback)));
+      .Then(InitStorageAsync(instance, std::move(callback)));
 }
 
 // static
@@ -189,12 +186,11 @@ base::OnceClosure StorageModule::VerifyQueuesAreEmptyAsync(
 // static
 base::OnceClosure StorageModule::InitStorageAsync(
     scoped_refptr<StorageModule> instance,
-    bool legacy_storage_enabled,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   return base::BindPostTask(
       instance->sequenced_task_runner_,
       base::BindOnce(
-          [](scoped_refptr<StorageModule> self, bool legacy_storage_enabled,
+          [](scoped_refptr<StorageModule> self,
              base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                  callback) {
             // Partially bound callback which sets `storage_` or returns an
@@ -204,23 +200,15 @@ base::OnceClosure StorageModule::InitStorageAsync(
                                    base::BindOnce(&StorageModule::SetStorage,
                                                   self, std::move(callback)));
 
-            // Select Storage implementation.
-            if (legacy_storage_enabled) {
-              Storage::Create(self->options_, self->async_start_upload_cb_,
-                              self->queues_container_, self->encryption_module_,
-                              self->compression_module_,
-                              self->signature_verification_dev_flag_,
-                              std::move(set_storage_cb));
-            } else {
-              NewStorage::Create(self->options_, self->async_start_upload_cb_,
-                                 self->queues_container_,
-                                 self->encryption_module_,
-                                 self->compression_module_,
-                                 self->signature_verification_dev_flag_,
-                                 std::move(set_storage_cb));
-            }
+            // Instantiate Storage.
+            NewStorage::Create(self->options_, self->async_start_upload_cb_,
+                               self->queues_container_,
+                               self->encryption_module_,
+                               self->compression_module_,
+                               self->signature_verification_dev_flag_,
+                               std::move(set_storage_cb));
           },
-          instance, legacy_storage_enabled, std::move(callback)));
+          instance, std::move(callback)));
 }
 
 void StorageModule::SetStorage(
@@ -252,8 +240,8 @@ void StorageModule::OnValueUpdate(bool is_enabled) {
                     ? std::move(self->on_storage_set_cb_for_testing_)
                     : base::DoNothing();
 
-            self->storage_->RegisterCompletionCallback(InitAsync(
-                self, is_enabled, std::move(when_set_storage_complete)));
+            self->storage_->RegisterCompletionCallback(
+                InitAsync(self, std::move(when_set_storage_complete)));
 
             // Drop reference to `Storage` object. At some point in the near
             // future the registered callback above should trigger once
@@ -272,18 +260,6 @@ void StorageModule::RegisterOnStorageSetCallbackForTesting(
              base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                  callback) {
             self->on_storage_set_cb_for_testing_ = std::move(callback);
-          },
-          base::WrapRefCounted(this), std::move(callback)));
-}
-
-void StorageModule::GetStorageImplNameForTesting(
-    base::OnceCallback<void(const char*)> callback) const {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<const StorageModule> self,
-             base::OnceCallback<void(const char*)> callback) {
-            std::move(callback).Run(self->storage_->ImplNameForTesting());
           },
           base::WrapRefCounted(this), std::move(callback)));
 }

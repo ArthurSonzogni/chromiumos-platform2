@@ -37,9 +37,6 @@
 
 namespace reporting {
 
-// Name of this implementation of storage. Used for testing.
-static constexpr char kNewStorageName[] = "New Storage";
-
 // NewStorage is a newer implementation of Storage that allows for multiple
 // generations for a given priority. In this implementation, a queue is uniquely
 // identifiable by a generation globally unique ID (guid) + priority tuple
@@ -75,8 +72,6 @@ class NewStorage : public StorageInterface {
           signature_verification_dev_flag,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
           completion_cb);
-
-  const char* ImplNameForTesting() const override;
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the NewStorage (the last file of it) according to

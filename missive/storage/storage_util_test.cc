@@ -6,15 +6,14 @@
 #include <unordered_set>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/location.h>
 #include <base/test/task_environment.h>
 #include <base/uuid.h>
 #include <gtest/gtest.h>
 
-#include "base/files/file_util.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_util.h"
 #include "missive/util/status.h"

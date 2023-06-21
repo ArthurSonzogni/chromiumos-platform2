@@ -5,13 +5,16 @@
 #ifndef MISSIVE_STORAGE_STORAGE_CONFIGURATION_H_
 #define MISSIVE_STORAGE_STORAGE_CONFIGURATION_H_
 
+#include <atomic>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/functional/callback_forward.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback_forward.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
@@ -47,6 +50,31 @@ class StorageOptions {
 
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
+  // Multi-generation state of priorities.
+  // Declared as refcounted object in order to kep single instance over all
+  // cases of Options copying.
+  class MultiGenerational
+      : public base::RefCountedThreadSafe<MultiGenerational> {
+   public:
+    MultiGenerational();
+    MultiGenerational(const MultiGenerational&) = delete;
+    MultiGenerational& operator=(const MultiGenerational&) = delete;
+
+    // Retrieve the flag.
+    bool get(Priority priority) const;
+
+    // Atomically set the flag.
+    void set(Priority priority, bool state);
+
+   private:
+    friend base::RefCountedThreadSafe<MultiGenerational>;
+
+    ~MultiGenerational() = default;
+
+    // At counstruction all Priorities settings are set to 'false'.
+    std::array<std::atomic<bool>, Priority_ARRAYSIZE> is_multi_generational_;
+  };
+
   // Constructor. `modify_queue_options_for_tests` callback allows to adjust
   // queue options (used in tests only, Set to DoNothing in prod).
   explicit StorageOptions(base::RepeatingCallback<void(Priority, QueueOptions&)>
@@ -65,7 +93,7 @@ class StorageOptions {
   QueueOptions ProduceQueueOptions(Priority priority) const;
 
   // Generates list queue options. One QueueOption for each priority, in order
-  // of priorities. Used for legacy storage only.
+  // of priorities. Used when enumerating storage queue directories only.
   QueuesOptionsList ProduceQueuesOptionsList() const;
 
   // Exposes priorities in order.
@@ -101,6 +129,15 @@ class StorageOptions {
     return signature_verification_public_key_;
   }
   size_t max_record_size() const { return max_record_size_; }
+
+  bool is_multi_generational(Priority priority) const {
+    return is_multi_generational_->get(priority);
+  }
+
+  void set_multi_generational(Priority priority, bool state) const {
+    is_multi_generational_->set(priority, state);
+  }
+
   uint64_t max_total_files_size() const {
     return disk_space_resource_->GetTotal();
   }
@@ -134,6 +171,11 @@ class StorageOptions {
 
   // Maximum record size.
   size_t max_record_size_ = 1U * 1024UL * 1024UL;  // 1 MiB
+
+  // Map of atomic flags indicating whether each priority is set to
+  // multi-generation or single-generation (legacy) action. The map is
+  // constructed once and then only the values of the flags can change.
+  const scoped_refptr<MultiGenerational> is_multi_generational_;
 
   // Resources managements.
   scoped_refptr<ResourceManager> memory_resource_;

@@ -18,13 +18,12 @@
 #include <vector>
 
 #include <base/files/file.h>
-#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "base/functional/callback_forward.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
@@ -133,10 +132,6 @@ class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
  public:
   StorageInterface(const StorageInterface& other) = delete;
   StorageInterface& operator=(const StorageInterface& other) = delete;
-
-  // Returns the name of the implementation. Used for testing in
-  // `StorageModule`.
-  virtual const char* ImplNameForTesting() const = 0;
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the StorageInterface (the last file of it)

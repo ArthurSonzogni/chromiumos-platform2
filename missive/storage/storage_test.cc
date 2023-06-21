@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage.h"
+#include "missive/storage/new_storage.h"
 
 #include <algorithm>
 #include <atomic>
@@ -17,6 +17,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -31,7 +32,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/memory/scoped_refptr.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -143,10 +143,14 @@ class TestStorageOptions : public StorageOptions {
  public:
   TestStorageOptions()
       : StorageOptions(base::BindRepeating(
-            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {}
+            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {
+    for (const Priority& priority : GetPrioritiesOrder()) {
+      set_multi_generational(priority, /*state=*/false);
+    }
+  }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by Storage::Create().
+  // Must be called before the options are used by NewStorage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -897,7 +901,7 @@ class LegacyStorageTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    Storage::Create(
+    NewStorage::Create(
         options,
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
@@ -972,7 +976,7 @@ class LegacyStorageTest
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    Storage::Create(
+    NewStorage::Create(
         options,
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),

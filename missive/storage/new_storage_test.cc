@@ -141,10 +141,14 @@ class TestStorageOptions : public StorageOptions {
  public:
   TestStorageOptions()
       : StorageOptions(base::BindRepeating(
-            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {}
+            &TestStorageOptions::ModifyQueueOptions, base::Unretained(this))) {
+    for (const Priority& priority : GetPrioritiesOrder()) {
+      set_multi_generational(priority, /*state=*/true);
+    }
+  }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by Storage::Create().
+  // Must be called before the options are used by NewStorage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }

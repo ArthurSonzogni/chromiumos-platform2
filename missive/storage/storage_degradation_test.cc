@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage.h"
+#include "missive/storage/new_storage.h"
 
 #include <atomic>
 #include <cstdint>
@@ -136,7 +136,7 @@ class TestStorageOptions : public StorageOptions {
   }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by Storage::Create().
+  // Must be called before the options are used by NewStorage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -696,7 +696,7 @@ class LegacyStorageDegradationTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    Storage::Create(
+    NewStorage::Create(
         options,
         base::BindRepeating(
             &LegacyStorageDegradationTest::AsyncStartMockUploader,

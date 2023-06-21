@@ -87,7 +87,6 @@ bool BoolParameterValue(base::StringPiece parameter_name,
              << ", assumed default=" << (value_default ? "true" : "false");
   return value_default;
 }
-
 }  // namespace
 
 MissiveArgs::MissiveArgs(feature::PlatformFeaturesInterface* feature_lib)

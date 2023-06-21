@@ -26,12 +26,12 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
-#include "base/sequence_checker.h"
 #include "missive/analytics/metrics.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"

@@ -9,15 +9,15 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <unistd.h>
 
+#include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
-#include <unistd.h>
 
-#include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
@@ -25,7 +25,6 @@
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/new_storage.h"
-#include "missive/storage/storage.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -97,12 +96,6 @@ class StorageModuleTest : public ::testing::Test {
     storage_module->RegisterOnStorageSetCallbackForTesting(std::move(callback));
   }
 
-  std::string GetStorageName(scoped_refptr<StorageModule> storage_module) {
-    test::TestEvent<const char*> get_storage_impl_name;
-    storage_module->GetStorageImplNameForTesting(get_storage_impl_name.cb());
-    return get_storage_impl_name.result();
-  }
-
   Status CallAddRecord(scoped_refptr<StorageModule> module) {
     test::TestEvent<Status> event;
     Record record;
@@ -134,7 +127,6 @@ TEST_F(StorageModuleTest, NewStorageTest) {
   auto new_storage_module = storage_module_;
 
   // Expect that the storage module contains a new storage implementation.
-  EXPECT_EQ(GetStorageName(new_storage_module), kNewStorageName);
   EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
 }
 
@@ -144,7 +136,6 @@ TEST_F(StorageModuleTest, LegacyStorageTest) {
   auto legacy_storage_module = storage_module_;
 
   // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_EQ(GetStorageName(legacy_storage_module), kLegacyStorageName);
   EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
 }
 
@@ -154,7 +145,6 @@ TEST_F(StorageModuleTest, SwitchFromLegacyToNewStorage) {
   auto legacy_storage_module = storage_module_;
 
   // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_EQ(GetStorageName(legacy_storage_module), kLegacyStorageName);
   EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
 
   test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> switch_storage_event;
@@ -173,7 +163,6 @@ TEST_F(StorageModuleTest, SwitchFromLegacyToNewStorage) {
   const auto new_storage_module = switch_result.ValueOrDie();
 
   // Expect that the storage module contains a new storage implementation.
-  EXPECT_EQ(GetStorageName(new_storage_module), kNewStorageName);
   EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
 
   // Verify we can write to new storage module after switching.
@@ -187,7 +176,6 @@ TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
 
   // Expect that the storage module contains a new storage implementation.
   EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
-  EXPECT_EQ(GetStorageName(new_storage_module), kNewStorageName);
 
   test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> switch_storage_event;
   RegisterOnStorageSetCallbackForTesting(new_storage_module,
@@ -206,7 +194,6 @@ TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
   const auto legacy_storage_module = switch_result.ValueOrDie();
 
   // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_EQ(GetStorageName(legacy_storage_module), kLegacyStorageName);
   EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
 
   // Verify we can write to legacy storage module after switching.

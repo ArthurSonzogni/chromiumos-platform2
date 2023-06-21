@@ -11,17 +11,17 @@
 
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
 
-#include "base/functional/callback_helpers.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/storage.h"
+#include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -97,7 +97,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   // contains no queue references and then initializes `instance->storage_`.
   [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
   InitAsync(scoped_refptr<StorageModule> instance,
-            bool legacy_storage_enabled,
             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                 callback);
 
@@ -110,7 +109,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
   InitStorageAsync(
       scoped_refptr<StorageModule> instance,
-      bool legacy_storage_enabled,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
@@ -125,11 +123,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   void RegisterOnStorageSetCallbackForTesting(
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
-
-  // Returns the name of the implementation of `storage_` via `callback`. Used
-  // for testing.
-  void GetStorageImplNameForTesting(
-      base::OnceCallback<void(const char*)> callback) const;
 
   void InjectStorageUnavailableErrorForTesting();
 

@@ -327,10 +327,6 @@ NewStorage::NewStorage(
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
-const char* NewStorage::ImplNameForTesting() const {
-  return kNewStorageName;
-}
-
 StatusOr<GenerationGuid> NewStorage::GetOrCreateGenerationGuid(
     const DMtoken& dm_token, Priority priority) {
   StatusOr<GenerationGuid> generation_guid_result;
@@ -396,39 +392,36 @@ void NewStorage::Write(Priority priority,
                 &NewStorage::AsyncGetQueueAndProceed, self, priority,
                 std::move(queue_action), std::move(completion_cb));
 
-            // Get or create the generation guid associated with the dm token
-            // and priority in this record.
-            StatusOr<GenerationGuid> generation_guid_result =
-                self->GetOrCreateGenerationGuid(dm_token, priority);
+            GenerationGuid generation_guid;
+            if (self->options_.is_multi_generational(priority)) {
+              // Get or create the generation guid associated with the dm token
+              // and priority in this record.
+              StatusOr<GenerationGuid> generation_guid_result =
+                  self->GetOrCreateGenerationGuid(dm_token, priority);
 
-            if (!generation_guid_result.ok()) {
-              // This should never happen. We should always be able to create a
-              // generation guid if one doesn't exist.
-              NOTREACHED() << "Could neither create nor find a generation guid "
-                              "for dm_token="
-                           << dm_token << " , error status="
-                           << generation_guid_result.status();
-              std::move(completion_cb).Run(generation_guid_result.status());
-              return;
+              if (!generation_guid_result.ok()) {
+                // This should never happen. We should always be able to create
+                // a generation guid if one doesn't exist.
+                NOTREACHED_NORETURN();
+              }
+              generation_guid = generation_guid_result.ValueOrDie();
             }
 
             // Find the queue for this generation guid + priority and write to
             // it.
-            if (!self->queues_container_
-                     ->GetQueue(priority, generation_guid_result.ValueOrDie())
+            if (!self->queues_container_->GetQueue(priority, generation_guid)
                      .ok()) {
-              // We don't have a queue for this generation guid + priority, so
+              // We don't have a queue for this priority + generation guid, so
               // create one, and then let the context execute the write
               // via `call_async_get_queue`.
               Start<CreateQueueContext>(
                   priority, self->options_.ProduceQueueOptions(priority), self,
-                  generation_guid_result.ValueOrDie(),
-                  std::move(call_async_get_queue));
+                  generation_guid, std::move(call_async_get_queue));
               return;
             }
-            // The queue we need already exist, so we can write to it.
-            std::move(call_async_get_queue)
-                .Run(generation_guid_result.ValueOrDie());
+
+            // The queue we need already exists, so we can write to it.
+            std::move(call_async_get_queue).Run(generation_guid);
           },
           base::WrapRefCounted(this), priority, std::move(record),
           std::move(completion_cb)));

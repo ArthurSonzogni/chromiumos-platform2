@@ -81,7 +81,6 @@ static_library("storage_module") {
   public_deps = [ ":storage_configuration" ]
   deps = [
     ":new_storage",
-    ":storage",
     ":storage_module_interface",
     ":storage_uploader_interface",
     "//missive/encryption:encryption_module",
@@ -89,30 +88,6 @@ static_library("storage_module") {
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
-  ]
-}
-
-static_library("storage") {
-  sources = [ "storage.cc" ]
-  configs += [ ":target_defaults" ]
-  public_deps = [ ":storage_configuration" ]
-  deps = [
-    ":storage_base",
-    ":storage_queue",
-    ":storage_uploader_interface",
-    ":storage_util",
-    "//missive/compression:compression_module",
-    "//missive/encryption:encryption_module",
-    "//missive/encryption:encryption_module_interface",
-    "//missive/encryption:verification",
-    "//missive/health:health_module",
-    "//missive/proto:libmissiveprotorecord",
-    "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/util:dynamic_flag",
-    "//missive/util:file",
-    "//missive/util:status",
-    "//missive/util:status_macros",
-    "//missive/util:task_runner_context",
   ]
 }
 
