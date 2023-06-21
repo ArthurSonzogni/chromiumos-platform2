@@ -60,7 +60,8 @@ used like this:
 ```
 precrosvm:/usr/local/bin/strace
 precrosvm:-f
-precrosvm:-o=/run/vm/crosvm_strace
+precrosvm:-o
+precrosvm:/run/vm/crosvm_strace
 ```
 
 For others, code change is needed, like:
