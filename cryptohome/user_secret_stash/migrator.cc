@@ -41,10 +41,11 @@ UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
     const UserSecretStashStorage& user_secret_stash_storage,
-    const VaultKeyset& vault_keyset,
+    const std::string& label,
+    const FileSystemKeyset& filesystem_keyset,
     CompletionCallback completion_callback) {
   // Create migration secret.
-  GenerateMigrationSecret(vault_keyset);
+  GenerateMigrationSecret(filesystem_keyset);
 
   // Get the existing UserSecretStash and the main key if it exists, generate a
   // new UserSecretStash otherwise. This UserSecretStash will contain only one
@@ -60,12 +61,11 @@ void UssMigrator::MigrateVaultKeysetToUss(
     // If no UserSecretStash file found for the user create a new
     // UserSecretStash from the passed VaultKeyset and add the migration_secret
     // block.
-    auto uss_status =
-        UserSecretStash::CreateRandom(FileSystemKeyset(vault_keyset));
+    auto uss_status = UserSecretStash::CreateRandom(filesystem_keyset);
     if (!uss_status.ok()) {
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
-                 << vault_keyset.GetLabel();
+                 << label;
       ReapAndReportError(std::move(uss_status).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
@@ -108,10 +108,11 @@ void UssMigrator::MigrateVaultKeysetToUss(
       .Run(std::move(user_secret_stash), std::move(uss_main_key));
 }
 
-void UssMigrator::GenerateMigrationSecret(const VaultKeyset& vault_keyset) {
+void UssMigrator::GenerateMigrationSecret(
+    const FileSystemKeyset& filesystem_keyset) {
   migration_secret_ = std::make_unique<brillo::SecureBlob>(
-      HmacSha256(brillo::SecureBlob::Combine(vault_keyset.GetFek(),
-                                             vault_keyset.GetFnek()),
+      HmacSha256(brillo::SecureBlob::Combine(filesystem_keyset.Key().fek,
+                                             filesystem_keyset.Key().fnek),
                  brillo::BlobFromString(kMigrationSecretDerivationPublicInfo)));
 }
 

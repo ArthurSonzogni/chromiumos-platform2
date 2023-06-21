@@ -13,6 +13,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/username.h"
@@ -34,18 +35,17 @@ class UssMigrator {
       std::unique_ptr<UserSecretStash> user_secret_stash,
       brillo::SecureBlob uss_main_key)>;
 
-  // The function that migrates the VaultKeyset to AuthFactor and USS.
-  // This function needs to be called during Authenticate operation after the
-  // successful authentication of the VaultKeyset. Hence |vault_keyset|
-  // is a VaultKeyset object with decrypted fields.
+  // The function that migrates the VaultKeyset with |label| and
+  // |filesystem_keyset| to AuthFactor and USS.
   void MigrateVaultKeysetToUss(
       const UserSecretStashStorage& user_secret_stash_storage,
-      const VaultKeyset& vault_keyset,
+      const std::string& label,
+      const FileSystemKeyset& filesystem_keyset,
       CompletionCallback completion_callback);
 
  private:
   // Generates migration secret from the filesystem keyset.
-  void GenerateMigrationSecret(const VaultKeyset& vault_keyset);
+  void GenerateMigrationSecret(const FileSystemKeyset& filesystem_keyset);
 
   // Adds the migration secret as a |wrapped_key_block| to the given
   // user secret stash.

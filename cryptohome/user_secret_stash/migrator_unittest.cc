@@ -72,8 +72,9 @@ class UssMigratorTest : public ::testing::Test {
     std::unique_ptr<VaultKeyset> vault_keyset = std::move(iter->second);
     TestFuture<std::unique_ptr<UserSecretStash>, brillo::SecureBlob>
         migrate_future;
-    migrator_.MigrateVaultKeysetToUss(user_secret_stash_storage_, *vault_keyset,
-                                      migrate_future.GetCallback());
+    migrator_.MigrateVaultKeysetToUss(
+        user_secret_stash_storage_, vault_keyset->GetLabel(),
+        file_system_keyset_, migrate_future.GetCallback());
     std::tie(user_secret_stash_, uss_main_key_) = migrate_future.Take();
   }
 

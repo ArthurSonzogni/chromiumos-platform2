@@ -266,7 +266,7 @@ class AuthSession final {
   // MigrateToUssDuringUpdateVaultKeyset() operation.
   void OnMigrationUssCreatedForUpdate(
       AuthFactorType auth_factor_type,
-      const std::string& label,
+      const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
       StatusCallback on_done,
@@ -418,15 +418,12 @@ class AuthSession final {
                                    std::unique_ptr<KeyBlobs> key_blobs,
                                    std::unique_ptr<AuthBlockState> auth_state);
 
-  // Updates a VaultKeyset for the |obfuscated_username_| by calling
-  // KeysetManagement::UpdateKeysetWithKeyBlobs(). The VaultKeyset and it's
-  // corresponding label are updated through the information provided by
-  // |key_data|. This function is needed for processing callback results in an
-  // asynchronous manner through |on_done| callback. If the update completes
-  // successfully VaultKeyset is migrated to UserSecretStash. Failures during
-  // this migration is silent, i.e doesn't fail the update operation.
+  // Updates the secret of an AuthFactor backed by a VaultKeyset and migrates it
+  // to UserSecretStash. Failures during this operation fails to both update and
+  // migrate the factor.
   void MigrateToUssDuringUpdateVaultKeyset(
       AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const KeyData& key_data,
       const AuthInput& auth_input,
