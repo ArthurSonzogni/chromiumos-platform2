@@ -84,6 +84,16 @@ message Namespaces {
 
 // The composed event types.
 
+// Encapsulates fields that are common to each message in a
+// batch.
+message CommonEventVariantDataFields {
+  optional int64 create_timestamp_us = 1;
+  // ${COPYBARA_DATAPOL_ST_USERNAME}
+  optional string device_user = 2;
+}
+
+// Agent Events.
+
 // Event emitted at the start of execution of an agent process.
 message AgentStartEvent {
   optional TcbAttributes tcb = 1;
@@ -112,6 +122,8 @@ message XdrAgentEvent {
   repeated AgentEventAtomicVariant batched_events = 4;
 }
 
+// Process Events.
+
 // Acting process (forked and) exec'd a new child process.
 message ProcessExecEvent {
   optional Process parent_process = 1;
@@ -125,14 +137,6 @@ message ProcessExecEvent {
 message ProcessTerminateEvent {
   optional Process parent_process = 1;
   optional Process process = 2;
-}
-
-// Encapsulates fields that are common to each message in a
-// batch.
-message CommonEventVariantDataFields {
-  optional int64 create_timestamp_us = 1;
-  // ${COPYBARA_DATAPOL_ST_USERNAME}
-  optional string device_user = 2;
 }
 
 // Singular Process event.
@@ -153,6 +157,8 @@ message XdrProcessEvent {
   }
   repeated ProcessEventAtomicVariant batched_events = 4;
 }
+
+// Network Events.
 
 // Singular network event.
 message NetworkEventAtomicVariant {
@@ -205,6 +211,7 @@ message NetworkFlow {
   optional uint64 local_port = 3;
   // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
   optional string remote_ip = 4;
+  // ${COPYBARA_DATAPOL_ST_NOT_REQUIRED}
   optional uint64 remote_port = 5;
   optional NetworkProtocol protocol = 6;
   optional Direction direction = 7;
