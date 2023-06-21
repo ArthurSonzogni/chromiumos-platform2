@@ -60,7 +60,7 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(cert_stat, &cert_stat_vdo))
     return;
-  LOG(INFO) << type_ << " Cert stat VDO: " << std::hex << cert_stat_vdo;
+  LOG(INFO) << type_ << " Cert stat VDO: " << FormatHexString(cert_stat_vdo, 8);
 
   if (!ReadHexFromPath(id_header, &id_header_vdo))
     return;
@@ -68,18 +68,18 @@ void Peripheral::UpdatePDIdentityVDOs() {
 
   if (!ReadHexFromPath(product_type1, &product_type_vdo1))
     return;
-  LOG(INFO) << type_ << " Product Type VDO 1: " << std::hex
-            << product_type_vdo1;
+  LOG(INFO) << type_
+            << " Product Type VDO 1: " << FormatHexString(product_type_vdo1, 8);
 
   if (!ReadHexFromPath(product_type2, &product_type_vdo2))
     return;
-  LOG(INFO) << type_ << " Product Type VDO 2: " << std::hex
-            << product_type_vdo2;
+  LOG(INFO) << type_
+            << " Product Type VDO 2: " << FormatHexString(product_type_vdo2, 8);
 
   if (!ReadHexFromPath(product_type3, &product_type_vdo3))
     return;
-  LOG(INFO) << type_ << " Product Type VDO 3: " << std::hex
-            << product_type_vdo3;
+  LOG(INFO) << type_
+            << " Product Type VDO 3: " << FormatHexString(product_type_vdo3, 8);
 
   SetIdHeaderVDO(id_header_vdo);
   SetProductVDO(product_vdo);
