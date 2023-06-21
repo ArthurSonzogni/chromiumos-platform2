@@ -19,6 +19,7 @@ use std::process::Command;
 use std::str;
 use std::time::Duration;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use libc::c_ulong;
@@ -28,6 +29,7 @@ use log::debug;
 use log::error;
 use log::info;
 use log::warn;
+use regex::Regex;
 use thiserror::Error as ThisError;
 
 use crate::cookie::set_hibernate_cookie;
@@ -555,6 +557,54 @@ pub fn get_ram_size() -> u64 {
     }
 
     panic!("Could not determine RAM size");
+}
+
+/// Get the time needed by the hibernated kernel to restore the system.
+pub fn get_kernel_restore_time() -> Result<Duration> {
+    let output =
+        checked_command_output(Command::new("/bin/dmesg").args(["-P", "--since", "1 minute ago"]))
+            .context("Failed to execute 'dmesg'")?;
+
+    // regular expression for extracting the kernel timestamp.
+    let re = Regex::new(r"^\[\s*(\d+)\.(\d{6})\]").unwrap();
+
+    let mut restore_start: Option<Duration> = None;
+
+    for line in output.stdout.lines() {
+        if line.is_err() {
+            continue;
+        }
+
+        let line = line.unwrap();
+
+        match restore_start {
+            None => {
+                if line.contains("Enabling non-boot CPUs ...") {
+                    let cap = re.captures(&line).unwrap();
+                    restore_start = Some(Duration::new(
+                        cap[1].parse()?,
+                        cap[2].parse::<u32>()? * 1000,
+                    ));
+                }
+            }
+
+            Some(restore_start) => {
+                if line.contains("PM: restore of devices complete after") {
+                    let cap = re.captures(&line).unwrap();
+                    let restore_done = Some(Duration::new(
+                        cap[1].parse()?,
+                        cap[2].parse::<u32>()? * 1000,
+                    ));
+
+                    return Ok(restore_done.unwrap() - restore_start);
+                }
+            }
+        }
+    }
+
+    Err(anyhow!(
+        "Could not find log entries to determine kernel restore time"
+    ))
 }
 
 /// Add a logon key to the kernel key ring

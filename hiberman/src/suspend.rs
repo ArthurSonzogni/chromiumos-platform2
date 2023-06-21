@@ -29,6 +29,7 @@ use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberlog::LogRedirectGuard;
+use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
@@ -323,6 +324,19 @@ impl SuspendConductor {
                 DurationMetricUnit::Hours,
                 8760, // 1 year
             );
+
+            match get_kernel_restore_time() {
+                Ok(restore_time) => {
+                    metrics_logger.log_duration_sample(
+                        "Platform.Hibernate.ResumeTime.KernelResume",
+                        restore_time,
+                        DurationMetricUnit::Milliseconds,
+                        10000,
+                    );
+                }
+
+                Err(e) => warn!("Failed to get kernel restore time: {e:?}"),
+            };
         }
 
         // Unset the hibernate cookie.
