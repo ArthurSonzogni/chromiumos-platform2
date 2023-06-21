@@ -20,7 +20,9 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
@@ -235,6 +237,15 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly,
                                             AuthIntent::kWebAuthn));
+}
+
+TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
+  std::unique_ptr<CredentialVerifier> verifier =
+      ScryptVerifier::Create(kLabel, brillo::SecureBlob("password"));
+
+  auto intents = GetSupportedIntents(kObfuscatedUser, *verifier, manager_);
+
+  EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
 }  // namespace

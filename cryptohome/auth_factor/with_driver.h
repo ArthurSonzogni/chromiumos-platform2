@@ -18,13 +18,20 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {
 
-// Compute the set of auth intents supported by the given AuthFactor.
+// Compute the set of auth intents supported by the given AuthFactor or
+// CredentialVerifier. Note that if you supply a verifier then it is assumed
+// that you only intent to support lightweight auth.
 base::flat_set<AuthIntent> GetSupportedIntents(
     const ObfuscatedUsername& username,
     const AuthFactor& auth_factor,
+    AuthFactorDriverManager& driver_manager);
+base::flat_set<AuthIntent> GetSupportedIntents(
+    const ObfuscatedUsername& username,
+    const CredentialVerifier& verifier,
     AuthFactorDriverManager& driver_manager);
 
 }  // namespace cryptohome

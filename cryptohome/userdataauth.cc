@@ -174,10 +174,12 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   }
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() = std::move(*proto_factor);
-  // All ephemeral users have light verification only enabled by
-  // default.
-  auth_factor_with_status.add_available_for_intents(
-      AuthIntentToProto(AuthIntent::kVerifyOnly));
+  auto supported_intents =
+      GetSupportedIntents(username, *verifier, *auth_factor_driver_manager);
+  for (const auto& auth_intent : supported_intents) {
+    auth_factor_with_status.add_available_for_intents(
+        AuthIntentToProto(auth_intent));
+  }
   return auth_factor_with_status;
 }
 

@@ -10,6 +10,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {
 
@@ -52,6 +53,33 @@ base::flat_set<AuthIntent> GetSupportedIntents(
   for (AuthIntent intent : kAllAuthIntents) {
     if (driver.IsFullAuthSupported(intent) ||
         driver.IsLightAuthSupported(intent)) {
+      supported_intents.insert(intent);
+    }
+  }
+  return supported_intents;
+}
+
+base::flat_set<AuthIntent> GetSupportedIntents(
+    const ObfuscatedUsername& username,
+    const CredentialVerifier& verifier,
+    AuthFactorDriverManager& driver_manager) {
+  AuthFactorDriver& driver =
+      driver_manager.GetDriver(verifier.auth_factor_type());
+
+  // If the hardware support for this factor is not available no intents are
+  // available.
+  if (!driver.IsSupportedByHardware()) {
+    return {};
+  }
+
+  // Note that for factors that support verification, we don't do expiration or
+  // delay because those are generally incompatible with verification.
+
+  // Check all of the intents against lightweight auth. Technically we could
+  // probably just look at verify-only but we leave this up to the driver.
+  base::flat_set<AuthIntent> supported_intents;
+  for (AuthIntent intent : kAllAuthIntents) {
+    if (driver.IsLightAuthSupported(intent)) {
       supported_intents.insert(intent);
     }
   }
