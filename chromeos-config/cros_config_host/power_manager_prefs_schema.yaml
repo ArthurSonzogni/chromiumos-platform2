@@ -142,9 +142,6 @@ powerd_prefs: &powerd_prefs
   disable-dark-resume:
     <<: *powerd_prefs_default
     default: "1"
-  disable-hibernate:
-    <<: *powerd_prefs_default
-    default: "1"
   lower-power-from-suspend-sec:
     <<: *powerd_prefs_default
     default: "259200"

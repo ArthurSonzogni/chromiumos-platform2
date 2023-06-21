@@ -201,9 +201,6 @@ extern const char kTurnOffScreenTimeoutMsPref[];
 // If true, disables dark resume even on systems where it is available.
 extern const char kDisableDarkResumePref[];
 
-// If true, disables hibernate even on systems where it is available.
-extern const char kDisableHibernatePref[];
-
 // Seconds in suspend without full resume after which the device should
 // hibernate or shut down proactively. Should be a positive integer for
 // the feature to be enabled.

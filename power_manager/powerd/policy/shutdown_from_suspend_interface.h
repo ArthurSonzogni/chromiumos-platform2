@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_INTERFACE_H_
 #define POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_INTERFACE_H_
 
+#include "power_manager/proto_bindings/policy.pb.h"
+
 namespace power_manager::policy {
 
 // Holds the logic to shut down or hibernate the device after prolonged non
@@ -40,6 +42,8 @@ class ShutdownFromSuspendInterface {
   // Called when device does a full resume or on transitions from dark resume to
   // full resume.
   virtual void HandleFullResume() = 0;
+  // Called when a new PowerManagementPolicy is sent over DBus.
+  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) = 0;
 };
 
 }  // namespace power_manager::policy

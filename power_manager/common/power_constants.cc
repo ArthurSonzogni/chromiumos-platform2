@@ -85,7 +85,6 @@ const char kSlowAdaptiveChargingEnabledPref[] =
 const char kChargeLimitEnabledPref[] = "charge_limit_enabled";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
-const char kDisableHibernatePref[] = "disable_hibernate";
 const char kLowerPowerFromSuspendSecPref[] = "lower_power_from_suspend_sec";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";

@@ -67,7 +67,6 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   uint64_t PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
   bool UndoPrepareForSuspend() override;
   bool IsHibernateAvailable() override;
-  bool IsHibernateEnabled();
 
   // Sets a prefix path which is used as file system root when testing.
   // Setting to an empty path removes the prefix.
@@ -89,8 +88,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Returns true if running on an Intel CPU.
   bool HasIntelCpu();
 
-  // Returns true if the system supports aeskl (Keylocker).
-  bool HasAESKL();
+  // Returns true if a hiberimage exists.
+  // hiberimage is an LVM volume which will only be active after hiberman has
+  // configured hiberimage.
+  bool HiberimageExists();
 
   // Reads preferences and sets |suspend_mode_|.
   void ReadSuspendMode();

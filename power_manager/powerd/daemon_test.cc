@@ -202,9 +202,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     prefs_->SetInt64(kUnpluggedQuickDimMsPref, 60000);
     prefs_->SetInt64(kUnpluggedQuickLockMsPref, 120000);
 
-    // This pref is required by policy::ShutdownFromSuspend.
-    prefs_->SetBool(kDisableHibernatePref, false);
-
     // This external setting is required for policy::AdaptiveChargingController.
     prefs_->set_external_string_for_testing("/hardware-properties", "psu-type",
                                             "battery");

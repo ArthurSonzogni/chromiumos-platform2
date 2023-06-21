@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -20,11 +21,6 @@
 namespace power_manager::system {
 
 constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
-constexpr char kCryptoPath[] = "/proc/crypto";
-
-// The feature name for Hibernate gradual rollout and experiments.
-constexpr char kSuspendToHibernateFeatureName[] =
-    "CrOSLateBootSuspendToHibernate";
 
 // Path to read to figure out the hibernation resume device.
 // This file is absent on kernels without hibernation support.
@@ -33,6 +29,9 @@ constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
 // Path to the hiberman executable responsible for coordinating hibernate/resume
 // activities.
 constexpr char kHibermanExecutablePath[] = "/usr/sbin/hiberman";
+
+// Device mapper base path.
+constexpr char kDeviceMapperBasePath[] = "/dev/mapper";
 
 namespace {
 // Path to write to configure system suspend mode.
@@ -58,10 +57,8 @@ static constexpr unsigned kECResumeResultHangBit = 1 << 31;
 
 // path to the node that we can read/write to to program the RTC wakealarm
 static constexpr char kWakealarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
-}  // namespace
 
-const VariationsFeature kSuspendToHibernateFeature{
-    kSuspendToHibernateFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+}  // namespace
 
 // Static.
 const base::FilePath SuspendConfigurator::kConsoleSuspendPath(
@@ -139,33 +136,38 @@ bool SuspendConfigurator::UndoPrepareForSuspend() {
 }
 
 bool SuspendConfigurator::IsHibernateAvailable() {
-  // Check if the hiberman binary is available on the device.
   base::FilePath snapshot_device_path =
       GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
   base::FilePath hiberman_executable_path =
       GetPrefixedFilePath(base::FilePath(kHibermanExecutablePath));
 
-  if (base::PathExists(snapshot_device_path) &&
-      base::PathExists(hiberman_executable_path)) {
-    LOG(INFO) << "Hibernate binary is available";
-  } else {
-    LOG(INFO) << "Hibernate binary is not available on this machine";
+  if (!base::PathExists(snapshot_device_path) ||
+      !base::PathExists(hiberman_executable_path)) {
     return false;
   }
 
-  // Systems with Keylocker can only suspend to S4. S4 is not an allowed
-  // transition for hibernate at the moment, so any system with AESKL will be
-  // unable to hibernate. We're disabling hibernate when using AESKL.
-  if (HasAESKL()) {
-    LOG(INFO) << "Hibernate is not available: system has aeskl.";
+  if (!HiberimageExists()) {
+    LOG(INFO)
+        << "Hibernate would be available but no hiberimage does not exist";
     return false;
   }
 
-  return IsHibernateEnabled();
+  return true;
 }
 
-bool SuspendConfigurator::IsHibernateEnabled() {
-  return platform_features_->IsEnabledBlocking(kSuspendToHibernateFeature);
+bool SuspendConfigurator::HiberimageExists() {
+  // Because hiberimage is created at user login and removed
+  // at logout we must always check if a hiberimage exists.
+  base::FileEnumerator file_enum(
+      GetPrefixedFilePath(base::FilePath(kDeviceMapperBasePath)),
+      /*recursive=*/false, base::FileEnumerator::FileType::FILES);
+  for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
+    // The format is always /dev/mapper/${LVM_VG}-hiberimage
+    if (base::EndsWith(path.value(), "hiberimage")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {
@@ -245,18 +247,6 @@ bool SuspendConfigurator::IsSerialConsoleEnabled() {
   }
 
   return rc;
-}
-
-bool SuspendConfigurator::HasAESKL() {
-  base::FilePath file_path = GetPrefixedFilePath(base::FilePath(kCryptoPath));
-
-  std::string crypto_info;
-  if (!base::ReadFileToString(base::FilePath(file_path), &crypto_info)) {
-    PLOG(ERROR) << "Failed to read from: " << file_path;
-    return false;
-  }
-
-  return (crypto_info.find("aeskl") != std::string::npos);
 }
 
 bool SuspendConfigurator::ReadCpuInfo(std::string& cpuInfo) {

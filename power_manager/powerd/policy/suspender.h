@@ -419,6 +419,8 @@ class Suspender : public SuspendDelayObserver,
       nullptr;  // weak
 
   PrefsInterface* prefs_ = nullptr;  // weak
+  system::SuspendConfiguratorInterface* suspend_configurator_ =
+      nullptr;  // weak
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;
   std::unique_ptr<SuspendDelayController> dark_suspend_delay_controller_;
@@ -506,9 +508,6 @@ class Suspender : public SuspendDelayObserver,
 
   // Whether the system is presenting or not.
   DisplayMode display_mode_ = DisplayMode::NORMAL;
-
-  // Whether or not the system supports hibernate.
-  bool hibernate_available_;
 
   // Keep this last.
   base::WeakPtrFactory<Suspender> weak_ptr_factory_;

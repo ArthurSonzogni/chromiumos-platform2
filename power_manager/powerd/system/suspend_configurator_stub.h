@@ -22,6 +22,7 @@ class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
   uint64_t PrepareForSuspend(const base::TimeDelta& suspend_duration) override {
     return 0;
   }
+
   bool UndoPrepareForSuspend() override { return true; }
   bool IsHibernateAvailable() override {
     return hibernate_available_for_testing_;

@@ -236,7 +236,6 @@ class SuspenderTest : public TestEnvironment {
   void Init() {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
-    prefs_.SetBool(kDisableHibernatePref, false);
     test_api_.clock()->set_current_boot_time_for_testing(base::TimeTicks() +
                                                          base::Hours(1));
     delegate_.set_clock(test_api_.clock());
@@ -583,6 +582,36 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedHibernateFailures) {
             delegate_.GetActions());
   EXPECT_TRUE(delegate_.shutdown_failed_suspend_due_to_hibernate());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
+// Tests that an explicit hibernate request doesn't require a minimum time
+// suspended.
+TEST_F(SuspenderTest, ExplicitHibernateDoesntRequireMinSuspendTime) {
+  Init();
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::SUSPEND_TO_DISK);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(
+      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
+      delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+  EXPECT_TRUE(delegate_.to_hibernate());
+}
+
+// Tests that hibernate will not happen if it's disabled via finch.
+TEST_F(SuspenderTest, HibernateFeatureUnavailableDisablesExplicitRequest) {
+  Init();
+  configurator_stub_.force_hibernate_unavailable_for_testing();
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::SUSPEND_TO_DISK);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(
+      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
+      delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+  EXPECT_FALSE(delegate_.to_hibernate());
 }
 
 // Tests that announcing suspend readiness doesn't trigger a call to Suspend()
@@ -1454,22 +1483,6 @@ TEST_F(SuspenderTest, ExplicitRamSuspendWithDarkHibernate) {
       policy::ShutdownFromSuspendInterface::Action::HIBERNATE);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_TO_RAM);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_EQ(true, delegate_.suspend_was_successful());
-  EXPECT_EQ(false, delegate_.to_hibernate());
-}
-
-// Test that an explicit request to hibernate suspends instead if hibernate is
-// disabled.
-TEST_F(SuspenderTest, ExplicitHibernateWhenDisabled) {
-  Init();
-  prefs_.SetBool(kDisableHibernatePref, true);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_DISK);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(

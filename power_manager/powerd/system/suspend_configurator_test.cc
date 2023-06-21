@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string>
 
+#include <base/logging.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
@@ -402,22 +403,19 @@ TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
 }
 
 TEST_F(SuspendConfiguratorTest, TestIsHibernateAvailable) {
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
-
+  const std::string hiberimage_filename = "/dev/mapper/foobarbaz-hiberimage";
   EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-
   CreateFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
   EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-
-  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
   CreateFileInTempRootDir(temp_root_dir_.GetPath(), kHibermanExecutablePath);
   EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-
-  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
-  platform_features_->SetEnabled(kSuspendToHibernateFeatureName, true);
+  // Next we need to create a fake "hiberimage" device this is the LVM.
+  CreateFileInTempRootDir(temp_root_dir_.GetPath(), hiberimage_filename);
   EXPECT_TRUE(suspend_configurator_.IsHibernateAvailable());
-  platform_features_->SetEnabled(kSuspendToHibernateFeatureName, false);
-  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
+
+  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
+  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kHibermanExecutablePath);
+  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), hiberimage_filename);
 }
 
 }  // namespace power_manager::system

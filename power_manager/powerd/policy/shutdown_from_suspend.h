@@ -8,6 +8,7 @@
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 #include <memory>
 
@@ -38,43 +39,65 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
             system::SuspendConfiguratorInterface* suspend_configurator);
 
   bool enabled_for_testing() const { return global_enabled_; }
-  bool hibernate_enabled_for_testing() const { return hibernate_enabled_; }
+  bool hibernate_enabled_for_testing() const {
+    return enabled_for_testing() &&
+           suspend_configurator_->IsHibernateAvailable();
+  }
 
   // ShutdownFromSuspendInterface implementation.
   Action PrepareForSuspendAttempt() override;
   void HandleDarkResume() override;
   void HandleFullResume() override;
+  void HandlePolicyChange(const PowerManagementPolicy& policy) override;
 
  private:
-  explicit ShutdownFromSuspend(
-      std::unique_ptr<power_manager::system::WakeupTimer> alarm_timer);
+  ShutdownFromSuspend(
+      std::unique_ptr<power_manager::system::WakeupTimer> shutdown_timer,
+      std::unique_ptr<power_manager::system::WakeupTimer> hibernate_timer);
 
   friend class ShutdownFromSuspendTest;
 
-  // Invoked by |alarm_timer_| after spending |shutdown_delay_| in suspend.
-  void OnTimerWake();
+  // Invoked by |shutdown_alarm_timer_| after spending |shutdown_delay_| in
+  // suspend.
+  void OnShutdownTimerWake();
+  // Invoked by |hibernate_alarm_timer_| after spending the hibernate timeout in
+  // suspend. This timeout value is determined by calling
+  // SuspendConfigurator::MinimumTimeInSuspendBeforeHibernate.
+  void OnHibernateTimerWake();
 
   // Helper function to determine if the battery is below a certain threshold.
   bool IsBatteryLow();
-  // Called to decide whether or not we should hibernate right now.
-  bool ShouldHibernate();
-  // Called to decide whether or not to shut down right now.
-  bool ShouldShutdown();
+  // Called to decide whether or not we should shutdown or hibernate right now.
+  Action DetermineTargetState();
+  // Start or RestartTimers based on the state of the system. For example, after
+  // the hibernate timer fires we want to immediately reset it because even if
+  // the system fails to hibernate we can try again later.
+  void ConfigureTimers();
 
   // Is shutdown or hibernate after x enabled ?
   bool global_enabled_ = false;
-  // Is hibernate after x enabled ?
-  bool hibernate_enabled_ = false;
+
   // Time in suspend after which the device wakes up to shut down.
   base::TimeDelta shutdown_delay_;
+  // Configurable delay for the |hibernate_alarm_timer_|.
+  base::TimeDelta hibernate_delay_;
+
   // Is the device in dark resume currently ?
   bool in_dark_resume_ = false;
-  // Has |alarm_timer_| fired since last full resume.
-  bool timer_fired_ = false;
+
+  // Has the shutdown or hibernate alarm fired ? They will have different
+  // timeouts where the hibernate timer will always be less than the shutdown
+  // timer.
+  bool shutdown_timer_fired_ = false;
+  bool hibernate_timer_fired_ = false;
+
   // Timer to wake the system from suspend after |shutdown_delay_|.
-  std::unique_ptr<power_manager::system::WakeupTimer> alarm_timer_;
+  std::unique_ptr<power_manager::system::WakeupTimer> shutdown_alarm_timer_;
+  std::unique_ptr<power_manager::system::WakeupTimer> hibernate_alarm_timer_;
 
   system::PowerSupplyInterface* power_supply_ = nullptr;  // weak
+  system::SuspendConfiguratorInterface* suspend_configurator_ =
+      nullptr;  // weak
 
   double low_battery_shutdown_percent_ = 0.0;
 };

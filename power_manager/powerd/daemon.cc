@@ -1706,6 +1706,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     adaptive_charging_controller_->HandlePolicyChange(policy);
   }
 
+  shutdown_from_suspend_->HandlePolicyChange(policy);
+
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
   return nullptr;

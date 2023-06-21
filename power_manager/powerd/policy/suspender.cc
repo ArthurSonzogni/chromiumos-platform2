@@ -79,6 +79,7 @@ void Suspender::Init(
   shutdown_from_suspend_ = shutdown_from_suspend;
   adaptive_charging_controller_ = adaptive_charging_controller;
   prefs_ = prefs;
+  suspend_configurator_ = suspend_configurator;
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
@@ -111,7 +112,6 @@ void Suspender::Init(
 
   CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
 
-  hibernate_available_ = suspend_configurator->IsHibernateAvailable();
   ExportDBusMethods();
 
   // Clean up if powerd was previously restarted after emitting SuspendImminent
@@ -683,7 +683,7 @@ Suspender::State Suspender::Suspend() {
       shutdown_from_suspend_->PrepareForSuspendAttempt();
 
   bool hibernate = false;
-  bool hibernate_disabled = false;
+  bool hibernate_available = suspend_configurator_->IsHibernateAvailable();
 
   switch (suspend_request_flavor_) {
     case SuspendFlavor::SUSPEND_TO_RAM:
@@ -724,19 +724,21 @@ Suspender::State Suspender::Suspend() {
   // active Audio to properly suspend themselves.
   delegate_->SuspendAudio();
 
-  if (hibernate) {
-    CHECK(prefs_->GetBool(kDisableHibernatePref, &hibernate_disabled));
-    if (hibernate_disabled || !hibernate_available_) {
-      LOG(WARNING) << "Cannot hibernate because hibernation is "
-                   << (hibernate_disabled ? "disabled" : "unavailable");
-      hibernate = false;
-    } else if (adaptive_charging_controller_) {
+  if (hibernate && !hibernate_available) {
+    // A hibernate was explicitly requested. We do not have to consider the
+    // hibernate delay, so just go ahead and hibernate if available.
+    LOG(WARNING) << "Cannot hibernate because hibernation is unavailable";
+    hibernate = false;
+  }
+
+  if (adaptive_charging_controller_) {
+    if (hibernate) {
       // Since wake from RTC isn't available from hibernate, we treat this as a
       // shutdown for AdaptiveCharging.
       adaptive_charging_controller_->HandleShutdown();
+    } else {
+      adaptive_charging_controller_->PrepareForSuspendAttempt();
     }
-  } else if (adaptive_charging_controller_) {
-    adaptive_charging_controller_->PrepareForSuspendAttempt();
   }
 
   if (suspend_duration_ != base::TimeDelta()) {
@@ -747,7 +749,6 @@ Suspender::State Suspender::Suspend() {
 
   if (hibernate) {
     LOG(INFO) << "Starting hibernate";
-
   } else {
     // Note: If this log message is changed, the platform_SuspendResumeTiming
     // and bluetooth suspend tests must be updated.
