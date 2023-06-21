@@ -590,6 +590,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vmm_swap_usage_path = GetVmmSwapUsageHistoryPath(request.owner_id());
   }
 
+  base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback =
+      base::BindRepeating(&Service::NotifyVmSwapping,
+                          weak_ptr_factory_.GetWeakPtr(), vm_id);
+
   auto vm = ArcVm::Create(ArcVm::Config{
       .kernel = base::FilePath(kKernelPath),
       .vsock_cid = vsock_cid,
@@ -602,6 +606,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vmm_swap_tbw_policy =
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
       .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
+      .vm_swapping_notify_callback = std::move(vm_swapping_notify_callback),
       .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),

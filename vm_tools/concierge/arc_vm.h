@@ -85,6 +85,8 @@ class ArcVm final : public VmBaseImpl {
     // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
     // enabled this should be `nullopt`, otherwise the file is created.
     std::optional<base::FilePath> vmm_swap_usage_path;
+    // The callback for notify other dbus service when vm is swapping.
+    base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback;
     // `guest_memory_size` is the size of the guest memory in bytes which is
     // specified in VmBuilder.
     int64_t guest_memory_size;
@@ -307,6 +309,8 @@ class ArcVm final : public VmBaseImpl {
   VmmSwapUsagePolicy vmm_swap_usage_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   SwapVmCallback pending_swap_vm_callback_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool skip_tbw_management_ = false;
   const int64_t guest_memory_size_;

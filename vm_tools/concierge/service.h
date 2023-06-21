@@ -256,7 +256,7 @@ class Service final : public org::chromium::VmConciergeInterface,
           response_sender,
       const SwapVmRequest& request) override;
 
-  void NotifyVmSwapping(const VmId& vm_id);
+  void NotifyVmSwapping(const VmId& vm_id, SwappingState swapping_state);
 
   // Handles a request to install the Pflash image associated with a VM.
   InstallPflashResponse InstallPflash(

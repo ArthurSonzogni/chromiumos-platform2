@@ -4775,13 +4775,15 @@ void Service::SwapVm(
                    std::move(response_sender)));
 }
 
-void Service::NotifyVmSwapping(const VmId& vm_id) {
+void Service::NotifyVmSwapping(const VmId& vm_id,
+                               SwappingState swapping_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Send the D-Bus signal out to notify everyone that we are swapping a VM.
   vm_tools::concierge::VmSwappingSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
+  proto.set_state(swapping_state);
   concierge_adaptor_.SendVmSwappingSignalSignal(proto);
 }
 

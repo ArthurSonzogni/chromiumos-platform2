@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
+#include <base/test/bind.h>
 #include <base/time/time.h>
 #include <base/timer/mock_timer.h>
 #include <base/timer/timer.h>
@@ -970,6 +971,8 @@ class ArcVmTest : public ::testing::Test {
             raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get())),
         .vmm_swap_tbw_policy =
             raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
+        .vm_swapping_notify_callback = base::BindRepeating(
+            &ArcVmTest::OnVmSwapping, base::Unretained(this)),
         .guest_memory_size = kGuestMemorySize,
         .runtime_dir = temp_dir_.GetPath(),
         .data_disk_path = base::FilePath("dummy"),
@@ -994,6 +997,8 @@ class ArcVmTest : public ::testing::Test {
     FakeCrosvmControl::Get()->actual_balloon_size_ = actual;
     FakeCrosvmControl::Get()->balloon_stats_.total_memory = total;
   }
+
+  void OnVmSwapping(SwappingState state) { latest_vm_swapping_state_ = state; }
 
   void InitializeBalloonPolicy() {
     MemoryMargins margins;
@@ -1061,6 +1066,7 @@ class ArcVmTest : public ::testing::Test {
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 
   base::OnceCallback<void(int64_t)> spaced_proxy_success_callback_;
+  std::optional<SwappingState> latest_vm_swapping_state_;
 
  private:
   bool HandleSwapVmRequest(SwapOperation operation) {
@@ -1732,6 +1738,23 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFileOnDestroy) {
               SendToUMA(kMetricsArcvmPageAverageDurationInFileName, _, _, _, _))
       .Times(1);
   vm_.reset();
+}
+
+TEST_F(ArcVmTest, SendSwappingOutSignal) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
+  EXPECT_TRUE(latest_vm_swapping_state_.has_value());
+  EXPECT_EQ(latest_vm_swapping_state_.value(), SWAPPING_OUT);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
+}
+
+TEST_F(ArcVmTest, SendSwappingInSignal) {
+  ASSERT_TRUE(DisableVmmSwap());
+  EXPECT_TRUE(latest_vm_swapping_state_.has_value());
+  EXPECT_EQ(latest_vm_swapping_state_.value(), SWAPPING_IN);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
 }
 
 }  // namespace concierge

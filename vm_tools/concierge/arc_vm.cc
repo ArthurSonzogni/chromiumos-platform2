@@ -286,6 +286,8 @@ ArcVm::ArcVm(Config config)
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
       vmm_swap_low_disk_policy_(std::move(config.vmm_swap_low_disk_policy)),
       vmm_swap_tbw_policy_(config.vmm_swap_tbw_policy),
+      vm_swapping_notify_callback_(
+          std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
       aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {
   if (config.vmm_swap_usage_path.has_value()) {
@@ -1299,6 +1301,7 @@ bool ArcVm::DisableVmmSwap() {
   }
   is_vmm_swap_enabled_ = false;
   vmm_swap_metrics_->OnVmmSwapDisabled();
+  vm_swapping_notify_callback_.Run(SWAPPING_IN);
   return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath());
 }
 
@@ -1346,6 +1349,7 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
                                    base::GetPageSize());
       vmm_swap_metrics_->OnPreVmmSwapOut(status.metrics.staging_pages);
 
+      vm_swapping_notify_callback_.Run(SWAPPING_OUT);
       CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath());
       last_vmm_swap_out_at_ = base::Time::Now();
       return;
