@@ -122,6 +122,10 @@ inline constexpr char kClientId[] = "client_id";
 // Crash sender lock in case the sender is already running.
 inline constexpr char kCrashSenderLockFile[] = "/run/lock/crash_sender";
 
+// Location in the home dir (or fallback home dir) where lacros experiment IDs
+// are written.
+constexpr char kLacrosVariationsListFile[] = ".variations-list-lacros.txt";
+
 // Location in the home dir (or fallback home dir) where experiment IDs are
 // written.
 inline constexpr char kVariationsListFile[] = ".variations-list.txt";

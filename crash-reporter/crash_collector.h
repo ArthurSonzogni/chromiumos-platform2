@@ -596,7 +596,9 @@ class CrashCollector {
                                         uint64_t* ticks);
 
   // Adds variations (experiment IDs) to crash reports. Returns true on success.
-  bool AddVariations();
+  bool AddVariations(base::StringPiece file,
+                     base::StringPiece variation_key,
+                     base::StringPiece num_experiment_key);
 
   bool GetUserCrashDirectoriesOld(std::vector<base::FilePath>* directories,
                                   bool use_daemon_store);

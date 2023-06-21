@@ -75,6 +75,8 @@ const char kChannelKey[] = "channel";
 // variations::kExperimentListKey in the chromium repo.
 const char kVariationsKey[] = "variations";
 const char kNumExperimentsKey[] = "num-experiments";
+const char kLacrosVariationsKey[] = "lacros-variations";
+const char kLacrosNumExperimentsKey[] = "lacros-num-experiments";
 // Arbitrarily say we won't accept more than 1MiB for the variations file
 const int64_t kArbitraryMaxVariationsSize = 1 << 20;
 
@@ -1586,8 +1588,14 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   LOG(INFO) << "Finishing crash. Meta file: " << meta_path.value();
 
-  if (!AddVariations()) {
+  if (!AddVariations(paths::kVariationsListFile, kVariationsKey,
+                     kNumExperimentsKey)) {
     LOG(ERROR) << "Failed to add variations to report";
+  }
+
+  if (!AddVariations(paths::kLacrosVariationsListFile, kLacrosVariationsKey,
+                     kLacrosNumExperimentsKey)) {
+    LOG(ERROR) << "Failed to add lacros variations to report";
   }
 
   const std::string product_version = GetProductVersion();
@@ -1897,9 +1905,11 @@ bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
          base::StringToUint64(fields[kStartTimePos], ticks);
 }
 
-bool CrashCollector::AddVariations() {
+bool CrashCollector::AddVariations(base::StringPiece file,
+                                   base::StringPiece variation_key,
+                                   base::StringPiece num_experiment_key) {
   std::vector<FilePath> directories;
-  if (extra_metadata_.find(kVariationsKey) != std::string::npos) {
+  if (extra_metadata_.find(variation_key) != std::string::npos) {
     // Don't add variations a second time if something (e.g. chrome) already
     // did.
     return true;
@@ -1923,7 +1933,7 @@ bool CrashCollector::AddVariations() {
   // TODO(mutexlox): When anomaly-detector invokes crash_reporter it cannot read
   // this file as it's in the user's home dir. Get the info to anomaly-detector
   // some other way.
-  base::FilePath to_read = home_directory.Append(paths::kVariationsListFile);
+  base::FilePath to_read = home_directory.Append(file);
   if (!CarefullyReadFileToStringWithMaxSize(
           to_read, kArbitraryMaxVariationsSize, &contents)) {
     LOG(ERROR) << "Couldn't read " << to_read.value();
@@ -1947,8 +1957,8 @@ bool CrashCollector::AddVariations() {
                << " from contents " << contents;
     return false;
   }
-  AddCrashMetaUploadData(kVariationsKey, variations);
-  AddCrashMetaUploadData(kNumExperimentsKey, num_exp);
+  AddCrashMetaUploadData(std::string(variation_key), variations);
+  AddCrashMetaUploadData(std::string(num_experiment_key), num_exp);
   return true;
 }
 

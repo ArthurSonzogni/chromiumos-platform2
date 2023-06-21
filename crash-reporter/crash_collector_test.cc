@@ -1552,6 +1552,7 @@ struct MetaDataTest {
   std::string test_case_name;
   bool test_in_prog = false;
   bool add_variations = false;
+  bool add_lacros_variations = false;
   bool use_saved_lsb = false;
   std::string exec_name = "kernel";
   std::optional<bool> enterprise_enrolled = false;
@@ -1567,6 +1568,17 @@ class CrashCollectorParameterizedTest
   static constexpr char kKernelName[] = "Linux";
   static constexpr char kKernelVersion[] =
       "3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018";
+  static constexpr int kNumLacrosExperiments = 10;
+  static constexpr char kLacrosVariations[] =
+      "3ac60855-486e2a9c,63dcb6a3-f774aad2,"
+      "e706e746-e4cdf2fd,f296190c-4c073154,4442aae2-4ad60575,f690cf64-75cb33fc,"
+      "31f573d2-ca7d8d80,c559031-3d47f4f4,9a38bae3-3d47f4f4,6f3a6be-3d47f4f4,";
+  static constexpr char kLacrosVariationsFile[] =
+      "num-experiments=10\n"
+      "variations=3ac60855-486e2a9c,63dcb6a3-f774aad2,"
+      "e706e746-e4cdf2fd,f296190c-4c073154,4442aae2-4ad60575,f690cf64-75cb33fc,"
+      "31f573d2-ca7d8d80,c559031-3d47f4f4,9a38bae3-3d47f4f4,6f3a6be-3d47f4f4,"
+      "\n";
   static constexpr int kNumExperiments = 17;
   static constexpr char kVariations[] =
       "3ac60855-486e2a9c,63dcb6a3-f774aad2,"
@@ -1619,6 +1631,13 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
     ASSERT_TRUE(test_util::CreateFile(
         paths::GetAt(paths::kFallbackToHomeDir, paths::kVariationsListFile),
         kVariationsFile));
+  }
+
+  if (test_case.add_lacros_variations) {
+    ASSERT_TRUE(
+        test_util::CreateFile(paths::GetAt(paths::kFallbackToHomeDir,
+                                           paths::kLacrosVariationsListFile),
+                              kLacrosVariationsFile));
   }
 
   const char kMetaFileBasename[] = "generated.meta";
@@ -1847,6 +1866,38 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "done=1\n",
       CrashCollectorParameterizedTest::kVariations,
       CrashCollectorParameterizedTest::kNumExperiments, kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
+  MetaDataTest lacros_variations;
+  lacros_variations.test_case_name = "Lacros_Variations";
+  lacros_variations.add_lacros_variations = true;
+  lacros_variations.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_lacros-variations=%s\n"
+      "upload_var_lacros-num-experiments=%d\n"
+      "upload_var_channel=test\n"
+      "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_client_computed_severity=UNSPECIFIED\n"
+      "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=6727.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=82\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      CrashCollectorParameterizedTest::kLacrosVariations,
+      CrashCollectorParameterizedTest::kNumLacrosExperiments, kFakeNow,
       (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
