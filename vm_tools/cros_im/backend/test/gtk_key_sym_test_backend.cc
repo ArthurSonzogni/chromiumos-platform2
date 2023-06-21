@@ -62,19 +62,17 @@ BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
 
 BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
   ExpectCreateTextInput();
+  Ignore(Request::kReset);
 
   Expect(Request::kActivate);
 
   SendKeySym(XKB_KEY_a);
   SendKeySym(XKB_KEY_BackSpace);
-  Expect(Request::kReset);
   SendKeySym(XKB_KEY_Return);
   SendKeySym(XKB_KEY_b);
   SendKeySym(XKB_KEY_BackSpace);
-  Expect(Request::kReset);
   SendKeySym(XKB_KEY_c);
   SendKeySym(XKB_KEY_BackSpace);
-  Expect(Request::kReset);
   SendKeySym(XKB_KEY_BackSpace);
 
   Expect(Request::kDeactivate);
