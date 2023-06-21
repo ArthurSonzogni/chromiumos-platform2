@@ -19,11 +19,6 @@
 namespace shill {
 
 namespace {
-using net_base::IPv4Address;
-using net_base::IPv4CIDR;
-using net_base::IPv6Address;
-using net_base::IPv6CIDR;
-
 const size_t kBitsPerByte = 8;
 }  // namespace
 
@@ -38,9 +33,9 @@ const char IPAddress::kFamilyNameIPv6[] = "IPv6";
 IPAddress IPAddress::CreateFromFamily(Family family) {
   switch (family) {
     case kFamilyIPv4:
-      return IPAddress(IPv4Address());
+      return IPAddress(net_base::IPv4Address());
     case kFamilyIPv6:
-      return IPAddress(IPv6Address());
+      return IPAddress(net_base::IPv6Address());
     default:
       return IPAddress(kFamilyUnknown, ByteString());
   }
@@ -59,23 +54,35 @@ IPAddress::IPAddress(Family family,
                      unsigned int prefix)
     : family_(family), address_(address), prefix_(prefix) {}
 
-IPAddress::IPAddress(const IPv4Address& address)
+IPAddress::IPAddress(const net_base::IPv4Address& address)
     : family_(kFamilyIPv4),
       address_({address.ToByteString(), false}),
       prefix_(0) {}
 
-IPAddress::IPAddress(const IPv6Address& address)
+IPAddress::IPAddress(const net_base::IPv6Address& address)
     : family_(kFamilyIPv6),
       address_({address.ToByteString(), false}),
       prefix_(0) {}
 
-IPAddress::IPAddress(const IPv4CIDR& cidr)
+IPAddress::IPAddress(const net_base::IPAddress& address)
+    : family_(address.GetFamily() == net_base::IPFamily::kIPv4 ? kFamilyIPv4
+                                                               : kFamilyIPv6),
+      address_({address.ToByteString(), false}),
+      prefix_(0) {}
+
+IPAddress::IPAddress(const net_base::IPv4CIDR& cidr)
     : family_(kFamilyIPv4),
       address_({cidr.address().ToByteString(), false}),
       prefix_(cidr.prefix_length()) {}
 
-IPAddress::IPAddress(const IPv6CIDR& cidr)
+IPAddress::IPAddress(const net_base::IPv6CIDR& cidr)
     : family_(kFamilyIPv6),
+      address_({cidr.address().ToByteString(), false}),
+      prefix_(cidr.prefix_length()) {}
+
+IPAddress::IPAddress(const net_base::IPCIDR& cidr)
+    : family_(cidr.GetFamily() == net_base::IPFamily::kIPv4 ? kFamilyIPv4
+                                                            : kFamilyIPv6),
       address_({cidr.address().ToByteString(), false}),
       prefix_(cidr.prefix_length()) {}
 
@@ -208,40 +215,68 @@ std::optional<IPAddress> IPAddress::CreateFromPrefixString(
   return std::nullopt;
 }
 
-std::optional<IPv4Address> IPAddress::ToIPv4Address() const {
+std::optional<net_base::IPv4Address> IPAddress::ToIPv4Address() const {
   if (!IsValid() || family_ != kFamilyIPv4) {
     return std::nullopt;
   }
 
-  return IPv4Address::CreateFromBytes(
+  return net_base::IPv4Address::CreateFromBytes(
       base::make_span(GetConstData(), GetLength()));
 }
 
-std::optional<IPv6Address> IPAddress::ToIPv6Address() const {
+std::optional<net_base::IPv6Address> IPAddress::ToIPv6Address() const {
   if (!IsValid() || family_ != kFamilyIPv6) {
     return std::nullopt;
   }
 
-  return IPv6Address::CreateFromBytes(
+  return net_base::IPv6Address::CreateFromBytes(
       base::make_span(GetConstData(), GetLength()));
 }
 
-std::optional<IPv4CIDR> IPAddress::ToIPv4CIDR() const {
+std::optional<net_base::IPAddress> IPAddress::ToIPAddress() const {
+  const auto ipv4_addr = ToIPv4Address();
+  if (ipv4_addr) {
+    return net_base::IPAddress(*ipv4_addr);
+  }
+
+  const auto ipv6_addr = ToIPv6Address();
+  if (ipv6_addr) {
+    return net_base::IPAddress(*ipv6_addr);
+  }
+
+  return std::nullopt;
+}
+
+std::optional<net_base::IPv4CIDR> IPAddress::ToIPv4CIDR() const {
   const auto ipv4_address = ToIPv4Address();
   if (!ipv4_address) {
     return std::nullopt;
   }
 
-  return IPv4CIDR::CreateFromAddressAndPrefix(*ipv4_address, prefix_);
+  return net_base::IPv4CIDR::CreateFromAddressAndPrefix(*ipv4_address, prefix_);
 }
 
-std::optional<IPv6CIDR> IPAddress::ToIPv6CIDR() const {
+std::optional<net_base::IPv6CIDR> IPAddress::ToIPv6CIDR() const {
   const auto ipv6_address = ToIPv6Address();
   if (!ipv6_address) {
     return std::nullopt;
   }
 
-  return IPv6CIDR::CreateFromAddressAndPrefix(*ipv6_address, prefix_);
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(*ipv6_address, prefix_);
+}
+
+std::optional<net_base::IPCIDR> IPAddress::ToIPCIDR() const {
+  const auto ipv4_cidr = ToIPv4CIDR();
+  if (ipv4_cidr) {
+    return net_base::IPCIDR(*ipv4_cidr);
+  }
+
+  const auto ipv6_cidr = ToIPv6CIDR();
+  if (ipv6_cidr) {
+    return net_base::IPCIDR(*ipv6_cidr);
+  }
+
+  return std::nullopt;
 }
 
 bool IPAddress::SetAddressFromString(const std::string& address_string) {

@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
@@ -21,8 +22,8 @@ namespace shill {
 
 // Class to represent an IP address, whether v4 or v6.
 // Is both copyable and movable.
-// Note: Please prefer to use IPv4Address, IPv6Address, IPv4CIDR, or IPv6CIDR
-// if you're sure whether the address is IPv4 or IPv6 specific.
+// Note: This class is deprecated. Please switch to use net_base's types:
+// IPv4Address, IPv6Address, IPAddress, IPv4CIDR, IPv6CIDR or IPCIDR.
 class SHILL_EXPORT IPAddress {
  public:
   using Family = unsigned char;
@@ -41,12 +42,14 @@ class SHILL_EXPORT IPAddress {
   // Creates a instance by family and initializes it.
   static IPAddress CreateFromFamily(Family family);
 
-  // Creates from the family-specific classes. The created instance is already
+  // Creates from the net_base's classes. The created instance is already
   // initialized (i.e. IsValid() is true).
   explicit IPAddress(const net_base::IPv4Address& address);
   explicit IPAddress(const net_base::IPv6Address& address);
+  explicit IPAddress(const net_base::IPAddress& address);
   explicit IPAddress(const net_base::IPv4CIDR& cidr);
   explicit IPAddress(const net_base::IPv6CIDR& cidr);
+  explicit IPAddress(const net_base::IPCIDR& cidr);
 
   ~IPAddress();
 
@@ -135,12 +138,14 @@ class SHILL_EXPORT IPAddress {
            GetLength() == GetAddressLength(family_);
   }
 
-  // Converts to the family-specific classes. Returns std::nullopt if the IP
-  // family is not the same.
+  // Converts to the net_base's classes. Returns std::nullopt if the IP family
+  // is not the same or the instance is invalid.
   std::optional<net_base::IPv4Address> ToIPv4Address() const;
   std::optional<net_base::IPv6Address> ToIPv6Address() const;
+  std::optional<net_base::IPAddress> ToIPAddress() const;
   std::optional<net_base::IPv4CIDR> ToIPv4CIDR() const;
   std::optional<net_base::IPv6CIDR> ToIPv6CIDR() const;
+  std::optional<net_base::IPCIDR> ToIPCIDR() const;
 
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.

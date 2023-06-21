@@ -563,6 +563,18 @@ TEST(IPAddressConversionTest, IPv6Address) {
   EXPECT_FALSE(ip.ToIPv4CIDR());
 }
 
+TEST(IPAddressConversionTest, IPAddress) {
+  const auto net_base_ip = *net_base::IPAddress::CreateFromString("::1");
+  const auto ip = IPAddress(net_base_ip);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 0);
+  EXPECT_EQ(ip.ToString(), "::1");
+
+  EXPECT_EQ(*ip.ToIPAddress(), net_base_ip);
+  EXPECT_FALSE(ip.ToIPv4Address());
+  EXPECT_FALSE(ip.ToIPv4CIDR());
+}
+
 TEST(IPAddressConversionTest, IPv4CIDR) {
   const auto cidr = *net_base::IPv4CIDR::CreateFromCIDRString("192.168.2.1/24");
   const auto ip = IPAddress(cidr);
@@ -585,6 +597,18 @@ TEST(IPAddressConversionTest, IPv6CIDR) {
   EXPECT_EQ(*ip.ToIPv6CIDR(), cidr);
   EXPECT_FALSE(ip.ToIPv4Address());
   EXPECT_FALSE(ip.ToIPv4CIDR());
+}
+
+TEST(IPAddressConversionTest, IPCIDR) {
+  const auto cidr = *net_base::IPCIDR::CreateFromCIDRString("192.168.2.1/24");
+  const auto ip = IPAddress(cidr);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 24);
+  EXPECT_EQ(ip.ToString(), "192.168.2.1");
+
+  EXPECT_EQ(*ip.ToIPCIDR(), cidr);
+  EXPECT_FALSE(ip.ToIPv6Address());
+  EXPECT_FALSE(ip.ToIPv6CIDR());
 }
 
 TEST(IPAddressCreationTest, CreateFromFamily) {
