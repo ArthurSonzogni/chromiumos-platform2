@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -149,6 +150,14 @@ bool SELinuxViolationCollector::Collect(int32_t weight) {
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 
   return true;
+}
+
+CrashCollector::ComputedCrashSeverity
+SELinuxViolationCollector::ComputeSeverity(const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kInfo,
+      .product_group = Product::kPlatform,
+  };
 }
 
 // static

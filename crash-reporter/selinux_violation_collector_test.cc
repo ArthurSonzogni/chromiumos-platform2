@@ -262,3 +262,13 @@ TEST_F(SELinuxViolationCollectorTest, EmptyFailureReport) {
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
+
+TEST_F(SELinuxViolationCollectorTest, ComputeSeverity) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("any executable");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kInfo);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}

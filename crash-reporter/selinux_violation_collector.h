@@ -30,6 +30,10 @@ class SELinuxViolationCollector : public CrashCollector {
   // Collects warning.
   bool Collect(int32_t weight);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(bool selinux_violation, int32_t weight);
 
  protected:
