@@ -56,12 +56,6 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
   return it != enum2str.end() ? it->second : "Unknown";
 }
 
-// Returns |s| if it is not empty, otherwise returns |fallback|.
-// Useful for handling empty IP address literals when logging.
-const std::string& OrDefault(const std::string& s,
-                             const std::string& fallback) {
-  return !s.empty() ? s : fallback;
-}
 }  // namespace
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
@@ -424,12 +418,22 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     if (is_ipv4) {
       ipconfig.ipv4_cidr = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
           *address->ToIPv4Address(), prefix_length);
-      ipconfig.ipv4_gateway = gateway;
+      ipconfig.ipv4_gateway = net_base::IPv4Address::CreateFromString(gateway);
+      if (!ipconfig.ipv4_gateway) {
+        LOG(WARNING) << "[" << device.value() << "]: " << method
+                     << " IPConfig Gateway property was not valid IPv4Address: "
+                     << gateway;
+      }
       ipconfig.ipv4_dns_addresses = dns_addresses;
     } else {  // AF_INET6
       ipconfig.ipv6_cidr = net_base::IPv6CIDR::CreateFromAddressAndPrefix(
           *address->ToIPv6Address(), prefix_length);
-      ipconfig.ipv6_gateway = gateway;
+      ipconfig.ipv6_gateway = net_base::IPv6Address::CreateFromString(gateway);
+      if (!ipconfig.ipv6_gateway) {
+        LOG(WARNING) << "[" << device.value() << "]: " << method
+                     << " IPConfig Gateway property was not valid IPv6Address: "
+                     << gateway;
+      }
       ipconfig.ipv6_dns_addresses = dns_addresses;
     }
   }
@@ -609,12 +613,13 @@ std::ostream& operator<<(std::ostream& stream,
   return stream << "{ ipv4_cidr: "
                 << ipconfig.ipv4_cidr.value_or(net_base::IPv4CIDR())
                 << ", ipv4_gateway: "
-                << OrDefault(ipconfig.ipv4_gateway, "0.0.0.0")
+                << ipconfig.ipv4_gateway.value_or(net_base::IPv4Address())
                 << ", ipv4_dns: ["
                 << base::JoinString(ipconfig.ipv4_dns_addresses, ",")
                 << "], ipv6_cidr: "
                 << ipconfig.ipv6_cidr.value_or(net_base::IPv6CIDR())
-                << ", ipv6_gateway: " << OrDefault(ipconfig.ipv6_gateway, "::")
+                << ", ipv6_gateway: "
+                << ipconfig.ipv6_gateway.value_or(net_base::IPv6Address())
                 << ", ipv6_dns: ["
                 << base::JoinString(ipconfig.ipv6_dns_addresses, ",") << "]}";
 }

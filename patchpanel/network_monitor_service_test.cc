@@ -211,7 +211,7 @@ class NeighborLinkMonitorTest : public testing::Test {
 TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
 
   // On ipconfig changed, the link monitor should send only one dump request, to
@@ -225,7 +225,7 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
 TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv6_cidr = *net_base::IPv6CIDR::CreateFromCIDRString("2401::1/64");
-  ipconfig.ipv6_gateway = "fe80::1";
+  ipconfig.ipv6_gateway = *net_base::IPv6Address::CreateFromString("fe80::1");
   ipconfig.ipv6_dns_addresses = {"fe80::2"};
 
   link_monitor_->OnIPConfigChanged(ipconfig);
@@ -245,7 +245,7 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
   // Only the gateway should be in the watching list.
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   // Creates a RTNL message about the NUD state of the gateway is NUD_REACHABLE
@@ -277,7 +277,7 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
   link_monitor_->OnIPConfigChanged(ipconfig);
 
@@ -315,7 +315,7 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
   link_monitor_->OnIPConfigChanged(ipconfig);
 
@@ -328,7 +328,7 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
 TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
   ShillClient::IPConfig ipconfig;
   ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
 
   fake_neighbor_event_handler_.Enable();
 
@@ -364,7 +364,7 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("On neighbor as gateway or DNS server failed.");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(
@@ -385,7 +385,7 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("On neighbor as gateway and DNS server failed");
-  ipconfig.ipv4_gateway = "1.2.3.5";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   ipconfig.ipv4_dns_addresses = {"1.2.3.5"};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(
@@ -400,7 +400,7 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("Swaps the roles.");
-  ipconfig.ipv4_gateway = "1.2.3.6";
+  ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 6);
   ipconfig.ipv4_dns_addresses = {"1.2.3.5"};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(

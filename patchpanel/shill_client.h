@@ -40,14 +40,14 @@ class ShillClient {
   // - MTU (one only per network)
   struct IPConfig {
     std::optional<net_base::IPv4CIDR> ipv4_cidr;
-    std::string ipv4_gateway;
+    std::optional<net_base::IPv4Address> ipv4_gateway;
     std::vector<std::string> ipv4_dns_addresses;
 
     // Note due to the limitation of shill, we will only get one IPv6 address
     // from it. This address should be the privacy address for device with type
     // of ethernet or wifi.
     std::optional<net_base::IPv6CIDR> ipv6_cidr;
-    std::string ipv6_gateway;
+    std::optional<net_base::IPv6Address> ipv6_gateway;
     std::vector<std::string> ipv6_dns_addresses;
     bool operator==(const IPConfig& b) const {
       return ipv4_cidr == b.ipv4_cidr && ipv4_gateway == b.ipv4_gateway &&

@@ -302,7 +302,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   wlan_dev.service_path = "/service/1";
   wlan_dev.ipconfig.ipv4_cidr =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.168.10.48/24");
-  wlan_dev.ipconfig.ipv4_gateway = "192.168.10.1";
+  wlan_dev.ipconfig.ipv4_gateway = net_base::IPv4Address(192, 168, 10, 1);
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
@@ -328,7 +328,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr,
             *net_base::IPv4CIDR::CreateFromCIDRString("192.168.10.48/24"));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_gateway,
-            "192.168.10.1");
+            net_base::IPv4Address(192, 168, 10, 1));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses,
             std::vector<std::string>({"1.1.1.1"}));
 
@@ -343,7 +343,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr, std::nullopt);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_gateway, "");
+  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_gateway, std::nullopt);
   EXPECT_TRUE(
       ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses.empty());
 
@@ -358,7 +358,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr,
             *net_base::IPv4CIDR::CreateFromCIDRString("192.168.10.48/24"));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_gateway,
-            "192.168.10.1");
+            net_base::IPv4Address(192, 168, 10, 1));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses,
             std::vector<std::string>({"1.1.1.1"}));
 }
@@ -373,7 +373,8 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   wlan_dev.service_path = "/service/1";
   wlan_dev.ipconfig.ipv6_cidr = *net_base::IPv6CIDR::CreateFromCIDRString(
       "2001:db8::aabb:ccdd:1122:eeff/64");
-  wlan_dev.ipconfig.ipv6_gateway = "fe80::abcd:1234";
+  wlan_dev.ipconfig.ipv6_gateway =
+      *net_base::IPv6Address::CreateFromString("fe80::abcd:1234");
   wlan_dev.ipconfig.ipv6_dns_addresses = {"2001:db8::1111"};
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
@@ -390,7 +391,7 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
             *net_base::IPv6CIDR::CreateFromCIDRString(
                 "2001:db8::aabb:ccdd:1122:eeff/64"));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway,
-            "fe80::abcd:1234");
+            *net_base::IPv6Address::CreateFromString("fe80::abcd:1234"));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses,
             std::vector<std::string>({"2001:db8::1111"}));
   ASSERT_EQ(ipv6_network_change_calls_.size(), 1u);
@@ -410,7 +411,7 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_cidr, std::nullopt);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway, "");
+  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway, std::nullopt);
   EXPECT_TRUE(
       ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 2u);
@@ -430,7 +431,7 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
             *net_base::IPv6CIDR::CreateFromCIDRString(
                 "2001:db8::aabb:ccdd:1122:eeff/64"));
   EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway,
-            "fe80::abcd:1234");
+            *net_base::IPv6Address::CreateFromString("fe80::abcd:1234"));
   EXPECT_TRUE(
       ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);

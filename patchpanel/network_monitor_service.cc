@@ -192,14 +192,18 @@ void NeighborLinkMonitor::OnIPConfigChanged(
   watching_entries_.clear();
 
   if (ipconfig.ipv4_cidr) {
-    AddWatchingEntries(ipconfig.ipv4_cidr->prefix_length(),
-                       ipconfig.ipv4_cidr->address().ToString(),
-                       ipconfig.ipv4_gateway, ipconfig.ipv4_dns_addresses);
+    AddWatchingEntries(
+        ipconfig.ipv4_cidr->prefix_length(),
+        ipconfig.ipv4_cidr->address().ToString(),
+        ipconfig.ipv4_gateway ? ipconfig.ipv4_gateway->ToString() : "",
+        ipconfig.ipv4_dns_addresses);
   }
   if (ipconfig.ipv6_cidr) {
-    AddWatchingEntries(ipconfig.ipv6_cidr->prefix_length(),
-                       ipconfig.ipv6_cidr->address().ToString(),
-                       ipconfig.ipv6_gateway, ipconfig.ipv6_dns_addresses);
+    AddWatchingEntries(
+        ipconfig.ipv6_cidr->prefix_length(),
+        ipconfig.ipv6_cidr->address().ToString(),
+        ipconfig.ipv6_gateway ? ipconfig.ipv6_gateway->ToString() : "",
+        ipconfig.ipv6_dns_addresses);
   }
 
   if (watching_entries_.empty()) {
