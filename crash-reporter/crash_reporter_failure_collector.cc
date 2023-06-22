@@ -45,6 +45,14 @@ bool CrashReporterFailureCollector::Collect() {
   return true;
 }
 
+CrashCollector::ComputedCrashSeverity
+CrashReporterFailureCollector::ComputeSeverity(const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kInfo,
+      .product_group = Product::kPlatform,
+  };
+}
+
 // static
 CollectorInfo CrashReporterFailureCollector::GetHandlerInfo(
     bool crash_reporter_crashed) {

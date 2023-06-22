@@ -12,6 +12,8 @@
 #ifndef CRASH_REPORTER_CRASH_REPORTER_FAILURE_COLLECTOR_H_
 #define CRASH_REPORTER_CRASH_REPORTER_FAILURE_COLLECTOR_H_
 
+#include <string>
+
 #include "crash-reporter/crash_collector.h"
 
 // Collector to record crash_reportor itself crashing.
@@ -26,6 +28,10 @@ class CrashReporterFailureCollector : public CrashCollector {
 
   // Collect crash reporter failures.
   bool Collect();
+
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
 
   static CollectorInfo GetHandlerInfo(bool crash_reporter_crashed);
 };

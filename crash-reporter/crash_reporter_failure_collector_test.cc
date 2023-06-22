@@ -93,3 +93,14 @@ TEST_F(CrashReporterFailureCollectorTest, CollectLog) {
   EXPECT_FALSE((meta_content.find("payload=" + log_path.BaseName().value()) ==
                 std::string::npos));
 }
+
+TEST_F(CrashReporterFailureCollectorTest,
+       ComputeSeverity_CrashReporterFailureExecutable) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("crash_reporter_failure");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kInfo);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
