@@ -20,10 +20,13 @@
 #include "crash-reporter/util.h"
 
 namespace {
-const char kEncryptedStatefulDeviceLabel[] = "encstateful";
-const char kStatefulDeviceLabel[] = "stateful";
 const char kCryptohomeDeviceLabel[] = "cryptohome";
+const char kEncryptedStatefulDeviceLabel[] = "encstateful";
 const char kInvalidDeviceLabel[] = "invalid";
+const char kMountFailureEncstateful[] = "mount_failure_encstateful";
+const char kMountFailureStateful[] = "mount_failure_stateful";
+const char kStatefulDeviceLabel[] = "stateful";
+const char kUmountFailureStateful[] = "umount_failure_stateful";
 
 std::vector<std::string> ConstructLoggingCommands(StorageDeviceType device_type,
                                                   bool is_mount_failure) {
@@ -130,6 +133,23 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   }
 
   return true;
+}
+
+CrashCollector::ComputedCrashSeverity MountFailureCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  ComputedCrashSeverity computed_severity{
+      .crash_severity = CrashSeverity::kUnspecified,
+      .product_group = Product::kPlatform,
+  };
+
+  if ((exec_name == kMountFailureEncstateful) ||
+      (exec_name == kMountFailureStateful)) {
+    computed_severity.crash_severity = CrashSeverity::kFatal;
+  } else if (exec_name == kUmountFailureStateful) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+  }
+
+  return computed_severity;
 }
 
 // static

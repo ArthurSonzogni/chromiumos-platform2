@@ -32,6 +32,10 @@ class MountFailureCollector : public CrashCollector {
 
   bool Collect(bool is_mount_failure);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static StorageDeviceType ValidateStorageDeviceType(const std::string& device);
   static std::string StorageDeviceTypeToString(StorageDeviceType device_type);
 

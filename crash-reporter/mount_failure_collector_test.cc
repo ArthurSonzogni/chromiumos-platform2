@@ -178,3 +178,30 @@ TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
   EXPECT_EQ("cryptohome\ndmesg\n", report_contents);
 }
+
+class MountFailureCollectorCrashSeverityTest
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<
+          test_util::ComputeCrashSeverityTestParams> {};
+
+TEST_P(MountFailureCollectorCrashSeverityTest, ComputeCrashSeverity) {
+  MountFailureCollectorMock collector(StorageDeviceType::kStateful,
+                                      /*testonly_send_all=*/false);
+  const test_util::ComputeCrashSeverityTestParams& test_case = GetParam();
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector.ComputeSeverity(test_case.exec_name);
+
+  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    MountFailureCollectorCrashSeverityTestSuite,
+    MountFailureCollectorCrashSeverityTest,
+    testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
+        {"mount_failure_encstateful", CrashCollector::CrashSeverity::kFatal},
+        {"mount_failure_stateful", CrashCollector::CrashSeverity::kFatal},
+        {"umount_failure_stateful", CrashCollector::CrashSeverity::kWarning},
+        {"another executable", CrashCollector::CrashSeverity::kUnspecified},
+    }));
