@@ -1,0 +1,247 @@
+# Contents
+
+@DESCRIPTION@
+
+The image `@IMAGE@` was generated using the `build.sh` script on @DATE_SEC@.
+
+# Setup Instructions
+
+## Requirements
+
+*   A Chromebook that is capable of going into Developer Mode. The device owner
+    must have applied a policy where `DeviceBlockDevMode` is false. This might
+    mean that the device owner needs to login to apply this policy.
+*   A [SuzyQ CCD cable][CCD Cable].
+*   This requires a USB flash drive of at least 16GB. These instructions will
+    destroy all data on the flash drive, so please backup all data beforehand.
+*   A GNU/Linux machine that has access to USB.
+
+## 1. Check File Integrity
+
+Please run `md5sum -c checksum.md5` in this directory to verify the integrity of
+all files. All files should be marked at **OK**. If any file is marked as
+**FAILED**, please try downloading the archive and extracting again.
+
+## 2. Prepare Chrome OS USB Install Media
+
+We will use a GNU/Linux machine to setup a USB flash drive as Chrome OS install
+media.
+
+1.  Plug the USB flash drive into the GNU/Linux machine.
+2.  Use `sudo dmesg` or a similar utility to determine the flash drive's name,
+    like `/dev/sda` or `/dev/sdb`, without the partition number. We will refer
+    to the flash drive as `/dev/sdX` in the following steps.
+3.  Flash the `@IMAGE@` image to a USB flash drive using the following command:
+
+    ```bash
+    sudo umount /dev/sdX*
+    sudo dd if=@IMAGE@ bs=4M status=progress oflag=sync of=/dev/sdX
+    sudo sync
+    ```
+
+4.  Remove the flash drive from the GNU/Linux machine
+
+## 3. Setup New Chromebook With Fingerprint Study Image
+
+<details>
+<summary>Click to Expand Instructions</summary>
+
+### A. Place Chromebook into Developer Mode
+
+See
+[https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md).
+
+For most modern Chromebooks this requires the following:
+
+1.  Pressing `Esc` + `↻` + `Power` (Esc-"Refresh"-Power) to get into recovery
+    mode.
+2.  Press `Ctrl` + `d` followed by `Enter` to enter developer mode.
+3.  Your device will reboot.
+4.  If you only see one option saying `Confirm returning to secure mode`, then
+    Dev Mode is blocked by the device owner. If this is a Google provided
+    device, it will need to be returned to Google to unlock.
+
+    Have your Google contact look at
+    [http://shortn/_wqJYCYJPtL](http://shortn/_wqJYCYJPtL).
+
+    Once the `DeviceBlockDevMode` is removed, you can now follow the guide from
+    step 1.
+
+5.  At the `Your are in developer mode` screen, press `Ctrl` + `d` to boot from
+    internal disk.
+
+6.  You will then see a screen that says `Preparing system for Developer Mode`.
+    This may take some time, but the device will reboot when it is finished.
+
+### B. Install Chrome OS from USB
+
+We will now use the prepared flash drive to install a new version of Chrome OS
+onto the chromebook.
+
+1.  [Open root terminal](#open-root-terminal).
+1.  Enable USB booting on the chromebook by running the following commands:
+
+    ```bash
+    crossystem dev_boot_usb=1
+    ```
+
+1.  [Boot from USB and Install](#boot-from-usb-and-install)
+
+### C. Unlock Fingerprint System
+
+We will now disable the Fingerprint MCU's flash protection mechanisms. In
+addition to protecting the firmware on the MCU, these mechanism also control the
+ability to capture fingerprints directly.
+
+1.  [Open root terminal](#open-root-terminal).
+1.  Run `gsctool -a -o` and press the power button when prompted. You will need
+    to press the power button **multiple times** over the span of **5 minutes**.
+    The device will reboot when finished. On boot, the device will report that
+    `The OS image is invalid`. This is okay.
+
+1.  After running `gsctool -a -p`, you device will go back into secure mode. You
+    need to complete the *"Place Chromebook into Developer Mode"* section again.
+
+1.  Plug in the Type-A side of the [CCD Cable] into the GNU/Linux machine and
+    run the following command:
+
+    ```bash
+    watch -n 1 "lsusb | grep 18d1:5014"
+    ```
+
+1.  Plug the Type-C side of the [CCD Cable] into each port of the Chromebook,
+    util you see a message like `Bus 001 Device 023: ID 18d1:5014 Google Inc.
+    Cr50` on the GNU/Linux machine. The orientation of the Type-C end of the
+    [CCD Cable] matters, so you may need to reverse the Type-C connector.
+
+1.  Press `Ctrl - C` to exit the the watch prompt.
+
+1.  Connect to the Cr50 console using the following command:
+
+    ```bash
+    minicom -D/dev/ttyUSB0
+    ```
+
+    This will open an interactive console to the onboard security chip. Press
+    Enter to make sure that the console is responsive.
+
+1.  In the console, enter the following:
+
+    ```
+    ccd reset factory
+    ccd testlab enable
+    ```
+
+    Press the power button on the Chromebook when prompted.
+
+1.  Exit minicom by pressing `Ctrl - A`, then `Q`, then `Enter`.
+
+1.  Switch to the test Chrombook
+
+1.  [Open root terminal](#open-root-terminal).
+
+1.  Run the following command to reflash and reset the FPMCU:
+
+    ```bash
+    flash_fp_mcu
+    ```
+
+1.  [Ensure the security is removed from the FPMCU](#ensure-fpmcu-security).
+
+See [CCD Open] and [CCD Cable] for more information.
+
+[CCD Open]: https://chromium.googlesource.com/chromiumos/platform/ec/+/cr50_stab/docs/case_closed_debugging_cr50.md#ccd-open
+[CCD Cable]: https://chromium.googlesource.com/chromiumos/third_party/hdctools/+/main/docs/ccd.md#suzyq-suzyqable
+
+</details>
+
+## 3. Upgrade Existing Fingerprint Study Image
+
+<details>
+<summary>Click to Expand Instructions</summary>
+
+1.  Follow the [boot from USB and install](#boot-from-usb-and-install) steps.
+1.  Force [update FPMCU firmware](#update-fpmcu-firmware).
+
+</details>
+
+## 4. Log Firmware Versions and Check FPMCU Status
+
+1.  Run `ectool --name=cros_fp version`.
+2.  Record all output and send to Google for version verification.
+3.  Ensure that the `Firmware copy` is `RW`.
+
+## 5. Test the FPStudy Tool
+
+1.  Login to the Chromebook using a test Gmail account.
+2.  Navigate to `http://localhost:9000`.
+3.  Start a capture using the onscreen steps.
+4.  Ensure that the capture is deleted prior to starting the offical study.
+
+# Appendix
+
+## A. Open Root Terminal {#open-root-terminal}
+
+1.  Press `Ctrl` + `Alt` + `↻` (Ctrl-Alt-"refresh") to open a terminal. On older
+    devces, it might be `Ctrl` + `Alt` + `➝` (Ctrl-Alt-"forward").
+2.  Login as `root` with password `test0000` (the password may not be necessary)
+
+## B. Alternative Root Terminal
+
+After logging in using your test Gmail account, press `Ctrl-Alt-T`. Type
+`shell`, press enter, type `sudo -i`, press enter, type `test0000` as the
+password, and then press enter.
+
+## C. Update FPMCU Firmware {#update-fpmcu-firmware}
+
+1.  [Open root terminal](#open-root-terminal).
+1.  Reflash the FPMCU firmware:
+
+    ```bash
+    flash_fp_mcu
+    ```
+
+## D. Ensure Security is Removed from FPMCU {#ensure-fpmcu-security}
+
+Run the following command to ensure that FPMCU is in the proper security
+configuration:
+
+```bash
+ectool --name=cros_fp flashprotect
+```
+
+Ensure that the first line reads `Flash protect flags: 0x00000000`, with no
+additional words.
+
+## E. Boot from USB and Install {#boot-from-usb-and-install}
+
+1.  Plug the flash drive into the Chromebook.
+1.  Reboot the Chrombook.
+
+1.  When prompted with the OS verification screen, quickly press `Ctrl-U`, to
+    boot from the USB flash drive.
+
+    *If this operation is blocked, you need to enable usb booting first.
+    Following the setup new Chromebook for fingerprint study.*
+
+1.  When you see the Chrome OS login page, again,
+    [Open root terminal](#open-root-terminal).
+
+1.  Start the Chrome OS install, by issuing the following commands:
+
+    ```bash
+    chromeos-install
+    # Press 'y' and then enter
+    sync
+    ```
+
+1.  Reboot the chromebook using the following command:
+
+    ```bash
+    reboot
+    ```
+
+1.  When prompted with the OS verification screen, quickly press `Ctrl` + `D`,
+    to boot from the internal "disk" (the new Chrome OS Install).
+
+1.  Unplug the USB flash drive

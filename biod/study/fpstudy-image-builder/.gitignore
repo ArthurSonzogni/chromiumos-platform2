@@ -1,0 +1,16 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ignore old archive of fingerprint study images and generation scripts.
+old/
+# Ignore build output artifacts
+*/checksum.md5
+*/README.md
+*/README.html
+*/fpstudy-image-*.bin
+*/fpstudy-bundle-*.tar.gz
+*/*.gpg
+*/chromeos-fpstudy-public-device.gpg
+*/chromeos-fpstudy-recipients.txt
+*/archive
