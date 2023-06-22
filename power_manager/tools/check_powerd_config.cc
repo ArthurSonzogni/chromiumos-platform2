@@ -21,6 +21,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(ambient_light_sensor, false,
               "Print the number of ambient light sensors supported; exit with "
               "success if any ambient light sensor support is enabled");
+  DEFINE_bool(charge_limit_enabled, false,
+              "Exit with success if charge limit is enabled");
   DEFINE_bool(hover_detection, false,
               "Exit with success if hover detection is enabled");
   DEFINE_bool(internal_backlight_ambient_light_steps, false,
@@ -51,8 +53,8 @@ int main(int argc, char* argv[]) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   logging::SetMinLogLevel(logging::LOGGING_WARNING);
 
-  if (FLAGS_ambient_light_sensor + FLAGS_hover_detection +
-          FLAGS_internal_backlight_ambient_light_steps +
+  if (FLAGS_ambient_light_sensor + FLAGS_charge_limit_enabled +
+          FLAGS_hover_detection + FLAGS_internal_backlight_ambient_light_steps +
           FLAGS_keyboard_backlight + FLAGS_low_battery_shutdown_percent +
           FLAGS_low_battery_shutdown_time + FLAGS_set_wifi_transmit_power +
           FLAGS_suspend_to_idle + FLAGS_defer_external_display_timeout !=
@@ -70,6 +72,11 @@ int main(int argc, char* argv[]) {
     prefs.GetInt64(power_manager::kHasAmbientLightSensorPref, &num_als);
     printf("%" PRId64 "\n", num_als);
     exit(num_als > 0 ? 0 : 1);
+  } else if (FLAGS_charge_limit_enabled) {
+    bool charge_limit_enabled = false;
+    prefs.GetBool(power_manager::kChargeLimitEnabledPref,
+                  &charge_limit_enabled);
+    exit(charge_limit_enabled ? 0 : 1);
   } else if (FLAGS_hover_detection) {
     bool hover_enabled = false;
     prefs.GetBool(power_manager::kDetectHoverPref, &hover_enabled);
