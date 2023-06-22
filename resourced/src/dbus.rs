@@ -4,13 +4,14 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::os::fd::{FromRawFd, OwnedFd};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::{anyhow, bail};
 use dbus::channel::MatchingReceiver;
 use dbus::channel::Sender;
 use dbus::message::{MatchRule, Message};
@@ -27,6 +28,7 @@ use crate::feature;
 use crate::memory;
 use crate::power;
 use crate::psi;
+use crate::qos;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -59,6 +61,12 @@ struct DbusContext {
     reset_game_mode_timer_id: Arc<AtomicUsize>,
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
     reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
+}
+
+fn is_unspported_error(e: &anyhow::Error) -> bool {
+    return e
+        .downcast_ref::<std::io::Error>()
+        .is_some_and(|e2| e2.kind() == std::io::ErrorKind::Unsupported);
 }
 
 fn send_pressure_signal(
@@ -111,6 +119,92 @@ fn set_game_mode_and_tune_swappiness(
         }
     }
     Ok(())
+}
+
+async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<libc::pid_t> {
+    let proxy = Proxy::new(
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        DEFAULT_DBUS_TIMEOUT,
+        conn,
+    );
+
+    match proxy
+        .method_call(
+            "org.freedesktop.DBus",
+            "GetConnectionUnixProcessID",
+            (sender_id.to_string(),),
+        )
+        .await
+    {
+        Ok::<(u32,), _>((pid,)) => Ok(pid as libc::pid_t),
+        Err(e) => {
+            error!("Could not get sender pid: {:#}", e);
+            bail!(e);
+        }
+    }
+}
+
+fn get_pid_euid(pid: i32) -> Result<u32> {
+    let proc: procfs::process::Process = procfs::process::Process::new(pid).map_err(|e| {
+        error!("Failed to find process {} {}", pid, e);
+        anyhow!("Failed to find pid")
+    })?;
+
+    let stat: procfs::process::Status = proc.status().map_err(|e| {
+        error!("Failed to find status {} {}", pid, e);
+        anyhow!("Failed to find status")
+    })?;
+
+    Ok(stat.euid)
+}
+
+fn check_process_euids_match(pid_1: i32, pid_2: i32) -> Result<()> {
+    let euid1 = get_pid_euid(pid_1)?;
+    let euid2 = get_pid_euid(pid_2)?;
+    if euid1 != euid2 {
+        error!("Mismatching euids {} != {}", euid1, euid2);
+        bail!("Mismatching euids");
+    }
+
+    Ok(())
+}
+
+// Validates that the target pid and the calling pid have the same euid.
+//
+// sender_id: The bus name of the sender (retrieved from the message)
+// target_pid: The pid of the target thread/process
+// conn: The DBus connection
+//
+// Return value:
+// On success returns an OwnedFd object that owns the
+// pidfd of the target_pid returned from pidfd_open. The object should
+// be kept as long as resourced is making changes to the target thread/process.
+async fn validate_target_pid(
+    sender_id: String,
+    target_pid: i32,
+    conn: Arc<SyncConnection>,
+) -> Result<OwnedFd> {
+    let sender_pid = get_sender_pid(sender_id, conn).await?;
+
+    // hold a fd for the target pid to avoid pid reuse
+    let target_pidfd_raw = unsafe { libc::syscall(libc::SYS_pidfd_open, target_pid, 0) as i32 };
+    if target_pidfd_raw < 0 {
+        let e = std::io::Error::last_os_error();
+        if e.raw_os_error()
+            .is_some_and(|raw_errno| raw_errno == libc::ENOSYS)
+        {
+            bail!(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "pidfd_open unsupported"
+            ));
+        }
+        bail!(e);
+    }
+
+    let target_pidfd = unsafe { OwnedFd::from_raw_fd(target_pidfd_raw) };
+    check_process_euids_match(target_pid, sender_pid)?;
+    Ok(target_pidfd)
 }
 
 fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceToken<DbusContext> {
@@ -214,6 +308,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 Ok(())
             },
         );
+        let conn_clone2 = conn.clone();
         b.method(
             "SetGameModeWithTimeout",
             ("game_mode", "timeout_sec"),
@@ -227,7 +322,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 set_game_mode_and_tune_swappiness(
                     context.power_preferences_manager.as_ref(),
                     mode,
-                    conn.clone(),
+                    conn_clone2.clone(),
                 )
                 .map_err(|e| {
                     error!("set_game_mode failed: {:#}", e);
@@ -244,7 +339,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let reset_game_mode_timer_id = context.reset_game_mode_timer_id.clone();
 
                 // Reset game mode after timeout.
-                let conn_clone = conn.clone();
+                let conn_clone = conn_clone2.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(timeout).await;
                     // If the timer id is changed, this event is canceled.
@@ -362,7 +457,56 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 Ok(())
             },
         );
+        let conn_clone3 = conn.clone();
+        b.method_with_cr_async(
+            "ChangeProcessState",
+            ("ProcessId", "ProcessState"),
+            (),
+            move |mut sender_context, _, (process_id, process_state): (i32, u8)| {
+                let conn_clone = conn_clone3.clone();
+                async move {
+                    let state = match qos::ProcessSchedulerState::try_from(process_state) {
+                        Ok(s) => s,
+                        Err(_) => {
+                            return sender_context
+                                .reply(Err(MethodErr::failed("Unsupported process state")))
+                        }
+                    };
 
+                    let sender_id: String = match sender_context.message().sender() {
+                        Some(s) => s.to_string(),
+                        None => {
+                            return sender_context
+                                .reply(Err(MethodErr::failed("Failed to get sender id")))
+                        }
+                    };
+
+                    let _target_pidfd: OwnedFd =
+                        match validate_target_pid(sender_id, process_id, conn_clone).await {
+                            Ok(pidfd) => pidfd,
+                            Err(e) => {
+                                if is_unspported_error(&e) {
+                                    return sender_context.reply(Err(MethodErr::no_method(&e)));
+                                }
+                                error!("Failed to validate target pid: {}", e);
+                                return sender_context.reply(Err(MethodErr::failed(
+                                    format!("Failed to validate pid {}", e).as_str(),
+                                )));
+                            }
+                        };
+
+                    let result = qos::change_process_state(process_id, state);
+                    match result {
+                        Ok(()) => sender_context.reply(Ok(())),
+                        Err(e) => {
+                            error!("change_process_state failed: {}, pid={}", e, process_id);
+                            sender_context
+                                .reply(Err(MethodErr::failed("Failed to update process state")))
+                        }
+                    }
+                }
+            },
+        );
         // Advertise the signals.
         b.signal::<(u8, u64), _>(
             "MemoryPressureChrome",

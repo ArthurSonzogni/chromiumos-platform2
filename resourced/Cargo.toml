@@ -30,6 +30,7 @@ tokio = { version = "1.29.1", features = ["macros", "rt", "time"] }
 system_api = { path = "../system_api" } # provided by ebuild
 protobuf = "3.2"
 featured = { version = "0.1.0", optional = true }
+procfs = "0.15"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 grpcio = { version = "0.9.1", optional = true}

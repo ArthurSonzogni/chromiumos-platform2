@@ -10,6 +10,7 @@ mod feature;
 mod memory;
 mod power;
 mod psi;
+mod qos;
 
 #[cfg(test)]
 mod test_utils;
