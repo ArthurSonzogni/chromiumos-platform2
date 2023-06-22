@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":dlc_metadata_util",
     ":dlcservice",
     ":dlcservice_adaptors",
     ":dlcservice_util",
@@ -171,6 +172,14 @@ executable("dlcverify") {
   sources = [ "tools/dlcverify.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdlcverify" ]
+}
+
+# For dlc_metadata_util:
+executable("dlc_metadata_util") {
+  sources = [ "tools/dlc_metadata_util.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libdlcservice-metadata" ]
+  install_path = "/usr/local/bin"
 }
 
 # For test:
