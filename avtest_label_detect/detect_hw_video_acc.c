@@ -24,6 +24,11 @@
 #define V4L2_PIX_FMT_AV1_FRAME \
   v4l2_fourcc('A', 'V', '1', 'F') /* AV1 parsed frame */
 #endif
+// TODO(b/278157861): Remove this once ChromeOS V4L2 header is updated
+#ifndef V4L2_PIX_FMT_HEVC_SLICE
+#define V4L2_PIX_FMT_HEVC_SLICE \
+  v4l2_fourcc('S', '2', '6', '5') /* HEVC parsed slices */
+#endif
 #endif  // defined(USE_V4L2_CODEC)
 
 #if defined(USE_V4L2_CODEC)
@@ -54,7 +59,9 @@ static bool is_v4l2_dec_h264_device(int fd) {
 static bool is_v4l2_dec_hevc_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_HEVC));
+                                 V4L2_PIX_FMT_HEVC) ||
+          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                                 V4L2_PIX_FMT_HEVC_SLICE));
 }
 
 /* Helper function for detect_video_acc_vp8.

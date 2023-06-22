@@ -23,6 +23,11 @@
 #define V4L2_PIX_FMT_AV1_FRAME \
   v4l2_fourcc('A', 'V', '1', 'F') /* AV1 parsed frame */
 #endif
+// TODO(b/278157861): Remove this once ChromeOS V4L2 header is updated
+#ifndef V4L2_PIX_FMT_HEVC_SLICE
+#define V4L2_PIX_FMT_HEVC_SLICE \
+  v4l2_fourcc('S', '2', '6', '5') /* HEVC parsed slices */
+#endif
 #endif  // defined(USE_V4L2_CODEC)
 
 #if defined(USE_VAAPI) || defined(USE_V4L2_CODEC)
@@ -233,7 +238,9 @@ static bool is_v4l2_4k_device_enc_vp9(int fd) {
 // Determines if is_v4l2_4k_device() for HEVC decoding.
 static bool is_v4l2_4k_device_dec_hevc(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_HEVC);
+                           V4L2_PIX_FMT_HEVC) ||
+         is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_HEVC_SLICE);
 }
 
 // Determines if is_v4l2_4k_device() for AV1 decoding.
