@@ -51,8 +51,8 @@ func makeMethodCallbackType(args []introspect.MethodArg) (string, error) {
 
 }
 
-func makeMockMethodParams(args []introspect.MethodArg) ([]string, error) {
-	var ret []string
+func makeMockMethodParams(args []introspect.MethodArg) ([]param, error) {
+	var ret []param
 	for _, a := range args {
 		argType, prefix := a.InArgType, "in"
 		if a.Direction == "out" {
@@ -63,9 +63,9 @@ func makeMockMethodParams(args []introspect.MethodArg) ([]string, error) {
 			return nil, err
 		}
 		if a.Name == "" {
-			ret = append(ret, t)
+			ret = append(ret, param{t, ""})
 		} else {
-			ret = append(ret, fmt.Sprintf("%s /*%s_%s*/", t, prefix, a.Name))
+			ret = append(ret, param{t, fmt.Sprintf("/*%s_%s*/", prefix, a.Name)})
 		}
 	}
 

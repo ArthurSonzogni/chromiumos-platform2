@@ -100,7 +100,7 @@ func TestMakeMethodParams(t *testing.T) {
 func TestMakeMockMethodParams(t *testing.T) {
 	cases := []struct {
 		args []introspect.MethodArg
-		want []string
+		want []param
 	}{{
 		args: []introspect.MethodArg{{
 			Name: "iarg1", Type: "i",
@@ -109,10 +109,10 @@ func TestMakeMockMethodParams(t *testing.T) {
 		}, {
 			Name: "iarg3", Type: "o",
 		}},
-		want: []string{
-			"int32_t /*in_iarg1*/",
-			"const base::ScopedFD& /*in_iarg2*/",
-			"const dbus::ObjectPath& /*in_iarg3*/",
+		want: []param{
+			{"int32_t", "/*in_iarg1*/"},
+			{"const base::ScopedFD&", "/*in_iarg2*/"},
+			{"const dbus::ObjectPath&", "/*in_iarg3*/"},
 		},
 	}, {
 		args: []introspect.MethodArg{{
@@ -126,12 +126,12 @@ func TestMakeMockMethodParams(t *testing.T) {
 		}, {
 			Type: "i",
 		}},
-		want: []string{
-			"int32_t",
-			"int32_t /*in_iarg2*/",
-			"int32_t",
-			"int32_t /*in_iarg4*/",
-			"int32_t",
+		want: []param{
+			{"int32_t", ""},
+			{"int32_t", "/*in_iarg2*/"},
+			{"int32_t", ""},
+			{"int32_t", "/*in_iarg4*/"},
+			{"int32_t", ""},
 		},
 	}, {
 		args: []introspect.MethodArg{{
@@ -141,10 +141,10 @@ func TestMakeMockMethodParams(t *testing.T) {
 		}, {
 			Name: "oarg3", Type: "o", Direction: "out",
 		}},
-		want: []string{
-			"int32_t* /*out_oarg1*/",
-			"base::ScopedFD* /*out_oarg2*/",
-			"dbus::ObjectPath* /*out_oarg3*/",
+		want: []param{
+			{"int32_t*", "/*out_oarg1*/"},
+			{"base::ScopedFD*", "/*out_oarg2*/"},
+			{"dbus::ObjectPath*", "/*out_oarg3*/"},
 		},
 	}, {
 		args: []introspect.MethodArg{{
@@ -158,12 +158,12 @@ func TestMakeMockMethodParams(t *testing.T) {
 		}, {
 			Type: "i", Direction: "out",
 		}},
-		want: []string{
-			"int32_t*",
-			"int32_t* /*out_oarg2*/",
-			"int32_t*",
-			"int32_t* /*out_oarg4*/",
-			"int32_t*",
+		want: []param{
+			{"int32_t*", ""},
+			{"int32_t*", "/*out_oarg2*/"},
+			{"int32_t*", ""},
+			{"int32_t*", "/*out_oarg4*/"},
+			{"int32_t*", ""},
 		},
 	}}
 

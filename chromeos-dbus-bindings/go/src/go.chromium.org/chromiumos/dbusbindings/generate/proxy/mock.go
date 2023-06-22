@@ -59,10 +59,10 @@ class {{$mockName}} : public {{$itfName}} {
 {{- $indent := repeat " " (add (len "  bool (") (len .Name))}}
   bool {{.Name}}(
 {{- range $inParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
 {{$indent}}{{end -}}
 {{- range $outParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
 {{$indent}}{{end -}}
 brillo::ErrorPtr* /*error*/,
 {{$indent}}int /*timeout_ms*/) override {
@@ -73,10 +73,10 @@ brillo::ErrorPtr* /*error*/,
   MOCK_METHOD{{$arity.Sync}}({{.Name}},
                {{if ge $arity.Sync 10}} {{end}}bool(
 {{- range $inParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
                     {{if ge $arity.Sync 10}} {{end}}{{end -}}
 {{- range $outParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
                     {{if ge $arity.Sync 10}} {{end}}{{end -}}
                     brillo::ErrorPtr* /*error*/,
                     {{if ge $arity.Sync 10}} {{end}}int /*timeout_ms*/));
@@ -86,7 +86,7 @@ brillo::ErrorPtr* /*error*/,
 {{- $indent := repeat " " (add 13 (len .Name))}}
   void {{.Name}}Async(
 {{- range $inParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
 {{$indent}}{{end -}}
 {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
 {{$indent}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
@@ -97,7 +97,7 @@ brillo::ErrorPtr* /*error*/,
   MOCK_METHOD{{$arity.Async}}({{.Name}}Async,
                {{if ge $arity.Async 10}} {{end}}void(
 {{- range $inParams -}}
-{{.}},
+{{.Type}}{{if .Name}} {{.Name}}{{end}},
                     {{if ge $arity.Async 10}} {{end}}{{end -}}
                     {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
                     {{if ge $arity.Async 10}} {{end}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
