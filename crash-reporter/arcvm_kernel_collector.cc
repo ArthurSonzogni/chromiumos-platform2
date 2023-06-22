@@ -52,6 +52,17 @@ bool ArcvmKernelCollector::HandleCrash(
                                                   time(nullptr));
 }
 
+// The parameter |exec_name| is unused as we are computing the crash severity
+// based on the crash type, which is always going to be `kArcvmKernelCrashType`
+// in this collector.
+CrashCollector::ComputedCrashSeverity ArcvmKernelCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kFatal,
+      .product_group = Product::kArc,
+  };
+}
+
 bool ArcvmKernelCollector::HandleCrashWithRamoopsStreamAndTimestamp(
     const arc_util::BuildProperty& build_property,
     FILE* ramoops_stream,

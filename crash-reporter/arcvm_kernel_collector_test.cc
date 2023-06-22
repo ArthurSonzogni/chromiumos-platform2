@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/arc_util.h"
 #include "crash-reporter/test_util.h"
 
 namespace {
@@ -157,4 +158,13 @@ TEST_F(ArcvmKernelCollectorTest, AddArcMetadata) {
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kDeviceField, kDevice));
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kBoardField, kBoard));
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kCpuAbiField, kCpuAbi));
+}
+
+TEST_F(ArcvmKernelCollectorTest, ComputeSeverity) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_->ComputeSeverity("test exec name");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group, CrashCollector::Product::kArc);
 }

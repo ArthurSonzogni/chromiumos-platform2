@@ -29,6 +29,10 @@ class ArcvmKernelCollector : public CrashCollector {
   // Handles a kernel crash of ARCVM.
   bool HandleCrash(const arc_util::BuildProperty& build_property);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(
       bool arc_kernel, const arc_util::BuildProperty& build_property);
 
