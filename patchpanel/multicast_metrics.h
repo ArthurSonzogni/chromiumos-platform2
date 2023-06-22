@@ -5,7 +5,9 @@
 #ifndef PATCHPANEL_MULTICAST_METRICS_H_
 #define PATCHPANEL_MULTICAST_METRICS_H_
 
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/containers/flat_map.h>
@@ -14,6 +16,7 @@
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -43,7 +46,7 @@ class MulticastMetrics {
     kARC = 3,
   };
 
-  MulticastMetrics();
+  explicit MulticastMetrics(MulticastCountersService* counters_service);
   MulticastMetrics(const MulticastMetrics&) = delete;
   MulticastMetrics& operator=(const MulticastMetrics&) = delete;
   ~MulticastMetrics() = default;
@@ -68,6 +71,11 @@ class MulticastMetrics {
   // method does nothing.
   void OnARCWiFiForwarderStarted();
   void OnARCWiFiForwarderStopped();
+
+  // Get the number of multicast packets from iptables.
+  std::optional<
+      std::map<MulticastCountersService::MulticastProtocolType, uint64_t>>
+  GetCounters(Type type);
 
  private:
   // Handles polling to fetch and report UMA metrics.
@@ -103,6 +111,11 @@ class MulticastMetrics {
     bool IsARCForwardingEnabled();
 
    private:
+    // Start and stop timer for polling counters. These methods also update
+    // packet counts.
+    void StartTimer();
+    void StopTimer();
+
     MulticastMetrics::Type type_;
 
     // Indicates whether or not ARC is running. ARC metrics are only emitted
@@ -118,10 +131,10 @@ class MulticastMetrics {
     // names, the entry would be a placeholder string.
     base::flat_set<std::string> ifnames_;
 
-    // TODO(jasongustaman): Replace with std::map after multicast counters
-    // landed.
-    uint64_t mdns_packet_count_ = 0;
-    uint64_t ssdp_packet_count_ = 0;
+    // Counters of multicast packets set whenever timer from repeating timer
+    // |timer_| is started.
+    std::map<MulticastCountersService::MulticastProtocolType, uint64_t>
+        packet_counts_;
 
     MulticastMetrics* metrics_;
 
@@ -139,6 +152,8 @@ class MulticastMetrics {
   FRIEND_TEST(MulticastMetricsTest, ARC_StartStop);
   FRIEND_TEST(MulticastMetricsTest, ARC_ForwardingStateChanges);
   FRIEND_TEST(MulticastMetricsTest, ARC_StartStopWithForwardingChanges);
+
+  MulticastCountersService* counters_service_;
 
   // Pollers to handle each metrics type and poll. This is instantiated at the
   // constructor of the class.

@@ -57,30 +57,29 @@ class MulticastCountersService {
   using CounterKey = std::pair<MulticastProtocolType, MulticastTechnologyType>;
 
   explicit MulticastCountersService(Datapath* datapath);
-  ~MulticastCountersService() = default;
+  virtual ~MulticastCountersService() = default;
 
   // Adds initial iptables chains and counter rules for both IPv6 and IPv4 for
   // mDNS and SSDP.
-  void Start();
+  virtual void Start();
   // Deletes iptables chains and counter rules added in Start().
-  void Stop();
+  virtual void Stop();
   // Adds jump rules for a new physical device if this is the first time this
   // device is seen.
-  void OnPhysicalDeviceAdded(const ShillClient::Device& device);
-  // Removes jump rules for a physical device.
-  void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
+  virtual void OnPhysicalDeviceAdded(const ShillClient::Device& device);
   // Collects and returns packet counters from all the existing iptables rules
   // for multicast, divided by technology (ethernet, wifi) and protocol (ssdp,
   // mdns) in CounterKey, and recorded by packet number.
-  std::optional<std::map<MulticastCountersService::CounterKey, uint64_t>>
+  virtual std::optional<
+      std::map<MulticastCountersService::CounterKey, uint64_t>>
   GetCounters();
 
  private:
   // Installs jump rules for an interface to count ingress multicast traffic
   // of |ifname|.
-  void SetupJumpRules(Iptables::Command command,
-                      base::StringPiece ifname,
-                      base::StringPiece technology);
+  virtual void SetupJumpRules(Iptables::Command command,
+                              base::StringPiece ifname,
+                              base::StringPiece technology);
   // Parses the output of `iptables -L -x -v` (or `ip6tables`) and adds the
   // parsed values into the corresponding counters in |counters|.
   // This function will try to find the pattern of:
@@ -91,8 +90,8 @@ class MulticastCountersService {
   // values extracted from the counter line will be added into the counter
   // for that interface. Note that this function will not fully validate
   // if |output| is an output from iptables.
-  bool ParseIptableOutput(base::StringPiece output,
-                          std::map<CounterKey, uint64_t>* counter);
+  virtual bool ParseIptableOutput(base::StringPiece output,
+                                  std::map<CounterKey, uint64_t>* counter);
 
   Datapath* datapath_;
   std::vector<std::pair<std::string, std::string>> interfaces_;

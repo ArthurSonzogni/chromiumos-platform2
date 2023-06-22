@@ -56,7 +56,8 @@ Manager::Manager(const base::FilePath& cmd_path,
   counters_svc_ = std::make_unique<CountersService>(datapath_.get());
   multicast_counters_svc_ =
       std::make_unique<MulticastCountersService>(datapath_.get());
-  multicast_metrics_ = std::make_unique<MulticastMetrics>();
+  multicast_metrics_ =
+      std::make_unique<MulticastMetrics>(multicast_counters_svc_.get());
 
   datapath_->Start();
   multicast_counters_svc_->Start();

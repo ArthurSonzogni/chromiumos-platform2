@@ -4,18 +4,21 @@
 
 #include "patchpanel/multicast_metrics.h"
 
+#include <map>
+#include <memory>
+#include <utility>
+
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ipv4_address.h>
 
-#include <map>
-#include <memory>
-#include <utility>
-
+#include "patchpanel/mock_multicast_counters_service.h"
+#include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
 using net_base::IPv4CIDR;
+using testing::Return;
 
 namespace patchpanel {
 namespace {
@@ -23,9 +26,14 @@ namespace {
 class MulticastMetricsTest : public testing::Test {
  protected:
   void SetUp() override {
-    multicast_metrics_ = std::make_unique<MulticastMetrics>();
+    multicast_metrics_ = std::make_unique<MulticastMetrics>(&counters_service_);
+
+    EXPECT_CALL(counters_service_, GetCounters())
+        .WillRepeatedly(
+            Return(std::map<MulticastCountersService::CounterKey, uint64_t>{}));
   }
 
+  MockMulticastCountersService counters_service_;
   std::unique_ptr<MulticastMetrics> multicast_metrics_;
   base::test::SingleThreadTaskEnvironment task_environment;
 };
@@ -218,5 +226,8 @@ TEST_F(MulticastMetricsTest, ARC_StartStopWithForwardingChanges) {
       multicast_metrics_->pollers_[Type::kARC]->IsARCForwardingEnabled());
   EXPECT_FALSE(multicast_metrics_->pollers_[Type::kARC]->IsTimerRunning());
 }
+
+// TODO(jasongustaman): Add multicast counters unit test alongside emitting the
+// metrics.
 
 }  // namespace patchpanel

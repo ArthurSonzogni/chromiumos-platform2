@@ -4,16 +4,21 @@
 
 #include "patchpanel/multicast_metrics.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/containers/flat_map.h>
+#include <base/containers/flat_set.h>
 #include <base/logging.h>
 #include "base/strings/string_piece.h"
 #include <base/time/time.h>
 
+#include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -36,9 +41,40 @@ std::optional<MulticastMetrics::Type> ShillDeviceTypeToMulticastMetricsType(
   }
 }
 
+std::string MulticastMetricsTypeToString(MulticastMetrics::Type type) {
+  switch (type) {
+    case MulticastMetrics::Type::kTotal:
+      return "Total";
+    case MulticastMetrics::Type::kEthernet:
+      return "Ethernet";
+    case MulticastMetrics::Type::kWiFi:
+      return "WiFi";
+    case MulticastMetrics::Type::kARC:
+      return "ARC";
+  }
+}
+
+// Contains accepted multicast metrics type for each multicast counters
+// technology.
+static constexpr auto kAccepted = base::MakeFixedFlatSet<
+    std::pair<MulticastCountersService::MulticastTechnologyType,
+              MulticastMetrics::Type>>({
+    {MulticastCountersService::MulticastTechnologyType::kEthernet,
+     MulticastMetrics::Type::kTotal},
+    {MulticastCountersService::MulticastTechnologyType::kEthernet,
+     MulticastMetrics::Type::kEthernet},
+    {MulticastCountersService::MulticastTechnologyType::kWifi,
+     MulticastMetrics::Type::kTotal},
+    {MulticastCountersService::MulticastTechnologyType::kWifi,
+     MulticastMetrics::Type::kWiFi},
+    {MulticastCountersService::MulticastTechnologyType::kWifi,
+     MulticastMetrics::Type::kARC},
+});
+
 }  // namespace
 
-MulticastMetrics::MulticastMetrics() {
+MulticastMetrics::MulticastMetrics(MulticastCountersService* counters_service)
+    : counters_service_(counters_service) {
   pollers_.emplace(Type::kTotal, std::make_unique<Poller>(Type::kTotal, this));
   pollers_.emplace(Type::kEthernet,
                    std::make_unique<Poller>(Type::kEthernet, this));
@@ -134,6 +170,31 @@ void MulticastMetrics::OnARCWiFiForwarderStopped() {
   pollers_[Type::kARC]->UpdateARCForwarderState(/*enabled=*/false);
 }
 
+std::optional<
+    std::map<MulticastCountersService::MulticastProtocolType, uint64_t>>
+MulticastMetrics::GetCounters(Type type) {
+  if (!counters_service_) {
+    LOG(ERROR) << "Empty multicast counters service";
+    return std::nullopt;
+  }
+  auto counters = counters_service_->GetCounters();
+  if (!counters) {
+    return std::nullopt;
+  }
+
+  std::map<MulticastCountersService::MulticastProtocolType, uint64_t> ret = {
+      {MulticastCountersService::MulticastProtocolType::kMdns, 0},
+      {MulticastCountersService::MulticastProtocolType::kSsdp, 0}};
+  for (const auto& counter : *counters) {
+    const MulticastCountersService::CounterKey& key = counter.first;
+    if (kAccepted.contains({key.second, type})) {
+      ret[key.first] += counter.second;
+    }
+  }
+
+  return ret;
+}
+
 MulticastMetrics::Poller::Poller(MulticastMetrics::Type type,
                                  MulticastMetrics* metrics)
     : type_(type), metrics_(metrics) {}
@@ -153,10 +214,7 @@ void MulticastMetrics::Poller::Start(base::StringPiece ifname) {
     return;
   }
 
-  // TODO(jasongustaman): Set current packet count by from counters service.
-  mdns_packet_count_ = 0;
-  ssdp_packet_count_ = 0;
-  timer_.Start(FROM_HERE, kPollDelay, this, &MulticastMetrics::Poller::Record);
+  StartTimer();
 }
 
 void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
@@ -168,10 +226,7 @@ void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
   if (type_ == MulticastMetrics::Type::kARC && !arc_running_) {
     return;
   }
-
-  timer_.Stop();
-  mdns_packet_count_ = 0;
-  ssdp_packet_count_ = 0;
+  StopTimer();
 }
 
 void MulticastMetrics::Poller::UpdateARCState(bool running) {
@@ -186,13 +241,10 @@ void MulticastMetrics::Poller::UpdateARCState(bool running) {
   }
 
   if (arc_running_) {
-    timer_.Start(FROM_HERE, kPollDelay, this,
-                 &MulticastMetrics::Poller::Record);
+    StartTimer();
   } else {
-    timer_.Stop();
+    StopTimer();
   }
-  mdns_packet_count_ = 0;
-  ssdp_packet_count_ = 0;
 }
 
 void MulticastMetrics::Poller::UpdateARCForwarderState(bool enabled) {
@@ -201,21 +253,54 @@ void MulticastMetrics::Poller::UpdateARCForwarderState(bool enabled) {
   }
   arc_fwd_enabled_ = enabled;
 
-  if (timer_.IsRunning()) {
-    // Restart polling to emit different metrics.
-    timer_.Reset();
-    mdns_packet_count_ = 0;
-    ssdp_packet_count_ = 0;
+  if (!arc_running_) {
+    return;
   }
+
+  // Restart polling to reset timer.
+  StopTimer();
+  StartTimer();
+}
+
+void MulticastMetrics::Poller::StartTimer() {
+  if (!metrics_) {
+    return;
+  }
+
+  auto packet_counts = metrics_->GetCounters(type_);
+  if (!packet_counts) {
+    LOG(ERROR) << "Failed to fetch multicast packet counts";
+    return;
+  }
+  packet_counts_ = *packet_counts;
+  timer_.Start(FROM_HERE, kPollDelay, this, &MulticastMetrics::Poller::Record);
+}
+
+void MulticastMetrics::Poller::StopTimer() {
+  timer_.Stop();
+  packet_counts_.clear();
 }
 
 void MulticastMetrics::Poller::Record() {
   if (!metrics_) {
     return;
   }
+  auto packet_counts = metrics_->GetCounters(type_);
+  if (!packet_counts) {
+    LOG(ERROR) << "Failed to get multicast packet counts for "
+               << MulticastMetricsTypeToString(type_);
+    return;
+  }
 
-  // TODO(jasongustaman): Fetch packet count from counters service and record
-  // the diff to UMA.
+  // Get the multicast packet count between the polls.
+  std::map<MulticastCountersService::MulticastProtocolType, uint64_t> diff;
+  for (const auto& packet_count : *packet_counts) {
+    diff.emplace(packet_count.first,
+                 packet_count.second - packet_counts_[packet_count.first]);
+  }
+  packet_counts_ = *packet_counts;
+
+  // TODO(jasongustaman): Record packet count diff to UMA.
   switch (type_) {
     case MulticastMetrics::Type::kTotal:
     case MulticastMetrics::Type::kEthernet:
