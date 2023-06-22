@@ -69,11 +69,10 @@ class StorageModuleTest : public ::testing::Test {
 
   void SetUp() override { storage_module_.reset(); }
 
-  void CreateStorageModule(bool legacy_storage_enabled) {
+  void CreateStorageModule(base::StringPiece legacy_storage_enabled) {
     test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
     StorageModule::Create(
-        StorageOptions(),
-        /*legacy_storage_enabled=*/legacy_storage_enabled,
+        options_, legacy_storage_enabled,
         base::BindRepeating(TestUploaderInterface::AsyncProvideUploader),
         QueuesContainer::Create(/*is_enabled=*/false),
         EncryptionModule::Create(/*is_enabled=*/false),
@@ -87,13 +86,6 @@ class StorageModuleTest : public ::testing::Test {
     ASSERT_OK(res);
     EXPECT_TRUE(res.ValueOrDie().get());
     storage_module_ = res.ValueOrDie();
-  }
-
-  void RegisterOnStorageSetCallbackForTesting(
-      scoped_refptr<StorageModule> storage_module,
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-          callback) {
-    storage_module->RegisterOnStorageSetCallbackForTesting(std::move(callback));
   }
 
   Status CallAddRecord(scoped_refptr<StorageModule> module) {
@@ -118,90 +110,69 @@ class StorageModuleTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
+  StorageOptions options_;
   scoped_refptr<StorageModule> storage_module_;
 };
 
-TEST_F(StorageModuleTest, NewStorageTest) {
-  // Create storage module with new storage implementation.
-  CreateStorageModule(/*legacy_storage_enabled=*/false);
-  auto new_storage_module = storage_module_;
-
-  // Expect that the storage module contains a new storage implementation.
-  EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
-}
-
-TEST_F(StorageModuleTest, LegacyStorageTest) {
-  // Create storage module with legacy storage implementation.
-  CreateStorageModule(/*legacy_storage_enabled=*/true);
-  auto legacy_storage_module = storage_module_;
-
-  // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
-}
-
 TEST_F(StorageModuleTest, SwitchFromLegacyToNewStorage) {
-  // Create storage module with legacy storage implementation.
-  CreateStorageModule(/*legacy_storage_enabled=*/true);
-  auto legacy_storage_module = storage_module_;
+  // Create storage module with IMMEDIATE and FAST_BACTH in single-generation
+  // mode.
+  CreateStorageModule("IMMEDIATE, FAST_BATCH");
 
-  // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
+  // Expect multi-/single-generational state match.
+  EXPECT_TRUE(options_.is_multi_generational(SECURITY));
+  EXPECT_FALSE(options_.is_multi_generational(IMMEDIATE));
+  EXPECT_FALSE(options_.is_multi_generational(FAST_BATCH));
+  EXPECT_TRUE(options_.is_multi_generational(SLOW_BATCH));
 
-  test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> switch_storage_event;
-  RegisterOnStorageSetCallbackForTesting(legacy_storage_module,
-                                         switch_storage_event.cb());
+  ASSERT_OK(CallAddRecord(storage_module_));
 
-  ASSERT_OK(CallAddRecord(legacy_storage_module));
+  // Flip the value of multi-generation action flag to false, triggering
+  // `storage_module` to switch IMMEDIATE (and other priorities except SECURITY
+  // and SLOW_BATCH) from single-genration action to multi-generation.
+  storage_module_->SetLegacyEnabledPriorities("SECURITY, SLOW_BATCH");
 
-  // Flip the value of legacy_storage_enabled flag to false, triggering
-  // `storage_module` to switch from legacy storage to new storage.
-  legacy_storage_module->SetValue(false);
-
-  const auto switch_result = switch_storage_event.result();
-  ASSERT_OK(switch_result);
-  EXPECT_TRUE(switch_result.ValueOrDie().get());
-  const auto new_storage_module = switch_result.ValueOrDie();
-
-  // Expect that the storage module contains a new storage implementation.
-  EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
+  // Expect the module has indeed switched.
+  EXPECT_FALSE(options_.is_multi_generational(SECURITY));
+  EXPECT_TRUE(options_.is_multi_generational(IMMEDIATE));
+  EXPECT_TRUE(options_.is_multi_generational(FAST_BATCH));
+  EXPECT_FALSE(options_.is_multi_generational(SLOW_BATCH));
 
   // Verify we can write to new storage module after switching.
-  ASSERT_OK(CallAddRecord(new_storage_module));
+  ASSERT_OK(CallAddRecord(storage_module_));
 }
 
 TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
   // Create storage module with new storage implementation.
-  CreateStorageModule(/*legacy_storage_enabled=*/false);
+  CreateStorageModule("SECURITY, FAST_BATCH");
   auto new_storage_module = storage_module_;
 
-  // Expect that the storage module contains a new storage implementation.
-  EXPECT_FALSE(new_storage_module->legacy_storage_enabled());
-
-  test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> switch_storage_event;
-  RegisterOnStorageSetCallbackForTesting(new_storage_module,
-                                         switch_storage_event.cb());
+  // Expect multi-/single-generational state match.
+  EXPECT_FALSE(options_.is_multi_generational(SECURITY));
+  EXPECT_TRUE(options_.is_multi_generational(IMMEDIATE));
+  EXPECT_FALSE(options_.is_multi_generational(FAST_BATCH));
+  EXPECT_TRUE(options_.is_multi_generational(SLOW_BATCH));
 
   // Verify we can write to new storage module
   ASSERT_OK(CallAddRecord(new_storage_module));
 
-  // Flip the value of `legacy_storage_enabled` flag to true, triggering
-  // `storage_module` to switch from new storage to legacy storage.
-  new_storage_module->SetValue(true);
+  // Flip the value of multi-generation action flag to false, triggering
+  // `storage_module` to switch IMMEDIATE and SECURITY
+  // from multi-genration action to single-generation.
+  storage_module_->SetLegacyEnabledPriorities("SECURITY, IMMEDIATE");
 
-  const auto switch_result = switch_storage_event.result();
-  ASSERT_OK(switch_result);
-  EXPECT_TRUE(switch_result.ValueOrDie().get());
-  const auto legacy_storage_module = switch_result.ValueOrDie();
-
-  // Expect that the storage module contains a legacy storage implementation.
-  EXPECT_TRUE(legacy_storage_module->legacy_storage_enabled());
+  // Expect that the storage module has indeed switched.
+  EXPECT_FALSE(options_.is_multi_generational(SECURITY));
+  EXPECT_FALSE(options_.is_multi_generational(IMMEDIATE));
+  EXPECT_TRUE(options_.is_multi_generational(FAST_BATCH));
+  EXPECT_TRUE(options_.is_multi_generational(SLOW_BATCH));
 
   // Verify we can write to legacy storage module after switching.
-  ASSERT_OK(CallAddRecord(legacy_storage_module));
+  ASSERT_OK(CallAddRecord(storage_module_));
 }
 
 TEST_F(StorageModuleTest, ExpectErrorIfStorageUnavailable) {
-  CreateStorageModule(/*legacy_storage_enabled=*/false);
+  CreateStorageModule("SECURITY");
   InjectStorageUnavailableError();
 
   const Status add_record_status = CallAddRecord(storage_module_);

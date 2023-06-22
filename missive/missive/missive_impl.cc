@@ -446,9 +446,12 @@ void MissiveImpl::OnStorageParametersUpdate(
   queues_container_->SetValue(storage_parameters.controlled_degradation);
   compression_module_->SetValue(storage_parameters.compression_enabled);
   encryption_module_->SetValue(storage_parameters.encryption_enabled);
-  storage_module_->SetValue(storage_parameters.legacy_storage_enabled);
   signature_verification_dev_flag_->SetValue(
       storage_parameters.signature_verification_dev_enabled);
+  if (storage_module_) {
+    storage_module_->SetLegacyEnabledPriorities(
+        storage_parameters.legacy_storage_enabled);
+  }
 }
 
 base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {

@@ -14,6 +14,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_piece_forward.h>
 #include <base/task/sequenced_task_runner.h>
 
 #include "missive/compression/compression_module.h"
@@ -25,18 +26,16 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/util/dynamic_flag.h"
-#include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-class StorageModule : public StorageModuleInterface, public DynamicFlag {
+class StorageModule : public StorageModuleInterface {
  public:
   // Factory method creates |StorageModule| object.
   static void Create(
       const StorageOptions& options,
-      bool legacy_storage_enabled,
+      base::StringPiece legacy_storage_enabled,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -76,13 +75,14 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   // Declared virtual for testing purposes.
   virtual void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key);
 
-  bool legacy_storage_enabled() const;
+  // Parse list of priorities to be in legacy single-generation action state
+  // from now on. All other priorities are in multi-generation action state.
+  void SetLegacyEnabledPriorities(base::StringPiece legacy_storage_enabled);
 
  protected:
   // Constructor can only be called by |Create| factory method.
   explicit StorageModule(
       const StorageOptions& options,
-      bool legacy_storage_enabled,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -92,18 +92,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
 
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;
-
-  // Returns a callback that verifies that `instance->queues_container_`
-  // contains no queue references and then initializes `instance->storage_`.
-  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
-  InitAsync(scoped_refptr<StorageModule> instance,
-            base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                callback);
-
-  // Returns a callback that checks (on `queues_container`s task runner)
-  // whether `queues_container` holds any references to any `StorageQueue`.
-  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
-  VerifyQueuesAreEmptyAsync(scoped_refptr<QueuesContainer> queues_container);
 
   // Returns a callback that initializes `instance->storage_`.
   [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
@@ -118,12 +106,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
       StatusOr<scoped_refptr<StorageInterface>> storage);
 
-  // Stores `callback` to be called when `StorageModule::InitStorageAsync` is
-  // complete. Used only for testing.
-  void RegisterOnStorageSetCallbackForTesting(
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-          callback);
-
   void InjectStorageUnavailableErrorForTesting();
 
  private:
@@ -134,9 +116,6 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   // state.
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
-
-  // Called when DynamicFlag flips.
-  void OnValueUpdate(bool is_enabled) override;
 
   // Reference to `Storage` object.
   // Note: all accesses to `storage_` should be done on StorageModule's

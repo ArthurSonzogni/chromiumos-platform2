@@ -14,6 +14,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
@@ -23,6 +24,8 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
+#include "missive/proto/record_constants.pb.h"
+#include "missive/storage/storage_configuration.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -88,6 +91,18 @@ bool BoolParameterValue(base::StringPiece parameter_name,
   return value_default;
 }
 }  // namespace
+
+// static
+const char* MissiveArgs::kLegacyStorageEnabledDefault = []() {
+  static std::string priorities_list;
+  for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
+    if (!priorities_list.empty()) {
+      base::StrAppend(&priorities_list, {","});
+    }
+    base::StrAppend(&priorities_list, {Priority_Name(priority)});
+  }
+  return priorities_list.c_str();
+}();
 
 MissiveArgs::MissiveArgs(feature::PlatformFeaturesInterface* feature_lib)
     : feature_lib_(feature_lib),
@@ -227,9 +242,9 @@ void MissiveArgs::UpdateParameters(
     storage_parameters_.controlled_degradation = BoolParameterValue(
         kControlledDegradationParameter, controlled_degradation,
         kControlledDegradationDefault);
-    storage_parameters_.legacy_storage_enabled = BoolParameterValue(
-        kLegacyStorageEnabledParameter, legacy_storage_enabled,
-        kLegacyStorageEnabledDefault);
+    storage_parameters_.legacy_storage_enabled =
+        legacy_storage_enabled.empty() ? kLegacyStorageEnabledDefault
+                                       : legacy_storage_enabled;
     storage_parameters_.signature_verification_dev_enabled =
         BoolParameterValue(kSignatureVerificationDevEnabledParameter,
                            signature_verification_dev_enabled,

@@ -56,7 +56,7 @@ class MissiveArgs {
   static constexpr bool kControlledDegradationDefault = false;
   static constexpr char kControlledDegradationParameter[] =
       "controlled_degradation";
-  static constexpr bool kLegacyStorageEnabledDefault = true;
+  static const char* kLegacyStorageEnabledDefault;
   static constexpr char kLegacyStorageEnabledParameter[] =
       "legacy_storage_enabled";
   static constexpr bool kSignatureVerificationDevEnabledDefault = false;
@@ -68,7 +68,7 @@ class MissiveArgs {
     bool compression_enabled = kCompressionEnabledDefault;
     bool encryption_enabled = kEncryptionEnabledDefault;
     bool controlled_degradation = kControlledDegradationDefault;
-    bool legacy_storage_enabled = kLegacyStorageEnabledDefault;
+    std::string legacy_storage_enabled = kLegacyStorageEnabledDefault;
     bool signature_verification_dev_enabled =
         kSignatureVerificationDevEnabledDefault;
   };

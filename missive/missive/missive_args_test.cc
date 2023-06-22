@@ -270,7 +270,7 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
   EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
-              Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+              StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
   EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
               Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
@@ -292,7 +292,7 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
                                    "True");
   fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
                                    MissiveArgs::kLegacyStorageEnabledParameter,
-                                   "False");
+                                   "SECURITY");
   fake_platform_features->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kSignatureVerificationDevEnabledParameter, "True");
@@ -307,7 +307,7 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   EXPECT_FALSE(storage.ValueOrDie().compression_enabled);
   EXPECT_FALSE(storage.ValueOrDie().encryption_enabled);
   EXPECT_TRUE(storage.ValueOrDie().controlled_degradation);
-  EXPECT_FALSE(storage.ValueOrDie().legacy_storage_enabled);
+  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled, StrEq("SECURITY"));
   EXPECT_TRUE(storage.ValueOrDie().signature_verification_dev_enabled);
 }
 
@@ -346,7 +346,7 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
   EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
-              Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+              StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
   EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
               Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
@@ -375,7 +375,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
     EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
                 Eq(MissiveArgs::kControlledDegradationDefault));
     EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
-                Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+                StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
     EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
                 Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
   }
@@ -402,7 +402,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
       MissiveArgs::kControlledDegradationParameter, "True");
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
-      MissiveArgs::kLegacyStorageEnabledParameter, "False");
+      MissiveArgs::kLegacyStorageEnabledParameter, "SECURITY,IMMEDIATE");
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kSignatureVerificationDevEnabledParameter, "True");
@@ -415,7 +415,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
     EXPECT_FALSE(storage.compression_enabled);
     EXPECT_FALSE(storage.encryption_enabled);
     EXPECT_TRUE(storage.controlled_degradation);
-    EXPECT_FALSE(storage.legacy_storage_enabled);
+    EXPECT_THAT(storage.legacy_storage_enabled, StrEq("SECURITY,IMMEDIATE"));
     EXPECT_TRUE(storage.signature_verification_dev_enabled);
   }
 }

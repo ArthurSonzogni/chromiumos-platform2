@@ -294,11 +294,6 @@ void QueuesContainer::DropAllQueues() {
   queues_.clear();
 }
 
-bool QueuesContainer::IsEmpty() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return queues_.empty();
-}
-
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }

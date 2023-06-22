@@ -8,11 +8,11 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
-#include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
@@ -20,6 +20,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
+#include <base/strings/string_piece_forward.h>
+#include <base/strings/string_split.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 
@@ -32,9 +34,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -44,14 +44,12 @@ const Status kStorageUnavailableStatus =
 
 StorageModule::StorageModule(
     const StorageOptions& options,
-    bool legacy_storage_enabled,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag)
-    : DynamicFlag("legacy_storage_enabled", legacy_storage_enabled),
-      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+    : sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
       options_(options),
       async_start_upload_cb_(async_start_upload_cb),
@@ -140,10 +138,41 @@ void StorageModule::UpdateEncryptionKey(
           base::WrapRefCounted(this), std::move(signed_encryption_key)));
 }
 
+void StorageModule::SetLegacyEnabledPriorities(
+    base::StringPiece legacy_storage_enabled) {
+  const std::vector<base::StringPiece> splits =
+      base::SplitStringPieceUsingSubstr(legacy_storage_enabled, ",",
+                                        base::TRIM_WHITESPACE,
+                                        base::SPLIT_WANT_NONEMPTY);
+  // Initialize all flags as 'false' (multi-generational, non-legacy).
+  std::array<bool, Priority_ARRAYSIZE> legacy_enabled_for_priority;
+  for (auto& value : legacy_enabled_for_priority) {
+    value = false;
+  }
+  // Flip specified priorities' flags as 'true' (single-generation, legacy).
+  for (const auto& split : splits) {
+    Priority priority;
+    if (!Priority_Parse(std::string(split), &priority)) {
+      LOG(ERROR) << "Invalid legacy-enabled priority specified: `" << split
+                 << "`";
+      continue;
+    }
+    DCHECK_LT(priority, Priority_ARRAYSIZE);
+    legacy_enabled_for_priority[priority] = true;
+  }
+  // Atomically deliver all priorities' flags to `options_` (shared with
+  // `storage_`). For flags that do not change `set_multi_generational` is
+  // effectively a no-op.
+  for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
+    options_.set_multi_generational(priority,
+                                    !legacy_enabled_for_priority[priority]);
+  }
+}
+
 // static
 void StorageModule::Create(
     const StorageOptions& options,
-    bool legacy_storage_enabled,
+    base::StringPiece legacy_storage_enabled,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -154,33 +183,14 @@ void StorageModule::Create(
   scoped_refptr<StorageModule> instance =
       // Cannot use `base::MakeRefCounted`, since constructor is protected.
       base::WrapRefCounted(new StorageModule(
-          options, legacy_storage_enabled, async_start_upload_cb,
-          queues_container, encryption_module, compression_module,
-          signature_verification_dev_flag));
+          options, async_start_upload_cb, queues_container, encryption_module,
+          compression_module, signature_verification_dev_flag));
+
+  // Enable/disable multi-generation action for all priorities.
+  instance->SetLegacyEnabledPriorities(legacy_storage_enabled);
 
   // Initialize `instance`.
-  InitAsync(instance, std::move(callback)).Run();
-}
-
-// static
-base::OnceClosure StorageModule::InitAsync(
-    scoped_refptr<StorageModule> instance,
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
-  return VerifyQueuesAreEmptyAsync(instance->queues_container_)
-      .Then(InitStorageAsync(instance, std::move(callback)));
-}
-
-// static
-base::OnceClosure StorageModule::VerifyQueuesAreEmptyAsync(
-    scoped_refptr<QueuesContainer> queues_container) {
-  return base::BindPostTask(
-      queues_container->sequenced_task_runner(),
-      base::BindOnce(
-          [](scoped_refptr<QueuesContainer> queues_container) {
-            CHECK(queues_container);
-            CHECK(queues_container->IsEmpty());
-          },
-          queues_container));
+  InitStorageAsync(instance, std::move(callback)).Run();
 }
 
 // static
@@ -221,47 +231,6 @@ void StorageModule::SetStorage(
   }
   storage_ = storage.ValueOrDie();
   std::move(callback).Run(base::WrapRefCounted(this));
-}
-
-bool StorageModule::legacy_storage_enabled() const {
-  return is_enabled();
-}
-
-void StorageModule::OnValueUpdate(bool is_enabled) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self, bool is_enabled) {
-            // Callback for when `InitStorageAsync()` completed. This is just
-            // base::DoNothing() unless
-            // `RegisterOnStorageSetCallbackForTesting()` has been called.
-            auto when_set_storage_complete =
-                self->on_storage_set_cb_for_testing_
-                    ? std::move(self->on_storage_set_cb_for_testing_)
-                    : base::DoNothing();
-
-            self->storage_->RegisterCompletionCallback(
-                InitAsync(self, std::move(when_set_storage_complete)));
-
-            // Drop reference to `Storage` object. At some point in the near
-            // future the registered callback above should trigger once
-            // remaining references are dropped from any scheduled tasks.
-            self->storage_.reset();
-          },
-          base::WrapRefCounted(this), std::move(is_enabled)));
-}
-
-void StorageModule::RegisterOnStorageSetCallbackForTesting(
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self,
-             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                 callback) {
-            self->on_storage_set_cb_for_testing_ = std::move(callback);
-          },
-          base::WrapRefCounted(this), std::move(callback)));
 }
 
 void StorageModule::InjectStorageUnavailableErrorForTesting() {

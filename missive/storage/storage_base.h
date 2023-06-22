@@ -87,8 +87,6 @@ class QueuesContainer
   // Removes references to all queues inside `queues_`.
   void DropAllQueues();
 
-  bool IsEmpty() const;
-
   base::WeakPtr<QueuesContainer> GetWeakPtr();
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
