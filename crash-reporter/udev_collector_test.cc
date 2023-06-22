@@ -115,6 +115,8 @@ class UdevCollectorTest : public ::testing::Test {
     collector->dev_coredump_directory_ = dev_coredump_path.value();
   }
 
+  UdevCollectorMock collector_;
+
  private:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
@@ -128,7 +130,6 @@ class UdevCollectorTest : public ::testing::Test {
   }
 
   FilePath log_config_path_;
-  UdevCollectorMock collector_;
 };
 
 TEST_F(UdevCollectorTest, TestNoMatch) {
@@ -258,6 +259,36 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
   EXPECT_EQ(0, GetNumFiles(temp_dir_generator_.GetPath(),
                            kBluetoothCoredumpFilePattern));
 }
+
+struct ComputeCrashSeverityTestParams {
+  std::string exec_name;
+  CrashCollector::CrashSeverity expected_severity;
+};
+
+class ComputeCrashSeverityTest
+    : public UdevCollectorTest,
+      public ::testing::WithParamInterface<ComputeCrashSeverityTestParams> {};
+
+TEST_P(ComputeCrashSeverityTest, ComputeCrashSeverity) {
+  const ComputeCrashSeverityTestParams& test_case = GetParam();
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity(test_case.exec_name);
+
+  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ComputeCrashSeverityTestSuite,
+    ComputeCrashSeverityTest,
+    testing::ValuesIn<ComputeCrashSeverityTestParams>({
+        {"udev-usb", CrashCollector::CrashSeverity::kError},
+        {"devcoredump_msm", CrashCollector::CrashSeverity::kWarning},
+        {"udev-i2c-atmel_mxt_ts", CrashCollector::CrashSeverity::kWarning},
+        {"udev-drm", CrashCollector::CrashSeverity::kWarning},
+        {"another executable", CrashCollector::CrashSeverity::kUnspecified},
+    }));
 
 // TODO(sque, crosbug.com/32238) - test wildcard cases, multiple identical udev
 // events.

@@ -30,11 +30,15 @@ using base::FilePath;
 namespace {
 
 const char kCollectUdevSignature[] = "crash_reporter-udev-collection";
+const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
+const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
+const char kDevCoredumpMsmExecName[] = "devcoredump_msm";
+const char kUdevDrmExecName[] = "udev-drm";
 const char kUdevExecName[] = "udev";
 const char kUdevSignatureKey[] = "sig";
 const char kUdevSubsystemDevCoredump[] = "devcoredump";
-const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
-const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
+const char kUdevTouchscreenTrackpadExecName[] = "udev-i2c-atmel_mxt_ts";
+const char kUdevUsbExecName[] = "udev-usb";
 
 }  // namespace
 
@@ -66,6 +70,24 @@ bool UdevCollector::IsSafeDevCoredump(
 
   // Check for safe drivers:
   return driver_name == "msm" || driver_name == "qcom-venus";
+}
+
+CrashCollector::ComputedCrashSeverity UdevCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  ComputedCrashSeverity computed_severity{
+      .crash_severity = CrashSeverity::kUnspecified,
+      .product_group = Product::kPlatform,
+  };
+
+  if (exec_name == kUdevUsbExecName) {
+    computed_severity.crash_severity = CrashSeverity::kError;
+  } else if ((exec_name == kDevCoredumpMsmExecName) ||
+             (exec_name == kUdevTouchscreenTrackpadExecName) ||
+             (exec_name == kUdevDrmExecName)) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+  }
+
+  return computed_severity;
 }
 
 bool UdevCollector::HandleCrash(const std::string& udev_event) {

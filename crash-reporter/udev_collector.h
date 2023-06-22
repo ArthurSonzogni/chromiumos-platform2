@@ -31,6 +31,10 @@ class UdevCollector : public CrashCollector {
 
   ~UdevCollector() override;
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   // The udev event string should be formatted as follows:
   //   "ACTION=[action]:KERNEL=[name]:SUBSYSTEM=[subsystem]"
   // The values don't have to be in any particular order. One or more of them
