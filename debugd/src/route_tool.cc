@@ -6,7 +6,9 @@
 
 #include <map>
 
+#include <base/containers/flat_set.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
@@ -72,26 +74,27 @@ std::vector<std::string> RouteTool::GetRoutes(
   full_result.push_back("");
   full_result.insert(full_result.end(), cmd_result.begin(), cmd_result.end());
 
-  // Multiple routing policy rules can reference the same table, so keep
-  // a map to make sure each table is only printed once.
-  std::map<int, bool> table_map;
-  for (auto line : full_result) {
-    base::TrimWhitespaceASCII(line, base::TRIM_ALL, &line);
-
-    const std::string prefix("lookup ");
-    size_t offset = line.rfind(prefix);
+  // Multiple routing policy rules can reference the same table.
+  base::flat_set<int> table_ids;
+  for (const auto& line : full_result) {
+    base::StringPiece trimmed_line =
+        base::TrimWhitespaceASCII(line, base::TRIM_ALL);
+    base::StringPiece prefix = "lookup ";
+    size_t offset = trimmed_line.rfind(prefix);
     if (offset != std::string::npos) {
       int table_id;
-      if (base::StringToInt(line.substr(offset + prefix.size()), &table_id) &&
-          table_map.find(table_id) == table_map.end()) {
-        table_map[table_id] = true;
-        RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table",
-                                      base::NumberToString(table_id)});
-        full_result.push_back("");
-        full_result.insert(full_result.end(), cmd_result.begin(),
-                           cmd_result.end());
+      if (base::StringToInt(trimmed_line.substr(offset + prefix.size()),
+                            &table_id)) {
+        table_ids.insert(table_id);
       }
     }
+  }
+
+  for (int table_id : table_ids) {
+    RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table",
+                                  base::NumberToString(table_id)});
+    full_result.push_back("");
+    full_result.insert(full_result.end(), cmd_result.begin(), cmd_result.end());
   }
 
   return full_result;
