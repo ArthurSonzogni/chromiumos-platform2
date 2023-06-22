@@ -63,6 +63,10 @@ class GenericFailureCollector : public CrashCollector {
     int32_t weight;
   };
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(const HandlerInfoOptions& options);
 
  protected:
