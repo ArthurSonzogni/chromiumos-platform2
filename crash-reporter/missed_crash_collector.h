@@ -5,12 +5,12 @@
 #ifndef CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 #define CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 
-#include "crash-reporter/crash_collector.h"
-
 #include <string>
 
 #include <stdint.h>
 #include <stdio.h>
+
+#include "crash-reporter/crash_collector.h"
 
 // Handles reports from anomaly_detector that we failed to capture a Chrome
 // crash. The class is a bit of an oddity in that it doesn't collect its logs
@@ -29,6 +29,10 @@ class MissedCrashCollector : public CrashCollector {
   void set_input_file_for_testing(FILE* input_file) {
     input_file_ = input_file;
   }
+
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
 
   static CollectorInfo GetHandlerInfo(bool missed_chrome_crash,
                                       int32_t pid,

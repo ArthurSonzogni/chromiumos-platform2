@@ -5,6 +5,7 @@
 #include "crash-reporter/missed_crash_collector.h"
 
 #include <memory>
+#include <string>
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -71,6 +72,14 @@ bool MissedCrashCollector::Collect(int pid,
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 
   return true;
+}
+
+CrashCollector::ComputedCrashSeverity MissedCrashCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kInfo,
+      .product_group = Product::kPlatform,
+  };
 }
 
 CollectorInfo MissedCrashCollector::GetHandlerInfo(bool missed_chrome_crash,

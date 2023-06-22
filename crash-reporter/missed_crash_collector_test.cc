@@ -87,3 +87,14 @@ hello
 )";
   RunTestWithLogContents(kInput);
 }
+
+TEST(MissedCrashCollectorTest, ComputeSeverity_MissedCrashExecutable) {
+  MissedCrashCollector collector;
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector.ComputeSeverity("missed_crash");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kInfo);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kPlatform);
+}
