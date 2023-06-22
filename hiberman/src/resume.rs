@@ -41,6 +41,7 @@ use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::TimestampFile;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
+use crate::metrics::DurationMetricUnit;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
@@ -254,6 +255,13 @@ impl ResumeConductor {
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
             metrics_logger.metrics_send_io_sample("ReadMainImage", image_size, start.elapsed());
+
+            metrics_logger.log_duration_sample(
+                "Platform.Hibernate.ResumeTime.LoadImage",
+                start.elapsed(),
+                DurationMetricUnit::Milliseconds,
+                30000,
+            );
         }
 
         // Let other daemons know it's the end of the world.
