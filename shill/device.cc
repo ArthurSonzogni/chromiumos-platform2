@@ -929,7 +929,10 @@ void Device::BringNetworkInterfaceDown() {
   // BringNetworkInterfaceDown() override as well.
   DCHECK(implicit_network_);
   DCHECK(implicit_network_->interface_index() == interface_index());
-  rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+
+  // If fixed_ip_params is true, we don't manipulate the interface state.
+  if (!implicit_network_->fixed_ip_params())
+    rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 ControlInterface* Device::control_interface() const {
