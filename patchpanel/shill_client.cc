@@ -355,39 +355,34 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
       // finished. Avoid logging spurious WARNING messages in these two cases.
       continue;
     }
-    const auto address = net_base::IPAddress::CreateFromString(address_str);
-    if (!address) {
-      LOG(WARNING) << "[" << device.value()
-                   << "]: IPConfig Address property was invalid: "
-                   << address_str;
+
+    it = ipconfig_props.find(shill::kPrefixlenProperty);
+    if (it == ipconfig_props.end()) {
+      LOG(WARNING) << "[" << device.value() << "]: "
+                   << " IPConfig properties is missing Prefixlen";
       continue;
     }
-    const bool is_ipv4 = (address->GetFamily() == net_base::IPFamily::kIPv4);
+    int prefix_length = it->second.TryGet<int>();
+    if (prefix_length == 0) {
+      LOG(WARNING)
+          << "[" << device.value() << "]: "
+          << " IPConfig Prefixlen property is 0, may be an invalid setup";
+    }
+
+    const auto cidr =
+        net_base::IPCIDR::CreateFromStringAndPrefix(address_str, prefix_length);
+    if (!cidr) {
+      LOG(WARNING) << "[" << device.value()
+                   << "]: IPConfig Address and Prefixlen property was invalid: "
+                   << address_str << "/" << prefix_length;
+      continue;
+    }
+    const bool is_ipv4 = (cidr->GetFamily() == net_base::IPFamily::kIPv4);
     const std::string method = is_ipv4 ? "IPv4" : "IPv6";
     if ((is_ipv4 && ipconfig.ipv4_cidr) || (!is_ipv4 && ipconfig.ipv6_cidr)) {
       LOG(WARNING) << "[" << device.value() << "]: "
                    << "Duplicated IPconfig for " << method;
       continue;
-    }
-
-    it = ipconfig_props.find(shill::kPrefixlenProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value() << "]: " << method
-                   << " IPConfig properties is missing Prefixlen";
-      continue;
-    }
-    int prefix_length = it->second.TryGet<int>();
-    if (prefix_length < 0 || (is_ipv4 && prefix_length > 32) ||
-        prefix_length > 128) {
-      LOG(WARNING) << "[" << device.value() << "]: " << method
-                   << " IPConfig Prefixlen property was invalid: "
-                   << prefix_length;
-      continue;
-    }
-    if (prefix_length == 0) {
-      LOG(WARNING)
-          << "[" << device.value() << "]: " << method
-          << " IPConfig Prefixlen property is 0, may be an invalid setup";
     }
 
     it = ipconfig_props.find(shill::kGatewayProperty);
@@ -416,8 +411,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 
     // Fills the IPConfig struct according to the type.
     if (is_ipv4) {
-      ipconfig.ipv4_cidr = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          *address->ToIPv4Address(), prefix_length);
+      ipconfig.ipv4_cidr = cidr->ToIPv4CIDR();
       ipconfig.ipv4_gateway = net_base::IPv4Address::CreateFromString(gateway);
       if (!ipconfig.ipv4_gateway) {
         LOG(WARNING) << "[" << device.value() << "]: " << method
@@ -426,8 +420,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
       }
       ipconfig.ipv4_dns_addresses = dns_addresses;
     } else {  // AF_INET6
-      ipconfig.ipv6_cidr = net_base::IPv6CIDR::CreateFromAddressAndPrefix(
-          *address->ToIPv6Address(), prefix_length);
+      ipconfig.ipv6_cidr = cidr->ToIPv6CIDR();
       ipconfig.ipv6_gateway = net_base::IPv6Address::CreateFromString(gateway);
       if (!ipconfig.ipv6_gateway) {
         LOG(WARNING) << "[" << device.value() << "]: " << method
