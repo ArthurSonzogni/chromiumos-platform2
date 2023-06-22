@@ -26,8 +26,8 @@ constexpr char kChromeDirectory[] = "/opt/google/chrome";
 
 bool HasExceptionInfo(const std::string& type) {
   static const std::unordered_set<std::string> kTypes = {
-      "data_app_crash", "system_app_crash", "system_app_wtf",
-      "system_server_crash", "system_server_wtf"};
+      kDataAppCrash, kSystemAppCrash, kSystemAppWtf, kSystemServerCrash,
+      kSystemServerWtf};
   return kTypes.count(type);
 }
 
@@ -144,17 +144,17 @@ bool ParseCrashLog(const std::string& type,
 
 const char* GetSubjectTag(const std::string& type) {
   static const CrashLogHeaderMap kTags = {
-      {"data_app_native_crash", "native app crash"},
-      {"system_app_anr", "ANR"},
-      {"data_app_anr", "app ANR"},
-      {"system_server_watchdog", "system server watchdog"}};
+      {kDataAppNativeCrash, "native app crash"},
+      {kSystemAppAnr, "ANR"},
+      {kDataAppAnr, "app ANR"},
+      {kSystemServerWatchdog, "system server watchdog"}};
 
   const auto it = kTags.find(type);
   return it == kTags.cend() ? nullptr : it->second.c_str();
 }
 
 bool IsSilentReport(const std::string& type) {
-  return type == "system_app_wtf" || type == "system_server_wtf";
+  return type == kSystemAppWtf || type == kSystemServerWtf;
 }
 
 std::string GetCrashLogHeader(const CrashLogHeaderMap& map, const char* key) {

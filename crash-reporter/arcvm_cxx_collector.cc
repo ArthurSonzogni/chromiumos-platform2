@@ -26,9 +26,6 @@ namespace {
 // TODO(b/169638371): Remove the word "native".
 constexpr char kArcvmCxxCollectorName[] = "ARCVM_native";
 
-// "native_crash" is a tag defined in Android.
-constexpr char kArcvmNativeCrashType[] = "native_crash";
-
 }  // namespace
 
 ArcvmCxxCollector::ArcvmCxxCollector()
@@ -94,7 +91,7 @@ void ArcvmCxxCollector::AddArcMetadata(
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
   for (const auto& metadata : arc_util::ListBasicARCRelatedMetadata(
-           crash_info.exec_name, kArcvmNativeCrashType)) {
+           crash_info.exec_name, arc_util::kNativeCrash)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());

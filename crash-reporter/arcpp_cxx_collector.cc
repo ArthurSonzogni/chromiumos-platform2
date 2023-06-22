@@ -30,9 +30,6 @@ using brillo::ProcessImpl;
 
 namespace {
 
-// "native_crash" is a tag defined in Android.
-const char kCrashType[] = "native_crash";
-
 const FilePath kContainersDir("/run/containers");
 const char kArcDirPattern[] = "android*";
 const FilePath kContainerPid("container.pid");
@@ -264,7 +261,7 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
 
 void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
   for (const auto& metadata :
-       arc_util::ListBasicARCRelatedMetadata(process, kCrashType)) {
+       arc_util::ListBasicARCRelatedMetadata(process, arc_util::kNativeCrash)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
@@ -276,7 +273,7 @@ void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
                            arc_util::FormatDuration(uptime));
   }
 
-  if (arc_util::IsSilentReport(kCrashType))
+  if (arc_util::IsSilentReport(arc_util::kNativeCrash))
     AddCrashMetaData(arc_util::kSilentKey, "true");
 
   arc_util::BuildProperty build_property;

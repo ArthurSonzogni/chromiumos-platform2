@@ -39,26 +39,25 @@ TEST(ArcUtilTest, ParseCrashLog) {
   std::string exception_info, log;
 
   // Crash log should not be empty.
-  EXPECT_FALSE(
-      ParseCrashLog("system_app_crash", "", &map, &exception_info, &log));
+  EXPECT_FALSE(ParseCrashLog(kSystemAppCrash, "", &map, &exception_info, &log));
 
   // Header key should be followed by a colon.
   EXPECT_FALSE(
-      ParseCrashLog("system_app_crash", "Key", &map, &exception_info, &log));
+      ParseCrashLog(kSystemAppCrash, "Key", &map, &exception_info, &log));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
 
   // Header value should not be empty.
-  EXPECT_FALSE(ParseCrashLog("system_app_crash", "Key:   ", &map,
-                             &exception_info, &log));
+  EXPECT_FALSE(
+      ParseCrashLog(kSystemAppCrash, "Key:   ", &map, &exception_info, &log));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
 
   // Parse a crash log with exception info.
-  EXPECT_TRUE(ParseCrashLog("system_app_crash", kCrashLog, &map,
-                            &exception_info, &log));
+  EXPECT_TRUE(
+      ParseCrashLog(kSystemAppCrash, kCrashLog, &map, &exception_info, &log));
 
   EXPECT_TRUE(GetLog().empty());
 
@@ -71,7 +70,7 @@ TEST(ArcUtilTest, ParseCrashLog) {
   map.clear();
   exception_info.clear();
   EXPECT_TRUE(
-      ParseCrashLog("system_app_anr", kCrashLog, &map, &exception_info, &log));
+      ParseCrashLog(kSystemAppAnr, kCrashLog, &map, &exception_info, &log));
 
   EXPECT_TRUE(GetLog().empty());
 
