@@ -364,7 +364,7 @@ impl SuspendConductor {
         let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
         metrics_logger.log_duration_sample(
-            "Platform.Hibernate.LoginToResumeReady",
+            "Platform.Hibernate.ResumeTime.Total",
             resume_time,
             DurationMetricUnit::Milliseconds,
             30000,
