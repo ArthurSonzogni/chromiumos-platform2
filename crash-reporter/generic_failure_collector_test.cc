@@ -173,31 +173,3 @@ TEST_F(GenericFailureCollectorTest, CollectFullGuestOOM) {
   ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
   EXPECT_TRUE(contents.find(log) != std::string::npos) << contents;
 }
-
-struct ComputeCrashSeverityTestParams {
-  std::string exec_name;
-  CrashCollector::CrashSeverity expected_severity;
-};
-
-class ComputeCrashSeverityTest
-    : public GenericFailureCollectorTest,
-      public ::testing::WithParamInterface<ComputeCrashSeverityTestParams> {};
-
-TEST_P(ComputeCrashSeverityTest, ComputeCrashSeverity) {
-  const ComputeCrashSeverityTestParams& test_case = GetParam();
-  CrashCollector::ComputedCrashSeverity computed_severity =
-      collector_.ComputeSeverity(test_case.exec_name);
-
-  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
-  EXPECT_EQ(computed_severity.product_group,
-            CrashCollector::Product::kPlatform);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ComputeCrashSeverityTestSuite,
-    ComputeCrashSeverityTest,
-    testing::ValuesIn<ComputeCrashSeverityTestParams>({
-        {"suspend-failure", CrashCollector::CrashSeverity::kWarning},
-        {"service-failure", CrashCollector::CrashSeverity::kWarning},
-        {"another executable", CrashCollector::CrashSeverity::kUnspecified},
-    }));

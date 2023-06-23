@@ -95,20 +95,6 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
   return true;
 }
 
-CrashCollector::ComputedCrashSeverity GenericFailureCollector::ComputeSeverity(
-    const std::string& exec_name) {
-  ComputedCrashSeverity computed_severity{
-      .crash_severity = CrashSeverity::kUnspecified,
-      .product_group = Product::kPlatform,
-  };
-
-  if ((exec_name == kSuspendFailure) || (exec_name == kServiceFailure)) {
-    computed_severity.crash_severity = CrashSeverity::kWarning;
-  }
-
-  return computed_severity;
-}
-
 // static
 CollectorInfo GenericFailureCollector::GetHandlerInfo(
     const HandlerInfoOptions& options) {
