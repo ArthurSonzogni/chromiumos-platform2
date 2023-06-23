@@ -22,7 +22,6 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 

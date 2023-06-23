@@ -22,7 +22,6 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 

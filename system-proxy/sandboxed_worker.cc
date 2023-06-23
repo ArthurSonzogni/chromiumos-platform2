@@ -21,7 +21,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <google/protobuf/repeated_field.h>
 
 #include "system-proxy/protobuf_util.h"
