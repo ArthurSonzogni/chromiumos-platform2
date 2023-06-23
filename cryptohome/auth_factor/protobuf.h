@@ -6,10 +6,14 @@
 #define CRYPTOHOME_AUTH_FACTOR_PROTOBUF_H_
 
 #include <optional>
+#include <string>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/features.h"
 
 namespace cryptohome {
 
@@ -22,6 +26,25 @@ namespace cryptohome {
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
 std::optional<AuthFactorType> AuthFactorTypeFromProto(
     user_data_auth::AuthFactorType type);
+
+// Function to convert an auth factor prepare purpose from the protobuf enum.
+std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
+    user_data_auth::AuthFactorPreparePurpose purpose);
+
+// Populates any relevant fields in an AuthFactor proto with the relevant system
+// information (e.g. OS version). Will overwrite any info already populating the
+// system information fields, but will not touch any other fields.
+void PopulateAuthFactorProtoWithSysinfo(
+    user_data_auth::AuthFactor& auth_factor);
+
+// Construct all of the stateless AuthFactor properties (type, label, metadata)
+// from an auth factor protobuf.
+bool AuthFactorPropertiesFromProto(
+    const user_data_auth::AuthFactor& auth_factor,
+    const AsyncInitFeatures& features,
+    AuthFactorType& out_auth_factor_type,
+    std::string& out_auth_factor_label,
+    AuthFactorMetadata& out_auth_factor_metadata);
 
 }  // namespace cryptohome
 

@@ -1,6 +1,8 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include "cryptohome/auth_factor/loading.h"
 
 #include <algorithm>
 #include <memory>
@@ -9,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <absl/types/variant.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <gmock/gmock.h>
@@ -22,7 +23,6 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_generated.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
@@ -39,13 +39,8 @@ using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::IsEmpty;
-using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrictMock;
-
-constexpr char kLabel[] = "some-label";
-constexpr char kChromeosVersion[] = "1.2.3_a_b_c";
-constexpr char kChromeVersion[] = "1.2.3.4";
 
 // A matcher for an AuthFactorMap element. This will check the type, label and
 // storage type of the item. You generally want to combine this with
@@ -138,269 +133,6 @@ std::unique_ptr<VaultKeyset> CreateMigratedVaultKeyset(
   auto migrated_vk = CreateBackupVaultKeyset(label);
   migrated_vk->set_migrated_vk_for_testing(true);
   return migrated_vk;
-}
-
-TEST(AuthFactorUtilsTest, PopulateSysinfoWithOsVersion) {
-  static constexpr char kLsbRelease[] =
-      R"(CHROMEOS_RELEASE_NAME=Chrome OS
-CHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422
-)";
-  base::test::ScopedChromeOSVersionInfo scoped_version(
-      kLsbRelease, /*lsb_release_time=*/base::Time());
-
-  static constexpr char kLsbReleaseVersion[] = "11012.0.2018_08_28_1422";
-  static constexpr char kOtherVersion[] = "11011.0.2017_07_27_1421";
-
-  // Try filling in a blank proto.
-  user_data_auth::AuthFactor auth_factor;
-  PopulateAuthFactorProtoWithSysinfo(auth_factor);
-  EXPECT_EQ(auth_factor.common_metadata().chromeos_version_last_updated(),
-            kLsbReleaseVersion);
-
-  // Try filling in a proto with existing data.
-  user_data_auth::AuthFactor auth_factor_with_existing_data;
-  auth_factor_with_existing_data.mutable_common_metadata()
-      ->set_chromeos_version_last_updated(kOtherVersion);
-  EXPECT_EQ(auth_factor_with_existing_data.common_metadata()
-                .chromeos_version_last_updated(),
-            kOtherVersion);
-  PopulateAuthFactorProtoWithSysinfo(auth_factor_with_existing_data);
-  EXPECT_EQ(auth_factor_with_existing_data.common_metadata()
-                .chromeos_version_last_updated(),
-            kLsbReleaseVersion);
-}
-
-TEST(AuthFactorUtilsTest, PopulateSysinfoWithOsVersionFails) {
-  static constexpr char kLsbRelease[] =
-      R"(CHROMEOS_RELEASE_NAME=Chrome OS
-)";
-  base::test::ScopedChromeOSVersionInfo scoped_version(
-      kLsbRelease, /*lsb_release_time=*/base::Time());
-
-  static constexpr char kVersion[] = "11011.0.2017_07_27_1421";
-
-  // Try filling in a blank proto.
-  user_data_auth::AuthFactor auth_factor;
-  PopulateAuthFactorProtoWithSysinfo(auth_factor);
-  EXPECT_EQ(auth_factor.common_metadata().chromeos_version_last_updated(), "");
-
-  // Try filling in a proto with existing data.
-  user_data_auth::AuthFactor auth_factor_with_existing_data;
-  auth_factor_with_existing_data.mutable_common_metadata()
-      ->set_chromeos_version_last_updated(kVersion);
-  EXPECT_EQ(auth_factor_with_existing_data.common_metadata()
-                .chromeos_version_last_updated(),
-            kVersion);
-  PopulateAuthFactorProtoWithSysinfo(auth_factor_with_existing_data);
-  EXPECT_EQ(auth_factor_with_existing_data.common_metadata()
-                .chromeos_version_last_updated(),
-            "");
-}
-
-TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  auth_factor_proto.mutable_password_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                    auth_factor_metadata, auth_factor_type,
-                                    auth_factor_label));
-
-  // Verify
-  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
-            kChromeosVersion);
-  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
-            kChromeVersion);
-  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::LockoutPolicy::NO_LOCKOUT);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PasswordMetadata>(
-      auth_factor_metadata.metadata));
-  EXPECT_EQ(auth_factor_type, AuthFactorType::kPassword);
-  EXPECT_EQ(auth_factor_label, kLabel);
-}
-
-TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPIN) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                    auth_factor_metadata, auth_factor_type,
-                                    auth_factor_label));
-
-  // Verify
-  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
-            kChromeosVersion);
-  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
-            kChromeVersion);
-  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::LockoutPolicy::ATTEMPT_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
-      auth_factor_metadata.metadata));
-  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
-  EXPECT_EQ(auth_factor_label, kLabel);
-}
-
-TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINTimeLimit) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                    auth_factor_metadata, auth_factor_type,
-                                    auth_factor_label));
-
-  // Verify
-  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
-            kChromeosVersion);
-  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
-            kChromeVersion);
-  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::LockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
-      auth_factor_metadata.metadata));
-  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
-  EXPECT_EQ(auth_factor_label, kLabel);
-}
-
-TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINAttemptLimitFeaturesNull) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                    auth_factor_metadata, auth_factor_type,
-                                    auth_factor_label));
-
-  // Verify
-  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
-            kChromeosVersion);
-  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
-            kChromeVersion);
-  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::LockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
-      auth_factor_metadata.metadata));
-  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
-  EXPECT_EQ(auth_factor_label, kLabel);
-}
-
-TEST(AuthFactorUtilsTest,
-     AuthFactorMetaDataCheckPINAttemptLimitFeatureEnabled) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                    auth_factor_metadata, auth_factor_type,
-                                    auth_factor_label));
-
-  // Verify
-  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
-            kChromeosVersion);
-  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
-            kChromeVersion);
-  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
-            auth_factor::LockoutPolicy::TIME_LIMITED);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PinMetadata>(
-      auth_factor_metadata.metadata));
-  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
-  EXPECT_EQ(auth_factor_label, kLabel);
-}
-
-TEST(AuthFactorUtilsTest,
-     AuthFactorMetaDataCheckPINAttemptLimitFeatureEnabledWrongInput) {
-  // Setup
-  user_data_auth::AuthFactor auth_factor_proto;
-  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
-  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
-  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
-  common_metadata_proto.set_lockout_policy(
-      user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
-  auth_factor_proto.mutable_pin_metadata();
-  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  auth_factor_proto.set_label(kLabel);
-
-  // Test
-  AuthFactorMetadata auth_factor_metadata;
-  AuthFactorType auth_factor_type;
-  std::string auth_factor_label;
-  FakeFeaturesForTesting features;
-  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
-  EXPECT_FALSE(GetAuthFactorMetadata(auth_factor_proto, features.async,
-                                     auth_factor_metadata, auth_factor_type,
-                                     auth_factor_label));
-}
-
-TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
-  EXPECT_EQ(AuthFactorPreparePurposeFromProto(
-                user_data_auth::PURPOSE_ADD_AUTH_FACTOR),
-            AuthFactorPreparePurpose::kPrepareAddAuthFactor);
-  EXPECT_EQ(AuthFactorPreparePurposeFromProto(
-                user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR),
-            AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor);
-  EXPECT_EQ(
-      AuthFactorPreparePurposeFromProto(user_data_auth::PURPOSE_UNSPECIFIED),
-      std::nullopt);
 }
 
 class LoadAuthFactorMapTest : public ::testing::Test {

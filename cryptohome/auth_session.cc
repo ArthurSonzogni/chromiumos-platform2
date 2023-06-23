@@ -42,7 +42,7 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor/loading.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/pin.h"
@@ -1789,12 +1789,12 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
-                             auth_factor_metadata, auth_factor_type,
-                             auth_factor_label)) {
+  AuthFactorMetadata auth_factor_metadata;
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(), *features_,
+                                     auth_factor_type, auth_factor_label,
+                                     auth_factor_metadata)) {
     LOG(ERROR)
         << "AuthSession: Failed to parse updated auth factor parameters.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2072,12 +2072,12 @@ void AuthSession::UpdateAuthFactorMetadata(
     return;
   }
 
-  AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
-                             auth_factor_metadata, auth_factor_type,
-                             auth_factor_label)) {
+  AuthFactorMetadata auth_factor_metadata;
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(), *features_,
+                                     auth_factor_type, auth_factor_label,
+                                     auth_factor_metadata)) {
     LOG(ERROR)
         << "AuthSession: Failed to parse updated auth factor parameters.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -3007,12 +3007,12 @@ void AuthSession::AddAuthFactor(
     return;
   }
 
-  AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
-                             auth_factor_metadata, auth_factor_type,
-                             auth_factor_label)) {
+  AuthFactorMetadata auth_factor_metadata;
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(), *features_,
+                                     auth_factor_type, auth_factor_label,
+                                     auth_factor_metadata)) {
     LOG(ERROR) << "Failed to parse new auth factor parameters";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInAddAuthFactor),
