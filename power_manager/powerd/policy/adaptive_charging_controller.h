@@ -721,6 +721,16 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // making it more likely users will unplug with a full charge if possible.
   double max_delay_percentile_;
 
+  // To improve the accuracy of Adaptive Charging, we require the
+  // ChargeHistory::DaysOfHistory() must be >= `min_days_history_`, otherwise
+  // Adaptive Charging is disabled.
+  int64_t min_days_history_;
+
+  // Similar to `min_days_history_`, the ChargeHistory must have the ratio
+  // (full_charge_time_on_ac/total_time_on_ac) >= `min_full_on_ac_ratio` to be
+  // eligible to enable Adaptive Charging.
+  double min_full_on_ac_ratio_;
+
   // Whether Adaptive Charging logic was started on AC plug in, or when it was
   // enabled. Currently set to false if the battery was full under these
   // conditions. This can be true even if Adaptive Charging isn't enabled, and

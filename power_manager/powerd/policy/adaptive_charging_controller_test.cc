@@ -1014,13 +1014,14 @@ TEST_F(AdaptiveChargingControllerTest, TestGetTimeFunctions) {
   EXPECT_EQ(hold_time_on_ac, charge_history_->GetHoldTimeOnAC());
 }
 
-// Test that only a few charge history days will result in Adaptive Charging
-// being disabled by its heuristic.
+// Test that charge history days may result in Adaptive Charging being disabled
+// by its heuristic, and the threshold is configurable by policy.
 TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnDays) {
   CreateChargeHistoryDirectories();
   base::Time now = base::Time::Now();
   base::Time today = now.UTCMidnight();
-  for (int i = 0; i < 5; ++i) {
+  // Create 14 days of charge history, which meet the default requirement.
+  for (int i = 0; i < 14; ++i) {
     WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
                            base::Hours(5));
     WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
@@ -1030,6 +1031,20 @@ TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnDays) {
   }
 
   InitNoHistory();
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+  DisconnectCharger();
+  // It passes the heuristic check.
+  EXPECT_NE(metrics::AdaptiveChargingState::HEURISTIC_DISABLED,
+            delegate_.adaptive_state);
+
+  // Now set the min_days_history requirement to 15, it should fail the
+  // heuristic check.
+  ConnectCharger();
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_min_days_history(15);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
   DisconnectCharger();
@@ -1037,23 +1052,39 @@ TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnDays) {
             delegate_.adaptive_state);
 }
 
-// Test that a sufficient number of days (min 14) tracked in ChargeHistory with
-// a too low TimeFullOnAC / TimeOnAC ratio still results in Adaptive Charging
-// being disabled by its heuristic.
+// Test that the TimeFullOnAC / TimeOnAC ratio can also result in Adaptive
+// Charging being disabled by its heuristic, and the threshold is configurable
+// by policy.
 TEST_F(AdaptiveChargingControllerTest, TestHeuristicDisabledOnRatio) {
   CreateChargeHistoryDirectories();
   base::Time now = base::Time::Now();
   base::Time today = now.UTCMidnight();
-  for (int i = 0; i < 15; ++i) {
+  // Create charge history that meets the default requirement (14 days and 0.5
+  // ratio).
+  for (int i = 0; i < 14; ++i) {
     WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
                            base::Hours(5));
     WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
-                           base::Hours(1));
+                           base::Hours(2));
     WriteChargeHistoryFile(hold_time_on_ac_dir_, today - i * base::Days(1),
                            base::Hours(1));
   }
 
   InitNoHistory();
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+  DisconnectCharger();
+  // It passes the heuristic check.
+  EXPECT_NE(metrics::AdaptiveChargingState::HEURISTIC_DISABLED,
+            delegate_.adaptive_state);
+
+  // Now set the min_full_on_ac_ratio requirement to 0.7, it should fail the
+  // heuristic check.
+  ConnectCharger();
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_min_full_on_ac_ratio(0.7);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
   DisconnectCharger();
