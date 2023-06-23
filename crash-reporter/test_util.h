@@ -13,12 +13,20 @@
 #include <base/strings/string_piece.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
-
 #include <session_manager/dbus-proxy-mocks.h>
+
+#include "crash-reporter/crash_collector.h"
 
 namespace test_util {
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
+
+// Parameter for crash severity unit tests. Used by multiple collectors to test
+// ComputeSeverity().
+struct ComputeCrashSeverityTestParams {
+  std::string exec_name;
+  CrashCollector::CrashSeverity expected_severity;
+};
 
 // A Clock that advances 10 seconds (by default) on each call, used in tests and
 // fuzzers. Unlike a MockClock, it will not fail the test regardless of how many

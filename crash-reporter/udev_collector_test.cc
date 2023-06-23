@@ -260,17 +260,13 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
                            kBluetoothCoredumpFilePattern));
 }
 
-struct ComputeCrashSeverityTestParams {
-  std::string exec_name;
-  CrashCollector::CrashSeverity expected_severity;
-};
-
-class ComputeCrashSeverityTest
+class UdevCollectorCrashSeverityTest
     : public UdevCollectorTest,
-      public ::testing::WithParamInterface<ComputeCrashSeverityTestParams> {};
+      public ::testing::WithParamInterface<
+          test_util::ComputeCrashSeverityTestParams> {};
 
-TEST_P(ComputeCrashSeverityTest, ComputeCrashSeverity) {
-  const ComputeCrashSeverityTestParams& test_case = GetParam();
+TEST_P(UdevCollectorCrashSeverityTest, ComputeCrashSeverity) {
+  const test_util::ComputeCrashSeverityTestParams& test_case = GetParam();
   CrashCollector::ComputedCrashSeverity computed_severity =
       collector_.ComputeSeverity(test_case.exec_name);
 
@@ -280,9 +276,9 @@ TEST_P(ComputeCrashSeverityTest, ComputeCrashSeverity) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ComputeCrashSeverityTestSuite,
-    ComputeCrashSeverityTest,
-    testing::ValuesIn<ComputeCrashSeverityTestParams>({
+    UdevCollectorCrashSeverityTestSuite,
+    UdevCollectorCrashSeverityTest,
+    testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
         {"udev-usb", CrashCollector::CrashSeverity::kError},
         {"devcoredump_msm", CrashCollector::CrashSeverity::kWarning},
         {"udev-i2c-atmel_mxt_ts", CrashCollector::CrashSeverity::kWarning},

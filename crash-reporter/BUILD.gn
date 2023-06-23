@@ -493,6 +493,7 @@ if (use.test) {
       "//common-mk:test",
       ":anomaly_detector_config",
       ":crash_reporter_test_config",
+      ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
@@ -511,6 +512,7 @@ if (use.test) {
       "//common-mk:test",
       ":anomaly_detector_config",
       ":crash_reporter_test_config",
+      ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
@@ -530,6 +532,7 @@ if (use.test) {
       "//common-mk:test",
       ":anomaly_detector_config",
       ":crash_reporter_test_config",
+      ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
@@ -552,7 +555,10 @@ if (use.fuzzer) {
 
   executable("crash_sender_fuzzer") {
     sources = [ "crash_sender_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":libcrash_reporter_config",
+    ]
     deps = [
       ":libcrash",
       ":libcrash_sender",
@@ -582,6 +588,7 @@ if (use.fuzzer) {
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":anomaly_detector_config",
+      ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
