@@ -513,6 +513,71 @@ TEST_F(HttpCurlTransportTest, SetDnsLocalIPv6Address) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, SetInterface) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_INTERFACE, "if!eth0"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetInterface("eth0");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
+TEST_F(HttpCurlTransportTest, SetLocalIpAddress) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_INTERFACE, "host!192.168.1.13"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetLocalIpAddress("192.168.1.13");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
+TEST_F(HttpCurlTransportTest, SetInterfaceAndLocalIpAddress) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_INTERFACE, "if!wlan0"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_INTERFACE, "host!192.168.1.13"))
+      .Times(0);
+
+  transport_->SetInterface("wlan0");
+  transport_->SetLocalIpAddress("192.168.1.13");
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 }  // namespace curl
 }  // namespace http
 }  // namespace brillo

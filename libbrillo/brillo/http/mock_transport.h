@@ -42,6 +42,7 @@ class MockTransport : public Transport {
               (override));
   MOCK_METHOD(bool, CancelRequest, (RequestID), (override));
   MOCK_METHOD(void, SetDefaultTimeout, (base::TimeDelta), (override));
+  MOCK_METHOD(void, SetInterface, (const std::string&), (override));
   MOCK_METHOD(void, SetLocalIpAddress, (const std::string&), (override));
   MOCK_METHOD(void,
               SetDnsServers,

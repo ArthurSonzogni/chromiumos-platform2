@@ -66,6 +66,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 
+  void SetInterface(const std::string& ifname) override;
+
   void SetLocalIpAddress(const std::string& ip_address) override;
 
   void SetDnsServers(const std::vector<std::string>& dns_servers) override;
@@ -154,6 +156,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   RequestID last_request_id_{0};
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
+  std::string interface_;
   std::string ip_address_;
   std::vector<std::string> dns_servers_;
   std::string dns_interface_;

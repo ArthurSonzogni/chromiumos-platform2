@@ -103,7 +103,14 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the default timeout of requests made.
   virtual void SetDefaultTimeout(base::TimeDelta timeout) = 0;
 
-  // Set the local IP address of requests
+  // Set the name of the outgoing network interface of requests. This option
+  // takes precedence over setting the source IP address.
+  // Note: this method needs CAP_NET_ADMIN permission or root because it
+  // eventually calls setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE).
+  virtual void SetInterface(const std::string& ifname) = 0;
+
+  // Set the local IP address of requests. This option is ignored if the
+  // outgoing network interface is also configured.
   virtual void SetLocalIpAddress(const std::string& ip_address) = 0;
 
   // Set the list of DNS servers to be used instead of the system default.
