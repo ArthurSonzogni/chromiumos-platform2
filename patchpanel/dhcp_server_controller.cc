@@ -14,6 +14,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "patchpanel/metrics.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -82,8 +83,16 @@ std::ostream& operator<<(std::ostream& os, const Config& config) {
   return os;
 }
 
-DHCPServerController::DHCPServerController(const std::string& ifname)
-    : ifname_(ifname), process_manager_(shill::ProcessManager::GetInstance()) {}
+DHCPServerController::DHCPServerController(
+    MetricsLibraryInterface* metrics,
+    const std::string& dhcp_events_metric_name,
+    const std::string& ifname)
+    : metrics_(metrics),
+      dhcp_events_metric_name_(dhcp_events_metric_name),
+      ifname_(ifname),
+      process_manager_(shill::ProcessManager::GetInstance()) {
+  DCHECK(metrics_);
+}
 
 DHCPServerController::~DHCPServerController() {
   Stop();
@@ -91,6 +100,8 @@ DHCPServerController::~DHCPServerController() {
 
 bool DHCPServerController::Start(const Config& config,
                                  ExitCallback exit_callback) {
+  metrics_->SendEnumToUMA(dhcp_events_metric_name_,
+                          TetheringDHCPServerUmaEvent::kStart);
   if (IsRunning()) {
     LOG(ERROR) << "DHCP server is still running: " << ifname_
                << ", old config=" << *config_;
@@ -152,6 +163,8 @@ bool DHCPServerController::Start(const Config& config,
   pid_ = pid;
   config_ = config;
   exit_callback_ = std::move(exit_callback);
+  metrics_->SendEnumToUMA(dhcp_events_metric_name_,
+                          TetheringDHCPServerUmaEvent::kStartSuccess);
   return true;
 }
 
@@ -160,8 +173,15 @@ void DHCPServerController::Stop() {
     return;
   }
 
+  metrics_->SendEnumToUMA(dhcp_events_metric_name_,
+                          TetheringDHCPServerUmaEvent::kStop);
   LOG(INFO) << "Stopping DHCP server at: " << ifname_;
-  process_manager_->StopProcess(*pid_);
+  if (process_manager_->StopProcess(*pid_)) {
+    metrics_->SendEnumToUMA(dhcp_events_metric_name_,
+                            TetheringDHCPServerUmaEvent::kStopSuccess);
+  } else {
+    LOG(WARNING) << "The DHCP server process cannot be terminated";
+  }
 
   pid_ = std::nullopt;
   config_ = std::nullopt;

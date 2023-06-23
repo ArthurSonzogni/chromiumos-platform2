@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
 #include <shill/net/process_manager.h>
 
@@ -82,7 +83,9 @@ class DHCPServerController {
     DHCPOptions dhcp_options_;
   };
 
-  explicit DHCPServerController(const std::string& ifname);
+  DHCPServerController(MetricsLibraryInterface* metrics,
+                       const std::string& dhcp_events_metric_name,
+                       const std::string& ifname);
 
   DHCPServerController(const DHCPServerController&) = delete;
   DHCPServerController& operator=(const DHCPServerController&) = delete;
@@ -109,6 +112,12 @@ class DHCPServerController {
  private:
   // Callback when the process is exited unexpectedly.
   void OnProcessExitedUnexpectedly(int exit_status);
+
+  // UMA metrics client.
+  MetricsLibraryInterface* metrics_;
+
+  // UMA metric tracking DHCP success for this type of controllers.
+  std::string dhcp_events_metric_name_;
 
   // The network interface that the DHCP server listens.
   const std::string ifname_;

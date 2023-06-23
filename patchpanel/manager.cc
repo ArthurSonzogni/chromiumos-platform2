@@ -14,6 +14,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/metrics.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/scoped_ns.h"
 
@@ -31,6 +32,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                  std::unique_ptr<ShillClient> shill_client,
                  std::unique_ptr<RTNLClient> rtnl_client)
     : system_(system),
+      metrics_(metrics),
       client_notifier_(client_notifier),
       shill_client_(std::move(shill_client)),
       rtnl_client_(std::move(rtnl_client)) {
@@ -66,7 +68,7 @@ Manager::Manager(const base::FilePath& cmd_path,
   auto arc_type =
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
   arc_svc_ = std::make_unique<ArcService>(
-      datapath_.get(), &addr_mgr_, arc_type, metrics,
+      datapath_.get(), &addr_mgr_, arc_type, metrics_,
       base::BindRepeating(&Manager::OnArcDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
@@ -936,8 +938,8 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
                  << ": Failed to get DHCP server config";
       return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
     }
-    auto dhcp_server_controller =
-        std::make_unique<DHCPServerController>(info.downstream_ifname);
+    auto dhcp_server_controller = std::make_unique<DHCPServerController>(
+        metrics_, kTetheringDHCPServerUmaEventMetrics, info.downstream_ifname);
     // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
       LOG(ERROR) << __func__ << " " << info << ": Failed to start DHCP server";

@@ -4,14 +4,18 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 #include <net-base/ipv4_address.h>
 #include <shill/net/mock_process_manager.h>
+
+#include "patchpanel/metrics.h"
 
 using testing::_;
 using testing::Return;
@@ -35,7 +39,9 @@ class MockCallback {
 class DHCPServerControllerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    dhcp_server_controller_.set_process_manager_for_testing(&process_manager_);
+    dhcp_server_controller_ = std::make_unique<DHCPServerController>(
+        &metrics_, kTetheringDHCPServerUmaEventMetrics, "wlan0");
+    dhcp_server_controller_->set_process_manager_for_testing(&process_manager_);
   }
 
   Config CreateValidConfig() {
@@ -57,8 +63,19 @@ class DHCPServerControllerTest : public ::testing::Test {
         .value();
   }
 
+  void ExpectMetrics(TetheringDHCPServerUmaEvent event, int times) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(
+            kTetheringDHCPServerUmaEventMetrics, static_cast<int>(event),
+            static_cast<int>(TetheringDHCPServerUmaEvent::kMaxValue) + 1))
+        .Times(times)
+        .WillRepeatedly(Return(true));
+  }
+
+  StrictMock<MetricsLibraryMock> metrics_;
   StrictMock<shill::MockProcessManager> process_manager_;
-  DHCPServerController dhcp_server_controller_{"wlan0"};
+  std::unique_ptr<DHCPServerController> dhcp_server_controller_;
 };
 
 TEST_F(DHCPServerControllerTest, ConfigWithWrongSubnet) {
@@ -142,46 +159,59 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
   };
   constexpr pid_t pid = 5;
 
+  // Start() is called twice, but only the first time is successful.
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 2);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+  // Stop() is called once at destructor, and it is successful.
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, cmd_path, cmd_args, _, _, _))
       .WillOnce(Return(pid));
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
 
   // Start() should be successful at the first time.
-  EXPECT_EQ(dhcp_server_controller_.IsRunning(), false);
-  EXPECT_TRUE(dhcp_server_controller_.Start(config, base::DoNothing()));
-  EXPECT_TRUE(dhcp_server_controller_.IsRunning());
+  EXPECT_EQ(dhcp_server_controller_->IsRunning(), false);
+  EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
+  EXPECT_TRUE(dhcp_server_controller_->IsRunning());
 
   // Start() should fail and do nothing when the previous one is still running.
-  EXPECT_FALSE(dhcp_server_controller_.Start(config, base::DoNothing()));
+  EXPECT_FALSE(dhcp_server_controller_->Start(config, base::DoNothing()));
 }
 
 TEST_F(DHCPServerControllerTest, StartFailed) {
   const auto config = CreateValidConfig();
   constexpr pid_t invalid_pid = shill::ProcessManager::kInvalidPID;
 
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(invalid_pid));
 
   // Start() should fail if receiving invalid pid.
-  EXPECT_FALSE(dhcp_server_controller_.Start(config, base::DoNothing()));
-  EXPECT_FALSE(dhcp_server_controller_.IsRunning());
+  EXPECT_FALSE(dhcp_server_controller_->Start(config, base::DoNothing()));
+  EXPECT_FALSE(dhcp_server_controller_->IsRunning());
 }
 
 TEST_F(DHCPServerControllerTest, StartAndStop) {
   const auto config = CreateValidConfig();
   constexpr pid_t pid = 5;
 
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(pid));
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
 
-  EXPECT_TRUE(dhcp_server_controller_.Start(config, base::DoNothing()));
-  EXPECT_TRUE(dhcp_server_controller_.IsRunning());
+  EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
+  EXPECT_TRUE(dhcp_server_controller_->IsRunning());
 
   // After the server is running, Stop() should make the server not running.
-  dhcp_server_controller_.Stop();
-  EXPECT_FALSE(dhcp_server_controller_.IsRunning());
+  dhcp_server_controller_->Stop();
+  EXPECT_FALSE(dhcp_server_controller_->IsRunning());
 }
 
 TEST_F(DHCPServerControllerTest, OnProcessExited) {
@@ -198,11 +228,14 @@ TEST_F(DHCPServerControllerTest, OnProcessExited) {
         return pid;
       }));
 
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+
   // The callback from caller should be called with exit status when the process
   // is exited unexpectedly.
   MockCallback exit_cb_from_caller;
   EXPECT_CALL(exit_cb_from_caller, OnProcessExited(exit_status));
-  EXPECT_TRUE(dhcp_server_controller_.Start(
+  EXPECT_TRUE(dhcp_server_controller_->Start(
       config, base::BindOnce(&MockCallback::OnProcessExited,
                              base::Unretained(&exit_cb_from_caller))));
 

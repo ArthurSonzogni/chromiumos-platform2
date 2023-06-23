@@ -11,6 +11,10 @@ namespace patchpanel {
 constexpr char kDbusUmaEventMetrics[] = "Network.Patchpanel.Dbus";
 // UMA metrics name for ArcService events.
 constexpr char kArcServiceUmaEventMetrics[] = "Network.Patchpanel.ArcService";
+// UMA metrics name for DHCP server events, which is used at tethering
+// feature.
+constexpr char kTetheringDHCPServerUmaEventMetrics[] =
+    "Network.Patchpanel.Tethering.DHCPServer";
 
 // UMA metrics events for |kDbusUmaEventMetrics|;
 enum class DbusUmaEvent {
@@ -68,6 +72,17 @@ enum class ArcServiceUmaEvent {
   kAddDeviceSuccess = 8,
   kSetVethMtuError = 10,
   kOneTimeContainerSetupError = 11,
+
+  kMaxValue,
+};
+
+// UMA metrics events for |kTetheringDHCPServerUmaEventMetrics|;
+enum class TetheringDHCPServerUmaEvent {
+  kUnknown = 0,
+  kStart = 1,
+  kStartSuccess = 2,
+  kStop = 3,
+  kStopSuccess = 4,
 
   kMaxValue,
 };

@@ -232,6 +232,9 @@ class Manager {
   // patchpanel::System shared for all subsystems.
   System* system_;
 
+  // UMA metrics client.
+  MetricsLibraryInterface* metrics_;
+
   // The client of the Manager.
   ClientNotifier* client_notifier_;
 
