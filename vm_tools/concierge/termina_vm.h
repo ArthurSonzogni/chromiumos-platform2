@@ -187,17 +187,9 @@ class TerminaVm final : public VmBaseImpl {
   // The netmask of the VM's subnet in network byte order.
   uint32_t Netmask() const;
 
-  // The VM's container subnet netmask in network byte order. Returns INADDR_ANY
-  // if there is no container subnet.
-  uint32_t ContainerNetmask() const;
-
-  // The VM's container subnet prefix length. Returns 0 if there is no container
-  // subnet.
-  size_t ContainerPrefixLength() const;
-
-  // The first address in the VM's container subnet in network byte order.
-  // Returns INADDR_ANY if there is no container subnet.
-  uint32_t ContainerSubnet() const;
+  // The CIDR with the first address in the VM's container subnet.
+  // Returns std::nullopt if there is no container subnet.
+  std::optional<net_base::IPv4CIDR> ContainerSubnet() const;
 
   // Token assigned to the VM by the permission service. Used for communicating
   // with the permission service.

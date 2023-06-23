@@ -1014,27 +1014,12 @@ uint32_t TerminaVm::Netmask() const {
   return subnet_->base_cidr().ToNetmask().ToInAddr().s_addr;
 }
 
-uint32_t TerminaVm::ContainerNetmask() const {
-  if (container_subnet_)
-    return container_subnet_->base_cidr().ToNetmask().ToInAddr().s_addr;
-
-  return INADDR_ANY;
-}
-
-size_t TerminaVm::ContainerPrefixLength() const {
-  if (container_subnet_)
-    return container_subnet_->base_cidr().prefix_length();
-
-  return 0;
-}
-
-uint32_t TerminaVm::ContainerSubnet() const {
+std::optional<net_base::IPv4CIDR> TerminaVm::ContainerSubnet() const {
   if (container_subnet_) {
-    const auto cidr = container_subnet_->CIDRAtOffset(kHostAddressOffset);
-    return cidr ? cidr->address().ToInAddr().s_addr : INADDR_ANY;
+    return container_subnet_->CIDRAtOffset(kHostAddressOffset);
   }
 
-  return INADDR_ANY;
+  return std::nullopt;
 }
 
 std::string TerminaVm::PermissionToken() const {

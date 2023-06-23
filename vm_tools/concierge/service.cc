@@ -507,19 +507,6 @@ bool SetupListenerService(base::Thread* grpc_thread,
   return true;
 }
 
-// Converts an IPv4 address to a string. The result will be stored in |str|
-// on success.
-bool IPv4AddressToString(const uint32_t address, std::string* str) {
-  CHECK(str);
-
-  char result[INET_ADDRSTRLEN];
-  if (inet_ntop(AF_INET, &address, result, sizeof(result)) != result) {
-    return false;
-  }
-  *str = std::string(result);
-  return true;
-}
-
 // Get the path to the latest available cros-termina component.
 base::FilePath GetLatestVMPath() {
   base::FilePath component_dir(kVmDefaultPath);
@@ -2738,16 +2725,15 @@ bool Service::StartTermina(TerminaVm* vm,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(result);
 
-  std::string dst_addr;
-  IPv4AddressToString(vm->ContainerSubnet(), &dst_addr);
-  size_t prefix_length = vm->ContainerPrefixLength();
-
-  std::string container_subnet_cidr =
-      base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
+  const std::optional<net_base::IPv4CIDR> container_subnet =
+      vm->ContainerSubnet();
+  if (!container_subnet) {
+    return false;
+  }
 
   string error;
   vm_tools::StartTerminaResponse response;
-  if (!vm->StartTermina(std::move(container_subnet_cidr),
+  if (!vm->StartTermina(container_subnet->ToString(),
                         allow_privileged_containers, features, &error,
                         &response)) {
     failure_reason->assign(error);
