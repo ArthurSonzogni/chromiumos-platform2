@@ -64,6 +64,9 @@ SYSTEM_TIME=$(awk -v chrome_exec_time="${CHROME_EXEC_TIME}" \
 CHROME_TIME=$(awk -v boot_complete_time="${BOOT_COMPLETE_TIME}" \
                   -v chrome_exec_time="${CHROME_EXEC_TIME}"     \
                   'BEGIN {print boot_complete_time - chrome_exec_time }')
+
+THINPOOL_MIGRATION_METRICS_FILE="/run/thinpool_migration/metrics"
+
 # Some devices don't have CrOS firmware and therefore won't have these
 # metrics.
 if [ -n "${FIRMWARE_TIME}" ]; then
@@ -73,6 +76,9 @@ fi
 metrics_client -t BootTime.Kernel "${PRE_STARTUP_TIME}" 1 10000 50
 metrics_client -t BootTime.System "${SYSTEM_TIME}" 1 10000 50
 metrics_client -t BootTime.Chrome "${CHROME_TIME}" 1 10000 50
+
+# Send boot metrics from the thinpool migration if the file exists.
+metrics_client -R "${THINPOOL_MIGRATION_METRICS_FILE}"
 
 # Force script to return true even if the last metric failed to report.
 exit 0

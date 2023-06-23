@@ -17,6 +17,7 @@
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 
+#include <thinpool_migrator/migration_metrics.h>
 #include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/stateful_metadata.h>
 
@@ -110,6 +111,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
     return false;
   }
 
+  ScopedTimerReporter timer(kTotalTimeHistogram);
   // Migration cleanup will attempt to reverse the migration if any one of the
   // below steps fails.
   base::ScopedClosureRunner migration_cleanup;
@@ -169,6 +171,11 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
     case MigrationStatus::COMPLETED:
       migration_cleanup.ReplaceClosure(base::DoNothing());
       LOG(INFO) << "Migration complete";
+      // Report the number of tries taken for the migration to succeed.
+      ReportIntMetric(kTriesHistogram, status_.tries(), kMaxTries);
+      ReportIntMetric(kResultHistogram,
+                      static_cast<int>(MigrationStatus::COMPLETED),
+                      static_cast<int>(MigrationStatus::COMPLETED) + 1);
       return true;
 
     default:
@@ -178,6 +185,8 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
 }
 
 bool ThinpoolMigrator::ShrinkStatefulFilesystem() {
+  ScopedTimerReporter timer(kResizeTimeHistogram);
+
   if (!ResizeStatefulFilesystem(resized_filesystem_size_)) {
     LOG(ERROR) << "Failed to resize filesystem";
     return false;
@@ -230,6 +239,8 @@ bool ThinpoolMigrator::ConvertThinpoolMetadataToBinary(
 }
 
 bool ThinpoolMigrator::PersistThinpoolMetadata() {
+  ScopedTimerReporter timer(kThinpoolMetadataTimeHistogram);
+
   if (!stateful_metadata_->DumpThinpoolMetadataMappings(
           base::FilePath(kThinpoolSuperblockMetadataPath))) {
     LOG(ERROR) << "Failed to generate metadata for device";
@@ -297,6 +308,8 @@ bool ThinpoolMigrator::RestoreVolumeGroupConfiguration(
 }
 
 bool ThinpoolMigrator::PersistLvmMetadata() {
+  ScopedTimerReporter timer(kLvmMetadataTimeHistogram);
+
   if (!stateful_metadata_->DumpVolumeGroupConfiguration(
           base::FilePath(kVgcfgRestoreFile))) {
     LOG(ERROR) << "Failed to dump volume group configuration";
@@ -320,6 +333,10 @@ bool ThinpoolMigrator::PersistLvmMetadata() {
 
 // 'Tis a sad day, but it must be done.
 bool ThinpoolMigrator::RevertMigration() {
+  ReportIntMetric(kResultHistogram, status_.state(),
+                  static_cast<int>(MigrationStatus::COMPLETED) + 1);
+
+  ScopedTimerReporter timer(kRevertTimeHistogram);
   switch (status_.state()) {
     case MigrationStatus::COMPLETED:
       LOG(ERROR) << "Reverting a completed migration is not allowed as it will "

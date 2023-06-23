@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
+#include <sysexits.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -14,6 +15,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <thinpool_migrator/migration_metrics.h>
 
 std::optional<uint64_t> GetBlkSize(const base::FilePath& device) {
   DCHECK(device.IsAbsolute()) << "device=" << device;
@@ -42,6 +44,8 @@ int main(int argc, char** argv) {
                   "[--dry_run]";
     return EXIT_FAILURE;
   }
+
+  thinpool_migrator::InitializeMetrics();
 
   std::optional<uint64_t> size = GetBlkSize(base::FilePath(FLAGS_device));
   if (!size) {
