@@ -28,7 +28,7 @@ process_killer --session --file_holders
 # racing us and killing us first; we'll just try over and over
 # until we win the race, and kill with pid -1 is atomic with
 # respect to process creation.
-while ! sudo -u chronos kill -9 -- -1 ; do
+while ! minijail0 -u chronos -g chronos -G /bin/kill -9 -- -1 ; do
   sleep .1
 done
 
