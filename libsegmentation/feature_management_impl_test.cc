@@ -24,7 +24,7 @@ using chromiumos::feature_management::api::software::Feature;
 using ::testing::Return;
 
 // Use made up feature file:
-const char* test_proto =
+const char test_proto[] =
     "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAAEqAQAKHAoBRRIPCg1nZ0Bnb29nbG"
     "UuY29tGAIiAQEqAQEKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQEqAwABAgodCgFDEg8KDWdn"
     "QGdvb2dsZS5jb20YASIBASoCAQAKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQEqAQEKGwoBQR"
