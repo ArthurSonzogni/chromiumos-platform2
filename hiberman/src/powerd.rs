@@ -5,9 +5,11 @@
 //! Implements a basic power_manager client.
 
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
+use anyhow::anyhow;
 use anyhow::Context as AnyhowContext;
 use anyhow::Result;
 use dbus::blocking::Connection;
@@ -51,18 +53,32 @@ enum PowerdSuspendFlavor {
 /// Implements a pending resume ticket. When created, it tells powerd to prepare
 /// for imminent resume. When dropped, notifies powerd that the resume has been
 /// aborted.
-pub struct PowerdPendingResume {}
+pub struct PowerdPendingResume {
+    thread_join_handle: Option<thread::JoinHandle<Result<()>>>,
+}
 
 impl PowerdPendingResume {
     pub fn new() -> Result<Self> {
+        // Launch the thread that waits for the D-Bus signal.
+        let thread_join_handle = Some(thread::spawn(wait_for_hibernate_resume_ready));
+
         powerd_request_suspend(PowerdSuspendFlavor::FromDiskPrepare)?;
-        wait_for_hibernate_resume_ready()?;
-        Ok(PowerdPendingResume {})
+
+        Ok(PowerdPendingResume { thread_join_handle })
+    }
+
+    pub fn wait_for_hibernate_resume_ready(&mut self) -> Result<()> {
+        match self.thread_join_handle.take().unwrap().join() {
+            Ok(res) => res,
+            Err(e) => Err(anyhow!("powerd thread panicked: {e:?}")),
+        }
     }
 }
 
 impl Drop for PowerdPendingResume {
     fn drop(&mut self) {
+        let _ = self.wait_for_hibernate_resume_ready();
+
         if let Err(e) = powerd_request_suspend(PowerdSuspendFlavor::FromDiskAbort) {
             error!("Failed to notify powerd of aborted resume: {}", e);
         }
@@ -115,6 +131,7 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
         while Instant::now() < end_time {
             // Wait for signals.
             conn.process(POWERD_PROCESS_PERIOD).unwrap();
+
             if signals.lock().len() != 0 {
                 let duration = start.elapsed();
                 log_duration("Got powerd HibernateResumeReady signal", duration);

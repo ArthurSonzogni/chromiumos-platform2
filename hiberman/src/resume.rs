@@ -246,6 +246,10 @@ impl ResumeConductor {
         // Start logging to the resume logger.
         let redirect_guard = redirect_log_to_file(log_file);
 
+        // Let other daemons know it's the end of the world.
+        let mut powerd_resume =
+            PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
+
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
         let start = Instant::now();
@@ -264,9 +268,8 @@ impl ResumeConductor {
             );
         }
 
-        // Let other daemons know it's the end of the world.
-        let _powerd_resume =
-            PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
+        powerd_resume.wait_for_hibernate_resume_ready()?;
+
         // Write a tombstone indicating we got basically all the way through to
         // attempting the resume. Both the current value (ResumeInProgress) and
         // this ResumeAborting value cause a reboot-after-crash to do the right
