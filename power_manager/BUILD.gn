@@ -15,6 +15,9 @@ group("all") {
     ":inject_powerd_input_event",
     ":install_minijail_power_conf",
     ":install_minijail_temp_logger_conf",
+    ":install_production_scripts",
+    ":install_temp_logger_script",
+    ":install_testing_scripts",
     ":libpolicy",
     ":libpolicy_stub",
     ":libpowerd",
@@ -359,16 +362,19 @@ executable("powerd") {
   sources = [ "powerd/main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libpowerd" ]
+  install_path = "bin"
 }
 
 executable("powerd_setuid_helper") {
   sources = [ "powerd/powerd_setuid_helper.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("set_cellular_transmit_power") {
   sources = [ "powerd/set_cellular_transmit_power.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 pkg_config("set_wifi_transmit_power_config") {
@@ -381,8 +387,10 @@ executable("set_wifi_transmit_power") {
     ":set_wifi_transmit_power_config",
     ":target_defaults",
   ]
+  install_path = "bin"
 }
 
+# boot-splash, chromeos-boot-alert
 executable("backlight_tool") {
   sources = [ "tools/backlight_tool.cc" ]
   configs += [ ":target_defaults" ]
@@ -392,6 +400,7 @@ executable("backlight_tool") {
     ":libsystem_stub",
     ":libutil",
   ]
+  install_path = "bin"
 }
 
 source_set("libbattery_saver_tool") {
@@ -414,12 +423,14 @@ executable("battery_saver_tool") {
   sources = [ "tools/battery_saver/main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libbattery_saver_tool" ]
+  install_path = "bin"
 }
 
 executable("check_powerd_config") {
   sources = [ "tools/check_powerd_config.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
+  install_path = "bin"
 }
 
 executable("cpufreq_config") {
@@ -430,36 +441,43 @@ executable("cpufreq_config") {
     ":libsystem_stub",
     ":libutil",
   ]
+  install_path = "bin"
 }
 
 executable("inject_powerd_input_event") {
   sources = [ "tools/inject_powerd_input_event.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("memory_suspend_test") {
   sources = [ "tools/memory_suspend_test.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("powerd_dbus_reboot") {
   sources = [ "tools/powerd_dbus_reboot.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
+  install_path = "bin"
 }
 
 executable("powerd_dbus_shutdown") {
   sources = [ "tools/powerd_dbus_shutdown.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
+  install_path = "bin"
 }
 
 executable("powerd_dbus_suspend") {
   sources = [ "tools/powerd_dbus_suspend.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
+  install_path = "bin"
 }
 
+# feedback
 executable("power_supply_info") {
   sources = [ "tools/power_supply_info.cc" ]
   configs += [ ":target_defaults" ]
@@ -468,8 +486,10 @@ executable("power_supply_info") {
     ":libsystem_stub",
     ":libutil",
   ]
+  install_path = "bin"
 }
 
+# crosh's battery_test command
 executable("dump_power_status") {
   sources = [ "tools/dump_power_status.cc" ]
   configs += [ ":target_defaults" ]
@@ -478,21 +498,56 @@ executable("dump_power_status") {
     ":libsystem_stub",
     ":libutil",
   ]
+  install_path = "bin"
 }
 
 executable("send_debug_power_status") {
   sources = [ "tools/send_debug_power_status.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("set_power_policy") {
   sources = [ "tools/set_power_policy.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("suspend_delay_sample") {
   sources = [ "tools/suspend_delay_sample.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
+}
+
+# Scripts for production
+install_config("install_production_scripts") {
+  sources = [
+    "powerd/powerd_suspend",
+    "tools/print_sysfs_power_supply_data",  # feedback
+    "tools/send_metrics_on_resume",
+    "tools/thermal_zone_config",
+  ]
+  install_path = "/usr/bin"
+  options = "-m0755"
+}
+
+# Scripts for testing and debugging
+install_config("install_testing_scripts") {
+  sources = [
+    "tools/activate_short_dark_resume",
+    "tools/debug_sleep_quickly",
+    "tools/set_short_powerd_timeouts",
+    "tools/suspend_stress_test",
+  ]
+  install_path = "/usr/bin"
+  options = "-m0755"
+}
+
+# Scripts called from init scripts
+install_config("install_temp_logger_script") {
+  sources = [ "tools/temp_logger.sh" ]
+  install_path = "/usr/share/cros/init"
+  options = "-m0755"
 }
 
 if (use.fuzzer || use.test) {
@@ -528,6 +583,7 @@ if (use.test) {
       ":libutil_test",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 
   pkg_config("power_manager_system_test_config") {
@@ -593,6 +649,7 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
     pkg_deps = [ "libsar_test_support" ]
+    run_test = true
   }
 
   executable("power_manager_policy_test") {
@@ -634,6 +691,7 @@ if (use.test) {
       ":libutil_test",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 
   executable("power_manager_daemon_test") {
@@ -658,6 +716,7 @@ if (use.test) {
       "//common-mk/testrunner",
       "//metrics:metrics_test_support",
     ]
+    run_test = true
   }
 
   executable("power_manager_tools_battery_saver_test") {
@@ -676,6 +735,7 @@ if (use.test) {
       ":libbattery_saver_tool",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 }
 
@@ -684,6 +744,7 @@ if (use.amd64) {
     sources = [ "tools/dump_intel_rapl_consumption.cc" ]
     configs += [ ":target_defaults" ]
     deps = [ ":libutil" ]
+    install_path = "bin"
   }
 }
 
