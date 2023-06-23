@@ -12,7 +12,6 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/socket.h>
 
 namespace {
@@ -39,7 +38,7 @@ namespace system_proxy {
 
 HttpTestServer::HttpTestServer()
     : base::SimpleThread("HttpTestServer"),
-      listening_addr_(htonl(INADDR_LOOPBACK)),
+      listening_addr_(127, 0, 0, 1),  // INADDR_LOOPBACK
       listening_port_(0) {}
 
 HttpTestServer::~HttpTestServer() {
@@ -74,7 +73,7 @@ void HttpTestServer::BeforeStart() {
   struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(listening_port_);
-  addr.sin_addr.s_addr = listening_addr_;
+  addr.sin_addr = listening_addr_.ToInAddr();
   if (!listening_socket_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
     LOG(ERROR) << "Cannot bind source socket" << std::endl;
     return;
@@ -94,9 +93,8 @@ void HttpTestServer::BeforeStart() {
 }
 
 std::string HttpTestServer::GetUrl() {
-  return base::StringPrintf(
-      "http://%s:%d", patchpanel::IPv4AddressToString(listening_addr_).c_str(),
-      listening_port_);
+  return base::StringPrintf("http://%s:%d", listening_addr_.ToString().c_str(),
+                            listening_port_);
 }
 
 void HttpTestServer::AddHttpConnectReply(HttpConnectReply reply) {

@@ -13,6 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
+#include <net-base/ipv4_address.h>
 
 namespace patchpanel {
 class Socket;
@@ -58,7 +59,7 @@ class HttpTestServer : public base::SimpleThread {
   // Returns the HTTP message associate with |reply|.
   std::string_view GetConnectReplyString(HttpConnectReply reply);
 
-  uint32_t listening_addr_;
+  net_base::IPv4Address listening_addr_;
   int listening_port_;
   std::queue<HttpConnectReply> expected_responses_;
   std::unique_ptr<patchpanel::Socket> listening_socket_;
