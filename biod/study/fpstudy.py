@@ -3,10 +3,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Chromium OS Dependencies:
-# shred       --> sys-apps/coreutils
-# mogrify     --> media-gfx/imagemagick
-# python gpg  --> dev-python/python-gnupg --> app-crypt/gnupg
+# Chromium OS Package Dependencies:
+# * shred       --> sys-apps/coreutils
+# * mogrify     --> media-gfx/imagemagick
+# * python gpg  --> dev-python/python-gnupg --> app-crypt/gnupg
+#
+# Debian Package Dependencies:
+# * shred       --> coreutils
+# * mogrify     --> imagemagick
+# * python gpg  --> python3-gnupg --> gnupg
 
 """A tool to manage the fingerprint study."""
 

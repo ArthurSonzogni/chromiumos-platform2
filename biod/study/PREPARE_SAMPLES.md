@@ -12,26 +12,51 @@ Assume the following definitions:
 *   `<PATH_TO_PRIVATE_KEY>` is the path to the `chromeos-fpstudy-private.gpg`
     created by `gen-key-pair.sh`.
 
-## 1. Decrypt Samples
+## A. Setup Environment for [`fpstudy.py`]
+
+1.  Install package dependencies
+
+    *   If on **Debian** or **gLinux**, run the following command:
+
+        ```bash
+        sudo apt install python3-gnupg imagemagick
+        ```
+
+    *   If on **Gentoo** or **ChromiumOS SDK**, run the following command:
+
+        ```bash
+        sudo emerge media-gfx/imagemagick dev-python/python-gnupg
+        ```
+
+2.  Add to `PATH`
+
+    ```bash
+    PATH=~/chromiumos/src/platform2/biod/study:"${PATH}"
+    ```
+
+    You can add this to you `~/.bashrc`, if you want it to persist across shell
+    launches.
+
+## B. Decrypt Samples
 
 ```bash
 cd <PATH_TO_SAMPLES>
-PATH=~/chromiumos/src/platform2/biod/study:${PATH}
 # For single threaded operation, use the following command:
 #fpstudy.py decrypt --password '<PRIVATE_KEY_PASSWORD>' <PATH_TO_PRIVATE_KEY> .
 # For parallel operation, use the following command:
 ls ./ | xargs -P$(nproc) -L1 fpstudy.py decrypt --password '<PRIVATE_KEY_PASSWORD>' <PATH_TO_PRIVATE_KEY>
 ```
 
-## 2. Generate PNG Samples [optional]
+## C. Generate PNG Samples [optional]
 
 Generating PNG samples can help debug invalid samples.
 
 ```bash
 cd <PATH_TO_SAMPLES>
-PATH=~/chromiumos/src/platform2/biod/study:${PATH}
 # For single threaded operation, use the following command:
 #fpstudy.py convert <FPC1025|FPC1145> png .
 # For parallel operation, use the following command:
 ls ./ | xargs -P$(nproc) -L1 fpstudy.py convert <FPC1025|FPC1145> png
 ```
+
+[`fpstudy.py`]: fpstudy.py
