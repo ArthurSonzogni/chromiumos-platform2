@@ -143,6 +143,7 @@ install_config("install_libec_headers") {
 
 install_config("install_fingerprint_headers") {
   sources = [
+    "fingerprint/cros_fp_device_interface.h",
     "fingerprint/fp_context_command.h",
     "fingerprint/fp_context_command_factory.h",
     "fingerprint/fp_encryption_status_command.h",
