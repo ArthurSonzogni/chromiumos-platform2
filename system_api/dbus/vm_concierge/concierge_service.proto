@@ -115,6 +115,9 @@ message DiskImage {
   // The block size of the device. The default block size is used when zero.
   // Only ARCVM supports the field at the moment.
   uint32 block_size = 9;
+
+  // If true, the disk image will be mounted with O_DIRECT.
+  bool o_direct = 10;
 }
 
 // Information about a particular VM.
@@ -487,6 +490,9 @@ message StartArcVmRequest {
 
   // Size of Guest Zram in MiB.
   uint32 guest_zram_mib = 44;
+
+  // Whether to enable O_DIRECT for the root disk (/dev/block/vda).
+  bool rootfs_o_direct = 45;
 }
 
 enum VmStatus {

@@ -309,7 +309,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  Disk rootdisk{.writable = request.rootfs_writable(), .o_direct = false};
+  Disk rootdisk{.writable = request.rootfs_writable(),
+                .o_direct = request.rootfs_o_direct()};
   const size_t rootfs_block_size = request.rootfs_block_size();
   if (rootfs_block_size) {
     rootdisk.block_size = rootfs_block_size;
@@ -329,7 +330,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   for (const auto& d : request.disks()) {
     Disk disk{.path = GetImagePath(base::FilePath(d.path()), is_dev_mode),
-              .writable = d.writable()};
+              .writable = d.writable(),
+              .o_direct = d.o_direct()};
     if (!base::PathExists(disk.path)) {
       LOG(ERROR) << "Missing disk path: " << disk.path;
       response.set_failure_reason("One or more disk paths do not exist");
