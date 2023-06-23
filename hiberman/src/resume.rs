@@ -164,6 +164,8 @@ impl ResumeConductor {
             return Err(e);
         }
 
+        self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
+
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
             metrics_logger.log_event(HibernateEvent::ResumeAttempt);
@@ -319,8 +321,6 @@ impl ResumeConductor {
     fn setup_snapshot_device(&mut self, new_hiberimage: bool, user_key: SecureBlob) -> Result<()> {
         // Load the TPM derived key.
         let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
-
-        self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
 
         VolumeManager::new()?.setup_hiberimage(
             tpm_key.as_ref(),
