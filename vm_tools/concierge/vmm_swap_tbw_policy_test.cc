@@ -197,9 +197,8 @@ TEST(VmmSwapTbwPolicyTest, InitIfFileExists) {
   policy.SetTargetTbwPerDay(100);
 
   // Create file
-  base::File history_file =
-      base::File(history_file_path, base::File::Flags::FLAG_CREATE |
-                                        base::File::Flags::FLAG_WRITE);
+  base::File history_file = base::File(
+      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   EXPECT_TRUE(policy.Init(history_file_path, now));
 
@@ -215,9 +214,8 @@ TEST(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
-  base::File history_file =
-      base::File(history_file_path, base::File::Flags::FLAG_CREATE |
-                                        base::File::Flags::FLAG_WRITE);
+  base::File history_file = base::File(
+      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   ASSERT_TRUE(history_file.Write(0, "invalid_data", 12));
   EXPECT_FALSE(policy.Init(history_file_path, now));
@@ -255,9 +253,8 @@ TEST(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
   before_policy.SetTargetTbwPerDay(100);
   after_policy.SetTargetTbwPerDay(100);
   // Create empty file
-  base::File history_file =
-      base::File(history_file_path, base::File::Flags::FLAG_CREATE |
-                                        base::File::Flags::FLAG_WRITE);
+  base::File history_file = base::File(
+      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   EXPECT_TRUE(before_policy.Init(history_file_path, now));
 
   for (int i = 0; i < 7; i++) {
@@ -281,9 +278,8 @@ TEST(VmmSwapTbwPolicyTest, RecordRecompileFile) {
   before_policy.SetTargetTbwPerDay(target);
   after_policy.SetTargetTbwPerDay(target);
   // Create empty file
-  base::File history_file =
-      base::File(history_file_path, base::File::Flags::FLAG_CREATE |
-                                        base::File::Flags::FLAG_WRITE);
+  base::File history_file = base::File(
+      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   EXPECT_TRUE(before_policy.Init(history_file_path, now));
 
   // minutes of 7days

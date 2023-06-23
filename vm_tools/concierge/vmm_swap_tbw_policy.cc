@@ -48,7 +48,8 @@ bool WriteEntry(base::File& file, uint64_t bytes_written, base::Time time) {
 VmmSwapTbwPolicy::VmmSwapTbwPolicy() {
   // Push a sentinel. VmmSwapTbwPolicy::AppendEntry() checks the latest entry by
   // `tbw_history_.MutableReadBuffer()` which fails if current index is 0.
-  tbw_history_.SaveToBuffer(std::make_pair(base::Time(), 0));
+  tbw_history_.SaveToBuffer(
+      BytesWritten{.started_at = base::Time(), .size = 0});
 }
 
 void VmmSwapTbwPolicy::SetTargetTbwPerDay(uint64_t target_tbw_per_day) {
@@ -69,8 +70,9 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
   }
   history_file_path_ = path;
 
-  uint32_t flags = base::File::Flags::FLAG_READ | base::File::Flags::FLAG_WRITE;
-  history_file_ = base::File(path, flags | base::File::Flags::FLAG_CREATE);
+  history_file_ =
+      base::File(path, base::File::FLAG_CREATE | base::File::FLAG_READ |
+                           base::File::FLAG_WRITE);
   if (history_file_.IsValid()) {
     LOG(INFO) << "Tbw history file is created at: " << path;
 
@@ -81,26 +83,24 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
       Record(target_tbw_per_day_, now - base::Days(kTbwHistoryLength - i - 1));
     }
     return true;
-  } else if (history_file_.error_details() == base::File::FILE_ERROR_EXISTS) {
-    LOG(INFO) << "Load tbw history from: " << path;
+  }
 
-    history_file_ = base::File(path, flags | base::File::Flags::FLAG_OPEN);
-    if (history_file_.IsValid()) {
-      // Load entries in the file and move the file offset to the tail
-      if (LoadFromFile(now)) {
-        return true;
-      } else {
-        LOG(ERROR) << "Failed to load tbw history from file";
-        DeleteFile();
-      }
-    } else {
-      LOG(ERROR) << "Failed to open tbw history file: "
-                 << history_file_.error_details();
+  if (history_file_.error_details() == base::File::FILE_ERROR_EXISTS) {
+    LOG(INFO) << "Load tbw history from: " << path;
+    history_file_ = base::File(history_file_path_, base::File::FLAG_OPEN |
+                                                       base::File::FLAG_READ |
+                                                       base::File::FLAG_WRITE);
+    if (LoadFromFile(now)) {
+      return true;
     }
   } else {
     LOG(ERROR) << "Failed to create tbw history file: "
                << history_file_.error_details();
   }
+
+  LOG(ERROR) << "Failed to load tbw history file. Use pessimisitic history.";
+  DeleteFile();
+
   // Initialize pessimistic entries as fallback.
   for (int i = 0; i < kTbwHistoryLength; i++) {
     AppendEntry(target_tbw_per_day_,
@@ -136,14 +136,14 @@ bool VmmSwapTbwPolicy::CanSwapOut(base::Time time) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   uint64_t tbw_28days = 0, tbw_7days = 0, tbw_1day = 0;
   for (auto iter = tbw_history_.Begin(); iter; ++iter) {
-    if ((time - iter->first) < base::Days(28)) {
-      tbw_28days += iter->second;
+    if ((time - iter->started_at) < base::Days(28)) {
+      tbw_28days += iter->size;
     }
-    if ((time - iter->first) < base::Days(7)) {
-      tbw_7days += iter->second;
+    if ((time - iter->started_at) < base::Days(7)) {
+      tbw_7days += iter->size;
     }
-    if ((time - iter->first) < base::Days(1)) {
-      tbw_1day += iter->second;
+    if ((time - iter->started_at) < base::Days(1)) {
+      tbw_1day += iter->size;
     }
   }
 
@@ -159,7 +159,8 @@ bool VmmSwapTbwPolicy::CanSwapOut(base::Time time) const {
 bool VmmSwapTbwPolicy::LoadFromFile(base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!history_file_.IsValid()) {
-    LOG(ERROR) << "History file is invalid to load";
+    LOG(ERROR) << "Failed to open tbw history file: "
+               << history_file_.error_details();
     return false;
   }
   google::protobuf::io::FileInputStream input_stream(
@@ -214,10 +215,11 @@ void VmmSwapTbwPolicy::AppendEntry(uint64_t bytes_written, base::Time time) {
   auto latest_entry =
       tbw_history_.MutableReadBuffer(tbw_history_.BufferSize() - 1);
 
-  if ((time - latest_entry->first) > base::Hours(24)) {
-    tbw_history_.SaveToBuffer(std::make_pair(time, bytes_written));
+  if ((time - latest_entry->started_at) > base::Hours(24)) {
+    tbw_history_.SaveToBuffer(
+        BytesWritten{.started_at = time, .size = bytes_written});
   } else {
-    latest_entry->second += bytes_written;
+    latest_entry->size += bytes_written;
   }
 }
 
@@ -234,10 +236,9 @@ bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
   }
 
   entries_in_file_ = 0;
-  TbwHistoryEntry entry;
   for (auto iter = tbw_history_.Begin(); iter; ++iter) {
-    if ((time - iter->first) < base::Days(28)) {
-      if (WriteEntry(tmp_file, iter->second, iter->first)) {
+    if ((time - iter->started_at) < base::Days(28)) {
+      if (WriteEntry(tmp_file, iter->size, iter->started_at)) {
         LOG(ERROR) << "Failed to write entries to new tbw history file";
         return false;
       }

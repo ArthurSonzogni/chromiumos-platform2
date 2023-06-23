@@ -72,6 +72,10 @@ class VmmSwapTbwPolicy final {
   bool CanSwapOut(base::Time time = base::Time::Now()) const;
 
  private:
+  struct BytesWritten {
+    base::Time started_at;
+    uint64_t size;
+  };
   static constexpr size_t kTbwHistoryLength = 28;
   // The first 1 byte indicates the entry message size. TbwHistoryEntry has at
   // most 22 (1+10 [tag+uint64] + 1+10 [tag+int64]) bytes/message.
@@ -81,8 +85,8 @@ class VmmSwapTbwPolicy final {
 
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   int entries_in_file_ = 0;
-  base::RingBuffer<std::pair<base::Time, uint64_t>, kTbwHistoryLength>
-      tbw_history_ GUARDED_BY_CONTEXT(sequence_checker_);
+  base::RingBuffer<BytesWritten, kTbwHistoryLength> tbw_history_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
   base::File history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
 
