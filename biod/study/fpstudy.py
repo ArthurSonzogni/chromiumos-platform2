@@ -2,18 +2,18 @@
 # Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# Chromium OS Package Dependencies:
-# * shred       --> sys-apps/coreutils
-# * mogrify     --> media-gfx/imagemagick
-# * python gpg  --> dev-python/python-gnupg --> app-crypt/gnupg
-#
-# Debian Package Dependencies:
-# * shred       --> coreutils
-# * mogrify     --> imagemagick
-# * python gpg  --> python3-gnupg --> gnupg
 
-"""A tool to manage the fingerprint study."""
+"""A tool to manage the fingerprint study.
+
+# Dependencies
+
+| Software Needed   | Gentoo/ChromiumOS-SDK Pkgs | Debian/gLinux Pkgs |
+| ----------------- | -------------------------- | ------------------ |
+| shred command     | sys-apps/coreutils         | coreutils          |
+| mogrify command   | media-gfx/imagemagick      | imagemagick        |
+| gpg command       | app-crypt/gnupg            | gnupg              |
+| python gpg lib    | dev-python/python-gnupg    | python3-gnupg      |
+"""
 
 from __future__ import print_function
 
@@ -332,7 +332,7 @@ def cmd_rm(args: argparse.Namespace) -> int:
 
 
 def main(argv: list) -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     subparsers = parser.add_subparsers(
         dest="subcommand", required=True, title="subcommands"
     )
