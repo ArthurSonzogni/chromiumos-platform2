@@ -190,6 +190,30 @@ replace_txt() {
   echo "${content}" | sed -e 's/'"${regex}"'/'"${replacement}"'/g'
 }
 
+# Update the compressed DLC metadata.
+update_dlc_metadata() {
+  local manifest="$1"
+  local table="$2"
+
+  # Get existing DLC metadata.
+  local json
+  json=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
+    die "Faild to get metadata."
+  echo "The metadata before modifying:"
+  echo "${json}"
+
+  # Set DLC metadata.
+  metadata_new='{"manifest":'"${manifest}"',"table":"'"${table}"'"}'
+  echo "${metadata_new}" | dlc_metadata_util --set --id="${FLAGS_id}" || \
+    die "Failed to set metadata."
+
+  # Get new DLC metadata.
+  json=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
+    die "Faild to get updated metadata."
+  echo "The DLC metadata is successfully updated to:"
+  echo "${json}"
+}
+
 # Generates the imageloader.json file read by imageloader + used by dlcservice.
 generate_imageloader_json() {
   local metadata_path="${DLC_METADATA_PATH}/${FLAGS_id}/${DLC_PACKAGE}"
@@ -223,6 +247,9 @@ generate_imageloader_json() {
 
   echo "${json}" > "${IMAGELOADER_JSON_FILE}"
   cat "${IMAGELOADER_JSON_FILE}"
+
+  local table=$(cat "${DLC_TABLE_FILE}")
+  update_dlc_metadata "${json}" "${table}"
 }
 
 # Writes the metadata files into the rootfs.
