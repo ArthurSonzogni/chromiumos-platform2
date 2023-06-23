@@ -20,6 +20,8 @@ extern const char kCategoryInit[];
 extern const char kCategoryReboot[];
 extern const char kCategoryUpdate[];
 
+extern const char kLogFilePath[];
+
 extern const base::FilePath kDefaultArchivePath;
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with

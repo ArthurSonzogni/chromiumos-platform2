@@ -38,6 +38,8 @@ const char kCategoryInit[] = "init";
 const char kCategoryReboot[] = "reboot";
 const char kCategoryUpdate[] = "update";
 
+const char kLogFilePath[] = "/var/log/minios.log";
+
 const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
