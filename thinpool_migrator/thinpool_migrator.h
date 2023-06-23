@@ -17,6 +17,28 @@
 
 namespace thinpool_migrator {
 
+// TODO(sarthakkukreti@): Move to libbrillo
+void ForkAndCrash(const std::string& message) {
+  // Fork-and-crashing would only add overhead when fuzzing, without any real
+  // benefit.
+#if !USE_FUZZER
+  pid_t child_pid = fork();
+
+  if (child_pid < 0) {
+    PLOG(ERROR) << "fork() failed";
+  } else if (child_pid == 0) {
+    // Child process: crash with |message|.
+    LOG(FATAL) << message;
+  } else {
+    // |child_pid| > 0
+    // Parent process: reap the child process in a best-effort way and return
+    // normally.
+    LOG(ERROR) << message;
+    waitpid(child_pid, nullptr, 0);
+  }
+#endif
+}
+
 // Thinpool migrator converts an existing partition with a filesystem on
 // it into a thinpool with one thinly provisioned logical volume.
 class BRILLO_EXPORT ThinpoolMigrator {

@@ -34,9 +34,18 @@ std::optional<uint64_t> GetBlkSize(const base::FilePath& device) {
   return size;
 }
 
+constexpr char kLogFile[] = "/run/thinpool_migrator/migrator.log";
+
 int main(int argc, char** argv) {
   DEFINE_string(device, "", "Path of the device to run the migration tool on");
   DEFINE_bool(dry_run, false, "Perform dry-run for migration");
+
+  // Set up logging to a file to record any unexpected but non-fatal
+  // behavior.
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_FILE;
+  settings.log_file_path = kLogFile;
+  logging::InitLogging(settings);
 
   const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   if (cl->GetArgs().size() < 2 || cl->GetArgs().size() > 3) {

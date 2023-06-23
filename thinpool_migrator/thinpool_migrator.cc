@@ -126,7 +126,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       // Attempt to shrink the filesystem.
       LOG(INFO) << "Shrinking filesystem to " << resized_filesystem_size_;
       if (!dry_run && !ShrinkStatefulFilesystem()) {
-        LOG(ERROR) << "Failed to shrink filesystem";
+        ForkAndCrash("Failed to shrink filesystem");
         return false;
       }
       SetState(MigrationStatus::FILESYSTEM_RESIZED);
@@ -138,7 +138,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       LOG(INFO) << "Duplicating filesystem header at "
                 << relocated_header_offset_;
       if (!dry_run && !DuplicatePartitionHeader()) {
-        LOG(ERROR) << "Failed to copy filesystem header";
+        ForkAndCrash("Failed to copy filesystem header");
         return false;
       }
       SetState(MigrationStatus::PARTITION_HEADER_COPIED);
@@ -150,7 +150,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       LOG(INFO) << "Attempting to persist thinpool metadata at "
                 << thinpool_metadata_offset_;
       if (!dry_run && !PersistThinpoolMetadata()) {
-        LOG(ERROR) << "Failed to persist thinpool metadata";
+        ForkAndCrash("Failed to persist thinpool metadata");
         return false;
       }
       SetState(MigrationStatus::THINPOOL_METADATA_PERSISTED);
@@ -161,7 +161,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       // partition.
       LOG(INFO) << "Persisting LVM2 metadata at beginning of partition";
       if (!dry_run && !PersistLvmMetadata()) {
-        LOG(ERROR) << "Failed to persist LVM metadata";
+        ForkAndCrash("Failed to persist LVM metadata");
         return false;
       }
 
