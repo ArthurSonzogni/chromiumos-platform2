@@ -12,21 +12,22 @@
 #include <utility>
 
 #include <brillo/brillo_export.h>
-#include <libcrossystem/crossystem_impl.h>
-#include <libcrossystem/crossystem_vboot_interface.h>
 
 namespace crossystem {
+
+class CrossystemVbootInterface;
 
 // C++ class to access crossystem system properties.
 class BRILLO_EXPORT Crossystem {
  public:
   // Default implementation uses the real crossystem (CrossystemImpl).
-  Crossystem() : Crossystem(std::make_unique<CrossystemImpl>()) {}
+  Crossystem();
 
   // Can be used to instantiate a fake implementation for testing by passing
   // CrossystemFake.
-  explicit Crossystem(std::unique_ptr<CrossystemVbootInterface> impl)
-      : impl_(std::move(impl)) {}
+  explicit Crossystem(std::unique_ptr<CrossystemVbootInterface> impl);
+
+  ~Crossystem();
 
   std::optional<int> VbGetSystemPropertyInt(const std::string& name) const;
 

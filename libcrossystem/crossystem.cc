@@ -5,9 +5,18 @@
 #include <libcrossystem/crossystem.h>
 
 #include <base/check_op.h>
+#include <libcrossystem/crossystem_impl.h>
+#include <libcrossystem/crossystem_vboot_interface.h>
 #include <optional>
 
 namespace crossystem {
+
+Crossystem::Crossystem() : Crossystem(std::make_unique<CrossystemImpl>()) {}
+
+Crossystem::Crossystem(std::unique_ptr<CrossystemVbootInterface> impl)
+    : impl_(std::move(impl)) {}
+
+Crossystem::~Crossystem() = default;
 
 std::optional<int> Crossystem::VbGetSystemPropertyInt(
     const std::string& name) const {

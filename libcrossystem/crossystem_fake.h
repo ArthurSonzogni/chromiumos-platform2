@@ -12,6 +12,7 @@
 
 #include <brillo/brillo_export.h>
 #include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_vboot_interface.h>
 
 namespace crossystem {
 
