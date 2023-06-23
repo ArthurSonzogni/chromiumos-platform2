@@ -16,7 +16,9 @@
 #include <base/files/file_path.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <base/types/expected.h>
+#include <metrics/metrics_library.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
@@ -44,10 +46,17 @@ namespace vm_tools::concierge {
 // has ".tmp" suffix to the original history file name temporarily and replace
 // the original file with the new file.
 //
+// VmmSwapTbwPolicy reports the total bytes written to UMA weekly as
+// "Memory.VmmSwap.TotalBytesWrittenInAWeek" once any disk writes for vmm-swap
+// has done. Once reporting has started it reports weekly even if the total
+// bytes written is zero.
+//
 // VmmSwapTbwPolicy is not thread-safe.
 class VmmSwapTbwPolicy final {
  public:
-  VmmSwapTbwPolicy();
+  explicit VmmSwapTbwPolicy(const raw_ref<MetricsLibraryInterface> metrics,
+                            std::unique_ptr<base::RepeatingTimer> report_timer =
+                                std::make_unique<base::RepeatingTimer>());
   VmmSwapTbwPolicy(const VmmSwapTbwPolicy&) = delete;
   VmmSwapTbwPolicy& operator=(const VmmSwapTbwPolicy&) = delete;
   ~VmmSwapTbwPolicy() = default;
@@ -96,11 +105,17 @@ class VmmSwapTbwPolicy final {
                 "The tbw history file does not have enough size to hold "
                 "kTbwHistoryLength entries");
 
+  const raw_ref<MetricsLibraryInterface> metrics_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   base::RingBuffer<BytesWritten, kTbwHistoryLength> tbw_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
   std::optional<base::File> history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::optional<base::Time> last_reported_at_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<base::RepeatingTimer> report_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   bool TryRotateFile(base::Time time);
   bool WriteEntry(TbwHistoryEntry entry, base::Time time, bool try_rotate);
@@ -118,11 +133,17 @@ class VmmSwapTbwPolicy final {
   bool WriteBytesWrittenEntry(uint64_t bytes_written,
                               base::Time time,
                               bool try_rotate = true);
+  // Write report fence entry to the history file.
+  //
+  // Behaves the similar to |WriteBytesWrittenEntry|.
+  bool WriteReportEntry(base::Time time, bool try_rotate = true);
   bool LoadFromFile(base::File& file, base::Time now);
   bool LoadFromOldFormattedFile(base::File& file, base::Time now);
   void AppendEntry(uint64_t bytes_written, base::Time time);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();
+  void MarkReported(base::Time time);
+  void ReportTbwOfWeek();
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);

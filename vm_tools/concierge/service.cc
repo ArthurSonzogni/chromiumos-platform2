@@ -1460,6 +1460,9 @@ bool Service::Init() {
       base::MakeRefCounted<AsynchronousMetricsWriter>(
           metrics_thread_.task_runner()));
 
+  vmm_swap_tbw_policy_ = std::make_unique<VmmSwapTbwPolicy>(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
+
   if (!dbus_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
     LOG(ERROR) << "Failed to start dbus thread";

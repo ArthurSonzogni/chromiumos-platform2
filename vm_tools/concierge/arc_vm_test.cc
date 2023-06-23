@@ -930,7 +930,6 @@ class ArcVmTest : public ::testing::Test {
     // Create the temporary directory.
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    metrics_library_ = std::make_unique<MetricsLibraryMock>();
     // Ignore uninterested metrics.
     EXPECT_CALL(*metrics_library_, SendToUMA(_, _, _, _, _)).Times(AnyNumber());
 
@@ -1050,7 +1049,8 @@ class ArcVmTest : public ::testing::Test {
   }
 
  protected:
-  std::unique_ptr<MetricsLibraryMock> metrics_library_;
+  std::unique_ptr<MetricsLibraryMock> metrics_library_ =
+      std::make_unique<MetricsLibraryMock>();
 
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
@@ -1061,7 +1061,8 @@ class ArcVmTest : public ::testing::Test {
   raw_ptr<base::MockRepeatingTimer> swap_metrics_heartbeat_timer_;
 
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
-      std::make_unique<VmmSwapTbwPolicy>();
+      std::make_unique<VmmSwapTbwPolicy>(
+          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library_.get()));
   org::chromium::SpacedProxyMock* spaced_proxy_;
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 

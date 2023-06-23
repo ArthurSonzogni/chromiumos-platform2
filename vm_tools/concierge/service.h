@@ -545,8 +545,8 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The vmm swap TBW (total bytes written) policy managing TBW from each VM on
   // vmm-swap. This is instantiated by Service and shared with each VM.
-  std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ GUARDED_BY_CONTEXT(
-      sequence_checker_) = std::make_unique<VmmSwapTbwPolicy>();
+  std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // This should be the last member of the class.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

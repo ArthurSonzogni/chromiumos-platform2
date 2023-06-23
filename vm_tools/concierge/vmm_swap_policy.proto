@@ -10,6 +10,9 @@ message TbwHistoryEntry {
   int64 time_us = 1;
   // The written size in bytes.
   uint64 size = 2;
+  // TBW is reported to UMA weekly. An entry with `reported_fence = true`
+  // ensures that all prior Tbw entries have been reported.
+  bool reported_fence = 3;
 }
 
 // Container for multiple TbwHistoryEntry
