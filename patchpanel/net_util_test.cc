@@ -69,31 +69,6 @@ TEST(Ipv4, CreationAndStringConversion) {
                                   test_case.bytes[2], test_case.bytes[3]};
     EXPECT_EQ(test_case.literal_address, IPv4AddressToString(addr));
     EXPECT_EQ(test_case.literal_address, IPv4AddressToString(bytes));
-    EXPECT_EQ(addr, StringToIPv4Address(test_case.literal_address).s_addr);
-  }
-}
-
-TEST(Ipv4, CreationAndCidrStringConversion) {
-  struct {
-    std::string literal_address;
-    uint8_t bytes[4];
-    int prefix_length;
-  } test_cases[] = {
-      {"0.0.0.0/0", {0, 0, 0, 0}, 0},
-      {"192.168.0.0/24", {192, 168, 0, 0}, 24},
-      {"100.115.92.5/30", {100, 115, 92, 5}, 30},
-      {"100.115.92.6/30", {100, 115, 92, 6}, 30},
-  };
-
-  for (auto const& test_case : test_cases) {
-    uint32_t addr = Ipv4Addr(test_case.bytes[0], test_case.bytes[1],
-                             test_case.bytes[2], test_case.bytes[3]);
-    std::vector<uint8_t> bytes = {test_case.bytes[0], test_case.bytes[1],
-                                  test_case.bytes[2], test_case.bytes[3]};
-    EXPECT_EQ(test_case.literal_address,
-              IPv4AddressToCidrString(addr, test_case.prefix_length));
-    EXPECT_EQ(test_case.literal_address,
-              IPv4AddressToCidrString(bytes, test_case.prefix_length));
   }
 }
 
@@ -162,23 +137,6 @@ TEST(Ipv6, EUI64Addr) {
     char eui64_addr_str[INET6_ADDRSTRLEN];
     inet_ntop(AF_INET6, &addr, eui64_addr_str, INET6_ADDRSTRLEN);
     EXPECT_EQ(test_case.eui64_address, eui64_addr_str);
-  }
-}
-
-TEST(Ipv4, BroadcastAddr) {
-  uint32_t base = Ipv4Addr(100, 115, 92, 0);
-  struct {
-    int prefix_len;
-    uint32_t want;
-  } test_cases[] = {
-      {24, Ipv4Addr(100, 115, 92, 255)},
-      {29, Ipv4Addr(100, 115, 92, 7)},
-      {30, Ipv4Addr(100, 115, 92, 3)},
-      {31, Ipv4Addr(100, 115, 92, 1)},
-  };
-
-  for (const auto& t : test_cases) {
-    EXPECT_EQ(Ipv4BroadcastAddr(base, t.prefix_len), t.want);
   }
 }
 

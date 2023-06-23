@@ -57,30 +57,10 @@ BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,
       (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b3));
 }
 
-// Returns the network-byte order int32 representation of the IPv4 address.
-// |bytes| is a raw byte array in network order.
-BRILLO_EXPORT std::optional<uint32_t> Ipv4Addr(const std::string& bytes);
-
-// Returns the netmask in network byte order given a prefixl length.
-BRILLO_EXPORT uint32_t Ipv4Netmask(int prefix_len);
-
-// Returns the broadcast address in network byte order for the subnet provided.
-BRILLO_EXPORT uint32_t Ipv4BroadcastAddr(uint32_t base, int prefix_len);
-
 // Returns the literal representation of the IPv4 address given in network byte
 // order, or the empty string if the input is invalid.
 BRILLO_EXPORT std::string IPv4AddressToString(uint32_t addr);
 BRILLO_EXPORT std::string IPv4AddressToString(std::vector<uint8_t> addr);
-
-// Returns the IPv4 address struct of the IPv4 address string given.
-BRILLO_EXPORT struct in_addr StringToIPv4Address(const std::string& buf);
-
-// Returns the CIDR representation of an IPv4 address given in network byte
-// order, or the empty string if the input is invalid
-BRILLO_EXPORT std::string IPv4AddressToCidrString(uint32_t addr,
-                                                  int prefix_length);
-BRILLO_EXPORT std::string IPv4AddressToCidrString(std::vector<uint8_t> addr,
-                                                  int prefix_length);
 
 // Returns a string representation of MAC address given.
 BRILLO_EXPORT std::string MacAddressToString(const MacAddress& addr);

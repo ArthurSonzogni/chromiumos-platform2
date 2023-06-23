@@ -70,24 +70,6 @@ net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
   return net_base::IPv4Address(new_addr);
 }
 
-std::optional<uint32_t> Ipv4Addr(const std::string& bytes) {
-  if (bytes.length() != 4) {
-    return std::nullopt;
-  }
-  return Ipv4Addr(static_cast<unsigned char>(bytes[0]),
-                  static_cast<unsigned char>(bytes[1]),
-                  static_cast<unsigned char>(bytes[2]),
-                  static_cast<unsigned char>(bytes[3]));
-}
-
-uint32_t Ipv4Netmask(int prefix_len) {
-  return htonl((0xffffffffull << (32 - prefix_len)) & 0xffffffff);
-}
-
-uint32_t Ipv4BroadcastAddr(uint32_t base, int prefix_len) {
-  return (base | ~Ipv4Netmask(prefix_len));
-}
-
 std::string IPv4AddressToString(uint32_t addr) {
   char buf[INET_ADDRSTRLEN] = {0};
   struct in_addr ia;
@@ -100,26 +82,6 @@ std::string IPv4AddressToString(std::vector<uint8_t> addr) {
     return "";
   }
   return IPv4AddressToString(Ipv4Addr(addr[0], addr[1], addr[2], addr[3]));
-}
-
-struct in_addr StringToIPv4Address(const std::string& buf) {
-  struct in_addr addr = {};
-  if (!inet_pton(AF_INET, buf.c_str(), &addr)) {
-    memset(&addr, 0, sizeof(addr));
-  }
-  return addr;
-}
-
-std::string IPv4AddressToCidrString(uint32_t addr, int prefix_length) {
-  return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
-}
-
-std::string IPv4AddressToCidrString(std::vector<uint8_t> addr,
-                                    int prefix_length) {
-  if (addr.size() != 4) {
-    return "";
-  }
-  return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
 
 std::string MacAddressToString(const MacAddress& addr) {
