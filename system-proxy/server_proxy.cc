@@ -202,18 +202,18 @@ void ServerProxy::HandleStdinReadable() {
   }
 
   if (config.has_listening_address()) {
-    if (!listening_addr_.empty()) {
+    if (listening_addr_) {
       LOG(ERROR)
           << "Failure to set configurations: listening port was already set."
           << std::endl;
       return;
     }
     const auto& addr = config.listening_address().addr();
-    if (addr.size() != 4) {
+    listening_addr_ = net_base::IPv4Address::CreateFromBytes(addr);
+    if (!listening_addr_) {
       LOG(ERROR) << "Invalid listening address: " << addr;
       return;
     }
-    listening_addr_ = {addr.begin(), addr.end()};
     listening_port_ = config.listening_address().port();
     CreateListeningSocket();
   }
@@ -262,6 +262,11 @@ int ServerProxy::GetStdoutPipe() {
 }
 
 void ServerProxy::CreateListeningSocket() {
+  if (!listening_addr_) {
+    LOG(ERROR) << "Listening port hasn't been set" << std::endl;
+    return;
+  }
+
   listening_fd_ = std::make_unique<patchpanel::Socket>(
       AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
   if (!listening_fd_->is_valid()) {
@@ -272,8 +277,7 @@ void ServerProxy::CreateListeningSocket() {
   struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(listening_port_);
-  memcpy(&addr.sin_addr.s_addr, listening_addr_.data(),
-         sizeof(addr.sin_addr.s_addr));
+  addr.sin_addr = listening_addr_->ToInAddr();
   if (!listening_fd_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
     PLOG(ERROR) << "Cannot bind source socket" << std::endl;
     return;

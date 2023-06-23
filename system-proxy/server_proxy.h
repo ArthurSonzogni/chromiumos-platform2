@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ipv4_address.h>
 
 namespace patchpanel {
 class Socket;
@@ -115,8 +116,8 @@ class ServerProxy {
   void AuthCredentialsProvided(const std::string& auth_credentials_key,
                                const std::string& credentials);
 
-  // The proxy listening address in network-byte order.
-  std::vector<uint8_t> listening_addr_;
+  // The proxy listening address.
+  std::optional<net_base::IPv4Address> listening_addr_;
   int listening_port_;
 
   // The user name and password to use for proxy authentication in the format
