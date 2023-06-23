@@ -592,19 +592,20 @@ has_arc(`
 has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(/.*)?   u:object_r:media_rw_data_file:s0
 ')
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/crosvm(/.*)?   u:object_r:cros_home_shadow_uid_root_crosvm:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/debugd(/.*)?   u:object_r:cros_home_shadow_uid_root_debugd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/secagentd(/.*)?   u:object_r:cros_home_shadow_uid_root_secagentd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/smbfs(/.*)?   u:object_r:cros_home_shadow_uid_root_smbfs:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/smbproviderd(/.*)?   u:object_r:cros_home_shadow_uid_root_smbproviderd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/\.cache  u:object_r:cros_home_shadow_uid_root:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/crosvm(/.*)?   u:object_r:cros_home_shadow_uid_root_crosvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/debugd(/.*)?   u:object_r:cros_home_shadow_uid_root_debugd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/secagentd(/.*)?   u:object_r:cros_home_shadow_uid_root_secagentd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/smbfs(/.*)?   u:object_r:cros_home_shadow_uid_root_smbfs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/smbproviderd(/.*)?   u:object_r:cros_home_shadow_uid_root_smbproviderd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0
