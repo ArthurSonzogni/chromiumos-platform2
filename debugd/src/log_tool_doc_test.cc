@@ -85,7 +85,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "input_devices",
     "iw_list",
     "kernel-crashes",
-    "logcat",
     "lsblk",
     "lsmod",
     "mali_memory",

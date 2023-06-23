@@ -311,6 +311,11 @@ Console output of an MCU controlling an RGB keyboard.
 
 ## logcat
 
+Log (adb logcat) from Android instance in ARC. Note that timestamp timezone is
+in local time unlike other logs which are mostly in UTC.
+
+TODO(b/180562941): Migrate to UTC.
+
 ## lpstat
 
 Information about connected printer and scanner devices produced by `lpstat -l
