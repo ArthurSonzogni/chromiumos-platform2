@@ -594,7 +594,7 @@ has_arc(`
 has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(/.*)?   u:object_r:media_rw_data_file:s0
 ')
-/home/.shadow/[0-9a-z]{40}/mount/root/\.cache  u:object_r:cros_home_shadow_uid_root:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/\.cache(/.*)?  u:object_r:cros_home_shadow_uid_root:s0
 /home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
 /home/.shadow/[0-9a-z]{40}/mount/root(/\.cache)?/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
