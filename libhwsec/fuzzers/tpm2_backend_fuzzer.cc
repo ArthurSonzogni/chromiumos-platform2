@@ -513,6 +513,9 @@ int FuzzRandBytes(unsigned char* buf, int num) {
       break;
     }
     case RandByteType::kConsume:
+      // Reset the buffer first, because we may not have enough data in data
+      // provider.
+      memset(buf, 0, num);
       g_data_provider->ConsumeData(buf, num);
       break;
     case RandByteType::kZero:
