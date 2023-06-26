@@ -780,7 +780,7 @@ TEST(ArcVmParamsTest, ReadWriteEnabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
-  request.set_enable_rw(true);
+  request.set_rootfs_writable(true);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(base::Contains(params, "rw"));

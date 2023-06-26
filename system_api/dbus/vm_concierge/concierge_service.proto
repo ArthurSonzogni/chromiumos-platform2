@@ -476,7 +476,8 @@ message StartArcVmRequest {
   UreadaheadMode ureadahead_mode = 40;
 
   // Whether rw is enabled
-  bool enable_rw = 41;
+  // Deprecated, rootfs_writable should be used instead
+  bool enable_rw = 41 [deprecated = true];
 
   // Controls whether WebView Zygote is lazily initialized in ARC.
   bool enable_web_view_zygote_lazy_init = 42;

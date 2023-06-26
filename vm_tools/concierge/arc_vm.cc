@@ -1441,7 +1441,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
 
   if (request.enable_web_view_zygote_lazy_init())
     params.push_back("androidboot.arc.web_view_zygote.lazy_init=1");
-  if (request.enable_rw())
+  if (request.rootfs_writable())
     params.push_back("rw");
 
   auto guest_swappiness = request.guest_swappiness();
