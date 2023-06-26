@@ -38,8 +38,8 @@ class VshClient {
                                                      base::ScopedFD stderr_fd);
   ~VshClient() = default;
 
-  int32_t container_shell_pid();
-  int exit_code();
+  int32_t container_shell_pid() const;
+  int exit_code() const;
 
   // Helper function defined in vsh_client_fuzzer.cc.
   friend void vsh_client_fuzzer_run(const HostMessage& msg);

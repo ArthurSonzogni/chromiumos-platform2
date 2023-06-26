@@ -36,7 +36,7 @@ class ScopedTermios {
   bool Restore();
 
   // Gets the raw FD for this terminal.
-  int GetRawFD();
+  int GetRawFD() const;
 
  private:
   base::ScopedFD tty_fd_;

@@ -79,7 +79,7 @@ bool ScopedTermios::Restore() {
   return true;
 }
 
-int ScopedTermios::GetRawFD() {
+int ScopedTermios::GetRawFD() const {
   return tty_fd_.get();
 }
 

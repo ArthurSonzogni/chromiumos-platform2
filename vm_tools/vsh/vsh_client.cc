@@ -396,11 +396,11 @@ void VshClient::CancelStdinTask() {
   stdin_watcher_.reset();
 }
 
-int32_t VshClient::container_shell_pid() {
+int32_t VshClient::container_shell_pid() const {
   return container_shell_pid_;
 }
 
-int VshClient::exit_code() {
+int VshClient::exit_code() const {
   return exit_code_;
 }
 
