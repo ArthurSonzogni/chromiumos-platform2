@@ -13,7 +13,7 @@
 
       // "own" is an array of the service name which can be registered by this
       // identity.
-      "own": [ "CameraDiagnostics" ]
+      "own": [ "CrosCameraDiagnostics" ]
     },
     {
       // Chrome can request this service.
@@ -21,6 +21,6 @@
 
       // "request" is an array of the service name which can be requested by this
       // identity.
-      "request": [ "CameraDiagnostics" ]
+      "request": [ "CrosCameraDiagnostics" ]
     }
 ]
