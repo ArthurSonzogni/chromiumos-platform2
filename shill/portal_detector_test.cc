@@ -44,7 +44,6 @@ const std::vector<std::string> kFallbackHttpsUrls{
     "http://url1.com/gen204",
     "http://url2.com/gen204",
 };
-const IPAddress kIpAddress = *IPAddress::CreateFromString("1.2.3.4");
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -54,7 +53,7 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest()
       : HttpRequest(nullptr,
                     kInterfaceName,
-                    IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                    IPAddress::kFamilyIPv4,
                     {kDNSServer0, kDNSServer1},
                     true) {}
   MockHttpRequest(const MockHttpRequest&) = delete;
@@ -147,7 +146,7 @@ class PortalDetectorTest : public Test {
   }
 
   bool StartPortalRequest(base::TimeDelta delay = base::TimeDelta()) {
-    if (!portal_detector_->Start(kInterfaceName, kIpAddress,
+    if (!portal_detector_->Start(kInterfaceName, IPAddress::kFamilyIPv4,
                                  {kDNSServer0, kDNSServer1}, "tag", delay)) {
       return false;
     }
@@ -156,7 +155,7 @@ class PortalDetectorTest : public Test {
   }
 
   bool RestartPortalRequest() {
-    if (!portal_detector_->Restart(kInterfaceName, kIpAddress,
+    if (!portal_detector_->Restart(kInterfaceName, IPAddress::kFamilyIPv4,
                                    {kDNSServer0, kDNSServer1}, "tag")) {
       return false;
     }

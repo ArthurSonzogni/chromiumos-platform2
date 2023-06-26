@@ -202,7 +202,7 @@ class PortalDetector {
   // Returns false (and does not start) if they fail to parse. As each attempt
   // completes the callback handed to the constructor will be called.
   virtual bool Start(const std::string& ifname,
-                     const IPAddress& src_address,
+                     const IPAddress::Family ip_family,
                      const std::vector<std::string>& dns_list,
                      const std::string& logging_tag,
                      base::TimeDelta delay = kZeroTimeDelta);
@@ -212,7 +212,7 @@ class PortalDetector {
   // selected in |props| correctly parse as URLs. Returns false (and does not
   // start) if they fail to parse.
   virtual bool Restart(const std::string& ifname,
-                       const IPAddress& src_address,
+                       const IPAddress::Family ip_family,
                        const std::vector<std::string>& dns_list,
                        const std::string& logging_tag);
 

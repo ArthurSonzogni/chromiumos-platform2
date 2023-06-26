@@ -41,11 +41,11 @@ static std::string ObjectID(const HttpRequest* r) {
 
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
-                         const IPAddress& src_address,
+                         const IPAddress::Family ip_family,
                          const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
     : interface_name_(interface_name),
-      ip_family_(src_address.family()),
+      ip_family_(ip_family),
       dns_list_(dns_list),
       weak_ptr_factory_(this),
       dns_client_callback_(base::BindRepeating(&HttpRequest::GetDNSResult,
@@ -59,10 +59,11 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
       request_id_(-1),
       server_port_(-1),
       is_running_(false) {
-  // b/180521518 Force the transport to bind to |src_address|. Otherwise, the
-  // request would be routed by default through the current physical default
-  // network.
-  transport_->SetLocalIpAddress(src_address.ToString());
+  // b/180521518, Force the transport to bind to |interface_name|. Otherwise,
+  // the request would be routed by default through the current physical default
+  // network. b/288351302: binding to an IP address of the interface name is not
+  // enough to disambiguate all IPv4 multi-network scenarios.
+  transport_->SetInterface(interface_name);
   if (allow_non_google_https) {
     transport_->UseCustomCertificate(
         brillo::http::Transport::Certificate::kNss);

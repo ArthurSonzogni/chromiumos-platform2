@@ -105,10 +105,9 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    request_.reset(
-        new HttpRequest(&dispatcher_, interface_name_,
-                        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
-                        {kDNSServer0, kDNSServer1}, true));
+    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
+                                   IPAddress::kFamilyIPv4,
+                                   {kDNSServer0, kDNSServer1}, true));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     request_->transport_ = transport_;
