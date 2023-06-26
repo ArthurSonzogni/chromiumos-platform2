@@ -70,7 +70,6 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -598,6 +597,9 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             &async_init_features_});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
+
+  create_vault_keyset_impl_ = std::make_unique<CreateVaultKeysetRpcImpl>(
+      keyset_management_, auth_block_utility_, auth_factor_driver_manager_);
 
   if (!vault_factory_) {
     auto container_factory =
@@ -3782,12 +3784,8 @@ void UserDataAuth::CreateVaultKeyset(
     return;
   }
 
-  CreateVaultKeysetRpcImpl create_vault_keyset_impl(
-      keyset_management_, auth_block_utility_, auth_factor_driver_manager_,
-      std::move(auth_session_status.value()));
-
-  create_vault_keyset_impl.CreateVaultKeyset(
-      request,
+  create_vault_keyset_impl_->CreateVaultKeyset(
+      request, auth_session_status.value(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::CreateVaultKeysetReply>,
                      std::move(on_done)));
 }

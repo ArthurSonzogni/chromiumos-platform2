@@ -19,21 +19,22 @@ class CreateVaultKeysetRpcImpl {
  public:
   CreateVaultKeysetRpcImpl(KeysetManagement* keyset_management,
                            AuthBlockUtility* auth_block_utility,
-                           AuthFactorDriverManager* auth_factor_driver_manager,
-                           InUseAuthSession auth_session);
+                           AuthFactorDriverManager* auth_factor_driver_manager);
 
   CreateVaultKeysetRpcImpl(const CreateVaultKeysetRpcImpl&) = delete;
   CreateVaultKeysetRpcImpl& operator=(const CreateVaultKeysetRpcImpl&) = delete;
 
   void CreateVaultKeyset(
       const user_data_auth::CreateVaultKeysetRequest& request,
+      InUseAuthSession& auth_session,
       StatusCallback on_done);
 
  private:
-  bool ClearKeyDataFromInitialKeyset(bool disable_key_data);
+  bool ClearKeyDataFromInitialKeyset(
+      const ObfuscatedUsername& obfuscated_username, bool disable_key_data);
   void CreateAndPersistVaultKeyset(const KeyData& key_data,
                                    const bool disable_key_data,
-                                   AuthInput auth_input,
+                                   InUseAuthSession& auth_session,
                                    StatusCallback on_done,
                                    CryptohomeStatus callback_error,
                                    std::unique_ptr<KeyBlobs> key_blobs,
@@ -41,6 +42,8 @@ class CreateVaultKeysetRpcImpl {
 
   CryptohomeStatus AddVaultKeyset(const std::string& key_label,
                                   const KeyData& key_data,
+                                  const ObfuscatedUsername& obfuscated_username,
+                                  const FileSystemKeyset& file_system_keyset,
                                   bool is_initial_keyset,
                                   VaultKeysetIntent vk_backup_intent,
                                   std::unique_ptr<KeyBlobs> key_blobs,
@@ -49,7 +52,6 @@ class CreateVaultKeysetRpcImpl {
   KeysetManagement* const keyset_management_;
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
-  InUseAuthSession auth_session_;
 
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> initial_vault_keyset_;

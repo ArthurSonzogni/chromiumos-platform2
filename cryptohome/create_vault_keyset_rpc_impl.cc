@@ -8,14 +8,21 @@
 #include <string>
 #include <utility>
 
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
+#include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/error/cryptohome_error.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 
@@ -24,15 +31,13 @@ namespace cryptohome {
 CreateVaultKeysetRpcImpl::CreateVaultKeysetRpcImpl(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
-    AuthFactorDriverManager* auth_factor_driver_manager,
-    InUseAuthSession auth_session)
+    AuthFactorDriverManager* auth_factor_driver_manager)
     : keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
-      auth_factor_driver_manager_(auth_factor_driver_manager),
-      auth_session_(std::move(auth_session)) {}
+      auth_factor_driver_manager_(auth_factor_driver_manager) {}
 
 bool CreateVaultKeysetRpcImpl::ClearKeyDataFromInitialKeyset(
-    bool disable_key_data) {
+    const ObfuscatedUsername& obfuscated_username, bool disable_key_data) {
   // Remove KeyBlobs from the VaultKeyset and resave, as the
   // keyset_management flags need a valid KeyBlobs to operate.
   // Used only for the testing of legacy keysets which were created
@@ -40,7 +45,7 @@ bool CreateVaultKeysetRpcImpl::ClearKeyDataFromInitialKeyset(
   if (disable_key_data) {
     // Load the freshly created VaultKeyset.
     std::unique_ptr<VaultKeyset> created_vk =
-        keyset_management_->GetVaultKeyset(auth_session_->obfuscated_username(),
+        keyset_management_->GetVaultKeyset(obfuscated_username,
                                            initial_vault_keyset_->GetLabel());
     if (created_vk) {
       created_vk->ClearKeyData();
@@ -56,12 +61,13 @@ bool CreateVaultKeysetRpcImpl::ClearKeyDataFromInitialKeyset(
 
 void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     const user_data_auth::CreateVaultKeysetRequest& request,
+    InUseAuthSession& auth_session,
     StatusCallback on_done) {
   // Preconditions:
-  CHECK_EQ(request.auth_session_id(), auth_session_->serialized_token());
+  CHECK_EQ(request.auth_session_id(), auth_session->serialized_token());
   // At this point AuthSession should be authenticated as it needs
   // FileSystemKeys to wrap the new credentials.
-  if (!auth_session_->authorized_intents().contains(AuthIntent::kDecrypt)) {
+  if (!auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocCreateVaultKeysetRpcImplUnauthedInCreateVaultKeyset),
@@ -70,19 +76,19 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     return;
   }
 
-  AuthFactorType auth_factor_type = AuthFactorType::kPassword;
-  std::string auth_factor_label = request.key_label();
+  // Create and initialize AuthFactorType.
+  std::optional<AuthFactorType> type = AuthFactorTypeFromProto(request.type());
+  if (!type) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocCreateVaultKeysetRpcImplNoAuthFactorType),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
 
-  // Create and initialize AuthInput.
-  AuthInput auth_input = {
-      .user_input = brillo::SecureBlob(request.passkey()),
-      .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
-      .username = auth_session_->username(),
-      .obfuscated_username = auth_session_->obfuscated_username()};
-
-  // Determine the auth block type to use.
+  // Determine the AuthBlock type to use for auth block creation.
   const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+      auth_factor_driver_manager_->GetDriver(*type);
   CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility_->SelectAuthBlockTypeForCreation(
           factor_driver.block_types());
@@ -95,14 +101,41 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     return;
   }
 
+  // Create and initialize AuthInput.
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(request.passkey()),
+      .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
+      .username = auth_session->username(),
+      .obfuscated_username = auth_session->obfuscated_username()};
+
+  // Generate the reset seed for AuthInput.
+  if (factor_driver.NeedsResetSecret()) {
+    // When using VaultKeyset, reset is implemented via a seed that's shared
+    // among all of the user's VKs. Hence copy it from the previously loaded VK.
+    if (!initial_vault_keyset_) {
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocCreateVaultKeysetRpcImplNoInitialVaultKeyset),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    }
+    auth_input.reset_seed = initial_vault_keyset_->GetResetSeed();
+    auth_input.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
+    auth_input.reset_secret = HmacSha256(auth_input.reset_salt.value(),
+                                         auth_input.reset_seed.value());
+    LOG(INFO) << "Reset seed, to generate the reset_secret for the test PIN "
+                 "VaultKeyset, "
+                 "is obtained from password VaultKeyset with label: "
+              << initial_vault_keyset_->GetLabel();
+  }
+
   KeyData key_data;
-  key_data.set_label(auth_factor_label);
+  key_data.set_label(request.key_label());
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
 
   auto create_callback = base::BindOnce(
       &CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset,
       weak_factory_.GetWeakPtr(), key_data, request.disable_key_data(),
-      auth_input, std::move(on_done));
+      std::ref(auth_session), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       auth_block_type.value(), auth_input, std::move(create_callback));
@@ -111,7 +144,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
 void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     const KeyData& key_data,
     const bool disable_key_data,
-    AuthInput auth_input,
+    InUseAuthSession& auth_session,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -138,12 +171,13 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
-  CryptohomeStatus status =
-      AddVaultKeyset(key_data.label(), key_data,
-                     !auth_session_->auth_factor_map().HasFactorWithStorage(
-                         AuthFactorStorageType::kVaultKeyset),
-                     VaultKeysetIntent{.backup = false}, std::move(key_blobs),
-                     std::move(auth_state));
+  CryptohomeStatus status = AddVaultKeyset(
+      key_data.label(), key_data, auth_session->obfuscated_username(),
+      auth_session->file_system_keyset(),
+      !auth_session->auth_factor_map().HasFactorWithStorage(
+          AuthFactorStorageType::kVaultKeyset),
+      VaultKeysetIntent{.backup = false}, std::move(key_blobs),
+      std::move(auth_state));
 
   if (!status.ok()) {
     std::move(on_done).Run(
@@ -155,7 +189,8 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
-  if (!ClearKeyDataFromInitialKeyset(disable_key_data)) {
+  if (!ClearKeyDataFromInitialKeyset(auth_session->obfuscated_username(),
+                                     disable_key_data)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocCreateVaultKeysetRpcImplClearKeyDataFromInitialKeysetFailed),
@@ -164,12 +199,24 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
+  // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
+  // VaultKeysets to AuthFactor API.
+  AuthFactorVaultKeysetConverter converter(keyset_management_);
+
+  // Add VaultKeyset as an AuthFactor to the linked AuthSession.
+  std::unique_ptr<AuthFactor> added_auth_factor =
+      converter.VaultKeysetToAuthFactor(auth_session->obfuscated_username(),
+                                        key_data.label());
+  auth_session->RegisterVaultKeysetAuthFactor(std::move(added_auth_factor));
+
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
     const std::string& key_label,
     const KeyData& key_data,
+    const ObfuscatedUsername& obfuscated_username,
+    const FileSystemKeyset& file_system_keyset,
     bool is_initial_keyset,
     VaultKeysetIntent vk_backup_intent,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -180,9 +227,9 @@ CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
     // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->AddInitialKeyset(
-            vk_backup_intent, auth_session_->obfuscated_username(), key_data,
+            vk_backup_intent, obfuscated_username, key_data,
             /*challenge_credentials_keyset_info*/ std::nullopt,
-            auth_session_->file_system_keyset(), std::move(*key_blobs.get()),
+            file_system_keyset, std::move(*key_blobs.get()),
             std::move(auth_state));
     if (!vk_status.ok()) {
       initial_vault_keyset_ = nullptr;
@@ -206,8 +253,8 @@ CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     CryptohomeStatus status = keyset_management_->AddKeyset(
-        vk_backup_intent, auth_session_->obfuscated_username(), key_label,
-        key_data, *initial_vault_keyset_.get(), std::move(*key_blobs.get()),
+        vk_backup_intent, obfuscated_username, key_label, key_data,
+        *initial_vault_keyset_.get(), std::move(*key_blobs.get()),
         std::move(auth_state), true /*clobber*/);
     if (!status.ok()) {
       return MakeStatus<CryptohomeError>(

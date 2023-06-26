@@ -1474,6 +1474,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthSessionInCreateVaultKeyset = 2312,
   /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplNoAuthFactorType = 2313,
+  /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplUnauthedInCreateVaultKeyset = 2314,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplyInvalidBlockType = 2315,
@@ -1483,6 +1485,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateVaultKeysetRpcImplCreateFailedInAddKeyset = 2317,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplAddVaultKeysetFailed = 2318,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplNoInitialVaultKeyset = 2319,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplClearKeyDataFromInitialKeysetFailed = 2320,
   /* ./create_vault_keyset_rpc_impl.cc */

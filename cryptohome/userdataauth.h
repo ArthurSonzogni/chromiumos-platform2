@@ -37,6 +37,7 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
+#include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
@@ -1058,6 +1059,10 @@ class UserDataAuth {
   // The actual Biometrics Service object that is used by this class, but
   // can be overridden for testing.
   BiometricsAuthBlockService* biometrics_service_;
+
+  // The object that handles construction and saving of VaultKeysets to disk,
+  // used for testing purposes.
+  std::unique_ptr<CreateVaultKeysetRpcImpl> create_vault_keyset_impl_;
 
   // =============== Install Attributes Related Variables ===============
 

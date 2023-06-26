@@ -397,6 +397,11 @@ class AuthSession final {
   void SetAuthFactorStatusUpdateCallback(
       const AuthFactorStatusUpdateCallback& callback);
 
+  // Adds AuthFactor to |auth_factor_map_|, registered as a VaultKeyset backed
+  // factor. This functionality is only used by the cryptohome-test-tool and
+  // through UserDataAuth::CreateVaultKeyset() for testing purposes.
+  void RegisterVaultKeysetAuthFactor(std::unique_ptr<AuthFactor> auth_factor);
+
  private:
   // Emits a debug log message with this Auth Session's initial state.
   void RecordAuthSessionStart() const;

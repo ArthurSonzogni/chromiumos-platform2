@@ -523,6 +523,7 @@ bool DoRecoveryCryptoGetLedgerInfoAction(
 
 bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
                          const std::string& key_data_label,
+                         const std::string& raw_auth_factor_type,
                          const std::string& raw_password,
                          bool disable_key_data,
                          bool use_public_mount_salt,
@@ -549,9 +550,22 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
   }
   Crypto::PasswordToPasskey(trimmed_password.c_str(), salt, &passkey);
 
+  // Determine and enumerate AuthFactorType from raw input.
+  user_data_auth::AuthFactorType auth_factor_type =
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
+  if (raw_auth_factor_type == "password") {
+    auth_factor_type =
+        user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
+  } else if (raw_auth_factor_type == "pin") {
+    auth_factor_type = user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN;
+  } else if (raw_auth_factor_type == "kiosk") {
+    auth_factor_type = user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK;
+  }
+
   user_data_auth::CreateVaultKeysetRequest request;
   request.set_auth_session_id(auth_session_id);
   request.set_key_label(key_data_label);
+  request.set_type(auth_factor_type);
   request.set_passkey(passkey.to_string());
   request.set_disable_key_data(disable_key_data);
   user_data_auth::CreateVaultKeysetReply reply;
@@ -697,6 +711,9 @@ int main(int argc, char* argv[]) {
                 "a custom vault keyset.");
   DEFINE_string(key_data_label, "",
                 "Requested key data label to generate a custom vault keyset.");
+  DEFINE_string(auth_factor_type, "",
+                "Requested type of factor for authentication to generate "
+                "the custom vault keyset.");
   DEFINE_string(passkey, "",
                 "User passkey input, or password used to generate a custom "
                 "vault keyset.");
@@ -716,8 +733,9 @@ int main(int argc, char* argv[]) {
     if (CheckMandatoryFlag("auth_session_id", FLAGS_auth_session_id) &&
         CheckMandatoryFlag("passkey", FLAGS_passkey)) {
       success = cryptohome::DoCreateVaultKeyset(
-          FLAGS_auth_session_id, FLAGS_key_data_label, FLAGS_passkey,
-          FLAGS_disable_key_data, FLAGS_use_public_mount_salt, &platform);
+          FLAGS_auth_session_id, FLAGS_key_data_label, FLAGS_auth_factor_type,
+          FLAGS_passkey, FLAGS_disable_key_data, FLAGS_use_public_mount_salt,
+          &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("rsa_priv_key_out_file",

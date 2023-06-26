@@ -651,6 +651,16 @@ CryptohomeStatus AuthSession::OnUserCreated() {
   return OkStatus<CryptohomeError>();
 }
 
+void AuthSession::RegisterVaultKeysetAuthFactor(
+    std::unique_ptr<AuthFactor> auth_factor) {
+  if (auth_factor) {
+    auth_factor_map_.Add(std::move(auth_factor),
+                         AuthFactorStorageType::kVaultKeyset);
+    return;
+  }
+  LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
+}
+
 void AuthSession::CreateAndPersistVaultKeyset(
     const KeyData& key_data,
     AuthInput auth_input,
