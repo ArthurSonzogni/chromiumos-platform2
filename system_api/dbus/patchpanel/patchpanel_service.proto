@@ -386,6 +386,8 @@ message ModifyPortRuleRequest {
 
   // A network interface name, or empty if unspecified. This is optional for
   // ACCESS and FORWARDING, and is ignored for other rule types.
+  // b/273741099: Port rule requests are only allowed for WiFi and Ethernet
+  // networks. Multiplexed Cellular interfaces can be ignored.
   // TODO(b/273744897): Replace this interface name argument by the patchpanel
   // Network id.
   string input_ifname = 4;
