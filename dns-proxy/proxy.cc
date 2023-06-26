@@ -232,8 +232,8 @@ void Proxy::OnPatchpanelReady(bool success) {
   // (b/273741099). Callers of ConnectNamespace are expected to use the shill's
   // Device kInterfaceProperty.
   auto res = patchpanel_->ConnectNamespace(
-      getpid(), opts_.ifname, true /* forward_user_traffic */,
-      opts_.type == Type::kDefault /* route_on_vpn */, traffic_source);
+      getpid(), opts_.ifname, /*forward_user_traffic=*/true,
+      /*route_on_vpn=*/opts_.type == Type::kDefault, traffic_source);
   if (!res.first.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoNamespace);
@@ -371,8 +371,8 @@ void Proxy::OnShillReset(bool reset) {
       SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
-      StartDnsRedirection("" /* ifname */, AF_INET);
-      StartDnsRedirection("" /* ifname */, AF_INET6);
+      StartDnsRedirection(/*ifname=*/"", AF_INET);
+      StartDnsRedirection(/*ifname=*/"", AF_INET6);
     }
 
     return;
@@ -407,17 +407,16 @@ void Proxy::Enable() {
     SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
-    StartDnsRedirection("" /* ifname */, AF_INET);
-    StartDnsRedirection("" /* ifname */, AF_INET6);
+    StartDnsRedirection(/*ifname=*/"", AF_INET);
+    StartDnsRedirection(/*ifname=*/"", AF_INET6);
     return;
   }
 
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection("" /* ifname */, AF_INET,
-                        doh_config_.ipv4_nameservers());
-    StartDnsRedirection("" /* ifname */, AF_INET6,
+    StartDnsRedirection(/*ifname=*/"", AF_INET, doh_config_.ipv4_nameservers());
+    StartDnsRedirection(/*ifname=*/"", AF_INET6,
                         doh_config_.ipv6_nameservers());
   }
 
@@ -485,7 +484,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     // No device means that the system proxy has started up with a VPN as the
     // default network; which means we need to dig out the physical network
     // device and use that from here forward.
-    auto dd = shill_->DefaultDevice(true /* exclude_vpn */);
+    auto dd = shill_->DefaultDevice(/*exclude_vpn=*/true);
     if (!dd) {
       LOG(ERROR) << *this << " No default non-VPN device found";
       return;
@@ -522,9 +521,8 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection("" /* ifname */, AF_INET,
-                        doh_config_.ipv4_nameservers());
-    StartDnsRedirection("" /* ifname */, AF_INET6,
+    StartDnsRedirection(/*ifname=*/"", AF_INET, doh_config_.ipv4_nameservers());
+    StartDnsRedirection(/*ifname=*/"", AF_INET6,
                         doh_config_.ipv6_nameservers());
     // Process the current set of patchpanel devices and add necessary
     // redirection rules.
@@ -539,12 +537,12 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // choice but to just crash out and try again.
   if (opts_.type == Type::kSystem) {
     SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_,
-                              true /* die_on_failure */);
+                              /*die_on_failure=*/true);
     SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
-    StartDnsRedirection("" /* ifname */, AF_INET);
-    StartDnsRedirection("" /* ifname */, AF_INET6);
+    StartDnsRedirection(/*ifname=*/"", AF_INET);
+    StartDnsRedirection(/*ifname=*/"", AF_INET6);
   }
 }
 
@@ -760,7 +758,7 @@ void Proxy::SetShillDNSProxyAddresses(
     addrs.push_back(ipv6_addr->ToString());
   }
   if (addrs.empty()) {
-    shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
+    shill_->GetManagerProxy()->ClearDNSProxyAddresses(/*error=*/nullptr);
     LOG(INFO) << *this << " Successfully cleared dns-proxy address property";
     return;
   }
@@ -969,7 +967,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       }
       ns_peer_ipv6_address_ = peer_ipv6_addr;
       if (opts_.type == Type::kDefault && device_) {
-        StartDnsRedirection("" /* ifname */, AF_INET6,
+        StartDnsRedirection(/*ifname=*/"", AF_INET6,
                             doh_config_.ipv6_nameservers());
       }
       for (const auto& d : patchpanel_->GetDevices()) {
@@ -979,14 +977,14 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
         SendIPAddressesToController(ns_.peer_ipv4_address,
                                     ns_peer_ipv6_address_);
-        StartDnsRedirection("" /* ifname */, AF_INET6);
+        StartDnsRedirection(/*ifname=*/"", AF_INET6);
       }
       return;
     }
     case shill::RTNLMessage::kModeDelete:
       ns_peer_ipv6_address_ = std::nullopt;
       if (opts_.type == Type::kDefault) {
-        StopDnsRedirection("" /* ifname */, AF_INET6);
+        StopDnsRedirection(/*ifname=*/"", AF_INET6);
       }
       for (const auto& d : patchpanel_->GetDevices()) {
         StopGuestDnsRedirection(d, AF_INET6);
@@ -996,7 +994,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
                                   /*ipv6_addr=*/std::nullopt);
         SendIPAddressesToController(/*ipv4_addr=*/ns_.peer_ipv4_address,
                                     /*ipv6_addr=*/std::nullopt);
-        StopDnsRedirection("" /* ifname */, AF_INET6);
+        StopDnsRedirection(/*ifname=*/"", AF_INET6);
       }
       return;
     default:
