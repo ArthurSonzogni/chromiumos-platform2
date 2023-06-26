@@ -27,8 +27,6 @@
 
 #include "dns-proxy/ipc.pb.h"
 
-using testing::ElementsAreArray;
-
 namespace dns_proxy {
 namespace {
 constexpr base::TimeDelta kRequestTimeout = base::Seconds(10000);
@@ -356,7 +354,9 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8)},
+      {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10", "::1"), _, _))
       .WillOnce(Return(true));
@@ -371,7 +371,7 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
   proxy.shill_ready_ = true;
 
   // Only IPv4 nameserver.
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
+  proxy.doh_config_.set_nameservers({net_base::IPv4Address(8, 8, 8, 8)}, {});
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10"), _, _))
       .WillOnce(Return(true));
@@ -380,7 +380,8 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
       *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
-  proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {}, {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(ElementsAre("::1"), _, _))
       .WillOnce(Return(true));
   proxy.SetShillDNSProxyAddresses(
@@ -392,7 +393,9 @@ TEST_F(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8)},
+      {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
   proxy.ClearShillDNSProxyAddresses();
 }
@@ -402,7 +405,9 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
   auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8)},
+      {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
 
   ProxyAddrMessage msg;
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
@@ -422,7 +427,7 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
               ShillClient(), std::move(msg_dispatcher));
 
   // Only IPv4 nameserver.
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
+  proxy.doh_config_.set_nameservers({net_base::IPv4Address(8, 8, 8, 8)}, {});
   ProxyAddrMessage msg;
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("10.10.10.10");
@@ -433,7 +438,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
       *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
-  proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {}, {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
   msg.Clear();
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("::1");
@@ -449,7 +455,9 @@ TEST_F(ProxyTest, SystemProxy_ClearIPAddressesInController) {
   auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8)},
+      {*net_base::IPv6Address::CreateFromString("2001:4860:4860::8888")});
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.ClearIPAddressesInController();
 }
@@ -507,7 +515,9 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   pp->SetConnectNamespaceResult(make_fd(), resp);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient(), MessageDispatcher());
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2401::8888"});
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8)},
+      {*net_base::IPv6Address::CreateFromString("2401::8888")});
   proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.OnPatchpanelReady(true);
   EXPECT_CALL(mock_manager_,
@@ -1165,7 +1175,7 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
       });
 
   // Set devices created before the proxy started.
-  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
+  proxy.doh_config_.set_nameservers({net_base::IPv4Address(8, 8, 8, 8)}, {});
   proxy.OnPatchpanelReady(true);
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
@@ -1402,9 +1412,12 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   struct in6_addr ipv6_addr;
   inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
 
-  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
-                                                 "2001:4860:4860::8844"};
-  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+  std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8), net_base::IPv4Address(8, 8, 4, 4)},
+      ipv6_dns_addresses);
 
   EXPECT_CALL(
       *mock_client,
@@ -1523,15 +1536,20 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   struct in6_addr ipv6_addr;
   inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
 
-  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
-                                                 "2001:4860:4860::8844"};
-  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+  const std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
+  const std::vector<std::string> ipv6_dns_address_strs = {
+      "2001:4860:4860::8888", "2001:4860:4860::8844"};
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8), net_base::IPv4Address(8, 8, 4, 4)},
+      ipv6_dns_addresses);
 
   EXPECT_CALL(*mock_client, GetDevices())
       .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
-                          _, _, ipv6_dns_addresses, _))
+                          _, _, ipv6_dns_address_strs, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *mock_client,
@@ -1595,9 +1613,12 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   struct in6_addr ipv6_addr;
   inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
 
-  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
-                                                 "2001:4860:4860::8844"};
-  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+  std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
+      *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
+  proxy.doh_config_.set_nameservers(
+      {net_base::IPv4Address(8, 8, 8, 8), net_base::IPv4Address(8, 8, 4, 4)},
+      ipv6_dns_addresses);
   proxy.device_.reset(new shill::Client::Device{});
 
   auto dev =
@@ -1916,13 +1937,18 @@ TEST_F(ProxyTest, UpdateNameServers) {
                                  "a",
                                  ""};
   proxy.UpdateNameServers(ipconfig);
-  const std::string expected_ipv4_dns_addresses[] = {"8.8.4.4", "192.168.1.1"};
-  const std::string expected_ipv6_dns_addresses[] = {
-      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d", "::2",
-      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e", "::1"};
+  const std::vector<net_base::IPv4Address> expected_ipv4_dns_addresses = {
+      net_base::IPv4Address(8, 8, 4, 4), net_base::IPv4Address(192, 168, 1, 1)};
+  const std::vector<net_base::IPv6Address> expected_ipv6_dns_addresses = {
+      *net_base::IPv6Address::CreateFromString(
+          "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d"),
+      *net_base::IPv6Address::CreateFromString("::2"),
+      *net_base::IPv6Address::CreateFromString(
+          "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e"),
+      *net_base::IPv6Address::CreateFromString("::1")};
   EXPECT_THAT(proxy.doh_config_.ipv4_nameservers(),
-              ElementsAreArray(expected_ipv4_dns_addresses));
+              expected_ipv4_dns_addresses);
   EXPECT_THAT(proxy.doh_config_.ipv6_nameservers(),
-              ElementsAreArray(expected_ipv6_dns_addresses));
+              expected_ipv6_dns_addresses);
 }
 }  // namespace dns_proxy

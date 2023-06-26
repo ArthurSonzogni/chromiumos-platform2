@@ -21,6 +21,8 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <shill/dbus/client/client.h>
 #include <shill/net/byte_string.h>
@@ -84,16 +86,17 @@ class Proxy : public brillo::DBusDaemon {
     ~DoHConfig() = default;
 
     // Get the name servers the network of the proxy is tracking.
-    const std::vector<std::string>& ipv4_nameservers();
-    const std::vector<std::string>& ipv6_nameservers();
+    const std::vector<net_base::IPv4Address>& ipv4_nameservers();
+    const std::vector<net_base::IPv6Address>& ipv6_nameservers();
 
     // Stores the resolver to configure whenever settings are updated.
     void set_resolver(Resolver* resolver);
 
     // |ipv4_nameservers| and |ipv6_nameservers| are the list of name servers
     // for the network the proxy is tracking.
-    void set_nameservers(const std::vector<std::string>& ipv4_nameservers,
-                         const std::vector<std::string>& ipv6_nameservers);
+    void set_nameservers(
+        const std::vector<net_base::IPv4Address>& ipv4_nameservers,
+        const std::vector<net_base::IPv6Address>& ipv6_nameservers);
 
     // |settings| is the DoH providers property we get from shill. It keys, as
     // applicable, secure DNS provider endpoints to standard DNS name servers.
@@ -117,13 +120,13 @@ class Proxy : public brillo::DBusDaemon {
 
     Resolver* resolver_{nullptr};
     Logger logger_;
-    std::vector<std::string> ipv4_nameservers_;
-    std::vector<std::string> ipv6_nameservers_;
+    std::vector<net_base::IPv4Address> ipv4_nameservers_;
+    std::vector<net_base::IPv6Address> ipv6_nameservers_;
     // If non-empty, the secure providers to use for always-on DoH.
     std::set<std::string> secure_providers_;
-    // If non-empty, maps name servers to secure DNS providers, for automatic
-    // update.
-    std::map<std::string, std::string> auto_providers_;
+    // If non-empty, maps name server IP addresses to secure DNS provider URL
+    // for automatic upgrade.
+    std::map<net_base::IPAddress, std::string> auto_providers_;
 
     Metrics* metrics_{nullptr};
   };

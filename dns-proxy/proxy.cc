@@ -58,6 +58,16 @@ Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
       NOTREACHED();
   }
 }
+
+template <typename T>
+std::vector<std::string> ToStringVec(const std::vector<T>& addrs) {
+  std::vector<std::string> ret;
+  for (const auto& addr : addrs) {
+    ret.push_back(addr.ToString());
+  }
+  return ret;
+}
+
 }  // namespace
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay = base::Milliseconds(200);
@@ -414,9 +424,10 @@ void Proxy::Enable() {
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection(/*ifname=*/"", AF_INET, doh_config_.ipv4_nameservers());
+    StartDnsRedirection(/*ifname=*/"", AF_INET,
+                        ToStringVec(doh_config_.ipv4_nameservers()));
     StartDnsRedirection(/*ifname=*/"", AF_INET6,
-                        doh_config_.ipv6_nameservers());
+                        ToStringVec(doh_config_.ipv6_nameservers()));
   }
 
   // Process the current set of patchpanel devices and add necessary
@@ -520,9 +531,10 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection(/*ifname=*/"", AF_INET, doh_config_.ipv4_nameservers());
+    StartDnsRedirection(/*ifname=*/"", AF_INET,
+                        ToStringVec(doh_config_.ipv4_nameservers()));
     StartDnsRedirection(/*ifname=*/"", AF_INET6,
-                        doh_config_.ipv6_nameservers());
+                        ToStringVec(doh_config_.ipv6_nameservers()));
     // Process the current set of patchpanel devices and add necessary
     // redirection rules.
     for (const auto& d : patchpanel_->GetDevices()) {
@@ -661,13 +673,13 @@ void Proxy::MaybeCreateResolver() {
 }
 
 void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
-  std::vector<std::string> ipv4_nameservers;
-  std::vector<std::string> ipv6_nameservers;
+  std::vector<net_base::IPv4Address> ipv4_nameservers;
+  std::vector<net_base::IPv6Address> ipv6_nameservers;
 
   auto maybe_add_to_ipv6_nameservers = [&](const std::string& addr) {
     const auto ipv6_addr = net_base::IPv6Address::CreateFromString(addr);
     if (ipv6_addr && !ipv6_addr->IsZero()) {
-      ipv6_nameservers.push_back(addr);
+      ipv6_nameservers.push_back(*ipv6_addr);
     }
   };
 
@@ -676,7 +688,7 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
     const auto ipv4_addr = net_base::IPv4Address::CreateFromString(addr);
     // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
     if (ipv4_addr && !ipv4_addr->IsZero()) {
-      ipv4_nameservers.push_back(addr);
+      ipv4_nameservers.push_back(*ipv4_addr);
       continue;
     }
 
@@ -827,11 +839,11 @@ void Proxy::SendProtoMessage(const ProxyAddrMessage& msg) {
   Quit();
 }
 
-const std::vector<std::string>& Proxy::DoHConfig::ipv4_nameservers() {
+const std::vector<net_base::IPv4Address>& Proxy::DoHConfig::ipv4_nameservers() {
   return ipv4_nameservers_;
 }
 
-const std::vector<std::string>& Proxy::DoHConfig::ipv6_nameservers() {
+const std::vector<net_base::IPv6Address>& Proxy::DoHConfig::ipv6_nameservers() {
   return ipv6_nameservers_;
 }
 
@@ -841,8 +853,8 @@ void Proxy::DoHConfig::set_resolver(Resolver* resolver) {
 }
 
 void Proxy::DoHConfig::set_nameservers(
-    const std::vector<std::string>& ipv4_nameservers,
-    const std::vector<std::string>& ipv6_nameservers) {
+    const std::vector<net_base::IPv4Address>& ipv4_nameservers,
+    const std::vector<net_base::IPv6Address>& ipv6_nameservers) {
   ipv4_nameservers_ = ipv4_nameservers;
   ipv6_nameservers_ = ipv6_nameservers;
   update();
@@ -873,10 +885,15 @@ void Proxy::DoHConfig::set_providers(
 
     // Remap nameserver -> secure endpoint so we can quickly determine if DoH
     // should be attempted when the name servers change.
-    for (const auto& ns :
+    for (const auto& ns_str :
          base::SplitString(nameservers, ",", base::TRIM_WHITESPACE,
                            base::SPLIT_WANT_NONEMPTY)) {
-      auto_providers_[ns] = TrimParamTemplate(endpoint);
+      const auto ns = net_base::IPAddress::CreateFromString(ns_str);
+      if (ns) {
+        auto_providers_[*ns] = TrimParamTemplate(endpoint);
+      } else {
+        LOG(WARNING) << "Invalid nameserver string: " << ns_str;
+      }
     }
   }
 
@@ -902,10 +919,14 @@ void Proxy::DoHConfig::update() {
   if (!resolver_)
     return;
 
-  std::vector<std::string> nameservers = ipv4_nameservers_;
-  nameservers.insert(nameservers.end(), ipv6_nameservers_.begin(),
-                     ipv6_nameservers_.end());
-  resolver_->SetNameServers(nameservers);
+  std::vector<net_base::IPAddress> nameservers;
+  for (const auto& ipv4_nameservers : ipv4_nameservers_) {
+    nameservers.push_back(net_base::IPAddress(ipv4_nameservers));
+  }
+  for (const auto& ipv6_nameservers : ipv6_nameservers_) {
+    nameservers.push_back(net_base::IPAddress(ipv6_nameservers));
+  }
+  resolver_->SetNameServers(ToStringVec(nameservers));
 
   std::set<std::string> doh_providers;
   bool doh_always_on = false;
@@ -966,7 +987,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       ns_peer_ipv6_address_ = peer_ipv6_addr;
       if (opts_.type == Type::kDefault && device_) {
         StartDnsRedirection(/*ifname=*/"", AF_INET6,
-                            doh_config_.ipv6_nameservers());
+                            ToStringVec(doh_config_.ipv6_nameservers()));
       }
       for (const auto& d : patchpanel_->GetDevices()) {
         StartGuestDnsRedirection(d, AF_INET6);
