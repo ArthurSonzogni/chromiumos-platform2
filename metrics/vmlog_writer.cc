@@ -62,6 +62,9 @@ bool VmStatsParseStats(std::istream* input_stream,
        .optional = false},
       // pgmajfault_f and pgmajfault_a may not be present in all kernels.
       // Don't fuss if they are not.
+      //
+      // Only available on kernels up to 4.19.
+      // TODO(b/288959865): Remove if we remove the last kernel 4.19 device.
       {.name = "pgmajfault_f",
        .value_p = &record->file_page_faults_,
        .found = false,
