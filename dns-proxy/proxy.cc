@@ -21,7 +21,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <shill/dbus-constants.h>
 #include <shill/net/rtnl_handler.h>
 
@@ -666,22 +665,21 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
   std::vector<std::string> ipv6_nameservers;
 
   auto maybe_add_to_ipv6_nameservers = [&](const std::string& addr) {
-    struct in6_addr addr6;
-    if (inet_pton(AF_INET6, addr.c_str(), &addr6.s6_addr) == 1 &&
-        memcmp(&addr6, &in6addr_any, sizeof(in6_addr)) != 0) {
+    const auto ipv6_addr = net_base::IPv6Address::CreateFromString(addr);
+    if (ipv6_addr && !ipv6_addr->IsZero()) {
       ipv6_nameservers.push_back(addr);
     }
   };
 
   // Validate name servers.
   for (const auto& addr : ipconfig.ipv4_dns_addresses) {
-    struct in_addr addr4;
+    const auto ipv4_addr = net_base::IPv4Address::CreateFromString(addr);
     // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
-    if (inet_pton(AF_INET, addr.c_str(), &addr4) == 1 &&
-        addr4.s_addr != INADDR_ANY) {
+    if (ipv4_addr && !ipv4_addr->IsZero()) {
       ipv4_nameservers.push_back(addr);
       continue;
     }
+
     // When IPv6 nameservers are set from the UI, it will be stored inside
     // IPConfig's IPv4 DNS addresses.
     maybe_add_to_ipv6_nameservers(addr);
