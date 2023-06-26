@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -333,6 +334,9 @@ class MetricsCollector {
   // Called only pre-suspend.
   void GenerateRuntimeS0ixMetrics();
 
+  // Calculates the average of a given list of battery life data points.
+  double CalculateRollingAverage(const std::deque<double>& battery_lives);
+
   // Returns new FilePath after prepending |prefix_path_for_testing_| to
   // given file path.
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
@@ -411,6 +415,10 @@ class MetricsCollector {
 
   // If non-empty, contains a temp dir that will be prepended to paths.
   base::FilePath prefix_path_for_testing_;
+
+  // For calculating battery life rolling averages.
+  std::deque<double> rolling_average_actual_{};
+  std::deque<double> rolling_average_design_{};
 };
 
 }  // namespace metrics

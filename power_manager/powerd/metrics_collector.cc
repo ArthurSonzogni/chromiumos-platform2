@@ -610,9 +610,14 @@ bool MetricsCollector::SendEnumMetricWithPrivacyScreenStatePowerSource(
 void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
-  if (!last_power_status_.battery_is_present ||
-      last_power_status_.line_power_on)
+  if (!last_power_status_.battery_is_present)
     return;
+  if (last_power_status_.line_power_on) {
+    // Reset the rolling average dequeues if switched to non-battery sources.
+    rolling_average_actual_.clear();
+    rolling_average_design_.clear();
+    return;
+  }
 
   // Converts the discharge rate from W to mW.
   int rate =
@@ -628,6 +633,12 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
     return;
   }
 
+  // Reset rolling average dequeues after suspend.
+  if (time_before_suspend_ > last_battery_discharge_rate_metric_timestamp_) {
+    rolling_average_actual_.clear();
+    rolling_average_design_.clear();
+  }
+
   if (SendMetric(kBatteryDischargeRateName, rate, kBatteryDischargeRateMin,
                  kBatteryDischargeRateMax, kDefaultDischargeBuckets))
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
@@ -636,20 +647,52 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   prefs_->GetDouble(kLowBatteryShutdownPercentPref,
                     &low_battery_shutdown_percent);
 
-  int battery_life_actual =
-      static_cast<int>(round(60 * last_power_status_.battery_energy_full /
-                             last_power_status_.battery_energy_rate *
-                             (100 - low_battery_shutdown_percent) / 100.0));
-  int battery_life_design = static_cast<int>(
-      round(60 * last_power_status_.battery_energy_full_design /
-            last_power_status_.battery_energy_rate *
-            (100 - low_battery_shutdown_percent) / 100.0));
+  double battery_life_actual = (60 * last_power_status_.battery_energy_full /
+                                last_power_status_.battery_energy_rate *
+                                (100 - low_battery_shutdown_percent) / 100.0);
+  rolling_average_actual_.push_back(battery_life_actual);
+
+  double battery_life_design =
+      (60 * last_power_status_.battery_energy_full_design /
+       last_power_status_.battery_energy_rate *
+       (100 - low_battery_shutdown_percent) / 100.0);
+  rolling_average_design_.push_back(battery_life_design);
 
   std::string metrics_name = kBatteryLifeName;
-  SendMetric(metrics_name + kBatteryCapacityActualSuffix, battery_life_actual,
-             kBatteryLifeMin, kBatteryLifeMax, kDefaultDischargeBuckets);
-  SendMetric(metrics_name + kBatteryCapacityDesignSuffix, battery_life_design,
-             kBatteryLifeMin, kBatteryLifeMax, kDefaultDischargeBuckets);
+  SendMetric(metrics_name + kBatteryCapacityActualSuffix,
+             static_cast<int>(round(battery_life_actual)), kBatteryLifeMin,
+             kBatteryLifeMax, kDefaultDischargeBuckets);
+  SendMetric(metrics_name + kBatteryCapacityDesignSuffix,
+             static_cast<int>(round(battery_life_design)), kBatteryLifeMin,
+             kBatteryLifeMax, kDefaultDischargeBuckets);
+
+  if (rolling_average_actual_.size() == kBatteryLifeRollingAverageSampleSize) {
+    double average = CalculateRollingAverage(rolling_average_actual_);
+    SendMetric(metrics_name + kBatteryLifeRollingAverageSuffix +
+                   kBatteryCapacityActualSuffix,
+               static_cast<int>(average), kBatteryLifeMin, kBatteryLifeMax,
+               kDefaultDischargeBuckets);
+    rolling_average_actual_.pop_front();
+  }
+
+  if (rolling_average_design_.size() == kBatteryLifeRollingAverageSampleSize) {
+    double average = CalculateRollingAverage(rolling_average_design_);
+    SendMetric(metrics_name + kBatteryLifeRollingAverageSuffix +
+                   kBatteryCapacityDesignSuffix,
+               static_cast<int>(average), kBatteryLifeMin, kBatteryLifeMax,
+               kDefaultDischargeBuckets);
+    rolling_average_design_.pop_front();
+  }
+}
+
+double MetricsCollector::CalculateRollingAverage(
+    const std::deque<double>& battery_lives) {
+  double average = 0;
+  for (double number : battery_lives) {
+    average += number;
+  }
+  average /= static_cast<double>(kBatteryLifeRollingAverageSampleSize);
+  return average;
 }
 
 void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {

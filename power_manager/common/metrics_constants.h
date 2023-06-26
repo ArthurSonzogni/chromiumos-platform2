@@ -65,6 +65,9 @@ extern const int kBatteryChargeHealthMax;
 extern const char kBatteryCapacityActualSuffix[];
 extern const char kBatteryCapacityDesignSuffix[];
 
+extern const char kBatteryLifeRollingAverageSuffix[];
+extern const int kBatteryLifeRollingAverageSampleSize;
+
 extern const char kBatteryCapacityName[];
 extern const int kBatteryCapacityMin;
 extern const int kBatteryCapacityMax;

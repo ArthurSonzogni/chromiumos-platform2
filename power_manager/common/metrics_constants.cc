@@ -61,6 +61,9 @@ const int kBatteryChargeHealthMax = 111;
 const char kBatteryCapacityActualSuffix[] = ".Actual";
 const char kBatteryCapacityDesignSuffix[] = ".Design";
 
+const char kBatteryLifeRollingAverageSuffix[] = ".RollingAverage";
+const int kBatteryLifeRollingAverageSampleSize = 10;
+
 const char kBatteryCapacityName[] = "Power.BatteryCapacity";  // mWh
 const int kBatteryCapacityMin = 0;
 const int kBatteryCapacityMax = 200000;

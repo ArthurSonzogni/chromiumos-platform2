@@ -118,6 +118,12 @@ class MetricsCollectorTest : public TestEnvironment {
     IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) +
+                 kBatteryLifeRollingAverageSuffix +
+                 kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) +
+                 kBatteryLifeRollingAverageSuffix +
+                 kBatteryCapacityDesignSuffix);
     IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
                  kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
@@ -171,6 +177,20 @@ class MetricsCollectorTest : public TestEnvironment {
     EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
+  }
+
+  void ExpectBatteryRollingAverageMetric(int64_t rolling_average_actual,
+                                         int64_t rolling_average_design) {
+    ExpectMetric(std::string(kBatteryLifeName) +
+                     kBatteryLifeRollingAverageSuffix +
+                     kBatteryCapacityActualSuffix,
+                 rolling_average_actual, kBatteryLifeMin, kBatteryLifeMax,
+                 kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) +
+                     kBatteryLifeRollingAverageSuffix +
+                     kBatteryCapacityDesignSuffix,
+                 rolling_average_design, kBatteryLifeMin, kBatteryLifeMax,
+                 kDefaultDischargeBuckets);
   }
 
   void ExpectBatteryDischargeRateMetric(int discharge_rate,
@@ -334,6 +354,122 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   power_status_.line_power_on = true;
   power_status_.battery_energy_rate = 4.0;
   collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, BatteryLifeRollingAverage) {
+  power_status_.line_power_on = false;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, 10.0);
+  Init();
+
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeRollingAverageSuffix +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeRollingAverageSuffix +
+                          kBatteryCapacityDesignSuffix);
+  const base::TimeDelta interval = kBatteryDischargeRateInterval;
+  power_status_.battery_energy_rate = 5.0;
+  power_status_.battery_energy_full = 50.0;
+  power_status_.battery_energy_full_design = 60.0;
+
+  IgnoreHandlePowerStatusUpdateMetrics();
+
+  power_status_.battery_energy_rate = 15.0;
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+
+  // Advance 8 intervals.
+  power_status_.battery_energy_rate = 0.1;
+  for (int i = 0; i < 8; i++) {
+    collector_.HandlePowerStatusUpdate(power_status_);
+    AdvanceTime(interval);
+  }
+
+  // Calculate rolling averages at the tenth round.
+  int64_t average_actual = 24318;
+  int64_t average_design = 29181;
+  ExpectBatteryRollingAverageMetric(average_actual, average_design);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+
+  // The rolling average should be a sliding window.
+  average_actual = 27000;
+  average_design = 32400;
+  ExpectBatteryRollingAverageMetric(average_actual, average_design);
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+}
+
+TEST_F(MetricsCollectorTest, BatteryLifeRollingAverageResets) {
+  power_status_.line_power_on = false;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, 10.0);
+  Init();
+
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeRollingAverageSuffix +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeRollingAverageSuffix +
+                          kBatteryCapacityDesignSuffix);
+  const base::TimeDelta interval = kBatteryDischargeRateInterval;
+  power_status_.battery_energy_rate = 5.0;
+  power_status_.battery_energy_full = 50.0;
+  power_status_.battery_energy_full_design = 60.0;
+
+  IgnoreHandlePowerStatusUpdateMetrics();
+
+  power_status_.battery_energy_rate = 15.0;
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+
+  // Advance 8 intervals.
+  power_status_.battery_energy_rate = 0.1;
+  for (int i = 0; i < 8; i++) {
+    collector_.HandlePowerStatusUpdate(power_status_);
+    AdvanceTime(interval);
+  }
+
+  // Calculate rolling averages at the 10th round.
+  int64_t average_actual = 24318;
+  int64_t average_design = 29181;
+  ExpectBatteryRollingAverageMetric(average_actual, average_design);
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+
+  // The dequeues should reset and ignore metrics on non-battery sources.
+  power_status_.line_power_on = true;
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+  power_status_.line_power_on = false;
+
+  // This value should be dropped after suspend.
+  power_status_.battery_energy_rate = 0.2;
+  collector_.HandlePowerStatusUpdate(power_status_);
+  AdvanceTime(interval);
+
+  // The dequeues should reset after suspend.
+  const base::TimeDelta kSuspendDuration = base::Seconds(1);
+  collector_.PrepareForSuspend();
+  AdvanceTime(kSuspendDuration);
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
+               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
+  collector_.HandleResume(1, false);
+
+  // Advance 9 intervals.
+  power_status_.battery_energy_rate = 0.3;
+  for (int i = 0; i < 9; i++) {
+    collector_.HandlePowerStatusUpdate(power_status_);
+    AdvanceTime(interval);
+  }
+
+  // Calculate rolling averages at the 10th round.
+  average_actual = 9000;
+  average_design = 10800;
+  ExpectBatteryRollingAverageMetric(average_actual, average_design);
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
