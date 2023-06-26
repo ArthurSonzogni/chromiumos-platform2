@@ -497,11 +497,20 @@ all daemon stores for all mounted users.
 
 ## vmlog.1.LATEST
 
+The previous vmlog; see [vmlog.LATEST](#vmlog_LATEST).
+
 ## vmlog.1.PREVIOUS
+
+The previous vmlog; see [vmlog.LATEST](#vmlog_LATEST).
 
 ## vmlog.LATEST
 
+virtual memory related log written by vmlog_writer, [documented
+here](/metrics/README.md#vmlog).
+
 ## vmlog.PREVIOUS
+
+The previous vmlog; see [vmlog.LATEST](#vmlog_LATEST).
 
 ## vmstat
 
