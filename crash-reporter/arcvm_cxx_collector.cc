@@ -44,6 +44,17 @@ bool ArcvmCxxCollector::HandleCrash(
                                    base::ScopedFD(dup(STDIN_FILENO)));
 }
 
+// The parameter |exec_name| is unused as we are computing the crash severity
+// based on the crash type, which is always going to be `kNativeCrash` in this
+// collector.
+CrashCollector::ComputedCrashSeverity ArcvmCxxCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kError,
+      .product_group = Product::kArc,
+  };
+}
+
 bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,

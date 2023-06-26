@@ -44,6 +44,10 @@ class ArcvmCxxCollector : public CrashCollector {
                    const CrashInfo& crash_info,
                    base::TimeDelta uptime);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(
       bool arc_native,
       const arc_util::BuildProperty& build_property,
