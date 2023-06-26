@@ -345,7 +345,10 @@ bool EvdevStylusObserver::IsTarget(LibevdevWrapper* dev) {
   // - Use ABS_MT_TRACKING_ID to filter out touchscreen.
   return !dev->HasProperty(INPUT_PROP_POINTER) &&
          dev->HasProperty(INPUT_PROP_DIRECT) &&
-         !dev->HasEventCode(EV_ABS, ABS_MT_TRACKING_ID);
+         !dev->HasEventCode(EV_ABS, ABS_MT_TRACKING_ID) &&
+         (dev->HasEventCode(EV_KEY, BTN_TOOL_PEN) ||
+          dev->HasEventCode(EV_KEY, BTN_STYLUS) ||
+          dev->HasEventCode(EV_KEY, BTN_STYLUS2));
 }
 
 void EvdevStylusObserver::FireEvent(const input_event& ev,
