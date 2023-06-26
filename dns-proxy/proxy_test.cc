@@ -348,7 +348,8 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.SetShillDNSProxyAddresses(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"), false, 0);
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"), false, 0);
 }
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
@@ -360,7 +361,8 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
               SetDNSProxyAddresses(ElementsAre("10.10.10.10", "::1"), _, _))
       .WillOnce(Return(true));
   proxy.SetShillDNSProxyAddresses(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
@@ -374,14 +376,16 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
               SetDNSProxyAddresses(ElementsAre("10.10.10.10"), _, _))
       .WillOnce(Return(true));
   proxy.SetShillDNSProxyAddresses(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
   proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(ElementsAre("::1"), _, _))
       .WillOnce(Return(true));
   proxy.SetShillDNSProxyAddresses(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
@@ -407,7 +411,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy.SendIPAddressesToController(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
@@ -424,7 +429,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy.SendIPAddressesToController(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
   proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
@@ -434,7 +440,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy.SendIPAddressesToController(
-      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
+      net_base::IPv4Address(10, 10, 10, 10),
+      *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_ClearIPAddressesInController) {

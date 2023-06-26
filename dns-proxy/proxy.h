@@ -195,7 +195,7 @@ class Proxy : public brillo::DBusDaemon {
   // Will retry on failure up to |num_retries| before possibly crashing the
   // proxy.
   void SetShillDNSProxyAddresses(
-      const std::string& ipv4_addr,
+      const std::optional<net_base::IPv4Address>& ipv4_addr,
       const std::optional<net_base::IPv6Address>& ipv6_addr,
       bool die_on_failure = false,
       uint8_t num_retries = kMaxShillPropertyRetries);
@@ -204,7 +204,7 @@ class Proxy : public brillo::DBusDaemon {
   // Helper func to send the proxy IP addresses to the controller.
   // Only valid for the system proxy.
   void SendIPAddressesToController(
-      const std::string& ipv4_addr,
+      const net_base::IPv4Address& ipv4_addr,
       const std::optional<net_base::IPv6Address>& ipv6_addr);
   void ClearIPAddressesInController();
   void SendProtoMessage(const ProxyAddrMessage& msg);
