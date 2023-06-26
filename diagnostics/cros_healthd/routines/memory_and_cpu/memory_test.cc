@@ -141,12 +141,7 @@ class MemoryRoutineTest : public BaseFileTest {
               base::SingleThreadTaskRunner::GetCurrentDefault()
                   ->PostDelayedTask(
                       FROM_HERE,
-                      base::BindOnce(
-                          [](mojom::Executor::RunMemtesterCallback callback,
-                             mojom::ExecutedProcessResultPtr result) {
-                            std::move(callback).Run(std::move(result));
-                          },
-                          std::move(callback), result.Clone()),
+                      base::BindOnce(std::move(callback), result.Clone()),
                       delay.value());
             })));
   }
