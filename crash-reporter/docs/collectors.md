@@ -22,6 +22,25 @@ It probably should have used a different naming convention.
 Each collector is designed to generate and queue crash reports.
 They get uploaded periodically by [crash_sender].
 
+## Computing Crash Severity
+
+As part of the crash report, each collector computes the severity of the crash.
+
+Crash severity is organized into 4 categories:
+
+*   **Fatal:** Crashes that significantly disrupt user experience (e.g.
+    session termination, device reboot, Android system server crash).
+*   **Error:** Crashes that disrupt user flow in tangible ways where there
+    are mitigations or workarounds (e.g. tab crash, video blackout, Android
+    system app crash).
+*   **Warning:** Crashes with little to no user impact.
+*   **Info:** Not actual crashes, but disagnostic data uploaded through the
+    crash reporting pipeline from devices in the field.
+
+The logic to compute the severity is dependent on the product the crash occurred
+on: Platform, ARC, UI, and Lacros. The computed severity and product are logged
+to UMA to help correlate crashes with metrics like user satisfaction (from HaTS).
+
 # Boot Collectors
 
 These are the collectors that run once at boot.
