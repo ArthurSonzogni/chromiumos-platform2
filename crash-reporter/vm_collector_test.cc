@@ -7,6 +7,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+namespace {
+
 class VmCollectorTest : public ::testing::Test {
  protected:
   VmCollector collector_;
@@ -21,3 +23,5 @@ TEST_F(VmCollectorTest, ComputeSeverity) {
   EXPECT_EQ(computed_severity.product_group,
             CrashCollector::Product::kPlatform);
 }
+
+}  // namespace

@@ -55,8 +55,6 @@ void Initialize(ClobberStateCollectorMock* collector,
   collector->set_log_config_path(log_config_path.value());
 }
 
-}  // namespace
-
 TEST(ClobberStateCollectorTest, TestClobberState) {
   ClobberStateCollectorMock collector;
   base::ScopedTempDir tmp_dir;
@@ -170,3 +168,5 @@ TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
     EXPECT_EQ("found clobber.log\n", report_contents);
   }
 }
+
+}  // namespace

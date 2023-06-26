@@ -25,6 +25,8 @@ using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
+namespace {
+
 class GscCollectorMock : public GscCollectorBase {
  public:
   MOCK_METHOD(void, SetUpDBus, (), (override));
@@ -345,3 +347,5 @@ TEST_F(GscCollectorTest, MultipleCrashesPrevId12) {
       FindLog("Latest crash ID (12) is not more recent than previously "
               "reported crash ID (12)"));
 }
+
+}  // namespace

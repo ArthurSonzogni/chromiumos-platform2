@@ -28,8 +28,6 @@ constexpr char kTestCrashReporterFailureMessagePayload[] =
 constexpr char kTestCrashReporterFailureLogMessages[] =
     "===/var/log/messages===";
 
-}  // namespace
-
 class CrashReporterFailureCollectorMock : public CrashReporterFailureCollector {
  public:
   MOCK_METHOD(void, SetUpDBus, (), (override));
@@ -104,3 +102,5 @@ TEST_F(CrashReporterFailureCollectorTest,
   EXPECT_EQ(computed_severity.product_group,
             CrashCollector::Product::kPlatform);
 }
+
+}  // namespace

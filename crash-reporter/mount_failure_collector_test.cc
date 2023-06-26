@@ -54,8 +54,6 @@ void Initialize(MountFailureCollectorMock* collector,
   collector->set_log_config_path(log_config_path.value());
 }
 
-}  // namespace
-
 TEST(MountFailureCollectorTest, TestStatefulMountFailure) {
   MountFailureCollectorMock collector(StorageDeviceType::kStateful,
                                       /*testonly_send_all=*/false);
@@ -205,3 +203,5 @@ INSTANTIATE_TEST_SUITE_P(
         {"umount_failure_stateful", CrashCollector::CrashSeverity::kWarning},
         {"another executable", CrashCollector::CrashSeverity::kUnspecified},
     }));
+
+}  // namespace
