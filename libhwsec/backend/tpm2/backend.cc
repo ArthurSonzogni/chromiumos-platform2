@@ -15,6 +15,7 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       tpm_manager_(proxy_.GetTpmManager()),
       tpm_nvram_(proxy_.GetTpmNvram()),
       crossystem_(proxy_.GetCrossystem()),
+      platform_(proxy_.GetPlatform()),
       middleware_derivative_(middleware_derivative),
       context_(proxy_.GetTrunksCommandTransceiver(), proxy_.GetTrunksFactory()),
       state_(tpm_manager_),
@@ -36,7 +37,7 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       u2f_(context_),
       attestation_(context_, config_, key_management_, signing_),
       ro_data_(context_, key_management_, signing_, tpm_nvram_),
-      version_attestation_() {}
+      version_attestation_(context_, config_, key_management_, platform_) {}
 
 BackendTpm2::~BackendTpm2() = default;
 

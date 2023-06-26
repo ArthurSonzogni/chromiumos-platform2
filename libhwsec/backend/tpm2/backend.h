@@ -31,6 +31,7 @@
 #include "libhwsec/backend/tpm2/vendor.h"
 #include "libhwsec/backend/tpm2/version_attestation.h"
 #include "libhwsec/middleware/middleware_derivative.h"
+#include "libhwsec/platform/platform.h"
 #include "libhwsec/proxy/proxy.h"
 
 #ifndef BUILD_LIBHWSEC
@@ -105,6 +106,7 @@ class BackendTpm2 : public Backend {
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
   org::chromium::TpmNvramProxyInterface& tpm_nvram_;
   crossystem::Crossystem& crossystem_;
+  Platform& platform_;
 
   MiddlewareDerivative middleware_derivative_;
 

@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
 
+using base::FilePath;
 using testing::_;
 using testing::Invoke;
 
@@ -19,9 +20,13 @@ FakePlatform::FakePlatform() {
       .WillByDefault(Invoke(this, &FakePlatform::ReadFileToStringInternal));
 }
 
-bool FakePlatform::ReadFileToStringInternal(const base::FilePath& path,
+bool FakePlatform::ReadFileToStringInternal(const FilePath& path,
                                             std::string* contents) {
-  base::FilePath actual = root_.Append(path);
+  CHECK(path.IsAbsolute());
+
+  // Append the path (the part after "/") to root_.
+  FilePath actual = root_;
+  CHECK(FilePath("/").AppendRelativePath(path, &actual));
   return base::ReadFileToString(actual, contents);
 }
 

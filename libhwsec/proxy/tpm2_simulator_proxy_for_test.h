@@ -18,6 +18,7 @@
 #include <trunks/tpm_simulator_handle.h>
 #include <trunks/trunks_factory_impl.h>
 
+#include "libhwsec/platform/fake_platform.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
 
@@ -47,6 +48,8 @@ class Tpm2SimulatorProxyForTest : public Proxy {
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
   FakeTpmNvramForTest tpm_nvram_;
   std::unique_ptr<crossystem::Crossystem> crossystem_;
+  testing::NiceMock<FakePlatform> platform_;
+
   bool initialized_ = false;
 };
 

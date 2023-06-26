@@ -178,6 +178,7 @@ bool Tpm2SimulatorProxyForTest::Init() {
   Proxy::SetTpmManager(&tpm_manager_);
   Proxy::SetTpmNvram(tpm_nvram_.GetMock());
   Proxy::SetCrossystem(crossystem_.get());
+  Proxy::SetPlatform(&platform_);
 
   initialized_ = true;
   return true;

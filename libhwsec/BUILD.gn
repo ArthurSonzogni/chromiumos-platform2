@@ -519,6 +519,7 @@ if (use.test) {
         "backend/tpm2/storage_test.cc",
         "backend/tpm2/u2f_test.cc",
         "backend/tpm2/vendor_test.cc",
+        "backend/tpm2/version_attestation_test.cc",
         "error/tpm2_error_test.cc",
       ]
       libs = [ "trunks_test" ]
