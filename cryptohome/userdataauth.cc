@@ -3093,6 +3093,24 @@ void UserDataAuth::ListAuthFactors(
     return;
   }
 
+  // Helper function to filter out types of auth factor that are supported
+  // internally but which should not be reported as supported in the public API.
+  auto IsPublicType = [](AuthFactorType type) {
+    switch (type) {
+      case AuthFactorType::kPassword:
+      case AuthFactorType::kPin:
+      case AuthFactorType::kCryptohomeRecovery:
+      case AuthFactorType::kKiosk:
+      case AuthFactorType::kSmartCard:
+      case AuthFactorType::kFingerprint:
+        return true;
+      case AuthFactorType::kLegacyFingerprint:
+      case AuthFactorType::kUnspecified:
+      default:
+        return false;
+    }
+  };
+
   std::vector<AuthFactorType> supported_auth_factors;
   if (is_persistent_user) {
     // Prepare the response for configured AuthFactors (with status) with all of
@@ -3111,11 +3129,14 @@ void UserDataAuth::ListAuthFactors(
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {
-      auto auth_factor_with_status = GetAuthFactorWithStatus(
-          obfuscated_username, auth_factor_driver_manager_, item.auth_factor());
-      if (auth_factor_with_status.has_value()) {
-        *reply.add_configured_auth_factors_with_status() =
-            std::move(auth_factor_with_status.value());
+      if (IsPublicType(item.auth_factor().type())) {
+        auto auth_factor_with_status = GetAuthFactorWithStatus(
+            obfuscated_username, auth_factor_driver_manager_,
+            item.auth_factor());
+        if (auth_factor_with_status.has_value()) {
+          *reply.add_configured_auth_factors_with_status() =
+              std::move(auth_factor_with_status.value());
+        }
       }
     }
 
@@ -3150,7 +3171,7 @@ void UserDataAuth::ListAuthFactors(
     for (auto proto_type :
          PROTOBUF_ENUM_ALL_VALUES(user_data_auth::AuthFactorType)) {
       std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
-      if (!type) {
+      if (!type || !IsPublicType(*type)) {
         continue;
       }
       const AuthFactorDriver& factor_driver =
@@ -3168,11 +3189,13 @@ void UserDataAuth::ListAuthFactors(
     if (user_session) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
-        auto auth_factor_with_status = GetAuthFactorWithStatus(
-            obfuscated_username, auth_factor_driver_manager_, verifier);
-        if (auth_factor_with_status.has_value()) {
-          *reply.add_configured_auth_factors_with_status() =
-              std::move(auth_factor_with_status.value());
+        if (IsPublicType(verifier->auth_factor_type())) {
+          auto auth_factor_with_status = GetAuthFactorWithStatus(
+              obfuscated_username, auth_factor_driver_manager_, verifier);
+          if (auth_factor_with_status.has_value()) {
+            *reply.add_configured_auth_factors_with_status() =
+                std::move(auth_factor_with_status.value());
+          }
         }
       }
     }
@@ -3181,7 +3204,7 @@ void UserDataAuth::ListAuthFactors(
     for (auto proto_type :
          PROTOBUF_ENUM_ALL_VALUES(user_data_auth::AuthFactorType)) {
       std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
-      if (!type) {
+      if (!type || !IsPublicType(*type)) {
         continue;
       }
       const AuthFactorDriver& factor_driver =

@@ -3316,31 +3316,21 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
-                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   std::vector<user_data_auth::AuthFactorType> types_with_intents;
   for (const auto& intents_for_type : list_reply.auth_intents_for_types()) {
     types_with_intents.push_back(intents_for_type.type());
-    if (intents_for_type.type() ==
-        user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT) {
-      EXPECT_THAT(intents_for_type.current(),
-                  UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
-                                       user_data_auth::AUTH_INTENT_WEBAUTHN));
-    } else {
-      EXPECT_THAT(
-          intents_for_type.current(),
-          UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
-    }
+    EXPECT_THAT(intents_for_type.current(),
+                UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
   }
-  EXPECT_THAT(types_with_intents,
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
-                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
+  EXPECT_THAT(
+      types_with_intents,
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
@@ -3381,31 +3371,21 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
                 .common_metadata()
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_NONE);
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
-                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   std::vector<user_data_auth::AuthFactorType> types_with_intents;
   for (const auto& intents_for_type : list_reply.auth_intents_for_types()) {
     types_with_intents.push_back(intents_for_type.type());
-    if (intents_for_type.type() ==
-        user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT) {
-      EXPECT_THAT(intents_for_type.current(),
-                  UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
-                                       user_data_auth::AUTH_INTENT_WEBAUTHN));
-    } else {
-      EXPECT_THAT(
-          intents_for_type.current(),
-          UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
-    }
+    EXPECT_THAT(intents_for_type.current(),
+                UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
   }
-  EXPECT_THAT(types_with_intents,
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
-                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
+  EXPECT_THAT(
+      types_with_intents,
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
