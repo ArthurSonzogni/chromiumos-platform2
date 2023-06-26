@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -1142,7 +1143,7 @@ bool RecoveryCryptoImpl::RotateRecoveryId(
   if (!recovery_id_pb->has_increment()) {
     return false;
   }
-  int increment = recovery_id_pb->increment();
+  int32_t increment = recovery_id_pb->increment();
 
   if (BN_add_word(seed_bn.get(), increment) < 0) {
     LOG(ERROR) << "Unable to increment the Recovery Id's seed";
@@ -1157,6 +1158,10 @@ bool RecoveryCryptoImpl::RotateRecoveryId(
   // Computes a new recovery_id by hashing seed+increment. The hash
   // (in the current version Sha256) must be resistant against length
   // extension attacks.
+  if (increment == std::numeric_limits<decltype(increment)>::max()) {
+    LOG(ERROR) << "Unable to increment the Recovery Id's seed without overflow";
+    return false;
+  }
   recovery_id_blob = hwsec_foundation::Sha256(recovery_id_blob);
   recovery_id_pb->set_increment(increment + 1);
   recovery_id_pb->set_recovery_id(recovery_id_blob.data(),
