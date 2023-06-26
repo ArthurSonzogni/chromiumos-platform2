@@ -23,7 +23,6 @@
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/patchpanel/net_util.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_config.h"

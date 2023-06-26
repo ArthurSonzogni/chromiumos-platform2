@@ -33,7 +33,6 @@
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
 #include <chromeos/constants/vm_tools.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <grpcpp/grpcpp.h>
 #include <net-base/ipv4_address.h>
 #include <sys/epoll.h>
