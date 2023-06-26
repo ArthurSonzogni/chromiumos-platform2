@@ -10,6 +10,7 @@ namespace diagnostics {
 namespace cros_config_path {
 
 inline constexpr char kHardwareProperties[] = "/hardware-properties";
+inline constexpr char kUi[] = "/ui";
 
 }  // namespace cros_config_path
 
@@ -21,6 +22,7 @@ inline constexpr char kHasTouchscreen[] = "has-touchscreen";
 inline constexpr char kHasHdmi[] = "has-hdmi";
 inline constexpr char kHasAudioJack[] = "has-audio-jack";
 inline constexpr char kHasSdReader[] = "has-sd-reader";
+inline constexpr char kSideVolumeButtonRegion[] = "side-volume-button/region";
 inline constexpr char kStorageType[] = "storage-type";
 
 }  // namespace cros_config_property
@@ -49,6 +51,10 @@ inline constexpr char kStorageTypeNvme[] = "NVME";
 inline constexpr char kStorageTypeSata[] = "SATA";
 inline constexpr char kStorageTypeUfs[] = "UFS";
 inline constexpr char kStorageTypeBridgedEmmc[] = "BRIDGED_EMMC";
+
+// Possible values of /ui/side-volume-button/region.
+inline constexpr char kButtonRegionScreen[] = "screen";
+inline constexpr char kButtonRegionKeyboard[] = "keyboard";
 
 }  // namespace cros_config_value
 

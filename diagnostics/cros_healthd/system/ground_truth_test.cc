@@ -392,5 +392,36 @@ TEST_F(GroundTruthTest, DiskReadRoutineZeroFileSize) {
   ExpectRoutineUnsupported(mojom::RoutineArgument::NewDiskRead(std::move(arg)));
 }
 
+TEST_F(GroundTruthTest, VolumeButtonRoutine) {
+  mojom::VolumeButtonRoutineArgument arg;
+  arg.type = mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp;
+  arg.timeout = base::Seconds(10);
+
+  std::vector<
+      std::pair</*volume-button-region=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {cros_config_value::kButtonRegionScreen, true},
+          {cros_config_value::kButtonRegionKeyboard, true},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectRoutineUnsupported(
+      mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
+
+  for (const auto& [volume_button_region, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kUi,
+                  cros_config_property::kSideVolumeButtonRegion,
+                  volume_button_region);
+    if (supported) {
+      ExpectRoutineSupported(
+          mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
+    } else {
+      ExpectRoutineUnsupported(
+          mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics
