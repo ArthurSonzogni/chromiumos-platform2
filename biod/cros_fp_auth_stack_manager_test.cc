@@ -14,6 +14,7 @@
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_cros_fp_record_manager.h"
+#include "biod/mock_pairing_key_storage.h"
 #include "biod/power_button_filter.h"
 
 namespace biod {
@@ -22,12 +23,14 @@ using EnrollStatus = AuthStackManager::EnrollStatus;
 using Mode = ec::FpMode::Mode;
 using State = CrosFpAuthStackManager::State;
 using GetSecretReply = ec::CrosFpDeviceInterface::GetSecretReply;
+using KeygenReply = ec::CrosFpDeviceInterface::PairingKeyKeygenReply;
 
 using brillo::BlobToString;
 
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
+using testing::InSequence;
 using testing::Pointee;
 using testing::Return;
 using testing::SaveArg;
@@ -83,6 +86,9 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     // Keep a pointer to record manager, to manipulate it later.
     mock_record_manager_ = mock_record_manager.get();
 
+    auto mock_pk_storage = std::make_unique<MockPairingKeyStorage>();
+    mock_pk_storage_ = mock_pk_storage.get();
+
     // Always support positive match secret
     EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
         .WillRepeatedly(Return(true));
@@ -93,7 +99,8 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
 
     cros_fp_auth_stack_manager_ = std::make_unique<CrosFpAuthStackManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
-        &mock_metrics_, std::move(mock_record_manager));
+        &mock_metrics_, std::move(mock_record_manager),
+        std::move(mock_pk_storage));
 
     cros_fp_auth_stack_manager_->SetEnrollScanDoneHandler(
         base::BindRepeating(&CrosFpAuthStackManagerTest::EnrollScanDoneHandler,
@@ -107,6 +114,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
 
   metrics::MockBiodMetrics mock_metrics_;
   std::unique_ptr<CrosFpAuthStackManager> cros_fp_auth_stack_manager_;
+  MockPairingKeyStorage* mock_pk_storage_;
   MockCrosFpRecordManager* mock_record_manager_;
   MockCrosFpDevice* mock_cros_dev_;
   CrosFpDevice::MkbpCallback on_mkbp_event_;
@@ -207,6 +215,48 @@ TEST_F(CrosFpAuthStackManagerTest, TestDoEnrollImageEventSuccess) {
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
   on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_OK |
                      100 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeLoadPairingKey) {
+  const brillo::Blob kWrappedPk(32, 1);
+
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_pk_storage_, ReadWrappedPairingKey)
+      .WillOnce(Return(kWrappedPk));
+  EXPECT_CALL(*mock_cros_dev_, LoadPairingKey(kWrappedPk))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(cros_fp_auth_stack_manager_->Initialize());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeLoadPairingKeyReadFailed) {
+  const brillo::Blob kWrappedPk(32, 1);
+
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_pk_storage_, ReadWrappedPairingKey)
+      .WillOnce(Return(std::nullopt));
+
+  EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeLoadPairingKeyLoadFailed) {
+  const brillo::Blob kWrappedPk(32, 1);
+
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_pk_storage_, ReadWrappedPairingKey)
+      .WillOnce(Return(kWrappedPk));
+  EXPECT_CALL(*mock_cros_dev_, LoadPairingKey(kWrappedPk))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPk) {
+  // TODO(b/251738584): Test more behavior here after biod starts to establish
+  // Pk automatically on boot.
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
+
+  EXPECT_TRUE(cros_fp_auth_stack_manager_->Initialize());
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialSuccess) {

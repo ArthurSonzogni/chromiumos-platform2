@@ -15,6 +15,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
+#include "biod/pairing_key_storage.h"
 #include "biod/power_button_filter_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
@@ -42,9 +43,14 @@ class CrosFpAuthStackManager : public AuthStackManager {
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
       BiodMetricsInterface* biod_metrics,
-      std::unique_ptr<CrosFpRecordManagerInterface> record_manager);
+      std::unique_ptr<CrosFpRecordManagerInterface> record_manager,
+      std::unique_ptr<PairingKeyStorage> pk_storage);
   CrosFpAuthStackManager(const CrosFpAuthStackManager&) = delete;
   CrosFpAuthStackManager& operator=(const CrosFpAuthStackManager&) = delete;
+
+  // Initializes the AuthStack. Without calling Initialize, many functions might
+  // not work.
+  bool Initialize();
 
   // AuthStackManager overrides:
   ~CrosFpAuthStackManager() override = default;
@@ -77,6 +83,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void OnMkbpEvent(uint32_t event);
   void KillMcuSession();
   void OnTaskComplete();
+
+  // Load the pairing key into FPMCU. This is called on every boot when
+  // AuthStackManager is initialized.
+  bool LoadPairingKey();
 
   void OnEnrollScanDone(ScanResult result,
                         const AuthStackManager::EnrollStatus& enroll_status,
@@ -111,6 +121,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
   std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
+
+  std::unique_ptr<PairingKeyStorage> pk_storage_;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };

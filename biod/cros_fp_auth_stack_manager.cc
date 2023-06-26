@@ -16,6 +16,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
+#include "biod/pairing_key_storage.h"
 #include "biod/power_button_filter_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
@@ -32,19 +33,30 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
     std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
-    std::unique_ptr<CrosFpRecordManagerInterface> record_manager)
+    std::unique_ptr<CrosFpRecordManagerInterface> record_manager,
+    std::unique_ptr<PairingKeyStorage> pk_storage)
     : biod_metrics_(biod_metrics),
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
       record_manager_(std::move(record_manager)),
+      pk_storage_(std::move(pk_storage)),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
   CHECK(biod_metrics_);
   CHECK(record_manager_);
+  CHECK(pk_storage_);
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpAuthStackManager::OnMkbpEvent, base::Unretained(this)));
+}
+
+bool CrosFpAuthStackManager::Initialize() {
+  if (pk_storage_->PairingKeyExists()) {
+    return LoadPairingKey();
+  }
+  // TODO(b/251738584): Establish Pk with GSC.
+  return true;
 }
 
 BiometricType CrosFpAuthStackManager::GetType() {
@@ -201,6 +213,21 @@ void CrosFpAuthStackManager::OnMkbpEvent(uint32_t event) {
 
 void CrosFpAuthStackManager::OnTaskComplete() {
   next_session_action_ = SessionAction();
+}
+
+bool CrosFpAuthStackManager::LoadPairingKey() {
+  std::optional<brillo::Blob> wrapped_pairing_key =
+      pk_storage_->ReadWrappedPairingKey();
+  if (!wrapped_pairing_key.has_value()) {
+    LOG(ERROR) << "Failed to read Pk from storage.";
+    return false;
+  }
+
+  if (!cros_dev_->LoadPairingKey(*wrapped_pairing_key)) {
+    LOG(ERROR) << "Failed to load Pk.";
+    return false;
+  }
+  return true;
 }
 
 void CrosFpAuthStackManager::OnEnrollScanDone(
