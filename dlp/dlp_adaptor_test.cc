@@ -848,10 +848,12 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2, 123456});
@@ -861,10 +863,12 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 
   FileMetadata file_metadata2 = response.files_metadata()[1];
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
+  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
@@ -878,11 +882,13 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database. The addition will be pending, so success
   // is returned.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
@@ -905,10 +911,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 
   FileMetadata file_metadata2 = response.files_metadata()[1];
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
+  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
@@ -933,10 +941,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   // Delete one of the files.
@@ -955,6 +965,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
@@ -979,10 +990,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   // Delete one of the files.
@@ -1001,10 +1014,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 
   FileMetadata file_metadata2 = response.files_metadata()[1];
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
+  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
@@ -1026,10 +1041,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   // Delete one of the files.
@@ -1044,6 +1061,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
@@ -1065,13 +1083,15 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source2, referrer2)},
                    /*expected_result=*/true);
 
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
@@ -1081,10 +1101,11 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 
   FileMetadata file_metadata2 = response.files_metadata()[1];
   EXPECT_EQ(file_metadata2.inode(), inode2);
-  EXPECT_EQ(file_metadata2.source_url(), source2);
+  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
 TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
@@ -1142,10 +1163,12 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
 
   // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
-                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()

@@ -337,6 +337,7 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(inode_n);
     file_metadata->set_source_url(it->second.source_url);
+    file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
@@ -624,6 +625,7 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
   IsDlpPolicyMatchedRequest request;
   request.mutable_file_metadata()->set_inode(file_entry.inode);
   request.mutable_file_metadata()->set_source_url(file_entry.source_url);
+  request.mutable_file_metadata()->set_referrer_url(file_entry.referrer_url);
   // TODO(crbug.com/1357967)
   // request.mutable_file_metadata()->set_path();
 
@@ -808,6 +810,7 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(file_inode);
     file_metadata->set_source_url(it->second.source_url);
+    file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
   }
 
@@ -911,6 +914,7 @@ void DlpAdaptor::ProcessGetFilesSourcesWithData(
     FileMetadata* file_metadata = response_proto.add_files_metadata();
     file_metadata->set_inode(inode);
     file_metadata->set_source_url(it->second.source_url);
+    file_metadata->set_referrer_url(it->second.referrer_url);
   }
 
   response->Return(SerializeProto(response_proto));
