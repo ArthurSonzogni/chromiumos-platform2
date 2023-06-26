@@ -11,6 +11,7 @@ mod ccd_pass;
 mod display_debug;
 mod dlc_install;
 mod dmesg;
+mod hibernate;
 mod insert_coin;
 mod packet_capture;
 mod printscan_debug;
@@ -30,6 +31,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
+    hibernate::register(dispatcher);
     insert_coin::register(dispatcher);
     packet_capture::register(dispatcher);
     printscan_debug::register(dispatcher);
