@@ -475,7 +475,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                               .tag = "stub",
                               .uid_map = kAndroidUidMap,
                               .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAlways,
+                              .enable_caches = SharedDataParam::Cache::kAuto,
                               .ascii_casefold = true,
                               .posix_acl = false,
                               .privileged_quota_uids = privileged_quota_uids};
