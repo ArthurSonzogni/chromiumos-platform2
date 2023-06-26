@@ -387,15 +387,10 @@ TEST_F(DBusServiceTest, SignalError) {
         EXPECT_EQ(signal->GetMember(), "Error");
         EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](RmadErrorCode error) {
-          EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, error);
-          called = true;
-        };
-        EXPECT_TRUE(
-            (brillo::dbus_utils::DBusParamReader<false, RmadErrorCode>::Invoke(
-                callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        int error = 0;
+        ASSERT_TRUE(brillo::dbus_utils::DBusType<int>::Read(&reader, &error));
+        EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED,
+                  static_cast<RmadErrorCode>(error));
       }));
   SignalError(RMAD_ERROR_RMA_NOT_REQUIRED);
 }
@@ -408,17 +403,12 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
         EXPECT_EQ(signal->GetMember(), "HardwareVerificationResult");
         EXPECT_EQ("(bs)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](HardwareVerificationResult result) {
-          EXPECT_TRUE(result.is_compliant());
-          EXPECT_EQ("test_error_string", result.error_str());
-          called = true;
-        };
-        EXPECT_TRUE(
-            (brillo::dbus_utils::DBusParamReader<
-                false, HardwareVerificationResult>::Invoke(callback, &reader,
-                                                           nullptr)));
-        EXPECT_TRUE(called);
+        std::tuple<bool, std::string> result;
+        ASSERT_TRUE(
+            (brillo::dbus_utils::DBusType<std::tuple<bool, std::string>>::Read(
+                &reader, &result)));
+        EXPECT_TRUE(std::get<0>(result));
+        EXPECT_EQ("test_error_string", std::get<1>(result));
       }));
   HardwareVerificationResult result;
   result.set_is_compliant(true);
@@ -434,15 +424,10 @@ TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
         EXPECT_EQ(signal->GetMember(), "UpdateRoFirmwareStatus");
         EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](UpdateRoFirmwareStatus status) {
-          EXPECT_EQ(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB, status);
-          called = true;
-        };
-        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<
-                     false, UpdateRoFirmwareStatus>::Invoke(callback, &reader,
-                                                            nullptr)));
-        EXPECT_TRUE(called);
+        int status;
+        ASSERT_TRUE(brillo::dbus_utils::DBusType<int>::Read(&reader, &status));
+        EXPECT_EQ(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB,
+                  static_cast<UpdateRoFirmwareStatus>(status));
       }));
   SignalUpdateRoFirmwareStatus(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
 }
@@ -455,15 +440,10 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
         EXPECT_EQ(signal->GetMember(), "CalibrationOverall");
         EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](CalibrationOverallStatus status) {
-          EXPECT_EQ(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE, status);
-          called = true;
-        };
-        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<
-                     false, CalibrationOverallStatus>::Invoke(callback, &reader,
-                                                              nullptr)));
-        EXPECT_TRUE(called);
+        int status;
+        ASSERT_TRUE(brillo::dbus_utils::DBusType<int>::Read(&reader, &status));
+        EXPECT_EQ(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE,
+                  static_cast<CalibrationOverallStatus>(status));
       }));
   SignalCalibrationOverall(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 }
@@ -476,20 +456,15 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
         EXPECT_EQ(signal->GetMember(), "CalibrationProgress");
         EXPECT_EQ("(iid)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](CalibrationComponentStatus status) {
-          EXPECT_EQ(RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER,
-                    status.component());
-          EXPECT_EQ(CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS,
-                    status.status());
-          EXPECT_DOUBLE_EQ(0.3, status.progress());
-          called = true;
-        };
-        EXPECT_TRUE(
-            (brillo::dbus_utils::DBusParamReader<
-                false, CalibrationComponentStatus>::Invoke(callback, &reader,
-                                                           nullptr)));
-        EXPECT_TRUE(called);
+        std::tuple<int, int, double> status;
+        ASSERT_TRUE(
+            (brillo::dbus_utils::DBusType<std::tuple<int, int, double>>::Read(
+                &reader, &status)));
+        EXPECT_EQ(RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER,
+                  std::get<0>(status));
+        EXPECT_EQ(CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS,
+                  std::get<1>(status));
+        EXPECT_DOUBLE_EQ(0.3, std::get<2>(status));
       }));
   CalibrationComponentStatus component_status;
   component_status.set_component(
@@ -508,19 +483,15 @@ TEST_F(DBusServiceTest, SignalProvision) {
         EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
         EXPECT_EQ("(idi)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](ProvisionStatus status) {
-          EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-                    status.status());
-          EXPECT_DOUBLE_EQ(0.5, status.progress());
-          EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL,
-                    status.error());
-          called = true;
-        };
-        EXPECT_TRUE((
-            brillo::dbus_utils::DBusParamReader<false, ProvisionStatus>::Invoke(
-                callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        std::tuple<int, double, int> status;
+        ASSERT_TRUE(
+            (brillo::dbus_utils::DBusType<std::tuple<int, double, int>>::Read(
+                &reader, &status)));
+        EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+                  std::get<0>(status));
+        EXPECT_DOUBLE_EQ(0.5, std::get<1>(status));
+        EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL,
+                  std::get<2>(status));
       }));
   ProvisionStatus status;
   status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
@@ -537,19 +508,15 @@ TEST_F(DBusServiceTest, SignalFinalize) {
         EXPECT_EQ(signal->GetMember(), "FinalizeProgress");
         EXPECT_EQ("(idi)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](FinalizeStatus status) {
-          EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS,
-                    status.status());
-          EXPECT_DOUBLE_EQ(0.5, status.progress());
-          EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL,
-                    status.error());
-          called = true;
-        };
-        EXPECT_TRUE(
-            (brillo::dbus_utils::DBusParamReader<false, FinalizeStatus>::Invoke(
-                callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        std::tuple<int, double, int> status;
+        ASSERT_TRUE(
+            (brillo::dbus_utils::DBusType<std::tuple<int, double, int>>::Read(
+                &reader, &status)));
+        EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS,
+                  std::get<0>(status));
+        EXPECT_DOUBLE_EQ(0.5, std::get<1>(status));
+        EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL,
+                  std::get<2>(status));
       }));
   FinalizeStatus status;
   status.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
@@ -566,14 +533,10 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
         EXPECT_EQ(signal->GetMember(), "HardwareWriteProtectionState");
         EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](bool wp_status) {
-          EXPECT_TRUE(wp_status);
-          called = true;
-        };
-        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
-            callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        bool wp_status = false;
+        ASSERT_TRUE(
+            brillo::dbus_utils::DBusType<bool>::Read(&reader, &wp_status));
+        EXPECT_TRUE(wp_status);
       }));
   SignalHardwareWriteProtection(true);
 }
@@ -586,14 +549,10 @@ TEST_F(DBusServiceTest, SignalPowerCableState) {
         EXPECT_EQ(signal->GetMember(), "PowerCableState");
         EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](bool power_cable_status) {
-          EXPECT_TRUE(power_cable_status);
-          called = true;
-        };
-        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
-            callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        bool power_cable_status = false;
+        ASSERT_TRUE(brillo::dbus_utils::DBusType<bool>::Read(
+            &reader, &power_cable_status));
+        EXPECT_TRUE(power_cable_status);
       }));
   SignalPowerCableState(true);
 }
@@ -606,14 +565,10 @@ TEST_F(DBusServiceTest, SignalExternalDisk) {
         EXPECT_EQ(signal->GetMember(), "ExternalDiskDetected");
         EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool called = false;
-        auto callback = [&called](bool external_disk_status) {
-          EXPECT_TRUE(external_disk_status);
-          called = true;
-        };
-        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
-            callback, &reader, nullptr)));
-        EXPECT_TRUE(called);
+        bool external_disk_status = false;
+        ASSERT_TRUE(brillo::dbus_utils::DBusType<bool>::Read(
+            &reader, &external_disk_status));
+        EXPECT_TRUE(external_disk_status);
       }));
   SignalExternalDisk(true);
 }

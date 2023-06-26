@@ -145,23 +145,23 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
           RecordBrowserActionMetricRequest, RecordBrowserActionMetricReply,
           &RmadInterface::RecordBrowserActionMetric>);
 
-  error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
+  error_signal_ = dbus_interface->RegisterSignal<int>(kErrorSignal);
   hardware_verification_signal_ =
-      dbus_interface->RegisterSignal<HardwareVerificationResult>(
+      dbus_interface->RegisterSignal<std::tuple<bool, std::string>>(
           kHardwareVerificationResultSignal);
   update_ro_firmware_status_signal_ =
-      dbus_interface->RegisterSignal<UpdateRoFirmwareStatus>(
-          kUpdateRoFirmwareStatusSignal);
+      dbus_interface->RegisterSignal<int>(kUpdateRoFirmwareStatusSignal);
   calibration_overall_signal_ =
-      dbus_interface->RegisterSignal<CalibrationOverallStatus>(
-          kCalibrationOverallSignal);
+      dbus_interface->RegisterSignal<int>(kCalibrationOverallSignal);
   calibration_component_signal_ =
-      dbus_interface->RegisterSignal<CalibrationComponentStatus>(
+      dbus_interface->RegisterSignal<std::tuple<int, int, double>>(
           kCalibrationProgressSignal);
-  provision_signal_ = dbus_interface->RegisterSignal<ProvisionStatus>(
-      kProvisioningProgressSignal);
+  provision_signal_ =
+      dbus_interface->RegisterSignal<std::tuple<int, double, int>>(
+          kProvisioningProgressSignal);
   finalize_signal_ =
-      dbus_interface->RegisterSignal<FinalizeStatus>(kFinalizeProgressSignal);
+      dbus_interface->RegisterSignal<std::tuple<int, double, int>>(
+          kFinalizeProgressSignal);
   hwwp_signal_ =
       dbus_interface->RegisterSignal<bool>(kHardwareWriteProtectionStateSignal);
   power_cable_signal_ =
@@ -273,7 +273,7 @@ void DBusService::HandleIsRmaRequiredMethod(
 void DBusService::SendErrorSignal(RmadErrorCode error) {
   auto signal = error_signal_.lock();
   if (signal) {
-    signal->Send(error);
+    signal->Send(static_cast<int>(error));
   }
 }
 
@@ -281,7 +281,7 @@ void DBusService::SendHardwareVerificationResultSignal(
     const HardwareVerificationResult& result) {
   auto signal = hardware_verification_signal_.lock();
   if (signal) {
-    signal->Send(result);
+    signal->Send(std::tuple(result.is_compliant(), result.error_str()));
   }
 }
 
@@ -289,7 +289,7 @@ void DBusService::SendUpdateRoFirmwareStatusSignal(
     UpdateRoFirmwareStatus status) {
   auto signal = update_ro_firmware_status_signal_.lock();
   if (signal) {
-    signal->Send(status);
+    signal->Send(static_cast<int>(status));
   }
 }
 
@@ -297,7 +297,7 @@ void DBusService::SendCalibrationOverallSignal(
     CalibrationOverallStatus status) {
   auto signal = calibration_overall_signal_.lock();
   if (signal) {
-    signal->Send(status);
+    signal->Send(static_cast<int>(status));
   }
 }
 
@@ -305,21 +305,27 @@ void DBusService::SendCalibrationProgressSignal(
     CalibrationComponentStatus status) {
   auto signal = calibration_component_signal_.lock();
   if (signal) {
-    signal->Send(status);
+    signal->Send(std::tuple(static_cast<int>(status.component()),
+                            static_cast<int>(status.status()),
+                            status.progress()));
   }
 }
 
 void DBusService::SendProvisionProgressSignal(const ProvisionStatus& status) {
   auto signal = provision_signal_.lock();
   if (signal) {
-    signal->Send(status);
+    signal->Send(std::tuple(static_cast<int>(status.status()),
+                            status.progress(),
+                            static_cast<int>(status.error())));
   }
 }
 
 void DBusService::SendFinalizeProgressSignal(const FinalizeStatus& status) {
   auto signal = finalize_signal_.lock();
   if (signal) {
-    signal->Send(status);
+    signal->Send(std::tuple(static_cast<int>(status.status()),
+                            status.progress(),
+                            static_cast<int>(status.error())));
   }
 }
 

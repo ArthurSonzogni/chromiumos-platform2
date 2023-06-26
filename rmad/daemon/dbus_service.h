@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -22,7 +23,6 @@
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "rmad/daemon/daemon_callback.h"
-#include "rmad/daemon/dbus_data_serialization.h"
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/interface/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
@@ -168,18 +168,18 @@ class DBusService : public brillo::DBusServiceDaemon {
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // D-Bus signals.
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<HardwareVerificationResult>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<int>> error_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<std::tuple<bool, std::string>>>
       hardware_verification_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<UpdateRoFirmwareStatus>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<int>>
       update_ro_firmware_status_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationOverallStatus>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<int>>
       calibration_overall_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationComponentStatus>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<std::tuple<int, int, double>>>
       calibration_component_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<ProvisionStatus>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<std::tuple<int, double, int>>>
       provision_signal_;
-  std::weak_ptr<brillo::dbus_utils::DBusSignal<FinalizeStatus>>
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<std::tuple<int, double, int>>>
       finalize_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
