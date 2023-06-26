@@ -5,7 +5,9 @@
 package proxy
 
 import (
+	"fmt"
 	"io"
+	"strings"
 	"text/template"
 
 	"go.chromium.org/chromiumos/dbusbindings/generate/genutil"
@@ -49,90 +51,76 @@ class {{$mockName}} : public {{$itfName}} {
   {{$mockName}}() = default;
   {{$mockName}}(const {{$mockName}}&) = delete;
   {{$mockName}}& operator=(const {{$mockName}}&) = delete;
-{{range .Methods -}}
-{{- $inParams := makeMockMethodParams .InputArguments -}}
-{{- $outParams := makeMockMethodParams .OutputArguments -}}
-{{- $arity := gmockArity (len $inParams) (len $outParams) -}}
-{{- /* TODO(crbug.com/983008): The following format is to make the output compatible with C++. */}}
-{{- if ge $arity.Sync 11}}
-{{- /* TODO(crbug.com/983008): Old gmock does not support arity >= 11. So this is workaround. */ -}}
-{{- $indent := repeat " " (add (len "  bool (") (len .Name))}}
-  bool {{.Name}}(
-{{- range $inParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-{{$indent}}{{end -}}
-{{- range $outParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-{{$indent}}{{end -}}
-brillo::ErrorPtr* /*error*/,
-{{$indent}}int /*timeout_ms*/) override {
-    LOG(WARNING) << "{{.Name}}(): gmock can't handle methods with {{$arity.Sync}} arguments. You can override this method in a subclass if you need to.";
-    return false;
-  }
-{{- else}}
-  MOCK_METHOD{{$arity.Sync}}({{.Name}},
-               {{if ge $arity.Sync 10}} {{end}}bool(
-{{- range $inParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-                    {{if ge $arity.Sync 10}} {{end}}{{end -}}
-{{- range $outParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-                    {{if ge $arity.Sync 10}} {{end}}{{end -}}
-                    brillo::ErrorPtr* /*error*/,
-                    {{if ge $arity.Sync 10}} {{end}}int /*timeout_ms*/));
+{{- range .Methods}}
+{{- $inParams := makeMockMethodParams .InputArguments}}
+{{- $outParams := makeMockMethodParams .OutputArguments}}
+
+  MOCK_METHOD(bool,
+              {{.Name}},
+              ({{- range $inParams}}{{maybeWrap .Type}}{{if .Name}} {{.Name}}{{end}},
+               {{end -}}
+               {{- range $outParams}}{{maybeWrap .Type}}{{if .Name}} {{.Name}}{{end}},
+               {{end -}}
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              {{.Name}}Async,
+              ({{- range $inParams}}{{maybeWrap .Type}}{{if .Name}} {{.Name}}{{end}},
+               {{end -}}
+               {{- makeMethodCallbackType .OutputArguments | maybeWrap}} /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
 {{- end}}
-{{- if ge $arity.Async 11}}
-{{- /* TODO(crbug.com/983008): Old gmock does not support arity >= 11. So this is workaround. */ -}}
-{{- $indent := repeat " " (add 13 (len .Name))}}
-  void {{.Name}}Async(
-{{- range $inParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-{{$indent}}{{end -}}
-{{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
-{{$indent}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-{{$indent}}int /*timeout_ms*/) override {
-    LOG(WARNING) << "{{.Name}}Async(): gmock can't handle methods with {{$arity.Async}} arguments. You can override this method in a subclass if you need to.";
-  }
-{{- else}}
-  MOCK_METHOD{{$arity.Async}}({{.Name}}Async,
-               {{if ge $arity.Async 10}} {{end}}void(
-{{- range $inParams -}}
-{{.Type}}{{if .Name}} {{.Name}}{{end}},
-                    {{if ge $arity.Async 10}} {{end}}{{end -}}
-                    {{makeMethodCallbackType .OutputArguments}} /*success_callback*/,
-                    {{if ge $arity.Async 10}} {{end}}base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    {{if ge $arity.Async 10}} {{end}}int /*timeout_ms*/));
-{{- end}}
-{{- end}}
+
 {{- range .Signals}}
+
+  {{/* TODO(b/288402584): get rid of DoRegister* function */ -}}
   void Register{{.Name}}SignalHandler(
     {{- /* TODO(crbug.com/983008): fix the indent to meet style guide. */ -}}
     {{- makeSignalCallbackType .Args | nindent 4}} signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     DoRegister{{.Name}}SignalHandler(signal_callback, &on_connected_callback);
   }
-  MOCK_METHOD2(DoRegister{{.Name}}SignalHandler,
-               void({{makeSignalCallbackType .Args | nindent 20 | trimLeft " \n"}} /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  MOCK_METHOD(void,
+              DoRegister{{.Name}}SignalHandler,
+              ({{makeSignalCallbackType .Args | nindent 15 | trimLeft " \n"}} /*signal_callback*/,
+               dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 {{- end}}
+
 {{- range .Properties}}
 {{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
-  MOCK_CONST_METHOD0({{$name}}, {{$type}}());
-  MOCK_CONST_METHOD0(is_{{$name}}_valid, bool());
+
+  MOCK_METHOD({{$type}}, {{$name}}, (), (const, override));
+  MOCK_METHOD(bool, is_{{$name}}_valid, (), (const, override));
+
 {{- if eq .Access "readwrite"}}
-  MOCK_METHOD2(set_{{$name}}, void({{$type}}, base::OnceCallback<void(bool)>));
+  MOCK_METHOD(void,
+              set_{{$name}},
+              ({{maybeWrap $type}}, base::OnceCallback<void(bool)>),
+              (override));
 {{- end}}
 {{- end}}
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 {{- if .Properties}}
 {{- if $.ObjectManagerName }}
-  MOCK_METHOD1(SetPropertyChangedCallback,
-               void(const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>&));
+
+  MOCK_METHOD(void,
+              SetPropertyChangedCallback,
+              ((const base::RepeatingCallback<void({{$itfName}}*,
+                                                   const std::string&)>&)),
+              (override));
 {{- else}}
-  MOCK_METHOD1(InitializeProperties,
-               void(const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>&));
+
+  MOCK_METHOD(void,
+              InitializeProperties,
+              ((const base::RepeatingCallback<void({{$itfName}}*,
+                                                   const std::string&)>&)),
+              (override));
 {{- end}}
 {{- end}}
 };
@@ -152,16 +140,15 @@ func GenerateMock(introspects []introspect.Introspection, f io.Writer, outputFil
 		mockFuncMap[k] = v
 	}
 
-	type gmockArity struct {
-		Sync, Async int
-	}
-	mockFuncMap["gmockArity"] = func(nInArgs, nOutArgs int) gmockArity {
-		return gmockArity{
-			Sync:  nInArgs + nOutArgs + 2, // error and timeout.
-			Async: nInArgs + 3,            // success_callback, error_callback and timeout
+	// Mock argument type must not contain commas, or needs to be wrapped
+	// by parens. E.g., "std::pair<int, int>" needs to be "(std::pair<int, int>)".
+	mockFuncMap["maybeWrap"] = func(typ string) string {
+		if !strings.Contains(typ, ",") {
+			return typ
 		}
+		// Wrap with a pair of parens. Also, tweak the indent.
+		return fmt.Sprintf("(%s)", strings.ReplaceAll(typ, "\n", "\n "))
 	}
-
 	tmpl, err := template.New("mock").Funcs(mockFuncMap).Parse(mockTemplateText)
 	if err != nil {
 		return err

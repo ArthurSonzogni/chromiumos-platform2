@@ -89,6 +89,12 @@ func Reverse(s []string) []string {
 	return s
 }
 
+// Indent returns string with indent.
+func Indent(i int, s string) string {
+	indent := "\n" + strings.Repeat(" ", i)
+	return strings.ReplaceAll(s, "\n", indent)
+}
+
 // Nindent returns string with indent, prefixed by a NL.
 func Nindent(i int, s string) string {
 	lines := strings.Split(s, "\n")

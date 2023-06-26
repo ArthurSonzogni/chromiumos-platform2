@@ -193,42 +193,60 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
   InterfaceProxyMock(const InterfaceProxyMock&) = delete;
   InterfaceProxyMock& operator=(const InterfaceProxyMock&) = delete;
 
-  MOCK_METHOD3(Scan,
-               bool(const std::vector<base::ScopedFD>& /*in_args*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD4(ScanAsync,
-               void(const std::vector<base::ScopedFD>& /*in_args*/,
-                    base::OnceCallback<void()> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD3(PassMeProtos,
-               bool(const PassMeProtosRequest& /*in_request*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD4(PassMeProtosAsync,
-               void(const PassMeProtosRequest& /*in_request*/,
-                    base::OnceCallback<void()> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
+  MOCK_METHOD(bool,
+              Scan,
+              (const std::vector<base::ScopedFD>& /*in_args*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              ScanAsync,
+              (const std::vector<base::ScopedFD>& /*in_args*/,
+               base::OnceCallback<void()> /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              PassMeProtos,
+              (const PassMeProtosRequest& /*in_request*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              PassMeProtosAsync,
+              (const PassMeProtosRequest& /*in_request*/,
+               base::OnceCallback<void()> /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
   void RegisterBSSRemovedSignalHandler(
     const base::RepeatingCallback<void(const YetAnotherProto&,
                                        const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     DoRegisterBSSRemovedSignalHandler(signal_callback, &on_connected_callback);
   }
-  MOCK_METHOD2(DoRegisterBSSRemovedSignalHandler,
-               void(const base::RepeatingCallback<void(const YetAnotherProto&,
-                                                       const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
-  MOCK_CONST_METHOD0(capabilities, const brillo::VariantDictionary&());
-  MOCK_CONST_METHOD0(is_capabilities_valid, bool());
-  MOCK_CONST_METHOD0(bluetooth_class, uint32_t());
-  MOCK_CONST_METHOD0(is_bluetooth_class_valid, bool());
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
-  MOCK_METHOD1(SetPropertyChangedCallback,
-               void(const base::RepeatingCallback<void(InterfaceProxyInterface*, const std::string&)>&));
+  MOCK_METHOD(void,
+              DoRegisterBSSRemovedSignalHandler,
+              (const base::RepeatingCallback<void(const YetAnotherProto&,
+                                                  const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
+               dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+
+  MOCK_METHOD(const brillo::VariantDictionary&, capabilities, (), (const, override));
+  MOCK_METHOD(bool, is_capabilities_valid, (), (const, override));
+
+  MOCK_METHOD(uint32_t, bluetooth_class, (), (const, override));
+  MOCK_METHOD(bool, is_bluetooth_class_valid, (), (const, override));
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
+
+  MOCK_METHOD(void,
+              SetPropertyChangedCallback,
+              ((const base::RepeatingCallback<void(InterfaceProxyInterface*,
+                                                   const std::string&)>&)),
+              (override));
 };
 }  // namespace wpa_supplicant1
 }  // namespace w1
@@ -253,8 +271,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -313,8 +331,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -364,8 +382,8 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -516,160 +534,200 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_METHOD2(MethodNoArg,
-               bool(brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD3(MethodNoArgAsync,
-               void(base::OnceCallback<void()> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD6(MethodWithInArgs,
-               bool(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    const std::tuple<int32_t, base::ScopedFD>& /*in_iarg3*/,
-                    const RequestProto& /*in_iprotoArg*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD7(MethodWithInArgsAsync,
-               void(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    const std::tuple<int32_t, base::ScopedFD>& /*in_iarg3*/,
-                    const RequestProto& /*in_iprotoArg*/,
-                    base::OnceCallback<void()> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD6(MethodWithOutArgs,
-               bool(int64_t* /*out_oarg1*/,
-                    std::vector<uint8_t>* /*out_oarg2*/,
-                    std::tuple<int32_t, base::ScopedFD>* /*out_oarg3*/,
-                    ResponseProto* /*out_oprotoArg*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD3(MethodWithOutArgsAsync,
-               void(base::OnceCallback<void(int64_t /*oarg1*/, const std::vector<uint8_t>& /*oarg2*/, const std::tuple<int32_t, base::ScopedFD>& /*oarg3*/, const ResponseProto& /*oprotoArg*/)> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD6(MethodWithBothArgs,
-               bool(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    uint16_t* /*out_oarg1*/,
-                    double* /*out_oarg2*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD5(MethodWithBothArgsAsync,
-               void(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD6(MethodWithMixedArgs,
-               bool(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    uint16_t* /*out_oarg1*/,
-                    double* /*out_oarg2*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD5(MethodWithMixedArgsAsync,
-               void(int64_t /*in_iarg1*/,
-                    const std::vector<uint8_t>& /*in_iarg2*/,
-                    base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD9(MethodArity5_2,
-               bool(int64_t /*in_iarg1*/,
-                    int64_t /*in_iarg2*/,
-                    int64_t /*in_iarg3*/,
-                    int64_t /*in_iarg4*/,
-                    int64_t /*in_iarg5*/,
-                    int64_t* /*out_oarg1*/,
-                    int64_t* /*out_oarg2*/,
-                    brillo::ErrorPtr* /*error*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD8(MethodArity5_2Async,
-               void(int64_t /*in_iarg1*/,
-                    int64_t /*in_iarg2*/,
-                    int64_t /*in_iarg3*/,
-                    int64_t /*in_iarg4*/,
-                    int64_t /*in_iarg5*/,
-                    base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  MOCK_METHOD10(MethodArity6_2,
-                bool(int64_t /*in_iarg1*/,
-                     int64_t /*in_iarg2*/,
-                     int64_t /*in_iarg3*/,
-                     int64_t /*in_iarg4*/,
-                     int64_t /*in_iarg5*/,
-                     int64_t /*in_iarg6*/,
-                     int64_t* /*out_oarg1*/,
-                     int64_t* /*out_oarg2*/,
-                     brillo::ErrorPtr* /*error*/,
-                     int /*timeout_ms*/));
-  MOCK_METHOD9(MethodArity6_2Async,
-               void(int64_t /*in_iarg1*/,
-                    int64_t /*in_iarg2*/,
-                    int64_t /*in_iarg3*/,
-                    int64_t /*in_iarg4*/,
-                    int64_t /*in_iarg5*/,
-                    int64_t /*in_iarg6*/,
-                    base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)> /*success_callback*/,
-                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                    int /*timeout_ms*/));
-  bool MethodArity7_2(int64_t /*in_iarg1*/,
-                      int64_t /*in_iarg2*/,
-                      int64_t /*in_iarg3*/,
-                      int64_t /*in_iarg4*/,
-                      int64_t /*in_iarg5*/,
-                      int64_t /*in_iarg6*/,
-                      int64_t /*in_iarg7*/,
-                      int64_t* /*out_oarg1*/,
-                      int64_t* /*out_oarg2*/,
-                      brillo::ErrorPtr* /*error*/,
-                      int /*timeout_ms*/) override {
-    LOG(WARNING) << "MethodArity7_2(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
-    return false;
-  }
-  MOCK_METHOD10(MethodArity7_2Async,
-                void(int64_t /*in_iarg1*/,
-                     int64_t /*in_iarg2*/,
-                     int64_t /*in_iarg3*/,
-                     int64_t /*in_iarg4*/,
-                     int64_t /*in_iarg5*/,
-                     int64_t /*in_iarg6*/,
-                     int64_t /*in_iarg7*/,
-                     base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)> /*success_callback*/,
-                     base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                     int /*timeout_ms*/));
-  bool MethodArity8_2(int64_t /*in_iarg1*/,
-                      int64_t /*in_iarg2*/,
-                      int64_t /*in_iarg3*/,
-                      int64_t /*in_iarg4*/,
-                      int64_t /*in_iarg5*/,
-                      int64_t /*in_iarg6*/,
-                      int64_t /*in_iarg7*/,
-                      int64_t /*in_iarg8*/,
-                      int64_t* /*out_oarg1*/,
-                      int64_t* /*out_oarg2*/,
-                      brillo::ErrorPtr* /*error*/,
-                      int /*timeout_ms*/) override {
-    LOG(WARNING) << "MethodArity8_2(): gmock can't handle methods with 12 arguments. You can override this method in a subclass if you need to.";
-    return false;
-  }
-  void MethodArity8_2Async(int64_t /*in_iarg1*/,
-                           int64_t /*in_iarg2*/,
-                           int64_t /*in_iarg3*/,
-                           int64_t /*in_iarg4*/,
-                           int64_t /*in_iarg5*/,
-                           int64_t /*in_iarg6*/,
-                           int64_t /*in_iarg7*/,
-                           int64_t /*in_iarg8*/,
-                           base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)> /*success_callback*/,
-                           base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
-                           int /*timeout_ms*/) override {
-    LOG(WARNING) << "MethodArity8_2Async(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
-  }
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD(bool,
+              MethodNoArg,
+              (brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodNoArgAsync,
+              (base::OnceCallback<void()> /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodWithInArgs,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               (const std::tuple<int32_t, base::ScopedFD>&) /*in_iarg3*/,
+               const RequestProto& /*in_iprotoArg*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodWithInArgsAsync,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               (const std::tuple<int32_t, base::ScopedFD>&) /*in_iarg3*/,
+               const RequestProto& /*in_iprotoArg*/,
+               base::OnceCallback<void()> /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodWithOutArgs,
+              (int64_t* /*out_oarg1*/,
+               std::vector<uint8_t>* /*out_oarg2*/,
+               (std::tuple<int32_t, base::ScopedFD>*) /*out_oarg3*/,
+               ResponseProto* /*out_oprotoArg*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodWithOutArgsAsync,
+              ((base::OnceCallback<void(int64_t /*oarg1*/, const std::vector<uint8_t>& /*oarg2*/, const std::tuple<int32_t, base::ScopedFD>& /*oarg3*/, const ResponseProto& /*oprotoArg*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodWithBothArgs,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               uint16_t* /*out_oarg1*/,
+               double* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodWithBothArgsAsync,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               (base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodWithMixedArgs,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               uint16_t* /*out_oarg1*/,
+               double* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodWithMixedArgsAsync,
+              (int64_t /*in_iarg1*/,
+               const std::vector<uint8_t>& /*in_iarg2*/,
+               (base::OnceCallback<void(uint16_t /*oarg1*/, double /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodArity5_2,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t* /*out_oarg1*/,
+               int64_t* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodArity5_2Async,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               (base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodArity6_2,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               int64_t* /*out_oarg1*/,
+               int64_t* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodArity6_2Async,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               (base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodArity7_2,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               int64_t /*in_iarg7*/,
+               int64_t* /*out_oarg1*/,
+               int64_t* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodArity7_2Async,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               int64_t /*in_iarg7*/,
+               (base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(bool,
+              MethodArity8_2,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               int64_t /*in_iarg7*/,
+               int64_t /*in_iarg8*/,
+               int64_t* /*out_oarg1*/,
+               int64_t* /*out_oarg2*/,
+               brillo::ErrorPtr* /*error*/,
+               int /*timeout_ms*/),
+              (override));
+  MOCK_METHOD(void,
+              MethodArity8_2Async,
+              (int64_t /*in_iarg1*/,
+               int64_t /*in_iarg2*/,
+               int64_t /*in_iarg3*/,
+               int64_t /*in_iarg4*/,
+               int64_t /*in_iarg5*/,
+               int64_t /*in_iarg6*/,
+               int64_t /*in_iarg7*/,
+               int64_t /*in_iarg8*/,
+               (base::OnceCallback<void(int64_t /*oarg1*/, int64_t /*oarg2*/)>) /*success_callback*/,
+               base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
+               int /*timeout_ms*/),
+              (override));
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -754,25 +812,29 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   void RegisterSignal1SignalHandler(
     const base::RepeatingCallback<void(const YetAnotherProto&,
                                        const std::tuple<int32_t, base::ScopedFD>&)>& signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     DoRegisterSignal1SignalHandler(signal_callback, &on_connected_callback);
   }
-  MOCK_METHOD2(DoRegisterSignal1SignalHandler,
-               void(const base::RepeatingCallback<void(const YetAnotherProto&,
-                                                       const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+  MOCK_METHOD(void,
+              DoRegisterSignal1SignalHandler,
+              (const base::RepeatingCallback<void(const YetAnotherProto&,
+                                                  const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
+               dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+
   void RegisterSignal2SignalHandler(
     const base::RepeatingCallback<void(const std::vector<uint8_t>&,
                                        int32_t)>& signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     DoRegisterSignal2SignalHandler(signal_callback, &on_connected_callback);
   }
-  MOCK_METHOD2(DoRegisterSignal2SignalHandler,
-               void(const base::RepeatingCallback<void(const std::vector<uint8_t>&,
-                                                       int32_t)>& /*signal_callback*/,
-                    dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
+  MOCK_METHOD(void,
+              DoRegisterSignal2SignalHandler,
+              (const base::RepeatingCallback<void(const std::vector<uint8_t>&,
+                                                  int32_t)>& /*signal_callback*/,
+               dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -836,15 +898,24 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
-  MOCK_CONST_METHOD0(is_readonly_property_valid, bool());
-  MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
-  MOCK_CONST_METHOD0(is_writable_property_valid, bool());
-  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
-  MOCK_METHOD1(InitializeProperties,
-               void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
+  MOCK_METHOD(const brillo::VariantDictionary&, readonly_property, (), (const, override));
+  MOCK_METHOD(bool, is_readonly_property_valid, (), (const, override));
+
+  MOCK_METHOD(const brillo::VariantDictionary&, writable_property, (), (const, override));
+  MOCK_METHOD(bool, is_writable_property_valid, (), (const, override));
+  MOCK_METHOD(void,
+              set_writable_property,
+              (const brillo::VariantDictionary&, base::OnceCallback<void(bool)>),
+              (override));
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
+
+  MOCK_METHOD(void,
+              InitializeProperties,
+              ((const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*,
+                                                   const std::string&)>&)),
+              (override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
@@ -912,15 +983,24 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock(const EmptyInterfaceProxyMock&) = delete;
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
-  MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
-  MOCK_CONST_METHOD0(is_readonly_property_valid, bool());
-  MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
-  MOCK_CONST_METHOD0(is_writable_property_valid, bool());
-  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
-  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
-  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
-  MOCK_METHOD1(SetPropertyChangedCallback,
-               void(const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*, const std::string&)>&));
+  MOCK_METHOD(const brillo::VariantDictionary&, readonly_property, (), (const, override));
+  MOCK_METHOD(bool, is_readonly_property_valid, (), (const, override));
+
+  MOCK_METHOD(const brillo::VariantDictionary&, writable_property, (), (const, override));
+  MOCK_METHOD(bool, is_writable_property_valid, (), (const, override));
+  MOCK_METHOD(void,
+              set_writable_property,
+              (const brillo::VariantDictionary&, base::OnceCallback<void(bool)>),
+              (override));
+
+  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const, override));
+  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const, override));
+
+  MOCK_METHOD(void,
+              SetPropertyChangedCallback,
+              ((const base::RepeatingCallback<void(EmptyInterfaceProxyInterface*,
+                                                   const std::string&)>&)),
+              (override));
 };
 
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
