@@ -95,7 +95,7 @@ int Platform::MountEncrypted(const std::vector<std::string>& args,
     mount_enc.AddArg(arg);
   }
   if (output) {
-    mount_enc.RedirectUsingMemory(STDOUT_FILENO);
+    mount_enc.RedirectOutputToMemory(true);
   }
 
   int status = mount_enc.Run();

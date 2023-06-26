@@ -133,9 +133,12 @@ void MountHelper::MountOrFail(const base::FilePath& source,
 bool MountHelper::MountVarAndHomeChronosEncrypted() {
   base::FilePath mount_enc_log = root_.Append(kMountEncryptedLog);
   std::string output;
-  std::vector<std::string> mnt_enc_args;
-  int status = platform_->MountEncrypted(mnt_enc_args, &output);
-  base::AppendToFile(mount_enc_log, output);
+  int status = platform_->MountEncrypted(std::vector<std::string>(), &output);
+  if (base::PathExists(mount_enc_log)) {
+    base::AppendToFile(mount_enc_log, output);
+  } else {
+    base::WriteFile(mount_enc_log, output);
+  }
   return status == 0;
 }
 
