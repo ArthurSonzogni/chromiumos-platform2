@@ -805,7 +805,7 @@ void Executor::MonitorPowerButton(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -825,7 +825,7 @@ void Executor::RunPrimeSearch(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -846,7 +846,7 @@ void Executor::MonitorVolumeButton(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
