@@ -37,7 +37,8 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3491},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
-};
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3519},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}}};
 
 }  // namespace
 
