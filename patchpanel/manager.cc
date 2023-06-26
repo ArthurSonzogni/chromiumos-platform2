@@ -834,15 +834,21 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   // find the ShillClient::Device matching the request's input_ifname value and
   // set the internal DnsRedirectionRule to target the primary multiplexed
   // interface.
-  const auto* shill_device = shill_client_->GetDevice(request.input_ifname());
-  if (!shill_device) {
-    // It is possible that the shill Device appears and immediately disappears
-    // such that patchpanel processes the Device destruction event just before
-    // processing the DnsRedirectionRule request sent by dns-proxy. If this
-    // calls fails, dns-proxy will restart itself and the distributed state will
-    // eventually converge.
-    LOG(ERROR) << "Unknown shill Device " << request.input_ifname();
-    return false;
+  // |input_ifname| is optional. Avoid fetching shill device when the value is
+  // empty.
+  std::string input_ifname = "";
+  if (!request.input_ifname().empty()) {
+    const auto* shill_device = shill_client_->GetDevice(request.input_ifname());
+    if (!shill_device) {
+      // It is possible that the shill Device appears and immediately disappears
+      // such that patchpanel processes the Device destruction event just before
+      // processing the DnsRedirectionRule request sent by dns-proxy. If this
+      // calls fails, dns-proxy will restart itself and the distributed state
+      // will eventually converge.
+      LOG(ERROR) << "Unknown shill Device " << request.input_ifname();
+      return false;
+    }
+    input_ifname = shill_device->ifname;
   }
 
   base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
@@ -853,7 +859,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
 
   // TODO(b/273744897): Replace input_ifname with the patchpanel Network id.
   DnsRedirectionRule rule{.type = request.type(),
-                          .input_ifname = shill_device->ifname,
+                          .input_ifname = input_ifname,
                           .proxy_address = request.proxy_address(),
                           .host_ifname = request.host_ifname()};
 
