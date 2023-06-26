@@ -38,6 +38,7 @@ bool ArcJavaCollector::HandleCrash(
     base::TimeDelta uptime) {
   std::ostringstream message;
   message << "Received " << crash_type << " notification";
+  received_crash_type_ = crash_type;
 
   std::string contents;
   if (!base::ReadStreamToString(stdin, &contents)) {
@@ -71,6 +72,38 @@ bool ArcJavaCollector::HandleCrash(
   }
 
   return true;
+}
+
+// The parameter |exec_name| is unused as we are computing the crash severity
+// based on the received_crash_type member variable.
+// Note: The logic to compute crash severity is taken from the source:
+// go/cros-stability-metrics#logic.
+CrashCollector::ComputedCrashSeverity ArcJavaCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      ComputedCrashSeverity{
+          .crash_severity = CrashSeverity::kUnspecified,
+          // The crash product_group is always `kArc`.
+          .product_group = Product::kArc,
+      };
+
+  if ((received_crash_type_ == arc_util::kSystemServerCrash) ||
+      (received_crash_type_ == arc_util::kSystemServerWatchdog)) {
+    computed_severity.crash_severity = CrashSeverity::kFatal;
+  } else if ((received_crash_type_ == arc_util::kSystemAppCrash) ||
+             (received_crash_type_ == arc_util::kSystemAppAnr) ||
+             (received_crash_type_ == arc_util::kNativeCrash)) {
+    computed_severity.crash_severity = CrashSeverity::kError;
+  } else if ((received_crash_type_ == arc_util::kDataAppAnr) ||
+             (received_crash_type_ == arc_util::kDataAppCrash) ||
+             (received_crash_type_ == arc_util::kDataAppNativeCrash)) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+  } else if ((received_crash_type_ == arc_util::kSystemAppWtf) ||
+             (received_crash_type_ == arc_util::kSystemServerWtf)) {
+    computed_severity.crash_severity = CrashSeverity::kInfo;
+  }
+
+  return computed_severity;
 }
 
 std::string ArcJavaCollector::GetProductVersion() const {

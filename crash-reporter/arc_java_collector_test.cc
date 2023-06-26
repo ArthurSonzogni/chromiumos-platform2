@@ -21,6 +21,8 @@
 #include "crash-reporter/test_util.h"
 #include "crash-reporter/util.h"
 
+using ::testing::TestWithParam;
+
 namespace {
 
 constexpr char kTestCrashDirectory[] = "test-crash-directory";
@@ -216,3 +218,53 @@ TEST_F(ArcJavaCollectorTest, AddArcMetaData) {
   EXPECT_TRUE(
       collector_->HasMetaData(arc_util::kUptimeField, uptime_formatted));
 }
+
+struct ArcJavaCollectorComputeCrashSeverityTestCase {
+  std::string crash_type;
+  CrashCollector::CrashSeverity expected_severity;
+  CrashCollector::Product expected_product;
+};
+
+class ComputeArcJavaCollectorCrashSeverityParameterizedTest
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<
+          ArcJavaCollectorComputeCrashSeverityTestCase> {};
+
+TEST_P(ComputeArcJavaCollectorCrashSeverityParameterizedTest,
+       ComputeCrashSeverity_Arc) {
+  const ArcJavaCollectorComputeCrashSeverityTestCase& test_case = GetParam();
+  ArcJavaCollector java_collector;
+  java_collector.SetCrashTypeForTesting(test_case.crash_type);
+
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      java_collector.ComputeSeverity("test_exec_name");
+
+  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
+  EXPECT_EQ(computed_severity.product_group, test_case.expected_product);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ComputeArcJavaCollectorCrashSeverityParameterizedTest,
+    ComputeArcJavaCollectorCrashSeverityParameterizedTest,
+    testing::ValuesIn<ArcJavaCollectorComputeCrashSeverityTestCase>({
+        {"data_app_anr", CrashCollector::CrashSeverity::kWarning,
+         CrashCollector::Product::kArc},
+        {"data_app_crash", CrashCollector::CrashSeverity::kWarning,
+         CrashCollector::Product::kArc},
+        {"data_app_native_crash", CrashCollector::CrashSeverity::kWarning,
+         CrashCollector::Product::kArc},
+        {"native_crash", CrashCollector::CrashSeverity::kError,
+         CrashCollector::Product::kArc},
+        {"system_app_anr", CrashCollector::CrashSeverity::kError,
+         CrashCollector::Product::kArc},
+        {"system_app_crash", CrashCollector::CrashSeverity::kError,
+         CrashCollector::Product::kArc},
+        {"system_app_wtf", CrashCollector::CrashSeverity::kInfo,
+         CrashCollector::Product::kArc},
+        {"system_server_wtf", CrashCollector::CrashSeverity::kInfo,
+         CrashCollector::Product::kArc},
+        {"system_server_crash", CrashCollector::CrashSeverity::kFatal,
+         CrashCollector::Product::kArc},
+        {"system_server_watchdog", CrashCollector::CrashSeverity::kFatal,
+         CrashCollector::Product::kArc},
+    }));

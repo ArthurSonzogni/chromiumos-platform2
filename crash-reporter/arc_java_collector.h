@@ -34,10 +34,18 @@ class ArcJavaCollector : public CrashCollector {
                    const arc_util::BuildProperty& build_property,
                    base::TimeDelta uptime);
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   static CollectorInfo GetHandlerInfo(
       const std::string& arc_java_crash,
       const arc_util::BuildProperty& build_property,
       int64_t uptime_millis);
+
+  void SetCrashTypeForTesting(const std::string& crash_type_string) {
+    received_crash_type_ = crash_type_string;
+  }
 
  private:
   FRIEND_TEST(ArcJavaCollectorTest, AddArcMetaData);
@@ -61,6 +69,9 @@ class ArcJavaCollector : public CrashCollector {
                                 const std::string& log,
                                 base::TimeDelta uptime,
                                 bool* out_of_capacity);
+
+  // The type of crash received when HandleCrash() is called.
+  std::string received_crash_type_;
 };
 
 #endif  // CRASH_REPORTER_ARC_JAVA_COLLECTOR_H_
