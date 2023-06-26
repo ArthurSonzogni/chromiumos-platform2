@@ -705,6 +705,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=Ryzen 5 5625C\n"},
 
+        // For a Myst board (myst).
+        {"model name\t: AMD Ryzen 7 7840U w/ Radeon 780M Graphics\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=Ryzen 7 7840U\n"},
+
         // For an Octopus board (blooguard).
         {"model name\t: Intel(R) Pentium(R) Silver N5000 CPU @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\n"

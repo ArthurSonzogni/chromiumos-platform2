@@ -533,11 +533,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   } else if (
       // Some Ryzen CPU models have a watt value, some do not.
       // The "Ryzen # " portion is part of the ro.soc.model value.
-      // There are various kinds of GPUs, so don't match more than
-      // "with Radeon ".
+      // There are various kinds of GPUs, so don't match past "Radeon".
       re2::RE2::PartialMatch(
           model_field,
-          R"(AMD (Ryzen [3-9] [A-Z0-9]+) (?:[0-9]+W )?with Radeon )", &model) ||
+          R"(AMD (Ryzen [3-9] [0-9A-Za-z]+) [0-9a-zA-Z\/ ]+ Radeon[ 0-9A-Za-z]*)",
+          &model) ||
 
       // Simpler AMD model names missing Ryzen name and a watt value.
       re2::RE2::PartialMatch(model_field,
