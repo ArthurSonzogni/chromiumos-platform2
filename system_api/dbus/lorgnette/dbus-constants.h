@@ -18,9 +18,12 @@ const char kScanImageMethod[] = "ScanImage";
 const char kStartScanMethod[] = "StartScan";
 const char kCancelScanMethod[] = "CancelScan";
 const char kGetNextImageMethod[] = "GetNextImage";
+const char kStartScannerDiscoveryMethod[] = "StartScannerDiscovery";
+const char kStopScannerDiscoveryMethod[] = "StopScannerDiscovery";
 
 // Signals.
 const char kScanStatusChangedSignal[] = "ScanStatusChanged";
+const char kScannerListChangedSignal[] = "ScannerListChanged";
 
 // Parameters supplied to a "ScanImage" request.
 const char kScanPropertyMode[] = "Mode";
