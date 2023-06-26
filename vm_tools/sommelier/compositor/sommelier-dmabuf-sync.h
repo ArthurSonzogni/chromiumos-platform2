@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMA_BUF_H_
-#define VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMA_BUF_H_
+#ifndef VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMABUF_SYNC_H_
+#define VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMABUF_SYNC_H_
 
 #include <linux/dma-buf.h>
 
@@ -25,4 +25,4 @@ int sl_dmabuf_get_read_sync_file(int dmabuf_fd, int& sync_file_fd);
 bool sl_dmabuf_sync_is_virtgpu(int sync_file_fd);
 void sl_dmabuf_sync_wait(int sync_file_fd);
 
-#endif  // VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMA_BUF_H_
+#endif  // VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMABUF_SYNC_H_

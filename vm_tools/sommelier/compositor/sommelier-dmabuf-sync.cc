@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "sommelier-dma-buf.h"  // NOLINT(build/include_directory)
+#include "sommelier-dmabuf-sync.h"  // NOLINT(build/include_directory)
 
 // Shamelessly stolen from libsync.
 static int sync_wait(int sync_file_fd, int timeout) {
