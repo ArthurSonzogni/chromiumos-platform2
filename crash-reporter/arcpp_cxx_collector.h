@@ -52,6 +52,10 @@ class ArcppCxxCollector : public UserCollectorBase {
 
   ~ArcppCxxCollector() override = default;
 
+  // Returns the severity level and product group of the crash.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
   const Context& context() const { return *context_; }
 
   // Returns false if the query failed, which may happen during teardown of the
