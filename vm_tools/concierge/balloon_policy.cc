@@ -42,8 +42,9 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
             << "\"vm\": \"" << vm << "\","
             << "\"critical_margin\": " << critical_host_available << ","
             << "\"bias\": " << guest_available_bias << " }";
-  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size, "
-            << "balloon_delta, host_available, guest_cached, guest_free]";
+  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size_MIB, "
+            << "balloon_delta_MIB, host_available_MIB, guest_cached_MIB, "
+            << "guest_free_MIB]";
 }
 
 int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
@@ -159,9 +160,10 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
             << ","
             << "\"responsive_max_deflate_bytes\": "
             << params.responsive_max_deflate_bytes << " }";
-  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size, "
-            << "balloon_delta, host_free_above_lwm, chromeos_available, "
-            << "guest_free_above_lwm, guest_reclaimable]";
+  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size_MIB, "
+            << "balloon_delta_MIB, host_free_above_lwm_MIB, "
+            << "chromeos_available_MIB, guest_free_above_lwm_MIB, "
+            << "guest_reclaimable_MIB]";
 }
 
 int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(
