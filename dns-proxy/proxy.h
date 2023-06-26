@@ -21,6 +21,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ipv6_address.h>
 #include <shill/dbus/client/client.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/rtnl_listener.h>
@@ -195,15 +196,16 @@ class Proxy : public brillo::DBusDaemon {
   // proxy.
   void SetShillDNSProxyAddresses(
       const std::string& ipv4_addr,
-      const std::string& ipv6_addr,
+      const std::optional<net_base::IPv6Address>& ipv6_addr,
       bool die_on_failure = false,
       uint8_t num_retries = kMaxShillPropertyRetries);
   void ClearShillDNSProxyAddresses();
 
   // Helper func to send the proxy IP addresses to the controller.
   // Only valid for the system proxy.
-  void SendIPAddressesToController(const std::string& ipv4_addr,
-                                   const std::string& ipv6_addr);
+  void SendIPAddressesToController(
+      const std::string& ipv4_addr,
+      const std::optional<net_base::IPv6Address>& ipv6_addr);
   void ClearIPAddressesInController();
   void SendProtoMessage(const ProxyAddrMessage& msg);
 
@@ -289,7 +291,7 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::Client::ConnectedNamespace ns_;
-  std::string ns_peer_ipv6_address_;
+  std::optional<net_base::IPv6Address> ns_peer_ipv6_address_;
 
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;

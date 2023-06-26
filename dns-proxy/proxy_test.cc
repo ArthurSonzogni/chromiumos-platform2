@@ -347,7 +347,8 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
-  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1", false, 0);
+  proxy.SetShillDNSProxyAddresses(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"), false, 0);
 }
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
@@ -358,7 +359,8 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10", "::1"), _, _))
       .WillOnce(Return(true));
-  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
+  proxy.SetShillDNSProxyAddresses(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
@@ -371,13 +373,15 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10"), _, _))
       .WillOnce(Return(true));
-  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
+  proxy.SetShillDNSProxyAddresses(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
   proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(ElementsAre("::1"), _, _))
       .WillOnce(Return(true));
-  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
+  proxy.SetShillDNSProxyAddresses(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
@@ -402,7 +406,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
   msg.add_addrs("::1");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+  proxy.SendIPAddressesToController(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
@@ -418,7 +423,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   msg.add_addrs("10.10.10.10");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+  proxy.SendIPAddressesToController(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 
   // Only IPv6 nameserver.
   proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
@@ -427,7 +433,8 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   msg.add_addrs("::1");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+  proxy.SendIPAddressesToController(
+      "10.10.10.10", *net_base::IPv6Address::CreateFromString("::1"));
 }
 
 TEST_F(ProxyTest, SystemProxy_ClearIPAddressesInController) {
@@ -494,7 +501,7 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient(), MessageDispatcher());
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2401::8888"});
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.OnPatchpanelReady(true);
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10", "::1"), _, _))
@@ -585,7 +592,7 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -609,7 +616,7 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
                   PatchpanelClient(), ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
@@ -645,7 +652,7 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
                   PatchpanelClient(), std::move(shill),
                   std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
@@ -741,7 +748,7 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -780,7 +787,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -1196,7 +1203,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1268,7 +1275,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1334,7 +1341,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client,
@@ -1625,7 +1632,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1663,7 +1670,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1704,7 +1711,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1741,7 +1748,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
               std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);

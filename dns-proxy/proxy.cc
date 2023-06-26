@@ -260,7 +260,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
                                 sa_family_t sa_family,
                                 const std::vector<std::string>& nameservers) {
   // Request IPv6 DNS redirection rule only if the IPv6 address is available.
-  if (sa_family == AF_INET6 && ns_peer_ipv6_address_.empty()) {
+  if (sa_family == AF_INET6 && !ns_peer_ipv6_address_) {
     return;
   }
 
@@ -287,9 +287,9 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       return;
   }
 
-  const auto& peer_addr = sa_family == AF_INET6
-                              ? ns_peer_ipv6_address_
-                              : ns_.peer_ipv4_address.ToString();
+  const auto peer_addr = sa_family == AF_INET6
+                             ? ns_peer_ipv6_address_->ToString()
+                             : ns_.peer_ipv4_address.ToString();
   auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
                                      ns_.host_ifname);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
@@ -720,10 +720,11 @@ void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
   doh_config_.set_providers(value.Get<brillo::VariantDictionary>());
 }
 
-void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
-                                      const std::string& ipv6_addr,
-                                      bool die_on_failure,
-                                      uint8_t num_retries) {
+void Proxy::SetShillDNSProxyAddresses(
+    const std::string& ipv4_addr,
+    const std::optional<net_base::IPv6Address>& ipv6_addr,
+    bool die_on_failure,
+    uint8_t num_retries) {
   if (opts_.type != Type::kSystem) {
     LOG(DFATAL) << *this << " " << __func__
                 << " must be called from system proxy only";
@@ -750,7 +751,8 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
     LOG(WARNING) << *this
                  << " No connection to shill - cannot set dns-proxy address "
                     "property IPv4 ["
-                 << ipv4_addr << "], IPv6 [" << ipv6_addr << "]";
+                 << ipv4_addr << "], IPv6 ["
+                 << (ipv6_addr ? ipv6_addr->ToString() : "") << "]";
     return;
   }
 
@@ -758,8 +760,8 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
   if (!ipv4_addr.empty() && !doh_config_.ipv4_nameservers().empty()) {
     addrs.push_back(ipv4_addr);
   }
-  if (!ipv6_addr.empty() && !doh_config_.ipv6_nameservers().empty()) {
-    addrs.push_back(ipv6_addr);
+  if (ipv6_addr && !doh_config_.ipv6_nameservers().empty()) {
+    addrs.push_back(ipv6_addr->ToString());
   }
   if (addrs.empty()) {
     shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
@@ -787,11 +789,12 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
 }
 
 void Proxy::ClearShillDNSProxyAddresses() {
-  SetShillDNSProxyAddresses("" /* ipv4_address */, "" /* ipv6_address */);
+  SetShillDNSProxyAddresses(/*ipv4_address=*/"", /*ipv6_address=*/std::nullopt);
 }
 
-void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
-                                        const std::string& ipv6_addr) {
+void Proxy::SendIPAddressesToController(
+    const std::string& ipv4_addr,
+    const std::optional<net_base::IPv6Address>& ipv6_addr) {
   if (opts_.type != Type::kSystem) {
     LOG(DFATAL) << *this << " Must be called from system proxy only";
     return;
@@ -802,8 +805,8 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
   if (!ipv4_addr.empty() && !doh_config_.ipv4_nameservers().empty()) {
     msg.add_addrs(ipv4_addr);
   }
-  if (!ipv6_addr.empty() && !doh_config_.ipv6_nameservers().empty()) {
-    msg.add_addrs(ipv6_addr);
+  if (ipv6_addr && !doh_config_.ipv6_nameservers().empty()) {
+    msg.add_addrs(ipv6_addr->ToString());
   }
 
   // Don't send empty proxy address.
@@ -957,10 +960,10 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
 
   switch (msg.mode()) {
     case shill::RTNLMessage::kModeAdd: {
-      std::string peer_ipv6_addr;
-      if (const auto tmp_addr = msg.GetIfaAddress(); tmp_addr.has_value()) {
-        peer_ipv6_addr = tmp_addr->ToString();
-      } else {
+      const auto tmp_addr = msg.GetIfaAddress();
+      const auto peer_ipv6_addr =
+          tmp_addr ? tmp_addr->ToIPv6Address() : std::nullopt;
+      if (!peer_ipv6_addr) {
         LOG(ERROR) << *this << " IFA_ADDRESS in RTNL message is invalid";
         return;
       }
@@ -985,7 +988,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       return;
     }
     case shill::RTNLMessage::kModeDelete:
-      ns_peer_ipv6_address_.clear();
+      ns_peer_ipv6_address_ = std::nullopt;
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }
@@ -993,8 +996,10 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         StopGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(), "");
-        SendIPAddressesToController(ns_.peer_ipv4_address.ToString(), "");
+        SetShillDNSProxyAddresses(ns_.peer_ipv4_address.ToString(),
+                                  /*ipv6_addr=*/std::nullopt);
+        SendIPAddressesToController(ns_.peer_ipv4_address.ToString(),
+                                    /*ipv6_addr=*/std::nullopt);
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;
