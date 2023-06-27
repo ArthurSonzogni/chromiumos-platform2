@@ -580,8 +580,9 @@ has_arc(`
 /home/.shadow                    u:object_r:cros_home_shadow:s0
 /home/.shadow/(?![0-9a-z]{40}).* u:object_r:cros_home_shadow:s0
 /home/.shadow/low_entropy_creds(/.*)? u:object_r:cros_home_shadow_low_entropy_creds:s0
-# exclude <uid>/mount/root/android-data/data
-/home/.shadow/[0-9a-z]{40}(/(?!mount/root/android-data/data).*)? u:object_r:cros_home_shadow_uid:s0
+# exclude <uid>/mount/root/android-data/data and <uid>/mount/root/.cache for
+# cros_home_shadow_uid.
+/home/.shadow/[0-9a-z]{40}(/(?!mount/root/android-data/data)(?!mount/root/.cache).*)? u:object_r:cros_home_shadow_uid:s0
 /home/.shadow/[0-9a-z]{40}/mount/root(/(?!android-data/data).*)? u:object_r:cros_home_shadow_uid_root:s0
 /home/.shadow/[0-9a-z]{40}/cache/user(/.*)? u:object_r:cros_home_shadow_uid_user:s0
 /home/.shadow/[0-9a-z]{40}/mount/user(/.*)? u:object_r:cros_home_shadow_uid_user:s0
