@@ -28,10 +28,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 }  // namespace Logging
 
-// TODO(crbug.com/1084279) Migrate back to storing property names after crypto
-// code is removed.
-const char VPNDriver::kCredentialPrefix[] = "Credential.";
-
 VPNDriver::VPNDriver(Manager* manager,
                      ProcessManager* process_manager,
                      VPNType vpn_type,

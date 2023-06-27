@@ -30,12 +30,12 @@ namespace shill {
 
 namespace {
 
-const char kL2TPIPsecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
-const char kL2TPIPsecLengthBitProperty[] = "L2TPIPsec.LengthBit";
-const char kL2TPIPsecRefusePapProperty[] = "L2TPIPsec.RefusePap";
-const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
-const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
-const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
+constexpr char kL2TPIPsecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
+constexpr char kL2TPIPsecLengthBitProperty[] = "L2TPIPsec.LengthBit";
+constexpr char kL2TPIPsecRefusePapProperty[] = "L2TPIPsec.RefusePap";
+constexpr char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
+constexpr char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
+constexpr char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
 // Returns an empty string on error.
 std::string ConvertSockAddrToIPString(const sockaddr_storage& address) {

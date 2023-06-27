@@ -177,7 +177,7 @@ TEST_F(VPNServiceTest, GetStorageIdentifier) {
 
 TEST_F(VPNServiceTest, Load) {
   FakeStore storage;
-  static const char kStorageID[] = "storage-id";
+  static constexpr char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
   storage.SetString(kStorageID, Service::kStorageType, kTypeVPN);
   EXPECT_CALL(*driver_, Load(&storage, kStorageID)).WillOnce(Return(true));
@@ -186,7 +186,7 @@ TEST_F(VPNServiceTest, Load) {
 
 TEST_F(VPNServiceTest, Save) {
   FakeStore storage;
-  static const char kStorageID[] = "storage-id";
+  static constexpr char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
   EXPECT_CALL(*driver_, Save(&storage, kStorageID, false))
       .WillOnce(Return(true));
@@ -198,7 +198,7 @@ TEST_F(VPNServiceTest, Save) {
 
 TEST_F(VPNServiceTest, SaveCredentials) {
   FakeStore storage;
-  static const char kStorageID[] = "storage-id";
+  static constexpr char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
   service_->set_save_credentials(true);
   EXPECT_CALL(*driver_, Save(&storage, kStorageID, true))

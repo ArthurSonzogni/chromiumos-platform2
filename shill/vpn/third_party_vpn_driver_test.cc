@@ -32,6 +32,11 @@ using testing::SetArgPointee;
 
 namespace shill {
 
+namespace {
+constexpr char kInterfaceName[] = "tun0";
+constexpr int kInterfaceIndex = 123;
+}  // namespace
+
 class ThirdPartyVpnDriverTest : public testing::Test {
  public:
   ThirdPartyVpnDriverTest()
@@ -55,10 +60,6 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
-  static const char kConfigName[];
-  static const char kInterfaceName[];
-  static const int kInterfaceIndex;
-
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -70,10 +71,6 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   std::unique_ptr<ThirdPartyVpnDriver> driver_;
   ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|
 };
-
-const char ThirdPartyVpnDriverTest::kConfigName[] = "default-1";
-const char ThirdPartyVpnDriverTest::kInterfaceName[] = "tun0";
-const int ThirdPartyVpnDriverTest::kInterfaceIndex = 123;
 
 TEST_F(ThirdPartyVpnDriverTest, VPNType) {
   EXPECT_EQ(driver_->vpn_type(), VPNType::kThirdParty);

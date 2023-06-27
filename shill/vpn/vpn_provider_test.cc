@@ -32,6 +32,11 @@ using testing::StartsWith;
 
 namespace shill {
 
+namespace {
+constexpr char kHost[] = "10.8.0.1";
+constexpr char kName[] = "vpn-name";
+}  // namespace
+
 class VPNProviderTest : public testing::Test {
  public:
   VPNProviderTest()
@@ -44,9 +49,6 @@ class VPNProviderTest : public testing::Test {
   ~VPNProviderTest() override = default;
 
  protected:
-  static const char kHost[];
-  static const char kName[];
-
   std::string GetServiceFriendlyName(const ServiceRefPtr& service) {
     return service->friendly_name();
   }
@@ -70,9 +72,6 @@ class VPNProviderTest : public testing::Test {
   MockDeviceInfo device_info_;
   VPNProvider provider_;
 };
-
-const char VPNProviderTest::kHost[] = "10.8.0.1";
-const char VPNProviderTest::kName[] = "vpn-name";
 
 TEST_F(VPNProviderTest, GetServiceNoType) {
   KeyValueStore args;
@@ -233,17 +232,17 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 }
 
 TEST_F(VPNProviderTest, CreateService) {
-  static const char kName[] = "test-vpn-service";
-  static const char kStorageID[] = "test_vpn_storage_id";
-  static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
-                                       kProviderThirdPartyVpn,
-                                       kProviderWireGuard};
+  static constexpr char kName[] = "test-vpn-service";
+  static constexpr char kStorageID[] = "test_vpn_storage_id";
+  static constexpr base::StringPiece kTypes[] = {
+      kProviderOpenVpn, kProviderL2tpIpsec, kProviderThirdPartyVpn,
+      kProviderWireGuard};
   const size_t kTypesCount = std::size(kTypes);
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
   for (auto type : kTypes) {
     Error error;
     VPNServiceRefPtr service =
-        provider_.CreateService(type, kName, kStorageID, &error);
+        provider_.CreateService(std::string(type), kName, kStorageID, &error);
     ASSERT_NE(nullptr, service) << type;
     ASSERT_TRUE(service->driver()) << type;
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
@@ -258,9 +257,9 @@ TEST_F(VPNProviderTest, CreateService) {
 }
 
 TEST_F(VPNProviderTest, CreateArcService) {
-  static const char kName[] = "test-vpn-service";
-  static const char kStorageID[] = "test_vpn_storage_id";
-  static const char kHost[] = "com.example.test.vpn";
+  static constexpr char kName[] = "test-vpn-service";
+  static constexpr char kStorageID[] = "test_vpn_storage_id";
+  static constexpr char kHost[] = "com.example.test.vpn";
   EXPECT_CALL(manager_, RegisterService(_));
   Error error;
   VPNServiceRefPtr service =

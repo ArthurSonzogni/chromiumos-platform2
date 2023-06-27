@@ -89,8 +89,8 @@ class VPNService : public Service,
   FRIEND_TEST(VPNServiceTest, ReportIPTypeMetrics);
   FRIEND_TEST(VPNServiceTest, ConnectFlow);
 
-  static const char kAutoConnNeverConnected[];
-  static const char kAutoConnVPNAlreadyActive[];
+  static constexpr char kAutoConnNeverConnected[] = "never connected";
+  static constexpr char kAutoConnVPNAlreadyActive[] = "vpn already active";
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 

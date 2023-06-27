@@ -82,9 +82,6 @@ bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
 
 }  // namespace
 
-const char VPNService::kAutoConnNeverConnected[] = "never connected";
-const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
-
 VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
     : Service(manager, Technology::kVPN),
       driver_(std::move(driver)),

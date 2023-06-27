@@ -29,9 +29,9 @@ namespace shill {
 
 namespace {
 
-const char kInterfaceName[] = "arcbr0";
-const int kInterfaceIndex = 123;
-const char kStorageId[] = "fakestorage";
+constexpr char kInterfaceName[] = "arcbr0";
+constexpr int kInterfaceIndex = 123;
+constexpr char kStorageId[] = "fakestorage";
 
 }  // namespace
 

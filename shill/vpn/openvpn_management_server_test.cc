@@ -483,7 +483,7 @@ TEST_F(OpenVPNManagementServerTest, SupplyTPMToken) {
 }
 
 TEST_F(OpenVPNManagementServerTest, Send) {
-  const char kMessage[] = "foo\n";
+  constexpr char kMessage[] = "foo\n";
   SetConnectedSocket();
   ExpectSend(kMessage);
   server_.Send(kMessage);

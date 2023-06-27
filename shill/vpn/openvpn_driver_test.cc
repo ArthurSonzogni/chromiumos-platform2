@@ -52,6 +52,26 @@ using testing::SetArgPointee;
 
 namespace shill {
 
+namespace {
+constexpr char kOption[] = "openvpn-option";
+constexpr char kProperty[] = "OpenVPN.SomeProperty";
+constexpr char kValue[] = "some-property-value";
+constexpr char kOption2[] = "openvpn-option2";
+constexpr char kProperty2[] = "OpenVPN.SomeProperty2";
+constexpr char kValue2[] = "some-property-value2";
+constexpr char kGateway1[] = "10.242.2.13";
+constexpr char kNetmask1[] = "255.255.255.255";
+constexpr int kPrefix1 = 32;
+constexpr char kNetwork1[] = "10.242.2.1";
+constexpr char kGateway2[] = "10.242.2.14";
+constexpr char kNetmask2[] = "255.255.0.0";
+constexpr int kPrefix2 = 16;
+constexpr char kNetwork2[] = "192.168.0.0";
+constexpr char kInterfaceName[] = "tun0";
+constexpr int kInterfaceIndex = 123;
+constexpr char kOpenVPNConfigDirectory[] = "openvpn";
+}  // namespace
+
 struct AuthenticationExpectations {
   AuthenticationExpectations()
       : remote_authentication_type(Metrics::kVpnRemoteAuthenticationTypeMax) {}
@@ -120,24 +140,6 @@ class OpenVPNDriverTest
   }
 
  protected:
-  static const char kOption[];
-  static const char kProperty[];
-  static const char kValue[];
-  static const char kOption2[];
-  static const char kProperty2[];
-  static const char kValue2[];
-  static const char kGateway1[];
-  static const char kNetmask1[];
-  static const int kPrefix1;
-  static const char kNetwork1[];
-  static const char kGateway2[];
-  static const char kNetmask2[];
-  static const int kPrefix2;
-  static const char kNetwork2[];
-  static const char kInterfaceName[];
-  static const int kInterfaceIndex;
-  static const char kOpenVPNConfigDirectory[];
-
   void SetArg(const std::string& arg, const std::string& value) {
     driver_->args()->Set<std::string>(arg, value);
   }
@@ -222,24 +224,6 @@ class OpenVPNDriverTest
   base::FilePath lsb_release_file_;
 };
 
-const char OpenVPNDriverTest::kOption[] = "openvpn-option";
-const char OpenVPNDriverTest::kProperty[] = "OpenVPN.SomeProperty";
-const char OpenVPNDriverTest::kValue[] = "some-property-value";
-const char OpenVPNDriverTest::kOption2[] = "openvpn-option2";
-const char OpenVPNDriverTest::kProperty2[] = "OpenVPN.SomeProperty2";
-const char OpenVPNDriverTest::kValue2[] = "some-property-value2";
-const char OpenVPNDriverTest::kGateway1[] = "10.242.2.13";
-const char OpenVPNDriverTest::kNetmask1[] = "255.255.255.255";
-const int OpenVPNDriverTest::kPrefix1 = 32;
-const char OpenVPNDriverTest::kNetwork1[] = "10.242.2.1";
-const char OpenVPNDriverTest::kGateway2[] = "10.242.2.14";
-const char OpenVPNDriverTest::kNetmask2[] = "255.255.0.0";
-const int OpenVPNDriverTest::kPrefix2 = 16;
-const char OpenVPNDriverTest::kNetwork2[] = "192.168.0.0";
-const char OpenVPNDriverTest::kInterfaceName[] = "tun0";
-const int OpenVPNDriverTest::kInterfaceIndex = 123;
-const char OpenVPNDriverTest::kOpenVPNConfigDirectory[] = "openvpn";
-
 void OpenVPNDriverTest::GetLogin(std::string* /*user*/,
                                  std::string* /*password*/) {}
 
@@ -262,7 +246,7 @@ void OpenVPNDriverTest::ExpectNotInFlags(
 }
 
 void OpenVPNDriverTest::SetupLSBRelease() {
-  static const char kLSBReleaseContents[] =
+  static constexpr char kLSBReleaseContents[] =
       "\n"
       "=\n"
       "foo=\n"
@@ -284,7 +268,7 @@ TEST_F(OpenVPNDriverTest, VPNType) {
 }
 
 TEST_F(OpenVPNDriverTest, ConnectAsync) {
-  static const char kHost[] = "192.168.2.254";
+  static constexpr char kHost[] = "192.168.2.254";
   SetArg(kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
@@ -711,12 +695,12 @@ TEST_F(OpenVPNDriverTest, InitOptionsNoPrimaryHost) {
 }
 
 TEST_F(OpenVPNDriverTest, InitOptions) {
-  static const char kHost[] = "192.168.2.254";
-  static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
-  static const char kID[] = "TestPKCS11ID";
-  static const char kKU0[] = "00";
-  static const char kKU1[] = "01";
-  static const char kTLSVersionMin[] = "1.2";
+  static constexpr char kHost[] = "192.168.2.254";
+  static constexpr char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
+  static constexpr char kID[] = "TestPKCS11ID";
+  static constexpr char kKU0[] = "00";
+  static constexpr char kKU1[] = "01";
+  static constexpr char kTLSVersionMin[] = "1.2";
   base::FilePath empty_cert;
   SetArg(kProviderHostProperty, kHost);
   SetArg(kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
@@ -827,7 +811,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   SetArg(kProviderHostProperty, "");
 
   const std::vector<std::string> kCaCertPEM{"---PEM CONTENTS---"};
-  static const char kPEMCertfile[] = "/tmp/pem-cert";
+  static constexpr char kPEMCertfile[] = "/tmp/pem-cert";
   base::FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
@@ -856,7 +840,7 @@ TEST_F(OpenVPNDriverTest, InitCertificateVerifyOptions) {
     driver_->InitCertificateVerifyOptions(&options);
     EXPECT_TRUE(options.empty());
   }
-  const char kName[] = "x509-name";
+  constexpr char kName[] = "x509-name";
   {
     Error error;
     std::vector<std::vector<std::string>> options;
@@ -866,7 +850,7 @@ TEST_F(OpenVPNDriverTest, InitCertificateVerifyOptions) {
     driver_->InitCertificateVerifyOptions(&options);
     ExpectInFlags(options, {"verify-x509-name", kName});
   }
-  const char kType[] = "x509-type";
+  constexpr char kType[] = "x509-type";
   {
     Error error;
     std::vector<std::vector<std::string>> options;
@@ -887,7 +871,7 @@ TEST_F(OpenVPNDriverTest, InitCertificateVerifyOptions) {
 }
 
 TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
-  static const char kTestValue[] = "foo";
+  static constexpr char kTestValue[] = "foo";
   std::vector<std::vector<std::string>> options;
 
   // Assume user/password authentication.
@@ -944,7 +928,7 @@ TEST_F(OpenVPNDriverTest, InitExtraCertOptions) {
   }
   const std::vector<std::string> kExtraCerts{"---PEM CONTENTS---"};
   SetArgArray(kOpenVPNExtraCertPemProperty, kExtraCerts);
-  static const char kPEMCertfile[] = "/tmp/pem-cert";
+  static constexpr char kPEMCertfile[] = "/tmp/pem-cert";
   base::FilePath pem_cert(kPEMCertfile);
   EXPECT_CALL(*extra_certificates_file_, CreatePEMFromStrings(kExtraCerts))
       .WillOnce(Return(base::FilePath()))
@@ -972,7 +956,7 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
   driver_->InitPKCS11Options(&options);
   EXPECT_TRUE(options.empty());
 
-  static const char kID[] = "TestPKCS11ID";
+  static constexpr char kID[] = "TestPKCS11ID";
   SetArg(kOpenVPNClientCertIdProperty, kID);
   driver_->InitPKCS11Options(&options);
   ExpectInFlags(options, {"pkcs11-id", kID});
@@ -1119,7 +1103,7 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
 }
 
 TEST_F(OpenVPNDriverTest, FailService) {
-  static const char kErrorDetails[] = "Bad password.";
+  static constexpr char kErrorDetails[] = "Bad password.";
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_,
               OnDriverFailure(Service::kFailureConnect, Eq(kErrorDetails)));
@@ -1159,7 +1143,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
 
   EXPECT_FALSE(driver_->SpawnOpenVPN());
 
-  static const char kHost[] = "192.168.2.254";
+  static constexpr char kHost[] = "192.168.2.254";
   SetArg(kProviderHostProperty, kHost);
   driver_->interface_name_ = "tun0";
   driver_->rpc_task_.reset(new RpcTask(&control_, this));
@@ -1320,13 +1304,14 @@ TEST_F(OpenVPNDriverTest, GetReconnectTimeout) {
 }
 
 TEST_F(OpenVPNDriverTest, WriteConfigFile) {
-  const char kOption0[] = "option0";
-  const char kOption1[] = "option1";
-  const char kOption1Argument0[] = "option1-argument0";
-  const char kOption2[] = "option2";
-  const char kOption2Argument0[] = "option2-argument0\n\t\"'\\";
-  const char kOption2Argument0Transformed[] = "option2-argument0 \t\\\"'\\\\";
-  const char kOption2Argument1[] = "option2-argument1 space";
+  constexpr char kOption0[] = "option0";
+  constexpr char kOption1[] = "option1";
+  constexpr char kOption1Argument0[] = "option1-argument0";
+  constexpr char kOption2[] = "option2";
+  constexpr char kOption2Argument0[] = "option2-argument0\n\t\"'\\";
+  constexpr char kOption2Argument0Transformed[] =
+      "option2-argument0 \t\\\"'\\\\";
+  constexpr char kOption2Argument1[] = "option2-argument1 space";
   std::vector<std::vector<std::string>> options{
       {kOption0},
       {kOption1, kOption1Argument0},

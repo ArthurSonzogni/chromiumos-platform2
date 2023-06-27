@@ -36,13 +36,13 @@ constexpr char kPPPDConfigFileName[] = "pppd.conf";
 
 // Environment variable available to ppp plugin to know the resolved address
 // of the L2TP server.
-const char kLnsAddress[] = "LNS_ADDRESS";
+constexpr char kLnsAddress[] = "LNS_ADDRESS";
 
 // Constants used in the config file for xl2tpd.
-const char kL2TPConnectionName[] = "managed";
-const char kBpsParameter[] = "1000000";
-const char kRedialTimeoutParameter[] = "2";
-const char kMaxRedialsParameter[] = "30";
+constexpr char kL2TPConnectionName[] = "managed";
+constexpr char kBpsParameter[] = "1000000";
+constexpr char kRedialTimeoutParameter[] = "2";
+constexpr char kMaxRedialsParameter[] = "30";
 
 // xl2tpd (1.3.12 at the time of writing) uses fgets with a size 1024 buffer to
 // get configuration lines. If a configuration line was longer than that and

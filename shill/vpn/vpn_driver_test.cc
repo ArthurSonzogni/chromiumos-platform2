@@ -30,17 +30,17 @@ namespace shill {
 
 namespace {
 
-const char kVPNHostProperty[] = "VPN.Host";
-const char kOTPProperty[] = "VPN.OTP";
-const char kPinProperty[] = "VPN.PIN";
-const char kPSKProperty[] = "VPN.PSK";
-const char kPasswordProperty[] = "VPN.Password";
-const char kPortProperty[] = "VPN.Port";
+constexpr char kVPNHostProperty[] = "VPN.Host";
+constexpr char kOTPProperty[] = "VPN.OTP";
+constexpr char kPinProperty[] = "VPN.PIN";
+constexpr char kPSKProperty[] = "VPN.PSK";
+constexpr char kPasswordProperty[] = "VPN.Password";
+constexpr char kPortProperty[] = "VPN.Port";
 
-const char kPin[] = "5555";
-const char kPassword[] = "random-password";
-const char kPort[] = "1234";
-const char kStorageID[] = "vpn_service_id";
+constexpr char kPin[] = "5555";
+constexpr char kPassword[] = "random-password";
+constexpr char kPort[] = "1234";
+constexpr char kStorageID[] = "vpn_service_id";
 
 }  // namespace
 

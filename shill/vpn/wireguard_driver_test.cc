@@ -59,7 +59,7 @@ class WireGuardDriverTestPeer {
 namespace {
 
 constexpr pid_t kWireGuardToolsPid = 12346;
-const char kIfName[] = "wg0";
+constexpr char kIfName[] = "wg0";
 constexpr int kIfIndex = 123;
 
 // Randomly generated key for testing.
@@ -68,7 +68,7 @@ constexpr char kPrivateKey2[] = "wARBVZOPBWo7OoyHLfv2mDgFxYJ3S6uc9lIOpRiGqVI=";
 
 // Consistent with the properties set in
 // WireGuardDriverTest::InitializePropertyStore().
-const char kExpectedConfigFileContents[] = R"([Interface]
+constexpr char kExpectedConfigFileContents[] = R"([Interface]
 PrivateKey=gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=
 FwMark=0x4500
 

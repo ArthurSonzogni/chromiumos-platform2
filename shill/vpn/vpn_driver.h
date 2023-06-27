@@ -172,7 +172,9 @@ class VPNDriver {
  private:
   friend class VPNDriverTest;
 
-  static const char kCredentialPrefix[];
+  // TODO(crbug.com/1084279): Migrate back to storing property names after
+  // crypto code is removed.
+  static constexpr char kCredentialPrefix[] = "Credential.";
 
   void ClearMappedStringProperty(const size_t& index, Error* error);
   void ClearMappedStringsProperty(const size_t& index, Error* error);
