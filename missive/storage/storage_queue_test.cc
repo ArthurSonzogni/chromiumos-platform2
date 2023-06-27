@@ -698,10 +698,16 @@ class StorageQueueTest
     // By default return OK status - no error injected.
     EXPECT_CALL(*inject, Call(_, _))
         .WillRepeatedly(WithoutArgs(Return(Status::StatusOK())));
-    storage_queue_->TestInjectErrorsForOperation(base::BindRepeating(
-        &::testing::MockFunction<Status(test::StorageQueueOperationKind,
-                                        int64_t)>::Call,
-        base::Unretained(inject.get())));
+    {
+      test::TestCallbackAutoWaiter waiter;
+      storage_queue_->TestInjectErrorsForOperation(
+          base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                         base::Unretained(&waiter)),
+          base::BindRepeating(
+              &::testing::MockFunction<Status(test::StorageQueueOperationKind,
+                                              int64_t)>::Call,
+              base::Unretained(inject.get())));
+    }
     return inject;
   }
 
@@ -1791,7 +1797,11 @@ TEST_P(StorageQueueTest,
   ConfirmOrDie(/*sequencing_id=*/2);
 
   // Reset error injection.
-  storage_queue_->TestInjectErrorsForOperation();
+  {
+    test::TestCallbackAutoWaiter waiter;
+    storage_queue_->TestInjectErrorsForOperation(base::BindOnce(
+        &test::TestCallbackAutoWaiter::Signal, base::Unretained(&waiter)));
+  }
 
   {
     // Set uploader expectations.

@@ -187,7 +187,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // and seq id, and then return Status. Non-OK Status injects the error and
   // can be returned as a resulting operation status too.
   // If `handler` is null, error injections is disabled.
+  // The injection is asynchronous, calls `cb` upon completion.
   void TestInjectErrorsForOperation(
+      base::OnceClosure cb,
       test::ErrorInjectionHandlerType handler = base::NullCallback());
 
   // Returns the file sequence ID (the first sequence ID in the file) if the
@@ -292,12 +294,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     std::optional<bool> is_readonly_ GUARDED_BY_CONTEXT(sequence_checker_);
 
     const base::FilePath filename_;  // relative to the StorageQueue directory
-    uint64_t size_ = 0;  // tracked internally rather than by filesystem
+    uint64_t size_ GUARDED_BY_CONTEXT(sequence_checker_) =
+        0;  // tracked internally rather than by filesystem
 
-    std::unique_ptr<base::File> handle_;  // Set only when opened/created.
-
-    const scoped_refptr<ResourceManager> memory_resource_;
-    const scoped_refptr<ResourceManager> disk_space_resource_;
+    // Actual file handle. Set only when opened/created.
+    std::unique_ptr<base::File> handle_ GUARDED_BY_CONTEXT(sequence_checker_);
 
     // When reading the file, this is the buffer and data positions.
     // If the data is read sequentially, buffered portions are reused
@@ -308,6 +309,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     size_t data_end_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
     uint64_t file_position_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
     ResourceManagedBuffer buffer_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+    const scoped_refptr<ResourceManager> memory_resource_;
+    const scoped_refptr<ResourceManager> disk_space_resource_;
   };
 
   // Private constructor, to be called by Create factory method only.
@@ -481,7 +485,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // StorageQueue object construction time (used for sorting the queue for
   // degradation).
-  base::Time time_stamp_;
+  const base::Time time_stamp_;
 
   // Immutable options, stored at the time of creation.
   const QueueOptions options_;
@@ -490,17 +494,20 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Set up once during initialization by reading from the 'gen_id.NNNN' file
   // matching the last sequencing id, or generated anew as a random number if no
   // such file found (files do not match the id).
-  int64_t generation_id_ = 0;
+  int64_t generation_id_ GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) =
+      0;
 
   // Identical in function to `generation_id_` but is globally unique across
   // all devices instead of just on the device itself. Passed in as a parameter
   // during initialization. The directory where the queue writes files to is
   // named 'priority.generation_guid_'.
-  const GenerationGuid generation_guid_;
+  const GenerationGuid generation_guid_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Digest of the last written record (loaded at queue initialization, absent
   // if the new generation has just started, and no records where stored yet).
-  std::optional<std::string> last_record_digest_;
+  std::optional<std::string> last_record_digest_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Queue of the write context instances in the order of creation, sequencing
   // ids and record digests. Context is always removed from this queue before
@@ -514,14 +521,17 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Reflects reservation for the head of the write contexts queue. Will return
   // to 0 after each writing process is finished. It helps keep disk space usage
   // accurate and within the bounds of the reservation.
-  size_t active_write_reservation_size_ = 0u;
+  size_t active_write_reservation_size_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0u;
 
   // Next sequencing id to store (not assigned yet).
-  int64_t next_sequencing_id_ = 0;
+  int64_t next_sequencing_id_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0;
 
   // First sequencing id store still has (no records with lower
   // sequencing id exist in store).
-  int64_t first_sequencing_id_ = 0;
+  int64_t first_sequencing_id_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0;
 
   // First unconfirmed sequencing id (no records with lower
   // sequencing id will be ever uploaded). Set by the first
@@ -529,25 +539,30 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // If first_unconfirmed_sequencing_id_ < first_sequencing_id_,
   // [first_unconfirmed_sequencing_id_, first_sequencing_id_) is a gap
   // that cannot be filled in and is uploaded as such.
-  std::optional<int64_t> first_unconfirmed_sequencing_id_;
+  std::optional<int64_t> first_unconfirmed_sequencing_id_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Ordered map of the files by ascending sequencing id.
-  std::map<int64_t, scoped_refptr<SingleFile>> files_;
+  std::map<int64_t, scoped_refptr<SingleFile>> files_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Counter of the Read operations. When not 0, none of the files_ can be
   // deleted. Incremented by |ReadContext::OnStart|, decremented by
   // |ReadContext::OnComplete|. Accessed by |RemoveConfirmedData|.
   // All accesses take place on sequenced_task_runner_.
-  int32_t active_read_operations_ = 0;
+  int32_t active_read_operations_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0;
 
   // Upload timer (active only if options_.upload_period() is not 0 and not
   // infinity).
-  base::RepeatingTimer upload_timer_;
+  base::RepeatingTimer upload_timer_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Check back after upload timer (activated after upload has been started
   // and options_.upload_retry_delay() is not 0). If already started, it will
   // be reset to the new delay.
-  base::RetainingOneShotTimer check_back_timer_;
+  base::RetainingOneShotTimer check_back_timer_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
@@ -556,15 +571,16 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   const DegradationCandidatesCb degradation_candidates_cb_;
 
   // Encryption module.
-  scoped_refptr<EncryptionModuleInterface> encryption_module_;
+  const scoped_refptr<EncryptionModuleInterface> encryption_module_;
 
   // Compression module.
-  scoped_refptr<CompressionModule> compression_module_;
+  const scoped_refptr<CompressionModule> compression_module_;
 
   // Test only: records callback to be invoked. It will be called with operation
   // kind and seq id, and will return Status (non-OK status indicates the
   // failure to be injected). In production code must be null.
-  test::ErrorInjectionHandlerType test_injection_handler_{base::NullCallback()};
+  test::ErrorInjectionHandlerType test_injection_handler_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_){base::NullCallback()};
 
   // Weak pointer factory (must be last member in class).
   base::WeakPtrFactory<StorageQueue> weakptr_factory_{this};

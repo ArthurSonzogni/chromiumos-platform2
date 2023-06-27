@@ -52,7 +52,7 @@ SignatureVerifier::SignatureVerifier(
       signature_verification_dev_flag_(signature_verification_dev_flag) {}
 
 Status SignatureVerifier::Verify(base::StringPiece message,
-                                 base::StringPiece signature) {
+                                 base::StringPiece signature) const {
   std::string verification_key_dev = std::string(VerificationKeyDev());
   const std::string& verification_public_key =
       signature_verification_dev_flag_->is_enabled() ? verification_key_dev

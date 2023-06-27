@@ -336,7 +336,7 @@ class KeyInStorage {
   // to successfully encrypt records and for the server to then decrypt them.
   std::atomic<uint64_t> next_key_file_index_{0};
 
-  SignatureVerifier verifier_;
+  const SignatureVerifier verifier_;
 
   const base::FilePath directory_;
 };

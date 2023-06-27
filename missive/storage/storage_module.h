@@ -132,10 +132,6 @@ class StorageModule : public StorageModuleInterface {
   const scoped_refptr<CompressionModule> compression_module_;
   const scoped_refptr<SignatureVerificationDevFlag>
       signature_verification_dev_flag_;
-
-  // Callback for testing the result of `AsyncSetStorage` function.
-  base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-      on_storage_set_cb_for_testing_;
 };
 
 }  // namespace reporting

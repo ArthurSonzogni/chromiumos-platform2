@@ -24,7 +24,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
-#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
 #include <base/logging.h>
@@ -171,7 +171,7 @@ void StorageQueue::Create(
               std::move(callback), storage_queue->sequenced_task_runner_),
           storage_queue_(std::move(storage_queue)),
           init_retry_cb_(init_retry_cb) {
-      DCHECK(storage_queue_);
+      CHECK(storage_queue_);
     }
 
    private:
@@ -257,7 +257,7 @@ StorageQueue::~StorageQueue() {
   upload_timer_.AbandonAndStop();
   check_back_timer_.AbandonAndStop();
   // Make sure no pending writes is present.
-  DCHECK(write_contexts_queue_.empty());
+  CHECK(write_contexts_queue_.empty());
 
   // Release all files.
   ReleaseAllFileInstances();
@@ -274,7 +274,7 @@ Status StorageQueue::Init() {
             {"Storage queue directory '", options_.directory().MaybeAsASCII(),
              "' does not exist, error=", base::File::ErrorToString(error)}));
   }
-  DCHECK_LE(generation_id_, 0);  // Not set yet - valid range [1, max_int64]
+  CHECK_LE(generation_id_, 0);  // Not set yet - valid range [1, max_int64]
   std::unordered_set<base::FilePath> used_files_set;
   // Enumerate data files and scan the last one to determine what sequence
   // ids do we have (first and last).
@@ -614,7 +614,7 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>> StorageQueue::AssignLastFile(
             options_.disk_space_resource(), completion_closure_list_));
     next_sequencing_id_ = 0;
     auto insert_result = files_.emplace(next_sequencing_id_, file);
-    DCHECK(insert_result.second);
+    CHECK(insert_result.second);
   }
   if (size > options_.max_record_size()) {
     return Status(error::OUT_OF_RANGE, "Too much data to be recorded at once");
@@ -885,7 +885,7 @@ Status StorageQueue::RestoreMetadata(
                        std::make_pair(full_name, dir_enum.GetInfo().GetSize()));
   }
   // See whether we have a match for next_sequencing_id_ - 1.
-  DCHECK_GT(next_sequencing_id_, 0u);
+  CHECK_GT(next_sequencing_id_, 0u);
   auto it = meta_files.find(next_sequencing_id_ - 1);
   if (it != meta_files.end()) {
     // Match found. Attempt to load the metadata.
@@ -982,9 +982,9 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
         completion_cb_(std::move(completion_cb)),
         async_start_upload_cb_(storage_queue->async_start_upload_cb_),
         storage_queue_(storage_queue->weakptr_factory_.GetWeakPtr()) {
-    DCHECK(storage_queue.get());
-    DCHECK(async_start_upload_cb_);
-    DCHECK_LT(
+    CHECK(storage_queue);
+    CHECK(async_start_upload_cb_);
+    CHECK_LT(
         static_cast<uint32_t>(reason),
         static_cast<uint32_t>(UploaderInterface::UploadReason::MAX_REASON));
   }
@@ -1152,6 +1152,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // retry the upload.
     if (storage_queue_ &&
         !storage_queue_->options_.upload_retry_delay().is_zero()) {
+      DCHECK_CALLED_ON_VALID_SEQUENCE(
+          storage_queue_->storage_queue_sequence_checker_);
       storage_queue_->check_back_timer_.Start(
           FROM_HERE, storage_queue_->options_.upload_retry_delay(),
           base::BindPostTask(
@@ -1176,7 +1178,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // Unregister with storage_queue.
     if (!files_.empty()) {
       const auto count = --(storage_queue_->active_read_operations_);
-      DCHECK_GE(count, 0);
+      CHECK_GE(count, 0);
       files_.clear();
       current_file_ = files_.end();
     }
@@ -1461,7 +1463,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
                                     uploader_result.status().ToString()})));
       return;
     }
-    DCHECK(!uploader_)
+    CHECK(!uploader_)
         << "Uploader instantiated more than once for single upload";
     uploader_ = std::move(uploader_result.ValueOrDie());
 
@@ -1494,7 +1496,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
                                   storage_queue->sequenced_task_runner_),
         storage_queue_(storage_queue),
         record_(std::move(record)) {
-    DCHECK(storage_queue_.get());
+    CHECK(storage_queue_);
   }
 
  private:
@@ -1505,7 +1507,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
     // If still in queue, remove it (something went wrong).
     if (in_contexts_queue_ != storage_queue_->write_contexts_queue_.end()) {
-      DCHECK_EQ(storage_queue_->write_contexts_queue_.front().get(), this);
+      CHECK_EQ(storage_queue_->write_contexts_queue_.front().get(), this);
       storage_queue_->write_contexts_queue_.erase(in_contexts_queue_);
     }
 
@@ -1589,7 +1591,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       std::string serialized_record;
       wrapped_record.record().SerializeToString(&serialized_record);
       current_record_digest_ = crypto::SHA256HashString(serialized_record);
-      DCHECK_EQ(current_record_digest_.size(), crypto::kSHA256Length);
+      CHECK_EQ(current_record_digest_.size(), crypto::kSHA256Length);
       *wrapped_record.mutable_record_digest() = current_record_digest_;
     }
 
@@ -1804,16 +1806,16 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     // The size of the reservation is unknown until calculated.
-    DCHECK_EQ(storage_queue_->active_write_reservation_size_, 0u);
+    CHECK_EQ(storage_queue_->active_write_reservation_size_, 0u);
 
     // If we are not at the head of the queue, delay write and expect to be
     // reactivated later.
-    DCHECK(in_contexts_queue_ != storage_queue_->write_contexts_queue_.end());
+    CHECK(in_contexts_queue_ != storage_queue_->write_contexts_queue_.end());
     if (storage_queue_->write_contexts_queue_.front().get() != this) {
       return;
     }
 
-    DCHECK(!buffer_.empty());
+    CHECK(!buffer_.empty());
     // active_write_reservation_size_ includes both expected size of META file
     // and increase in size of DATA file.
     storage_queue_->active_write_reservation_size_ =
@@ -1939,7 +1941,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   void OnCompletion(const Status& status) override {
     if (storage_queue_->active_write_reservation_size_ > 0u) {
-      DCHECK(!status.ok());
+      CHECK(!status.ok());
       storage_queue_->options_.disk_space_resource()->Discard(
           storage_queue_->active_write_reservation_size_);
       storage_queue_->active_write_reservation_size_ = 0u;
@@ -1948,21 +1950,26 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   const scoped_refptr<StorageQueue> storage_queue_;
 
-  Record record_;
+  Record record_
+      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
 
   // Digest of the current record.
-  std::string current_record_digest_;
+  std::string current_record_digest_
+      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
 
   // Write buffer. When filled in (after encryption), |WriteRecord| can be
   // executed. Empty until encryption is done.
-  std::string buffer_;
+  std::string buffer_
+      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
 
   // Atomic counter of insufficien memory retry attempts.
   // Accessed in serialized methods only.
-  size_t remaining_attempts_ = 16u;
+  size_t remaining_attempts_
+      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_) = 16u;
 
   // Copy of the original record, if required.
-  std::optional<Record> record_copy_;
+  std::optional<Record> record_copy_
+      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
 
   // Position in the `storage_queue_`->`write_contexts_queue_`.
   // We use it in order to detect whether the context is in the queue
@@ -1981,7 +1988,8 @@ void StorageQueue::Write(Record record,
 }
 
 Status StorageQueue::ReserveNewRecordDiskSpace(size_t total_size) {
-  if (test_injection_handler_ &&  // Test only: Simulate failure if requested
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  if (test_injection_handler_ &&
       !test_injection_handler_
            .Run(test::StorageQueueOperationKind::kWriteLowDiskSpace,
                 next_sequencing_id_)
@@ -2143,7 +2151,7 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
         sequence_information_(std::move(sequence_information)),
         force_(force),
         storage_queue_(storage_queue) {
-    DCHECK(storage_queue.get());
+    CHECK(storage_queue);
   }
 
  private:
@@ -2210,7 +2218,7 @@ Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id) {
   // Note: files_ cannot be empty ever (there is always the current
   // file for writing).
   for (;;) {
-    DCHECK(!files_.empty()) << "Empty storage queue";
+    CHECK(!files_.empty()) << "Empty storage queue";
     auto next_it = std::next(files_.begin());  // Need to consider the next file
     if (next_it == files_.end()) {
       // We are on the last file, keep it.
@@ -2275,7 +2283,7 @@ void StorageQueue::RegisterCompletionCallback(base::OnceClosure callback) {
   // be destructed until the callback is registered - `StorageQueue` is held
   // by the added reference here. Thus, the callback being registered is
   // guaranteed to be called only when `StorageQueue` is being destructed.
-  DCHECK(callback);
+  CHECK(callback);
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
@@ -2287,8 +2295,18 @@ void StorageQueue::RegisterCompletionCallback(base::OnceClosure callback) {
 }
 
 void StorageQueue::TestInjectErrorsForOperation(
-    test::ErrorInjectionHandlerType handler) {
-  test_injection_handler_ = handler;
+    base::OnceClosure cb, test::ErrorInjectionHandlerType handler) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::OnceClosure cb, test::ErrorInjectionHandlerType handler,
+             scoped_refptr<StorageQueue> self) {
+            DCHECK_CALLED_ON_VALID_SEQUENCE(
+                self->storage_queue_sequence_checker_);
+            self->test_injection_handler_ = handler;
+            std::move(cb).Run();
+          },
+          std::move(cb), handler, base::WrapRefCounted(this)));
 }
 
 //
@@ -2327,9 +2345,9 @@ StorageQueue::SingleFile::SingleFile(
     : completion_closure_list_(completion_closure_list),
       filename_(filename),
       size_(size),
+      buffer_(memory_resource),
       memory_resource_(memory_resource),
-      disk_space_resource_(disk_space_resource),
-      buffer_(memory_resource) {
+      disk_space_resource_(disk_space_resource) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
@@ -2342,7 +2360,7 @@ StorageQueue::SingleFile::~SingleFile() {
 Status StorageQueue::SingleFile::Open(bool read_only) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (handle_) {
-    DCHECK_EQ(is_readonly(), read_only);
+    CHECK_EQ(is_readonly(), read_only);
     // TODO(b/157943192): Restart auto-closing timer.
     return Status::StatusOK();
   }
@@ -2381,7 +2399,7 @@ void StorageQueue::SingleFile::Close() {
 
 void StorageQueue::SingleFile::DeleteWarnIfFailed() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!handle_);
+  CHECK(!handle_);
   disk_space_resource_->Discard(size_);
   size_ = 0;
   DeleteFileWarnIfFailed(filename_);
@@ -2429,7 +2447,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   // If expected data size does not fit into the buffer, move what's left to
   // the start.
   if (data_start_ + size > buffer_.size()) {
-    DCHECK_GT(data_start_, 0u);  // Cannot happen if 0.
+    CHECK_GT(data_start_, 0u);  // Cannot happen if 0.
     if (data_end_ > data_start_) {
       memmove(buffer_.at(0), buffer_.at(data_start_), data_end_ - data_start_);
     }
@@ -2440,7 +2458,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   pos += actual_size;
   while (actual_size < size) {
     // Read as much as possible.
-    DCHECK_LT(data_end_, buffer_.size());
+    CHECK_LT(data_end_, buffer_.size());
     const int32_t result =
         handle_->Read(pos, buffer_.at(data_end_), buffer_.size() - data_end_);
     if (result < 0) {
@@ -2455,7 +2473,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
     }
     pos += result;
     data_end_ += result;
-    DCHECK_LE(data_end_, buffer_.size());
+    CHECK_LE(data_end_, buffer_.size());
     actual_size += result;
   }
   if (actual_size > size) {
@@ -2470,7 +2488,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   // Move start and file position to after that data.
   data_start_ += actual_size;
   file_position_ += actual_size;
-  DCHECK_LE(data_start_, data_end_);
+  CHECK_LE(data_start_, data_end_);
   // Return what has been loaded.
   return read_data;
 }

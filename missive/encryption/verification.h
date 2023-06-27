@@ -51,7 +51,7 @@ class SignatureVerifier {
 
   // Actual verification - returns error status if provided |signature| does not
   // match |message|. Signature must be kSignatureSize bytes.
-  Status Verify(base::StringPiece message, base::StringPiece signature);
+  Status Verify(base::StringPiece message, base::StringPiece signature) const;
 
  private:
   std::string verification_public_key_;
