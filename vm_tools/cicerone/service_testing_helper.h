@@ -95,6 +95,7 @@ class ServiceTestingHelper {
   // Sets up mock objects so that Service can be created, and then creates
   // Service, binding it to the mocks. Also gathers the dbus callbacks.
   explicit ServiceTestingHelper(MockType mock_type);
+  explicit ServiceTestingHelper(MockType mock_type, const std::string& vm_name);
   ~ServiceTestingHelper();
 
   // The directory containing the AF_UNIX sockets needed to talk to the grpc
@@ -211,7 +212,7 @@ class ServiceTestingHelper {
   };
 
   // Create service_ on the dbus thread. Signal |event| when finished.
-  void CreateService(base::WaitableEvent* event);
+  void CreateService(base::WaitableEvent* event, const std::string& vm_name);
 
   // Destroy service_ on the dbus thread. Signal |event| when finished.
   void DestroyService(base::WaitableEvent* event);

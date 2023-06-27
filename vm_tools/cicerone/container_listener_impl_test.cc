@@ -883,7 +883,7 @@ TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
   // RPC above should contain the reported data, and the other six should be
   // zero.
   EXPECT_CALL(*test_framework.GetMetricsLibraryMock(), SendToUMA(_, _, _, _, _))
-      .Times(8)
+      .Times(4)
       .WillRepeatedly([](const std::string& name, int sample, int min, int max,
                          int nbuckets) {
         if (name == "Borealis.Disk.SwapWritesDaily") {
@@ -891,7 +891,60 @@ TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
         } else if (name == "Borealis.Disk.StatefulReadsDaily") {
           EXPECT_EQ(sample, 654321);
         } else {
-          // {Borealis,Crostini}.Disk.{SwapReads,StatefulWrites}Daily
+          // Borealis.Disk.{SwapReads,StatefulWrites}Daily
+          EXPECT_EQ(sample, 0);
+          EXPECT_EQ(name.find("Crostini"), std::string::npos);
+        }
+        return true;
+      });
+  test_framework.GetGuestMetrics()->ReportMetricsImmediatelyForTesting();
+}
+
+TEST(ContainerListenerImplTest,
+     ValidReportMetricsCallShouldAccumulateMetricsForCrostini) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS,
+                                      "termina");
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  // Fake an RPC from the guest containing two metrics.
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  vm_tools::container::Metric* m = request.add_metric();
+  m->set_name("borealis-swap-kb-written");
+  m->set_value(123456);
+  m = request.add_metric();
+  m->set_name("borealis-disk-kb-read");
+  m->set_value(654321);
+  m = request.add_metric();
+  m->set_name("crostini-disk-kb-read");
+  m->set_value(123321);
+  m = request.add_metric();
+  m->set_name("crostini-disk-kb-written");
+  m->set_value(321123);
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  // Force a call to GuestMetrics::ReportDailyMetrics, which should report all
+  // eight disk metrics to UMA.  The two four which received data from the fake
+  // RPC above should contain the reported data, and the other six should be
+  // zero.
+  EXPECT_CALL(*test_framework.GetMetricsLibraryMock(), SendToUMA(_, _, _, _, _))
+      .Times(4)
+      .WillRepeatedly([](const std::string& name, int sample, int min, int max,
+                         int nbuckets) {
+        if (name == "Crostini.Disk.StatefulWritesDaily") {
+          EXPECT_EQ(sample, 321123);
+        } else if (name == "Crostini.Disk.StatefulReadsDaily") {
+          EXPECT_EQ(sample, 123321);
+        } else {
+          // Crostini.Disk.Swap{Reads,Writes}Daily
           EXPECT_EQ(sample, 0);
         }
         return true;

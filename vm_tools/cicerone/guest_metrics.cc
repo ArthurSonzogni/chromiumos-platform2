@@ -326,12 +326,17 @@ void GuestMetrics::ReportDailyMetrics(chromeos_metrics::CumulativeMetrics* cm) {
   blocksin = daily_metrics_.Get(kCrostiniDiskBytesRead);
   blocksout = daily_metrics_.Get(kCrostiniDiskBytesWritten);
 
-  // Range chosen to match Platform.StatefulWritesDaily.
-  metrics_lib_->SendToUMA(kCrostiniSwapBytesRead, swapin, 0, 209715200, 50);
-  metrics_lib_->SendToUMA(kCrostiniSwapBytesWritten, swapout, 0, 209715200, 50);
-  metrics_lib_->SendToUMA(kCrostiniDiskBytesRead, blocksin, 0, 209715200, 50);
-  metrics_lib_->SendToUMA(kCrostiniDiskBytesWritten, blocksout, 0, 209715200,
-                          50);
+  // Range chosen to match Platform.StatefulWritesDaily. We only care about the
+  // metrics for days that Crostini has been used, and so we use |blocksin| as a
+  // heuristic for that.
+  if (blocksin) {
+    metrics_lib_->SendToUMA(kCrostiniSwapBytesRead, swapin, 0, 209715200, 50);
+    metrics_lib_->SendToUMA(kCrostiniSwapBytesWritten, swapout, 0, 209715200,
+                            50);
+    metrics_lib_->SendToUMA(kCrostiniDiskBytesRead, blocksin, 0, 209715200, 50);
+    metrics_lib_->SendToUMA(kCrostiniDiskBytesWritten, blocksout, 0, 209715200,
+                            50);
+  }
 }
 
 }  // namespace cicerone

@@ -126,7 +126,11 @@ std::unique_ptr<dbus::Response> CheckSetHostnameIpMappingMethod(
 ServiceTestingHelper::DbusCallback::DbusCallback() = default;
 ServiceTestingHelper::DbusCallback::~DbusCallback() = default;
 
-ServiceTestingHelper::ServiceTestingHelper(MockType mock_type) {
+ServiceTestingHelper::ServiceTestingHelper(MockType mock_type)
+    : ServiceTestingHelper(mock_type, "borealis") {}
+
+ServiceTestingHelper::ServiceTestingHelper(MockType mock_type,
+                                           const std::string& vm_name) {
   CHECK(socket_temp_dir_.CreateUniqueTempDir());
   quit_closure_called_count_ = 0;
 
@@ -135,7 +139,7 @@ ServiceTestingHelper::ServiceTestingHelper(MockType mock_type) {
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&ServiceTestingHelper::CreateService,
-                                base::Unretained(this), &event)));
+                                base::Unretained(this), &event, vm_name)));
 
   // Wait for service_ to be created.
   event.Wait();
@@ -455,7 +459,8 @@ void ServiceTestingHelper::SetUpPluginVm() {
   VerifyAndClearMockExpectations();
 }
 
-void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
+void ServiceTestingHelper::CreateService(base::WaitableEvent* event,
+                                         const std::string& vm_name) {
   dbus_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
       .WillRepeatedly(Return(dbus_task_runner_.get()));
@@ -487,7 +492,7 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
   CHECK(metrics_temp_dir_.CreateUniqueTempDir());
   auto guest_metrics = std::make_unique<TestGuestMetrics>(
       mock_bus_, metrics_temp_dir_.GetPath(),
-      ServiceTestingHelper::kDefaultOwnerId, "borealis", "penguin");
+      ServiceTestingHelper::kDefaultOwnerId, vm_name, "penguin");
   guest_metrics->SetMetricsLibraryForTesting(
       std::make_unique<MetricsLibraryMock>());
   service_->SetGuestMetricsForTesting(std::move(guest_metrics));
