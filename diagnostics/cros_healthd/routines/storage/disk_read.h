@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_H_
 
 #include <memory>
 #include <string>
@@ -26,20 +26,20 @@ namespace diagnostics {
 
 // The disk read routine create a test file with md5 checksum and read the test
 // file either randomly or linearly for a dedicated duration.
-class DiskReadRoutineV2 final : public BaseRoutineControl {
+class DiskReadRoutine final : public BaseRoutineControl {
  public:
-  static base::expected<std::unique_ptr<DiskReadRoutineV2>, std::string> Create(
+  static base::expected<std::unique_ptr<DiskReadRoutine>, std::string> Create(
       Context* context,
       const ash::cros_healthd::mojom::DiskReadRoutineArgumentPtr& arg);
-  DiskReadRoutineV2(const DiskReadRoutineV2&) = delete;
-  DiskReadRoutineV2& operator=(const DiskReadRoutineV2&) = delete;
-  ~DiskReadRoutineV2() override;
+  DiskReadRoutine(const DiskReadRoutine&) = delete;
+  DiskReadRoutine& operator=(const DiskReadRoutine&) = delete;
+  ~DiskReadRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
 
  protected:
-  explicit DiskReadRoutineV2(
+  explicit DiskReadRoutine(
       Context* context,
       const ash::cros_healthd::mojom::DiskReadRoutineArgumentPtr& arg);
 
@@ -116,9 +116,9 @@ class DiskReadRoutineV2 final : public BaseRoutineControl {
   base::CancelableOnceClosure percentage_update_task_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<DiskReadRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<DiskReadRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_DISK_READ_H_

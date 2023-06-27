@@ -25,7 +25,7 @@
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
+#include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -39,18 +39,18 @@ using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::WithArg;
 
-class DiskReadRoutineV2Test : public testing::Test {
+class DiskReadRoutineTest : public testing::Test {
  protected:
-  DiskReadRoutineV2Test() = default;
-  DiskReadRoutineV2Test(const DiskReadRoutineV2Test&) = delete;
-  DiskReadRoutineV2Test& operator=(const DiskReadRoutineV2Test&) = delete;
+  DiskReadRoutineTest() = default;
+  DiskReadRoutineTest(const DiskReadRoutineTest&) = delete;
+  DiskReadRoutineTest& operator=(const DiskReadRoutineTest&) = delete;
 
   void SetUp() override {
     // Set sufficient free space.
     SetGetFioTestDirectoryFreeSpaceResponse(
         /*free_space_byte=*/static_cast<int64_t>(10240 /*MiB*/) * 1024 * 1024);
 
-    auto routine = DiskReadRoutineV2::Create(
+    auto routine = DiskReadRoutine::Create(
         &mock_context_,
         mojom::DiskReadRoutineArgument::New(
             mojom::DiskReadTypeEnum::kLinearRead,
@@ -144,16 +144,16 @@ class DiskReadRoutineV2Test : public testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  std::unique_ptr<DiskReadRoutineV2> routine_;
+  std::unique_ptr<DiskReadRoutine> routine_;
   FakeProcessControl fake_process_control_prepare_;
   FakeProcessControl fake_process_control_read_;
 };
 
-class DiskReadRoutineV2AdapterTest : public DiskReadRoutineV2Test {
+class DiskReadRoutineAdapterTest : public DiskReadRoutineTest {
  protected:
-  DiskReadRoutineV2AdapterTest() = default;
-  DiskReadRoutineV2AdapterTest(const DiskReadRoutineV2AdapterTest&) = delete;
-  DiskReadRoutineV2AdapterTest& operator=(const DiskReadRoutineV2AdapterTest&) =
+  DiskReadRoutineAdapterTest() = default;
+  DiskReadRoutineAdapterTest(const DiskReadRoutineAdapterTest&) = delete;
+  DiskReadRoutineAdapterTest& operator=(const DiskReadRoutineAdapterTest&) =
       delete;
 
   void SetUp() override {
@@ -214,7 +214,7 @@ class DiskReadRoutineV2AdapterTest : public DiskReadRoutineV2Test {
 };
 
 // Test that the disk read routine can run successfully.
-TEST_F(DiskReadRoutineV2Test, RoutineSuccess) {
+TEST_F(DiskReadRoutineTest, RoutineSuccess) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -234,7 +234,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that the disk read routine can run successfully with routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineSuccess) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineSuccess) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -259,7 +259,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineSuccess) {
 }
 
 // Test that the disk read routine handles the error of retrieving free space.
-TEST_F(DiskReadRoutineV2Test, RoutineRetrieveFreeSpaceError) {
+TEST_F(DiskReadRoutineTest, RoutineRetrieveFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/std::nullopt);
@@ -272,7 +272,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineRetrieveFreeSpaceError) {
 
 // Test that the disk read routine handles the error of retrieving free space
 // with routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineRetrieveFreeSpaceError) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineRetrieveFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/std::nullopt);
@@ -289,7 +289,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineRetrieveFreeSpaceError) {
 }
 
 // Test that the disk read routine handles insufficient free space error.
-TEST_F(DiskReadRoutineV2Test, RoutineInsufficientFreeSpaceError) {
+TEST_F(DiskReadRoutineTest, RoutineInsufficientFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/0);
@@ -302,7 +302,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineInsufficientFreeSpaceError) {
 
 // Test that the disk read routine handles insufficient free space error with
 // routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineInsufficientFreeSpaceError) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineInsufficientFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/0);
@@ -319,7 +319,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineInsufficientFreeSpaceError) {
 }
 
 // Test that the disk read routine handles the error of running fio prepare.
-TEST_F(DiskReadRoutineV2Test, RoutineRunFioPrepareError) {
+TEST_F(DiskReadRoutineTest, RoutineRunFioPrepareError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -334,7 +334,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineRunFioPrepareError) {
 
 // Test that the disk read routine handles the error of running fio prepare with
 // routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioPrepareError) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineRunFioPrepareError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -354,7 +354,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioPrepareError) {
 }
 
 // Test that the disk read routine handles the error of running fio read.
-TEST_F(DiskReadRoutineV2Test, RoutineRunFioReadError) {
+TEST_F(DiskReadRoutineTest, RoutineRunFioReadError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -371,7 +371,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineRunFioReadError) {
 
 // Test that the disk read routine handles the error of running fio read with
 // routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioReadError) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineRunFioReadError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -395,7 +395,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioReadError) {
 
 // Test that the disk read routine handles the error of cleaning fio test file
 // when routine starts.
-TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnStart) {
+TEST_F(DiskReadRoutineTest, RoutineRemoveFioTestFileErrorOnStart) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
 
@@ -407,7 +407,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnStart) {
 
 // Test that the disk read routine handles the error of cleaning fio test file
 // with routine adapter when routine starts.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnStart) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineCleanFioTestFileErrorOnStart) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
 
@@ -423,7 +423,7 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnStart) {
 
 // Test that the disk read routine handles the error of cleaning fio test file
 // when routine completes.
-TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnComplete) {
+TEST_F(DiskReadRoutineTest, RoutineRemoveFioTestFileErrorOnComplete) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -441,7 +441,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnComplete) {
 
 // Test that the disk read routine handles the error of cleaning fio test file
 // with routine adapter when routine completes.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnComplete) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineCleanFioTestFileErrorOnComplete) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
 
@@ -466,8 +466,8 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnComplete) {
 
 // Test that the disk read routine can not be created with zero disk read
 // duration.
-TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroDiskReadDuration) {
-  auto routine = DiskReadRoutineV2::Create(
+TEST_F(DiskReadRoutineTest, RoutineCreateErrorZeroDiskReadDuration) {
+  auto routine = DiskReadRoutine::Create(
       &mock_context_,
       mojom::DiskReadRoutineArgument::New(
           mojom::DiskReadTypeEnum::kLinearRead,
@@ -477,7 +477,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroDiskReadDuration) {
 
 // Test that the disk read routine can not be created with zero disk read
 // duration with routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroDiskReadDuration) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorZeroDiskReadDuration) {
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
   routine_service_.CreateRoutine(
@@ -494,8 +494,8 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroDiskReadDuration) {
 }
 
 // Test that the disk read routine can not be created with zero test file size.
-TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroTestFileSize) {
-  auto routine = DiskReadRoutineV2::Create(
+TEST_F(DiskReadRoutineTest, RoutineCreateErrorZeroTestFileSize) {
+  auto routine = DiskReadRoutine::Create(
       &mock_context_,
       mojom::DiskReadRoutineArgument::New(
           mojom::DiskReadTypeEnum::kLinearRead,
@@ -505,7 +505,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroTestFileSize) {
 
 // Test that the disk read routine can not be created with zero test file size
 // with routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroTestFileSize) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorZeroTestFileSize) {
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
   routine_service_.CreateRoutine(
@@ -522,8 +522,8 @@ TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroTestFileSize) {
 
 // Test that the disk read routine can not be created with unexpected disk read
 // type.
-TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorUnexpectedDiskReadType) {
-  auto routine = DiskReadRoutineV2::Create(
+TEST_F(DiskReadRoutineTest, RoutineCreateErrorUnexpectedDiskReadType) {
+  auto routine = DiskReadRoutine::Create(
       &mock_context_,
       mojom::DiskReadRoutineArgument::New(
           mojom::DiskReadTypeEnum::kUnmappedEnumField,
@@ -533,7 +533,7 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorUnexpectedDiskReadType) {
 
 // Test that the disk read routine can not be created with unexpected disk read
 // type with routine adapter.
-TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorUnexpectedDiskReadType) {
+TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorUnexpectedDiskReadType) {
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
   routine_service_.CreateRoutine(

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
+#include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 
 #include <algorithm>
 #include <cmath>
@@ -50,9 +50,9 @@ static_assert(kFileCreationSecondsPerMiB <= 1.0,
 
 }  // namespace
 
-base::expected<std::unique_ptr<DiskReadRoutineV2>, std::string>
-DiskReadRoutineV2::Create(Context* context,
-                          const mojom::DiskReadRoutineArgumentPtr& arg) {
+base::expected<std::unique_ptr<DiskReadRoutine>, std::string>
+DiskReadRoutine::Create(Context* context,
+                        const mojom::DiskReadRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
   if (arg->disk_read_duration.InSeconds() <= 0) {
     return base::unexpected(
@@ -68,11 +68,11 @@ DiskReadRoutineV2::Create(Context* context,
     return base::unexpected("Unexpected disk read type");
   }
 
-  return base::ok(base::WrapUnique(new DiskReadRoutineV2(context, arg)));
+  return base::ok(base::WrapUnique(new DiskReadRoutine(context, arg)));
 }
 
-DiskReadRoutineV2::DiskReadRoutineV2(
-    Context* context, const mojom::DiskReadRoutineArgumentPtr& arg)
+DiskReadRoutine::DiskReadRoutine(Context* context,
+                                 const mojom::DiskReadRoutineArgumentPtr& arg)
     : context_(context),
       disk_read_type_(arg->type),
       disk_read_duration_(arg->disk_read_duration),
@@ -83,18 +83,18 @@ DiskReadRoutineV2::DiskReadRoutineV2(
   CHECK(fio_prepare_duration_.is_positive());
 }
 
-DiskReadRoutineV2::~DiskReadRoutineV2() {
+DiskReadRoutine::~DiskReadRoutine() {
   // Remove test file if the routine unexpectedly fails.
   context_->executor()->RemoveFioTestFile(base::DoNothing());
 }
 
-void DiskReadRoutineV2::OnStart() {
+void DiskReadRoutine::OnStart() {
   CHECK(step_ == kInitialize);
   SetRunningState();
   RunNextStep();
 }
 
-void DiskReadRoutineV2::RunNextStep() {
+void DiskReadRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int>(step_) + 1);
   start_ticks_ = base::TimeTicks::Now();
   UpdatePercentage();
@@ -106,13 +106,12 @@ void DiskReadRoutineV2::RunNextStep() {
     case kCleanUpBeforeTest:
     case kCleanUp:
       context_->executor()->RemoveFioTestFile(
-          base::BindOnce(&DiskReadRoutineV2::HandleRemoveTestFileResponse,
+          base::BindOnce(&DiskReadRoutine::HandleRemoveTestFileResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case kCheckFreeSpace: {
-      auto [on_success, on_error] = SplitDbusCallback(
-          base::BindOnce(&DiskReadRoutineV2::CheckStorageSpace,
-                         weak_ptr_factory_.GetWeakPtr()));
+      auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
+          &DiskReadRoutine::CheckStorageSpace, weak_ptr_factory_.GetWeakPtr()));
       context_->spaced_proxy()->GetFreeDiskSpaceAsync(
           base::FilePath(path::kFioCacheFile).DirName().value(),
           std::move(on_success), std::move(on_error));
@@ -126,10 +125,10 @@ void DiskReadRoutineV2::RunNextStep() {
       scoped_process_control_prepare_->GetReturnCode(
           mojo::WrapCallbackWithDefaultInvokeIfNotRun(
               base::BindOnce(
-                  &DiskReadRoutineV2::HandleReturnCodeResponse,
+                  &DiskReadRoutine::HandleReturnCodeResponse,
                   weak_ptr_factory_.GetWeakPtr(),
                   std::ref(scoped_process_control_prepare_),
-                  base::BindOnce(&DiskReadRoutineV2::HandleFioPrepareResponse,
+                  base::BindOnce(&DiskReadRoutine::HandleFioPrepareResponse,
                                  weak_ptr_factory_.GetWeakPtr(),
                                  std::ref(scoped_process_control_prepare_))),
               EXIT_FAILURE));
@@ -142,10 +141,10 @@ void DiskReadRoutineV2::RunNextStep() {
       scoped_process_control_read_->GetReturnCode(
           mojo::WrapCallbackWithDefaultInvokeIfNotRun(
               base::BindOnce(
-                  &DiskReadRoutineV2::HandleReturnCodeResponse,
+                  &DiskReadRoutine::HandleReturnCodeResponse,
                   weak_ptr_factory_.GetWeakPtr(),
                   std::ref(scoped_process_control_read_),
-                  base::BindOnce(&DiskReadRoutineV2::HandleFioReadResponse,
+                  base::BindOnce(&DiskReadRoutine::HandleFioReadResponse,
                                  weak_ptr_factory_.GetWeakPtr(),
                                  std::ref(scoped_process_control_read_))),
               EXIT_FAILURE));
@@ -158,7 +157,7 @@ void DiskReadRoutineV2::RunNextStep() {
   }
 }
 
-void DiskReadRoutineV2::HandleRemoveTestFileResponse(
+void DiskReadRoutine::HandleRemoveTestFileResponse(
     mojom::ExecutedProcessResultPtr result) {
   CHECK(step_ == kCleanUpBeforeTest || step_ == kCleanUp);
 
@@ -171,8 +170,8 @@ void DiskReadRoutineV2::HandleRemoveTestFileResponse(
   RunNextStep();
 }
 
-void DiskReadRoutineV2::CheckStorageSpace(brillo::Error* err,
-                                          int64_t free_space_byte) {
+void DiskReadRoutine::CheckStorageSpace(brillo::Error* err,
+                                        int64_t free_space_byte) {
   CHECK(step_ == kCheckFreeSpace);
 
   if (err || free_space_byte < 0) {
@@ -193,7 +192,7 @@ void DiskReadRoutineV2::CheckStorageSpace(brillo::Error* err,
   RunNextStep();
 }
 
-void DiskReadRoutineV2::HandleFioPrepareResponse(
+void DiskReadRoutine::HandleFioPrepareResponse(
     ScopedProcessControl& process_control,
     int return_code,
     const std::string& err) {
@@ -212,7 +211,7 @@ void DiskReadRoutineV2::HandleFioPrepareResponse(
   RunNextStep();
 }
 
-void DiskReadRoutineV2::HandleFioReadResponse(
+void DiskReadRoutine::HandleFioReadResponse(
     ScopedProcessControl& process_control,
     int return_code,
     const std::string& err) {
@@ -230,18 +229,18 @@ void DiskReadRoutineV2::HandleFioReadResponse(
   RunNextStep();
 }
 
-void DiskReadRoutineV2::HandleReturnCodeResponse(
+void DiskReadRoutine::HandleReturnCodeResponse(
     ScopedProcessControl& process_control,
     base::OnceCallback<void(int, const std::string&)> response_cb,
     int return_code) {
   process_control->GetStderr(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
-      base::BindOnce(&DiskReadRoutineV2::HandleStderrResponse,
+      base::BindOnce(&DiskReadRoutine::HandleStderrResponse,
                      weak_ptr_factory_.GetWeakPtr(),
                      base::BindOnce(std::move(response_cb), return_code)),
       mojo::ScopedHandle()));
 }
 
-void DiskReadRoutineV2::HandleStderrResponse(
+void DiskReadRoutine::HandleStderrResponse(
     base::OnceCallback<void(const std::string&)> response_cb,
     mojo::ScopedHandle handle) {
   auto stderr_fd = mojo_utils::UnwrapMojoHandle(std::move(handle));
@@ -269,7 +268,7 @@ void DiskReadRoutineV2::HandleStderrResponse(
   std::move(response_cb).Run(std::string(buf, read_len));
 }
 
-void DiskReadRoutineV2::UpdatePercentage() {
+void DiskReadRoutine::UpdatePercentage() {
   base::TimeDelta expected_running_time;
   switch (step_) {
     case kFioPrepare:
@@ -294,7 +293,7 @@ void DiskReadRoutineV2::UpdatePercentage() {
   int new_percentage = std::min(49, static_cast<int>(50 * running_time_ratio));
   if (new_percentage < 49) {
     percentage_update_task_.Reset(base::BindOnce(
-        &DiskReadRoutineV2::UpdatePercentage, weak_ptr_factory_.GetWeakPtr()));
+        &DiskReadRoutine::UpdatePercentage, weak_ptr_factory_.GetWeakPtr()));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, percentage_update_task_.callback(),
         kDiskReadRoutineUpdatePeriod);

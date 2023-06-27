@@ -11,7 +11,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
-#include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
+#include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/cros_healthd/routines/volume_button/volume_button.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -58,7 +58,7 @@ void RoutineService::CreateRoutine(
       break;
     case mojom::RoutineArgument::Tag::kDiskRead:
       if (auto routine =
-              DiskReadRoutineV2::Create(context_, routine_arg->get_disk_read());
+              DiskReadRoutine::Create(context_, routine_arg->get_disk_read());
           routine.has_value()) {
         AddRoutine(std::move(routine.value()), std::move(routine_receiver));
       } else {
