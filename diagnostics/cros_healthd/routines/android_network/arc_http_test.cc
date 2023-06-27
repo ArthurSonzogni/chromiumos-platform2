@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
-#include "diagnostics/cros_healthd/routines/arc_http/arc_http.h"
+#include "diagnostics/cros_healthd/routines/android_network/arc_http.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"

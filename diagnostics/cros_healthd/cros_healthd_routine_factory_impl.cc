@@ -12,9 +12,9 @@
 #include <base/logging.h>
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
-#include "diagnostics/cros_healthd/routines/arc_dns_resolution/arc_dns_resolution.h"
-#include "diagnostics/cros_healthd/routines/arc_http/arc_http.h"
-#include "diagnostics/cros_healthd/routines/arc_ping/arc_ping.h"
+#include "diagnostics/cros_healthd/routines/android_network/arc_dns_resolution.h"
+#include "diagnostics/cros_healthd/routines/android_network/arc_http.h"
+#include "diagnostics/cros_healthd/routines/android_network/arc_ping.h"
 #include "diagnostics/cros_healthd/routines/audio/audio_set_gain.h"
 #include "diagnostics/cros_healthd/routines/audio/audio_set_volume.h"
 #include "diagnostics/cros_healthd/routines/battery_capacity/battery_capacity.h"

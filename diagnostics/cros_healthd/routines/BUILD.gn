@@ -58,9 +58,9 @@ source_set("libdiag_routine") {
   ]
   sources = [
     "ac_power/ac_power.cc",
-    "arc_dns_resolution/arc_dns_resolution.cc",
-    "arc_http/arc_http.cc",
-    "arc_ping/arc_ping.cc",
+    "android_network/arc_dns_resolution.cc",
+    "android_network/arc_http.cc",
+    "android_network/arc_ping.cc",
     "audio/audio_driver.cc",
     "audio/audio_set_gain.cc",
     "audio/audio_set_volume.cc",
@@ -145,9 +145,9 @@ if (use.test) {
   source_set("routine_test") {
     sources = [
       "ac_power/ac_power_test.cc",
-      "arc_dns_resolution/arc_dns_resolution_test.cc",
-      "arc_http/arc_http_test.cc",
-      "arc_ping/arc_ping_test.cc",
+      "android_network/arc_dns_resolution_test.cc",
+      "android_network/arc_http_test.cc",
+      "android_network/arc_ping_test.cc",
       "audio/audio_driver_test.cc",
       "audio/audio_set_gain_test.cc",
       "audio/audio_set_volume_test.cc",

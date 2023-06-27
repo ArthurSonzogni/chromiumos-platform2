@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ARC_PING_ARC_PING_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ARC_PING_ARC_PING_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ANDROID_NETWORK_ARC_PING_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ANDROID_NETWORK_ARC_PING_H_
 
 #include <memory>
 
@@ -46,4 +46,4 @@ std::unique_ptr<DiagnosticRoutine> CreateArcPingRoutine(
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ARC_PING_ARC_PING_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ANDROID_NETWORK_ARC_PING_H_
