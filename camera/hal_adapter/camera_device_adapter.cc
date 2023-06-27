@@ -6,6 +6,7 @@
 
 #include "hal_adapter/camera_device_adapter.h"
 
+#include <malloc.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -841,6 +842,15 @@ int32_t CameraDeviceAdapter::Close() {
   // Ensure that no more stream manipulator operations happen after the device
   // is closed.
   stream_manipulator_manager_.reset();
+
+  // The default glibc malloc implementation is reluctant to release
+  // freed memory back to the system, which can result in
+  // multi-gigabyte dirty RSS usage after several effect switches. To
+  // avoid this, we give a hint to the allocator that now is a good
+  // time to release any unneeded memory.
+  // TODO(b/254794020): Check whether this is still needed after
+  // ChromeOS has switched to Scudo/PartitionAlloc.
+  malloc_trim(0);
 
   std::move(close_callback_).Run();
   return ret;
