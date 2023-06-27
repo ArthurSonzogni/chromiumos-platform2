@@ -4,140 +4,197 @@
 
 #include "vm_tools/concierge/mglru_util.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
+
+using vm_tools::vm_memory_management::MglruGeneration;
+using vm_tools::vm_memory_management::MglruMemcg;
+using vm_tools::vm_memory_management::MglruNode;
 
 namespace vm_tools::concierge::mglru {
 namespace {
 
-void ASSERT_STATS_EQUAL(const MglruStats& lhs, const MglruStats& rhs) {
-  ASSERT_EQ(StatsToString(lhs), StatsToString(rhs));
+void AddGeneration(MglruNode* node,
+                   const uint32_t sequence_num,
+                   const uint32_t timestamp_msec,
+                   const uint32_t anon_kb,
+                   const uint32_t file_kb) {
+  MglruGeneration* new_gen = node->add_generations();
+  new_gen->set_sequence_num(sequence_num);
+  new_gen->set_timestamp_msec(timestamp_msec);
+  new_gen->set_anon_kb(anon_kb);
+  new_gen->set_file_kb(file_kb);
 }
 
+MglruNode* AddNode(MglruMemcg* memcg, const uint32_t id) {
+  MglruNode* new_node = memcg->add_nodes();
+  new_node->set_id(id);
+  return new_node;
+}
+
+MglruMemcg* AddMemcg(MglruStats* stats, const uint32_t id) {
+  MglruMemcg* new_cg = stats->add_cgs();
+  new_cg->set_id(id);
+  return new_cg;
+}
+
+testing::AssertionResult StatsEqual(const MglruStats& lhs,
+                                    const MglruStats& rhs) {
+  if (lhs.SerializeAsString() != rhs.SerializeAsString()) {
+    return testing::AssertionFailure()
+           << "Stats are not equal: lhs: " << StatsToString(lhs, 1024)
+           << " rhs: " << StatsToString(rhs, 1024);
+  }
+
+  return testing::AssertionSuccess();
+}
+
+const char simple_input[] =
+    R"(memcg     1
+ node     2
+        3      4      5        6
+)";
+
 TEST(MglruUtilTest, TestEmpty) {
-  std::optional<MglruStats> stats = ParseStatsFromString("");
+  std::optional<MglruStats> stats = ParseStatsFromString("", 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestWrongTokenCg) {
-  const std::string input =
+  std::string input =
       R"(Pmemcg     0
  node     0
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestMissingIdCg) {
-  const std::string input =
+  std::string input =
       R"(memcg
  node     0
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestWrongTokenNode) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  Pnode     0
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestMissingIdNode) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  node
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestMissingCgHeader) {
-  const std::string input =
+  std::string input =
       R"(node     0
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestMissingNodeHeader) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestMissingGeneration) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  node     0
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestTooBigGeneration) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  node     0
         695      40523      18334        4175 55
-        695      40523      18334        4175
+        696      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
-  ASSERT_FALSE(stats);
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 0);
+  MglruNode* node = AddNode(cg, 0);
+  AddGeneration(node, 695, 40523, 18334, 4175);
+  AddGeneration(node, 696, 40523, 18334, 4175);
+
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 1024);
+  ASSERT_TRUE(stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
 }
 
 TEST(MglruUtilTest, TestTooSmallGeneration) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  node     0
         695      40523      18334
         695      40523      18334        4175
 )";
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 4096);
   ASSERT_FALSE(stats);
 }
 
 TEST(MglruUtilTest, TestSimple) {
-  const std::string input =
-      R"(memcg     1
- node     2
-        3      4      5        6
-)";
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 1);
+  MglruNode* node = AddNode(cg, 2);
+  AddGeneration(node, 3, 4, 5, 6);
 
-  const MglruStats expected_stats = {.cgs = {{// CG 0
-                                              .id = 1,
-                                              .nodes = {{// Node 0
-                                                         .id = 2,
-                                                         .generations = {
-                                                             {3, 4, 5, 6},
-                                                         }}}}}};
-
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  // A 'page size' of 1024 means that there should be no conversion from page
+  // units to KB units, so the expected stats should exactly match the input
+  // file
+  std::optional<MglruStats> stats = ParseStatsFromString(simple_input, 1024);
   ASSERT_TRUE(stats);
-  ASSERT_STATS_EQUAL(expected_stats, *stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
+}
+
+TEST(MglruUtilTest, TestPageSizeConversion) {
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 1);
+  MglruNode* node = AddNode(cg, 2);
+  AddGeneration(node, 3, 4, 20, 24);
+
+  // A page size of 4096 means that the input file (pages) should be multiplied
+  // by 4 to get KB units
+  std::optional<MglruStats> stats = ParseStatsFromString(simple_input, 4096);
+  ASSERT_TRUE(stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
 }
 
 TEST(MglruUtilTest, TestMultiple) {
-  const std::string input =
+  std::string input =
       R"(memcg     0
  node     0
         695      40523      18334        4175
@@ -157,37 +214,34 @@ memcg     1
         698       3419      21460        4438
 )";
 
-  const MglruStats expected_stats = {
-      .cgs = {{// CG 0
-               .id = 0,
-               .nodes = {{// Node 0
-                          .id = 0,
-                          .generations = {{695, 40523, 18334, 4175},
-                                          {696, 35101, 35592, 22242},
-                                          {697, 10961, 32552, 12081},
-                                          {698, 3419, 21460, 4438}}},
-                         {// Node 1
-                          .id = 1,
-                          .generations = {{695, 40523, 18334, 4175},
-                                          {696, 35101, 35592, 22242},
-                                          {697, 10961, 32552, 12081},
-                                          {698, 3419, 21460, 4438}}}}},
-              {// CG 1
-               .id = 1,
-               .nodes = {{// Node 0
-                          .id = 0,
-                          .generations = {{695, 40523, 18334, 4175},
-                                          {696, 35101, 35592, 22242},
-                                          {697, 10961, 32552, 12081},
-                                          {698, 3419, 21460, 4438}}}}}}};
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 0);
+  MglruNode* node = AddNode(cg, 0);
+  AddGeneration(node, 695, 40523, 18334, 4175);
+  AddGeneration(node, 696, 35101, 35592, 22242);
+  AddGeneration(node, 697, 10961, 32552, 12081);
+  AddGeneration(node, 698, 3419, 21460, 4438);
+  node = AddNode(cg, 1);
+  AddGeneration(node, 695, 40523, 18334, 4175);
+  AddGeneration(node, 696, 35101, 35592, 22242);
+  AddGeneration(node, 697, 10961, 32552, 12081);
+  AddGeneration(node, 698, 3419, 21460, 4438);
+  cg = AddMemcg(&expected_stats, 1);
+  node = AddNode(cg, 0);
+  AddGeneration(node, 695, 40523, 18334, 4175);
+  AddGeneration(node, 696, 35101, 35592, 22242);
+  AddGeneration(node, 697, 10961, 32552, 12081);
+  AddGeneration(node, 698, 3419, 21460, 4438);
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  // Page size of 1024 should result in no conversion from pages to KB units
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 1024);
   ASSERT_TRUE(stats);
-  ASSERT_STATS_EQUAL(expected_stats, *stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
 }
 
-TEST(MglruUtilTest, TestMultipleCrostini) {
-  const std::string input =
+TEST(MglruUtilTest, TestMultipleNewKernel) {
+  // New kernel versions have a trailing '/' after the memcg id
+  std::string input =
       R"(memcg     1 /
   node     0
            0       1177          0         822
@@ -196,19 +250,17 @@ TEST(MglruUtilTest, TestMultipleCrostini) {
            3       1177       1171        5125
 )";
 
-  const MglruStats expected_stats = {
-      .cgs = {{// CG 0
-               .id = 1,
-               .nodes = {{// Node 0
-                          .id = 0,
-                          .generations = {{0, 1177, 0, 822},
-                                          {1, 1177, 7, 0},
-                                          {2, 1177, 0, 0},
-                                          {3, 1177, 1171, 5125}}}}}}};
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 1);
+  MglruNode* node = AddNode(cg, 0);
+  AddGeneration(node, 0, 1177, 0, 822);
+  AddGeneration(node, 1, 1177, 7, 0);
+  AddGeneration(node, 2, 1177, 0, 0);
+  AddGeneration(node, 3, 1177, 1171, 5125);
 
-  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 1024);
   ASSERT_TRUE(stats);
-  ASSERT_STATS_EQUAL(expected_stats, *stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
 }
 
 }  // namespace

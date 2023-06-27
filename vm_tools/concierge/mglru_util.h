@@ -7,62 +7,25 @@
 
 #include <optional>
 #include <string>
-#include <vector>
+
+#include <base/strings/string_piece.h>
+
+#include <vm_memory_management/vm_memory_management.pb.h>
+
+using vm_tools::vm_memory_management::MglruStats;
 
 namespace vm_tools::concierge::mglru {
 
-// MGLRU caching at a high level is organized as follows:
-// Memory Control Groups (memcg)
-//    Nodes
-//      Generations
-// The following structs are organized in the same way
-// to store the sizes of MGLRU generations
-
-// A single MGLRU generation
-struct MglruGeneration {
-  // The sequence number
-  uint32_t sequence_num;
-
-  // The age of this generation in ms
-  uint32_t timestamp_msec;
-
-  // The number of pages of anonymous memory in this generation
-  uint32_t anon;
-
-  // The number of pages of file cache in this generation
-  uint32_t file;
-};
-
-// A single MGLRU node
-struct MglruNode {
-  // The id of this node
-  uint32_t id;
-
-  // The generations in this node
-  std::vector<MglruGeneration> generations;
-};
-
-// A single memory control group
-struct MglruMemcg {
-  // The id of this memory control group
-  uint32_t id;
-
-  // The nodes in this memory control group
-  std::vector<MglruNode> nodes;
-};
-
-// Contains the stats of MGLRU at a point in time
-struct MglruStats {
-  // The current memory control groups
-  std::vector<MglruMemcg> cgs;
-};
-
 // Parses MglruStats from the contents of the MGLRU sysfs admin file
-// Usually: /sys/kernel/mm/lru_gen/admin
-std::optional<MglruStats> ParseStatsFromString(const std::string admin_file);
+// Usually: /sys/kernel/mm/lru_gen/admin.
+// The admin file is in page units, so page_size is used to convert to KiB.
+std::optional<MglruStats> ParseStatsFromString(
+    const base::StringPiece stats_string, const size_t page_size);
 
 // Formats the given stats into a human readable string
-std::string StatsToString(const MglruStats& stats);
+// page_size is used to convert from KiB (input) to page size units in the
+// result string.
+std::string StatsToString(const MglruStats& stats, const size_t page_size);
 
 }  // namespace vm_tools::concierge::mglru
 
