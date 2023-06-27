@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <xf86drm.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -305,15 +306,12 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
 }
 
 int32_t VirtGpuChannel::create_pipe(int& out_pipe_fd) {
-  // This may be undesirable given your point of view, since the host
-  // generates the descriptor IDs.  However, given the way Sommelier is
-  // designed and the order of events that occurs, this is safe to do.
-  // The host will verify this assumption, and we can always change it
-  // later.  But this avoids waiting for the host to create a pipe and
-  // return the ID.
-  descriptor_id_ += 2;
+  // The guest generates IDs for Wayland read pipes.
+  read_pipe_id_++;
+  // Account for overflow.
+  read_pipe_id_ = std::max(read_pipe_id_, CROSS_DOMAIN_PIPE_READ_START);
 
-  return create_pipe_internal(out_pipe_fd, descriptor_id_,
+  return create_pipe_internal(out_pipe_fd, read_pipe_id_,
                               CROSS_DOMAIN_ID_TYPE_READ_PIPE);
 }
 
@@ -659,9 +657,6 @@ int32_t VirtGpuChannel::create_fd(uint32_t identifier,
                                   uint32_t identifier_type,
                                   uint32_t identifier_size,
                                   int& out_fd) {
-  // Update descriptor ID based on latest host information.
-  descriptor_id_ = identifier;
-
   if (identifier_type == CROSS_DOMAIN_ID_TYPE_VIRTGPU_BLOB) {
     return create_host_blob((uint64_t)identifier, (uint64_t)identifier_size,
                             out_fd);

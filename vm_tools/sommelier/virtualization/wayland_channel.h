@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #include <vector>
 
+#include "virtgpu_cross_domain_protocol.h"
+
 /*
  * Copied from `VIRTWL_SEND_MAX_ALLOCS`.  It was originally set this way
  * because it seemed like a reasonable limit.
@@ -198,7 +200,7 @@ class VirtGpuChannel : public WaylandChannel {
         channel_ring_addr_{MAP_FAILED},
         channel_ring_handle_{},
         supports_dmabuf_(false),
-        descriptor_id_{1} {}
+        read_pipe_id_{CROSS_DOMAIN_PIPE_READ_START} {}
   ~VirtGpuChannel() override;
 
   int32_t init() override;
@@ -288,8 +290,9 @@ class VirtGpuChannel : public WaylandChannel {
   uint32_t channel_ring_handle_;
 
   bool supports_dmabuf_;
-  // Matches the crosvm-side descriptor_id, must be an odd number.
-  uint32_t descriptor_id_;
+  // Largest client-allocated ID so far, starts at 0x80000000
+  // to avoid conflicts with the host.
+  uint32_t read_pipe_id_;
 
   std::vector<BufferDescription> description_cache_;
   std::vector<PipeDescription> pipe_cache_;
