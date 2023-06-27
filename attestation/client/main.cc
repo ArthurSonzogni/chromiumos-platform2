@@ -45,7 +45,7 @@ using ClientLoopBase = brillo::Daemon;
 using CertProfileSpecificData =
     std::variant<DeviceSetupCertificateRequestMetadata>;
 
-constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(5);
 
 const char kGetFeaturesCommand[] = "features";
 const char kCreateCommand[] = "create";
