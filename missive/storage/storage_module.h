@@ -93,10 +93,7 @@ class StorageModule : public StorageModuleInterface {
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;
 
-  // Returns a callback that initializes `instance->storage_`.
-  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
-  InitStorageAsync(
-      scoped_refptr<StorageModule> instance,
+  void InitStorage(
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
@@ -112,17 +109,8 @@ class StorageModule : public StorageModuleInterface {
   friend class StorageModuleTest;
   friend base::RefCountedThreadSafe<StorageModule>;
 
-  // Task runner for serializing storage operations and setting internal
-  // state.
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-  SEQUENCE_CHECKER(sequence_checker_);
-
   // Reference to `Storage` object.
-  // Note: all accesses to `storage_` should be done on StorageModule's
-  // sequenced task runner since via StorageModule::AsyncSetStorage may change
-  // the object `storage_` points to.
-  scoped_refptr<StorageInterface> storage_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+  scoped_refptr<StorageInterface> storage_;
 
   // Parameters used to create Storage
   const StorageOptions options_;

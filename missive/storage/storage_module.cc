@@ -49,93 +49,53 @@ StorageModule::StorageModule(
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag)
-    : sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
-      options_(options),
+    : options_(options),
       async_start_upload_cb_(async_start_upload_cb),
       queues_container_(queues_container),
       encryption_module_(encryption_module),
       compression_module_(compression_module),
-      signature_verification_dev_flag_(signature_verification_dev_flag) {
-  // Constructor may be called on any thread.
-  DETACH_FROM_SEQUENCE(sequence_checker_);
-}
+      signature_verification_dev_flag_(signature_verification_dev_flag) {}
 
 StorageModule::~StorageModule() = default;
 
 void StorageModule::AddRecord(Priority priority,
                               Record record,
                               EnqueueCallback callback) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](scoped_refptr<StorageModule> self, Priority priority,
-                        Record record, EnqueueCallback callback) {
-                       DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-                       if (!(self->storage_)) {
-                         std::move(callback).Run(kStorageUnavailableStatus);
-                         return;
-                       }
-                       self->storage_->Write(priority, std::move(record),
-                                             std::move(callback));
-                     },
-                     base::WrapRefCounted(this), priority, std::move(record),
-                     std::move(callback)));
+  if (!(storage_)) {
+    std::move(callback).Run(kStorageUnavailableStatus);
+    return;
+  }
+  storage_->Write(priority, std::move(record), std::move(callback));
 }
 
 void StorageModule::Flush(Priority priority, FlushCallback callback) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self, Priority priority,
-             FlushCallback callback) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            if (!(self->storage_)) {
-              std::move(callback).Run(kStorageUnavailableStatus);
-              return;
-            }
-            self->storage_->Flush(priority, std::move(callback));
-          },
-          base::WrapRefCounted(this), priority, std::move(callback)));
+  if (!(storage_)) {
+    std::move(callback).Run(kStorageUnavailableStatus);
+    return;
+  }
+  storage_->Flush(priority, std::move(callback));
 }
 
 void StorageModule::ReportSuccess(SequenceInformation sequence_information,
                                   bool force) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self,
-             SequenceInformation sequence_information, bool force) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            if (!(self->storage_)) {
-              LOG(ERROR) << kStorageUnavailableStatus.error_message();
-              return;
-            }
-            self->storage_->Confirm(
-                std::move(sequence_information), force,
-                base::BindOnce([](Status status) {
-                  LOG_IF(ERROR, !status.ok())
-                      << "Unable to confirm record deletion: " << status;
-                }));
-          },
-          base::WrapRefCounted(this), std::move(sequence_information), force));
+  if (!(storage_)) {
+    LOG(ERROR) << kStorageUnavailableStatus.error_message();
+    return;
+  }
+  storage_->Confirm(std::move(sequence_information), force,
+                    base::BindOnce([](Status status) {
+                      LOG_IF(ERROR, !status.ok())
+                          << "Unable to confirm record deletion: " << status;
+                    }));
 }
 
 void StorageModule::UpdateEncryptionKey(
     SignedEncryptionInfo signed_encryption_key) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self,
-             SignedEncryptionInfo signed_encryption_key) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            if (!(self->storage_)) {
-              LOG(ERROR) << kStorageUnavailableStatus.error_message();
-              return;
-            }
-            self->storage_->UpdateEncryptionKey(
-                std::move(signed_encryption_key));
-          },
-          base::WrapRefCounted(this), std::move(signed_encryption_key)));
+  if (!(storage_)) {
+    LOG(ERROR) << kStorageUnavailableStatus.error_message();
+    return;
+  }
+  storage_->UpdateEncryptionKey(std::move(signed_encryption_key));
 }
 
 void StorageModule::SetLegacyEnabledPriorities(
@@ -190,41 +150,29 @@ void StorageModule::Create(
   instance->SetLegacyEnabledPriorities(legacy_storage_enabled);
 
   // Initialize `instance`.
-  InitStorageAsync(instance, std::move(callback)).Run();
+  instance->InitStorage(std::move(callback));
 }
 
 // static
-base::OnceClosure StorageModule::InitStorageAsync(
-    scoped_refptr<StorageModule> instance,
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
-  return base::BindPostTask(
-      instance->sequenced_task_runner_,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> self,
-             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                 callback) {
-            // Partially bound callback which sets `storage_` or returns an
-            // error status via `callback`. Run on `sequenced_task_runner_`.
-            auto set_storage_cb =
-                base::BindPostTask(self->sequenced_task_runner_,
-                                   base::BindOnce(&StorageModule::SetStorage,
-                                                  self, std::move(callback)));
+void StorageModule::InitStorage(
 
-            // Instantiate Storage.
-            NewStorage::Create(self->options_, self->async_start_upload_cb_,
-                               self->queues_container_,
-                               self->encryption_module_,
-                               self->compression_module_,
-                               self->signature_verification_dev_flag_,
-                               std::move(set_storage_cb));
-          },
-          instance, std::move(callback)));
+    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
+  // Partially bound callback which sets `storage_` or returns an
+  // error status via `callback`. Run on the current default task runner.
+  auto set_storage_cb =
+      base::BindOnce(&StorageModule::SetStorage, base::WrapRefCounted(this),
+                     std::move(callback));
+
+  // Instantiate Storage.
+  NewStorage::Create(options_, async_start_upload_cb_, queues_container_,
+                     encryption_module_, compression_module_,
+                     signature_verification_dev_flag_,
+                     std::move(set_storage_cb));
 }
 
 void StorageModule::SetStorage(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
     StatusOr<scoped_refptr<StorageInterface>> storage) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage.ok()) {
     std::move(callback).Run(storage.status());
     return;
