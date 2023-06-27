@@ -38,17 +38,6 @@
 //   VARIANT     |        v        |  brillo::Any
 //   UNIX_FD     |        h        |  base::ScopedFD
 //   SIGNATURE   |        g        |  (unsupported)
-//
-// Additional overloads/specialization can be provided for custom types.
-// In order to do that, provide overloads of AppendValueToWriter() and
-// PopValueFromReader() functions in brillo::dbus_utils namespace for the
-// CustomType. As well as a template specialization of DBusType<> for the same
-// CustomType. This specialization must provide three static functions:
-//  - static std::string GetSignature();
-//  - static void Write(dbus::MessageWriter* writer, const CustomType& value);
-//  - static bool Read(dbus::MessageReader* reader, CustomType* value);
-// See an example in DBusUtils.CustomStruct unit test in
-// brillo/dbus/data_serialization_test.cc.
 
 #include <map>
 #include <memory>
