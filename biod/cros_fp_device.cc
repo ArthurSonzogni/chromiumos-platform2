@@ -23,6 +23,12 @@
 #include <libec/ec_command_async.h>
 #include <libec/flash_protect_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
+#include <libec/fingerprint/fp_mode_command.h>
+#include <libec/fingerprint/fp_read_match_secret_command.h>
+#include <libec/fingerprint/fp_stats_command.h>
+#include <libec/get_protocol_info_command.h>
+#include <libec/get_version_command.h>
+#include <libec/reboot_command.h>
 #include <libec/versions_command.h>
 
 using ec::EcCmdVersionSupportStatus;
@@ -31,7 +37,14 @@ using ec::EcCommandAsync;
 using ec::EmptyParam;
 using ec::FlashProtectCommand;
 using ec::FpMode;
+using ec::FpModeCommand;
+using ec::FpReadMatchSecretCommand;
 using ec::FpSensorErrors;
+using ec::FpStatsCommand;
+using ec::GetFpModeCommand;
+using ec::GetProtocolInfoCommand;
+using ec::GetVersionCommand;
+using ec::RebootCommand;
 using ec::VersionsCommand;
 
 namespace {
@@ -56,23 +69,16 @@ CrosFpDevice::~CrosFpDevice() {
 
 std::optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
   /* read max request / response size from the MCU for protocol v3+ */
-  EcCommand<EmptyParam, struct ec_response_get_protocol_info> cmd(
-      EC_CMD_GET_PROTOCOL_INFO);
+  GetProtocolInfoCommand cmd;
   // We retry this command because it is known to occasionally fail
   // with ETIMEDOUT on first attempt.
   if (!cmd.RunWithMultipleAttempts(cros_fd_.get(), kMaxIoAttempts)) {
     return std::nullopt;
   }
 
-  uint16_t max_read =
-      cmd.Resp()->max_response_packet_size - sizeof(struct ec_host_response);
-  // TODO(vpalatin): workaround for b/78544921, can be removed if MCU is fixed.
-  uint16_t max_write =
-      cmd.Resp()->max_request_packet_size - sizeof(struct ec_host_request) - 4;
-
   return EcProtocolInfo{
-      .max_read = max_read,
-      .max_write = max_write,
+      .max_read = cmd.MaxReadBytes(),
+      .max_write = cmd.MaxWriteBytes(),
   };
 }
 
@@ -158,8 +164,8 @@ void CrosFpDevice::OnEventReadable() {
 }
 
 bool CrosFpDevice::SetFpMode(const FpMode& mode) {
-  EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, ec::kVersionZero, {.mode = mode.RawVal()});
+  FpModeCommand cmd(mode);
+
   bool ret = cmd.Run(cros_fd_.get());
   if (ret) {
     return true;
@@ -186,9 +192,8 @@ bool CrosFpDevice::SetFpMode(const FpMode& mode) {
 }
 
 FpMode CrosFpDevice::GetFpMode() {
-  EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, ec::kVersionZero,
-      {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
+  GetFpModeCommand cmd;
+
   if (!cmd.Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to get FP mode from MCU.";
     return FpMode(FpMode::Mode::kModeInvalid);
@@ -221,9 +226,7 @@ bool CrosFpDevice::SupportsPositiveMatchSecret() {
 
 std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
     uint16_t index) {
-  EcCommand<struct ec_params_fp_read_match_secret,
-            struct ec_response_fp_read_match_secret>
-      cmd(EC_CMD_FP_READ_MATCH_SECRET, 0, {.fgr = index});
+  FpReadMatchSecretCommand cmd(index);
 
   if (!cmd.Run(cros_fd_.get()) &&
       cmd.Result() == ec::kEcCommandUninitializedResult) {
@@ -256,7 +259,7 @@ bool CrosFpDevice::UpdateFpInfo() {
 }
 
 std::optional<ec::CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
-  EcCommand<EmptyParam, struct ec_response_fp_stats> cmd(EC_CMD_FP_STATS);
+  FpStatsCommand cmd;
   if (!cmd.Run(cros_fd_.get())) {
     return std::nullopt;
   }
@@ -306,29 +309,24 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
 // static
 std::optional<ec::CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
     const base::ScopedFD& cros_fp_fd) {
-  EcCommand<EmptyParam, struct ec_response_get_version> cmd(EC_CMD_GET_VERSION);
+  GetVersionCommand cmd;
+
   if (!cmd.Run(cros_fp_fd.get())) {
     LOG(ERROR) << "Failed to fetch cros_fp firmware version.";
     return std::nullopt;
   }
 
-  // buffers should already be null terminated -- this is a safeguard
-  cmd.Resp()->version_string_ro[sizeof(cmd.Resp()->version_string_ro) - 1] =
-      '\0';
-  cmd.Resp()->version_string_rw[sizeof(cmd.Resp()->version_string_rw) - 1] =
-      '\0';
-
   return EcVersion{
-      .ro_version = std::string(cmd.Resp()->version_string_ro),
-      .rw_version = std::string(cmd.Resp()->version_string_rw),
-      .current_image = static_cast<ec_image>(cmd.Resp()->current_image),
+      .ro_version = cmd.ROVersion(),
+      .rw_version = cmd.RWVersion(),
+      .current_image = cmd.Image(),
   };
 }
 
 bool CrosFpDevice::EcReboot(ec_image to_image) {
   DCHECK(to_image == EC_IMAGE_RO || to_image == EC_IMAGE_RW);
 
-  EcCommand<EmptyParam, EmptyParam> cmd_reboot(EC_CMD_REBOOT);
+  RebootCommand cmd_reboot;
   // Don't expect a return code, cros_fp has rebooted.
   cmd_reboot.Run(cros_fd_.get());
 
