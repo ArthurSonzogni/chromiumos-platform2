@@ -12,13 +12,15 @@
 #include <optional>
 
 #include <base/containers/span.h>
-#include <base/files/file_util.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <brillo/key_value_store.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
 #include "base/containers/contains.h"
@@ -148,6 +150,30 @@ base::span<const PlatformCameraInfo> DeviceConfig::GetPlatformCameraInfo() {
     PopulatePlatformCameraInfo();
   }
   return *platform_cameras_;
+}
+
+// static
+int DeviceConfig::GetArcApiLevel() {
+  static int value = []() {
+    brillo::KeyValueStore store;
+    if (!store.Load(base::FilePath("/etc/lsb-release"))) {
+      LOGF(ERROR) << "Failed to read lsb-release";
+      return 0;
+    }
+    std::string str;
+    if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &str)) {
+      LOGF(ERROR) << "Failed to read board name";
+      return 0;
+    }
+    int version;
+    if (!base::StringToInt(str, &version)) {
+      LOGF(ERROR) << "Invalid CHROMEOS_ARC_ANDROID_SDK_VERSION: " << str
+                  << " in /etc/lsb-release";
+      return 0;
+    }
+    return value;
+  }();
+  return value;
 }
 
 void DeviceConfig::ProbeSensorSubdev(struct media_entity_desc* desc,

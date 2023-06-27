@@ -109,7 +109,11 @@ CameraClient::CameraClient(
       camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
-  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_6;
+  // Set CAMERA_DEVICE_API_VERSION_3_5 to device version for Android P
+  // (API level: 28).
+  camera3_device_.common.version = DeviceConfig::GetArcApiLevel() >= 30
+                                       ? CAMERA_DEVICE_API_VERSION_3_6
+                                       : CAMERA_DEVICE_API_VERSION_3_5;
   camera3_device_.common.close = cros::camera_device_close;
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   camera3_device_.ops = &g_camera_device_ops;

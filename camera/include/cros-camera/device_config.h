@@ -118,6 +118,11 @@ class CROS_CAMERA_EXPORT DeviceConfig {
 
   base::span<const PlatformCameraInfo> GetPlatformCameraInfo();
 
+  // Gets the ARC client's API level. Returns 0 when an error occurs. See
+  // https://developer.android.com/tools/releases/platforms for the relation
+  // between API levels and Android versions.
+  static int GetArcApiLevel();
+
  private:
   DeviceConfig() = default;
 

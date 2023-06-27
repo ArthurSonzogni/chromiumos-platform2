@@ -29,6 +29,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/device_config.h"
 
 namespace cros {
 
@@ -75,22 +76,7 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
 }
 
 bool IsArcTBoard() {
-  static bool value = []() {
-    brillo::KeyValueStore store;
-    if (!store.Load(base::FilePath("/etc/lsb-release"))) {
-      LOGF(ERROR) << "Failed to read lsb-release";
-      return false;
-    }
-    std::string board;
-    if (!store.GetString("CHROMEOS_RELEASE_BOARD", &board)) {
-      LOGF(ERROR) << "Failed to read board name";
-      return false;
-    }
-    const std::string arc_t_suffix = "-arc-t";
-    return board.size() > arc_t_suffix.size() &&
-           board.substr(board.size() - arc_t_suffix.size()) == arc_t_suffix;
-  }();
-  return value;
+  return DeviceConfig::GetArcApiLevel() == 33;
 }
 
 }  // namespace
