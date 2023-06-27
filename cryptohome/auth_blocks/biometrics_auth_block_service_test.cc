@@ -289,6 +289,52 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalSuccess) {
   EXPECT_CALL(*mock_processor_, EndEnrollSession);
 }
 
+TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalPendingSessionStart) {
+  const brillo::Blob kFakeNonce(32, 1);
+
+  base::OnceCallback<void(bool)> start_session_callback;
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+      .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback});
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+                               start_result.GetCallback());
+
+  ASSERT_FALSE(start_result.IsReady());
+
+  AuthEnrollmentProgress event1 = ConstructAuthEnrollmentProgress(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 50);
+  EmitEnrollEvent(event1, std::nullopt);
+  ASSERT_FALSE(enroll_signals_.IsEmpty());
+  EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event1));
+  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+
+  AuthEnrollmentProgress event2 = ConstructAuthEnrollmentProgress(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 100);
+  EmitEnrollEvent(event2, kFakeNonce);
+  ASSERT_FALSE(enroll_signals_.IsEmpty());
+  EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event2));
+  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
+
+  ASSERT_TRUE(enroll_signals_.IsEmpty());
+  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+
+  std::move(start_session_callback).Run(true);
+  ASSERT_TRUE(start_result.IsReady());
+  EXPECT_THAT(start_result.Get(), IsOk());
+  EXPECT_CALL(*mock_processor_, EndEnrollSession);
+}
+
+TEST_F(BiometricsAuthBlockServiceTest, ReceiveEmptyEnrollSignalWithoutSession) {
+  const brillo::Blob kFakeNonce(32, 1);
+  AuthEnrollmentProgress event = ConstructAuthEnrollmentProgress(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 100);
+  EmitEnrollEvent(event, kFakeNonce);
+  ASSERT_TRUE(enroll_signals_.IsEmpty());
+  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+}
+
 TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInEnrollSession) {
   EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
       .Times(2)
@@ -546,6 +592,49 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveAuthenticateSignalSuccess) {
   EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
+}
+
+TEST_F(BiometricsAuthBlockServiceTest,
+       ReceiveAuthenticateSignalPendingSessionStart) {
+  const brillo::Blob kFakeNonce(32, 1);
+
+  base::OnceCallback<void(bool)> start_session_callback;
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+      .WillOnce(SaveStartAuthenticateSessionCallback{&start_session_callback});
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
+  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     start_result.GetCallback());
+
+  ASSERT_FALSE(start_result.IsReady());
+
+  user_data_auth::AuthScanDone event;
+  event.mutable_scan_result()->set_fingerprint_result(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
+  EmitAuthEvent(event, kFakeNonce);
+  ASSERT_FALSE(auth_signals_.IsEmpty());
+  EXPECT_THAT(auth_signals_.Take(), ProtoEq(event));
+  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
+
+  ASSERT_TRUE(auth_signals_.IsEmpty());
+  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+
+  std::move(start_session_callback).Run(true);
+  ASSERT_TRUE(start_result.IsReady());
+  EXPECT_THAT(start_result.Get(), IsOk());
+  EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
+}
+
+TEST_F(BiometricsAuthBlockServiceTest,
+       ReceiveEmptyAuthenticateSignalWithoutSession) {
+  const brillo::Blob kFakeNonce(32, 1);
+  user_data_auth::AuthScanDone event;
+  event.mutable_scan_result()->set_fingerprint_result(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
+  EmitAuthEvent(event, kFakeNonce);
+  ASSERT_TRUE(auth_signals_.IsEmpty());
+  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInAuthenticateSession) {

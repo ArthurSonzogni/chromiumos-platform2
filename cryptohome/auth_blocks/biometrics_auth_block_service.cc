@@ -219,25 +219,28 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
 void BiometricsAuthBlockService::OnEnrollScanDone(
     user_data_auth::AuthEnrollmentProgress signal,
     std::optional<brillo::Blob> nonce) {
-  if (!active_token_ || active_token_->type() != Token::TokenType::kEnroll) {
-    return;
+  // Process the signal either there is an active session or there is an
+  // pending session since the signals could arrive as soon as the
+  // session start reply and the session tranisition is yet to happen.
+  Token* token = pending_token_ ? pending_token_.get() : active_token_;
+  if (token && token->type() == Token::TokenType::kEnroll) {
+    if (nonce.has_value()) {
+      auth_nonce_ = std::move(*nonce);
+    }
+    enroll_signal_sender_.Run(std::move(signal));
   }
-
-  if (nonce.has_value()) {
-    auth_nonce_ = std::move(*nonce);
-  }
-  enroll_signal_sender_.Run(std::move(signal));
 }
 
 void BiometricsAuthBlockService::OnAuthScanDone(
     user_data_auth::AuthScanDone signal, brillo::Blob nonce) {
-  if (!active_token_ ||
-      active_token_->type() != Token::TokenType::kAuthenticate) {
-    return;
+  // Process the signal either there is an active session or there is an
+  // pending session since the signals could arrive as soon as the
+  // session start reply and the session tranisition is yet to happen.
+  Token* token = pending_token_ ? pending_token_.get() : active_token_;
+  if (token && token->type() == Token::TokenType::kAuthenticate) {
+    auth_nonce_ = std::move(nonce);
+    auth_signal_sender_.Run(std::move(signal));
   }
-
-  auth_nonce_ = std::move(nonce);
-  auth_signal_sender_.Run(std::move(signal));
 }
 
 void BiometricsAuthBlockService::OnSessionFailed() {
