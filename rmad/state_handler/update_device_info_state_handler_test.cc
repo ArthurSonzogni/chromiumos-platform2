@@ -16,6 +16,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
+#include "rmad/utils/fake_segmentation_utils.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_regions_utils.h"
@@ -71,6 +72,9 @@ struct StateHandlerArgs {
   bool has_sku_list = true;
   const std::vector<uint64_t> sku_list = kSkuList;
   bool has_custom_label_list = true;
+  bool is_feature_enabled = true;
+  bool is_feature_provisioned = true;
+  int feature_level = 0;
   bool set_serial_number_success = true;
   bool set_region_success = true;
   bool set_sku_success = true;
@@ -212,10 +216,16 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(false));
     }
 
+    // Fake |SegmentationUtils|.
+    auto segmentation_utils = std::make_unique<FakeSegmentationUtils>(
+        args.is_feature_enabled, args.is_feature_provisioned,
+        args.feature_level);
+
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
-        json_store_, daemon_callback_, std::move(cbi_utils),
+        json_store_, daemon_callback_, GetTempDirPath(), std::move(cbi_utils),
         std::move(cros_config_utils), std::move(write_protect_utils),
-        std::move(regions_utils), std::move(vpd_utils));
+        std::move(regions_utils), std::move(vpd_utils),
+        std::move(segmentation_utils));
   }
 
  protected:
@@ -344,6 +354,59 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto state = handler->GetState();
   EXPECT_EQ(state.update_device_info().original_whitelabel_index(), -1);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_FeatureNotEnabled_Success) {
+  auto handler = CreateStateHandler({.is_feature_enabled = false});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNSUPPORTED);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_FeatureNotProvisioned_Success) {
+  auto handler = CreateStateHandler(
+      {.is_feature_enabled = true, .is_feature_provisioned = false});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_FeatureLevel0_Success) {
+  auto handler = CreateStateHandler({.is_feature_enabled = true,
+                                     .is_feature_provisioned = true,
+                                     .feature_level = 0});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_FeatureLevel1_Success) {
+  auto handler = CreateStateHandler({.is_feature_enabled = true,
+                                     .is_feature_provisioned = true,
+                                     .feature_level = 1});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {

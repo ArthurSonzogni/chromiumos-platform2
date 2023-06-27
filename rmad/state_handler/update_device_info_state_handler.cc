@@ -10,14 +10,21 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <google/protobuf/repeated_field.h>
+#include <libsegmentation/feature_management.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/fake_segmentation_utils.h"
+#include "rmad/utils/json_store.h"
 #include "rmad/utils/regions_utils_impl.h"
+#include "rmad/utils/segmentation_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -44,28 +51,38 @@ namespace rmad {
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {
+    : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(kDefaultWorkingDirPath) {
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   regions_utils_ = std::make_unique<RegionsUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+  if (base::PathExists(GetFakeFeaturesInputFilePath())) {
+    segmentation_utils_ = CreateFakeSegmentationUtils();
+  } else {
+    segmentation_utils_ = std::make_unique<SegmentationUtilsImpl>();
+  }
 }
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<RegionsUtils> regions_utils,
-    std::unique_ptr<VpdUtils> vpd_utils)
+    std::unique_ptr<VpdUtils> vpd_utils,
+    std::unique_ptr<SegmentationUtils> segmentation_utils)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(working_dir_path),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
       regions_utils_(std::move(regions_utils)),
-      vpd_utils_(std::move(vpd_utils)) {}
+      vpd_utils_(std::move(vpd_utils)),
+      segmentation_utils_(std::move(segmentation_utils)) {}
 
 RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(cbi_utils_);
@@ -73,6 +90,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(write_protect_utils_);
   CHECK(regions_utils_);
   CHECK(vpd_utils_);
+  CHECK(segmentation_utils_);
 
   // Make sure HWWP is off before initializing the state.
   if (bool hwwp_enabled;
@@ -95,6 +113,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   bool is_custom_label_exist;
   std::string custom_label_tag;
   std::string dram_part_number;
+  UpdateDeviceInfoState::FeatureLevel feature_level;
 
   std::vector<std::string> region_list;
   std::vector<uint64_t> sku_id_list;
@@ -178,6 +197,25 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
       vpd_utils_->RemoveCustomLabelTag();
     }
   }
+  if (segmentation_utils_->IsFeatureEnabled()) {
+    if (segmentation_utils_->IsFeatureProvisioned()) {
+      switch (segmentation_utils_->GetFeatureLevel()) {
+        case 0:
+          feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
+          break;
+        case 1:
+          feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1;
+          break;
+        default:
+          feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
+          NOTREACHED_NORETURN();
+      }
+    } else {
+      feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN;
+    }
+  } else {
+    feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNSUPPORTED;
+  }
 
   if (!json_store_->GetValue(kMlbRepair, &mlb_repair)) {
     LOG(ERROR) << "Failed to get the mainboard repair status "
@@ -190,6 +228,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_sku_index(sku_index);
   update_dev_info->set_original_whitelabel_index(custom_label_index);
   update_dev_info->set_original_dram_part_number(dram_part_number);
+  update_dev_info->set_original_feature_level(feature_level);
 
   for (auto region_option : region_list) {
     update_dev_info->add_region_list(region_option);
@@ -269,6 +308,11 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
     LOG(ERROR) << "The read-only |original dram part number| of "
                   "|update device info| is changed.";
     return false;
+  }
+  if (original_device_info.original_feature_level() !=
+      device_info.original_feature_level()) {
+    LOG(ERROR) << "The read-only |original feature level| of "
+                  "|update device info| is changed.";
   }
 
   if (!IsRepeatedFieldSame(original_device_info.region_list(),
@@ -373,11 +417,41 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
+  if (device_info.original_feature_level() ==
+      UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN) {
+    // TODO(chenghan): Provision feature values.
+  }
+
   if (!vpd_utils_->FlushOutRoVpdCache()) {
     LOG(ERROR) << "Failed to flush cache to ro vpd.";
     return false;
   }
   return true;
+}
+
+base::FilePath UpdateDeviceInfoStateHandler::GetFakeFeaturesInputFilePath()
+    const {
+  return working_dir_path_.AppendASCII(kTestDirPath)
+      .AppendASCII(kFakeFeaturesInputFilePath);
+}
+
+std::unique_ptr<SegmentationUtils>
+UpdateDeviceInfoStateHandler::CreateFakeSegmentationUtils() const {
+  bool is_feature_enabled = false;
+  bool is_feature_provisioned = false;
+  int feature_level = 0;
+
+  auto fake_features =
+      base::MakeRefCounted<JsonStore>(GetFakeFeaturesInputFilePath());
+  if (!fake_features->ReadOnly()) {
+    // Read JSON success.
+    fake_features->GetValue("is_feature_enabled", &is_feature_enabled);
+    fake_features->GetValue("is_feature_provisioned", &is_feature_provisioned);
+    fake_features->GetValue("feature_level", &feature_level);
+  }
+
+  return std::make_unique<FakeSegmentationUtils>(
+      is_feature_enabled, is_feature_provisioned, feature_level);
 }
 
 }  // namespace rmad

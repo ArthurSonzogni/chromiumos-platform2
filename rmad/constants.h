@@ -31,6 +31,7 @@ inline constexpr char kDefaultUnencryptedPreservePath[] =
 inline constexpr char kTestDirPath[] = ".test";
 inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
 inline constexpr char kDisableCalibrationFilePath[] = ".disable_calibration";
+inline constexpr char kFakeFeaturesInputFilePath[] = ".fake_features_input";
 
 // We currently treat InitialState as WelcomeState.
 inline constexpr RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
