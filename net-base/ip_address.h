@@ -5,6 +5,8 @@
 #ifndef NET_BASE_IP_ADDRESS_H_
 #define NET_BASE_IP_ADDRESS_H_
 
+#include <sys/socket.h>
+
 #include <optional>
 #include <string>
 #include <variant>
@@ -22,6 +24,9 @@ enum class NET_BASE_EXPORT IPFamily {
   kIPv4,
   kIPv6,
 };
+
+// Converts from IPFamily enum to sa_family_t.
+NET_BASE_EXPORT sa_family_t ToSAFamily(IPFamily family);
 
 // Represents an family-agnostic IP address, either a IPv4 or a IPv6 address.
 class NET_BASE_EXPORT IPAddress {

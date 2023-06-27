@@ -8,6 +8,15 @@
 
 namespace net_base {
 
+sa_family_t ToSAFamily(IPFamily family) {
+  switch (family) {
+    case IPFamily::kIPv4:
+      return AF_INET;
+    case IPFamily::kIPv6:
+      return AF_INET6;
+  }
+}
+
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
     const std::string& address_string) {
