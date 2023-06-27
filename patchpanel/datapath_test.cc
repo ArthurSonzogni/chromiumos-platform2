@@ -1841,13 +1841,17 @@ TEST(DatapathTest, StartDnsRedirection_User) {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
       .input_ifname = "",
       .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
-      .nameservers = {"8.8.8.8", "8.4.8.4", "1.1.1.1"},
+      .nameservers = {*net_base::IPAddress::CreateFromString("8.8.8.8"),
+                      *net_base::IPAddress::CreateFromString("8.4.8.4"),
+                      *net_base::IPAddress::CreateFromString("1.1.1.1")},
   };
   DnsRedirectionRule rule6 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
       .input_ifname = "",
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
-      .nameservers = {"2001:4860:4860::8888", "2001:4860:4860::8844"},
+      .nameservers =
+          {*net_base::IPAddress::CreateFromString("2001:4860:4860::8888"),
+           *net_base::IPAddress::CreateFromString("2001:4860:4860::8844")},
   };
 
   Datapath datapath(runner, firewall, &system);
@@ -2027,13 +2031,17 @@ TEST(DatapathTest, StopDnsRedirection_User) {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
       .input_ifname = "",
       .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
-      .nameservers = {"8.8.8.8", "8.4.8.4", "1.1.1.1"},
+      .nameservers = {*net_base::IPAddress::CreateFromString("8.8.8.8"),
+                      *net_base::IPAddress::CreateFromString("8.4.8.4"),
+                      *net_base::IPAddress::CreateFromString("1.1.1.1")},
   };
   DnsRedirectionRule rule6 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
       .input_ifname = "",
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
-      .nameservers = {"2001:4860:4860::8888", "2001:4860:4860::8844"},
+      .nameservers =
+          {*net_base::IPAddress::CreateFromString("2001:4860:4860::8888"),
+           *net_base::IPAddress::CreateFromString("2001:4860:4860::8844")},
   };
 
   Datapath datapath(runner, firewall, &system);

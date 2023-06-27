@@ -32,7 +32,6 @@
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
 #include "patchpanel/iptables.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {
@@ -997,25 +996,11 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
                                        Iptables::Command op) {
   // Validate nameservers.
   for (const auto& nameserver : rule.nameservers) {
-    sa_family_t sa_family = GetIpFamily(nameserver);
-    switch (sa_family) {
-      case AF_INET:
-        if (family != IpFamily::kIPv4) {
-          LOG(ERROR) << "Invalid nameserver IPv4 address '" << nameserver
-                     << "'";
-          return false;
-        }
-        break;
-      case AF_INET6:
-        if (family != IpFamily::kIPv6) {
-          LOG(ERROR) << "Invalid nameserver IPv6 address '" << nameserver
-                     << "'";
-          return false;
-        }
-        break;
-      default:
-        LOG(ERROR) << "Invalid IP family " << sa_family;
-        return false;
+    if (ConvertIpFamily(nameserver.GetFamily()) != family) {
+      LOG(ERROR) << "Invalid nameserver address: " << nameserver
+                 << ", the expected family is "
+                 << (family == IpFamily::kIPv4 ? "IPv4" : "IPv6");
+      return false;
     }
   }
 
@@ -1049,7 +1034,7 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
       args.push_back("-j");
       args.push_back("DNAT");
       args.push_back("--to-destination");
-      args.push_back(rule.nameservers[i]);
+      args.push_back(rule.nameservers[i].ToString());
       args.push_back("-w");  // Wait for xtables lock.
       if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
         success = false;
@@ -2401,7 +2386,10 @@ std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule) {
   }
   stream << ", proxy_address: " << rule.proxy_address;
   if (!rule.nameservers.empty()) {
-    stream << ", nameserver(s): " << base::JoinString(rule.nameservers, ",");
+    stream << ", nameserver(s): ";
+    for (const auto& nameserver : rule.nameservers) {
+      stream << nameserver << ",";
+    }
   }
   stream << " }";
   return stream;

@@ -90,7 +90,7 @@ struct DnsRedirectionRule {
   patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
   std::string input_ifname;
   net_base::IPAddress proxy_address;
-  std::vector<std::string> nameservers;
+  std::vector<net_base::IPAddress> nameservers;
   std::string host_ifname;
 };
 

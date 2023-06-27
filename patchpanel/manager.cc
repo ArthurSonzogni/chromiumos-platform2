@@ -850,8 +850,13 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
                           .proxy_address = *proxy_address,
                           .host_ifname = request.host_ifname()};
 
-  for (const auto& nameserver : request.nameservers()) {
-    rule.nameservers.emplace_back(nameserver);
+  for (const auto& ns : request.nameservers()) {
+    const auto nameserver = net_base::IPAddress::CreateFromString(ns);
+    if (!nameserver || nameserver->GetFamily() != proxy_address->GetFamily()) {
+      LOG(WARNING) << "Invalid nameserver IP address: " << ns;
+    } else {
+      rule.nameservers.push_back(*nameserver);
+    }
   }
 
   if (!datapath_->StartDnsRedirection(rule)) {
