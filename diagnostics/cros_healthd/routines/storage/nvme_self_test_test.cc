@@ -16,8 +16,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
+#include "diagnostics/cros_healthd/routines/storage/nvme_wear_level.h"
 
 #include <utility>
 #include <vector>

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SMARTCTL_CHECK_SMARTCTL_CHECK_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SMARTCTL_CHECK_SMARTCTL_CHECK_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_SMARTCTL_CHECK_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_SMARTCTL_CHECK_H_
 
 #include <cstdint>
 #include <optional>
@@ -80,4 +80,4 @@ class SmartctlCheckRoutine final : public DiagnosticRoutineWithStatus {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SMARTCTL_CHECK_SMARTCTL_CHECK_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_SMARTCTL_CHECK_H_

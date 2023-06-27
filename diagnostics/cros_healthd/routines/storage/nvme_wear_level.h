@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_WEAR_LEVEL_NVME_WEAR_LEVEL_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_WEAR_LEVEL_NVME_WEAR_LEVEL_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_WEAR_LEVEL_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_WEAR_LEVEL_H_
 
 #include <cstdint>
 #include <memory>
@@ -70,4 +70,4 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutineWithStatus {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_WEAR_LEVEL_NVME_WEAR_LEVEL_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_WEAR_LEVEL_H_

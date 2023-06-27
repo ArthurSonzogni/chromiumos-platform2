@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_SELF_TEST_NVME_SELF_TEST_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_SELF_TEST_NVME_SELF_TEST_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_SELF_TEST_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_SELF_TEST_H_
 
 #include <cstdint>
 #include <memory>
@@ -105,4 +105,4 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutineWithStatus {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NVME_SELF_TEST_NVME_SELF_TEST_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_SELF_TEST_H_

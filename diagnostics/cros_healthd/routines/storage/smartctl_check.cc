@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
+#include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
 
 #include <memory>
 #include <optional>
