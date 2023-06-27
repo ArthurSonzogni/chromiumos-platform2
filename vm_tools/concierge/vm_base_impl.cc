@@ -41,8 +41,8 @@ bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   if (byte_size < 0) {
     LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;
   }
-  bool result = CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath().c_str(),
-                                                     byte_size);
+  bool result =
+      CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath(), byte_size);
   if (result && balloon_policy_) {
     balloon_policy_->UpdateCurrentBalloonSize(byte_size);
   }
@@ -50,8 +50,8 @@ bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
 }
 
 bool VmBaseImpl::SetBalloonWorkingSetConfig(const BalloonWssConfigFfi* config) {
-  return CrosvmControl::Get()->SetBalloonWorkingSetConfig(
-      GetVmSocketPath().c_str(), config);
+  return CrosvmControl::Get()->SetBalloonWorkingSetConfig(GetVmSocketPath(),
+                                                          config);
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
@@ -135,15 +135,15 @@ std::string VmBaseImpl::GetVmSocketPath() const {
 }
 
 bool VmBaseImpl::Stop() const {
-  return CrosvmControl::Get()->StopVm(GetVmSocketPath().c_str());
+  return CrosvmControl::Get()->StopVm(GetVmSocketPath());
 }
 
 bool VmBaseImpl::SuspendCrosvm() const {
-  return CrosvmControl::Get()->SuspendVm(GetVmSocketPath().c_str());
+  return CrosvmControl::Get()->SuspendVm(GetVmSocketPath());
 }
 
 bool VmBaseImpl::ResumeCrosvm() const {
-  return CrosvmControl::Get()->ResumeVm(GetVmSocketPath().c_str());
+  return CrosvmControl::Get()->ResumeVm(GetVmSocketPath());
 }
 
 uint32_t VmBaseImpl::seneschal_server_handle() const {
@@ -154,7 +154,7 @@ uint32_t VmBaseImpl::seneschal_server_handle() const {
 }
 
 void VmBaseImpl::MakeRtVcpu() {
-  CrosvmControl::Get()->MakeRtVm(GetVmSocketPath().c_str());
+  CrosvmControl::Get()->MakeRtVm(GetVmSocketPath());
 }
 
 void VmBaseImpl::HandleSwapVmRequest(const SwapVmRequest& request,

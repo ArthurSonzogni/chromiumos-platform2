@@ -1209,7 +1209,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
   SwapVmResponse response;
   if (policy_result == VmmSwapPolicyResult::kPass ||
       (is_vmm_swap_enabled_ && !swap_policy_timer_->IsRunning())) {
-    if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+    if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath())) {
       LOG(ERROR) << "Failure on crosvm swap command for enable";
       response.set_failure_reason("Failure on crosvm swap command for enable");
       std::move(callback).Run(response);
@@ -1255,7 +1255,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
 
 void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+  if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath())) {
     vmm_swap_metrics_->OnVmmSwapEnabled();
     is_vmm_swap_enabled_ = true;
     response.set_success(true);
@@ -1299,13 +1299,13 @@ bool ArcVm::DisableVmmSwap() {
   }
   is_vmm_swap_enabled_ = false;
   vmm_swap_metrics_->OnVmmSwapDisabled();
-  return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str());
+  return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath());
 }
 
 void ArcVm::TrimVmmSwapMemory() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Trim vmm-swap memory";
-  if (!CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath().c_str())) {
+  if (!CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath())) {
     LOG(ERROR) << "Failed to start vmm-swap trim";
   }
 }
@@ -1313,7 +1313,7 @@ void ArcVm::TrimVmmSwapMemory() {
 void ArcVm::StartVmmSwapOut() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Start vmm-swap trim";
-  if (CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath().c_str())) {
+  if (CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath())) {
     swap_state_monitor_timer_->Start(FROM_HERE, base::Milliseconds(1000), this,
                                      &ArcVm::RunVmmSwapOutAfterTrim);
   } else {
@@ -1324,8 +1324,7 @@ void ArcVm::StartVmmSwapOut() {
 void ArcVm::RunVmmSwapOutAfterTrim() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   struct SwapStatus status;
-  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath().c_str(),
-                                           &status)) {
+  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath(), &status)) {
     LOG(INFO) << "Failed to get vmm-swap state";
     swap_state_monitor_timer_->Stop();
     return;
@@ -1346,7 +1345,7 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
       vmm_swap_tbw_policy_->Record(status.metrics.staging_pages *
                                    base::GetPageSize());
 
-      CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath().c_str());
+      CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath());
       last_vmm_swap_out_at_ = base::Time::Now();
       return;
     default:

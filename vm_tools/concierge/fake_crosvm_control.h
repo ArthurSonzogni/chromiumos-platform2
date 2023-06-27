@@ -17,61 +17,62 @@ class FakeCrosvmControl : public CrosvmControl {
 
   static FakeCrosvmControl* Get();
 
-  bool StopVm(const char* socket_path) override;
+  bool StopVm(const std::string& socket_path) override;
 
-  bool SuspendVm(const char* socket_path) override;
+  bool SuspendVm(const std::string& socket_path) override;
 
-  bool ResumeVm(const char* socket_path) override;
+  bool ResumeVm(const std::string& socket_path) override;
 
-  bool MakeRtVm(const char* socket_path) override;
+  bool MakeRtVm(const std::string& socket_path) override;
 
-  bool SetBalloonSize(const char* socket_path, size_t num_bytes) override;
+  bool SetBalloonSize(const std::string& socket_path,
+                      size_t num_bytes) override;
 
   uintptr_t MaxUsbDevices() override;
 
-  ssize_t UsbList(const char* socket_path,
+  ssize_t UsbList(const std::string& socket_path,
                   struct UsbDeviceEntry* entries,
                   ssize_t entries_length) override;
 
-  bool UsbAttach(const char* socket_path,
+  bool UsbAttach(const std::string& socket_path,
                  uint8_t bus,
                  uint8_t addr,
                  uint16_t vid,
                  uint16_t pid,
-                 const char* dev_path,
+                 const std::string& dev_path,
                  uint8_t* out_port) override;
 
-  bool UsbDetach(const char* socket_path, uint8_t port) override;
+  bool UsbDetach(const std::string& socket_path, uint8_t port) override;
 
-  bool ModifyBattery(const char* socket_path,
-                     const char* battery_type,
-                     const char* property,
-                     const char* target) override;
+  bool ModifyBattery(const std::string& socket_path,
+                     const std::string& battery_type,
+                     const std::string& property,
+                     const std::string& target) override;
 
-  bool ResizeDisk(const char* socket_path,
+  bool ResizeDisk(const std::string& socket_path,
                   size_t disk_index,
                   uint64_t new_size) override;
 
-  bool BalloonStats(const char* socket_path,
+  bool BalloonStats(const std::string& socket_path,
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
 
-  bool SetBalloonWorkingSetConfig(const char* socket_path,
+  bool SetBalloonWorkingSetConfig(const std::string& socket_path,
                                   const BalloonWssConfigFfi* config) override;
 
-  bool BalloonWorkingSet(const char* socket_path,
+  bool BalloonWorkingSet(const std::string& socket_path,
                          struct BalloonWSSFfi* stats,
                          uint64_t* actual) override;
 
-  bool EnableVmmSwap(const char* socket_path) override;
+  bool EnableVmmSwap(const std::string& socket_path) override;
 
-  bool VmmSwapOut(const char* socket_path) override;
+  bool VmmSwapOut(const std::string& socket_path) override;
 
-  bool VmmSwapTrim(const char* socket_path) override;
+  bool VmmSwapTrim(const std::string& socket_path) override;
 
-  bool DisableVmmSwap(const char* socket_path) override;
+  bool DisableVmmSwap(const std::string& socket_path) override;
 
-  bool VmmSwapStatus(const char* socket_path,
+  bool VmmSwapStatus(const std::string& socket_path,
                      struct SwapStatus* status) override;
 
   std::string target_socket_path_ = "";

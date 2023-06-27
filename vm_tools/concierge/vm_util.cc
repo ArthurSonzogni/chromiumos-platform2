@@ -322,7 +322,7 @@ bool CheckProcessExists(pid_t pid) {
 
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   BalloonStats stats;
-  if (!CrosvmControl::Get()->BalloonStats(socket_path.c_str(), &stats.stats_ffi,
+  if (!CrosvmControl::Get()->BalloonStats(socket_path, &stats.stats_ffi,
                                           &stats.balloon_actual)) {
     LOG(ERROR) << "Failed to retrieve balloon stats";
     return std::nullopt;
@@ -333,8 +333,8 @@ std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
 
 std::optional<BalloonWorkingSet> GetBalloonWorkingSet(std::string socket_path) {
   BalloonWorkingSet ws;
-  if (!CrosvmControl::Get()->BalloonWorkingSet(
-          socket_path.c_str(), &ws.working_set_ffi, &ws.balloon_actual)) {
+  if (!CrosvmControl::Get()->BalloonWorkingSet(socket_path, &ws.working_set_ffi,
+                                               &ws.balloon_actual)) {
     LOG(ERROR) << "Failed to retrieve balloon working set";
     return std::nullopt;
   }
@@ -390,12 +390,12 @@ bool AttachUsbDevice(std::string socket_path,
 
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
-  return CrosvmControl::Get()->UsbAttach(socket_path.c_str(), bus, addr, vid,
-                                         pid, device_path.c_str(), out_port);
+  return CrosvmControl::Get()->UsbAttach(socket_path, bus, addr, vid, pid,
+                                         device_path, out_port);
 }
 
 bool DetachUsbDevice(std::string socket_path, uint8_t port) {
-  return CrosvmControl::Get()->UsbDetach(socket_path.c_str(), port);
+  return CrosvmControl::Get()->UsbDetach(socket_path, port);
 }
 
 bool ListUsbDevice(std::string socket_path,
@@ -405,8 +405,8 @@ bool ListUsbDevice(std::string socket_path,
   const size_t max_usb_devices = CrosvmControl::Get()->MaxUsbDevices();
   device->resize(max_usb_devices);
 
-  ssize_t dev_count = CrosvmControl::Get()->UsbList(
-      socket_path.c_str(), device->data(), max_usb_devices);
+  ssize_t dev_count = CrosvmControl::Get()->UsbList(socket_path, device->data(),
+                                                    max_usb_devices);
 
   if (dev_count < 0) {
     return false;
@@ -420,8 +420,7 @@ bool ListUsbDevice(std::string socket_path,
 bool CrosvmDiskResize(std::string socket_path,
                       int disk_index,
                       uint64_t new_size) {
-  return CrosvmControl::Get()->ResizeDisk(socket_path.c_str(), disk_index,
-                                          new_size);
+  return CrosvmControl::Get()->ResizeDisk(socket_path, disk_index, new_size);
 }
 
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {

@@ -8,6 +8,7 @@
 #include <crosvm/crosvm_control.h>
 
 #include <memory>
+#include <string>
 
 namespace vm_tools::concierge {
 
@@ -27,31 +28,32 @@ class CrosvmControl {
   // `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool StopVm(const char* socket_path) = 0;
+  virtual bool StopVm(const std::string& socket_path) = 0;
 
   // Suspends the crosvm instance whose control socket is listening on
   // `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool SuspendVm(const char* socket_path) = 0;
+  virtual bool SuspendVm(const std::string& socket_path) = 0;
 
   // Resumes the crosvm instance whose control socket is listening on
   // `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool ResumeVm(const char* socket_path) = 0;
+  virtual bool ResumeVm(const std::string& socket_path) = 0;
 
   // Creates an RT vCPU for the crosvm instance whose control socket is
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool MakeRtVm(const char* socket_path) = 0;
+  virtual bool MakeRtVm(const std::string& socket_path) = 0;
 
   // Adjusts the balloon size of the crosvm instance whose control socket is
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool SetBalloonSize(const char* socket_path, size_t num_bytes) = 0;
+  virtual bool SetBalloonSize(const std::string& socket_path,
+                              size_t num_bytes) = 0;
 
   // Returns the maximum possible number of USB devices.
   virtual size_t MaxUsbDevices() = 0;
@@ -69,7 +71,7 @@ class CrosvmControl {
   //
   // Use the value returned by [`crosvm_client_max_usb_devices()`] to determine
   // the size of the input array to this function.
-  virtual ssize_t UsbList(const char* socket_path,
+  virtual ssize_t UsbList(const std::string& socket_path,
                           struct UsbDeviceEntry* entries,
                           ssize_t entries_length) = 0;
 
@@ -89,34 +91,34 @@ class CrosvmControl {
   // `out_port` - (optional) internal port will be written here if provided.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool UsbAttach(const char* socket_path,
+  virtual bool UsbAttach(const std::string& socket_path,
                          uint8_t bus,
                          uint8_t addr,
                          uint16_t vid,
                          uint16_t pid,
-                         const char* dev_path,
+                         const std::string& dev_path,
                          uint8_t* out_port) = 0;
 
   // Detaches an USB device from crosvm instance whose control socket is
   // listening on `socket_path`. `port` determines device to be detached.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool UsbDetach(const char* socket_path, uint8_t port) = 0;
+  virtual bool UsbDetach(const std::string& socket_path, uint8_t port) = 0;
 
   // Modifies the battery status of crosvm instance whose control socket is
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool ModifyBattery(const char* socket_path,
-                             const char* battery_type,
-                             const char* property,
-                             const char* target) = 0;
+  virtual bool ModifyBattery(const std::string& socket_path,
+                             const std::string& battery_type,
+                             const std::string& property,
+                             const std::string& target) = 0;
 
   // Resizes the disk of the crosvm instance whose control socket is listening
   // on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool ResizeDisk(const char* socket_path,
+  virtual bool ResizeDisk(const std::string& socket_path,
                           size_t disk_index,
                           uint64_t new_size) = 0;
 
@@ -131,20 +133,20 @@ class CrosvmControl {
   // Note
   //
   // Entries in `BalloonStatsFfi` that are not available will be set to `-1`.
-  virtual bool BalloonStats(const char* socket_path,
+  virtual bool BalloonStats(const std::string& socket_path,
                             struct BalloonStatsFfi* stats,
                             uint64_t* actual) = 0;
 
   // Set working set config in guest.
   // The function returns true on success or false if an error occurred.
   virtual bool SetBalloonWorkingSetConfig(
-      const char* socket_path, const BalloonWssConfigFfi* config) = 0;
+      const std::string& socket_path, const BalloonWssConfigFfi* config) = 0;
 
   // Returns guest working set of the crosvm instance whose control socket is
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool BalloonWorkingSet(const char* socket_path,
+  virtual bool BalloonWorkingSet(const std::string& socket_path,
                                  struct BalloonWSSFfi* wss,
                                  uint64_t* actual) = 0;
 
@@ -153,25 +155,25 @@ class CrosvmControl {
   //
   // This affects the crosvm instance whose control socket is listening on
   // `socket_path`.
-  virtual bool EnableVmmSwap(const char* socket_path) = 0;
+  virtual bool EnableVmmSwap(const std::string& socket_path) = 0;
 
   // Swap out the staging memory to the swap file.
   //
   // This affects the crosvm instance whose control socket is listening on
   // `socket_path`.
-  virtual bool VmmSwapOut(const char* socket_path) = 0;
+  virtual bool VmmSwapOut(const std::string& socket_path) = 0;
 
   // Trim static pages and zero pages in the staging memory.
   //
   // This affects the crosvm instance whose control socket is listening on
   // `socket_path`.
-  virtual bool VmmSwapTrim(const char* socket_path) = 0;
+  virtual bool VmmSwapTrim(const std::string& socket_path) = 0;
 
   // Disable vmm-swap of crosvm.
   //
   // This affects the crosvm instance whose control socket is listening on
   // `socket_path`.
-  virtual bool DisableVmmSwap(const char* socket_path) = 0;
+  virtual bool DisableVmmSwap(const std::string& socket_path) = 0;
 
   // Returns vmm-swap status of the crosvm instance whose control socket is
   // listening on `socket_path`.
@@ -180,7 +182,7 @@ class CrosvmControl {
   // non-null.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool VmmSwapStatus(const char* socket_path,
+  virtual bool VmmSwapStatus(const std::string& socket_path,
                              struct SwapStatus* status) = 0;
 
   virtual ~CrosvmControl() = default;
