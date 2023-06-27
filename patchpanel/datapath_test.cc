@@ -1722,14 +1722,16 @@ TEST(DatapathTest, StartDnsRedirection_Default) {
                   "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
-  rule4.input_ifname = "vmtap0";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
-  rule6.input_ifname = "vmtap0";
-  rule6.proxy_address = "::1";
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+      .input_ifname = "vmtap0",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+      .input_ifname = "vmtap0",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartDnsRedirection(rule4);
@@ -1835,19 +1837,18 @@ TEST(DatapathTest, StartDnsRedirection_User) {
       *runner, IpFamily::kDual,
       "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
-  rule4.input_ifname = "";
-  rule4.proxy_address = "100.115.92.130";
-  rule4.nameservers.emplace_back("8.8.8.8");
-  rule4.nameservers.emplace_back("8.4.8.4");
-  rule4.nameservers.emplace_back("1.1.1.1");
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
-  rule6.input_ifname = "";
-  rule6.proxy_address = "::1";
-  rule6.nameservers.emplace_back("2001:4860:4860::8888");
-  rule6.nameservers.emplace_back("2001:4860:4860::8844");
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+      .nameservers = {"8.8.8.8", "8.4.8.4", "1.1.1.1"},
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+      .nameservers = {"2001:4860:4860::8888", "2001:4860:4860::8844"},
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartDnsRedirection(rule4);
@@ -1884,14 +1885,16 @@ TEST(DatapathTest, StartDnsRedirection_ExcludeDestination) {
       *runner, IpFamily::kIPv6,
       "nat -I redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
-  rule4.input_ifname = "";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
-  rule6.input_ifname = "";
-  rule6.proxy_address = "::1";
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartDnsRedirection(rule4);
@@ -1916,14 +1919,16 @@ TEST(DatapathTest, StopDnsRedirection_Default) {
                   "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
-  rule4.input_ifname = "vmtap0";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
-  rule6.input_ifname = "vmtap0";
-  rule6.proxy_address = "::1";
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+      .input_ifname = "vmtap0",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+      .input_ifname = "vmtap0",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopDnsRedirection(rule4);
@@ -2018,19 +2023,18 @@ TEST(DatapathTest, StopDnsRedirection_User) {
       *runner, IpFamily::kDual,
       "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
-  rule4.input_ifname = "";
-  rule4.proxy_address = "100.115.92.130";
-  rule4.nameservers.emplace_back("8.8.8.8");
-  rule4.nameservers.emplace_back("8.4.8.4");
-  rule4.nameservers.emplace_back("1.1.1.1");
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::USER;
-  rule6.input_ifname = "";
-  rule6.proxy_address = "::1";
-  rule6.nameservers.emplace_back("2001:4860:4860::8888");
-  rule6.nameservers.emplace_back("2001:4860:4860::8844");
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+      .nameservers = {"8.8.8.8", "8.4.8.4", "1.1.1.1"},
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+      .nameservers = {"2001:4860:4860::8888", "2001:4860:4860::8844"},
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopDnsRedirection(rule4);
@@ -2067,14 +2071,16 @@ TEST(DatapathTest, StopDnsRedirection_ExcludeDestination) {
       *runner, IpFamily::kIPv6,
       "nat -D redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
 
-  DnsRedirectionRule rule4 = {};
-  rule4.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
-  rule4.input_ifname = "";
-  rule4.proxy_address = "100.115.92.130";
-  DnsRedirectionRule rule6 = {};
-  rule6.type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
-  rule6.input_ifname = "";
-  rule6.proxy_address = "::1";
+  DnsRedirectionRule rule4 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("100.115.92.130"),
+  };
+  DnsRedirectionRule rule6 = {
+      .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+      .input_ifname = "",
+      .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
+  };
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopDnsRedirection(rule4);

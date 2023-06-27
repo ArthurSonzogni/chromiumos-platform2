@@ -283,8 +283,8 @@ class Manager {
   int connected_namespaces_next_id_{0};
 
   // DNS proxy's IPv4 and IPv6 addresses keyed by its guest interface.
-  std::map<std::string, std::string> dns_proxy_ipv4_addrs_;
-  std::map<std::string, std::string> dns_proxy_ipv6_addrs_;
+  std::map<std::string, net_base::IPv4Address> dns_proxy_ipv4_addrs_;
+  std::map<std::string, net_base::IPv6Address> dns_proxy_ipv6_addrs_;
 
   // All external network interfaces currently managed by patchpanel through
   // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by the

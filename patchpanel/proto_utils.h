@@ -27,8 +27,8 @@ void FillSubnetProto(const Subnet& virtual_subnet, IPv4Subnet* output);
 void FillDeviceDnsProxyProto(
     const Device& virtual_device,
     NetworkDevice* output,
-    const std::map<std::string, std::string>& ipv4_addrs,
-    const std::map<std::string, std::string>& ipv6_addrs);
+    const std::map<std::string, net_base::IPv4Address>& ipv4_addrs,
+    const std::map<std::string, net_base::IPv6Address>& ipv6_addrs);
 
 void FillDownstreamNetworkProto(
     const DownstreamNetworkInfo& downstream_network_info,

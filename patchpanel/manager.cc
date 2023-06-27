@@ -818,16 +818,13 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   dns_redirection_rules_.erase(dns_redirection_it);
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
-    switch (GetIpFamily(rule.proxy_address)) {
-      case AF_INET:
+    switch (rule.proxy_address.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
         dns_proxy_ipv4_addrs_.erase(rule.input_ifname);
         break;
-      case AF_INET6:
+      case net_base::IPFamily::kIPv6:
         dns_proxy_ipv6_addrs_.erase(rule.input_ifname);
         break;
-      default:
-        LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
-        return;
     }
     client_notifier_->OnNetworkConfigurationChanged();
   }
@@ -841,9 +838,16 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
     return false;
   }
 
+  const auto proxy_address =
+      net_base::IPAddress::CreateFromString(request.proxy_address());
+  if (!proxy_address) {
+    LOG(ERROR) << "proxy_address is invalid IP address: "
+               << request.proxy_address();
+    return false;
+  }
   DnsRedirectionRule rule{.type = request.type(),
                           .input_ifname = request.input_ifname(),
-                          .proxy_address = request.proxy_address(),
+                          .proxy_address = *proxy_address,
                           .host_ifname = request.host_ifname()};
 
   for (const auto& nameserver : request.nameservers()) {
@@ -858,26 +862,22 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   }
   // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
   // namespace if it did not exist yet, so that the address is reachable.
-  const auto ipv6_proxy_addr =
-      net_base::IPv6Address::CreateFromString(rule.proxy_address);
-  if (ipv6_proxy_addr) {
-    ipv6_svc_->RegisterDownstreamNeighborIP(rule.host_ifname, *ipv6_proxy_addr);
+  if (rule.proxy_address.GetFamily() == net_base::IPFamily::kIPv6) {
+    ipv6_svc_->RegisterDownstreamNeighborIP(
+        rule.host_ifname, *rule.proxy_address.ToIPv6Address());
   }
 
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
-    switch (GetIpFamily(rule.proxy_address)) {
-      case AF_INET:
-        dns_proxy_ipv4_addrs_.emplace(rule.input_ifname, rule.proxy_address);
+    switch (rule.proxy_address.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        dns_proxy_ipv4_addrs_.emplace(rule.input_ifname,
+                                      *rule.proxy_address.ToIPv4Address());
         break;
-      case AF_INET6:
-        dns_proxy_ipv6_addrs_.emplace(rule.input_ifname, rule.proxy_address);
+      case net_base::IPFamily::kIPv6:
+        dns_proxy_ipv6_addrs_.emplace(rule.input_ifname,
+                                      *rule.proxy_address.ToIPv6Address());
         break;
-      default:
-        LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
-        if (!DeleteLifelineFd(local_client_fd.release()))
-          LOG(ERROR) << "Failed to delete lifeline fd";
-        return false;
     }
     client_notifier_->OnNetworkConfigurationChanged();
   }

@@ -66,23 +66,15 @@ void FillSubnetProto(const Subnet& virtual_subnet,
 void FillDeviceDnsProxyProto(
     const Device& virtual_device,
     patchpanel::NetworkDevice* output,
-    const std::map<std::string, std::string>& ipv4_addrs,
-    const std::map<std::string, std::string>& ipv6_addrs) {
+    const std::map<std::string, net_base::IPv4Address>& ipv4_addrs,
+    const std::map<std::string, net_base::IPv6Address>& ipv6_addrs) {
   const auto& ipv4_it = ipv4_addrs.find(virtual_device.host_ifname());
   if (ipv4_it != ipv4_addrs.end()) {
-    const auto ipv4_addr =
-        net_base::IPv4Address::CreateFromString(ipv4_it->second);
-    if (ipv4_addr) {
-      output->set_dns_proxy_ipv4_addr(ipv4_addr->ToByteString());
-    }
+    output->set_dns_proxy_ipv4_addr(ipv4_it->second.ToByteString());
   }
   const auto& ipv6_it = ipv6_addrs.find(virtual_device.host_ifname());
   if (ipv6_it != ipv6_addrs.end()) {
-    const auto ipv6_addr =
-        net_base::IPv6Address::CreateFromString(ipv6_it->second);
-    if (ipv6_addr) {
-      output->set_dns_proxy_ipv6_addr(ipv6_addr->ToByteString());
-    }
+    output->set_dns_proxy_ipv6_addr(ipv6_it->second.ToByteString());
   }
 }
 

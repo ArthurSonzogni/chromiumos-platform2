@@ -19,6 +19,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/ip_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dhcp_server_controller.h"
@@ -88,7 +89,7 @@ struct ConnectedNamespace {
 struct DnsRedirectionRule {
   patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
   std::string input_ifname;
-  std::string proxy_address;
+  net_base::IPAddress proxy_address;
   std::vector<std::string> nameservers;
   std::string host_ifname;
 };

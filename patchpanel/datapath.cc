@@ -107,6 +107,11 @@ constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
 
+IpFamily ConvertIpFamily(net_base::IPFamily family) {
+  return (family == net_base::IPFamily::kIPv4) ? IpFamily::kIPv4
+                                               : IpFamily::kIPv6;
+}
+
 std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   std::string n = prefix + ifname;
   if (n.length() < IFNAMSIZ)
@@ -992,7 +997,7 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
                                        Iptables::Command op) {
   // Validate nameservers.
   for (const auto& nameserver : rule.nameservers) {
-    sa_family_t sa_family = GetIpFamily(rule.proxy_address);
+    sa_family_t sa_family = GetIpFamily(nameserver);
     switch (sa_family) {
       case AF_INET:
         if (family != IpFamily::kIPv4) {
@@ -1075,7 +1080,7 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
     args.push_back("-j");
     args.push_back("DNAT");
     args.push_back("--to-destination");
-    args.push_back(rule.proxy_address);
+    args.push_back(rule.proxy_address.ToString());
     args.push_back("-w");
     if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
       success = false;
@@ -1100,20 +1105,7 @@ bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
 }
 
 bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
-  IpFamily family;
-  sa_family_t sa_family = GetIpFamily(rule.proxy_address);
-  switch (sa_family) {
-    case AF_INET:
-      family = IpFamily::kIPv4;
-      break;
-    case AF_INET6:
-      family = IpFamily::kIPv6;
-      break;
-    default:
-      LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
-      return false;
-  }
-
+  const IpFamily family = ConvertIpFamily(rule.proxy_address.GetFamily());
   switch (rule.type) {
     case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
       if (!ModifyDnsProxyDNAT(family, rule, Iptables::Command::kA,
@@ -1176,19 +1168,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
 }
 
 void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
-  IpFamily family;
-  sa_family_t sa_family = GetIpFamily(rule.proxy_address);
-  switch (sa_family) {
-    case AF_INET:
-      family = IpFamily::kIPv4;
-      break;
-    case AF_INET6:
-      family = IpFamily::kIPv6;
-      break;
-    default:
-      LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
-      return;
-  }
+  const IpFamily family = ConvertIpFamily(rule.proxy_address.GetFamily());
 
   // Whenever the client that requested the rule closes the fd, the requested
   // rule will be deleted. There is a delay between fd closing time and rule
@@ -1517,7 +1497,7 @@ bool Datapath::ModifyDnsExcludeDestinationRule(IpFamily family,
     std::vector<std::string> args = {
         chain,     "-p",
         protocol,  "!",
-        "-d",      rule.proxy_address,
+        "-d",      rule.proxy_address.ToString(),
         "--dport", kDefaultDnsPort,
         "-j",      "RETURN",
         "-w",
@@ -2406,9 +2386,7 @@ std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule) {
   if (!rule.input_ifname.empty()) {
     stream << ", input_ifname: " << rule.input_ifname;
   }
-  if (!rule.proxy_address.empty()) {
-    stream << ", proxy_address: " << rule.proxy_address;
-  }
+  stream << ", proxy_address: " << rule.proxy_address;
   if (!rule.nameservers.empty()) {
     stream << ", nameserver(s): " << base::JoinString(rule.nameservers, ",");
   }
