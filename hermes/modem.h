@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/strings/string_number_conversions.h>
+#include <base/task/single_thread_task_runner.h>
 #include <google-lpa/lpa/card/euicc_card.h>
 
 #include "hermes/apdu.h"

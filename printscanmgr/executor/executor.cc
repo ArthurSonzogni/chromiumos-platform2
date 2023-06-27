@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 

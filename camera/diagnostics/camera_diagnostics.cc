@@ -4,7 +4,7 @@
 
 #include "diagnostics/camera_diagnostics.h"
 
-#include <base/task/sequenced_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/connect.h>

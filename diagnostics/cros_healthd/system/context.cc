@@ -11,6 +11,7 @@
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/default_tick_clock.h>
 #include <brillo/udev/udev.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>

@@ -11,6 +11,7 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <dbus/mock_bus.h>
 #include <fuzzer/FuzzedDataProvider.h>

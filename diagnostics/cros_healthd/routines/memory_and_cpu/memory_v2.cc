@@ -13,6 +13,7 @@
 #include <base/files/file.h>
 #include <base/files/platform_file.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <re2/re2.h>
 

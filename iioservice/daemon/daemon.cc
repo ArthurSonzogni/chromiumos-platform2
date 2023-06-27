@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/mojo/service_constants.h>
 #include <dbus/bus.h>

@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 

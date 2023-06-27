@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/self_owned_receiver.h>

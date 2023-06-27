@@ -20,6 +20,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>

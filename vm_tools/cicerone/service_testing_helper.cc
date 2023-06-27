@@ -10,6 +10,7 @@
 #include <base/check_op.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

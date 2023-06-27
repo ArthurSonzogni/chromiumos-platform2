@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/notreached.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routine_parameter_fetcher.h"

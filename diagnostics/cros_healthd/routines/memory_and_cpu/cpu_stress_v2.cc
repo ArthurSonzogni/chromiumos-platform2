@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <utility>
 
+#include <base/task/single_thread_task_runner.h>
+
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
