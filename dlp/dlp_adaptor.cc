@@ -233,9 +233,9 @@ void DlpAdaptor::AddFiles(
     return;
   }
 
-  db_->InsertFileEntries(
+  db_->UpsertFileEntries(
       files_to_add,
-      base::BindOnce(&DlpAdaptor::OnFilesInserted, base::Unretained(this),
+      base::BindOnce(&DlpAdaptor::OnFilesUpserted, base::Unretained(this),
                      std::move(response), std::move(files_paths),
                      std::move(files_inodes)));
 }
@@ -485,13 +485,13 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   }
 
   if (!pending_files_to_add_.empty()) {
-    LOG(INFO) << "Inserting pending entries";
+    LOG(INFO) << "Upserting pending entries";
     DlpDatabase* db_ptr = db.get();
     std::vector<FileEntry> files_being_added;
     files_being_added.swap(pending_files_to_add_);
-    db_ptr->InsertFileEntries(
+    db_ptr->UpsertFileEntries(
         files_being_added,
-        base::BindOnce(&DlpAdaptor::OnPendingFilesInserted,
+        base::BindOnce(&DlpAdaptor::OnPendingFilesUpserted,
                        base::Unretained(this), std::move(init_callback),
                        std::move(db), database_path, db_status));
     return;
@@ -515,7 +515,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   }
 }
 
-void DlpAdaptor::OnPendingFilesInserted(base::OnceClosure init_callback,
+void DlpAdaptor::OnPendingFilesUpserted(base::OnceClosure init_callback,
                                         std::unique_ptr<DlpDatabase> db,
                                         const base::FilePath& database_path,
                                         int db_status,
@@ -741,7 +741,7 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
 }
 
-void DlpAdaptor::OnFilesInserted(
+void DlpAdaptor::OnFilesUpserted(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     std::vector<base::FilePath> files_paths,

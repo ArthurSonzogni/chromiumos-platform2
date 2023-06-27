@@ -100,6 +100,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest,
               GetFilesSourcesFileDeletedDBReopenedWithoutCleanup);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesOverwrite);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
   FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed);
@@ -111,8 +112,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                              const base::FilePath& database_path,
                              int db_status);
 
-  // Callback on InsertFileEntries during OnDatabaseInitialized.
-  void OnPendingFilesInserted(base::OnceClosure init_callback,
+  // Callback on UpsertFileEntries during OnDatabaseInitialized.
+  void OnPendingFilesUpserted(base::OnceClosure init_callback,
                               std::unique_ptr<DlpDatabase> db,
                               const base::FilePath& database_path,
                               int db_status,
@@ -176,7 +177,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       const std::string& error_message);
 
   // Callback on AddFiles after adding to the database.
-  void OnFilesInserted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+  void OnFilesUpserted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                            std::vector<uint8_t>>> response,
                        std::vector<base::FilePath> files_paths,
                        std::vector<ino_t> files_inodes,

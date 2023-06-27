@@ -65,7 +65,7 @@ enum class DatabaseError {
   kConnectionError = 1,
   // Error when creating a database table.
   kCreateTableError = 2,
-  // Error when inserting an entry into a database table.
+  // Error when inserting/upserting an entry into a database table.
   kInsertIntoTableError = 3,
   // Error when querying the database.
   kQueryError = 4,

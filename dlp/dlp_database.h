@@ -65,14 +65,14 @@ class DlpDatabase : public DlpDatabaseDelegate {
   // Returns |SQLITE_OK| to the |callback| if no error occurred.
   void Init(base::OnceCallback<void(int)> callback);
 
-  // Inserts file_entry into database. Returns true to the |callback| if no
+  // Upserts file_entry into database. Returns true to the |callback| if no
   // error occurred.
-  void InsertFileEntry(const FileEntry& file_entry,
+  void UpsertFileEntry(const FileEntry& file_entry,
                        base::OnceCallback<void(bool)> callback);
 
-  // Inserts file_entries into database. Returns true to the |callback| if no
+  // Upserts file_entries into database. Returns true to the |callback| if no
   // error occurred.
-  void InsertFileEntries(const std::vector<FileEntry>& file_entries,
+  void UpsertFileEntries(const std::vector<FileEntry>& file_entries,
                          base::OnceCallback<void(bool)> callback);
 
   // Gets the file entries by inodes. Returns a map of only found entries to

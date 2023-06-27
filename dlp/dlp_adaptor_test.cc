@@ -1046,6 +1046,47 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   EXPECT_EQ(file_metadata1.source_url(), source1);
 }
 
+TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
+  // Create database.
+  base::ScopedTempDir database_directory;
+  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
+  base::RunLoop run_loop;
+  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
+                                run_loop.QuitClosure());
+  run_loop.Run();
+
+  // Create files to request sources by inodes.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source2, "referrer2")},
+                   /*expected_result=*/true);
+
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
+
+  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+
+  ASSERT_EQ(response.files_metadata_size(), 2u);
+
+  FileMetadata file_metadata1 = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata1.inode(), inode1);
+  EXPECT_EQ(file_metadata1.source_url(), source1);
+
+  FileMetadata file_metadata2 = response.files_metadata()[1];
+  EXPECT_EQ(file_metadata2.inode(), inode2);
+  EXPECT_EQ(file_metadata2.source_url(), source2);
+}
+
 TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
   SetDlpFilesPolicyRequest request;
   request.add_rules();

@@ -94,8 +94,8 @@ class DlpDatabase::Core {
 
   // Implements the functionality from main class.
   int Init();
-  bool InsertFileEntry(const FileEntry& file_entry);
-  bool InsertFileEntries(const std::vector<FileEntry>& file_entries);
+  bool UpsertFileEntry(const FileEntry& file_entry);
+  bool UpsertFileEntries(const std::vector<FileEntry>& file_entries);
   std::map<ino64_t, FileEntry> GetFileEntriesByInodes(
       std::vector<ino64_t> inodes) const;
   bool DeleteFileEntryByInode(int64_t inode);
@@ -209,12 +209,12 @@ bool DlpDatabase::Core::CreateFileEntriesTable() {
   return true;
 }
 
-bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
+bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
   if (!IsOpen())
     return false;
 
   const std::string sql = base::StringPrintf(
-      "INSERT INTO file_entries (inode, source_url, referrer_url)"
+      "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url)"
       " VALUES (%" PRId64 ", '%s', '%s')",
       file_entry.inode, EscapeSQLString(file_entry.source_url).c_str(),
       EscapeSQLString(file_entry.referrer_url).c_str());
@@ -228,7 +228,7 @@ bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
   return true;
 }
 
-bool DlpDatabase::Core::InsertFileEntries(
+bool DlpDatabase::Core::UpsertFileEntries(
     const std::vector<FileEntry>& file_entries) {
   if (!IsOpen()) {
     LOG(ERROR) << "Failed to insert file entries because database is not open";
@@ -236,7 +236,8 @@ bool DlpDatabase::Core::InsertFileEntries(
   }
 
   std::string sql =
-      "INSERT INTO file_entries (inode, source_url, referrer_url) VALUES";
+      "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url) "
+      "VALUES";
   bool first = true;
   for (const auto& file_entry : file_entries) {
     if (!first) {
@@ -404,22 +405,22 @@ void DlpDatabase::Init(base::OnceCallback<void(int)> callback) {
       std::move(callback));
 }
 
-void DlpDatabase::InsertFileEntry(const FileEntry& file_entry,
+void DlpDatabase::UpsertFileEntry(const FileEntry& file_entry,
                                   base::OnceCallback<void(bool)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&DlpDatabase::Core::InsertFileEntry,
+      base::BindOnce(&DlpDatabase::Core::UpsertFileEntry,
                      base::Unretained(core_.get()), file_entry),
       std::move(callback));
 }
 
-void DlpDatabase::InsertFileEntries(const std::vector<FileEntry>& file_entries,
+void DlpDatabase::UpsertFileEntries(const std::vector<FileEntry>& file_entries,
                                     base::OnceCallback<void(bool)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&DlpDatabase::Core::InsertFileEntries,
+      base::BindOnce(&DlpDatabase::Core::UpsertFileEntries,
                      base::Unretained(core_.get()), file_entries),
       std::move(callback));
 }
