@@ -102,7 +102,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, ConnectAsync);
-  FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetCommandLineArgs);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
@@ -119,9 +118,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoPrimaryHost);
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
-  FRIEND_TEST(OpenVPNDriverTest, NotifyIPv6);
   FRIEND_TEST(OpenVPNDriverTest, NotifyUMA);
-  FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnConnectTimeout);
   FRIEND_TEST(OpenVPNDriverTest, OnConnectTimeoutResolve);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent);

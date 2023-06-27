@@ -82,7 +82,6 @@ class VPNService : public Service,
  private:
   friend class VPNServiceTest;
   FRIEND_TEST(ManagerTest, FindDeviceFromService);
-  FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, ConfigureDeviceAndCleanupDevice);

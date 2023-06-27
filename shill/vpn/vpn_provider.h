@@ -84,12 +84,9 @@ class VPNProvider : public ProviderInterface {
   friend class VPNProviderTest;
   friend class VPNServiceTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
-  FRIEND_TEST(VPNProviderTest, ArcDeviceFound);
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, CreateArcService);
-  FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
-  FRIEND_TEST(VPNServiceTest, AddRemoveVMInterface);
   FRIEND_TEST(VPNServiceTest, Unload);
 
   // Create a service of type |type| and storage identifier |storage_id|
