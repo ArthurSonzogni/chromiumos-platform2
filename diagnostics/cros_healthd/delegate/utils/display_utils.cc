@@ -313,7 +313,10 @@ mojom::EmbeddedDisplayInfoPtr DisplayUtil::GetEmbeddedDisplayInfo() {
   auto connector_id_opt = GetEmbeddedDisplayConnectorID();
   if (!connector_id_opt.has_value()) {
     LOG(INFO) << "Cannot find embedded display connector id";
-    return nullptr;
+    // TODO(b/288984693) : Update the public mojom interface to having an
+    // optional embedded display, and return nullptr instead of empty structptr
+    // here.
+    return info;
   }
   uint32_t connector_id = connector_id_opt.value();
 
