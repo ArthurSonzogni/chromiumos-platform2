@@ -24,6 +24,7 @@
 #include <chromeos/patchpanel/dns/dns_query.h>
 #include <chromeos/patchpanel/dns/io_buffer.h>
 #include <chromeos/patchpanel/net_util.h>
+#include <net-base/ip_address.h>
 
 // Using directive is necessary to have the overloaded function for socket data
 // structure available.
@@ -780,8 +781,12 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
       GetTimeUntilProbe(probe_state->num_retries));
 
   // Run the probe.
-  const ProbeData probe_data = {patchpanel::GetIpFamily(probe_state->target),
-                                probe_state->num_retries, base::Time::Now()};
+  const auto target_ip =
+      net_base::IPAddress::CreateFromString(probe_state->target);
+  const sa_family_t target_family =
+      target_ip ? net_base::ToSAFamily(target_ip->GetFamily()) : AF_UNSPEC;
+  const ProbeData probe_data = {target_family, probe_state->num_retries,
+                                base::Time::Now()};
   if (probe_state->doh) {
     curl_client_->Resolve(kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
                           base::BindRepeating(&Resolver::HandleDoHProbeResult,
