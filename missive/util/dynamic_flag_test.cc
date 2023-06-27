@@ -36,7 +36,7 @@ class TestFlagAggregated {
                  bool is_enabled,
                  TestFlagAggregated* owner)
         : DynamicFlag(name, is_enabled), owner_(owner) {
-      DCHECK(owner);
+      CHECK(owner);
     }
 
    private:

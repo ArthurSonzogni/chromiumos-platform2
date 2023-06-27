@@ -41,6 +41,8 @@ TEST(Status, CheckOK) {
   Status status;
   CHECK_OK(status);
   CHECK_OK(status) << "Failed";
+  // DCHECK is ok to use here since we're just verifying functionality of Status
+  // to work with all types of checks.
   DCHECK_OK(status) << "Failed";
 }
 

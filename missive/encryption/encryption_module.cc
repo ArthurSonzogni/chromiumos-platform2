@@ -52,7 +52,7 @@ EncryptionModule::EncryptionModule(bool is_enabled,
   static_assert(std::is_same<PublicKeyId, Encryptor::PublicKeyId>::value,
                 "Public key id types must match");
   auto encryptor_result = Encryptor::Create();
-  DCHECK(encryptor_result.ok());
+  CHECK(encryptor_result.ok());
   encryptor_ = std::move(encryptor_result.ValueOrDie());
 }
 

@@ -73,7 +73,7 @@ void UploadJob::UploadDelegate::SetRecords(EncryptedRecords records) {
 UploadJob::RecordProcessor::RecordProcessor(DoneCb done_cb)
     : done_cb_(std::move(done_cb)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
-  DCHECK(done_cb_);
+  CHECK(done_cb_);
 }
 
 UploadJob::RecordProcessor::~RecordProcessor() = default;
@@ -113,7 +113,7 @@ void UploadJob::RecordProcessor::ProcessGap(
 
 void UploadJob::RecordProcessor::Completed(Status final_status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
-  DCHECK(done_cb_);
+  CHECK(done_cb_);
   if (!final_status.ok()) {
     // Destroy the records to regain system memory now.
     encrypted_records_.clear();

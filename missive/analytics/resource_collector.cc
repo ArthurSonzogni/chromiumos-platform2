@@ -12,7 +12,7 @@ namespace reporting::analytics {
 
 ResourceCollector::~ResourceCollector() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!timer_.IsRunning())
+  CHECK(!timer_.IsRunning())
       << "A child of ResourceCollector must stop the timer before "
          "ResourceCollector::~ResourceCollector() is called to prevent the "
          "timer from accessing destructed members of the child. This can be "

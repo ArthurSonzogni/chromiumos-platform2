@@ -27,8 +27,8 @@ EnqueueJob::EnqueueResponseDelegate::EnqueueResponseDelegate(
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>> response)
     : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       response_(std::move(response)) {
-  DCHECK(task_runner_);
-  DCHECK(response_);
+  CHECK(task_runner_);
+  CHECK(response_);
 }
 
 Status EnqueueJob::EnqueueResponseDelegate::Complete() {

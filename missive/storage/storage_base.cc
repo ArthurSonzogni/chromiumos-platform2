@@ -201,8 +201,8 @@ class QueueComparator {
       const std::pair<Priority, scoped_refptr<StorageQueue>>& a,
       const std::pair<Priority, scoped_refptr<StorageQueue>>& b) const {
     // Compare priorities.
-    DCHECK_LT(a.first, Priority_ARRAYSIZE);
-    DCHECK_LT(b.first, Priority_ARRAYSIZE);
+    CHECK_LT(a.first, Priority_ARRAYSIZE);
+    CHECK_LT(b.first, Priority_ARRAYSIZE);
     const auto pa = priority_to_order_[a.first];
     const auto pb = priority_to_order_[b.first];
     if (pa < pb) {
@@ -263,7 +263,7 @@ void QueuesContainer::GetDegradationCandidates(
     auto queue_priority = std::get<Priority>(priority_generation_tuple);
     auto queue_pair = std::make_pair(queue_priority, candidate_queue);
     if (comparator(queue_pair, writing_queue_pair)) {
-      DCHECK_NE(candidate_queue.get(), queue.get());
+      CHECK_NE(candidate_queue.get(), queue.get());
       candidate_queues.emplace_back(queue_pair);
     }
   }
@@ -279,7 +279,7 @@ void QueuesContainer::GetDegradationCandidates(
 }
 
 void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
-  DCHECK(callback);
+  CHECK(callback);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const base::RepeatingClosure queue_callback =
       base::BarrierClosure(queues_.size(), std::move(callback));
@@ -359,7 +359,7 @@ KeyDelivery::KeyDelivery(
     : sequenced_task_runner_(sequenced_task_runner),
       async_start_upload_cb_(async_start_upload_cb),
       encryption_module_(encryption_module) {
-  DCHECK(encryption_module_) << "Encryption module pointer not set";
+  CHECK(encryption_module_) << "Encryption module pointer not set";
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -381,7 +381,7 @@ void KeyDelivery::RequestKeyIfNeeded() {
 
 void KeyDelivery::EuqueueRequestAndPossiblyStart(RequestCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(callback);
+  CHECK(callback);
   callbacks_.push_back(std::move(callback));
 
   // The first request, starting the roundtrip.

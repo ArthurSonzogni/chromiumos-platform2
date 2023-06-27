@@ -40,12 +40,12 @@ class MissiveClientImpl : public MissiveClient {
   ~MissiveClientImpl() override = default;
 
   void Init(dbus::Bus* const bus) {
-    DCHECK(bus);
+    CHECK(bus);
     origin_task_runner_ = bus->GetOriginTaskRunner();
 
     analytics::Metrics::Initialize();
 
-    DCHECK(!missive_service_proxy_);
+    CHECK(!missive_service_proxy_);
     missive_service_proxy_ =
         bus->GetObjectProxy(missive::kMissiveServiceName,
                             dbus::ObjectPath(missive::kMissiveServicePath));
@@ -296,12 +296,12 @@ class MissiveClientImpl : public MissiveClient {
 }  // namespace
 
 MissiveClient::MissiveClient() {
-  DCHECK(!g_instance);
+  CHECK(!g_instance);
   g_instance = this;
 }
 
 MissiveClient::~MissiveClient() {
-  DCHECK_EQ(this, g_instance);
+  CHECK_EQ(this, g_instance);
   g_instance = nullptr;
 }
 
@@ -312,13 +312,13 @@ scoped_refptr<base::SequencedTaskRunner> MissiveClient::origin_task_runner()
 
 // static
 void MissiveClient::Initialize(dbus::Bus* bus) {
-  DCHECK(bus);
+  CHECK(bus);
   (new MissiveClientImpl())->Init(bus);
 }
 
 // static
 void MissiveClient::Shutdown() {
-  DCHECK(g_instance);
+  CHECK(g_instance);
   delete g_instance;
 }
 

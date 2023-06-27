@@ -28,7 +28,7 @@ void ReportQueueFactory::Create(EventType event_type,
                                 Destination destination,
                                 SuccessCallback success_cb,
                                 int64_t reserved_space) {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
 
   auto config_result = ReportQueueConfiguration::Create(
       event_type, destination,
@@ -52,7 +52,7 @@ std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>
 ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
                                                  Destination destination,
                                                  int64_t reserved_space) {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
 
   auto config_result = ReportQueueConfiguration::Create(
       event_type, destination,

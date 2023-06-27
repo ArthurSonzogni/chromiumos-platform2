@@ -88,8 +88,8 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
     CheckOnValidSequence();
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
     // Verify this queue doesn't already exist
-    DCHECK(!storage_->queues_container_->GetQueue(priority_, generation_guid_)
-                .ok());
+    CHECK(!storage_->queues_container_->GetQueue(priority_, generation_guid_)
+               .ok());
 
     // Set the extension of the queue directory name
     queue_options_.set_subdirectory_extension(generation_guid_);
@@ -181,7 +181,7 @@ void NewStorage::Create(
     // Context can only be deleted by calling Response method.
     ~StorageInitContext() override {
       DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-      DCHECK_EQ(count_, 0u);
+      CHECK_EQ(count_, 0u);
     }
 
     void OnStart() override {
@@ -223,7 +223,7 @@ void NewStorage::Create(
 
       if (status.ok()) {
         // Encryption key has been found and set up. Must be available now.
-        DCHECK(storage_->encryption_module_->has_encryption_key());
+        CHECK(storage_->encryption_module_->has_encryption_key());
       } else {
         LOG(WARNING)
             << "Encryption is enabled, but the key is not available yet, "
@@ -271,7 +271,7 @@ void NewStorage::Create(
             << create_queue_result.status();
         final_status_ = create_queue_result.status();
       }
-      DCHECK_GT(count_, 0u);
+      CHECK_GT(count_, 0u);
       if (--count_ > 0u) {
         return;
       }
@@ -494,7 +494,7 @@ class FlushContext : public TaskRunnerContext<Status> {
   // Context can only be deleted by calling Response method.
   ~FlushContext() override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-    DCHECK_EQ(count_, 0u);
+    CHECK_EQ(count_, 0u);
   }
 
   void OnStart() override {
@@ -525,7 +525,7 @@ class FlushContext : public TaskRunnerContext<Status> {
                  << " generation_guid=" << generation_guid
                  << ", error=" << status.error_message();
     }
-    DCHECK_GT(count_, 0u);
+    CHECK_GT(count_, 0u);
     if (--count_ > 0u) {
       return;
     }
@@ -630,7 +630,7 @@ void NewStorage::RegisterCompletionCallback(base::OnceClosure callback) {
   // destructed until the callback is registered - StorageQueue is held by
   // added reference here. Thus, the callback being registered is guaranteed
   // to be called when the NewStorage is being destructed.
-  DCHECK(callback);
+  CHECK(callback);
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&QueuesContainer::RegisterCompletionCallback,
                                 queues_container_, std::move(callback)));

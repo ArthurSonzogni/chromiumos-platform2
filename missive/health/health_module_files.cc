@@ -168,7 +168,7 @@ Status HealthModuleFiles::FreeStorage(uint32_t storage) {
     }
   }
 
-  DCHECK_GE(storage_used_, storage_removed);
+  CHECK_GE(storage_used_, storage_removed);
   storage_used_ -= storage_removed;
   return Status::StatusOK();
 }

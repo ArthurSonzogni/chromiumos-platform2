@@ -265,7 +265,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
         delete;
 
     ~SingleEncryptionContext() {
-      DCHECK(!response_) << "Self-destruct without prior response";
+      CHECK(!response_) << "Self-destruct without prior response";
     }
 
     void Start() {
@@ -362,7 +362,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
         delete;
 
     ~SingleDecryptionContext() {
-      DCHECK(!response_) << "Self-destruct without prior response";
+      CHECK(!response_) << "Self-destruct without prior response";
     }
 
     void Start() {

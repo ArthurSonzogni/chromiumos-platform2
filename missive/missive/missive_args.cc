@@ -58,7 +58,7 @@ StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
 base::TimeDelta DurationParameterValue(base::StringPiece parameter_name,
                                        base::StringPiece duration_string,
                                        base::StringPiece duration_default) {
-  DCHECK(ParseDuration(duration_default).ok());
+  CHECK(ParseDuration(duration_default).ok());
 
   if (duration_string.empty()) {
     return ParseDuration(duration_default).ValueOrDie();
@@ -174,7 +174,7 @@ void MissiveArgs::EnableListeningForUpdates(base::OnceClosure done_cb) {
               return;
             }
             // Succeeded.
-            DCHECK(!self->responded_) << "Can only be called once";
+            CHECK(!self->responded_) << "Can only be called once";
             self->responded_ = true;
             std::move(done_cb).Run();
           },

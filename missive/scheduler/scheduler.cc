@@ -56,7 +56,7 @@ scoped_refptr<base::SequencedTaskRunner> Scheduler::Job::sequenced_task_runner()
 }
 
 void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
-  DCHECK(complete_cb);
+  CHECK(complete_cb);
   // std::atomic<T>::compare_exchange_strong expects an lvalue for the expected
   // state.
   JobState expected_job_state = JobState::NOT_RUNNING;
@@ -117,7 +117,7 @@ class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {
         job_(std::move(job)) {}
 
  private:
-  ~JobContext() override { DCHECK(job_); }
+  ~JobContext() override { CHECK(job_); }
 
   void OnStart() override {
     if (job_ == nullptr) {
@@ -240,7 +240,7 @@ void Scheduler::AddObserver(SchedulerObserver* observer) {
 }
 
 void Scheduler::NotifyObservers(Notification notification) {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (auto* observer : observers_) {
     observer->Notify(notification);
@@ -271,7 +271,7 @@ void Scheduler::EnqueueJob(Job::SmartPtr<Job> job) {
 }
 
 void Scheduler::StartJobs() {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (jobs_queue_.empty()) {
@@ -295,7 +295,7 @@ void Scheduler::StartJobs() {
 }
 
 void Scheduler::MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker) {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (jobs_queue_.empty()) {
@@ -314,9 +314,9 @@ void Scheduler::MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker) {
 
 void Scheduler::RunJob(std::unique_ptr<JobBlocker> job_blocker,
                        Job::SmartPtr<Job> job) {
-  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(job_blocker);
+  CHECK(job_blocker);
   auto completion_cb = base::BindOnce(
       [](scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
          base::OnceCallback<void()> start_next_job_cb,

@@ -39,7 +39,7 @@ class MockDelegate : public DisconnectableClient::Delegate {
   }
 
   void Respond(Status status) override {
-    DCHECK(completion_cb_);
+    CHECK(completion_cb_);
     if (!status.ok()) {
       std::move(completion_cb_).Run(status);
       return;
@@ -68,7 +68,7 @@ class FailDelegate : public DisconnectableClient::Delegate {
   }
 
   void Respond(Status status) override {
-    DCHECK(completion_cb_);
+    CHECK(completion_cb_);
     if (!status.ok()) {
       std::move(completion_cb_).Run(status);
       return;

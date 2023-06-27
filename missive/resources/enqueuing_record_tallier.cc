@@ -73,7 +73,7 @@ StatusOr<uint64_t> EnqueuingRecordTallier::ComputeAverage() {
 
   // Both wall times were obtained. Return the average rate of enqueuing
   // records.
-  DCHECK(wall_time.ValueOrDie() >= last_wall_time.ValueOrDie());
+  CHECK(wall_time.ValueOrDie() >= last_wall_time.ValueOrDie());
   return cumulated_size /
          std::max<uint64_t>(
              wall_time.ValueOrDie() - last_wall_time.ValueOrDie(), 1U);

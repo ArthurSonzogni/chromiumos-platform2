@@ -117,7 +117,7 @@ void StorageModule::SetLegacyEnabledPriorities(
                  << "`";
       continue;
     }
-    DCHECK_LT(priority, Priority_ARRAYSIZE);
+    CHECK_LT(priority, Priority_ARRAYSIZE);
     legacy_enabled_for_priority[priority] = true;
   }
   // Atomically deliver all priorities' flags to `options_` (shared with

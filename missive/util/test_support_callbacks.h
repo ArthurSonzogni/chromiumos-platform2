@@ -170,7 +170,7 @@ class TestCallbackWaiter : public TestEvent<bool> {
 
   void Attach(int more = 1) {
     const int old_counter = counter_.Increment(more);
-    DCHECK_GT(old_counter, 0) << "Cannot attach when already being released";
+    CHECK_GT(old_counter, 0) << "Cannot attach when already being released";
   }
 
   void Signal() {

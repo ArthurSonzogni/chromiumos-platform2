@@ -15,7 +15,9 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -224,7 +226,7 @@ TEST_F(TaskRunner, TreeOfActions) {
 
    protected:
     virtual ~Summator() {
-      DCHECK(!callback_.is_null());
+      CHECK(!callback_.is_null());
       std::move(callback_).Run(result_);
     }
 

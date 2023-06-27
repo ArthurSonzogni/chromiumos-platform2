@@ -18,7 +18,7 @@ ResourceCollectorMemory::ResourceCollectorMemory(
     base::TimeDelta interval, scoped_refptr<ResourceManager> memory_resource)
     : ResourceCollector(interval),
       memory_resource_(std::move(memory_resource)) {
-  DCHECK(memory_resource_);
+  CHECK(memory_resource_);
 }
 
 ResourceCollectorMemory::~ResourceCollectorMemory() {

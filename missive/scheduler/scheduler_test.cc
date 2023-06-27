@@ -64,7 +64,7 @@ class FakeJob : public Scheduler::Job {
   }
 
   void SetFinishStatus(Status status) {
-    DCHECK_EQ(GetJobState(), JobState::NOT_RUNNING)
+    CHECK_EQ(GetJobState(), JobState::NOT_RUNNING)
         << "Called after the job started";
     finish_status_ = status;
   }

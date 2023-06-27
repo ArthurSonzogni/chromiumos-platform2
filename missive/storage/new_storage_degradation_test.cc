@@ -325,7 +325,7 @@ class NewStorageDegradationTest
         std::string serialized_record;
         wrapped_record.record().SerializeToString(&serialized_record);
         const auto record_digest = crypto::SHA256HashString(serialized_record);
-        DCHECK_EQ(record_digest.size(), crypto::kSHA256Length);
+        CHECK_EQ(record_digest.size(), crypto::kSHA256Length);
         if (record_digest != wrapped_record.record_digest()) {
           DoUploadRecordFailure(
               uploader_id_, sequence_information.priority(),

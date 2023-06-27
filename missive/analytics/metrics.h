@@ -53,7 +53,7 @@ class Metrics {
                             T sample,
                             T exclusive_max = T::kMaxValue) {
     static_assert(std::is_enum_v<T>, "T is not an enum.");
-    DCHECK_LT(static_cast<int>(sample), static_cast<int>(exclusive_max));
+    CHECK_LT(static_cast<int>(sample), static_cast<int>(exclusive_max));
     return SendEnumToUMA(name, static_cast<int>(sample),
                          static_cast<int>(exclusive_max));
   }
