@@ -22,7 +22,6 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
-#include "patchpanel/net_util.h"
 
 namespace {
 
@@ -120,12 +119,13 @@ bool Firewall::DeleteAcceptRules(Protocol protocol,
   return ip4_success && ip6_success;
 }
 
-bool Firewall::AddIpv4ForwardRule(Protocol protocol,
-                                  const std::string& input_ip,
-                                  uint16_t port,
-                                  const std::string& interface,
-                                  const std::string& dst_ip,
-                                  uint16_t dst_port) {
+bool Firewall::AddIpv4ForwardRule(
+    Protocol protocol,
+    const std::optional<net_base::IPv4Address>& input_ip,
+    uint16_t port,
+    const std::string& interface,
+    const net_base::IPv4Address& dst_ip,
+    uint16_t dst_port) {
   if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
                           Iptables::Command::kI)) {
     return false;
@@ -141,12 +141,13 @@ bool Firewall::AddIpv4ForwardRule(Protocol protocol,
   return true;
 }
 
-bool Firewall::DeleteIpv4ForwardRule(Protocol protocol,
-                                     const std::string& input_ip,
-                                     uint16_t port,
-                                     const std::string& interface,
-                                     const std::string& dst_ip,
-                                     uint16_t dst_port) {
+bool Firewall::DeleteIpv4ForwardRule(
+    Protocol protocol,
+    const std::optional<net_base::IPv4Address>& input_ip,
+    uint16_t port,
+    const std::string& interface,
+    const net_base::IPv4Address& dst_ip,
+    uint16_t dst_port) {
   bool success = true;
   if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
                           Iptables::Command::kD)) {
@@ -159,18 +160,14 @@ bool Firewall::DeleteIpv4ForwardRule(Protocol protocol,
   return success;
 }
 
-bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
-                                  const std::string& input_ip,
-                                  uint16_t port,
-                                  const std::string& interface,
-                                  const std::string& dst_ip,
-                                  uint16_t dst_port,
-                                  Iptables::Command command) {
-  if (!input_ip.empty() && GetIpFamily(input_ip) != AF_INET) {
-    LOG(ERROR) << "Invalid input IPv4 address '" << input_ip << "'";
-    return false;
-  }
-
+bool Firewall::ModifyIpv4DNATRule(
+    Protocol protocol,
+    const std::optional<net_base::IPv4Address>& input_ip,
+    uint16_t port,
+    const std::string& interface,
+    const net_base::IPv4Address& dst_ip,
+    uint16_t dst_port,
+    Iptables::Command command) {
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
     return false;
@@ -178,11 +175,6 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
 
   if (!IsValidInterfaceName(interface) || interface.empty()) {
     LOG(ERROR) << "Invalid interface name '" << interface << "'";
-    return false;
-  }
-
-  if (GetIpFamily(dst_ip) != AF_INET) {
-    LOG(ERROR) << "Invalid destination IPv4 address '" << dst_ip << "'";
     return false;
   }
 
@@ -205,32 +197,27 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
       "-p",  // protocol
       ProtocolName(protocol),
   };
-  if (!input_ip.empty()) {
+  if (input_ip) {
     argv.push_back("-d");  // input destination ip
-    argv.push_back(input_ip);
+    argv.push_back(input_ip->ToString());
   }
   argv.push_back("--dport");  // input destination port
   argv.push_back(std::to_string(port));
   argv.push_back("-j");
   argv.push_back("DNAT");
   argv.push_back("--to-destination");  // new output destination ip:port
-  argv.push_back(dst_ip + ":" + std::to_string(dst_port));
+  argv.push_back(dst_ip.ToString() + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
   return RunIptables(IpFamily::kIPv4, Iptables::Table::kNat, command, argv);
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
                                       const std::string& interface,
-                                      const std::string& dst_ip,
+                                      const net_base::IPv4Address& dst_ip,
                                       uint16_t dst_port,
                                       Iptables::Command command) {
   if (!IsValidInterfaceName(interface) || interface.empty()) {
     LOG(ERROR) << "Invalid interface name '" << interface << "'";
-    return false;
-  }
-
-  if (GetIpFamily(dst_ip) != AF_INET) {
-    LOG(ERROR) << "Invalid IPv4 destination address '" << dst_ip << "'";
     return false;
   }
 
@@ -253,7 +240,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
       "-p",  // protocol
       ProtocolName(protocol),
       "-d",  // destination ip
-      dst_ip,
+      dst_ip.ToString(),
       "--dport",  // destination port
       std::to_string(dst_port),
       "-j",

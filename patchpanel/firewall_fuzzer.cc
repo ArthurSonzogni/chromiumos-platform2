@@ -42,6 +42,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
 }  // namespace patchpanel
 
+net_base::IPv4Address ConsumeIPv4Address(FuzzedDataProvider& provider) {
+  const auto bytes =
+      provider.ConsumeBytes<uint8_t>(net_base::IPv4Address::kAddressLength);
+  return net_base::IPv4Address::CreateFromBytes(bytes).value_or(
+      net_base::IPv4Address());
+}
+
 struct Environment {
   Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
 };
@@ -74,18 +81,8 @@ void FuzzForwardRules(patchpanel::Firewall* firewall,
                                                 : ModifyPortRuleRequest::UDP;
     uint16_t forwarded_port = data_provider.ConsumeIntegral<uint16_t>();
     uint16_t dst_port = data_provider.ConsumeIntegral<uint16_t>();
-    struct in_addr input_ip_addr = {
-        .s_addr = data_provider.ConsumeIntegral<uint32_t>()};
-    struct in_addr dst_ip_addr = {
-        .s_addr = data_provider.ConsumeIntegral<uint32_t>()};
-    char input_buffer[INET_ADDRSTRLEN];
-    char dst_buffer[INET_ADDRSTRLEN];
-    memset(input_buffer, 0, INET_ADDRSTRLEN);
-    memset(dst_buffer, 0, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &input_ip_addr, input_buffer, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &dst_ip_addr, dst_buffer, INET_ADDRSTRLEN);
-    std::string input_ip = input_buffer;
-    std::string dst_ip = dst_buffer;
+    const auto input_ip = ConsumeIPv4Address(data_provider);
+    const auto dst_ip = ConsumeIPv4Address(data_provider);
     std::string iface = data_provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
     if (data_provider.ConsumeBool()) {
       firewall->AddIpv4ForwardRule(proto, input_ip, forwarded_port, iface,

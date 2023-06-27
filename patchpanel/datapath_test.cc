@@ -114,17 +114,17 @@ class MockFirewall : public Firewall {
                bool(Protocol protocol, uint16_t port));
   MOCK_METHOD6(AddIpv4ForwardRule,
                bool(Protocol protocol,
-                    const std::string& input_ip,
+                    const std::optional<net_base::IPv4Address>& input_ip,
                     uint16_t port,
                     const std::string& interface,
-                    const std::string& dst_ip,
+                    const net_base::IPv4Address& dst_ip,
                     uint16_t dst_port));
   MOCK_METHOD6(DeleteIpv4ForwardRule,
                bool(Protocol protocol,
-                    const std::string& input_ip,
+                    const std::optional<net_base::IPv4Address>& input_ip,
                     uint16_t port,
                     const std::string& interface,
-                    const std::string& dst_ip,
+                    const net_base::IPv4Address& dst_ip,
                     uint16_t dst_port));
 };
 

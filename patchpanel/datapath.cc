@@ -43,8 +43,8 @@ using net_base::IPv4CIDR;
 // TODO(hugobenichi) Consolidate this constant definition in a single place.
 constexpr pid_t kTestPID = -2;
 constexpr char kDefaultIfname[] = "vmtap%d";
-constexpr char kArcAddr[] = "100.115.92.2";
-constexpr char kLocalhostAddr[] = "127.0.0.1";
+constexpr net_base::IPv4Address kArcAddr(100, 115, 92, 2);
+constexpr net_base::IPv4Address kLocalhostAddr(127, 0, 0, 1);
 constexpr char kDefaultDnsPort[] = "53";
 constexpr char kChronosUid[] = "chronos";
 constexpr uint16_t kAdbServerPort = 5555;
@@ -2219,6 +2219,19 @@ bool Datapath::ModifyPortRule(
     LOG(ERROR) << "Invalid forwarding destination port " << request.dst_port();
     return false;
   }
+  const auto input_dst_ip =
+      net_base::IPv4Address::CreateFromString(request.input_dst_ip());
+  if (!request.input_dst_ip().empty() && !input_dst_ip) {
+    LOG(ERROR) << "Invalid input destination ip: " << request.input_dst_ip();
+    return false;
+  }
+  const auto dst_ip = net_base::IPv4Address::CreateFromString(request.dst_ip());
+  if (request.type() == patchpanel::ModifyPortRuleRequest::FORWARDING &&
+      !dst_ip) {
+    LOG(ERROR) << "Invalid forwarding destination address: "
+               << request.dst_ip();
+    return false;
+  }
   uint16_t input_dst_port = static_cast<uint16_t>(request.input_dst_port());
   uint16_t dst_port = static_cast<uint16_t>(request.dst_port());
 
@@ -2234,8 +2247,8 @@ bool Datapath::ModifyPortRule(
                                                      input_dst_port);
         case patchpanel::ModifyPortRuleRequest::FORWARDING:
           return firewall_->AddIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), input_dst_port,
-              request.input_ifname(), request.dst_ip(), dst_port);
+              request.proto(), input_dst_ip, input_dst_port,
+              request.input_ifname(), *dst_ip, dst_port);
         default:
           LOG(ERROR) << "Unknown port rule type " << request.type();
           return false;
@@ -2250,8 +2263,8 @@ bool Datapath::ModifyPortRule(
                                                         input_dst_port);
         case patchpanel::ModifyPortRuleRequest::FORWARDING:
           return firewall_->DeleteIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), input_dst_port,
-              request.input_ifname(), request.dst_ip(), dst_port);
+              request.proto(), input_dst_ip, input_dst_port,
+              request.input_ifname(), *dst_ip, dst_port);
         default:
           LOG(ERROR) << "Unknown port rule type " << request.type();
           return false;

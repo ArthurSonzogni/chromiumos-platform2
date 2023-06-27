@@ -400,54 +400,35 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   // Invalid input interface. No iptables commands are issued.
   EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "-startdash", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                           "enddash-", "100.115.92.5", 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "-startdash",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "enddash-",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::TCP, "", 80, ".startdot", "100.115.92.5", 8080));
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, ".startdot",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::UDP, "", 80, "enddot.", "100.115.92.5", 8080));
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "enddot.",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
   // Empty interface. No iptables commands are issused.
   EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                           "", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP, "",
-                                              80, "", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP, "",
-                                              80, "", "100.115.92.5", 8080));
-  Mock::VerifyAndClearExpectations(runner);
-
-  // Invalid input dst address. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP,
-                                           "256.256.256.256", 80, "iface",
-                                           "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP,
-                                           "qodpjqwpod", 80, "iface",
-                                           "100.115.92.5", 8080));
-  Mock::VerifyAndClearExpectations(runner);
-
-  // Trying to delete an IPv4 forward rule with an invalid input address will
-  // still trigger an explicit iptables -D command for the associated FORWARD
-  // ACCEPT rule. Two such commands are expected.
-  Verify_iptables(*runner,
-                  "filter -D FORWARD -i iface -p tcp -d 100.115.92.5 --dport "
-                  "8080 -j ACCEPT -w");
-  Verify_iptables(*runner,
-                  "filter -D FORWARD -i iface -p udp -d 100.115.92.5 --dport "
-                  "8080 -j ACCEPT -w");
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::TCP, "1.1", 80, "iface", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP,
-                                              "2001:db8::1", 80, "iface",
-                                              "100.115.92.5", 8080));
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
   // Trying to delete an IPv4 forward rule with an invalid input port will
@@ -459,36 +440,29 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   Verify_iptables(*runner,
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.5 --dport "
                   "8080 -j ACCEPT -w");
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 0,
-                                              "iface", "100.115.92.5", 8080));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 0,
-                                              "iface", "100.115.92.5", 8080));
-  Mock::VerifyAndClearExpectations(runner);
-
-  // Invalid output dst address. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "iface", "", 8080));
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                           "iface", "qodpjqwpod", 8080));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP, "",
-                                              80, "iface", "1.1", 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::UDP, "", 80, "iface", "2001:db8::1", 8080));
+      ModifyPortRuleRequest::TCP, std::nullopt, 0, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 0, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
   // Invalid output dst port. No iptables commands are issused.
   EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "iface", "100.115.92.5", 0));
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                           "iface", "100.115.92.5", 0));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP, "",
-                                              80, "iface", "100.115.92.5", 0));
-  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP, "",
-                                              80, "iface", "100.115.92.5", 0));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 0));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 0));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 0));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 0));
   Mock::VerifyAndClearExpectations(runner);
 }
 
@@ -504,8 +478,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesFails) {
       "--to-destination 100.115.92.6:8080 -w",
       1);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "iface", "100.115.92.6", 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 6), 8080));
   Mock::VerifyAndClearExpectations(runner);
 }
 
@@ -526,8 +501,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesPartialFailure) {
       "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w");
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                           "iface", "100.115.92.6", 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 6), 8080));
   Mock::VerifyAndClearExpectations(runner);
 }
 
@@ -552,7 +528,8 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
                   1);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::TCP, "", 80, "iface", "100.115.92.6", 8080));
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 6), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -563,8 +540,9 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w");
   EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
-  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
-                                             "iface", "100.115.92.6", 8080));
+  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
+      net_base::IPv4Address(100, 115, 92, 6), 8080));
   Mock::VerifyAndClearExpectations(runner);
 }
 
@@ -579,8 +557,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(*runner,
                   "filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 --dport "
                   "8080 -j ACCEPT -w");
-  ASSERT_TRUE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                          "wlan0", "100.115.92.2", 8080));
+  ASSERT_TRUE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "wlan0",
+      net_base::IPv4Address(100, 115, 92, 2), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -590,9 +569,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(*runner,
                   "filter -A FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
-  ASSERT_TRUE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP,
-                                          "100.115.92.2", 5555, "vmtap0",
-                                          "127.0.0.1", 5550));
+  ASSERT_TRUE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, net_base::IPv4Address(100, 115, 92, 2), 5555,
+      "vmtap0", net_base::IPv4Address(127, 0, 0, 1), 5550));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -602,8 +581,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(*runner,
                   "filter -A FORWARD -i eth0 -p udp -d 192.168.1.1 --dport "
                   "5353 -j ACCEPT -w");
-  ASSERT_TRUE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 5353,
-                                          "eth0", "192.168.1.1", 5353));
+  ASSERT_TRUE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 5353, "eth0",
+      net_base::IPv4Address(192, 168, 1, 1), 5353));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -613,8 +593,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(*runner,
                   "filter -D FORWARD -i mlan0 -p tcp -d 10.0.0.24 --dport 5001 "
                   "-j ACCEPT -w");
-  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP, "",
-                                             5000, "mlan0", "10.0.0.24", 5001));
+  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 5000, "mlan0",
+      net_base::IPv4Address(10, 0, 0, 24), 5001));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -624,9 +605,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(*runner,
                   "filter -D FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
-  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::TCP,
-                                             "100.115.92.2", 5555, "vmtap0",
-                                             "127.0.0.1", 5550));
+  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, net_base::IPv4Address(100, 115, 92, 2), 5555,
+      "vmtap0", net_base::IPv4Address(127, 0, 0, 1), 5550));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_iptables(
@@ -636,8 +617,9 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   Verify_iptables(
       *runner,
       "filter -D FORWARD -i eth1 -p udp -d 1.2.3.4 --dport 443 -j ACCEPT -w");
-  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(ModifyPortRuleRequest::UDP, "",
-                                             443, "eth1", "1.2.3.4", 443));
+  ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 443, "eth1",
+      net_base::IPv4Address(1, 2, 3, 4), 443));
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_PartialFailure) {
@@ -658,7 +640,8 @@ TEST(FirewallTest, AddIpv4ForwardRules_PartialFailure) {
       *runner,
       "nat -D ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w");
-  ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
-                                           "wlan0", "100.115.92.2", 8080));
+  ASSERT_FALSE(firewall.AddIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "wlan0",
+      net_base::IPv4Address(100, 115, 92, 2), 8080));
 }
 }  // namespace patchpanel
