@@ -104,49 +104,57 @@ void MulticastCountersService::Start() {
   }
 
   std::vector<std::string> args;
-  args = {"INPUT", "-d",  kMdnsMcastAddress.ToString(),
-          "-p",    "udp", "--dport",
-          "5353",  "-j",  "rx_mdns"};
+  args = {"-d",      kMdnsMcastAddress.ToString(),
+          "-p",      "udp",
+          "--dport", "5353",
+          "-j",      "rx_mdns"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
-                            Iptables::Command::kA, args);
-  args = {"INPUT", "-d",  kSsdpMcastAddress.ToString(),
-          "-p",    "udp", "--dport",
-          "1900",  "-j",  "rx_ssdp"};
+                            Iptables::Command::kA, "INPUT", args);
+  args = {"-d",      kSsdpMcastAddress.ToString(),
+          "-p",      "udp",
+          "--dport", "1900",
+          "-j",      "rx_ssdp"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
-                            Iptables::Command::kA, args);
-  args = {"INPUT", "-d",  kMdnsMcastAddress6.ToString(),
-          "-p",    "udp", "--dport",
-          "5353",  "-j",  "rx_mdns"};
+                            Iptables::Command::kA, "INPUT", args);
+  args = {"-d",      kMdnsMcastAddress6.ToString(),
+          "-p",      "udp",
+          "--dport", "5353",
+          "-j",      "rx_mdns"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
-                            Iptables::Command::kA, args);
-  args = {"INPUT", "-d",  kSsdpMcastAddress6.ToString(),
-          "-p",    "udp", "--dport",
-          "1900",  "-j",  "rx_ssdp"};
+                            Iptables::Command::kA, "INPUT", args);
+  args = {"-d",      kSsdpMcastAddress6.ToString(),
+          "-p",      "udp",
+          "--dport", "1900",
+          "-j",      "rx_ssdp"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
-                            Iptables::Command::kA, args);
+                            Iptables::Command::kA, "INPUT", args);
 }
 void MulticastCountersService::Stop() {
   std::vector<std::string> args;
-  args = {"INPUT", "-d",  kMdnsMcastAddress.ToString(),
-          "-p",    "udp", "--dport",
-          "5353",  "-j",  "rx_mdns"};
+  args = {"-d",      kMdnsMcastAddress.ToString(),
+          "-p",      "udp",
+          "--dport", "5353",
+          "-j",      "rx_mdns"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
-                            Iptables::Command::kD, args);
-  args = {"INPUT", "-d",  kSsdpMcastAddress.ToString(),
-          "-p",    "udp", "--dport",
-          "1900",  "-j",  "rx_ssdp"};
+                            Iptables::Command::kD, "INPUT", args);
+  args = {"-d",      kSsdpMcastAddress.ToString(),
+          "-p",      "udp",
+          "--dport", "1900",
+          "-j",      "rx_ssdp"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
-                            Iptables::Command::kD, args);
-  args = {"INPUT", "-d",  kMdnsMcastAddress6.ToString(),
-          "-p",    "udp", "--dport",
-          "5353",  "-j",  "rx_mdns"};
+                            Iptables::Command::kD, "INPUT", args);
+  args = {"-d",      kMdnsMcastAddress6.ToString(),
+          "-p",      "udp",
+          "--dport", "5353",
+          "-j",      "rx_mdns"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
-                            Iptables::Command::kD, args);
-  args = {"INPUT", "-d",  kSsdpMcastAddress6.ToString(),
-          "-p",    "udp", "--dport",
-          "1900",  "-j",  "rx_ssdp"};
+                            Iptables::Command::kD, "INPUT", args);
+  args = {"-d",      kSsdpMcastAddress6.ToString(),
+          "-p",      "udp",
+          "--dport", "1900",
+          "-j",      "rx_ssdp"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
-                            Iptables::Command::kD, args);
+                            Iptables::Command::kD, "INPUT", args);
 
   std::vector<std::string> protocols = {"mdns", "ssdp"};
   for (std::string const& protocol : protocols) {
@@ -181,12 +189,13 @@ void MulticastCountersService::SetupJumpRules(Iptables::Command command,
                                               base::StringPiece technology) {
   std::vector<std::string> args;
   for (const std::string& protocol : {"mdns", "ssdp"}) {
-    args = {"rx_" + protocol, "-i", ifname.data(), "-j",
+    std::string chain = "rx_" + protocol;
+    args = {"-i", ifname.data(), "-j",
             base::JoinString({"rx_", technology, "_", protocol}, "")};
     // Skip adding jump rules when already exist.
     if (command == Iptables::Command::kA &&
         datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                  Iptables::Command::kC, args,
+                                  Iptables::Command::kC, chain, args,
                                   /*log_failures=*/false)) {
       continue;
     }
@@ -194,7 +203,7 @@ void MulticastCountersService::SetupJumpRules(Iptables::Command command,
     // Skip deleting jump rules when not exist.
     if (command == Iptables::Command::kD &&
         !datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                   Iptables::Command::kC, args,
+                                   Iptables::Command::kC, chain, args,
                                    /*log_failures=*/false)) {
       LOG(WARNING) << "Jump rules does not exist, skip deleting jump rules for "
                    << ifname;
@@ -202,7 +211,7 @@ void MulticastCountersService::SetupJumpRules(Iptables::Command command,
     }
 
     if (!datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                   command, args)) {
+                                   command, chain, args)) {
       LOG(ERROR) << "Failed to add multicast iptables counter rules for "
                  << ifname;
     }

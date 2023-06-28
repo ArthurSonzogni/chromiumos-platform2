@@ -17,6 +17,7 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <dbus/object_path.h>
@@ -61,38 +62,56 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MockProcessRunner() = default;
   ~MockProcessRunner() = default;
 
-  MOCK_METHOD4(ip,
-               int(const std::string& obj,
-                   const std::string& cmd,
-                   const std::vector<std::string>& args,
-                   bool log_failures));
-  MOCK_METHOD4(ip6,
-               int(const std::string& obj,
-                   const std::string& cmd,
-                   const std::vector<std::string>& args,
-                   bool log_failures));
-  MOCK_METHOD5(iptables,
-               int(Iptables::Table table,
-                   Iptables::Command command,
-                   const std::vector<std::string>& argv,
-                   bool log_failures,
-                   std::string* output));
-  MOCK_METHOD5(ip6tables,
-               int(Iptables::Table table,
-                   Iptables::Command command,
-                   const std::vector<std::string>& argv,
-                   bool log_failures,
-                   std::string* output));
-  MOCK_METHOD2(ip_netns_add,
-               int(const std::string& netns_name, bool log_failures));
-  MOCK_METHOD3(ip_netns_attach,
-               int(const std::string& netns_name,
-                   pid_t netns_pid,
-                   bool log_failures));
-  MOCK_METHOD2(ip_netns_delete,
-               int(const std::string& netns_name, bool log_failures));
-  MOCK_METHOD2(modprobe_all,
-               int(const std::vector<std::string>& modules, bool log_failures));
+  MOCK_METHOD(int,
+              ip,
+              (const std::string& obj,
+               const std::string& cmd,
+               const std::vector<std::string>& args,
+               bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              ip6,
+              (const std::string& obj,
+               const std::string& cmd,
+               const std::vector<std::string>& args,
+               bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              iptables,
+              (Iptables::Table table,
+               Iptables::Command command,
+               base::StringPiece chain,
+               const std::vector<std::string>& argv,
+               bool log_failures,
+               std::string* output),
+              (override));
+  MOCK_METHOD(int,
+              ip6tables,
+              (Iptables::Table table,
+               Iptables::Command command,
+               base::StringPiece chain,
+               const std::vector<std::string>& argv,
+               bool log_failures,
+               std::string* output),
+              (override));
+  MOCK_METHOD(int,
+              ip_netns_add,
+              (const std::string& netns_name, bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              ip_netns_attach,
+              (const std::string& netns_name,
+               pid_t netns_pid,
+               bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              ip_netns_delete,
+              (const std::string& netns_name, bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              modprobe_all,
+              (const std::vector<std::string>& modules, bool log_failures),
+              (override));
 };
 
 class MockFirewall : public Firewall {
@@ -154,6 +173,8 @@ void Verify_iptables(MockProcessRunner& runner,
   auto argv = SplitArgs(args);
   const auto table = Iptables::TableFromName(argv[0]);
   const auto command = Iptables::CommandFromName(argv[1]);
+  const auto chain = argv[2];
+  argv.erase(argv.begin());
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   ASSERT_TRUE(table.has_value())
@@ -161,13 +182,13 @@ void Verify_iptables(MockProcessRunner& runner,
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner,
-                iptables(*table, *command, ElementsAreArray(argv), _, nullptr))
+    EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
+                                 ElementsAreArray(argv), _, nullptr))
         .WillOnce(Return(0));
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner,
-                ip6tables(*table, *command, ElementsAreArray(argv), _, nullptr))
+    EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
+                                  ElementsAreArray(argv), _, nullptr))
         .WillOnce(Return(0));
   }
 }
@@ -179,6 +200,8 @@ void Verify_iptables_in_sequence(MockProcessRunner& runner,
   auto argv = SplitArgs(args);
   const auto table = Iptables::TableFromName(argv[0]);
   const auto command = Iptables::CommandFromName(argv[1]);
+  const auto chain = argv[2];
+  argv.erase(argv.begin());
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   ASSERT_TRUE(table.has_value())
@@ -186,14 +209,14 @@ void Verify_iptables_in_sequence(MockProcessRunner& runner,
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner,
-                iptables(*table, *command, ElementsAreArray(argv), _, nullptr))
+    EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
+                                 ElementsAreArray(argv), _, nullptr))
         .InSequence(sequence)
         .WillOnce(Return(0));
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner,
-                ip6tables(*table, *command, ElementsAreArray(argv), _, nullptr))
+    EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
+                                  ElementsAreArray(argv), _, nullptr))
         .InSequence(sequence)
         .WillOnce(Return(0));
   }
@@ -1022,8 +1045,8 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
@@ -1072,8 +1095,8 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
@@ -1639,13 +1662,14 @@ TEST(DatapathTest, DumpIptables) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kMangle, Iptables::Command::kL,
-                                ElementsAre("-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<4>("<iptables output>"), Return(0)));
+  EXPECT_CALL(*runner,
+              iptables(Iptables::Table::kMangle, Iptables::Command::kL,
+                       StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<5>("<iptables output>"), Return(0)));
   EXPECT_CALL(*runner,
               ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
-                        ElementsAre("-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<4>("<ip6tables output>"), Return(0)));
+                        StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<5>("<ip6tables output>"), Return(0)));
 
   Datapath datapath(runner, firewall, &system);
   EXPECT_EQ("<iptables output>",

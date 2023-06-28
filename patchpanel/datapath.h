@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -443,12 +444,13 @@ class Datapath {
   virtual bool ModifyChain(IpFamily family,
                            Iptables::Table table,
                            Iptables::Command command,
-                           const std::string& chain,
+                           base::StringPiece chain,
                            bool log_failures = true);
   // Sends an iptables command for table |table|.
   virtual bool ModifyIptables(IpFamily family,
                               Iptables::Table table,
                               Iptables::Command command,
+                              base::StringPiece chain,
                               const std::vector<std::string>& argv,
                               bool log_failures = true);
   // Dumps the iptables chains rules for the table |table|. |family| must be

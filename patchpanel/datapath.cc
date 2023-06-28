@@ -326,17 +326,17 @@ void Datapath::Start() {
 
   // Create a FORWARD ACCEPT rule for connections already established.
   if (process_runner_->iptables(
-          Iptables::Table::kFilter, Iptables::Command::kA,
-          {"FORWARD", "-m", "state", "--state", "ESTABLISHED,RELATED", "-j",
-           "ACCEPT", "-w"}) != 0) {
+          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
+          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
+           "-w"}) != 0) {
     LOG(ERROR) << "Failed to install forwarding rule for established"
                << " connections.";
   }
 
   // Create a FORWARD ACCEPT rule for ICMP6.
   if (process_runner_->ip6tables(
-          Iptables::Table::kFilter, Iptables::Command::kA,
-          {"FORWARD", "-p", "ipv6-icmp", "-j", "ACCEPT", "-w"}) != 0)
+          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
+          {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"}) != 0)
     LOG(ERROR) << "Failed to install forwarding rule for ICMP6";
 
   // chromium:898210: Drop any locally originated traffic that would exit a
@@ -364,8 +364,9 @@ void Datapath::Start() {
       kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
           Iptables::Table::kFilter, Iptables::Command::kI,
-          {kDropGuestInvalidIpv4Chain, "-m", "mark", "--mark", snatMark, "-m",
-           "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
+          kDropGuestInvalidIpv4Chain,
+          {"-m", "mark", "--mark", snatMark, "-m", "state", "--state",
+           "INVALID", "-j", "DROP", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install FORWARD rule to drop INVALID packets";
   }
   // b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream
@@ -375,9 +376,9 @@ void Datapath::Start() {
   for (const auto& oif : kCellularIfnamePrefixes) {
     if (process_runner_->iptables(
             Iptables::Table::kFilter, Iptables::Command::kI,
-            {kDropGuestInvalidIpv4Chain, "-s", kGuestIPv4Subnet, "-p", "tcp",
-             "--tcp-flags", "FIN,PSH", "FIN,PSH", "-o", oif, "-j", "DROP",
-             "-w"}) != 0) {
+            kDropGuestInvalidIpv4Chain,
+            {"-s", kGuestIPv4Subnet, "-p", "tcp", "--tcp-flags", "FIN,PSH",
+             "FIN,PSH", "-o", oif, "-j", "DROP", "-w"}) != 0) {
       LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH "
                     "packets egressing "
                  << oif << " interfaces";
@@ -386,9 +387,9 @@ void Datapath::Start() {
 
   // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
   // Crostini, ...) or a connected namespace.
-  if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
-                                {"POSTROUTING", "-m", "mark", "--mark",
-                                 snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
+  if (process_runner_->iptables(
+          Iptables::Table::kNat, Iptables::Command::kA, "POSTROUTING",
+          {"-m", "mark", "--mark", snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install SNAT mark rules.";
   }
 
@@ -406,8 +407,9 @@ void Datapath::Start() {
   // it has no side effect now. We may need to revisit this later.
   ModifyIptables(
       IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-      {kApplyLocalSourceMarkChain, "-m", "mark", "!", "--mark",
-       "0x0/" + kFwmarkAllSourcesMask.ToString(), "-j", "RETURN", "-w"});
+      kApplyLocalSourceMarkChain,
+      {"-m", "mark", "!", "--mark", "0x0/" + kFwmarkAllSourcesMask.ToString(),
+       "-j", "RETURN", "-w"});
   // Create rules for tagging local sources with the source tag and the vpn
   // policy tag.
   for (const auto& source : kLocalSourceTypes) {
@@ -468,10 +470,10 @@ void Datapath::Start() {
   // incorrectly cause neighbor discovery icmpv6 packets to be dropped. Add
   // these rules to bypass connmark rule for those packets.
   for (const auto& type : kNeighborDiscoveryTypes) {
-    if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
-                        Iptables::Command::kI,
-                        {"OUTPUT", "-p", "icmpv6", "--icmpv6-type", type, "-j",
-                         "ACCEPT", "-w"})) {
+    if (!ModifyIptables(
+            IpFamily::kIPv6, Iptables::Table::kMangle, Iptables::Command::kI,
+            "OUTPUT",
+            {"-p", "icmpv6", "--icmpv6-type", type, "-j", "ACCEPT", "-w"})) {
       LOG(ERROR) << "Failed to set up connmark bypass rule for " << type
                  << " packets in OUTPUT";
     }
@@ -864,10 +866,10 @@ void Datapath::RemoveInterface(const std::string& ifname) {
 
 bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
                                      const std::string& src_ip) {
-  return process_runner_->iptables(Iptables::Table::kFilter,
-                                   Iptables::Command::kI,
-                                   {kDropGuestIpv4PrefixChain, "-o", oif, "-s",
-                                    src_ip, "-j", "DROP", "-w"}) == 0;
+  return process_runner_->iptables(
+             Iptables::Table::kFilter, Iptables::Command::kI,
+             kDropGuestIpv4PrefixChain,
+             {"-o", oif, "-s", src_ip, "-j", "DROP", "-w"}) == 0;
 }
 
 bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
@@ -988,7 +990,6 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
   for (const auto& protocol : {"udp", "tcp"}) {
     for (size_t i = 0; i < rule.nameservers.size(); i++) {
       std::vector<std::string> args{
-          kRedirectChromeDnsChain,
           "-p",
       };
       args.push_back(protocol);
@@ -1016,7 +1017,8 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
       args.push_back("--to-destination");
       args.push_back(rule.nameservers[i].ToString());
       args.push_back("-w");  // Wait for xtables lock.
-      if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
+      if (!ModifyIptables(family, Iptables::Table::kNat, op,
+                          kRedirectChromeDnsChain, args)) {
         success = false;
       }
     }
@@ -1034,7 +1036,7 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
                                   const std::string& chain) {
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string> args = {chain};
+    std::vector<std::string> args;
     if (!ifname.empty()) {
       args.insert(args.end(), {"-i", ifname});
     }
@@ -1047,7 +1049,7 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
     args.push_back("--to-destination");
     args.push_back(rule.proxy_address.ToString());
     args.push_back("-w");
-    if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
+    if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
     }
   }
@@ -1060,9 +1062,8 @@ bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
     std::vector<std::string> args = {
-        chain,           "-p", protocol,     "--dport",
-        kDefaultDnsPort, "-j", "MASQUERADE", "-w"};
-    if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
+        "-p", protocol, "--dport", kDefaultDnsPort, "-j", "MASQUERADE", "-w"};
+    if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
     }
   }
@@ -1274,9 +1275,9 @@ void Datapath::StartRoutingDeviceAsUser(
   // the value of |peer_ipv4_addr| is not zero.
   if (peer_ipv4_addr &&
       process_runner_->iptables(
-          Iptables::Table::kMangle, Iptables::Command::kA,
-          {subchain, "-s", peer_ipv4_addr->ToString(), "-d",
-           int_ipv4_addr.ToString(), "-j", "ACCEPT", "-w"}) != 0) {
+          Iptables::Table::kMangle, Iptables::Command::kA, subchain,
+          {"-s", peer_ipv4_addr->ToString(), "-d", int_ipv4_addr.ToString(),
+           "-j", "ACCEPT", "-w"}) != 0) {
     LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
   }
 
@@ -1320,23 +1321,23 @@ void Datapath::AddInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
   const std::string chain = AutoDNATTargetChainName(auto_dnat_target);
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
-  if (process_runner_->iptables(
-          Iptables::Table::kNat, Iptables::Command::kA,
-          {chain, "-i", shill_device.ifname, "-m", "socket", "--nowildcard",
-           "-j", "ACCEPT", "-w"}) != 0) {
+  if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
+                                chain,
+                                {"-i", shill_device.ifname, "-m", "socket",
+                                 "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
     success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
-          Iptables::Table::kNat, Iptables::Command::kA,
-          {chain, "-i", shill_device.ifname, "-p", "tcp", "-j", "DNAT",
+          Iptables::Table::kNat, Iptables::Command::kA, chain,
+          {"-i", shill_device.ifname, "-p", "tcp", "-j", "DNAT",
            "--to-destination", ipv4_addr_str, "-w"}) != 0) {
     success = false;
   }
   if (process_runner_->iptables(
-          Iptables::Table::kNat, Iptables::Command::kA,
-          {chain, "-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",
+          Iptables::Table::kNat, Iptables::Command::kA, chain,
+          {"-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",
            "--to-destination", ipv4_addr_str, "-w"}) != 0) {
     success = false;
   }
@@ -1353,16 +1354,14 @@ void Datapath::RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
                                      const IPv4Address& ipv4_addr) {
   const std::string ipv4_addr_str = ipv4_addr.ToString();
   const std::string chain = AutoDNATTargetChainName(auto_dnat_target);
-  process_runner_->iptables(
-      Iptables::Table::kNat, Iptables::Command::kD,
-      {chain, "-i", shill_device.ifname, "-p", "udp", "-j", "DNAT",
-       "--to-destination", ipv4_addr_str, "-w"});
-  process_runner_->iptables(
-      Iptables::Table::kNat, Iptables::Command::kD,
-      {chain, "-i", shill_device.ifname, "-p", "tcp", "-j", "DNAT",
-       "--to-destination", ipv4_addr_str, "-w"});
-  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
-                            {chain, "-i", shill_device.ifname, "-m", "socket",
+  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD, chain,
+                            {"-i", shill_device.ifname, "-p", "udp", "-j",
+                             "DNAT", "--to-destination", ipv4_addr_str, "-w"});
+  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD, chain,
+                            {"-i", shill_device.ifname, "-p", "tcp", "-j",
+                             "DNAT", "--to-destination", ipv4_addr_str, "-w"});
+  process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD, chain,
+                            {"-i", shill_device.ifname, "-m", "socket",
                              "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
@@ -1399,19 +1398,11 @@ bool Datapath::ModifyRedirectDnsDNATRule(Iptables::Command op,
                                          const std::string& protocol,
                                          const std::string& ifname,
                                          const std::string& dns_ipv4_addr) {
-  std::vector<std::string> args = {kRedirectDnsChain,
-                                   "-p",
-                                   protocol,
-                                   "--dport",
-                                   "53",
-                                   "-o",
-                                   ifname,
-                                   "-j",
-                                   "DNAT",
-                                   "--to-destination",
-                                   dns_ipv4_addr,
-                                   "-w"};
-  return ModifyIptables(IpFamily::kIPv4, Iptables::Table::kNat, op, args);
+  std::vector<std::string> args = {
+      "-p", protocol, "--dport",          "53",          "-o", ifname,
+      "-j", "DNAT",   "--to-destination", dns_ipv4_addr, "-w"};
+  return ModifyIptables(IpFamily::kIPv4, Iptables::Table::kNat, op,
+                        kRedirectDnsChain, args);
 }
 
 bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
@@ -1422,7 +1413,7 @@ bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
                                          Fwmark mark,
                                          Fwmark mask,
                                          bool redirect_on_mark) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (!ifname.empty()) {
     args.insert(args.end(), {"-i", ifname});
   }
@@ -1435,7 +1426,7 @@ bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
                 {"--mark", mark.ToString() + "/" + mask.ToString()});
   }
   args.insert(args.end(), {"-j", target_chain, "-w"});
-  return ModifyIptables(family, Iptables::Table::kNat, op, args);
+  return ModifyIptables(family, Iptables::Table::kNat, op, chain, args);
 }
 
 bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
@@ -1443,10 +1434,10 @@ bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
     std::vector<std::string> args = {
-        kSkipApplyVpnMarkChain, "-p", protocol, "--dport",
-        kDefaultDnsPort,        "-j", "ACCEPT", "-w",
+        "-p", protocol, "--dport", kDefaultDnsPort, "-j", "ACCEPT", "-w",
     };
-    if (!ModifyIptables(family, Iptables::Table::kMangle, op, args)) {
+    if (!ModifyIptables(family, Iptables::Table::kMangle, op,
+                        kSkipApplyVpnMarkChain, args)) {
       success = false;
     }
   }
@@ -1460,14 +1451,18 @@ bool Datapath::ModifyDnsExcludeDestinationRule(IpFamily family,
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
     std::vector<std::string> args = {
-        chain,     "-p",
-        protocol,  "!",
-        "-d",      rule.proxy_address.ToString(),
-        "--dport", kDefaultDnsPort,
-        "-j",      "RETURN",
+        "-p",
+        protocol,
+        "!",
+        "-d",
+        rule.proxy_address.ToString(),
+        "--dport",
+        kDefaultDnsPort,
+        "-j",
+        "RETURN",
         "-w",
     };
-    if (!ModifyIptables(family, Iptables::Table::kNat, op, args)) {
+    if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
     }
   }
@@ -1641,8 +1636,9 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // Any traffic that already has a routing tag applied is accepted.
   if (!ModifyIptables(
           IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-          {kApplyVpnMarkChain, "-m", "mark", "!", "--mark",
-           "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"})) {
+          kApplyVpnMarkChain,
+          {"-m", "mark", "!", "--mark", "0x0/" + kFwmarkRoutingMask.ToString(),
+           "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
                   "connections";
   }
@@ -1668,8 +1664,8 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
   // lockdown is enabled.
   if (!ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kA,
-                      {kVpnAcceptChain, "-m", "mark", "--mark",
+                      Iptables::Command::kA, kVpnAcceptChain,
+                      {"-m", "mark", "--mark",
                        routing_mark.value().ToString() + "/" +
                            kFwmarkRoutingMask.ToString(),
                        "-j", "ACCEPT", "-w"})) {
@@ -1708,7 +1704,8 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
   if (enable_vpn_lockdown) {
     if (!ModifyIptables(
             IpFamily::kDual, Iptables::Table::kFilter, Iptables::Command::kA,
-            {kVpnLockdownChain, "-m", "mark", "--mark",
+            kVpnLockdownChain,
+            {"-m", "mark", "--mark",
              kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
              "-j", "REJECT", "-w"})) {
       LOG(ERROR) << "Failed to start VPN lockdown mode";
@@ -1752,24 +1749,23 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
   }
   if (prefix) {
     if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                        Iptables::Command::kA,
-                        {kEnforceSourcePrefixChain, "-s", prefix->ToString(),
-                         "-j", "RETURN", "-w"})) {
+                        Iptables::Command::kA, kEnforceSourcePrefixChain,
+                        {"-s", prefix->ToString(), "-j", "RETURN", "-w"})) {
       LOG(ERROR) << "Fail to add " + prefix->ToString() + " RETURN rule in "
                  << kEnforceSourcePrefixChain;
     }
   }
   // Adding default DROP rule to DROP any packet with global unicast or unique
   // local source addresses.
-  if (!ModifyIptables(
-          IpFamily::kIPv6, Iptables::Table::kFilter, Iptables::Command::kA,
-          {kEnforceSourcePrefixChain, "-s", "2000::/3", "-j", "DROP", "-w"})) {
+  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kA, kEnforceSourcePrefixChain,
+                      {"-s", "2000::/3", "-j", "DROP", "-w"})) {
     LOG(ERROR) << "Fail to add 2000::/3 DROP rule in "
                << kEnforceSourcePrefixChain;
   }
-  if (!ModifyIptables(
-          IpFamily::kIPv6, Iptables::Table::kFilter, Iptables::Command::kA,
-          {kEnforceSourcePrefixChain, "-s", "fc00::/7", "-j", "DROP", "-w"})) {
+  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kA, kEnforceSourcePrefixChain,
+                      {"-s", "fc00::/7", "-j", "DROP", "-w"})) {
     LOG(ERROR) << "Fail to add fc00::/7 DROP rule in "
                << kEnforceSourcePrefixChain;
   }
@@ -1800,9 +1796,9 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // Accept DHCP traffic if DHCP is used.
   if (info.enable_ipv4_dhcp &&
       !ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                      Iptables::Command::kI,
-                      {kAcceptDownstreamNetworkChain, "-p", "udp", "--dport",
-                       "67", "--sport", "68", "-j", "ACCEPT", "-w"})) {
+                      Iptables::Command::kI, kAcceptDownstreamNetworkChain,
+                      {"-p", "udp", "--dport", "67", "--sport", "68", "-j",
+                       "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to create ACCEPT rule for DHCP traffic on "
                << kAcceptDownstreamNetworkChain;
     return false;
@@ -1851,8 +1847,8 @@ bool Datapath::ModifyConnmarkSet(IpFamily family,
                                  Iptables::Command op,
                                  Fwmark mark,
                                  Fwmark mask) {
-  return ModifyIptables(family, Iptables::Table::kMangle, op,
-                        {chain, "-j", "CONNMARK", "--set-mark",
+  return ModifyIptables(family, Iptables::Table::kMangle, op, chain,
+                        {"-j", "CONNMARK", "--set-mark",
                          mark.ToString() + "/" + mask.ToString(), "-w"});
 }
 
@@ -1861,23 +1857,23 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
                                      Iptables::Command op,
                                      const std::string& iif,
                                      Fwmark mask) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (!iif.empty()) {
     args.push_back("-i");
     args.push_back(iif);
   }
   args.insert(args.end(), {"-j", "CONNMARK", "--restore-mark", "--mask",
                            mask.ToString(), "-w"});
-  return ModifyIptables(family, Iptables::Table::kMangle, op, args);
+  return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args);
 }
 
 bool Datapath::ModifyConnmarkSave(IpFamily family,
                                   const std::string& chain,
                                   Iptables::Command op,
                                   Fwmark mask) {
-  std::vector<std::string> args = {
-      chain, "-j", "CONNMARK", "--save-mark", "--mask", mask.ToString(), "-w"};
-  return ModifyIptables(family, Iptables::Table::kMangle, op, args);
+  std::vector<std::string> args = {"-j",     "CONNMARK",      "--save-mark",
+                                   "--mask", mask.ToString(), "-w"};
+  return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args);
 }
 
 bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
@@ -1898,8 +1894,7 @@ bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
 
 bool Datapath::ModifyFwmarkDefaultLocalSourceTag(Iptables::Command op,
                                                  TrafficSource source) {
-  std::vector<std::string> args = {kApplyLocalSourceMarkChain,
-                                   "-m",
+  std::vector<std::string> args = {"-m",
                                    "mark",
                                    "--mark",
                                    "0x0/" + kFwmarkAllSourcesMask.ToString(),
@@ -1910,7 +1905,8 @@ bool Datapath::ModifyFwmarkDefaultLocalSourceTag(Iptables::Command op,
                                        kFwmarkAllSourcesMask.ToString(),
                                    "-w"};
   return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                        Iptables::Command::kA, args);
+                        Iptables::Command::kA, kApplyLocalSourceMarkChain,
+                        args);
 }
 
 bool Datapath::ModifyFwmarkLocalSourceTag(Iptables::Command op,
@@ -1936,7 +1932,7 @@ bool Datapath::ModifyFwmark(IpFamily family,
                             Fwmark mark,
                             Fwmark mask,
                             bool log_failures) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (!iif.empty()) {
     args.push_back("-i");
     args.push_back(iif);
@@ -1959,7 +1955,7 @@ bool Datapath::ModifyFwmark(IpFamily family,
   args.push_back(mark.ToString() + "/" + mask.ToString());
   args.push_back("-w");
 
-  return ModifyIptables(family, Iptables::Table::kMangle, op, args,
+  return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args,
                         log_failures);
 }
 
@@ -1971,7 +1967,7 @@ bool Datapath::ModifyJumpRule(IpFamily family,
                               const std::string& iif,
                               const std::string& oif,
                               bool log_failures) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (!iif.empty()) {
     args.push_back("-i");
     args.push_back(iif);
@@ -1981,14 +1977,14 @@ bool Datapath::ModifyJumpRule(IpFamily family,
     args.push_back(oif);
   }
   args.insert(args.end(), {"-j", target, "-w"});
-  return ModifyIptables(family, table, op, args, log_failures);
+  return ModifyIptables(family, table, op, chain, args, log_failures);
 }
 
 bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
                                        Iptables::Command op,
                                        Fwmark mark,
                                        Fwmark mask) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (mark.Value() != 0 && mask.Value() != 0) {
     args.push_back("-m");
     args.push_back("mark");
@@ -1996,14 +1992,15 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
     args.push_back(mark.ToString() + "/" + mask.ToString());
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, args);
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
+                        args);
 }
 
 bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
                                            Iptables::Command op,
                                            const std::string& uid,
                                            bool log_failures) {
-  std::vector<std::string> args = {chain};
+  std::vector<std::string> args;
   if (!uid.empty()) {
     args.push_back("-m");
     args.push_back("owner");
@@ -2012,8 +2009,8 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
     args.push_back(uid);
   }
   args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, args,
-                        log_failures);
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
+                        args, log_failures);
 }
 
 bool Datapath::CheckChain(IpFamily family,
@@ -2025,43 +2022,47 @@ bool Datapath::CheckChain(IpFamily family,
 
 bool Datapath::AddChain(IpFamily family,
                         Iptables::Table table,
-                        const std::string& name) {
-  DCHECK(name.size() <= kIptablesMaxChainLength)
-      << "chain name " << name << " is longer than " << kIptablesMaxChainLength;
-  return ModifyChain(family, table, Iptables::Command::kN, name);
+                        const std::string& chain) {
+  DCHECK(chain.size() <= kIptablesMaxChainLength)
+      << "chain name " << chain << " is longer than "
+      << kIptablesMaxChainLength;
+  return ModifyChain(family, table, Iptables::Command::kN, chain);
 }
 
 bool Datapath::RemoveChain(IpFamily family,
                            Iptables::Table table,
-                           const std::string& name) {
-  return ModifyChain(family, table, Iptables::Command::kX, name);
+                           const std::string& chain) {
+  return ModifyChain(family, table, Iptables::Command::kX, chain);
 }
 
 bool Datapath::FlushChain(IpFamily family,
                           Iptables::Table table,
-                          const std::string& name) {
-  return ModifyChain(family, table, Iptables::Command::kF, name);
+                          const std::string& chain) {
+  return ModifyChain(family, table, Iptables::Command::kF, chain);
 }
 
 bool Datapath::ModifyChain(IpFamily family,
                            Iptables::Table table,
-                           Iptables::Command op,
-                           const std::string& chain,
+                           Iptables::Command command,
+                           base::StringPiece chain,
                            bool log_failures) {
-  return ModifyIptables(family, table, op, {chain, "-w"}, log_failures);
+  return ModifyIptables(family, table, command, chain, {"-w"}, log_failures);
 }
 
 bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Table table,
-                              Iptables::Command op,
+                              Iptables::Command command,
+                              base::StringPiece chain,
                               const std::vector<std::string>& argv,
                               bool log_failures) {
   bool success = true;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    success &= process_runner_->iptables(table, op, argv, log_failures) == 0;
+    success &= process_runner_->iptables(table, command, chain, argv,
+                                         log_failures) == 0;
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    success &= process_runner_->ip6tables(table, op, argv, log_failures) == 0;
+    success &= process_runner_->ip6tables(table, command, chain, argv,
+                                          log_failures) == 0;
   }
   return success;
 }
@@ -2071,13 +2072,15 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
     case IpFamily::kIPv4:
-      if (process_runner_->iptables(table, Iptables::Command::kL, argv,
+      if (process_runner_->iptables(table, Iptables::Command::kL, /*chain=*/"",
+                                    argv,
                                     /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
       }
       break;
     case IpFamily::kIPv6:
-      if (process_runner_->ip6tables(table, Iptables::Command::kL, argv,
+      if (process_runner_->ip6tables(table, Iptables::Command::kL, /*chain=*/"",
+                                     argv,
                                      /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
       }

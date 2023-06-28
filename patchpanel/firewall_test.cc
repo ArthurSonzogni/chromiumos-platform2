@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -35,18 +36,24 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MockProcessRunner() = default;
   ~MockProcessRunner() = default;
 
-  MOCK_METHOD5(iptables,
-               int(Iptables::Table table,
-                   Iptables::Command command,
-                   const std::vector<std::string>& argv,
-                   bool log_failures,
-                   std::string* output));
-  MOCK_METHOD5(ip6tables,
-               int(Iptables::Table table,
-                   Iptables::Command command,
-                   const std::vector<std::string>& argv,
-                   bool log_failures,
-                   std::string* output));
+  MOCK_METHOD(int,
+              iptables,
+              (Iptables::Table table,
+               Iptables::Command command,
+               base::StringPiece chain,
+               const std::vector<std::string>& argv,
+               bool log_failures,
+               std::string* output),
+              (override));
+  MOCK_METHOD(int,
+              ip6tables,
+              (Iptables::Table table,
+               Iptables::Command command,
+               base::StringPiece chain,
+               const std::vector<std::string>& argv,
+               bool log_failures,
+               std::string* output),
+              (override));
 };
 
 void Verify_iptables(MockProcessRunner& runner,
@@ -55,14 +62,16 @@ void Verify_iptables(MockProcessRunner& runner,
   auto argv = SplitArgs(args);
   const auto table = Iptables::TableFromName(argv[0]);
   const auto command = Iptables::CommandFromName(argv[1]);
+  const auto chain = argv[2];
+  argv.erase(argv.begin());
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   ASSERT_TRUE(table.has_value())
       << "incorrect table name in expected args: " << args;
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
-  EXPECT_CALL(runner,
-              iptables(*table, *command, ElementsAreArray(argv), _, nullptr))
+  EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
+                               ElementsAreArray(argv), _, nullptr))
       .WillOnce(Return(return_value));
 }
 
@@ -72,14 +81,16 @@ void Verify_ip6tables(MockProcessRunner& runner,
   auto argv = SplitArgs(args);
   const auto table = Iptables::TableFromName(argv[0]);
   const auto command = Iptables::CommandFromName(argv[1]);
+  const auto chain = argv[2];
+  argv.erase(argv.begin());
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   ASSERT_TRUE(table.has_value())
       << "incorrect table name in expected args: " << args;
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
-  EXPECT_CALL(runner,
-              ip6tables(*table, *command, ElementsAreArray(argv), _, nullptr))
+  EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
+                                ElementsAreArray(argv), _, nullptr))
       .WillOnce(Return(return_value));
 }
 }  // namespace
@@ -88,8 +99,8 @@ TEST(FirewallTest, AddAcceptRules_InvalidPorts) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
 
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 0, "iface"));
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 0, "iface"));
@@ -168,8 +179,8 @@ TEST(FirewallTest, AddAcceptRules_InvalidInterfaceName) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
 
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80,
                                        "reallylonginterfacename"));
@@ -236,9 +247,9 @@ TEST(FirewallTest, AddAcceptRules_IptablesFails) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Punch hole for TCP port 80, should fail.
@@ -265,7 +276,7 @@ TEST(FirewallTest, AddAcceptRules_Ip6tablesFails) {
   Verify_iptables(*runner,
                   "filter -D ingress_port_firewall -p udp --dport 53 -i iface "
                   "-j ACCEPT -w");
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Punch hole for TCP port 80, should fail because 'ip6tables' fails.
@@ -280,8 +291,9 @@ TEST(FirewallTest, AddLoopbackLockdownRules_InvalidPort) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Try to lock down TCP port 0, port 0 is not a valid port.
@@ -349,9 +361,9 @@ TEST(FirewallTest, AddLoopbackLockdownRules_IptablesFails) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Lock down TCP port 80, should fail.
@@ -382,7 +394,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
       *runner,
       "filter -D egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _))
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Lock down TCP port 80, should fail because 'ip6tables' fails.
@@ -398,8 +410,8 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   Firewall firewall(runner);
 
   // Invalid input interface. No iptables commands are issued.
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "-startdash",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
@@ -415,14 +427,22 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   Mock::VerifyAndClearExpectations(runner);
 
   // Empty interface. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  Mock::VerifyAndClearExpectations(runner);
+
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
@@ -448,9 +468,17 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   Mock::VerifyAndClearExpectations(runner);
 
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::TCP, std::nullopt, 0, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
+      ModifyPortRuleRequest::UDP, std::nullopt, 0, "iface",
+      net_base::IPv4Address(100, 115, 92, 5), 8080));
+  Mock::VerifyAndClearExpectations(runner);
+
   // Invalid output dst port. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 5), 0));
@@ -477,7 +505,7 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesFails) {
       "nat -I ingress_port_forwarding -i iface -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w",
       1);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
@@ -500,7 +528,7 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesPartialFailure) {
       *runner,
       "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w");
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
@@ -526,7 +554,7 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
                   "filter -D FORWARD -i iface -p tcp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w",
                   1);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
@@ -539,7 +567,7 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
   Verify_iptables(*runner,
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w");
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
   ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));

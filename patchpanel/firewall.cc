@@ -191,7 +191,6 @@ bool Firewall::ModifyIpv4DNATRule(
   }
 
   std::vector<std::string> argv{
-      kIngressPortForwardingChain,
       "-i",
       interface,
       "-p",  // protocol
@@ -208,7 +207,8 @@ bool Firewall::ModifyIpv4DNATRule(
   argv.push_back("--to-destination");  // new output destination ip:port
   argv.push_back(dst_ip.ToString() + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
-  return RunIptables(IpFamily::kIPv4, Iptables::Table::kNat, command, argv);
+  return RunIptables(IpFamily::kIPv4, Iptables::Table::kNat, command,
+                     kIngressPortForwardingChain, argv);
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
@@ -234,7 +234,6 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
   }
 
   std::vector<std::string> argv{
-      "FORWARD",
       "-i",
       interface,
       "-p",  // protocol
@@ -247,7 +246,8 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
       "ACCEPT",
       "-w",
   };  // Wait for xtables lock.
-  return RunIptables(IpFamily::kIPv4, Iptables::Table::kFilter, command, argv);
+  return RunIptables(IpFamily::kIPv4, Iptables::Table::kFilter, command,
+                     "FORWARD", argv);
 }
 
 bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
@@ -288,7 +288,6 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
                              uint16_t port,
                              const std::string& interface) {
   std::vector<std::string> argv{
-      kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -303,7 +302,7 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
   argv.push_back("-w");  // Wait for xtables lock.
 
   return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
-                     argv);
+                     kIngressPortFirewallChain, argv);
 }
 
 bool Firewall::DeleteAcceptRule(IpFamily ip_family,
@@ -311,7 +310,6 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 uint16_t port,
                                 const std::string& interface) {
   std::vector<std::string> argv{
-      kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -326,14 +324,13 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
   argv.push_back("-w");  // Wait for xtables lock.
 
   return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
-                     argv);
+                     kIngressPortFirewallChain, argv);
 }
 
 bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
                                        Protocol protocol,
                                        uint16_t port) {
   std::vector<std::string> argv{
-      kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -351,14 +348,13 @@ bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
   };
 
   return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
-                     argv);
+                     kEgressPortFirewallChain, argv);
 }
 
 bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
                                           Protocol protocol,
                                           uint16_t port) {
   std::vector<std::string> argv{
-      kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -377,18 +373,19 @@ bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
 
   // TODO(b/278486416):  add IPv4 or IPv6
   return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
-                     argv);
+                     kEgressPortFirewallChain, argv);
 }
 
 bool Firewall::RunIptables(IpFamily ip_family,
                            Iptables::Table table,
                            Iptables::Command command,
+                           base::StringPiece chain,
                            const std::vector<std::string>& argv) {
   if (ip_family == IpFamily::kIPv4)
-    return process_runner_->iptables(table, command, argv, false) == 0;
+    return process_runner_->iptables(table, command, chain, argv, false) == 0;
 
   if (ip_family == IpFamily::kIPv6)
-    return process_runner_->ip6tables(table, command, argv, false) == 0;
+    return process_runner_->ip6tables(table, command, chain, argv, false) == 0;
 
   return false;
 }

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -310,82 +311,85 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   EXPECT_CALL(*datapath_,
               AddChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_eth0"))
       .WillOnce(Return(true));
-  static const struct {
+  const struct {
     Iptables::Command command;
+    base::StringPiece chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
-      {Iptables::Command::kA, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
-      {Iptables::Command::kA, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, "INPUT", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, "FORWARD", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
       {Iptables::Command::kA,
-       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
+       "POSTROUTING",
+       {"-o", "eth0", "-j", "tx_eth0", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_eth0",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-        "RETURN", "-w"}},
-      {Iptables::Command::kA, {"tx_eth0", "-w"}},
-      {Iptables::Command::kA, {"rx_eth0", "-w"}},
+       "rx_eth0",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA, "tx_eth0", {"-w"}},
+      {Iptables::Command::kA, "rx_eth0", {"-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                               rule.command, ElementsAreArray(rule.argv), _));
+    EXPECT_CALL(
+        *datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       rule.chain, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
@@ -394,18 +398,21 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
 TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
   const struct {
     Iptables::Command command;
+    base::StringPiece chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
-      {Iptables::Command::kD, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
-      {Iptables::Command::kD, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kD, "INPUT", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kD, "FORWARD", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
       {Iptables::Command::kD,
-       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
+       "POSTROUTING",
+       {"-o", "eth0", "-j", "tx_eth0", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                               rule.command, ElementsAreArray(rule.argv), _));
+    EXPECT_CALL(
+        *datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       rule.chain, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceRemoved("eth0");
@@ -427,80 +434,83 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
       .WillOnce(Return(true));
   const struct {
     Iptables::Command command;
+    base::StringPiece chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"tx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "tx_vpn",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00000100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00000200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00000300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00000400/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00000500/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00002000/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00002100/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00002200/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-        "RETURN", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00002300/0x00003f00", "-j", "RETURN", "-w"}},
       {Iptables::Command::kA,
-       {"rx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-        "RETURN", "-w"}},
-      {Iptables::Command::kA, {"tx_vpn", "-w"}},
-      {Iptables::Command::kA, {"rx_vpn", "-w"}},
-      {Iptables::Command::kA, {"FORWARD", "-i", "tun0", "-j", "rx_vpn", "-w"}},
-      {Iptables::Command::kA, {"INPUT", "-i", "tun0", "-j", "rx_vpn", "-w"}},
+       "rx_vpn",
+       {"-m", "mark", "--mark", "0x00002400/0x00003f00", "-j", "RETURN", "-w"}},
+      {Iptables::Command::kA, "tx_vpn", {"-w"}},
+      {Iptables::Command::kA, "rx_vpn", {"-w"}},
+      {Iptables::Command::kA, "FORWARD", {"-i", "tun0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kA, "INPUT", {"-i", "tun0", "-j", "rx_vpn", "-w"}},
       {Iptables::Command::kA,
-       {"POSTROUTING", "-o", "tun0", "-j", "tx_vpn", "-w"}},
+       "POSTROUTING",
+       {"-o", "tun0", "-j", "tx_vpn", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                               rule.command, ElementsAreArray(rule.argv), _));
+    EXPECT_CALL(
+        *datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       rule.chain, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceAdded("tun0");
@@ -509,18 +519,21 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
 TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
   const struct {
     Iptables::Command command;
+    base::StringPiece chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
-      {Iptables::Command::kD, {"FORWARD", "-i", "ppp0", "-j", "rx_vpn", "-w"}},
-      {Iptables::Command::kD, {"INPUT", "-i", "ppp0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kD, "FORWARD", {"-i", "ppp0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kD, "INPUT", {"-i", "ppp0", "-j", "rx_vpn", "-w"}},
       {Iptables::Command::kD,
-       {"POSTROUTING", "-o", "ppp0", "-j", "tx_vpn", "-w"}},
+       "POSTROUTING",
+       {"-o", "ppp0", "-j", "tx_vpn", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                               rule.command, ElementsAreArray(rule.argv), _));
+    EXPECT_CALL(
+        *datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       rule.chain, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceRemoved("ppp0");
@@ -539,21 +552,24 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
       .Times(0);
   const struct {
     Iptables::Command command;
+    base::StringPiece chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
-      {Iptables::Command::kA, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
-      {Iptables::Command::kA, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, "FORWARD", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, "INPUT", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
       {Iptables::Command::kA,
-       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
+       "POSTROUTING",
+       {"-o", "eth0", "-j", "tx_eth0", "-w"}},
   };
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                               rule.command, ElementsAreArray(rule.argv), _));
+    EXPECT_CALL(
+        *datapath_,
+        ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
+                       rule.chain, ElementsAreArray(rule.argv), _));
   }
 
   // No fwmark matching rule should be created.
-  EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _,
+  EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _, _,
                                          Contains("mark"), _))
       .Times(0);
 

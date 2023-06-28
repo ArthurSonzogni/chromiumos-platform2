@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_piece.h>
 #include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>
 #include <net-base/ipv4_address.h>
@@ -103,6 +104,7 @@ class Firewall {
   bool RunIptables(IpFamily ip_family,
                    Iptables::Table table,
                    Iptables::Command command,
+                   base::StringPiece chain,
                    const std::vector<std::string>& argv);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;

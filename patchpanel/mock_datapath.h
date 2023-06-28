@@ -160,7 +160,7 @@ class MockDatapath : public Datapath {
               (IpFamily family,
                Iptables::Table table,
                Iptables::Command command,
-               const std::string& chain,
+               base::StringPiece chain,
                bool log_failures),
               (override));
   MOCK_METHOD(bool,
@@ -168,6 +168,7 @@ class MockDatapath : public Datapath {
               (IpFamily family,
                Iptables::Table table,
                Iptables::Command command,
+               base::StringPiece chain,
                const std::vector<std::string>& argv,
                bool log_failures),
               (override));

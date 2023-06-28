@@ -168,24 +168,26 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
 
 int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       Iptables::Command command,
+                                      base::StringPiece chain,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
                                       std::string* output) {
-  std::vector<std::string> args = {kIptablesPath, "-t",
-                                   Iptables::TableName(table),
-                                   Iptables::CommandName(command)};
+  std::vector<std::string> args = {
+      kIptablesPath, "-t", Iptables::TableName(table),
+      Iptables::CommandName(command), std::string(chain)};
   args.insert(args.end(), argv.begin(), argv.end());
   return RunSync(args, log_failures, output);
 }
 
 int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        Iptables::Command command,
+                                       base::StringPiece chain,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
                                        std::string* output) {
-  std::vector<std::string> args = {kIp6tablesPath, "-t",
-                                   Iptables::TableName(table),
-                                   Iptables::CommandName(command)};
+  std::vector<std::string> args = {
+      kIp6tablesPath, "-t", Iptables::TableName(table),
+      Iptables::CommandName(command), std::string(chain)};
   args.insert(args.end(), argv.begin(), argv.end());
   return RunSync(args, log_failures, output);
 }

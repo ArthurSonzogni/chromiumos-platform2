@@ -225,8 +225,7 @@ void CountersService::OnVpnDeviceRemoved(const std::string& ifname) {
 
 bool CountersService::AddAccountingRule(const std::string& chain_name,
                                         TrafficSource source) {
-  std::vector<std::string> args = {chain_name,
-                                   "-m",
+  std::vector<std::string> args = {"-m",
                                    "mark",
                                    "--mark",
                                    Fwmark::FromSource(source).ToString() + "/" +
@@ -235,7 +234,7 @@ bool CountersService::AddAccountingRule(const std::string& chain_name,
                                    "RETURN",
                                    "-w"};
   return datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                   Iptables::Command::kA, args);
+                                   Iptables::Command::kA, chain_name, args);
 }
 
 void CountersService::SetupAccountingRules(const std::string& chain) {
@@ -253,7 +252,7 @@ void CountersService::SetupAccountingRules(const std::string& chain) {
   }
   // Add catch-all accounting rule for any remaining and untagged traffic.
   datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                            Iptables::Command::kA, {chain, "-w"});
+                            Iptables::Command::kA, chain, {"-w"});
 }
 
 void CountersService::SetupJumpRules(Iptables::Command command,
@@ -264,12 +263,12 @@ void CountersService::SetupJumpRules(Iptables::Command command,
   // traffic, and two jumping rules in mangle INPUT and FORWARD for ingress
   // traffic.
   datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
-                            {"FORWARD", "-i", ifname, "-j", rx_chain, "-w"});
+                            "FORWARD", {"-i", ifname, "-j", rx_chain, "-w"});
   datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
-                            {"INPUT", "-i", ifname, "-j", rx_chain, "-w"});
-  datapath_->ModifyIptables(
-      IpFamily::kDual, Iptables::Table::kMangle, command,
-      {"POSTROUTING", "-o", ifname, "-j", tx_chain, "-w"});
+                            "INPUT", {"-i", ifname, "-j", rx_chain, "-w"});
+  datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
+                            "POSTROUTING",
+                            {"-o", ifname, "-j", tx_chain, "-w"});
 }
 
 TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {

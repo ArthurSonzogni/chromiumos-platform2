@@ -112,18 +112,18 @@ TEST(MinijailProcessRunnerTest, iptables) {
   EXPECT_CALL(mj, New());
   EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
   EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
-  EXPECT_CALL(
-      mj, RunPipesAndDestroy(
-              _,
-              ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"), StrEq("filter"),
-                          StrEq("-A"), StrEq("arg1"), StrEq("arg2"), nullptr),
-              _, nullptr, nullptr, _))
+  EXPECT_CALL(mj, RunPipesAndDestroy(
+                      _,
+                      ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"),
+                                  StrEq("filter"), StrEq("-A"), StrEq("chain"),
+                                  StrEq("arg1"), StrEq("arg2"), nullptr),
+                      _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
   EXPECT_TRUE(runner.iptables(Iptables::Table::kFilter, Iptables::Command::kA,
-                              {"arg1", "arg2"}));
+                              "chain", {"arg1", "arg2"}));
 }
 
 TEST(MinijailProcessRunnerTest, ip6tables) {
@@ -135,18 +135,18 @@ TEST(MinijailProcessRunnerTest, ip6tables) {
   EXPECT_CALL(mj, New());
   EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
   EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
-  EXPECT_CALL(
-      mj, RunPipesAndDestroy(_,
-                             ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
-                                         StrEq("mangle"), StrEq("-I"),
-                                         StrEq("arg1"), StrEq("arg2"), nullptr),
-                             _, nullptr, nullptr, _))
+  EXPECT_CALL(mj, RunPipesAndDestroy(
+                      _,
+                      ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
+                                  StrEq("mangle"), StrEq("-I"), StrEq("chain"),
+                                  StrEq("arg1"), StrEq("arg2"), nullptr),
+                      _, nullptr, nullptr, _))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
   EXPECT_TRUE(runner.ip6tables(Iptables::Table::kMangle, Iptables::Command::kI,
-                               {"arg1", "arg2"}));
+                               "chain", {"arg1", "arg2"}));
 }
 
 }  // namespace
