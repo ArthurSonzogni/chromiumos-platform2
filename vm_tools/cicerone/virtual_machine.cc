@@ -609,7 +609,7 @@ VirtualMachine::GetLxdContainerInfoStatus VirtualMachine::GetLxdContainerInfo(
     return VirtualMachine::GetLxdContainerInfoStatus::FAILED;
   }
 
-  out_info->ipv4_address = response.ipv4_address();
+  out_info->ipv4_address = net_base::IPv4Address(response.ipv4_address());
   out_error->assign(response.failure_reason());
 
   switch (response.status()) {

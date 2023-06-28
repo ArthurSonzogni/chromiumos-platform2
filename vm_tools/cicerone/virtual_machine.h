@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,7 @@
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
+#include <net-base/ipv4_address.h>
 
 #include "vm_tools/cicerone/container.h"
 
@@ -156,9 +158,9 @@ class VirtualMachine {
 
   // Info about the LXD container.
   struct LxdContainerInfo {
-    // The IPv4 address of the container in network byte order.
+    // The IPv4 address of the container.
     // This field is only valid if the container status is RUNNING.
-    uint32_t ipv4_address;
+    std::optional<net_base::IPv4Address> ipv4_address;
   };
 
   // Results of a set timezone request

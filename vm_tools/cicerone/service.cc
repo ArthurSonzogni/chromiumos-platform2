@@ -781,16 +781,12 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       event->Signal();
       return;
     }
-    container->set_ipv4_address(info.ipv4_address);
+    DCHECK(info.ipv4_address);
+    container->set_ipv4_address(info.ipv4_address->ToInAddr().s_addr);
 
     // Found the VM with a matching CID, register the IP address for the
     // container with that VM object.
-    if (!IPv4AddressToString(info.ipv4_address, &string_ip)) {
-      LOG(ERROR) << "Failed converting IP address to string: "
-                 << info.ipv4_address;
-      event->Signal();
-      return;
-    }
+    string_ip = info.ipv4_address->ToString();
   }
   if (!vm->RegisterContainer(container_token, garcon_vsock_port, string_ip)) {
     LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
