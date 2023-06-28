@@ -2,104 +2,57 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <errno.h>
-#include <fstream>
-#include <signal.h>
+#include <iomanip>
 #include <string>
-#include <sys/types.h>
-#include <vector>
 
-#include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
+#include <base/strings/stringprintf.h>
 
 #include "bootsplash/frecon.h"
 #include "bootsplash/paths.h"
 
-namespace {
-
-constexpr char kFreconPath[] = "/sbin/frecon";
-constexpr char kFreconPidfile[] = "/run/frecon/pid";
-
-int GetRunningFreconPid() {
-  std::ifstream pidfile(paths::Get(kFreconPidfile).value());
-
-  if (!pidfile.is_open()) {
-    // Frecon is not running.
-    return -1;
-  }
-
-  int pid = -1;
-  pidfile >> pid;
-
-  return pid;
-}
-
-}  // namespace
-
 namespace bootsplash {
 
-bool Frecon::InitFrecon() {
-  int pid = GetRunningFreconPid();
-  if (pid > 0) {
-    LOG(INFO) << "Terminating running frecon with pid " << pid;
-    if (kill(pid, SIGTERM) < 0 && errno != ESRCH) {
-      LOG(ERROR) << "Failed to terminate pid " << pid;
-      return false;
-    }
+std::unique_ptr<Frecon> Frecon::Create(bool feature_simon_enabled) {
+  std::unique_ptr<Frecon> new_frecon = std::make_unique<Frecon>();
+
+  /* Draw the splash images to VT0, the splash screen terminal. */
+  new_frecon->Write("\033]switchvt:0\a");
+
+  new_frecon->boot_splash_assets_dir_ =
+      paths::GetBootSplashAssetsDir(feature_simon_enabled);
+  if (!base::PathExists(new_frecon->boot_splash_assets_dir_)) {
+    LOG(ERROR) << "Boot splash directory does not exist: '"
+               << new_frecon->boot_splash_assets_dir_ << "'";
+    return nullptr;
   }
 
-  std::vector<std::string> argv = {
-      paths::Get(kFreconPath).value(),
-      "--daemon",
-      "--no-login",
-      "--enable-vt1",
-      "--enable-osc",
-      "--pre-create-vts",
-  };
-  std::string output;
-  if (!base::GetAppOutputAndError(argv, &output)) {
-    LOG(ERROR) << "Failed to start frecon: " << output;
-    return false;
-  }
-
-  frecon_pid_ = GetRunningFreconPid();
-  if (frecon_pid_ < 0) {
-    LOG(ERROR) << "Failed to get frecon pid";
-    return false;
-  }
-  LOG(INFO) << "Frecon started with pid " << frecon_pid_;
-
-  frecon_vt_.open(paths::Get(paths::kFreconVt).value(),
-                  std::ofstream::out | std::ofstream::app);
-  if (!frecon_vt_.is_open()) {
-    LOG(ERROR) << "Failed to open " << paths::kFreconVt;
-    return false;
-  }
-
-  AttachOutput(&frecon_vt_);
-  return true;
-}
-
-void Frecon::AttachOutput(std::ostream* output) {
-  DCHECK(output);
-  outputs_.push_back(output);
+  return new_frecon;
 }
 
 void Frecon::Write(const std::string& msg) {
-  for (auto output : outputs_) {
-    *output << msg;
-    output->flush();
+  base::FilePath frecon_vt_path = paths::Get(paths::kFreconVt);
+
+  if (!base::WriteFile(frecon_vt_path, msg.c_str())) {
+    LOG(ERROR) << "Failed to write data to file: '" << frecon_vt_path.value()
+               << "'";
   }
 }
 
-Frecon::~Frecon() {
-  if (frecon_pid_ >= 0) {
-    LOG(INFO) << "Terminating frecon";
-    if (kill(frecon_pid_, SIGTERM) < 0) {
-      LOG(ERROR) << "Failed to terminate frecon with pid " << frecon_pid_;
-    }
-  }
+void Frecon::DropDrmMaster() {
+  Write("\033]drmdropmaster\a");
+}
+
+void Frecon::UpdateBootLogoDisplay(int frame_number) {
+  std::string imageFileName =
+      base::StringPrintf("%s%02d%s", paths::kBootSplashFilenamePrefix,
+                         frame_number, paths::kImageExtension);
+  base::FilePath imagePath =
+      paths::Get(boot_splash_assets_dir_.value()).Append(imageFileName);
+
+  /* Draw the new image */
+  Write("\033]image:file=" + imagePath.value() + "\a");
 }
 
 }  // namespace bootsplash

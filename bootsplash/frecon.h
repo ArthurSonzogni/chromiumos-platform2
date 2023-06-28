@@ -5,9 +5,8 @@
 #ifndef BOOTSPLASH_FRECON_H_
 #define BOOTSPLASH_FRECON_H_
 
-#include <fstream>
+#include <memory>
 #include <string>
-#include <vector>
 
 namespace bootsplash {
 
@@ -16,25 +15,21 @@ class Frecon {
   Frecon() = default;
   Frecon(const Frecon&) = delete;
   Frecon& operator=(const Frecon&) = delete;
-  ~Frecon();
+  ~Frecon() = default;
 
-  // Start a new frecon process and attach it to the output.  If a
-  // frecon process already exists, it will be terminated.
-  //
-  // Returns true upon success, or false if an error occurred starting
-  // frecon.
-  bool InitFrecon();
+  static std::unique_ptr<Frecon> Create(bool feature_simon_enabled);
 
-  // Attach the output to another file.
-  void AttachOutput(std::ostream* output);
-
-  // Write a string to all outputs.
+  // Write a string to the frecon VT file.
   void Write(const std::string& msg);
 
+  // Drop DRM Master.
+  void DropDrmMaster();
+
+  // Update the display with the current boot logo frame.
+  void UpdateBootLogoDisplay(int frame_number);
+
  private:
-  int frecon_pid_ = -1;
-  std::ofstream frecon_vt_;
-  std::vector<std::ostream*> outputs_;
+  base::FilePath boot_splash_assets_dir_;
 };
 
 }  // namespace bootsplash

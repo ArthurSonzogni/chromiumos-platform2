@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sstream>
-#include <string>
-
-#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -15,67 +11,53 @@
 #include "bootsplash/frecon.h"
 #include "bootsplash/paths.h"
 
+using base::FilePath;
+
 namespace {
 
-constexpr char kFakeFreconProgram[] =
-    "#!/bin/bash\n"
-    "sysroot=\"$(dirname \"$0\")/..\"\n"
-    "mkdir -p \"${sysroot}/run/frecon\"\n"
-    "nohup sleep infinity >/dev/null 2>&1 &\n"
-    "echo $! > \"${sysroot}/run/frecon/pid\"\n";
-
 class FreconTest : public ::testing::Test {
- public:
+ protected:
+  const FilePath& test_dir() const { return scoped_temp_dir_.GetPath(); }
+  const FilePath& frecon_vt_path() const { return frecon_vt_path_; }
+
+ private:
   void SetUp() override {
-    ASSERT_TRUE(fake_sysroot_.CreateUniqueTempDir());
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    paths::SetPrefixForTesting(test_dir());
 
-    auto sbin_dir = fake_sysroot_.GetPath().Append("sbin");
+    // Create an empty vt0 file to Write() to.
+    frecon_vt_path_ = paths::Get(paths::kFreconVt);
+    ASSERT_TRUE(base::CreateDirectory(frecon_vt_path_.DirName()));
+    ASSERT_TRUE(base::WriteFile(frecon_vt_path_, ""));
 
-    base::File::Error err;
-    ASSERT_TRUE(base::CreateDirectoryAndGetError(sbin_dir, &err));
-
-    auto frecon_path = sbin_dir.Append("frecon");
-    ASSERT_TRUE(base::WriteFile(frecon_path, kFakeFreconProgram));
-    ASSERT_TRUE(base::SetPosixFilePermissions(frecon_path, 0755));
-
-    paths::SetPrefixForTesting(fake_sysroot_.GetPath());
+    // Create an empty boot splash assets directory.
+    boot_splash_assets_dir_ = paths::GetBootSplashAssetsDir(false);
+    ASSERT_TRUE(base::CreateDirectory(boot_splash_assets_dir_));
   }
 
- protected:
-  base::ScopedTempDir fake_sysroot_;
+  base::ScopedTempDir scoped_temp_dir_;
+  base::FilePath frecon_vt_path_;
+  base::FilePath boot_splash_assets_dir_;
 };
 
 // Test frecon process can be initialized and destroyed.
 TEST_F(FreconTest, TestInitFrecon) {
-  auto frecon = bootsplash::Frecon();
-  EXPECT_TRUE(frecon.InitFrecon());
+  std::unique_ptr<bootsplash::Frecon> frecon_ =
+      bootsplash::Frecon::Create(false);
 }
 
 // Test writing to frecon and to an output file.
-TEST_F(FreconTest, TestWriteToMultipleOutputs) {
-  auto frecon = bootsplash::Frecon();
-  EXPECT_TRUE(frecon.InitFrecon());
+TEST_F(FreconTest, Write) {
+  std::unique_ptr<bootsplash::Frecon> frecon_ =
+      bootsplash::Frecon::Create(false);
 
-  std::stringstream output;
-  frecon.AttachOutput(&output);
-  frecon.Write("some text");
-  EXPECT_EQ(output.str(), "some text");
+  // Write some new data to the file.
+  frecon_->Write("some text");
 
-  auto file_path = base::FilePath(paths::Get("/run/frecon/vt0"));
-  std::string file_contents;
-  EXPECT_TRUE(base::ReadFileToString(file_path, &file_contents));
-  EXPECT_EQ(file_contents, "some text");
-}
-
-// Test that, when initializing frecon, if there is already a frecon
-// running, we terminate it first.
-TEST_F(FreconTest, TestTerminateRunningFrecon) {
-  std::vector<std::string> argv = {paths::Get("/sbin/frecon").value()};
-  std::string output;
-  EXPECT_TRUE(base::GetAppOutputAndError(argv, &output));
-
-  auto frecon = bootsplash::Frecon();
-  EXPECT_TRUE(frecon.InitFrecon());
+  // Validate the new data was written.
+  std::string freconFileContents;
+  ASSERT_TRUE(ReadFileToString(frecon_vt_path(), &freconFileContents));
+  EXPECT_EQ(freconFileContents, "some text");
 }
 
 }  // namespace
