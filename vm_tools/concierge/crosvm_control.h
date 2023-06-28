@@ -172,8 +172,10 @@ class CrosvmControl {
   // Disable vmm-swap of crosvm.
   //
   // This affects the crosvm instance whose control socket is listening on
-  // `socket_path`.
-  virtual bool DisableVmmSwap(const std::string& socket_path) = 0;
+  // `socket_path`. If `slow_file_cleanup` is true, allows crosvm to clean
+  // up the swap file in the background.
+  virtual bool DisableVmmSwap(const std::string& socket_path,
+                              bool slow_file_cleanup) = 0;
 
   // Returns vmm-swap status of the crosvm instance whose control socket is
   // listening on `socket_path`.

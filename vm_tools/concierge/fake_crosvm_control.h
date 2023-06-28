@@ -70,7 +70,8 @@ class FakeCrosvmControl : public CrosvmControl {
 
   bool VmmSwapTrim(const std::string& socket_path) override;
 
-  bool DisableVmmSwap(const std::string& socket_path) override;
+  bool DisableVmmSwap(const std::string& socket_path,
+                      bool slow_file_cleanup) override;
 
   bool VmmSwapStatus(const std::string& socket_path,
                      struct SwapStatus* status) override;
@@ -82,6 +83,7 @@ class FakeCrosvmControl : public CrosvmControl {
   int count_vmm_swap_out_ = 0;
   int count_vmm_swap_trim_ = 0;
   int count_disable_vmm_swap_ = 0;
+  int count_disable_vmm_swap_fast_file_cleanup_ = 0;
 
   bool result_set_balloon_size_ = true;
   bool result_balloon_stats_ = true;

@@ -912,11 +912,14 @@ void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
   // case when vmm-swap is not available. StatefulDiskSpaceUpdate arrives
   // independent from vmm-swap.
   // state > spaced::StatefulDiskSpaceState::NORMAL means LOW or CRITICAL.
-  if ((update.state() == spaced::StatefulDiskSpaceState::LOW ||
-       update.state() == spaced::StatefulDiskSpaceState::CRITICAL) &&
-      is_vmm_swap_enabled_) {
+  if (update.state() != spaced::StatefulDiskSpaceState::LOW &&
+      update.state() != spaced::StatefulDiskSpaceState::CRITICAL) {
+    return;
+  }
+
+  if (is_vmm_swap_enabled_ || requested_slow_file_cleanup_) {
     LOG(INFO) << "Disable vmm-swap due to low disk notification";
-    if (!DisableVmmSwap()) {
+    if (!DisableVmmSwap(false)) {
       LOG(ERROR) << "Failure on crosvm swap command for disable";
     }
   }
@@ -1274,7 +1277,7 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
 void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnDisabled();
-  if (DisableVmmSwap()) {
+  if (DisableVmmSwap(true)) {
     response.set_success(true);
   } else {
     LOG(ERROR) << "Failure on crosvm swap command for disable";
@@ -1283,7 +1286,7 @@ void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   vmm_swap_metrics_->OnSwappableIdleDisabled();
 }
 
-bool ArcVm::DisableVmmSwap() {
+bool ArcVm::DisableVmmSwap(bool slow_file_cleanup) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (swap_policy_timer_->IsRunning()) {
     LOG(INFO) << "Cancel pending swap out";
@@ -1300,9 +1303,11 @@ bool ArcVm::DisableVmmSwap() {
     std::move(pending_swap_vm_callback_).Run(response);
   }
   is_vmm_swap_enabled_ = false;
+  requested_slow_file_cleanup_ = slow_file_cleanup;
   vmm_swap_metrics_->OnVmmSwapDisabled();
   vm_swapping_notify_callback_.Run(SWAPPING_IN);
-  return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath());
+  return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath(),
+                                              slow_file_cleanup);
 }
 
 void ArcVm::TrimVmmSwapMemory() {

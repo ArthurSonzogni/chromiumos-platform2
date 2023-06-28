@@ -237,7 +237,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
-  bool DisableVmmSwap();
+  bool DisableVmmSwap(bool slow_file_cleanup);
   void OnVmmSwapLowDiskPolicyResult(bool can_enable);
   void ApplyVmmSwapPolicyResult(SwapVmCallback callback,
                                 VmmSwapPolicyResult policy_result);
@@ -292,6 +292,8 @@ class ArcVm final : public VmBaseImpl {
   SEQUENCE_CHECKER(sequence_checker_);
 
   bool is_vmm_swap_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
+  bool requested_slow_file_cleanup_ GUARDED_BY_CONTEXT(sequence_checker_) =
+      false;
   base::Time last_vmm_swap_out_at_ GUARDED_BY_CONTEXT(sequence_checker_);
   // Metrics reporter for vmm-swap feature.
   std::unique_ptr<VmmSwapMetrics> vmm_swap_metrics_

@@ -54,7 +54,8 @@ class CrosvmControlImpl : public CrosvmControl {
   bool EnableVmmSwap(const std::string& socket_path) override;
   bool VmmSwapOut(const std::string& socket_path) override;
   bool VmmSwapTrim(const std::string& socket_path) override;
-  bool DisableVmmSwap(const std::string& socket_path) override;
+  bool DisableVmmSwap(const std::string& socket_path,
+                      bool slow_file_cleanup) override;
   bool VmmSwapStatus(const std::string& socket_path,
                      struct SwapStatus* status) override;
 

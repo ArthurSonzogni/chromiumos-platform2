@@ -105,8 +105,13 @@ bool CrosvmControlImpl::VmmSwapTrim(const std::string& socket_path) {
   return crosvm_client_swap_trim(socket_path.c_str());
 }
 
-bool CrosvmControlImpl::DisableVmmSwap(const std::string& socket_path) {
-  return crosvm_client_swap_disable_vm(socket_path.c_str());
+bool CrosvmControlImpl::DisableVmmSwap(const std::string& socket_path,
+                                       bool slow_file_cleanup) {
+  struct SwapDisableArgs args = {
+      .socket_path = socket_path.c_str(),
+      .slow_file_cleanup = slow_file_cleanup,
+  };
+  return crosvm_client_swap_disable_vm2(&args);
 }
 
 bool CrosvmControlImpl::VmmSwapStatus(const std::string& socket_path,

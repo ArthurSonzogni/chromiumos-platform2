@@ -1620,7 +1620,8 @@ TEST_F(ArcVmTest, HandleStatefulUpdateWithLow) {
   update.set_state(spaced::StatefulDiskSpaceState::LOW);
   vm_->HandleStatefulUpdate(update);
   EXPECT_FALSE(swap_policy_timer_->IsRunning());
-  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_fast_file_cleanup_,
+            1);
 }
 
 TEST_F(ArcVmTest, HandleStatefulUpdateWithCritical) {
@@ -1629,7 +1630,8 @@ TEST_F(ArcVmTest, HandleStatefulUpdateWithCritical) {
   update.set_state(spaced::StatefulDiskSpaceState::CRITICAL);
   vm_->HandleStatefulUpdate(update);
   EXPECT_FALSE(swap_policy_timer_->IsRunning());
-  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_fast_file_cleanup_,
+            1);
 }
 
 TEST_F(ArcVmTest, HandleStatefulUpdateWhenVmmSwapIsNotEnabled) {
@@ -1637,6 +1639,8 @@ TEST_F(ArcVmTest, HandleStatefulUpdateWhenVmmSwapIsNotEnabled) {
   update.set_state(spaced::StatefulDiskSpaceState::LOW);
   vm_->HandleStatefulUpdate(update);
   EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 0);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_fast_file_cleanup_,
+            0);
 }
 
 TEST_F(ArcVmTest, HandleStatefulUpdateWhenStateIsNormal) {
@@ -1645,6 +1649,8 @@ TEST_F(ArcVmTest, HandleStatefulUpdateWhenStateIsNormal) {
   update.set_state(spaced::StatefulDiskSpaceState::NORMAL);
   vm_->HandleStatefulUpdate(update);
   EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 0);
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_fast_file_cleanup_,
+            0);
 }
 
 TEST_F(ArcVmTest, HandleStatefulUpdateHeartbeatDisabledMetrics) {

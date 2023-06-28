@@ -129,9 +129,14 @@ bool FakeCrosvmControl::VmmSwapTrim(const std::string& socket_path) {
   return result_vmm_swap_trim_;
 }
 
-bool FakeCrosvmControl::DisableVmmSwap(const std::string& socket_path) {
+bool FakeCrosvmControl::DisableVmmSwap(const std::string& socket_path,
+                                       bool slow_file_cleanup) {
   target_socket_path_ = socket_path;
-  count_disable_vmm_swap_ += 1;
+  if (slow_file_cleanup) {
+    count_disable_vmm_swap_ += 1;
+  } else {
+    count_disable_vmm_swap_fast_file_cleanup_ += 1;
+  }
   return result_disable_vmm_swap_;
 }
 
