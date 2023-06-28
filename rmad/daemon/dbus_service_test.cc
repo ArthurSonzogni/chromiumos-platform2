@@ -27,6 +27,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::PopValueFromReader;
 using testing::_;
 using testing::A;
+using testing::AnyNumber;
 using testing::DoAll;
 using testing::Eq;
 using testing::Invoke;
@@ -89,14 +90,7 @@ class DBusServiceTestBase : public testing::Test {
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
     dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
 
-    if (state_file_exist ||
-        ro_verification_status == RMAD_RO_VERIFICATION_PASS ||
-        ro_verification_status == RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED) {
-      EXPECT_CALL(mock_rmad_service_, SetUp(_))
-          .WillRepeatedly(Return(setup_success));
-      EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
-          .WillRepeatedly(Return());
-    }
+    ON_CALL(mock_rmad_service_, SetUp(_)).WillByDefault(Return(setup_success));
   }
 
   template <typename RequestProtobufType, typename ReplyProtobufType>
@@ -229,6 +223,10 @@ class DBusServiceTest : public DBusServiceTestBase {
   void SetUp() override {
     DBusServiceTestBase::SetUp();
     SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+
+    EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(AnyNumber());
+    EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
+        .Times(AnyNumber());
   }
 };
 
@@ -276,6 +274,9 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_InterfaceSetUpFailed) {
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, SetUp(_));
+  EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState());
+
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
@@ -291,6 +292,9 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
   SetUpDBusService(false, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(0);
+  EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
+      .Times(0);
 
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
@@ -300,6 +304,9 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_InterfaceSetUpFailed) {
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, false);
+  EXPECT_CALL(mock_rmad_service_, SetUp(_));
+  EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
+      .Times(0);
 
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
