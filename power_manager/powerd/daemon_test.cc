@@ -108,9 +108,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_keyboard_backlight_(new system::BacklightStub(
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_ec_command_factory_(new ec::MockEcCommandFactory()),
-        passed_ec_usb_endpoint_(new ec::EcUsbEndpointStub()),
-        passed_ec_keyboard_backlight_(new system::BacklightStub(
-            100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_external_backlight_controller_(
             new policy::MockBacklightController()),
         passed_internal_backlight_controller_(
@@ -150,7 +147,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         internal_backlight_(passed_internal_backlight_.get()),
         keyboard_backlight_(passed_keyboard_backlight_.get()),
         ec_command_factory_(passed_ec_command_factory_.get()),
-        ec_keyboard_backlight_(passed_ec_keyboard_backlight_.get()),
         external_backlight_controller_(
             passed_external_backlight_controller_.get()),
         internal_backlight_controller_(
@@ -342,11 +338,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
                                     system::DBusWrapperInterface* dbus_wrapper,
                                     LidState initial_lid_state,
                                     TabletMode initial_tablet_mode) override {
-    if (ec_keyboard_backlight_enabled_) {
-      EXPECT_EQ(ec_keyboard_backlight_, backlight);
-    } else {
-      EXPECT_EQ(keyboard_backlight_, backlight);
-    }
+    EXPECT_EQ(keyboard_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(
         !sensor ||
@@ -360,18 +352,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<ec::EcCommandFactoryInterface> CreateEcCommandFactory()
       override {
     return std::move(passed_ec_command_factory_);
-  }
-  std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() override {
-    return std::move(passed_ec_usb_endpoint_);
-  }
-  bool ec_keyboard_backlight_enabled_ = false;
-  std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
-      ec::EcUsbEndpointInterface* endpoint) override {
-    if (ec_keyboard_backlight_enabled_) {
-      return std::move(passed_ec_keyboard_backlight_);
-    } else {
-      return nullptr;
-    }
   }
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) override {
@@ -581,8 +561,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
   std::unique_ptr<system::BacklightStub> passed_keyboard_backlight_;
   std::unique_ptr<ec::MockEcCommandFactory> passed_ec_command_factory_;
-  std::unique_ptr<ec::EcUsbEndpointInterface> passed_ec_usb_endpoint_;
-  std::unique_ptr<system::BacklightStub> passed_ec_keyboard_backlight_;
   std::unique_ptr<policy::MockBacklightController>
       passed_external_backlight_controller_;
   std::unique_ptr<policy::MockBacklightController>
@@ -626,7 +604,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::BacklightStub* internal_backlight_;
   system::BacklightStub* keyboard_backlight_;
   ec::MockEcCommandFactory* ec_command_factory_;
-  system::BacklightStub* ec_keyboard_backlight_;
   policy::MockBacklightController* external_backlight_controller_;
   policy::MockBacklightController* internal_backlight_controller_;
   policy::MockBacklightController* keyboard_backlight_controller_;
@@ -846,11 +823,6 @@ TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
 
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   input_watcher_->set_tablet_mode(TabletMode::ON);
-  Init();
-}
-
-TEST_F(DaemonTest, EcKeyboardBacklightEnabled) {
-  ec_keyboard_backlight_enabled_ = true;
   Init();
 }
 

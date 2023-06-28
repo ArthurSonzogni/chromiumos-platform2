@@ -22,7 +22,6 @@
 #include <featured/feature_library.h>
 #include <libec/charge_control_set_command.h>
 #include <libec/charge_current_limit_set_command.h>
-#include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
 
 namespace power_manager {
@@ -129,11 +128,6 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<ec::EcCommandFactoryInterface>
   CreateEcCommandFactory() = 0;
-
-  virtual std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() = 0;
-
-  virtual std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
-      ec::EcUsbEndpointInterface* endpoint) = 0;
 
   virtual std::unique_ptr<policy::BacklightController>
   CreateInternalBacklightController(

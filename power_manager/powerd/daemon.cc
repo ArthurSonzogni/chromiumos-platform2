@@ -475,22 +475,12 @@ void Daemon::Init() {
         keyboard_backlight_ =
             std::make_unique<system::UsbBacklight>(udev_.get());
       } else {
-        LOG(INFO) << "Attempting to create EcKeyboardBacklight";
-        ec_usb_endpoint_ = delegate_->CreateEcUsbEndpoint();
-        keyboard_backlight_ =
-            delegate_->CreateEcKeyboardBacklight(ec_usb_endpoint_.get());
-        // All devices should receive a valid instance of EC keyboard backlight
-        // controller in keyboard_backlight_. If EC doesn't support kblight
-        // command (i.e. EC_CMD_PWM_GET_KEYBOARD_BACKLIGHT) for some reason, we
-        // fall back to the previous method below.
-        if (keyboard_backlight_ == nullptr) {
-          LOG(INFO) << "Attempting to create PluggableInternalBacklight";
-          keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
-              udev_.get(), kKeyboardBacklightUdevSubsystem,
-              base::FilePath(kKeyboardBacklightPath),
-              kKeyboardBacklightPattern);
-        }
+        LOG(INFO) << "Attempting to create PluggableInternalKeyboardBacklight";
+        keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
+            udev_.get(), kKeyboardBacklightUdevSubsystem,
+            base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
       }
+
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(),
