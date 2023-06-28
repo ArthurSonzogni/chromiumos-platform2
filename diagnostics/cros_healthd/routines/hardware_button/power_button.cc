@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/power_button/power_button.h"
+#include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
 
 #include <string>
 #include <utility>

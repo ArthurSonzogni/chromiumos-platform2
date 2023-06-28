@@ -12,8 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
-#include "diagnostics/cros_healthd/routines/volume_button/volume_button.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {

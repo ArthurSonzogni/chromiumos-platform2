@@ -7,13 +7,13 @@
 #include <utility>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+#include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
-#include "diagnostics/cros_healthd/routines/volume_button/volume_button.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {

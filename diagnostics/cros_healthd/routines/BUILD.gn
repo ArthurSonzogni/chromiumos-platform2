@@ -78,6 +78,8 @@ source_set("libdiag_routine") {
     "diag_routine_with_status.cc",
     "fingerprint/fingerprint.cc",
     "fingerprint_alive/fingerprint_alive.cc",
+    "hardware_button/power_button.cc",
+    "hardware_button/volume_button.cc",
     "led_lit_up/led_lit_up.cc",
     "memory_and_cpu/cpu_cache.cc",
     "memory_and_cpu/cpu_cache_v2.cc",
@@ -101,7 +103,6 @@ source_set("libdiag_routine") {
     "network/lan_connectivity.cc",
     "network/signal_strength.cc",
     "network/video_conferencing.cc",
-    "power_button/power_button.cc",
     "privacy_screen/privacy_screen.cc",
     "routine_service.cc",
     "sensor/sensitive_sensor.cc",
@@ -114,7 +115,6 @@ source_set("libdiag_routine") {
     "storage/smartctl_check.cc",
     "storage/ufs_lifetime.cc",
     "subproc_routine.cc",
-    "volume_button/volume_button.cc",
   ]
 }
 
@@ -164,6 +164,8 @@ if (use.test) {
       "diag_routine_with_status_test.cc",
       "fingerprint/fingerprint_test.cc",
       "fingerprint_alive/fingerprint_alive_test.cc",
+      "hardware_button/power_button_test.cc",
+      "hardware_button/volume_button_test.cc",
       "led_lit_up/led_lit_up_test.cc",
       "memory_and_cpu/cpu_cache_v2_test.cc",
       "memory_and_cpu/cpu_stress_v2_test.cc",
@@ -184,7 +186,6 @@ if (use.test) {
       "network/lan_connectivity_test.cc",
       "network/signal_strength_test.cc",
       "network/video_conferencing_test.cc",
-      "power_button/power_button_test.cc",
       "privacy_screen/privacy_screen_test.cc",
       "sensor/sensitive_sensor_test.cc",
       "sensor/sensor_existence_checker_test.cc",
@@ -196,7 +197,6 @@ if (use.test) {
       "storage/smartctl_check_test.cc",
       "storage/ufs_lifetime_test.cc",
       "subproc_routine_test.cc",
-      "volume_button/volume_button_test.cc",
     ]
     configs += [ ":libroutine_test_pkg_deps" ]
     deps = [
