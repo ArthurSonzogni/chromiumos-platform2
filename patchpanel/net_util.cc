@@ -62,20 +62,6 @@ net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
   return net_base::IPv4Address(new_addr);
 }
 
-std::string IPv4AddressToString(uint32_t addr) {
-  char buf[INET_ADDRSTRLEN] = {0};
-  struct in_addr ia;
-  ia.s_addr = addr;
-  return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
-}
-
-std::string IPv4AddressToString(std::vector<uint8_t> addr) {
-  if (addr.size() != 4) {
-    return "";
-  }
-  return IPv4AddressToString(Ipv4Addr(addr[0], addr[1], addr[2], addr[3]));
-}
-
 std::string MacAddressToString(const MacAddress& addr) {
   return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
                             addr[2], addr[3], addr[4], addr[5]);

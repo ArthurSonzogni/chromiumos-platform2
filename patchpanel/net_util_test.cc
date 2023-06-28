@@ -47,31 +47,6 @@ const uint8_t udp_packet[] = {
     0x5d, 0x20, 0x69, 0x73, 0x20, 0x75, 0x73, 0x65, 0x64, 0x20, 0x61, 0x73,
     0x20, 0x74, 0x68, 0x65, 0x0a};
 
-TEST(Ipv4, CreationAndStringConversion) {
-  struct {
-    std::string literal_address;
-    uint8_t bytes[4];
-  } test_cases[] = {
-      {"0.0.0.0", {0, 0, 0, 0}},
-      {"8.8.8.8", {8, 8, 8, 8}},
-      {"8.8.4.4", {8, 8, 4, 4}},
-      {"192.168.0.0", {192, 168, 0, 0}},
-      {"100.115.92.5", {100, 115, 92, 5}},
-      {"100.115.92.6", {100, 115, 92, 6}},
-      {"224.0.0.251", {224, 0, 0, 251}},
-      {"255.255.255.255", {255, 255, 255, 255}},
-  };
-
-  for (auto const& test_case : test_cases) {
-    uint32_t addr = Ipv4Addr(test_case.bytes[0], test_case.bytes[1],
-                             test_case.bytes[2], test_case.bytes[3]);
-    std::vector<uint8_t> bytes = {test_case.bytes[0], test_case.bytes[1],
-                                  test_case.bytes[2], test_case.bytes[3]};
-    EXPECT_EQ(test_case.literal_address, IPv4AddressToString(addr));
-    EXPECT_EQ(test_case.literal_address, IPv4AddressToString(bytes));
-  }
-}
-
 TEST(Ipv4, IpChecksum) {
   alignas(4) uint8_t buffer[IP_MAXPACKET];
 

@@ -51,11 +51,6 @@ BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,
       (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b3));
 }
 
-// Returns the literal representation of the IPv4 address given in network byte
-// order, or the empty string if the input is invalid.
-BRILLO_EXPORT std::string IPv4AddressToString(uint32_t addr);
-BRILLO_EXPORT std::string IPv4AddressToString(std::vector<uint8_t> addr);
-
 // Returns a string representation of MAC address given.
 BRILLO_EXPORT std::string MacAddressToString(const MacAddress& addr);
 
