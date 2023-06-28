@@ -15,14 +15,27 @@
 
 namespace vm_tools::concierge {
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOut) {
+namespace {
+class VmmSwapTbwPolicyTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    history_file_path_ = temp_dir_.GetPath().Append("tbw_history");
+  }
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath history_file_path_;
+};
+}  // namespace
+
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOut) {
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
   EXPECT_TRUE(policy.CanSwapOut());
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutWithin1dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutWithin1dayTarget) {
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
@@ -31,7 +44,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutWithin1dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut());
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTarget) {
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
@@ -40,7 +53,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTarget) {
   EXPECT_FALSE(policy.CanSwapOut());
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTargetWithMultiRecords) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTargetWithMultiRecords) {
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
@@ -52,7 +65,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTargetWithMultiRecords) {
   EXPECT_FALSE(policy.CanSwapOut());
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds1dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds1dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -62,7 +75,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds1dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds7dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds7dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -74,7 +87,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds7dayTarget) {
   EXPECT_FALSE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds7dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds7dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -87,7 +100,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds7dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds7dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds7dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -99,7 +112,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds7dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds28dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds28dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -111,7 +124,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutExceeds28dayTarget) {
   EXPECT_FALSE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds28dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds28dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -124,7 +137,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds28dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds28dayTarget) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds28dayTarget) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -136,7 +149,7 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds28dayTarget) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, CanSwapOutIgnoreRotatedObsoleteData) {
+TEST_F(VmmSwapTbwPolicyTest, CanSwapOutIgnoreRotatedObsoleteData) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
@@ -149,106 +162,85 @@ TEST(VmmSwapTbwPolicyTest, CanSwapOutIgnoreRotatedObsoleteData) {
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, Init) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, Init) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(history_file_path_, now));
 
   // Creates history file
-  EXPECT_TRUE(base::PathExists(history_file_path));
+  EXPECT_TRUE(base::PathExists(history_file_path_));
 }
 
-TEST(VmmSwapTbwPolicyTest, InitTwice) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, InitTwice) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path, now));
-  EXPECT_FALSE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(history_file_path_, now));
+  EXPECT_FALSE(policy.Init(history_file_path_, now));
 }
 
-TEST(VmmSwapTbwPolicyTest, InitIfFileNotExist) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, InitIfFileNotExist) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(history_file_path_, now));
 
   // By default it is not allowed to swap out for 1 day.
   EXPECT_FALSE(policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(policy.CanSwapOut(now + base::Days(1)));
 }
 
-TEST(VmmSwapTbwPolicyTest, InitIfFileExists) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, InitIfFileExists) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
   // Create file
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
-  EXPECT_TRUE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(history_file_path_, now));
 
   // The history is empty.
   EXPECT_TRUE(policy.CanSwapOut(now));
 }
 
-TEST(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy policy;
   policy.SetTargetTbwPerDay(100);
 
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   ASSERT_TRUE(history_file.Write(0, "invalid_data", 12));
-  EXPECT_FALSE(policy.Init(history_file_path, now));
+  EXPECT_FALSE(policy.Init(history_file_path_, now));
 
   // The pessimistic history does not allow to swap out for 1 day.
   EXPECT_FALSE(policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(policy.CanSwapOut(now + base::Days(1)));
 }
 
-TEST(VmmSwapTbwPolicyTest, InititialHistoryFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, InititialHistoryFile) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy before_policy;
   VmmSwapTbwPolicy after_policy;
   before_policy.SetTargetTbwPerDay(100);
   after_policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(before_policy.Init(history_file_path, now));
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
 
   // The initialized history from policy1 is written into the history file.
   EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 }
 
-TEST(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy before_policy;
   VmmSwapTbwPolicy after_policy;
@@ -256,23 +248,20 @@ TEST(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
   after_policy.SetTargetTbwPerDay(100);
   // Create empty file
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  EXPECT_TRUE(before_policy.Init(history_file_path, now));
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
 
   for (int i = 0; i < 7; i++) {
     before_policy.Record(200, now + base::Days(i));
   }
   now = now + base::Days(6);
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
 
   EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 }
 
-TEST(VmmSwapTbwPolicyTest, RecordRecompileFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("tbw_history");
+TEST_F(VmmSwapTbwPolicyTest, RecordRecompileFile) {
   base::Time now = base::Time::Now();
   VmmSwapTbwPolicy before_policy;
   VmmSwapTbwPolicy after_policy;
@@ -281,8 +270,8 @@ TEST(VmmSwapTbwPolicyTest, RecordRecompileFile) {
   after_policy.SetTargetTbwPerDay(target);
   // Create empty file
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  EXPECT_TRUE(before_policy.Init(history_file_path, now));
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
 
   // minutes of 7days
   int minutes_7days = 60 * 24 * 7;
@@ -292,7 +281,7 @@ TEST(VmmSwapTbwPolicyTest, RecordRecompileFile) {
   now = now + base::Minutes(minutes_7days - 1);
   EXPECT_FALSE(before_policy.CanSwapOut(now));
   EXPECT_TRUE(before_policy.CanSwapOut(now + base::Days(1)));
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
   EXPECT_FALSE(after_policy.CanSwapOut(now));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 
