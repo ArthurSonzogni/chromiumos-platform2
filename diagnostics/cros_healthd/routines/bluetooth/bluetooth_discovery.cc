@@ -202,11 +202,11 @@ void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
   //         <texts>
   const char inquiry_regex[] = R"(UP RUNNING.*INQUIRY)";
   bool hci_discovering = RE2::PartialMatch(result->out, inquiry_regex);
-  VerifyAdapterDiscovering(dbus_discovering, hci_discovering);
+  ValidateAdapterDiscovering(dbus_discovering, hci_discovering);
 }
 
-void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool dbus_discovering,
-                                                         bool hci_discovering) {
+void BluetoothDiscoveryRoutine::ValidateAdapterDiscovering(
+    bool dbus_discovering, bool hci_discovering) {
   bool is_passed;
   std::string result_key;
   if (step_ == TestStep::kCheckDiscoveringStatusOn) {
@@ -232,7 +232,7 @@ void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool dbus_discovering,
   // Stop routine if validation is failed.
   if (!is_passed) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyDiscovering);
+                     kBluetoothRoutineFailedValidateDiscovering);
     return;
   }
   RunNextStep();

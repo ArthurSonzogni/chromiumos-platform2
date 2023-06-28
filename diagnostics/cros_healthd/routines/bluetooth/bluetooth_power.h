@@ -55,7 +55,7 @@ class BluetoothPowerRoutine final : public DiagnosticRoutineWithStatus,
       ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
   // Check the powered property of adapter in D-Bus and HCI level.
-  void VerifyAdapterPowered(bool hci_powered);
+  void ValidateAdapterPowered(bool hci_powered);
 
   // Routine timeout function.
   void OnTimeoutOccurred();

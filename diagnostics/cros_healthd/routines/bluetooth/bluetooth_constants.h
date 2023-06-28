@@ -30,12 +30,12 @@ inline constexpr char kBluetoothRoutineUnexpectedFlow[] =
     "Unexpected Bluetooth diagnostic flow.";
 
 // Failure message of Bluetooth power routine.
-inline constexpr char kBluetoothRoutineFailedVerifyPowered[] =
-    "Bluetooth routine failed to verify adapter powered status.";
+inline constexpr char kBluetoothRoutineFailedValidatePowered[] =
+    "Bluetooth routine failed to validate adapter powered status.";
 
 // Failure message of Bluetooth discovery routine.
-inline constexpr char kBluetoothRoutineFailedVerifyDiscovering[] =
-    "Bluetooth routine failed to verify adapter discovering status.";
+inline constexpr char kBluetoothRoutineFailedValidateDiscovering[] =
+    "Bluetooth routine failed to validate adapter discovering status.";
 
 // Failure message of Bluetooth pairing routine.
 inline constexpr char kBluetoothRoutineFailedFindTargetPeripheral[] =

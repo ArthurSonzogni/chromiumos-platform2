@@ -1435,7 +1435,7 @@ Errors:
 
 - `Bluetooth routine is not supported when adapter is in discovery mode.`
 - `Bluetooth routine failed to change adapter powered status.`
-- `Bluetooth routine failed to verify adapter powered status.`
+- `Bluetooth routine failed to validate adapter powered status.`
 - `Bluetooth routine failed to complete before timeout.`
 
 ### Bluetooth Discovery
@@ -1483,7 +1483,7 @@ Errors:
 - `Bluetooth routine is not supported when adapter is in discovery mode.`
 - `Bluetooth routine failed to change adapter powered status.`
 - `Bluetooth routine failed to switch adapter discovery mode.`
-- `Bluetooth routine failed to verify adapter discovering status.`
+- `Bluetooth routine failed to validate adapter discovering status.`
 - `Bluetooth routine failed to complete before timeout.`
 
 ### Bluetooth Scanning

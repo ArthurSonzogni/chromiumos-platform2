@@ -112,7 +112,7 @@ void BluetoothPowerRoutine::RunNextStep() {
       // We can't get the power off event when the power is already off.
       // Create another flow to skip event observation.
       if (!GetAdapter()->powered()) {
-        // Verify the powered status in HCI level directly.
+        // Validate the powered status in HCI level directly.
         context_->executor()->GetHciDeviceConfig(
             base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                            weak_ptr_factory_.GetWeakPtr()));
@@ -153,7 +153,7 @@ void BluetoothPowerRoutine::OnAdapterPropertyChanged(
       (step_ != kCheckPoweredStatusOff && step_ != kCheckPoweredStatusOn))
     return;
 
-  // Verify the powered status in HCI level first.
+  // Validate the powered status in HCI level first.
   context_->executor()->GetHciDeviceConfig(
       base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                      weak_ptr_factory_.GetWeakPtr()));
@@ -176,16 +176,16 @@ void BluetoothPowerRoutine::HandleHciConfigResponse(
   bool check_powered_off = result->out.find("DOWN") != std::string::npos;
   bool check_powered_on = result->out.find("UP RUNNING") != std::string::npos;
   if (check_powered_off && !check_powered_on) {
-    VerifyAdapterPowered(/*hci_powered=*/false);
+    ValidateAdapterPowered(/*hci_powered=*/false);
   } else if (!check_powered_off && check_powered_on) {
-    VerifyAdapterPowered(/*hci_powered=*/true);
+    ValidateAdapterPowered(/*hci_powered=*/true);
   } else {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      "Failed to parse powered status from HCI device config.");
   }
 }
 
-void BluetoothPowerRoutine::VerifyAdapterPowered(bool hci_powered) {
+void BluetoothPowerRoutine::ValidateAdapterPowered(bool hci_powered) {
   bool is_passed;
   std::string result_key;
   bool dbus_powered = GetAdapter()->powered();
@@ -213,7 +213,7 @@ void BluetoothPowerRoutine::VerifyAdapterPowered(bool hci_powered) {
   // Stop routine if validation is failed.
   if (!is_passed) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyPowered);
+                     kBluetoothRoutineFailedValidatePowered);
     return;
   }
   RunNextStep();

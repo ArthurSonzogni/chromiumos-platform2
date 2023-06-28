@@ -245,7 +245,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyDiscovering,
+                     kBluetoothRoutineFailedValidateDiscovering,
                      ConstructRoutineOutput(ConstructResult(false, true)));
 }
 
@@ -278,7 +278,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyDiscovering,
+                     kBluetoothRoutineFailedValidateDiscovering,
                      ConstructRoutineOutput(ConstructResult(true, true),
                                             ConstructResult(false, true)));
 }

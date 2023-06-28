@@ -201,7 +201,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyPowered,
+                     kBluetoothRoutineFailedValidatePowered,
                      ConstructRoutineOutput(ConstructResult(true, false)));
 }
 
@@ -226,7 +226,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyPowered,
+                     kBluetoothRoutineFailedValidatePowered,
                      ConstructRoutineOutput(ConstructResult(false, false),
                                             ConstructResult(true, false)));
 }

@@ -66,8 +66,8 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
       bool dbus_discovering,
       ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
-  // Verify the discovering property of adapter and store the result.
-  void VerifyAdapterDiscovering(bool dbus_discovering, bool hci_discovering);
+  // Validate the discovering property of adapter and store the result.
+  void ValidateAdapterDiscovering(bool dbus_discovering, bool hci_discovering);
 
   // Routine timeout function.
   void OnTimeoutOccurred();
