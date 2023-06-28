@@ -9,6 +9,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <featured/fake_platform_features.h>
+#include <memory>
 #include "fuzzer/FuzzedDataProvider.h"
 
 #include "power_manager/common/fake_prefs.h"
@@ -58,7 +59,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   prefs.SetString(power_manager::kSuspendModePref,
                   data_provider.ConsumeRandomLengthString(20));
 
-  auto dbus_wrapper = new power_manager::system::DBusWrapperStub();
+  auto dbus_wrapper =
+      std::make_unique<power_manager::system::DBusWrapperStub>();
   std::unique_ptr<feature::FakePlatformFeatures> platform_features =
       std::make_unique<feature::FakePlatformFeatures>(dbus_wrapper->GetBus());
 
