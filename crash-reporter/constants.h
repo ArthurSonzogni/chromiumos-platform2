@@ -29,8 +29,15 @@ constexpr char kUploadFilePrefix[] = "upload_file_";
 // in crash loop mode.
 constexpr char kCrashLoopModeKey[] = "crash_loop_mode";
 
+// An upload var for the metafile, giving the name of a Chrome crash key that
+// gives the shutdown type (for example, "close", "exit", "end", "silent_exit",
+// or "other_exit"). This const needs to match the shutdown type key set in
+// `OnShutdownStarting()` from
+// https://crsrc.org/c/chrome/browser/lifetime/browser_shutdown.cc.
+constexpr char kShutdownTypeKey[] = "shutdown-type";
+
 // An upload var for the metafile, giving the product name (for example,
-// "Chrome_ChromeOS" or "ChromeOS" or "Chrome_Lacros")
+// "Chrome_ChromeOS" or "ChromeOS" or "Chrome_Lacros").
 constexpr char kUploadDataKeyProductKey[] = "prod";
 
 // The product name for Chrome ash crashes. Must match the string in

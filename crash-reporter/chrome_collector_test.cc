@@ -47,6 +47,9 @@ const char kCrashFormatGood[] =
 const char kCrashFormatGoodLacros[] =
     "upload_file_minidump\"; filename=\"dump\":3:abc"
     "prod:13:Chrome_Lacros";
+const char kCrashFormatGoodShutdown[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "shutdown-type:5:close";
 const char kCrashFormatNoDump[] = "value1:10:abcdefghijvalue2:5:12345";
 const char kCrashFormatProcessType[] =
     "upload_file_minidump\"; filename=\"dump\":3:abc"
@@ -397,6 +400,8 @@ TEST_F(ChromeCollectorTest, GoodValues) {
                                        ChromeCollector::kExecutableCrash,
                                        &payload, &is_lacros_crash));
   EXPECT_FALSE(is_lacros_crash);
+  EXPECT_FALSE(collector_.is_shutdown_crash());
+  EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -416,6 +421,7 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
                                        ChromeCollector::kExecutableCrash,
                                        &payload, &is_lacros_crash));
   EXPECT_TRUE(is_lacros_crash);
+  EXPECT_FALSE(collector_.is_shutdown_crash());
   EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
@@ -423,6 +429,26 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
   // Check to see if the values made it in properly.
   std::string meta = collector_.extra_metadata_;
   EXPECT_TRUE(meta.find("upload_var_prod=Chrome_Lacros") != std::string::npos);
+}
+
+TEST_F(ChromeCollectorTest, GoodShutdown) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  const FilePath& dir = scoped_temp_dir.GetPath();
+  FilePath payload;
+  bool is_lacros_crash;
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGoodShutdown, dir, "base",
+                                       ChromeCollector::kExecutableCrash,
+                                       &payload, &is_lacros_crash));
+  EXPECT_FALSE(is_lacros_crash);
+  EXPECT_TRUE(collector_.is_shutdown_crash());
+  EXPECT_FALSE(collector_.CrashHasProcessType());
+  EXPECT_EQ(payload, dir.Append("base.dmp"));
+  ExpectFileEquals("abc", payload);
+
+  // Check to see if the values made it in properly.
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_TRUE(meta.find("upload_var_shutdown-type=close") != std::string::npos);
 }
 
 TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
@@ -435,6 +461,7 @@ TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
                                        ChromeCollector::kExecutableCrash,
                                        &payload, &is_lacros_crash));
   EXPECT_FALSE(is_lacros_crash);
+  EXPECT_FALSE(collector_.is_shutdown_crash());
   EXPECT_TRUE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);

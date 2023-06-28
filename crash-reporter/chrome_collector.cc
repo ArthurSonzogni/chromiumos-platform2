@@ -412,6 +412,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
       if (name == constants::kUploadDataKeyProductKey &&
           value_str == constants::kProductNameChromeLacros) {
         *is_lacros_crash = true;
+      } else if (name == constants::kShutdownTypeKey) {
+        is_shutdown_crash_ = true;
       } else if (name == constants::kChromeProcessTypeKey) {
         process_type_ = std::move(value_str);
       }

@@ -66,6 +66,7 @@ class ChromeCollector : public CrashCollector {
   friend class ChromeCollectorTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
   FRIEND_TEST(ChromeCollectorTest, GoodLacros);
+  FRIEND_TEST(ChromeCollectorTest, GoodShutdown);
   FRIEND_TEST(ChromeCollectorTest, ProcessTypeCheck);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_ExecutableCrash);
@@ -196,12 +197,16 @@ class ChromeCollector : public CrashCollector {
   // Returns true if the crash is caused by a hang during browser shutdown.
   bool is_browser_shutdown_hang() const { return is_browser_shutdown_hang_; }
 
-  // Getter to determine whether `crash_type_` is `kJavaScriptError`.
-  bool IsJavaScriptError() const;
+  // Returns true if constants::kShutdownTypeKey is in the crash log. Used for
+  // computing crash severity.
+  bool is_shutdown_crash() const { return is_shutdown_crash_; }
 
   // Getter to determine whether `process_type_` has a value when parsing
   // through the crash log.
   bool CrashHasProcessType() const;
+
+  // Getter to determine whether `crash_type_` is `kJavaScriptError`.
+  bool IsJavaScriptError() const;
 
   // The file where we write our special "done" marker (to indicate to Chrome
   // that we are finished dumping). Always stdout in production.
@@ -218,6 +223,8 @@ class ChromeCollector : public CrashCollector {
   bool is_lacros_crash_ = false;
 
   bool is_browser_shutdown_hang_ = false;
+
+  bool is_shutdown_crash_ = false;
 
   CrashType crash_type_ = kExecutableCrash;
 
