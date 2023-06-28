@@ -52,6 +52,10 @@ std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
     const arc::mojom::keymint::ImportKeyRequestPtr& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::UpgradeKeyRequest> MakeUpgradeKeyRequest(
+    const arc::mojom::keymint::UpgradeKeyRequestPtr& request,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -63,6 +67,9 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
 
 std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
     const ::keymaster::ImportKeyResponse& km_response, uint32_t& error);
+
+std::vector<uint8_t> MakeUpgradeKeyResult(
+    const ::keymaster::UpgradeKeyResponse& km_response, uint32_t& error);
 
 }  // namespace arc::keymint
 

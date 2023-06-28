@@ -255,4 +255,20 @@ TEST(ConvertToMessage, ImportKeyRequest) {
                                 input->key_data));
 }
 
+TEST(ConvertToMessage, UpgradeKeyRequest) {
+  // Prepare.
+  auto input = arc::mojom::keymint::UpgradeKeyRequest::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()), KeyParameterVector());
+
+  // Convert.
+  auto output = MakeUpgradeKeyRequest(std::move(input), kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_TRUE(VerifyVectorUint8(output->key_blob.key_material,
+                                output->key_blob.key_material_size,
+                                input->key_blob_to_upgrade));
+  EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->upgrade_params,
+                                                  input->upgrade_params));
+}
+
 }  // namespace arc::keymint

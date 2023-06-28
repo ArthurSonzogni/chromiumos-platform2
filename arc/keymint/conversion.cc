@@ -245,6 +245,17 @@ std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::UpgradeKeyRequest> MakeUpgradeKeyRequest(
+    const arc::mojom::keymint::UpgradeKeyRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out =
+      std::make_unique<::keymaster::UpgradeKeyRequest>(keymint_message_version);
+  ConvertToKeymasterMessage(request->upgrade_params, &out->upgrade_params);
+  out->SetKeyMaterial(request->key_blob_to_upgrade.data(),
+                      request->key_blob_to_upgrade.size());
+  return out;
+}
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -341,6 +352,19 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
 
   return arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+}
+
+std::vector<uint8_t> MakeUpgradeKeyResult(
+    const ::keymaster::UpgradeKeyResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::vector<uint8_t>();
+  }
+  // Create the Key Blob.
+  auto key_blob =
+      ConvertFromKeymasterMessage(km_response.upgraded_key.key_material,
+                                  km_response.upgraded_key.key_material_size);
+  return key_blob;
 }
 
 }  // namespace arc::keymint
