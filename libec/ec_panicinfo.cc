@@ -42,20 +42,36 @@ static std::string PanicShowExtraCm(const struct panic_data* pdata) {
   };
 
   std::string ret;
+  uint32_t bfar, mfar, cfsr, shcsr, hfsr, dfsr, ipsr;
+  if (pdata->struct_version == 1) {
+    bfar = pdata->cm_v1.bfar;
+    mfar = pdata->cm_v1.mfar;
+    cfsr = pdata->cm_v1.cfsr;
+    shcsr = pdata->cm_v1.shcsr;
+    hfsr = pdata->cm_v1.hfsr;
+    dfsr = pdata->cm_v1.dfsr;
+    ipsr = pdata->cm_v1.regs[CORTEX_PANIC_REGISTER_IPSR];
+  } else {
+    bfar = pdata->cm.bfar;
+    mfar = pdata->cm.mfar;
+    cfsr = pdata->cm.cfsr;
+    shcsr = pdata->cm.shcsr;
+    hfsr = pdata->cm.hfsr;
+    dfsr = pdata->cm.dfsr;
+    ipsr = pdata->cm.regs[CORTEX_PANIC_REGISTER_IPSR];
+  }
 
   ret = base::StringPrintf("\n");
   if (pdata->cm.cfsr & CPU_NVIC_CFSR_BFARVALID)
-    base::StrAppend(&ret, {base::StringPrintf("bfar=%08x, ", pdata->cm.bfar)});
+    base::StrAppend(&ret, {base::StringPrintf("bfar=%08x, ", bfar)});
   if (pdata->cm.cfsr & CPU_NVIC_CFSR_MFARVALID)
-    base::StrAppend(&ret, {base::StringPrintf("mfar=%08x, ", pdata->cm.mfar)});
+    base::StrAppend(&ret, {base::StringPrintf("mfar=%08x, ", mfar)});
   base::StrAppend(
-      &ret, {base::StringPrintf("cfsr=%08x, ", pdata->cm.cfsr),
-             base::StringPrintf("shcsr=%08x, ", pdata->cm.shcsr),
-             base::StringPrintf("hfsr=%08x, ", pdata->cm.hfsr),
-             base::StringPrintf("dfsr=%08x, ", pdata->cm.dfsr),
-             base::StringPrintf("ipsr=%08x",
-                                pdata->cm.regs[CORTEX_PANIC_REGISTER_IPSR]),
-             base::StringPrintf("\n")});
+      &ret, {base::StringPrintf("cfsr=%08x, ", cfsr),
+             base::StringPrintf("shcsr=%08x, ", shcsr),
+             base::StringPrintf("hfsr=%08x, ", hfsr),
+             base::StringPrintf("dfsr=%08x, ", dfsr),
+             base::StringPrintf("ipsr=%08x", ipsr), base::StringPrintf("\n")});
   return ret;
 }
 
@@ -78,12 +94,10 @@ static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
 
   /*
    * In pdata struct, 'regs', which is allocated before 'frame', has
-   * one less elements in version 1. Therefore, if the data is from
-   * version 1, shift 'sregs' by one element to align with 'frame' in
-   * version 1.
+   * one less elements in version 1. Choose the data according to the version.
    */
   if (pdata->flags & PANIC_DATA_FLAG_FRAME_VALID)
-    sregs = pdata->cm.frame - (pdata->struct_version == 1 ? 1 : 0);
+    sregs = pdata->struct_version == 1 ? pdata->cm_v1.frame : pdata->cm.frame;
 
   base::StrAppend(&ret, {base::StringPrintf(
                             "=== %s EXCEPTION: %02x ====== xPSR: %08x ===\n",
