@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <rmad/utils/cr50_utils_impl.h>
+#include <rmad/utils/gsc_utils_impl.h>
 
 #include <memory>
 #include <string>
@@ -41,15 +41,15 @@ constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
 
 }  // namespace
 
-Cr50UtilsImpl::Cr50UtilsImpl() : Cr50Utils() {
+GscUtilsImpl::GscUtilsImpl() : GscUtils() {
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }
 
-Cr50UtilsImpl::Cr50UtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
-    : Cr50Utils(), cmd_utils_(std::move(cmd_utils)) {}
+GscUtilsImpl::GscUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
+    : GscUtils(), cmd_utils_(std::move(cmd_utils)) {}
 
-bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
-  // TODO(chenghan): Check with cr50 team if we can expose a tpm_managerd API
+bool GscUtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
+  // TODO(chenghan): Check with GSC team if we can expose a tpm_managerd API
   //                 for this, so we don't need to depend on `gsctool` output
   //                 format to do extra string parsing.
   std::string output;
@@ -69,7 +69,7 @@ bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
   return true;
 }
 
-bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
+bool GscUtilsImpl::PerformRsu(const std::string& unlock_code) const {
   std::vector<std::string> argv(kSendRsuResponseArgv);
   argv.push_back(unlock_code);
   if (std::string output; !cmd_utils_->GetOutput(argv, &output)) {
@@ -81,7 +81,7 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
   return true;
 }
 
-bool Cr50UtilsImpl::EnableFactoryMode() const {
+bool GscUtilsImpl::EnableFactoryMode() const {
   if (!IsFactoryModeEnabled()) {
     std::string unused_output;
     return cmd_utils_->GetOutput(kEnableFactoryModeArgv, &unused_output);
@@ -89,7 +89,7 @@ bool Cr50UtilsImpl::EnableFactoryMode() const {
   return true;
 }
 
-bool Cr50UtilsImpl::DisableFactoryMode() const {
+bool GscUtilsImpl::DisableFactoryMode() const {
   if (IsFactoryModeEnabled()) {
     std::string unused_output;
     return cmd_utils_->GetOutput(kDisableFactoryModeArgv, &unused_output);
@@ -97,47 +97,47 @@ bool Cr50UtilsImpl::DisableFactoryMode() const {
   return true;
 }
 
-bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
+bool GscUtilsImpl::IsFactoryModeEnabled() const {
   std::string output;
   cmd_utils_->GetOutput(kGetCcdInfoArgv, &output);
   return output.find(kFactoryModeMatchStr) != std::string::npos;
 }
 
-bool Cr50UtilsImpl::GetBoardIdType(std::string* board_id_type) const {
+bool GscUtilsImpl::GetBoardIdType(std::string* board_id_type) const {
   std::string output;
   if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
-    LOG(ERROR) << "Failed to get cr50 board ID";
+    LOG(ERROR) << "Failed to get GSC board ID";
     LOG(ERROR) << output;
     return false;
   }
   re2::StringPiece string_piece(output);
   re2::RE2 regexp(kBoardIdTypeRegexp);
   if (!RE2::PartialMatch(string_piece, regexp, board_id_type)) {
-    LOG(ERROR) << "Failed to parse cr50 board ID type";
+    LOG(ERROR) << "Failed to parse GSC board ID type";
     LOG(ERROR) << output;
     return false;
   }
   return true;
 }
 
-bool Cr50UtilsImpl::GetBoardIdFlags(std::string* board_id_flags) const {
+bool GscUtilsImpl::GetBoardIdFlags(std::string* board_id_flags) const {
   std::string output;
   if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
-    LOG(ERROR) << "Failed to get cr50 board ID flags";
+    LOG(ERROR) << "Failed to get GSC board ID flags";
     LOG(ERROR) << output;
     return false;
   }
   re2::StringPiece string_piece(output);
   re2::RE2 regexp(kBoardIdFlagsRegexp);
   if (!RE2::PartialMatch(string_piece, regexp, board_id_flags)) {
-    LOG(ERROR) << "Failed to parse cr50 board ID flags";
+    LOG(ERROR) << "Failed to parse GSC board ID flags";
     LOG(ERROR) << output;
     return false;
   }
   return true;
 }
 
-bool Cr50UtilsImpl::SetBoardId(bool is_custom_label) const {
+bool GscUtilsImpl::SetBoardId(bool is_custom_label) const {
   std::string output;
   std::vector<std::string> argv{kSetBoardIdCmd};
   if (is_custom_label) {
@@ -146,7 +146,7 @@ bool Cr50UtilsImpl::SetBoardId(bool is_custom_label) const {
     argv.push_back("pvt");
   }
   if (!cmd_utils_->GetOutput(argv, &output)) {
-    LOG(ERROR) << "Failed to set cr50 board ID";
+    LOG(ERROR) << "Failed to set GSC board ID";
     LOG(ERROR) << output;
     return false;
   }

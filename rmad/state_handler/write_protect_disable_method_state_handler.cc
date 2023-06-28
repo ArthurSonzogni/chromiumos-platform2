@@ -13,7 +13,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
-#include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/gsc_utils_impl.h"
 
 namespace rmad {
 
@@ -21,15 +21,15 @@ WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
 }
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<Cr50Utils> cr50_utils)
+    std::unique_ptr<GscUtils> gsc_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      cr50_utils_(std::move(cr50_utils)) {}
+      gsc_utils_(std::move(gsc_utils)) {}
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::InitializeState() {
   if (!state_.has_wp_disable_method()) {
@@ -73,16 +73,16 @@ bool WriteProtectDisableMethodStateHandler::CheckVarsInStateFile() const {
   // - Need to disable WP, and
   // - CCD is not blocked, and
   // - User wants to wipe the device, and
-  // - Cr50 factory mode is not enabled yet
+  // - GSC factory mode is not enabled yet
   // In other scenarios, either there is only one option to disable WP and we
-  // jump directly to the state, or cr50 factory mode is enabled and we skip the
+  // jump directly to the state, or GSC factory mode is enabled and we skip the
   // entire WP disabling steps.
   if (!wp_disable_required || ccd_blocked || !wipe_device) {
     LOG(ERROR) << "There is only one available method to disable WP.";
     return false;
   }
-  if (cr50_utils_->IsFactoryModeEnabled()) {
-    LOG(ERROR) << "Cr50 factory mode is already enabled.";
+  if (gsc_utils_->IsFactoryModeEnabled()) {
+    LOG(ERROR) << "GSC factory mode is already enabled.";
     return false;
   }
 

@@ -11,7 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/gsc_utils.h"
 
 namespace rmad {
 
@@ -20,11 +20,11 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
   explicit WriteProtectDisableMethodStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cr50_utils_| for testing.
+  // Used to inject mock |gsc_utils_| for testing.
   explicit WriteProtectDisableMethodStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
-      std::unique_ptr<Cr50Utils> cr50_utils);
+      std::unique_ptr<GscUtils> gsc_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableMethod);
   SET_REPEATABLE;
@@ -38,7 +38,7 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
  private:
   bool CheckVarsInStateFile() const;
 
-  std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<GscUtils> gsc_utils_;
 };
 
 }  // namespace rmad

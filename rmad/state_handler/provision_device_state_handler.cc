@@ -31,9 +31,9 @@
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
-#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils_impl.h"
@@ -79,7 +79,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
@@ -97,7 +97,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
-    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
@@ -108,7 +108,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cmd_utils_(std::move(cmd_utils)),
-      cr50_utils_(std::move(cr50_utils)),
+      gsc_utils_(std::move(gsc_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
@@ -477,9 +477,9 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressResetGbbFlags);
 
-  // Set cr50 board ID if it is not set yet.
+  // Set GSC board ID if it is not set yet.
   std::string board_id_type, board_id_flags;
-  if (!cr50_utils_->GetBoardIdType(&board_id_type)) {
+  if (!gsc_utils_->GetBoardIdType(&board_id_type)) {
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                  kProgressFailedBlocking,
                  ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
@@ -487,21 +487,21 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   }
   if (board_id_type == kEmptyBoardIdType) {
     bool is_custom_label = false;
-    if (cr50_utils_->GetBoardIdFlags(&board_id_flags) &&
+    if (gsc_utils_->GetBoardIdFlags(&board_id_flags) &&
         board_id_flags == kCustomLabelPvtBoardIdFlags) {
       is_custom_label = true;
       // TODO(chenghan): Custom label board ID flags should not be used on a
-      //                 non custom label device, but technically cr50 still
+      //                 non custom label device, but technically GSC still
       //                 works. Record a metric for it.
       if (!cros_config_utils_->IsCustomLabel()) {
-        LOG(ERROR) << "Cr50 board ID flags for custom label should not be used "
+        LOG(ERROR) << "GSC board ID flags for custom label should not be used "
                    << "on a non custom label device";
       }
     } else {
       // TODO(chenghan): This is a security violation. Record a metric for it.
-      LOG(ERROR) << "Cr50 board ID type is empty in RMA";
+      LOG(ERROR) << "GSC board ID type is empty in RMA";
     }
-    if (!cr50_utils_->SetBoardId(is_custom_label)) {
+    if (!gsc_utils_->SetBoardId(is_custom_label)) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
@@ -510,9 +510,9 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   } else if (board_id_type == kTestBoardIdType) {
     // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
     //                 it.
-    LOG(ERROR) << "Cr50 board ID type cannot be ZZCR in RMA";
+    LOG(ERROR) << "GSC board ID type cannot be ZZCR in RMA";
     if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
-      DLOG(INFO) << "Cr50 board ID check bypassed";
+      DLOG(INFO) << "GSC board ID check bypassed";
     } else {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,

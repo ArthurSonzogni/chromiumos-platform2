@@ -20,9 +20,9 @@
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
-#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
@@ -42,7 +42,7 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
       reboot_scheduled_(false) {
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
@@ -51,12 +51,12 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
-    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
-      cr50_utils_(std::move(cr50_utils)),
+      gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
       reboot_scheduled_(false) {}
@@ -71,7 +71,7 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
     wp_disable_rsu->set_rsu_done(is_rsu_done);
 
     std::string challenge_code;
-    if (cr50_utils_->GetRsuChallengeCode(&challenge_code)) {
+    if (gsc_utils_->GetRsuChallengeCode(&challenge_code)) {
       wp_disable_rsu->set_challenge_code(challenge_code);
     } else {
       return RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE;
@@ -114,9 +114,9 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RMAD_ERROR_EXPECT_REBOOT);
   }
 
-  // Do RSU. If RSU succeeds, cr50 will cut off its connection with AP until the
+  // Do RSU. If RSU succeeds, GSC will cut off its connection with AP until the
   // next boot, so we need a reboot here for factory mode to take effect.
-  if (!cr50_utils_->PerformRsu(state.wp_disable_rsu().unlock_code())) {
+  if (!gsc_utils_->PerformRsu(state.wp_disable_rsu().unlock_code())) {
     LOG(ERROR) << "Incorrect unlock code.";
     return NextStateCaseWrapper(
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
@@ -160,10 +160,10 @@ WriteProtectDisableRsuStateHandler::TryGetNextStateCaseAtBoot() {
 }
 
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
-  bool factory_mode_enabled = cr50_utils_->IsFactoryModeEnabled();
+  bool factory_mode_enabled = gsc_utils_->IsFactoryModeEnabled();
   bool hwwp_enabled = true;
   write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled);
-  VLOG(3) << "WriteProtectDisableRsuState: Cr50 factory mode: "
+  VLOG(3) << "WriteProtectDisableRsuState: GSC factory mode: "
           << (factory_mode_enabled ? "enabled" : "disabled");
   VLOG(3) << "WriteProtectDisableRsuState: Hardware write protect: "
           << (hwwp_enabled ? "enabled" : "disabled");

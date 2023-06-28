@@ -19,8 +19,8 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
-#include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -57,16 +57,16 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableRsuStateHandler> CreateStateHandler(
       const StateHandlerArgs& args = {}) {
-    // Mock |Cr50Utils|.
-    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
-    ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
+    // Mock |GscUtils|.
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())
         .WillByDefault(Return(args.factory_mode_enabled));
-    ON_CALL(*mock_cr50_utils, GetRsuChallengeCode(_))
+    ON_CALL(*mock_gsc_utils, GetRsuChallengeCode(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(kTestChallengeCode), Return(true)));
-    ON_CALL(*mock_cr50_utils, PerformRsu(Eq(kTestUnlockCode)))
+    ON_CALL(*mock_gsc_utils, PerformRsu(Eq(kTestUnlockCode)))
         .WillByDefault(Return(true));
-    ON_CALL(*mock_cr50_utils, PerformRsu(Ne(kTestUnlockCode)))
+    ON_CALL(*mock_gsc_utils, PerformRsu(Ne(kTestUnlockCode)))
         .WillByDefault(Return(false));
 
     // Mock |CrosSystemUtils|.
@@ -99,7 +99,7 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
+        std::move(mock_gsc_utils), std::move(mock_crossystem_utils),
         std::move(mock_write_protect_utils));
   }
 

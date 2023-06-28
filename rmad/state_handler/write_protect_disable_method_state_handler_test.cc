@@ -14,7 +14,7 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
-#include "rmad/utils/mock_cr50_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 
 using testing::NiceMock;
 using testing::Return;
@@ -33,13 +33,13 @@ class WriteProtectDisableMethodStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableMethodStateHandler> CreateStateHandler(
       const StateHandlerArgs& args = {}) {
-    // Mock |Cr50Utils|.
-    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
-    ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
+    // Mock |GscUtils|.
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())
         .WillByDefault(Return(args.factory_mode_enabled));
 
     return base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_cr50_utils));
+        json_store_, daemon_callback_, std::move(mock_gsc_utils));
   }
 };
 

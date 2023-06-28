@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_CR50_UTILS_IMPL_H_
-#define RMAD_UTILS_CR50_UTILS_IMPL_H_
+#ifndef RMAD_UTILS_GSC_UTILS_IMPL_H_
+#define RMAD_UTILS_GSC_UTILS_IMPL_H_
 
-#include <rmad/utils/cr50_utils.h>
+#include <rmad/utils/gsc_utils.h>
 
 #include <memory>
 #include <string>
@@ -14,11 +14,11 @@
 
 namespace rmad {
 
-class Cr50UtilsImpl : public Cr50Utils {
+class GscUtilsImpl : public GscUtils {
  public:
-  Cr50UtilsImpl();
-  explicit Cr50UtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
-  ~Cr50UtilsImpl() override = default;
+  GscUtilsImpl();
+  explicit GscUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
+  ~GscUtilsImpl() override = default;
 
   bool GetRsuChallengeCode(std::string* challenge_code) const override;
   bool PerformRsu(const std::string& unlock_code) const override;
@@ -35,4 +35,4 @@ class Cr50UtilsImpl : public Cr50Utils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_CR50_UTILS_IMPL_H_
+#endif  // RMAD_UTILS_GSC_UTILS_IMPL_H_

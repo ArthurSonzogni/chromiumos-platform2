@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_CR50_UTILS_H_
-#define RMAD_UTILS_CR50_UTILS_H_
+#ifndef RMAD_UTILS_GSC_UTILS_H_
+#define RMAD_UTILS_GSC_UTILS_H_
 
 #include <string>
 
 namespace rmad {
 
-class Cr50Utils {
+class GscUtils {
  public:
-  Cr50Utils() = default;
-  virtual ~Cr50Utils() = default;
+  GscUtils() = default;
+  virtual ~GscUtils() = default;
 
   // Get the RSU challenge code. Return true if successfully get the challenge
   // code, false if failed to get the challenge code.
@@ -31,19 +31,19 @@ class Cr50Utils {
   // to disable factory mode.
   virtual bool DisableFactoryMode() const = 0;
 
-  // Check if cr50 factory mode is enabled.
+  // Check if GSC factory mode is enabled.
   virtual bool IsFactoryModeEnabled() const = 0;
 
-  // Get cr50 board ID type.
+  // Get GSC board ID type.
   virtual bool GetBoardIdType(std::string* board_id_type) const = 0;
 
-  // Get cr50 board ID flags.
+  // Get GSC board ID flags.
   virtual bool GetBoardIdFlags(std::string* board_id_flags) const = 0;
 
-  // Set cr50 board ID.
+  // Set GSC board ID.
   virtual bool SetBoardId(bool is_custom_label) const = 0;
 };
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_CR50_UTILS_H_
+#endif  // RMAD_UTILS_GSC_UTILS_H_

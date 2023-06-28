@@ -19,7 +19,7 @@
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
-#include "rmad/utils/mock_cr50_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -66,14 +66,14 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
       const StateHandlerArgs& args = {}) {
-    // Mock |Cr50Utils|.
-    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
-    ON_CALL(*mock_cr50_utils, DisableFactoryMode())
+    // Mock |GscUtils|.
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    ON_CALL(*mock_gsc_utils, DisableFactoryMode())
         .WillByDefault(Return(args.disable_factory_mode_success));
-    ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
+    ON_CALL(*mock_gsc_utils, GetBoardIdType(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
-    ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
+    ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(args.board_id_flags), Return(true)));
 
@@ -99,7 +99,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cr50_utils), std::move(mock_write_protect_utils));
+        std::move(mock_gsc_utils), std::move(mock_write_protect_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;

@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_MOCK_CR50_UTILS_H_
-#define RMAD_UTILS_MOCK_CR50_UTILS_H_
+#ifndef RMAD_UTILS_MOCK_GSC_UTILS_H_
+#define RMAD_UTILS_MOCK_GSC_UTILS_H_
 
-#include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/gsc_utils.h"
 
 #include <string>
 
@@ -13,10 +13,10 @@
 
 namespace rmad {
 
-class MockCr50Utils : public Cr50Utils {
+class MockGscUtils : public GscUtils {
  public:
-  MockCr50Utils() = default;
-  ~MockCr50Utils() override = default;
+  MockGscUtils() = default;
+  ~MockGscUtils() override = default;
 
   MOCK_METHOD(bool, GetRsuChallengeCode, (std::string*), (const, override));
   MOCK_METHOD(bool, PerformRsu, (const std::string&), (const, override));
@@ -30,4 +30,4 @@ class MockCr50Utils : public Cr50Utils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_MOCK_CR50_UTILS_H_
+#endif  // RMAD_UTILS_MOCK_GSC_UTILS_H_

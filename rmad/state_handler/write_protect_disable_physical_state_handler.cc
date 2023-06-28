@@ -13,9 +13,9 @@
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
-#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
@@ -26,7 +26,7 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath) {
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
@@ -36,12 +36,12 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path,
-        std::unique_ptr<Cr50Utils> cr50_utils,
+        std::unique_ptr<GscUtils> gsc_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
         std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
-      cr50_utils_(std::move(cr50_utils)),
+      gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
@@ -96,7 +96,7 @@ BaseStateHandler::GetNextStateCaseReply
 WriteProtectDisablePhysicalStateHandler::TryGetNextStateCaseAtBoot() {
   // If conditions are met, we can transition to the next state.
   if (IsReadyForTransition()) {
-    if (cr50_utils_->IsFactoryModeEnabled()) {
+    if (gsc_utils_->IsFactoryModeEnabled()) {
       json_store_->SetValue(
           kWpDisableMethod,
           WpDisableMethod_Name(
@@ -146,7 +146,7 @@ bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
 
 bool WriteProtectDisablePhysicalStateHandler::CanSkipEnablingFactoryMode()
     const {
-  return cr50_utils_->IsFactoryModeEnabled() ||
+  return gsc_utils_->IsFactoryModeEnabled() ||
          state_.wp_disable_physical().keep_device_open();
 }
 
@@ -162,9 +162,9 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
   bool powerwash_required = false;
   if (!CanSkipEnablingFactoryMode()) {
-    // Enable cr50 factory mode. This no longer reboots the device, so we need
+    // Enable GSC factory mode. This no longer reboots the device, so we need
     // to trigger a reboot ourselves.
-    if (!cr50_utils_->EnableFactoryMode()) {
+    if (!gsc_utils_->EnableFactoryMode()) {
       LOG(ERROR) << "Failed to enable factory mode.";
     }
     if (!IsPowerwashDisabled(working_dir_path_)) {

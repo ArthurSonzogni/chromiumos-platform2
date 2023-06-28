@@ -16,7 +16,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/timer/timer.h>
 
-#include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
@@ -28,13 +28,13 @@ class FinalizeStateHandler : public BaseStateHandler {
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                                 scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path_|,  |cr50_utils_|, and
+  // Used to inject |working_dir_path_|,  |gsc_utils_|, and
   // |write_protect_utils_| for testing.
   explicit FinalizeStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
-      std::unique_ptr<Cr50Utils> cr50_utils,
+      std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
@@ -59,7 +59,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   base::FilePath working_dir_path_;
   FinalizeStatus status_;
 
-  std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   base::RepeatingTimer status_timer_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;

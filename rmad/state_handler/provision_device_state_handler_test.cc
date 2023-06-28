@@ -24,8 +24,8 @@
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cmd_utils.h"
-#include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
@@ -127,21 +127,20 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_cmd_utils, GetOutput(_, _))
         .WillByDefault(Return(args.reset_gbb_success));
 
-    // Mock |Cr50Utils|.
-    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
+    // Mock |GscUtils|.
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (args.read_board_id_success) {
-      ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
+      ON_CALL(*mock_gsc_utils, GetBoardIdType(_))
           .WillByDefault(
               DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
-      ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
+      ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_))
           .WillByDefault(
               DoAll(SetArgPointee<0>(args.board_id_flags), Return(true)));
     } else {
-      ON_CALL(*mock_cr50_utils, GetBoardIdType(_)).WillByDefault(Return(false));
-      ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
-          .WillByDefault(Return(false));
+      ON_CALL(*mock_gsc_utils, GetBoardIdType(_)).WillByDefault(Return(false));
+      ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_)).WillByDefault(Return(false));
     }
-    ON_CALL(*mock_cr50_utils, SetBoardId(_))
+    ON_CALL(*mock_gsc_utils, SetBoardId(_))
         .WillByDefault(Invoke([args](bool is_custom_label) {
           if (args.board_id_type != kEmptyBoardIdType) {
             return false;
@@ -193,7 +192,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_ssfc_prober), std::move(mock_power_manager_client),
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
-        std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
+        std::move(mock_gsc_utils), std::move(mock_cros_config_utils),
         std::move(mock_write_protect_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
