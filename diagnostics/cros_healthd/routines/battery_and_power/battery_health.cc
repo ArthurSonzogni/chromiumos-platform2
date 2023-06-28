@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/battery_health/battery_health.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_health.h"
 
 #include <cstdint>
 #include <optional>

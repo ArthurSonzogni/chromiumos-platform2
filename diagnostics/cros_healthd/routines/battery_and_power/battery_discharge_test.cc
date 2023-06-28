@@ -13,8 +13,8 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge.h"
-#include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge_constants.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge_constants.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

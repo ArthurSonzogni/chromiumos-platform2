@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_AC_POWER_AC_POWER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_AC_POWER_AC_POWER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_AC_POWER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_AC_POWER_H_
 
 #include <cstdint>
 #include <optional>
@@ -64,4 +64,4 @@ class AcPowerRoutine final : public DiagnosticRoutineWithStatus {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_AC_POWER_AC_POWER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_AC_POWER_H_

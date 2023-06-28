@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge.h"
 
 #include <inttypes.h>
 
@@ -18,7 +18,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/base/mojo_utils.h"
-#include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge_constants.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

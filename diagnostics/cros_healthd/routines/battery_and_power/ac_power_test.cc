@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/ac_power.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

@@ -57,7 +57,6 @@ source_set("libdiag_routine") {
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
   sources = [
-    "ac_power/ac_power.cc",
     "android_network/arc_dns_resolution.cc",
     "android_network/arc_http.cc",
     "android_network/arc_ping.cc",
@@ -65,10 +64,11 @@ source_set("libdiag_routine") {
     "audio/audio_set_gain.cc",
     "audio/audio_set_volume.cc",
     "base_routine_control.cc",
-    "battery_capacity/battery_capacity.cc",
-    "battery_charge/battery_charge.cc",
-    "battery_discharge/battery_discharge.cc",
-    "battery_health/battery_health.cc",
+    "battery_and_power/ac_power.cc",
+    "battery_and_power/battery_capacity.cc",
+    "battery_and_power/battery_charge.cc",
+    "battery_and_power/battery_discharge.cc",
+    "battery_and_power/battery_health.cc",
     "bluetooth/bluetooth_base.cc",
     "bluetooth/bluetooth_discovery.cc",
     "bluetooth/bluetooth_pairing.cc",
@@ -144,7 +144,6 @@ if (use.test) {
 
   source_set("routine_test") {
     sources = [
-      "ac_power/ac_power_test.cc",
       "android_network/arc_dns_resolution_test.cc",
       "android_network/arc_http_test.cc",
       "android_network/arc_ping_test.cc",
@@ -152,10 +151,11 @@ if (use.test) {
       "audio/audio_set_gain_test.cc",
       "audio/audio_set_volume_test.cc",
       "base_routine_control_test.cc",
-      "battery_capacity/battery_capacity_test.cc",
-      "battery_charge/battery_charge_test.cc",
-      "battery_discharge/battery_discharge_test.cc",
-      "battery_health/battery_health_test.cc",
+      "battery_and_power/ac_power_test.cc",
+      "battery_and_power/battery_capacity_test.cc",
+      "battery_and_power/battery_charge_test.cc",
+      "battery_and_power/battery_discharge_test.cc",
+      "battery_and_power/battery_health_test.cc",
       "bluetooth/bluetooth_base_test.cc",
       "bluetooth/bluetooth_discovery_test.cc",
       "bluetooth/bluetooth_pairing_test.cc",

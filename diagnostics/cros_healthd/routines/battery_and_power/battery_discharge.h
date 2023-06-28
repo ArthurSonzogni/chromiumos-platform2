@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_CHARGE_BATTERY_CHARGE_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_CHARGE_BATTERY_CHARGE_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_BATTERY_DISCHARGE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_BATTERY_DISCHARGE_H_
 
 #include <cstdint>
 #include <memory>
@@ -23,23 +23,23 @@
 
 namespace diagnostics {
 
-// Checks the charge rate of the battery.
-class BatteryChargeRoutine final : public DiagnosticRoutineWithStatus {
+// Checks the discharge rate of the battery.
+class BatteryDischargeRoutine final : public DiagnosticRoutineWithStatus {
  public:
   // |exec_duration| - length of time to run the routine for.
-  // |minimum_charge_percent_required| - the routine will fail if the battery
-  // charges less than this percentage during the execution of the routine.
+  // |maximum_discharge_percent_allowed| - the routine will fail if the battery
+  // discharges more than this percentage during the execution of the routine.
   // Valid range: [0, 100].
   // Override |tick_clock| for testing only.
-  BatteryChargeRoutine(Context* const context,
-                       base::TimeDelta exec_duration,
-                       uint32_t minimum_charge_percent_required,
-                       const base::TickClock* tick_clock = nullptr);
-  BatteryChargeRoutine(const BatteryChargeRoutine&) = delete;
-  BatteryChargeRoutine& operator=(const BatteryChargeRoutine&) = delete;
+  BatteryDischargeRoutine(Context* const context,
+                          base::TimeDelta exec_duration,
+                          uint32_t maximum_discharge_percent_allowed,
+                          const base::TickClock* tick_clock = nullptr);
+  BatteryDischargeRoutine(const BatteryDischargeRoutine&) = delete;
+  BatteryDischargeRoutine& operator=(const BatteryDischargeRoutine&) = delete;
 
   // DiagnosticRoutine overrides:
-  ~BatteryChargeRoutine() override;
+  ~BatteryDischargeRoutine() override;
   void Start() override;
   void Resume() override;
   void Cancel() override;
@@ -50,18 +50,18 @@ class BatteryChargeRoutine final : public DiagnosticRoutineWithStatus {
   // Calculates the progress percent based on the current status.
   void CalculateProgressPercent();
   // Checks the machine state against the input parameters.
-  void RunBatteryChargeRoutine();
+  void RunBatteryDischargeRoutine();
   // Determine success or failure for the routine.
   void DetermineRoutineResult(double beginning_discharge_percent);
 
   // Unowned pointer that outlives this routine instance.
   Context* const context_;
   // Details about the routine's execution. Reported in all status updates.
-  base::Value::Dict output_;
+  base::Value::Dict output_dict_;
   // Length of time to run the routine for.
   const base::TimeDelta exec_duration_;
-  // Minimum charge percent required for the routine to pass.
-  const uint32_t minimum_charge_percent_required_;
+  // Maximum discharge percent allowed for the routine to pass.
+  const uint32_t maximum_discharge_percent_allowed_;
   // A measure of how far along the routine is, reported in all status updates.
   uint32_t progress_percent_ = 0;
   // When the routine started. Used to calculate |progress_percent_|.
@@ -75,9 +75,9 @@ class BatteryChargeRoutine final : public DiagnosticRoutineWithStatus {
   base::CancelableOnceClosure callback_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BatteryChargeRoutine> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BatteryDischargeRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_CHARGE_BATTERY_CHARGE_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BATTERY_AND_POWER_BATTERY_DISCHARGE_H_

@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/battery_capacity/battery_capacity.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_capacity.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
