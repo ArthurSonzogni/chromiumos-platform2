@@ -115,6 +115,12 @@ TEST(IPv4Address, InAddr) {
   EXPECT_EQ(IPv4Address(addr), ipv4_addr);
 }
 
+TEST(IPv4Address, Uint32_t) {
+  const auto expected_ipv4_addr = IPv4Address(0x11, 0x22, 0x33, 0x44);
+  const uint32_t addr = htonl(0x11223344);
+  EXPECT_EQ(IPv4Address(addr), expected_ipv4_addr);
+}
+
 TEST(IPv4CIDR, CreateFromCIDRString) {
   const auto cidr1 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/0");
   ASSERT_TRUE(cidr1);

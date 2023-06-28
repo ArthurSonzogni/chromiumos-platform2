@@ -42,8 +42,11 @@ std::optional<IPv4Address> IPv4Address::CreateFromBytes(
   return CreateAddressFromBytes<IPv4Address>(bytes);
 }
 
-IPv4Address::IPv4Address(const struct in_addr& addr) {
-  const uint32_t host_endian = base::NetToHost32(addr.s_addr);
+IPv4Address::IPv4Address(const struct in_addr& addr)
+    : IPv4Address(addr.s_addr) {}
+
+IPv4Address::IPv4Address(uint32_t addr) {
+  const uint32_t host_endian = base::NetToHost32(addr);
   data_[0] = static_cast<uint8_t>((host_endian >> 24) & 0xff);
   data_[1] = static_cast<uint8_t>((host_endian >> 16) & 0xff);
   data_[2] = static_cast<uint8_t>((host_endian >> 8) & 0xff);

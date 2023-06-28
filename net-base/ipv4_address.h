@@ -54,6 +54,9 @@ class NET_BASE_EXPORT IPv4Address {
 
   explicit IPv4Address(const struct in_addr& addr);
 
+  // Constructs an instance by the uint32_t in network order.
+  explicit IPv4Address(uint32_t addr);
+
   // Returns true if the address is "0.0.0.0".
   bool IsZero() const;
 
