@@ -111,6 +111,23 @@ TEST(ConvertFromKeymasterMessage, Uint8Vector) {
   EXPECT_TRUE(VerifyVectorUint8(kBlob1.data(), kBlob1.size(), output));
 }
 
+TEST(ConvertFromKeymasterMessage, EnumConversionKeyFormat) {
+  // Convert
+  keymaster_key_format_t output =
+      ConvertEnum(arc::mojom::keymint::KeyFormat::PKCS8);
+
+  // Verify.
+  EXPECT_EQ(output, KM_KEY_FORMAT_PKCS8);
+}
+
+TEST(ConvertFromKeymasterMessage, EnumConversionTag) {
+  // Convert
+  keymaster_tag_t output = ConvertEnum(arc::mojom::keymint::Tag::CALLER_NONCE);
+
+  // Verify.
+  EXPECT_EQ(output, KM_TAG_CALLER_NONCE);
+}
+
 TEST(ConvertFromKeymasterMessage, KeyParameterVector) {
   // Prepare.
   ::keymaster::AuthorizationSet input;
@@ -215,6 +232,27 @@ TEST(ConvertToKeymasterMessage, GenerateKeyRequest) {
   // Verify.
   EXPECT_TRUE(
       VerifyKeyParametersWithStrictInputs(output->key_description, input));
+}
+
+TEST(ConvertToMessage, ImportKeyRequest) {
+  // Prepare.
+  auto input = arc::mojom::keymint::ImportKeyRequest::New(
+      KeyParameterVector(), arc::mojom::keymint::KeyFormat::PKCS8,
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
+      arc::mojom::keymint::AttestationKey::New());
+
+  // Convert.
+  auto output = MakeImportKeyRequest(std::move(input), kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_EQ(static_cast<keymaster_key_format_t>(input->key_format),
+            output->key_format);
+  EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->key_description,
+                                                  input->key_params));
+  // TODO(b/289173356): Verify Attest Key here as well.
+  EXPECT_TRUE(VerifyVectorUint8(output->key_data.key_material,
+                                output->key_data.key_material_size,
+                                input->key_data));
 }
 
 }  // namespace arc::keymint

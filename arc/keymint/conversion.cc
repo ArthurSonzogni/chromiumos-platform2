@@ -10,12 +10,6 @@ namespace arc::keymint {
 
 namespace {
 
-// TODO(b/274723521) : Add more required ConvertEnum functions for KeyMint
-// Server.
-keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag) {
-  return static_cast<keymaster_tag_t>(tag);
-}
-
 class KmParamSet {
  public:
   explicit KmParamSet(
@@ -107,6 +101,16 @@ class KmParamSet {
 };
 
 }  // namespace
+
+// TODO(b/274723521) : Add more required ConvertEnum functions for KeyMint
+// Server.
+keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag) {
+  return static_cast<keymaster_tag_t>(tag);
+}
+
+keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format) {
+  return static_cast<keymaster_key_format_t>(key_format);
+}
 
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
                                                  const size_t size) {
@@ -204,6 +208,7 @@ void ConvertToKeymasterMessage(
   out->Reinitialize(param_set.param_set());
 }
 
+// Request Methods.
 std::unique_ptr<::keymaster::GetKeyCharacteristicsRequest>
 MakeGetKeyCharacteristicsRequest(
     const ::arc::mojom::keymint::GetKeyCharacteristicsRequestPtr& value,
@@ -225,6 +230,22 @@ std::unique_ptr<::keymaster::GenerateKeyRequest> MakeGenerateKeyRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
+    const arc::mojom::keymint::ImportKeyRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out =
+      std::make_unique<::keymaster::ImportKeyRequest>(keymint_message_version);
+  ConvertToKeymasterMessage(request->key_params, &out->key_description);
+
+  out->key_format = ConvertEnum(request->key_format);
+  out->key_data = ::keymaster::KeymasterKeyBlob(request->key_data.data(),
+                                                request->key_data.size());
+
+  // TODO(b/289173356): Add Attestation Key in MakeImportKeyRequest.
+  return out;
+}
+
+// Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
     const ::keymaster::GetKeyCharacteristicsResponse& km_response,
@@ -252,6 +273,42 @@ MakeGetKeyCharacteristicsResult(
 
 std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
     const ::keymaster::GenerateKeyResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::nullopt;
+  }
+
+  // Create the Key Blob.
+  auto key_blob =
+      ConvertFromKeymasterMessage(km_response.key_blob.key_material,
+                                  km_response.key_blob.key_material_size);
+
+  // Create the Key Characteristics Array.
+  // Enforced response corresponds to Trusted Execution
+  // Environment(TEE) security level.
+  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
+      ConvertFromKeymasterMessage(km_response.enforced));
+  // Unenforced response corresponds to Software security level.
+  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::SOFTWARE,
+      ConvertFromKeymasterMessage(km_response.unenforced));
+  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
+  key_chars_array.push_back(std::move(teeChars));
+  key_chars_array.push_back(std::move(softwareChars));
+
+  // Create the Certificate Array.
+  // TODO(b/286944450): Add certificates for Attestation.
+  auto cert = arc::mojom::keymint::Certificate::New();
+  std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
+  cert_array.push_back(std::move(cert));
+
+  return arc::mojom::keymint::KeyCreationResult::New(
+      std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+}
+
+std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
+    const ::keymaster::ImportKeyResponse& km_response, uint32_t& error) {
   error = km_response.error;
   if (km_response.error != KM_ERROR_OK) {
     return std::nullopt;

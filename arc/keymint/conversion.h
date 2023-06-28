@@ -14,6 +14,10 @@
 namespace arc::keymint {
 
 // Convenience helper methods.
+keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format);
+
+keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag);
+
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
                                                  const size_t size);
 
@@ -44,6 +48,10 @@ std::unique_ptr<::keymaster::GenerateKeyRequest> MakeGenerateKeyRequest(
     const std::vector<arc::mojom::keymint::KeyParameterPtr>& data,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
+    const arc::mojom::keymint::ImportKeyRequestPtr& request,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -52,6 +60,9 @@ MakeGetKeyCharacteristicsResult(
 
 std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
     const ::keymaster::GenerateKeyResponse& km_response, uint32_t& error);
+
+std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
+    const ::keymaster::ImportKeyResponse& km_response, uint32_t& error);
 
 }  // namespace arc::keymint
 
