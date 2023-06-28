@@ -270,6 +270,10 @@ class AuthSessionTest : public ::testing::Test {
     crypto_.Init();
   }
 
+  void TearDown() override {
+    SetUserSecretStashExperimentForTesting(std::nullopt);
+  }
+
  protected:
   // Fake username to be used in this test suite.
   const Username kFakeUsername{"test_username"};
@@ -689,6 +693,7 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 TEST_F(AuthSessionTest, NoUssByDefault) {
   // Setup.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  SetUserSecretStashExperimentForTesting(false);
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
@@ -1046,6 +1051,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
 // Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor
 // for a new user.
 TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   // We need to use a real AuthBlockUtilityImpl for this test.
   FakeFeaturesForTesting features;
   AuthBlockUtilityImpl real_auth_block_utility(
@@ -1118,6 +1124,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
 // factor, and the third one as added as a PIN factor.
 TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   // Setup.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -4504,6 +4511,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 // doesn't crash).
 TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
   // Setup.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
