@@ -18,7 +18,6 @@
 #include <base/functional/callback.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <featured/feature_library.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "dlp/dbus-proxies.h"
 #include "dlp/dlp_database.h"
@@ -82,29 +81,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void CloseDatabaseForTesting();
 
  private:
-  friend class DlpAdaptorTest;
-  FRIEND_TEST(DlpAdaptorTest, AllowedWithoutDatabase);
-  FRIEND_TEST(DlpAdaptorTest, AllowedWithDatabase);
-  FRIEND_TEST(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed);
-  FRIEND_TEST(DlpAdaptorTest,
-              RestrictedFileAddedRequestedAndCancelledNotAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup);
-  FRIEND_TEST(DlpAdaptorTest,
-              GetFilesSourcesFileDeletedDBReopenedWithoutCleanup);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesOverwrite);
-  FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
-  FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed);
-  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed);
+  friend class DlpAdaptorTestHelper;
 
   // Callback on InitDatabase after initialization of the database.
   void OnDatabaseInitialized(base::OnceClosure init_callback,

@@ -255,7 +255,7 @@ class DlpAdaptorTest : public ::testing::Test {
 
 TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(
+  helper_.ProcessFileOpenRequest(
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
@@ -270,7 +270,7 @@ TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
   run_loop.Run();
 
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(
+  helper_.ProcessFileOpenRequest(
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
@@ -289,7 +289,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
-  ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   is_file_policy_restricted_ = false;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -297,7 +297,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 }
@@ -315,7 +315,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
-  ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   is_file_policy_restricted_ = true;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -323,7 +323,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
@@ -340,10 +340,10 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   // Create files to request access by inodes.
   base::FilePath file_path1;
   base::CreateTemporaryFile(&file_path1);
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   base::CreateTemporaryFile(&file_path2);
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   // Add the files to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path1, "source", "referrer"),
@@ -382,19 +382,19 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
 
   // Access the first file.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 
   // Second request still allowed.
   FileOpenRequestResultWaiter waiter2;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter2.GetCallback());
+  helper_.ProcessFileOpenRequest(inode1, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
 
   // Access the second file.
   FileOpenRequestResultWaiter waiter3;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode2, kPid, waiter3.GetCallback());
+  helper_.ProcessFileOpenRequest(inode2, kPid, waiter3.GetCallback());
 
   EXPECT_TRUE(waiter3.GetResult());
 }
@@ -414,7 +414,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
   // Create files to request access by inodes.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  const ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   // Add the files to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -464,7 +464,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
 
     // Access the file.
     FileOpenRequestResultWaiter waiter;
-    GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+    helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
     EXPECT_TRUE(waiter.GetResult());
 
     // Cancel access to the file.
@@ -475,7 +475,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
 
     // Second request: still allowed
     FileOpenRequestResultWaiter waiter2;
-    GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
+    helper_.ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
     EXPECT_TRUE(waiter2.GetResult());
   }
 }
@@ -492,7 +492,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
   // Create files to request access by inodes.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  const ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   // Add the files to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -546,7 +546,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
 
     // Access the file.
     FileOpenRequestResultWaiter waiter;
-    GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+    helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
     EXPECT_FALSE(waiter.GetResult());
   }
 }
@@ -563,10 +563,10 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
   // Create files to request access by inodes.
   base::FilePath file_path1;
   base::CreateTemporaryFile(&file_path1);
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   base::CreateTemporaryFile(&file_path2);
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   // Add only first file to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path1, "source", "referrer")},
@@ -604,13 +604,13 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
 
   // Access the first file.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 
   // Access the second file.
   FileOpenRequestResultWaiter waiter2;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode2, kPid, waiter2.GetCallback());
+  helper_.ProcessFileOpenRequest(inode2, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
 }
@@ -627,11 +627,11 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
   // Create files to request access by inodes.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  const ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   // Access already allowed.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
   EXPECT_TRUE(waiter.GetResult());
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
@@ -664,7 +664,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
 
   // Access still allowed.
   FileOpenRequestResultWaiter waiter2;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
 }
@@ -681,7 +681,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  const ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   // Add the file to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -728,7 +728,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
 
   // Request access to the file.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
@@ -745,7 +745,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  const ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
 
   // Add the file to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -794,7 +794,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
 
   // Request access to the file.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
@@ -841,10 +841,10 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -871,10 +871,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -926,10 +926,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -972,10 +972,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1019,10 +1019,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1035,7 +1035,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   // Delete one of the files.
   base::DeleteFile(file_path2);
   // Notify that file was deleted.
-  GetDlpAdaptor()->OnFileDeleted(inode2);
+  helper_.OnFileDeleted(inode2);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
 
@@ -1058,10 +1058,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
-  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
-  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";

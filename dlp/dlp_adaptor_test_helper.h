@@ -6,6 +6,7 @@
 #define DLP_DLP_ADAPTOR_TEST_HELPER_H_
 
 #include <memory>
+#include <string>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/task/single_thread_task_executor.h>
@@ -43,6 +44,14 @@ class DlpAdaptorTestHelper {
   void SetDatabaseCleanupFeatureEnabled(bool enabled) {
     feature_lib_->SetEnabled("CrOSLateBootDlpDatabaseCleanupFeature", enabled);
   }
+
+  void ProcessFileOpenRequest(ino_t inode,
+                              int pid,
+                              base::OnceCallback<void(bool)> callback);
+
+  void OnFileDeleted(ino_t inode);
+
+  static ino_t GetInodeValue(const std::string& path);
 
  private:
   scoped_refptr<dbus::MockBus> bus_;
