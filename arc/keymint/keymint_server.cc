@@ -60,7 +60,27 @@ KeyMintServer::~KeyMintServer() = default;
 void KeyMintServer::UpdateContextPlaceholderKeys(
     std::vector<mojom::ChromeOsKeyPtr> keys,
     base::OnceCallback<void(bool)> callback) {
-  // TODO(b/274723521): Finish this.
+  base::OnceCallback<void(bool)> callback_in_original_runner = base::BindOnce(
+      [](scoped_refptr<base::TaskRunner> original_task_runner,
+         base::OnceCallback<void(bool)> callback, bool success) {
+        original_task_runner->PostTask(
+            FROM_HERE, base::BindOnce(std::move(callback), success));
+      },
+      base::SingleThreadTaskRunner::GetCurrentDefault(), std::move(callback));
+
+  backend_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](context::ArcKeyMintContext* context,
+                        std::vector<mojom::ChromeOsKeyPtr> keys,
+                        base::OnceCallback<void(bool)> callback) {
+                       // |context| is guaranteed valid here because it's owned
+                       // by |backend_|, which outlives the |backend_thread_|
+                       // this runs on.
+                       context->set_placeholder_keys(std::move(keys));
+                       std::move(callback).Run(/*success=*/true);
+                     },
+                     backend_.context(), std::move(keys),
+                     std::move(callback_in_original_runner)));
 }
 
 void KeyMintServer::SetSystemVersion(uint32_t android_version,
