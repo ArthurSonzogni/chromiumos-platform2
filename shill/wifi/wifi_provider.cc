@@ -441,8 +441,7 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
     return false;
   }
 
-  auto security_class =
-      WiFiService::ComputeSecurityClass(endpoint->security_mode());
+  auto security_class = WiFiSecurity::SecurityClass(endpoint->security_mode());
 
   WiFiServiceRefPtr service =
       FindService(endpoint->ssid(), endpoint->network_mode(), security_class,

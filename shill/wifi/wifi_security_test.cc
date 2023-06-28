@@ -620,4 +620,21 @@ TEST(WiFiSecurityTest, CombineSecurityWpa3Enterprise) {
   EXPECT_EQ(sec.Combine(WiFiSecurity::kWpa3Enterprise), sec);
 }
 
+TEST(WiFiSecurityTest, SecurityClass) {
+  EXPECT_EQ(WiFiSecurity::SecurityClass(WiFiSecurity::kNone),
+            kSecurityClassNone);
+  EXPECT_EQ(WiFiSecurity::SecurityClass(WiFiSecurity::kWep), kSecurityClassWep);
+  for (auto mode :
+       {WiFiSecurity::kWpa, WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll,
+        WiFiSecurity::kWpa2, WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpa3}) {
+    EXPECT_EQ(WiFiSecurity::SecurityClass(mode), kSecurityClassPsk);
+  }
+  for (auto mode :
+       {WiFiSecurity::kWpaEnterprise, WiFiSecurity::kWpaWpa2Enterprise,
+        WiFiSecurity::kWpaAllEnterprise, WiFiSecurity::kWpa2Enterprise,
+        WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpa3Enterprise}) {
+    EXPECT_EQ(WiFiSecurity::SecurityClass(mode), kSecurityClass8021x);
+  }
+}
+
 }  // namespace shill

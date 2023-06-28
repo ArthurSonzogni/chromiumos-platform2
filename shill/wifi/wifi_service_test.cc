@@ -154,8 +154,7 @@ class WiFiServiceTest : public PropertyStoreTest {
 
   WiFiServiceRefPtr MakeSimpleService(const WiFiSecurity& security) {
     return new WiFiService(manager(), &provider_, simple_ssid_, kModeManaged,
-                           WiFiService::ComputeSecurityClass(security),
-                           security, false);
+                           security.SecurityClass(), security, false);
   }
 
   void SetWiFi(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
@@ -282,7 +281,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     std::string security_class;
 
     if (security.IsValid()) {
-      security_class = WiFiService::ComputeSecurityClass(security);
+      security_class = security.SecurityClass();
     } else {
       EXPECT_TRUE(WiFiService::IsValidSecurityClass(sec))
           << "Invalid security: " << sec;
@@ -1739,24 +1738,6 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
                                           std::vector<uint16_t>{}));
   service->RemoveEndpoint(same_freq_as_ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
-}
-
-TEST_F(WiFiServiceTest, ComputeSecurityClass) {
-  EXPECT_EQ(WiFiService::ComputeSecurityClass(WiFiSecurity::kNone),
-            kSecurityClassNone);
-  EXPECT_EQ(WiFiService::ComputeSecurityClass(WiFiSecurity::kWep),
-            kSecurityClassWep);
-  for (auto mode :
-       {WiFiSecurity::kWpa, WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll,
-        WiFiSecurity::kWpa2, WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpa3}) {
-    EXPECT_EQ(WiFiService::ComputeSecurityClass(mode), kSecurityClassPsk);
-  }
-  for (auto mode :
-       {WiFiSecurity::kWpaEnterprise, WiFiSecurity::kWpaWpa2Enterprise,
-        WiFiSecurity::kWpaAllEnterprise, WiFiSecurity::kWpa2Enterprise,
-        WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpa3Enterprise}) {
-    EXPECT_EQ(WiFiService::ComputeSecurityClass(mode), kSecurityClass8021x);
-  }
 }
 
 TEST_F(WiFiServiceTest, Is8021x) {

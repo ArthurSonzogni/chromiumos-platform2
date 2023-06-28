@@ -793,9 +793,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
                                                 const WiFiSecurity& security) {
-    return new NiceMock<MockWiFiService>(
-        &manager_, &wifi_provider_, ssid, kModeManaged,
-        WiFiService::ComputeSecurityClass(security), security, false);
+    return new NiceMock<MockWiFiService>(&manager_, &wifi_provider_, ssid,
+                                         kModeManaged, security.SecurityClass(),
+                                         security, false);
   }
   MockWiFiServiceRefPtr MakeMockService(const WiFiSecurity& security) {
     return MakeMockServiceWithSSID(std::vector<uint8_t>(1, 'a'), security);

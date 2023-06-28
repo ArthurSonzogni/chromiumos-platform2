@@ -851,7 +851,7 @@ bool WiFiService::IsSecurityMatch(WiFiSecurity::Mode mode) const {
     return security_.Combine(mode).IsValid();
   }
 
-  return ComputeSecurityClass(mode) == security_class();
+  return WiFiSecurity::SecurityClass(mode) == security_class();
 }
 
 bool WiFiService::IsSecurityMatch(const std::string& sec_class) const {
@@ -1800,17 +1800,6 @@ bool WiFiService::CheckWEPPrefix(const std::string& passphrase, Error* error) {
     return false;
   }
   return true;
-}
-
-// static
-std::string WiFiService::ComputeSecurityClass(const WiFiSecurity& security) {
-  if (security.IsPsk()) {
-    return kSecurityClassPsk;
-  }
-  if (security.IsEnterprise()) {
-    return kSecurityClass8021x;
-  }
-  return security.ToString();  // "none" or "wep"
 }
 
 int16_t WiFiService::SignalLevel() const {

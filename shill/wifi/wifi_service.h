@@ -228,10 +228,6 @@ class WiFiService : public Service {
   mockable KeyValueStore GetSupplicantConfigurationParameters() const;
   void SetSupplicantMACPolicy(KeyValueStore& kv) const;
 
-  // "wpa", "wpa2" and "wpa3" are equivalent from a configuration perspective.
-  // This function maps them all into "psk".
-  static std::string ComputeSecurityClass(const WiFiSecurity& security);
-
   bool IsAutoConnectable(const char** reason) const override;
 
   std::string GetWiFiPassphrase(Error* error) override;
@@ -462,8 +458,6 @@ class WiFiService : public Service {
   // security class of the representative endpoint is returned.
   // Otherwise the configured security class for the service is
   // returned.
-  //
-  // See also: ComputeSecurityClass.
   std::string GetSecurityClass(Error* error);
 
   // Profile data for a WPA/RSN service can be stored under a number of
