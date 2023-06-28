@@ -4,7 +4,6 @@
 
 #include "vm_tools/concierge/termina_vm.h"
 
-#include <arpa/inet.h>
 #include <stdint.h>
 #include <sys/mount.h>
 
@@ -35,6 +34,7 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
+#include <net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -46,23 +46,6 @@ namespace pb = google::protobuf;
 namespace vm_tools {
 namespace concierge {
 namespace {
-
-// Converts an IPv4 address in network byte order into a string.
-bool IPv4AddressToString(uint32_t addr, string* address) {
-  CHECK(address);
-
-  char buf[INET_ADDRSTRLEN];
-  struct in_addr in = {
-      .s_addr = addr,
-  };
-  if (inet_ntop(AF_INET, &in, buf, sizeof(buf)) == nullptr) {
-    PLOG(ERROR) << "Failed to convert " << addr << " into a string";
-    return false;
-  }
-
-  *address = buf;
-  return true;
-}
 
 // Name of the unix domain socket for the grpc server.
 constexpr char kServerSocket[] = "server";
@@ -243,13 +226,8 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     grpc::ServerContext* ctx,
     const vm_tools::NetworkConfigRequest* request,
     vm_tools::EmptyMessage* response) {
-  string address;
-  if (!IPv4AddressToString(request->ipv4_config().address(), &address)) {
-    vm_test_->TestFailed(
-        base::StringPrintf("Failed to parse address %u into a string",
-                           request->ipv4_config().address()));
-    return grpc::Status::OK;
-  }
+  const string address =
+      net_base::IPv4Address(request->ipv4_config().address()).ToString();
   if (address != vm_test_->address()) {
     vm_test_->TestFailed(
         base::StringPrintf("Mismatched addresses: expected %s got %s",
@@ -257,13 +235,8 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     return grpc::Status::OK;
   }
 
-  string netmask;
-  if (!IPv4AddressToString(request->ipv4_config().netmask(), &netmask)) {
-    vm_test_->TestFailed(
-        base::StringPrintf("Failed to parse netmask %u into a string",
-                           request->ipv4_config().netmask()));
-    return grpc::Status::OK;
-  }
+  const string netmask =
+      net_base::IPv4Address(request->ipv4_config().netmask()).ToString();
   if (netmask != vm_test_->netmask()) {
     vm_test_->TestFailed(
         base::StringPrintf("Mismatched netmasks: expected %s got %s",
@@ -271,13 +244,8 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     return grpc::Status::OK;
   }
 
-  string gateway;
-  if (!IPv4AddressToString(request->ipv4_config().gateway(), &gateway)) {
-    vm_test_->TestFailed(
-        base::StringPrintf("Failed to parse gateway %u into a string",
-                           request->ipv4_config().gateway()));
-    return grpc::Status::OK;
-  }
+  const string gateway =
+      net_base::IPv4Address(request->ipv4_config().gateway()).ToString();
   if (gateway != vm_test_->gateway()) {
     vm_test_->TestFailed(
         base::StringPrintf("Mismatched gateways: expected %s got %s",
@@ -395,12 +363,9 @@ void TerminaVmTest::SetUp() {
 
   ASSERT_TRUE(subnet);
 
-  ASSERT_TRUE(IPv4AddressToString(
-      subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr, &address_));
-  ASSERT_TRUE(IPv4AddressToString(
-      subnet->base_cidr().ToNetmask().ToInAddr().s_addr, &netmask_));
-  ASSERT_TRUE(IPv4AddressToString(
-      subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr, &gateway_));
+  address_ = subnet->CIDRAtOffset(2)->address().ToString();
+  netmask_ = subnet->base_cidr().ToNetmask().ToString();
+  gateway_ = subnet->CIDRAtOffset(1)->address().ToString();
 
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;
