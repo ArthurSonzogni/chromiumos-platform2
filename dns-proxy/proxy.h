@@ -235,14 +235,11 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, ArcProxy_ConnectedNamedspace);
-  FRIEND_TEST(ProxyTest, CrashOnConnectNamespaceFailure);
-  FRIEND_TEST(ProxyTest, CrashOnPatchpanelNotReady);
   FRIEND_TEST(ProxyTest, ShillResetRestoresAddressProperty);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops);
   FRIEND_TEST(ProxyTest, StateClearedIfDefaultServiceIsNotOnline);
   FRIEND_TEST(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline);
-  FRIEND_TEST(ProxyTest, CrashOnListenFailure);
   FRIEND_TEST(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline);
   FRIEND_TEST(ProxyTest,
               SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline);
