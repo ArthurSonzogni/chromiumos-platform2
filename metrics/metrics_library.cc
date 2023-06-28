@@ -357,10 +357,8 @@ bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
                                        int max,
                                        int nbuckets,
                                        int num_samples) {
-  return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets,
-                                              num_samples)},
-      uma_events_file_.value());
+  return metrics_writer_->WriteMetrics({metrics::MetricSample::HistogramSample(
+      name, sample, min, max, nbuckets, num_samples)});
 }
 #endif
 
