@@ -436,18 +436,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   void OnStatefulDiskSpaceUpdate(
       const spaced::StatefulDiskSpaceUpdate& update) override;
 
-  // Delegates a stateful disk update to be handled by the VM with the specified
-  // |vm_id|.
-  void HandleStatefulDiskSpaceUpdate(
-      VmId vm_id, const spaced::StatefulDiskSpaceUpdate update);
-
-  // Adds |vm_id| to the list of VMs that are using storage ballooning.
-  void AddStorageBalloonVm(VmId vm_id);
-
-  // Removes the |vm_id| from the list of VMs that are using storage
-  // ballooning.
-  void RemoveStorageBalloonVm(VmId vm_id);
-
   // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
   // sibling VM process has died on the hypervisor.
   void OnSiblingVmDead(VmId vm_id);
@@ -547,9 +535,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Proxy for interacting with spaced.
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
-
-  // List of active VMs using storage ballooning.
-  std::set<VmId> storage_balloon_vms_;
 
   // Used to serialize erasing and creating the GPU shader disk cache in the
   // event that VMs are started simultaneously from multiple threads.

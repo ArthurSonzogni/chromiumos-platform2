@@ -108,6 +108,7 @@ TerminaVm::TerminaVm(Config config)
       bus_(config.bus),
       vm_permission_service_proxy_(config.vm_permission_service_proxy),
       classification_(config.classification),
+      storage_ballooning_(config.storage_ballooning),
       socket_(std::move(config.socket)) {}
 
 TerminaVm::~TerminaVm() {
@@ -979,7 +980,7 @@ vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
 
 void TerminaVm::HandleStatefulUpdate(
     const spaced::StatefulDiskSpaceUpdate update) {
-  if (IsSuspended()) {
+  if (IsSuspended() || !storage_ballooning_) {
     return;
   }
 
@@ -1039,6 +1040,7 @@ VmBaseImpl::Info TerminaVm::GetInfo() const {
       .status = IsTremplinStarted() ? VmBaseImpl::Status::RUNNING
                                     : VmBaseImpl::Status::STARTING,
       .type = classification_,
+      .storage_ballooning = storage_ballooning_,
   };
 
   return info;

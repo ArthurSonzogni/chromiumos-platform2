@@ -1689,13 +1689,6 @@ void Service::HandleChildExit() {
     });
 
     if (iter != vms_.end()) {
-      // Remove it from VMs using storage ballooning. This is quick and needs
-      // to be done to clean up balloon state before we notify others of the
-      // VM being stopped.
-      if (iter->second->GetInfo().storage_ballooning) {
-        RemoveStorageBalloonVm(iter->first);
-      }
-
       // Notify that the VM has exited.
       NotifyVmStopped(iter->first, iter->second->GetInfo().cid, VM_EXITED);
 
@@ -1878,14 +1871,15 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
+  bool storage_ballooning = false;
   // Storage ballooning enabled for Borealis (for ext4 setups in order
   // to not interfere with the storage management solutions of legacy
   // setups) and Bruschetta VMs.
   if (classification == VmId::Type::BOREALIS &&
       GetFilesystem(stateful_path) == "ext4") {
-    vm_info->set_storage_ballooning(request.storage_ballooning());
+    storage_ballooning = request.storage_ballooning();
   } else if (classification == VmId::Type::BRUSCHETTA) {
-    vm_info->set_storage_ballooning(true);
+    storage_ballooning = true;
   }
 
   for (const auto& d : request.disks()) {
@@ -2132,6 +2126,7 @@ StartVmResponse Service::StartVmInternal(
       .bus = bus_,
       .id = vm_id,
       .classification = classification,
+      .storage_ballooning = storage_ballooning,
       .vm_builder = std::move(vm_builder),
       .socket = std::move(socket)});
   if (!vm) {
@@ -2269,12 +2264,10 @@ StartVmResponse Service::StartVmInternal(
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_permission_token(vm->PermissionToken());
+  vm_info->set_storage_ballooning(storage_ballooning);
 
   HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
 
-  if (vm_info->storage_ballooning()) {
-    AddStorageBalloonVm(vm_id);
-  }
   vms_[vm_id] = std::move(vm);
   return response;
 }
@@ -2371,10 +2364,6 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
 
   // Notify that we have stopped a VM.
   NotifyVmStopped(iter->first, iter->second->GetInfo().cid, reason);
-
-  if (iter->second->GetInfo().storage_ballooning) {
-    RemoveStorageBalloonVm(iter->first);
-  }
 
   vms_.erase(iter);
   return true;
@@ -4898,35 +4887,12 @@ int Service::GetCpuQuota() {
   return std::min(100, std::max(1, quota));
 }
 
-void Service::AddStorageBalloonVm(VmId vm_id) {
-  storage_balloon_vms_.insert(vm_id);
-}
-
-void Service::RemoveStorageBalloonVm(VmId vm_id) {
-  storage_balloon_vms_.erase(vm_id);
-}
-
 void Service::OnStatefulDiskSpaceUpdate(
     const spaced::StatefulDiskSpaceUpdate& update) {
-  for (auto& vm_id : storage_balloon_vms_) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&Service::HandleStatefulDiskSpaceUpdate,
-                       weak_ptr_factory_.GetWeakPtr(), vm_id, update));
-  }
-}
-
-void Service::HandleStatefulDiskSpaceUpdate(
-    VmId vm_id, const spaced::StatefulDiskSpaceUpdate update) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto iter = FindVm(vm_id);
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
-    storage_balloon_vms_.erase(vm_id);
-    return;
+  for (auto& iter : vms_) {
+    iter.second->HandleStatefulUpdate(update);
   }
-
-  iter->second->HandleStatefulUpdate(update);
 }
 
 void Service::OnSiblingVmDead(VmId vm_id) {

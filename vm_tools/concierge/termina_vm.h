@@ -111,6 +111,7 @@ class TerminaVm final : public VmBaseImpl {
     scoped_refptr<dbus::Bus> bus;
     VmId id;
     VmId::Type classification;
+    bool storage_ballooning;
     VmBuilder vm_builder;
     std::unique_ptr<ScopedWlSocket> socket;
   };
@@ -339,6 +340,9 @@ class TerminaVm final : public VmBaseImpl {
   // Record's this VM's "type" in the classification sense (e.g. termina,
   // borealis, other...).
   const VmId::Type classification_;
+
+  // Whether this VM uses storage ballooning.
+  const bool storage_ballooning_;
 
   // Handle to the wayland socket used by this VM. This object cleans up the
   // server/socket in its destructor.
