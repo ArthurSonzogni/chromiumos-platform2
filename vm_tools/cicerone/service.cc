@@ -4,7 +4,6 @@
 
 #include "vm_tools/cicerone/service.h"
 
-#include <arpa/inet.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
@@ -168,19 +167,6 @@ bool SetupListenerService(base::Thread* grpc_thread,
     return false;
   }
 
-  return true;
-}
-
-// Converts an IPv4 address to a string. The result will be stored in |str|
-// on success.
-bool IPv4AddressToString(const uint32_t address, std::string* str) {
-  CHECK(str);
-
-  char result[INET_ADDRSTRLEN];
-  if (inet_ntop(AF_INET, &address, result, sizeof(result)) != result) {
-    return false;
-  }
-  *str = std::string(result);
   return true;
 }
 
@@ -782,7 +768,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       return;
     }
     DCHECK(info.ipv4_address);
-    container->set_ipv4_address(info.ipv4_address->ToInAddr().s_addr);
+    container->set_ipv4_address(*info.ipv4_address);
 
     // Found the VM with a matching CID, register the IP address for the
     // container with that VM object.
@@ -1159,13 +1145,7 @@ void Service::OpenUrl(const std::string& container_token,
       event->Signal();
       return;
     }
-    std::string container_ip_str;
-    if (!IPv4AddressToString(container->ipv4_address(), &container_ip_str)) {
-      LOG(ERROR) << "Failed converting IP address to string: "
-                 << container->ipv4_address();
-      event->Signal();
-      return;
-    }
+    std::string container_ip_str = container->ipv4_address().ToString();
     if (container_ip_str == linuxhost_ip_) {
       container_ip_str = kDefaultContainerHostname;
     }

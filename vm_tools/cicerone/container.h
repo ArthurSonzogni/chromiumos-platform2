@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools {
@@ -46,10 +47,10 @@ class Container {
   std::string token() const { return token_; }
 
   // The container's IPv4 address.
-  uint32_t ipv4_address() const { return ipv4_address_; }
+  net_base::IPv4Address ipv4_address() const { return ipv4_address_; }
 
   // Sets the container's IPv4 address.
-  void set_ipv4_address(uint32_t ipv4_address);
+  void set_ipv4_address(const net_base::IPv4Address& ipv4_address);
 
   // The container's DriveFS mount path.
   std::string drivefs_mount_path() const { return drivefs_mount_path_; }
@@ -144,7 +145,7 @@ class Container {
  private:
   std::string name_;
   std::string token_;
-  uint32_t ipv4_address_;
+  net_base::IPv4Address ipv4_address_;
   std::string drivefs_mount_path_;
   std::string homedir_;
   std::vector<uint16_t> listening_tcp4_ports_;

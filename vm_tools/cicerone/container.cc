@@ -39,8 +39,7 @@ Container::Container(const std::string& name,
                      base::WeakPtr<VirtualMachine> vm)
     : name_(name), token_(token), vm_(vm) {}
 
-// Sets the container's IPv4 address.
-void Container::set_ipv4_address(uint32_t ipv4_address) {
+void Container::set_ipv4_address(const net_base::IPv4Address& ipv4_address) {
   ipv4_address_ = ipv4_address;
 }
 
