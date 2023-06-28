@@ -21,7 +21,10 @@
 
 namespace diagnostics {
 
-constexpr base::TimeDelta kRoutineDiscoveryTimeout = base::Seconds(5);
+constexpr base::TimeDelta kRoutineDiscoveryTimeout = base::Seconds(20);
+constexpr base::TimeDelta kHciDiscoveringValidationRetryDelay =
+    base::Seconds(3);
+constexpr int kHciDiscoveringValidationMaxRetries = 5;
 
 // The Bluetooth discovery routine checks that the Bluetooth adapter can start
 // and stop discovery mode correctly by checking the on and off discovering
@@ -60,10 +63,14 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
   void OnAdapterPropertyChanged(org::bluez::Adapter1ProxyInterface* adapter,
                                 const std::string& property_name);
 
+  // Validate the discovering status in HCI level.
+  void ValidateHciDiscovering(bool dbus_discovering, int retry_count);
+
   // Handle the response of hciconfig and check the discovering property of
   // adapter in HCI level.
   void HandleHciConfigResponse(
       bool dbus_discovering,
+      int retry_count,
       ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
   // Validate the discovering property of adapter and store the result.

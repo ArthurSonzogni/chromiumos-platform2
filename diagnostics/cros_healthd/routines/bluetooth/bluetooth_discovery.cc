@@ -166,15 +166,21 @@ void BluetoothDiscoveryRoutine::OnAdapterPropertyChanged(
        step_ != kCheckDiscoveringStatusOff))
     return;
 
-  // Check the discovering status in HCI level.
-  context_->executor()->GetHciDeviceConfig(
-      base::BindOnce(&BluetoothDiscoveryRoutine::HandleHciConfigResponse,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     /*dbus_discovering=*/adapter->discovering()));
+  ValidateHciDiscovering(/*dbus_discovering=*/adapter->discovering(),
+                         /*retry_count=*/0);
+}
+
+void BluetoothDiscoveryRoutine::ValidateHciDiscovering(bool dbus_discovering,
+                                                       int retry_count) {
+  context_->executor()->GetHciDeviceConfig(base::BindOnce(
+      &BluetoothDiscoveryRoutine::HandleHciConfigResponse,
+      weak_ptr_factory_.GetWeakPtr(), dbus_discovering, retry_count));
 }
 
 void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
-    bool dbus_discovering, mojom::ExecutedProcessResultPtr result) {
+    bool dbus_discovering,
+    int retry_count,
+    mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
 
@@ -202,6 +208,20 @@ void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
   //         <texts>
   const char inquiry_regex[] = R"(UP RUNNING.*INQUIRY)";
   bool hci_discovering = RE2::PartialMatch(result->out, inquiry_regex);
+
+  // The discovering state in HCI level is true only when Bluez does Inquiry
+  // (Classic scan). Since BlueZ does Inquiry and LE Scan interleavily, we
+  // should retry the vlidation if Bluez is doing LE Scan.
+  if (step_ == TestStep::kCheckDiscoveringStatusOn && !hci_discovering &&
+      retry_count < kHciDiscoveringValidationMaxRetries) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&BluetoothDiscoveryRoutine::ValidateHciDiscovering,
+                       weak_ptr_factory_.GetWeakPtr(), dbus_discovering,
+                       retry_count + 1),
+        kHciDiscoveringValidationRetryDelay);
+    return;
+  }
   ValidateAdapterDiscovering(dbus_discovering, hci_discovering);
 }
 
