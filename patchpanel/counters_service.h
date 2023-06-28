@@ -86,18 +86,17 @@ class CountersService {
       const std::set<std::string>& devices);
 
  private:
-  // Creates an iptables chain in the mangle table. Returns true if the chain
-  // was created, or false if the chain already existed.
-  bool MakeAccountingChain(const std::string& chain_name);
   bool AddAccountingRule(const std::string& chain_name, TrafficSource source);
-  // Installs the required accounting chains and rules for the target
-  // |chain_tag| if they did not exist already.
-  void SetupAccountingRules(const std::string& chain_tag);
-  // Installs jump rules in POSTROUTING to count traffic ingressing and
-  // egressing |ifname| with the accounting target |chain_tag|.
+  // Installs the required source accounting rules for the accounting chain
+  // |chain|, and creates |chain| if it did not already exist.
+  void SetupAccountingRules(const std::string& chain);
+  // Installs jump rules in POSTROUTING to count traffic ingressing and |ifname|
+  // with the accounting chain |rx_chain| and traffic egressing |ifname| with
+  // the accounting chain |tx_chain|.
   void SetupJumpRules(Iptables::Command command,
                       const std::string& ifname,
-                      const std::string& chain_tag);
+                      const std::string& rx_chain,
+                      const std::string& tx_chain);
 
   Datapath* datapath_;
 };

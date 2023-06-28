@@ -372,15 +372,20 @@ class MulticastCountersServiceTest : public testing::Test {
 TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
   static const struct {
     IpFamily ip_family;
+    std::string chain;
+  } expected_chain_creations[] = {
+      {IpFamily::kDual, "rx_mdns"},
+      {IpFamily::kDual, "rx_ssdp"},
+      {IpFamily::kDual, "rx_ethernet_mdns"},
+      {IpFamily::kDual, "rx_ethernet_ssdp"},
+      {IpFamily::kDual, "rx_wifi_mdns"},
+      {IpFamily::kDual, "rx_wifi_ssdp"},
+  };
+  static const struct {
+    IpFamily ip_family;
     Iptables::Command command;
     std::vector<std::string> argv;
-  } expected_calls[] = {
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_ethernet_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_ethernet_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_wifi_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kN, {"rx_wifi_ssdp"}},
+  } expected_rule_creations[] = {
       {IpFamily::kIPv4,
        Iptables::Command::kA,
        {"INPUT", "-d", kMdnsMcastAddress.ToString(), "-p", "udp", "--dport",
@@ -398,7 +403,12 @@ TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
        {"INPUT", "-d", kSsdpMcastAddress6.ToString(), "-p", "udp", "--dport",
         "1900", "-j", "rx_ssdp"}},
   };
-  for (const auto& rule : expected_calls) {
+
+  for (const auto& rule : expected_chain_creations) {
+    EXPECT_CALL(*datapath_,
+                AddChain(rule.ip_family, Iptables::Table::kMangle, rule.chain));
+  }
+  for (const auto& rule : expected_rule_creations) {
     EXPECT_CALL(*datapath_,
                 ModifyIptables(rule.ip_family, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
@@ -412,7 +422,7 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
     IpFamily ip_family;
     Iptables::Command command;
     std::vector<std::string> argv;
-  } expected_calls[] = {
+  } expected_rule_deletions[] = {
       {IpFamily::kIPv4,
        Iptables::Command::kD,
        {"INPUT", "-d", kMdnsMcastAddress.ToString(), "-p", "udp", "--dport",
@@ -429,19 +439,38 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
        Iptables::Command::kD,
        {"INPUT", "-d", kSsdpMcastAddress6.ToString(), "-p", "udp", "--dport",
         "1900", "-j", "rx_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kF, {"rx_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kF, {"rx_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_ethernet_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_ethernet_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_wifi_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_wifi_ssdp"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_mdns"}},
-      {IpFamily::kDual, Iptables::Command::kX, {"rx_ssdp"}},
   };
-  for (const auto& rule : expected_calls) {
+  static const struct {
+    IpFamily ip_family;
+    std::string chain;
+  } expected_chain_flushes[] = {
+      {IpFamily::kDual, "rx_mdns"},
+      {IpFamily::kDual, "rx_ssdp"},
+  };
+  static const struct {
+    IpFamily ip_family;
+    std::string chain;
+  } expected_chain_deletions[] = {
+      {IpFamily::kDual, "rx_ethernet_mdns"},
+      {IpFamily::kDual, "rx_ethernet_ssdp"},
+      {IpFamily::kDual, "rx_wifi_mdns"},
+      {IpFamily::kDual, "rx_wifi_ssdp"},
+      {IpFamily::kDual, "rx_mdns"},
+      {IpFamily::kDual, "rx_ssdp"},
+  };
+
+  for (const auto& rule : expected_rule_deletions) {
     EXPECT_CALL(*datapath_,
                 ModifyIptables(rule.ip_family, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
+  }
+  for (const auto& rule : expected_chain_flushes) {
+    EXPECT_CALL(*datapath_, FlushChain(rule.ip_family, Iptables::Table::kMangle,
+                                       rule.chain));
+  }
+  for (const auto& rule : expected_chain_deletions) {
+    EXPECT_CALL(*datapath_, RemoveChain(rule.ip_family,
+                                        Iptables::Table::kMangle, rule.chain));
   }
 
   multicast_counters_svc_->Stop();

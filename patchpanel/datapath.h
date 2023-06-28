@@ -425,16 +425,20 @@ class Datapath {
                           const std::string dns_ipv4_addr);
   bool RemoveRedirectDnsRule(const ShillClient::Device& shill_device);
 
+  // Returns true if the chain |name| exists in |table|.
+  virtual bool CheckChain(IpFamily family,
+                          Iptables::Table table,
+                          const std::string& name);
   // Add, remove, or flush chain |chain| in table |table|.
-  bool AddChain(IpFamily family,
-                Iptables::Table table,
-                const std::string& name);
-  bool RemoveChain(IpFamily family,
-                   Iptables::Table table,
-                   const std::string& name);
-  bool FlushChain(IpFamily family,
-                  Iptables::Table table,
-                  const std::string& name);
+  virtual bool AddChain(IpFamily family,
+                        Iptables::Table table,
+                        const std::string& name);
+  virtual bool RemoveChain(IpFamily family,
+                           Iptables::Table table,
+                           const std::string& name);
+  virtual bool FlushChain(IpFamily family,
+                          Iptables::Table table,
+                          const std::string& name);
   // Manipulates a chain |chain| in table |table|.
   virtual bool ModifyChain(IpFamily family,
                            Iptables::Table table,

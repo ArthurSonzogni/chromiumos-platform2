@@ -132,6 +132,30 @@ class MockDatapath : public Datapath {
               (const std::string& ifname),
               (override));
   MOCK_METHOD(bool,
+              CheckChain,
+              (IpFamily family,
+               Iptables::Table table,
+               const std::string& chain),
+              (override));
+  MOCK_METHOD(bool,
+              AddChain,
+              (IpFamily family,
+               Iptables::Table table,
+               const std::string& chain),
+              (override));
+  MOCK_METHOD(bool,
+              RemoveChain,
+              (IpFamily family,
+               Iptables::Table table,
+               const std::string& chain),
+              (override));
+  MOCK_METHOD(bool,
+              FlushChain,
+              (IpFamily family,
+               Iptables::Table table,
+               const std::string& chain),
+              (override));
+  MOCK_METHOD(bool,
               ModifyChain,
               (IpFamily family,
                Iptables::Table table,

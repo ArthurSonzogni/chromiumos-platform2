@@ -95,13 +95,12 @@ MulticastCountersService::MulticastCountersService(Datapath* datapath)
 void MulticastCountersService::Start() {
   std::vector<std::string> protocols = {"mdns", "ssdp"};
   for (std::string const& protocol : protocols) {
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kN, {"rx_" + protocol});
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kN,
-                              {"rx_ethernet_" + protocol});
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kN, {"rx_wifi_" + protocol});
+    datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle,
+                        "rx_" + protocol);
+    datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle,
+                        "rx_ethernet_" + protocol);
+    datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle,
+                        "rx_wifi_" + protocol);
   }
 
   std::vector<std::string> args;
@@ -151,15 +150,14 @@ void MulticastCountersService::Stop() {
 
   std::vector<std::string> protocols = {"mdns", "ssdp"};
   for (std::string const& protocol : protocols) {
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kF, {"rx_" + protocol});
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kX,
-                              {"rx_ethernet_" + protocol});
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kX, {"rx_wifi_" + protocol});
-    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                              Iptables::Command::kX, {"rx_" + protocol});
+    datapath_->FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
+                          "rx_" + protocol);
+    datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
+                           "rx_ethernet_" + protocol);
+    datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
+                           "rx_wifi_" + protocol);
+    datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
+                           "rx_" + protocol);
   }
 }
 

@@ -2016,6 +2016,13 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
                         log_failures);
 }
 
+bool Datapath::CheckChain(IpFamily family,
+                          Iptables::Table table,
+                          const std::string& name) {
+  return ModifyChain(family, table, Iptables::Command::kC, name,
+                     /*log_failures=*/false);
+}
+
 bool Datapath::AddChain(IpFamily family,
                         Iptables::Table table,
                         const std::string& name) {

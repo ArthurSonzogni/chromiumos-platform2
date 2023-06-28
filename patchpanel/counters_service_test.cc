@@ -298,11 +298,17 @@ class CountersServiceTest : public testing::Test {
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
-                                      Iptables::Command::kN, "rx_eth0", _))
+  EXPECT_CALL(*datapath_,
+              CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_eth0"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_,
+              CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_eth0"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_,
+              AddChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_eth0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
-                                      Iptables::Command::kN, "tx_eth0", _))
+  EXPECT_CALL(*datapath_,
+              AddChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_eth0"))
       .WillOnce(Return(true));
   static const struct {
     Iptables::Command command;
@@ -407,11 +413,17 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   // The following commands are expected when tun0 comes up.
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
-                                      Iptables::Command::kN, "rx_vpn", _))
+  EXPECT_CALL(*datapath_,
+              CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_vpn"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_,
+              CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_vpn"))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*datapath_,
+              AddChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_vpn"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
-                                      Iptables::Command::kN, "tx_vpn", _))
+  EXPECT_CALL(*datapath_,
+              AddChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_vpn"))
       .WillOnce(Return(true));
   const struct {
     Iptables::Command command;
@@ -517,11 +529,14 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
 TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   // Makes the chain creation commands return false (we already have these
   // rules).
-  EXPECT_CALL(*datapath_, ModifyChain(_, Iptables::Table::kMangle,
-                                      Iptables::Command::kN, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*datapath_,
+              CheckChain(IpFamily::kDual, Iptables::Table::kMangle, _))
+      .WillRepeatedly(Return(true));
 
   // Only the jump rules should be recreated.
+  EXPECT_CALL(*datapath_,
+              AddChain(IpFamily::kDual, Iptables::Table::kMangle, _))
+      .Times(0);
   const struct {
     Iptables::Command command;
     std::vector<std::string> argv;
