@@ -242,8 +242,6 @@ class PortalDetector {
 
  private:
   friend class PortalDetectorTest;
-  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayAfterDelay);
-  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelay);

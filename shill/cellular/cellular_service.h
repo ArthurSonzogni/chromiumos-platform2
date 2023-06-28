@@ -173,7 +173,6 @@ class CellularService : public Service {
   friend class ContainsCellularPropertiesMatcherP2;
 
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, SetAttachApn);

@@ -537,7 +537,6 @@ class Manager {
 
   FRIEND_TEST(CellularCapability3gppTest, TerminationAction);
   FRIEND_TEST(CellularCapability3gppTest, TerminationActionRemovedByStopModem);
-  FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
@@ -547,7 +546,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, ClaimBlockedDevice);
   FRIEND_TEST(ManagerTest, ClaimDevice);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
-  FRIEND_TEST(ManagerTest, ScanAndConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
@@ -555,13 +553,11 @@ class Manager {
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
-  FRIEND_TEST(ManagerTest, EnumerateServiceInnerDevices);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
   FRIEND_TEST(ManagerTest, IsTechnologyProhibited);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
-  FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, UpdateDefaultServices);
   FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
@@ -581,7 +577,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
-  FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
   FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);

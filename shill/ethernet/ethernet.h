@@ -105,8 +105,6 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
 
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
-  FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeed);
-  FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeedNoSelectedService);
   FRIEND_TEST(EthernetTest, RunEthtoolCmd);
 
   // Return a pointer to the EthernetProvider for Ethernet devices.

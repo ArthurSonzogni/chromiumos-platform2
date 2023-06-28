@@ -357,7 +357,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
-  FRIEND_TEST(WiFiServiceTest, SetMACAddress);
   FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPersistentPolicy);

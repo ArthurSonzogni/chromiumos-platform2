@@ -121,13 +121,8 @@ class TetheringManager : public Network::EventHandler {
 
  private:
   friend class TetheringManagerTest;
-  FRIEND_TEST(TetheringManagerTest, FromProperties);
-  FRIEND_TEST(TetheringManagerTest, GetCapabilities);
-  FRIEND_TEST(TetheringManagerTest, GetConfig);
   FRIEND_TEST(TetheringManagerTest, TetheringConfigLoadAndUnload);
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
-  FRIEND_TEST(TetheringManagerTest, SaveConfig);
-  FRIEND_TEST(TetheringManagerTest, SetEnabled);
   FRIEND_TEST(TetheringManagerTest, MARWithSSIDChange);
   FRIEND_TEST(TetheringManagerTest, MARWithTetheringRestart);
   FRIEND_TEST(TetheringManagerTest, CheckMACStored);

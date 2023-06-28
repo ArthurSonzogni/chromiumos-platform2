@@ -302,15 +302,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
-  FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, LinkDeleted);
-  FRIEND_TEST(CellularTest, UseNoArpGateway);
-  FRIEND_TEST(DevicePortalDetectionTest, PortalIntervalIsZero);
-  FRIEND_TEST(DevicePortalDetectionTest, RestartPortalDetection);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, FetchTrafficCounters);
   FRIEND_TEST(DeviceTest, GetProperties);
-  FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
@@ -330,7 +325,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
-  FRIEND_TEST(WiFiMainTest, UseArpGateway);
 
   virtual ~Device();
 

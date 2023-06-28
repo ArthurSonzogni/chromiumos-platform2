@@ -430,8 +430,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EstablishLinkFailureNoBearer);
   FRIEND_TEST(CellularTest, EstablishLinkFailureMismatchedDataInterface);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
-  FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
-  FRIEND_TEST(CellularTest, LinkEventUpWithoutPPP);
   FRIEND_TEST(CellularTest, Notify);
   FRIEND_TEST(CellularTest, OnAfterResumeDisableInProgressWantDisabled);
   FRIEND_TEST(CellularTest, OnAfterResumeDisableQueuedWantEnabled);
@@ -445,7 +443,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterConnect);
   FRIEND_TEST(CellularTest, RequiredApnExists);
   FRIEND_TEST(CellularTest, SetPolicyAllowRoaming);
-  FRIEND_TEST(CellularTest, SetUseAttachApn);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartPPP);

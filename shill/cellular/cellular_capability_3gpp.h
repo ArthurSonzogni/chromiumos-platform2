@@ -363,9 +363,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapability3gppTest, SimPathChanged);
-  FRIEND_TEST(CellularCapability3gppTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, StartModemInWrongState);
-  FRIEND_TEST(CellularCapability3gppTest, StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearers);
   FRIEND_TEST(CellularCapability3gppTest, UpdateLinkSpeed);
   FRIEND_TEST(CellularCapability3gppTest, UpdatePendingActivationState);
@@ -374,7 +372,6 @@ class CellularCapability3gpp {
               UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapability3gppTest, UpdateServiceActivationState);
   FRIEND_TEST(CellularCapability3gppTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapability3gppTimerTest, CompleteActivation);
   // CellularTest
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
 

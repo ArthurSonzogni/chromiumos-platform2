@@ -145,7 +145,6 @@ class DeviceInfo {
   friend class DeviceInfoMockedGetUserId;
   friend class DeviceInfoTechnologyTest;
   friend class DeviceInfoTest;
-  FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, DeviceRemovedEvent);
   FRIEND_TEST(DeviceInfoTest, GetUninitializedTechnologies);
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
