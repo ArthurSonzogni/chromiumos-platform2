@@ -68,6 +68,11 @@ struct std::hash<DeviceID> {
   }
 };
 
+struct InputMapping {
+  const char* id;
+  const std::unordered_map<uint32_t, uint32_t> mapping;
+};
+
 // Buttons being emulated by libevdev uinput.
 // Note: Do not enable BTN_TL2 or BTN_TR2, as they will significantly
 // change the Linux joydev interpretation of the triggers on ABS_Z/ABS_RZ.
@@ -167,100 +172,105 @@ const DeviceID kXboxElite2BT = {
 // discarded.
 
 // DualSense (PS5).
-const std::unordered_map<uint32_t, uint32_t> kDualSenseMapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_Z, ABS_RX},
-    {ABS_RZ, ABS_RY},
-    // Joystick press
-    {BTN_SELECT, BTN_THUMBL},
-    {BTN_START, BTN_THUMBR},
-    // DPad
-    {ABS_HAT0X, ABS_HAT0X},
-    {ABS_HAT0Y, ABS_HAT0Y},
-    // Face Buttons
-    {BTN_B, BTN_A},
-    {BTN_C, BTN_B},
-    {BTN_A, BTN_X},
-    {BTN_X, BTN_Y},
-    // Left bumper and trigger
-    {BTN_Y, BTN_TL},
-    {ABS_RX, ABS_Z},
-    // Right bumper and trigger
-    {BTN_Z, BTN_TR},
-    {ABS_RY, ABS_RZ},
-    // Menu buttons
-    {BTN_TL2, BTN_SELECT},
-    {BTN_TR2, BTN_START},
-    {BTN_MODE, BTN_MODE},
-    // Unused buttons: Touchpad_click: BTN_THUMBL, Microphone_button: BTN_THUMBR
-};
+const InputMapping kDualSenseMapping = {
+    .id = "DualSenseMappingV1",
+    .mapping = {
+        // Left Joystick
+        {ABS_X, ABS_X},
+        {ABS_Y, ABS_Y},
+        // Right Joystick
+        {ABS_Z, ABS_RX},
+        {ABS_RZ, ABS_RY},
+        // Joystick press
+        {BTN_SELECT, BTN_THUMBL},
+        {BTN_START, BTN_THUMBR},
+        // DPad
+        {ABS_HAT0X, ABS_HAT0X},
+        {ABS_HAT0Y, ABS_HAT0Y},
+        // Face Buttons
+        {BTN_B, BTN_A},
+        {BTN_C, BTN_B},
+        {BTN_A, BTN_X},
+        {BTN_X, BTN_Y},
+        // Left bumper and trigger
+        {BTN_Y, BTN_TL},
+        {ABS_RX, ABS_Z},
+        // Right bumper and trigger
+        {BTN_Z, BTN_TR},
+        {ABS_RY, ABS_RZ},
+        // Menu buttons
+        {BTN_TL2, BTN_SELECT},
+        {BTN_TR2, BTN_START},
+        {BTN_MODE, BTN_MODE},
+        // Unused buttons: Touchpad_click: BTN_THUMBL, Microphone_button:
+        // BTN_THUMBR
+    }};
 
 // DualShock4 (PS4).
-const std::unordered_map<uint32_t, uint32_t> kDualShock4Mapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_RX, ABS_RX},
-    {ABS_RY, ABS_RY},
-    // Joystick press
-    {BTN_THUMBL, BTN_THUMBL},
-    {BTN_THUMBR, BTN_THUMBR},
-    // DPad
-    {ABS_HAT0X, ABS_HAT0X},
-    {ABS_HAT0Y, ABS_HAT0Y},
-    // Right-hand Buttons
-    {BTN_A, BTN_A},
-    {BTN_B, BTN_B},
-    {BTN_X, BTN_Y},
-    {BTN_Y, BTN_X},
-    // Left bumper and trigger
-    {BTN_TL, BTN_TL},
-    {ABS_Z, ABS_Z},
-    // Right bumper and trigger
-    {BTN_TR, BTN_TR},
-    {ABS_RZ, ABS_RZ},
-    // Menu buttons
-    {BTN_SELECT, BTN_SELECT},
-    {BTN_START, BTN_START},
-    {BTN_MODE, BTN_MODE},
-};
+const InputMapping kDualShock4Mapping = {.id = "DualShock4MappingV1",
+                                         .mapping = {
+                                             // Left Joystick
+                                             {ABS_X, ABS_X},
+                                             {ABS_Y, ABS_Y},
+                                             // Right Joystick
+                                             {ABS_RX, ABS_RX},
+                                             {ABS_RY, ABS_RY},
+                                             // Joystick press
+                                             {BTN_THUMBL, BTN_THUMBL},
+                                             {BTN_THUMBR, BTN_THUMBR},
+                                             // DPad
+                                             {ABS_HAT0X, ABS_HAT0X},
+                                             {ABS_HAT0Y, ABS_HAT0Y},
+                                             // Right-hand Buttons
+                                             {BTN_A, BTN_A},
+                                             {BTN_B, BTN_B},
+                                             {BTN_X, BTN_Y},
+                                             {BTN_Y, BTN_X},
+                                             // Left bumper and trigger
+                                             {BTN_TL, BTN_TL},
+                                             {ABS_Z, ABS_Z},
+                                             // Right bumper and trigger
+                                             {BTN_TR, BTN_TR},
+                                             {ABS_RZ, ABS_RZ},
+                                             // Menu buttons
+                                             {BTN_SELECT, BTN_SELECT},
+                                             {BTN_START, BTN_START},
+                                             {BTN_MODE, BTN_MODE},
+                                         }};
 
 // DualShock3 (PS3).
-const std::unordered_map<uint32_t, uint32_t> kDualShock3Mapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_RX, ABS_RX},
-    {ABS_RY, ABS_RY},
-    // Joystick press
-    {BTN_THUMBL, BTN_THUMBL},
-    {BTN_THUMBR, BTN_THUMBR},
-    // DPad
-    {BTN_DPAD_LEFT, ABS_HAT0X},
-    {BTN_DPAD_RIGHT, ABS_HAT0X},
-    {BTN_DPAD_UP, ABS_HAT0Y},
-    {BTN_DPAD_DOWN, ABS_HAT0Y},
-    // Face Buttons
-    {BTN_A, BTN_A},
-    {BTN_B, BTN_B},
-    {BTN_Y, BTN_X},
-    {BTN_X, BTN_Y},
-    // Left bumper and trigger
-    {BTN_TL, BTN_TL},
-    {ABS_Z, ABS_Z},
-    // Right bumper and trigger
-    {BTN_TR, BTN_TR},
-    {ABS_RZ, ABS_RZ},
-    // Menu buttons
-    {BTN_SELECT, BTN_SELECT},
-    {BTN_START, BTN_START},
-    {BTN_MODE, BTN_MODE},
-};
+const InputMapping kDualShock3Mapping = {.id = "DualShock3MappingV1",
+                                         .mapping = {
+                                             // Left Joystick
+                                             {ABS_X, ABS_X},
+                                             {ABS_Y, ABS_Y},
+                                             // Right Joystick
+                                             {ABS_RX, ABS_RX},
+                                             {ABS_RY, ABS_RY},
+                                             // Joystick press
+                                             {BTN_THUMBL, BTN_THUMBL},
+                                             {BTN_THUMBR, BTN_THUMBR},
+                                             // DPad
+                                             {BTN_DPAD_LEFT, ABS_HAT0X},
+                                             {BTN_DPAD_RIGHT, ABS_HAT0X},
+                                             {BTN_DPAD_UP, ABS_HAT0Y},
+                                             {BTN_DPAD_DOWN, ABS_HAT0Y},
+                                             // Face Buttons
+                                             {BTN_A, BTN_A},
+                                             {BTN_B, BTN_B},
+                                             {BTN_Y, BTN_X},
+                                             {BTN_X, BTN_Y},
+                                             // Left bumper and trigger
+                                             {BTN_TL, BTN_TL},
+                                             {ABS_Z, ABS_Z},
+                                             // Right bumper and trigger
+                                             {BTN_TR, BTN_TR},
+                                             {ABS_RZ, ABS_RZ},
+                                             // Menu buttons
+                                             {BTN_SELECT, BTN_SELECT},
+                                             {BTN_START, BTN_START},
+                                             {BTN_MODE, BTN_MODE},
+                                         }};
 
 // Represents how the input events of a certain controllers (key) should be
 // interpreted (value). So far this pattern has been observed in:
@@ -271,130 +281,131 @@ const std::unordered_map<uint32_t, uint32_t> kDualShock3Mapping = {
 // - Xbox One S (updated firmware) (BT)
 // - Xbox Adaptive (BT)
 // - Xbox Elite 2 (BT)
-const std::unordered_map<uint32_t, uint32_t> kAxisQuirkMapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_Z, ABS_RX},
-    {ABS_RZ, ABS_RY},
-    // Joystick press
-    {BTN_THUMBL, BTN_THUMBL},
-    {BTN_THUMBR, BTN_THUMBR},
-    // DPad
-    {ABS_HAT0X, ABS_HAT0X},
-    {ABS_HAT0Y, ABS_HAT0Y},
-    // Face Buttons
-    {BTN_A, BTN_A},
-    {BTN_B, BTN_B},
-    {BTN_X, BTN_X},
-    {BTN_Y, BTN_Y},
-    // Left bumper and trigger
-    {BTN_TL, BTN_TL},
-    {ABS_BRAKE, ABS_Z},
-    // Right bumper and trigger
-    {BTN_TR, BTN_TR},
-    {ABS_GAS, ABS_RZ},
-    // Menu buttons
-    {BTN_SELECT, BTN_SELECT},
-    {BTN_START, BTN_START},
-    {BTN_MODE, BTN_MODE},
-};
+const InputMapping kAxisQuirkMapping = {.id = "AxisQuirkMappingV1",
+                                        .mapping = {
+                                            // Left Joystick
+                                            {ABS_X, ABS_X},
+                                            {ABS_Y, ABS_Y},
+                                            // Right Joystick
+                                            {ABS_Z, ABS_RX},
+                                            {ABS_RZ, ABS_RY},
+                                            // Joystick press
+                                            {BTN_THUMBL, BTN_THUMBL},
+                                            {BTN_THUMBR, BTN_THUMBR},
+                                            // DPad
+                                            {ABS_HAT0X, ABS_HAT0X},
+                                            {ABS_HAT0Y, ABS_HAT0Y},
+                                            // Face Buttons
+                                            {BTN_A, BTN_A},
+                                            {BTN_B, BTN_B},
+                                            {BTN_X, BTN_X},
+                                            {BTN_Y, BTN_Y},
+                                            // Left bumper and trigger
+                                            {BTN_TL, BTN_TL},
+                                            {ABS_BRAKE, ABS_Z},
+                                            // Right bumper and trigger
+                                            {BTN_TR, BTN_TR},
+                                            {ABS_GAS, ABS_RZ},
+                                            // Menu buttons
+                                            {BTN_SELECT, BTN_SELECT},
+                                            {BTN_START, BTN_START},
+                                            {BTN_MODE, BTN_MODE},
+                                        }};
 
 // Xbox One S (BT) - Old firmware.
 // Note: this mapping is based off of a mapping from another feature
 // and has not been explicitly tested. See b/277829347.
-const std::unordered_map<uint32_t, uint32_t> kXboxOneSOldMapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_RX, ABS_RX},
-    {ABS_RY, ABS_RY},
-    // Joystick press
-    {BTN_TL2, BTN_THUMBL},
-    {BTN_TR2, BTN_THUMBR},
-    // DPad
-    {ABS_HAT0X, ABS_HAT0X},
-    {ABS_HAT0Y, ABS_HAT0Y},
-    // Face Buttons
-    {BTN_A, BTN_A},
-    {BTN_B, BTN_B},
-    {BTN_C, BTN_X},
-    {BTN_X, BTN_Y},
-    // Left bumper and trigger
-    {BTN_Y, BTN_TL},
-    {ABS_Z, ABS_Z},
-    // Right bumper and trigger
-    {BTN_Z, BTN_TR},
-    {ABS_RZ, ABS_RZ},
-    // Menu buttons
-    {BTN_TL, BTN_SELECT},
-    {BTN_TR, BTN_START},
-    {0x8b, BTN_MODE},
-};
+const InputMapping kXboxOneSOldMapping = {.id = "XboxOneSOldMappingV1",
+                                          .mapping = {
+                                              // Left Joystick
+                                              {ABS_X, ABS_X},
+                                              {ABS_Y, ABS_Y},
+                                              // Right Joystick
+                                              {ABS_RX, ABS_RX},
+                                              {ABS_RY, ABS_RY},
+                                              // Joystick press
+                                              {BTN_TL2, BTN_THUMBL},
+                                              {BTN_TR2, BTN_THUMBR},
+                                              // DPad
+                                              {ABS_HAT0X, ABS_HAT0X},
+                                              {ABS_HAT0Y, ABS_HAT0Y},
+                                              // Face Buttons
+                                              {BTN_A, BTN_A},
+                                              {BTN_B, BTN_B},
+                                              {BTN_C, BTN_X},
+                                              {BTN_X, BTN_Y},
+                                              // Left bumper and trigger
+                                              {BTN_Y, BTN_TL},
+                                              {ABS_Z, ABS_Z},
+                                              // Right bumper and trigger
+                                              {BTN_Z, BTN_TR},
+                                              {ABS_RZ, ABS_RZ},
+                                              // Menu buttons
+                                              {BTN_TL, BTN_SELECT},
+                                              {BTN_TR, BTN_START},
+                                              {0x8b, BTN_MODE},
+                                          }};
 
 // Xbox One S (BT) - 2016 firmware.
-const std::unordered_map<uint32_t, uint32_t> kXboxOneS2016Mapping = {
-    // Left Joystick
-    {ABS_X, ABS_X},
-    {ABS_Y, ABS_Y},
-    // Right Joystick
-    {ABS_Z, ABS_RX},
-    {ABS_RZ, ABS_RY},
-    // Joystick press
-    {BTN_THUMBL, BTN_THUMBL},
-    {BTN_THUMBR, BTN_THUMBR},
-    // DPad
-    {ABS_HAT0X, ABS_HAT0X},
-    {ABS_HAT0Y, ABS_HAT0Y},
-    // Face Buttons
-    {BTN_A, BTN_A},
-    {BTN_B, BTN_B},
-    {BTN_X, BTN_X},
-    {BTN_Y, BTN_Y},
-    // Left bumper and trigger
-    {BTN_TL, BTN_TL},
-    {ABS_BRAKE, ABS_Z},
-    // Right bumper and trigger
-    {BTN_TR, BTN_TR},
-    {ABS_GAS, ABS_RZ},
-    // Menu buttons
-    {KEY_BACK, BTN_SELECT},
-    {BTN_START, BTN_START},
-    {KEY_HOMEPAGE, BTN_MODE},
-};
+const InputMapping kXboxOneS2016Mapping = {.id = "XboxOneS2016MappingV1",
+                                           .mapping = {
+                                               // Left Joystick
+                                               {ABS_X, ABS_X},
+                                               {ABS_Y, ABS_Y},
+                                               // Right Joystick
+                                               {ABS_Z, ABS_RX},
+                                               {ABS_RZ, ABS_RY},
+                                               // Joystick press
+                                               {BTN_THUMBL, BTN_THUMBL},
+                                               {BTN_THUMBR, BTN_THUMBR},
+                                               // DPad
+                                               {ABS_HAT0X, ABS_HAT0X},
+                                               {ABS_HAT0Y, ABS_HAT0Y},
+                                               // Face Buttons
+                                               {BTN_A, BTN_A},
+                                               {BTN_B, BTN_B},
+                                               {BTN_X, BTN_X},
+                                               {BTN_Y, BTN_Y},
+                                               // Left bumper and trigger
+                                               {BTN_TL, BTN_TL},
+                                               {ABS_BRAKE, ABS_Z},
+                                               // Right bumper and trigger
+                                               {BTN_TR, BTN_TR},
+                                               {ABS_GAS, ABS_RZ},
+                                               // Menu buttons
+                                               {KEY_BACK, BTN_SELECT},
+                                               {BTN_START, BTN_START},
+                                               {KEY_HOMEPAGE, BTN_MODE},
+                                           }};
 
 // Map of devices to their respctive input remappings.
-const std::unordered_map<DeviceID,
-                         const std::unordered_map<uint32_t, uint32_t>*>
-    kDeviceMappings = {
-        {kStadiaUSB, &kAxisQuirkMapping},
-        {kStadiaBT, &kAxisQuirkMapping},
-        // Note that the BTN_MODE is not mapped correctly for the
-        // Stratus Duo, due to it being interpreted on the host
-        // as a key event causing a browser HOME action.
-        {kStratusDuoBT, &kAxisQuirkMapping},
-        {kStratusPlusBT, &kAxisQuirkMapping},
-        {kDualSenseUSB, &kDualSenseMapping},
-        {kDualSenseBT, &kDualSenseMapping},
-        {kDualShock4v2USB, &kDualShock4Mapping},
-        {kDualShock4v2BT, &kDualShock4Mapping},
-        {kDualShock3USB, &kDualShock3Mapping},
-        {kXboxSeriesXBT, &kAxisQuirkMapping},
-        {kXboxOneSOldBT, &kXboxOneSOldMapping},
-        {kXboxOneS2016BT, &kXboxOneS2016Mapping},
-        {kXboxOneSUpdatedBT, &kAxisQuirkMapping},
-        // These mappings are inferred to be the same based on the gamepad api
-        // mappings.
-        // See:
-        // https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:device/gamepad/gamepad_standard_mappings_linux.cc;l=968
-        {kXboxAdaptiveBT, &kAxisQuirkMapping},
-        {kXboxElite2BT, &kAxisQuirkMapping},
-        {kDualShock4v1USB, &kDualShock4Mapping},
-        {kDualShock4v1BT, &kDualShock4Mapping},
-        {kDualSenseEdgeUSB, &kDualSenseMapping},
-        {kDualSenseEdgeBT, &kDualSenseMapping},
+const std::unordered_map<DeviceID, const InputMapping*> kDeviceMappings = {
+    {kStadiaUSB, &kAxisQuirkMapping},
+    {kStadiaBT, &kAxisQuirkMapping},
+    // Note that the BTN_MODE is not mapped correctly for the
+    // Stratus Duo, due to it being interpreted on the host
+    // as a key event causing a browser HOME action.
+    {kStratusDuoBT, &kAxisQuirkMapping},
+    {kStratusPlusBT, &kAxisQuirkMapping},
+    {kDualSenseUSB, &kDualSenseMapping},
+    {kDualSenseBT, &kDualSenseMapping},
+    {kDualShock4v2USB, &kDualShock4Mapping},
+    {kDualShock4v2BT, &kDualShock4Mapping},
+    {kDualShock3USB, &kDualShock3Mapping},
+    {kXboxSeriesXBT, &kAxisQuirkMapping},
+    {kXboxOneSOldBT, &kXboxOneSOldMapping},
+    {kXboxOneS2016BT, &kXboxOneS2016Mapping},
+    {kXboxOneSUpdatedBT, &kAxisQuirkMapping},
+    // These mappings are inferred to be the same based on the gamepad api
+    // mappings.
+    // See:
+    // https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:device/gamepad/gamepad_standard_mappings_linux.cc;l=968
+    {kXboxAdaptiveBT, &kAxisQuirkMapping},
+    {kXboxElite2BT, &kAxisQuirkMapping},
+    {kDualShock4v1USB, &kDualShock4Mapping},
+    {kDualShock4v1BT, &kDualShock4Mapping},
+    {kDualSenseEdgeUSB, &kDualSenseMapping},
+    {kDualSenseEdgeBT, &kDualSenseMapping},
 };
 
 // Note: the majority of protocol errors are treated as non-fatal, and
@@ -420,21 +431,28 @@ static void sl_internal_gamepad_removed(void* data,
   zcr_gamepad_v2_destroy(gamepad);
 
   wl_list_remove(&host_gamepad->link);
+  fprintf(
+      stderr,
+      "info: Gamepad removed: name=%s, bus=%u, vendor_id=%x, product_id=%x, "
+      "version=%x, input_mapping=%s \n",
+      host_gamepad->name, host_gamepad->bus, host_gamepad->vendor_id,
+      host_gamepad->product_id, host_gamepad->version,
+      (host_gamepad->input_mapping) ? host_gamepad->input_mapping->id : "none");
   delete host_gamepad;
 }
 
 // Helper function to remap the input events from a host_gamepad into the
 // correct output event to be emulated by the generated uinput device.
 static bool remap_input(struct sl_host_gamepad* host_gamepad, uint32_t& input) {
-  if (host_gamepad->mapping == nullptr) {
+  if (host_gamepad->input_mapping == nullptr) {
     return true;
   }
-  auto it = host_gamepad->mapping->find(input);
-  if (it != host_gamepad->mapping->end()) {
+  auto it = host_gamepad->input_mapping->mapping.find(input);
+  if (it != host_gamepad->input_mapping->mapping.end()) {
     input = it->second;
     return true;
   }
-  // If a mapping exists, and we get an input we don't expect
+  // If an input_mapping exists, and we get an input we don't expect
   // or don't handle, we shouldn't emulate it. An example of this
   // is that the DualSense controller's triggers activate an axis
   // and a button at the same time, which would result in unexpected
@@ -481,7 +499,7 @@ static void sl_internal_gamepad_button(void* data,
   // to state.
   int value = (state == ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED) ? 1 : 0;
 
-  if (host_gamepad->mapping == &kDualShock3Mapping) {
+  if (host_gamepad->input_mapping == &kDualShock3Mapping) {
     // Convert button to axis if necessary.
     if (original_button != button &&
         (original_button == BTN_DPAD_UP || original_button == BTN_DPAD_LEFT ||
@@ -608,7 +626,12 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   host_gamepad->state = kStatePending;
   host_gamepad->ev_dev = Libevdev::Get()->new_evdev();
   host_gamepad->uinput_dev = nullptr;
-  host_gamepad->mapping = nullptr;
+  host_gamepad->name = name;
+  host_gamepad->bus = bus;
+  host_gamepad->vendor_id = vendor_id;
+  host_gamepad->product_id = product_id;
+  host_gamepad->version = version;
+  host_gamepad->input_mapping = nullptr;
 
   if (host_gamepad->ev_dev == nullptr) {
     fprintf(stderr, "error: libevdev_new failed\n");
@@ -618,9 +641,11 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
 
   // We provide limited remapping at this time. Only moderately XBox360
   // HID compatible controllers are likely to work well.
-  auto it = kDeviceMappings.find(DeviceID{vendor_id, product_id, version});
+  auto it = kDeviceMappings.find(DeviceID{host_gamepad->vendor_id,
+                                          host_gamepad->product_id,
+                                          host_gamepad->version});
   if (it != kDeviceMappings.end()) {
-    host_gamepad->mapping = it->second;
+    host_gamepad->input_mapping = it->second;
     if (it->first == kDualShock3USB) {
       // The DualShock3 gamepad doesn't have any axes for its DPAD, we need to
       // add them manually.
@@ -644,6 +669,13 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   for (unsigned int i = 0; i < ARRAY_SIZE(kButtons); i++)
     Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_KEY,
                                        kButtons[i], nullptr);
+  fprintf(
+      stderr,
+      "info: Gamepad added: name=%s, bus=%u, vendor_id=%x, product_id=%x, "
+      "version=%x, input_mapping=%s \n",
+      host_gamepad->name, host_gamepad->bus, host_gamepad->vendor_id,
+      host_gamepad->product_id, host_gamepad->version,
+      (host_gamepad->input_mapping) ? host_gamepad->input_mapping->id : "none");
 }  // NOLINT(whitespace/indent), lint bug b/173143790
 
 // Note: not currently implemented by Exo.

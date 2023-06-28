@@ -322,7 +322,7 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
 
     EXPECT_EQ(host_gamepads.size(), 1);
 
-    for (auto& input : *it.second) {
+    for (auto& input : it.second->mapping) {
       EXPECT_CALL(libevdevshim, enable_event_code(ev_dev, EV_ABS, input.second,
                                                   ::testing::_));
 
@@ -332,7 +332,7 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
 
     host_gamepads[0]->state = kStateActivated;
 
-    for (auto& input : *it.second) {
+    for (auto& input : it.second->mapping) {
       EXPECT_CALL(libevdevshim,
                   uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS,
                                      input.second, wl_fixed_to_double(250)));
@@ -346,7 +346,7 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
           ZCR_GAMEPAD_V2_BUTTON_STATE_RELEASED, 0);
     }
 
-    EXPECT_EQ(host_gamepads[0]->mapping, it.second);
+    EXPECT_EQ(host_gamepads[0]->input_mapping, it.second);
     EXPECT_CALL(libevdevshim, free(host_gamepads[0]->ev_dev));
 
     HostEventHandler(gamepad)->removed(host_gamepads[0], gamepad);
@@ -375,7 +375,7 @@ TEST_F(GamepadTest, DualShock3MappingWorksCorrectly) {
   std::vector<struct sl_host_gamepad*> host_gamepads = GetHostGamepads(&ctx);
 
   EXPECT_EQ(host_gamepads.size(), 1);
-  EXPECT_EQ(host_gamepads[0]->mapping, &kDualShock3Mapping);
+  EXPECT_EQ(host_gamepads[0]->input_mapping, &kDualShock3Mapping);
 
   // This object forces all EXPECT_CALLs to occur in the order they are
   // declared. This insures expectations are paired to the correct

@@ -61,6 +61,7 @@ struct zxdg_output_manager_v1;
 struct sl_gamepad;
 struct sl_gaming_input_manager;
 struct zcr_gaming_input_v2;
+struct InputMapping;
 #endif
 
 class WaylandChannel;
@@ -437,7 +438,12 @@ struct sl_host_gamepad {
   struct libevdev* ev_dev;
   struct libevdev_uinput* uinput_dev;
   struct wl_list link;
-  const std::unordered_map<uint32_t, uint32_t>* mapping;
+  const char* name;
+  uint32_t bus;
+  uint32_t vendor_id;
+  uint32_t product_id;
+  uint32_t version;
+  const InputMapping* input_mapping;
 };
 #endif
 
