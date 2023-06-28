@@ -39,6 +39,9 @@ constexpr char kSetBoardIdCmd[] = "/usr/share/cros/cr50-set-board-id.sh";
 constexpr char kBoardIdTypeRegexp[] = R"(BID_TYPE=([[:xdigit:]]{8}))";
 constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
 
+// Constants for reboot.
+const std::vector<std::string> kRebootArgv{kGsctoolCmd, "-a", "--reboot"};
+
 }  // namespace
 
 GscUtilsImpl::GscUtilsImpl() : GscUtils() {
@@ -151,6 +154,11 @@ bool GscUtilsImpl::SetBoardId(bool is_custom_label) const {
     return false;
   }
   return true;
+}
+
+bool GscUtilsImpl::Reboot() const {
+  std::string unused_output;
+  return cmd_utils_->GetOutput(kRebootArgv, &unused_output);
 }
 
 }  // namespace rmad

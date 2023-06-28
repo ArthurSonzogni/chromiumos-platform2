@@ -42,6 +42,9 @@ class GscUtils {
 
   // Set GSC board ID.
   virtual bool SetBoardId(bool is_custom_label) const = 0;
+
+  // Do a GSC reboot.
+  virtual bool Reboot() const = 0;
 };
 
 }  // namespace rmad

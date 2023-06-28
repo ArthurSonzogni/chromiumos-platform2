@@ -28,6 +28,7 @@ class GscUtilsImpl : public GscUtils {
   bool GetBoardIdType(std::string* board_id_type) const override;
   bool GetBoardIdFlags(std::string* board_id_flags) const override;
   bool SetBoardId(bool is_custom_label) const override;
+  bool Reboot() const override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

@@ -260,4 +260,11 @@ TEST_F(GscUtilsTest, SetBoardId_Fail) {
   EXPECT_FALSE(gsc_utils->SetBoardId(true));
 }
 
+TEST_F(GscUtilsTest, Reboot_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(gsc_utils->Reboot());
+}
 }  // namespace rmad
