@@ -15,9 +15,12 @@ ARTIFACTS="artifacts"
 
 usage() {
   cat<<END
-Usage: $(basename "$0") [ARCH]
-Builds cros_im for ARCH. ARCH should be one or more of: ${ALL_ARCHES}.
-If ARCH is omitted, builds for all architectures.
+Usage: $(basename "$0") [DIST] [ARCH]
+Builds cros_im for ARCH on DIST.
+DIST should be one of: ${RELEASES}.
+ARCH should be one of: ${ALL_ARCHES}.
+If arguments are omitted, this script will build for all supported
+architectures and distributions.
 END
 }
 
@@ -95,11 +98,18 @@ build_package() {
 main() {
   cd "$(dirname "$0")"
   local arches_to_build="${ALL_ARCHES}"
-  if [[ -z "$1" ]]; then
-    echo "No architecture specified, compiling for all architectures."
-  elif [[ " ${ALL_ARCHES} " == *" $1 "* ]]; then
-    echo "Building cros-im for $1 only"
+  local dists_to_build="${RELEASES}"
+  if [[ $# -eq 0 ]]; then
+    echo "No arguments specified, compiling for all archs and distros."
+  elif [[ $# -eq 1 && " ${ALL_ARCHES} " == *" $1 "* ]]; then
+    # TODO(sophialin): This part is kept for Legacy reasons where kokoro called
+    # the script with one arch as argument. Remove once the new jobs work.
+    echo "Building cros-im for $1 only on bullseye"
     arches_to_build="$1"
+  elif [[ " ${RELEASES} " == *" $1 "* && " ${ALL_ARCHES} " == *" $2 "* ]]; then
+    echo "Building cros-im for $1-$2 only"
+    dists_to_build="$1"
+    arches_to_build="$2"
   else
     usage >&2
     return
@@ -108,7 +118,8 @@ main() {
   setup_deps
 
   local arch
-  for dist in ${RELEASES}; do
+  local dist
+  for dist in ${dists_to_build}; do
     for arch in ${arches_to_build}; do
       create_changelog "${dist}"
       mkdir -p "/var/cache/pbuilder/aptcache/debian-${dist}-${arch}"
