@@ -83,8 +83,20 @@ class ShillClient {
       kWifi,
     };
 
+    // Interface name of the shill Device, corresponding to the
+    // kInterfaceProperty value. b/273741099: The kInterfaceProperty value must
+    // be tracked separately to ensure that patchpanel can advertise it in its
+    // virtual NetworkDevice messages in the |phys_ifname| field. This allows
+    // ARC and dns-proxy to join shill Device information with patchpanel
+    // virtual NetworkDevice information without knowing explicitly about
+    // Cellular multiplexed interfaces.
+    std::string shill_device_interface_property;
     // Technology type of this Device.
     Type type;
+    // Interface name of the primary multiplexed interface. Only defined for
+    // Cellular Devices. For Cellular Device not using multiplexing, this value
+    // is equivalent to the kInterfaceProperty value.
+    std::optional<std::string> primary_multiplexed_interface;
     // Index of the network interface used for the packet datapath. This is
     // always derived from the interface name by querying the kernel directly.
     int ifindex;
@@ -98,10 +110,6 @@ class ShillClient {
     // this corresponds to the IP configuration of the primary network
     // interface.
     IPConfig ipconfig;
-    // Interface name of the primary multiplexed interface. Only defined for
-    // Cellular Devices. For Cellular Device not using multiplexing, this value
-    // is equivalent to the kInterfaceProperty value.
-    std::optional<std::string> primary_multiplexed_interface;
 
     // Return if the device is connected by checking if IPv4 or IPv6 address is
     // available.
@@ -155,12 +163,13 @@ class ShillClient {
   void ScanDevices();
 
   // Finds the shill physical or VPN Device whose "Interface" property matches
-  // |shill_device_ifname|. This function is meant for associating a shill
-  // Device to an interface name argument passed directly to patchpanel DBus
-  // RPCs for DownstreamNetwork and ConnectNamespace.
+  // |shill_device_interface_property|. This function is meant for associating a
+  // shill Device to an interface name argument passed directly to patchpanel
+  // DBus RPCs for DownstreamNetwork and ConnectNamespace.
   // TODO(b/273744897): Migrate callers to use the future Network primitive
   // directly.
-  virtual const Device* GetDevice(const std::string& shill_device_ifname) const;
+  virtual const Device* GetDevice(
+      const std::string& shill_device_interface_property) const;
   // Returns the cached default logical shill Device; does not initiate a
   // property fetch.
   virtual const Device& default_logical_device() const;

@@ -468,6 +468,8 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
                  << device_path.value();
     return false;
   }
+  output->shill_device_interface_property =
+      interface_it->second.TryGet<std::string>();
   output->ifname = interface_it->second.TryGet<std::string>();
 
   if (output->type == Device::Type::kCellular) {
@@ -518,14 +520,16 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
 }
 
 const ShillClient::Device* ShillClient::GetDevice(
-    const std::string& shill_device_ifname) const {
+    const std::string& shill_device_interface_property) const {
   // To find the VPN Device, the default logical Device must be checked
   // separately.
-  if (default_logical_device_.ifname == shill_device_ifname) {
+  if (default_logical_device_.shill_device_interface_property ==
+      shill_device_interface_property) {
     return &default_logical_device_;
   }
   for (const auto& [_, device] : devices_) {
-    if (device.ifname == shill_device_ifname) {
+    if (device.shill_device_interface_property ==
+        shill_device_interface_property) {
       return &device;
     }
   }
@@ -613,15 +617,14 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
-  stream << "{ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
-         << ", type: " << DeviceTypeName(dev.type)
-         << ", service: " << dev.service_path;
+  stream << "{shill_device: " << dev.shill_device_interface_property
+         << ", type: " << DeviceTypeName(dev.type);
   if (dev.type == ShillClient::Device::Type::kCellular) {
     stream << ", primary_multiplexed_interface: "
            << dev.primary_multiplexed_interface.value_or("none");
   }
-  stream << "}";
-  return stream;
+  return stream << ", ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
+                << ", service: " << dev.service_path << "}";
 }
 
 std::ostream& operator<<(std::ostream& stream,

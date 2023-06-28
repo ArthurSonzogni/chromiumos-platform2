@@ -17,9 +17,9 @@
 #include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-#include <net-base/ip_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dhcp_server_controller.h"
@@ -177,12 +177,6 @@ enum class AutoDNATTarget {
   kCrostini,
   kParallels,
 };
-
-// Returns for given interface name the host name of a ARC veth pair.
-std::string ArcVethHostName(const std::string& ifname);
-
-// Returns the ARC bridge interface name for the given interface.
-std::string ArcBridgeName(const std::string& ifname);
 
 // ARC networking data path configuration utility.
 // IPV4 addresses are always specified in singular dotted-form (a.b.c.d)

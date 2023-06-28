@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "base/strings/string_piece.h"
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -345,6 +346,17 @@ bool IsEmptyCounters(std::map<CounterKey, uint64_t> counter) {
   return true;
 }
 
+ShillClient::Device MakeShillDevice(ShillClient::Device::Type type,
+                                    base::StringPiece ifname,
+                                    int ifindex) {
+  ShillClient::Device dev;
+  dev.type = type;
+  dev.shill_device_interface_property = ifname;
+  dev.ifname = ifname;
+  dev.ifindex = ifindex;
+  return dev;
+}
+
 class MulticastCountersServiceTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -438,8 +450,8 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
   // The following commands are expected when an ethernet device comes up.
   // Jump rules are added if they did not exist before.
-  ShillClient::Device eth0_device_ = ShillClient::Device{
-      ShillClient::Device::Type::kEthernet, 1, "eth0", "", {}};
+  ShillClient::Device eth0_device =
+      MakeShillDevice(ShillClient::Device::Type::kEthernet, "eth0", 1);
   std::vector<std::string> mdns_args = {"rx_mdns", "-i", "eth0", "-j",
                                         "rx_ethernet_mdns"};
   EXPECT_CALL(*datapath_,
@@ -458,14 +470,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
       ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                      Iptables::Command::kC, ElementsAreArray(ssdp_args), _))
       .WillOnce(Return(true));
-  multicast_counters_svc_->OnPhysicalDeviceAdded(eth0_device_);
+  multicast_counters_svc_->OnPhysicalDeviceAdded(eth0_device);
 }
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
   // The following commands are expected when a wifi device comes up.
   // Jump rules are added if they did not exist before.
-  ShillClient::Device wlan0_device_ =
-      ShillClient::Device{ShillClient::Device::Type::kWifi, 3, "wlan0", "", {}};
+  ShillClient::Device wlan0_device =
+      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"rx_mdns", "-i", "wlan0", "-j",
                                         "rx_wifi_mdns"};
   EXPECT_CALL(*datapath_,
@@ -484,14 +496,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
       ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                      Iptables::Command::kA, ElementsAreArray(ssdp_args), _))
       .WillOnce(Return(true));
-  multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device_);
+  multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device);
 }
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAlreadyAdded) {
   // If jump rule for a specific interface is already added, skip adding jump
   // rule.
-  ShillClient::Device wlan0_device_ =
-      ShillClient::Device{ShillClient::Device::Type::kWifi, 3, "wlan0", "", {}};
+  ShillClient::Device wlan0_device =
+      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"rx_mdns", "-i", "wlan0", "-j",
                                         "rx_wifi_mdns"};
   EXPECT_CALL(*datapath_,
@@ -503,20 +515,21 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAlreadyAdded) {
       ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                      Iptables::Command::kA, ElementsAreArray(mdns_args), _))
       .Times(0);
-  multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device_);
+  multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device);
 }
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
   // Modification to iptables are not expected when a cell device comes up.
-  ShillClient::Device cell_device_ = ShillClient::Device{
-      ShillClient::Device::Type::kCellular, 1, "cell", "", {}};
+  ShillClient::Device cell_device =
+      MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
+  cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kC, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _, _, _))
       .Times(0);
-  multicast_counters_svc_->OnPhysicalDeviceAdded(cell_device_);
+  multicast_counters_svc_->OnPhysicalDeviceAdded(cell_device);
 }
 
 TEST_F(MulticastCountersServiceTest, GetCounters) {

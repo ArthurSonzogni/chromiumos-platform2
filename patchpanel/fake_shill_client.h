@@ -85,9 +85,10 @@ class FakeShillClient : public ShillClient {
   }
 
   const ShillClient::Device* GetDevice(
-      const std::string& shill_device_ifname) const override {
+      const std::string& shill_device_interface_property) const override {
     for (const auto& [_, device] : fake_device_properties_) {
-      if (device.ifname == shill_device_ifname) {
+      if (device.shill_device_interface_property ==
+          shill_device_interface_property) {
         return &device;
       }
     }

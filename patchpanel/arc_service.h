@@ -23,8 +23,13 @@
 
 namespace patchpanel {
 
-constexpr char kArcbr0Ifname[] = "arcbr0";
+// Name of the ARC legacy management interface.
 constexpr char kArc0Ifname[] = "arc0";
+// Name of the veth interface (host facing) used with the ARC legacy management
+// interface for ARC container.
+constexpr char kVethArc0Ifname[] = "vetharc0";
+// Name of the bridge used with the ARC legacy management interface.
+constexpr char kArcbr0Ifname[] = "arcbr0";
 
 class ArcService {
  public:
@@ -35,6 +40,14 @@ class ArcService {
 
   using ArcDeviceChangeHandler = base::RepeatingCallback<void(
       const ShillClient::Device&, const Device&, Device::ChangeEvent)>;
+
+  // Returns for given interface name the host name of a ARC veth pair. Pairs of
+  // veth interfaces are only used for the ARC conhtainer.
+  static std::string ArcVethHostName(const ShillClient::Device& device);
+
+  // Returns the ARC bridge interface name for the given interface. Software
+  // bridges are used both for the ARC container and for ARCVM.
+  static std::string ArcBridgeName(const ShillClient::Device& device);
 
   // All pointers are required, cannot be null, and are owned by the caller.
   ArcService(Datapath* datapath,

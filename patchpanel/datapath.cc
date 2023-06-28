@@ -112,19 +112,6 @@ IpFamily ConvertIpFamily(net_base::IPFamily family) {
                                                : IpFamily::kIPv6;
 }
 
-std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
-  std::string n = prefix + ifname;
-  if (n.length() < IFNAMSIZ)
-    return n;
-
-  // Best effort attempt to preserve the interface number, assuming it's the
-  // last char in the name.
-  auto c = ifname[ifname.length() - 1];
-  n.resize(IFNAMSIZ - 1);
-  n[n.length() - 1] = c;
-  return n;
-}
-
 // ioctl helper that manages the control fd creation and destruction.
 bool Ioctl(System* system, ioctl_req_t req, const char* arg) {
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
@@ -163,14 +150,6 @@ std::string PreroutingSubChainName(const std::string& int_ifname) {
 }
 
 }  // namespace
-
-std::string ArcVethHostName(const std::string& ifname) {
-  return PrefixIfname("veth", ifname);
-}
-
-std::string ArcBridgeName(const std::string& ifname) {
-  return PrefixIfname("arc_", ifname);
-}
 
 Datapath::Datapath(System* system)
     : Datapath(new MinijailedProcessRunner(), new Firewall(), system) {}

@@ -1671,26 +1671,6 @@ TEST(DatapathTest, SetVpnLockdown) {
   datapath.SetVpnLockdown(false);
 }
 
-TEST(DatapathTest, ArcVethHostName) {
-  EXPECT_EQ("vetheth0", ArcVethHostName("eth0"));
-  EXPECT_EQ("vethrmnet0", ArcVethHostName("rmnet0"));
-  EXPECT_EQ("vethrmnet_data0", ArcVethHostName("rmnet_data0"));
-  EXPECT_EQ("vethifnamsiz_i0", ArcVethHostName("ifnamsiz_ifnam0"));
-  auto ifname = ArcVethHostName("exceeds_ifnamesiz_checkanyway");
-  EXPECT_EQ("vethexceeds_ify", ifname);
-  EXPECT_LT(ifname.length(), IFNAMSIZ);
-}
-
-TEST(DatapathTest, ArcBridgeName) {
-  EXPECT_EQ("arc_eth0", ArcBridgeName("eth0"));
-  EXPECT_EQ("arc_rmnet0", ArcBridgeName("rmnet0"));
-  EXPECT_EQ("arc_rmnet_data0", ArcBridgeName("rmnet_data0"));
-  EXPECT_EQ("arc_ifnamsiz_i0", ArcBridgeName("ifnamsiz_ifnam0"));
-  auto ifname = ArcBridgeName("exceeds_ifnamesiz_checkanyway");
-  EXPECT_EQ("arc_exceeds_ify", ifname);
-  EXPECT_LT(ifname.length(), IFNAMSIZ);
-}
-
 TEST(DatapathTest, SetConntrackHelpers) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();

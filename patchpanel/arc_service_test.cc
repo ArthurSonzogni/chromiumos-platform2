@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -63,10 +64,14 @@ const IPv4CIDR kSecondWifiHostCIDR =
 const IPv4CIDR kFirstCellHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.21/30");
 
-ShillClient::Device MakeShillDevice(const std::string& ifname,
-                                    ShillClient::Device::Type type) {
+ShillClient::Device MakeShillDevice(
+    const std::string& shill_device_interface_property,
+    ShillClient::Device::Type type,
+    std::optional<std::string> primary_multiplexed_interface = std::nullopt) {
   ShillClient::Device dev;
-  dev.ifname = ifname;
+  dev.ifname = shill_device_interface_property;
+  dev.shill_device_interface_property = shill_device_interface_property;
+  dev.primary_multiplexed_interface = primary_multiplexed_interface;
   dev.type = type;
   return dev;
 }
@@ -178,8 +183,8 @@ TEST_F(ArcServiceTest, VerifyAddrConfigs) {
   auto eth1_dev = MakeShillDevice("eth1", ShillClient::Device::Type::kEthernet);
   auto wlan0_dev = MakeShillDevice("wlan0", ShillClient::Device::Type::kWifi);
   auto wlan1_dev = MakeShillDevice("wlan1", ShillClient::Device::Type::kWifi);
-  auto wwan_dev =
-      MakeShillDevice("wwan0", ShillClient::Device::Type::kCellular);
+  auto wwan_dev = MakeShillDevice("wwan0", ShillClient::Device::Type::kCellular,
+                                  "mbimmux0.1");
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   svc->AddDevice(eth0_dev);
@@ -1151,6 +1156,50 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
     auto it = svc->arcvm_guest_ifnames_.find(tap);
     EXPECT_TRUE(it != svc->arcvm_guest_ifnames_.end());
     EXPECT_EQ(it->second, arcvm_ifname);
+  }
+}
+
+TEST_F(ArcServiceTest, ArcVethHostName) {
+  static struct {
+    std::string shill_device_interface_property;
+    std::string expected_veth_ifname;
+  } test_cases[] = {
+      {"eth0", "vetheth0"},
+      {"rmnet0", "vethrmnet0"},
+      {"rmnet_data0", "vethrmnet_data0"},
+      {"ifnamsiz_ifnam0", "vethifnamsiz_i0"},
+      {"exceeds_ifnamesiz_checkanyway", "vethexceeds_ify"},
+  };
+
+  for (const auto& tc : test_cases) {
+    ShillClient::Device device;
+    device.shill_device_interface_property = tc.shill_device_interface_property;
+    auto ifname = ArcService::ArcVethHostName(device);
+    EXPECT_EQ(tc.expected_veth_ifname, ifname);
+    EXPECT_LT(ifname.length(), IFNAMSIZ);
+  }
+}
+
+TEST_F(ArcServiceTest, ArcBridgeName) {
+  static struct {
+    std::string shill_device_interface_property;
+    std::string expected_bridge_name;
+  } test_cases[] = {
+      {"eth0", "arc_eth0"},
+      {"rmnet0", "arc_rmnet0"},
+      {"rmnet_data0", "arc_rmnet_data0"},
+      {"ifnamsiz_ifnam0", "arc_ifnamsiz_i0"},
+      {"ifnamesize0", "arc_ifnamesize0"},
+      {"if_namesize0", "arc_if_namesiz0"},
+      {"exceeds_ifnamesiz_checkanyway", "arc_exceeds_ify"},
+  };
+
+  for (const auto& tc : test_cases) {
+    ShillClient::Device device;
+    device.shill_device_interface_property = tc.shill_device_interface_property;
+    auto bridge = ArcService::ArcBridgeName(device);
+    EXPECT_EQ(tc.expected_bridge_name, bridge);
+    EXPECT_LT(bridge.length(), IFNAMSIZ);
   }
 }
 

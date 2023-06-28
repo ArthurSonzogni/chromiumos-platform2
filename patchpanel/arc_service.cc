@@ -17,6 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
@@ -186,6 +187,19 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
   return std::make_unique<Device>(Device::Type::kARC0,
                                   /*shill_device=*/std::nullopt, kArcbr0Ifname,
                                   kArc0Ifname, std::move(config));
+}
+
+std::string PrefixIfname(base::StringPiece prefix, base::StringPiece ifname) {
+  std::string n;
+  n.append(prefix);
+  n.append(ifname);
+  if (n.length() >= IFNAMSIZ) {
+    n.resize(IFNAMSIZ - 1);
+    // Best effort attempt to preserve the interface number, assuming it's the
+    // last char in the name.
+    n.back() = ifname.back();
+  }
+  return n;
 }
 }  // namespace
 
@@ -357,11 +371,11 @@ bool ArcService::Start(uint32_t id) {
     // TODO(b/185881882): this should be safe to remove after b/185881882.
     RefreshMacAddressesInConfigs();
 
-    arc_device_ifname = ArcVethHostName(arc_device_->guest_ifname());
+    arc_device_ifname = kVethArc0Ifname;
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
         arc_device_->config().guest_ipv4_addr(), 30);
     if (!datapath_->ConnectVethPair(
-            pid, kArcNetnsName, arc_device_ifname, arc_device_->guest_ifname(),
+            pid, kArcNetnsName, kVethArc0Ifname, arc_device_->guest_ifname(),
             arc_device_->config().mac_addr(), guest_cidr,
             /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << "Cannot create virtual link for " << kArc0Ifname;
@@ -437,7 +451,7 @@ void ArcService::Stop(uint32_t id) {
 
   // Stop the bridge for the management interface arc0.
   if (arc_type_ == ArcType::kContainer) {
-    datapath_->RemoveInterface(ArcVethHostName(kArc0Ifname));
+    datapath_->RemoveInterface(kVethArc0Ifname);
     if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
       LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
     }
@@ -485,9 +499,12 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   // The interface name visible inside ARC depends on the type of ARC
   // environment:
   //  - ARC container: the veth interface created inside ARC has the same name
-  //  as the physical interface that this ARC virtual device is attached to.
+  //  as the shill Device that this ARC virtual device is attached to.
+  //  b/273741099: For Cellular multiplexed interfaces, the name of the shill
+  //  Device is used such that the rest of the ARC stack does not need to be
+  //  aware of Cellular multiplexing.
   //  - ARCVM: the interfaces created by virtio-net follow the pattern eth%d.
-  auto guest_ifname = shill_device.ifname;
+  auto guest_ifname = shill_device.shill_device_interface_property;
   if (arc_type_ == ArcType::kVM) {
     const auto it = arcvm_guest_ifnames_.find(config->tap_ifname());
     if (it == arcvm_guest_ifnames_.end()) {
@@ -501,7 +518,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
                                                : Device::Type::kARCContainer;
   auto device = std::make_unique<Device>(device_type, shill_device,
-                                         ArcBridgeName(shill_device.ifname),
+                                         ArcBridgeName(shill_device),
                                          guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
@@ -532,7 +549,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
       LOG(ERROR) << "Invalid ARC container pid " << pid;
       return;
     }
-    virtual_device_ifname = ArcVethHostName(device->guest_ifname());
+    virtual_device_ifname = ArcVethHostName(shill_device);
 
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
         device->config().guest_ipv4_addr(), 30);
@@ -568,8 +585,9 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
 
 void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   shill_devices_.erase(shill_device.ifname);
-  if (!IsStarted())
+  if (!IsStarted()) {
     return;
+  }
 
   const auto it = devices_.find(shill_device.ifname);
   if (it == devices_.end()) {
@@ -584,17 +602,16 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
                                  Device::ChangeEvent::kRemoved);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
-  if (arc_type_ == ArcType::kContainer)
-    datapath_->RemoveInterface(ArcVethHostName(shill_device.ifname));
-
+  if (arc_type_ == ArcType::kContainer) {
+    datapath_->RemoveInterface(ArcVethHostName(shill_device));
+  }
   datapath_->StopRoutingDevice(device->host_ifname());
   datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device,
                                    device->config().guest_ipv4_addr());
   datapath_->RemoveBridge(device->host_ifname());
-
-  if (IsAdbAllowed(shill_device.type))
+  if (IsAdbAllowed(shill_device.type)) {
     datapath_->DeleteAdbPortAccessRule(shill_device.ifname);
-
+  }
   // Once the upstream shill Device is gone it may not be possible to retrieve
   // the Device type from shill DBus interface by interface name.
   ReleaseConfig(shill_device.type, it->second->release_config());
@@ -636,6 +653,16 @@ std::vector<const Device*> ArcService::GetDevices() const {
     devices.push_back(dev.get());
   }
   return devices;
+}
+
+// static
+std::string ArcService::ArcVethHostName(const ShillClient::Device& device) {
+  return PrefixIfname("veth", device.shill_device_interface_property);
+}
+
+// static
+std::string ArcService::ArcBridgeName(const ShillClient::Device& device) {
+  return PrefixIfname("arc_", device.shill_device_interface_property);
 }
 
 }  // namespace patchpanel

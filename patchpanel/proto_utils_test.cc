@@ -106,7 +106,7 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   ASSERT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
 }
 
-TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
+TEST_F(ProtoUtilsTest, ConvertARCContainerWiFiDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
@@ -118,7 +118,9 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ShillClient::Device shill_device;
+  shill_device.type = ShillClient::Device::Type::kWifi;
   shill_device.ifname = "wlan0";
+  shill_device.shill_device_interface_property = "wlan0";
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
@@ -147,7 +149,51 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
 }
 
-TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
+TEST_F(ProtoUtilsTest, ConvertARCContainerCellularDevice) {
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
+
+  ShillClient::Device shill_device;
+  shill_device.type = ShillClient::Device::Type::kCellular;
+  shill_device.ifname = "mbimmux0.1";
+  shill_device.shill_device_interface_property = "wwan0";
+  shill_device.primary_multiplexed_interface = "mbimmux0.1";
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr));
+  auto device =
+      std::make_unique<Device>(Device::Type::kARCContainer, shill_device,
+                               "arc_wwan0", "wwan0", std::move(config));
+
+  NetworkDevice proto_device;
+  FillDeviceProto(*device, &proto_device);
+
+  ASSERT_EQ("arc_wwan0", proto_device.ifname());
+  ASSERT_EQ("wwan0", proto_device.phys_ifname());
+  // For ARC container, the name of the veth half set inside the container is
+  // renamed to match the name of the host upstream network interface managed by
+  // shill.
+  ASSERT_EQ("wwan0", proto_device.guest_ifname());
+  ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
+  ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.prefix_length(),
+            proto_device.ipv4_subnet().prefix_len());
+  ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
+}
+
+TEST_F(ProtoUtilsTest, ConvertARCVMWiFiDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
@@ -159,7 +205,9 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ShillClient::Device shill_device;
+  shill_device.type = ShillClient::Device::Type::kWifi;
   shill_device.ifname = "wlan0";
+  shill_device.shill_device_interface_property = "wlan0";
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
@@ -172,6 +220,49 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
 
   ASSERT_EQ("arc_wlan0", proto_device.ifname());
   ASSERT_EQ("wlan0", proto_device.phys_ifname());
+  // For ARCVM, the name of the virtio interface is controlled by the virtio
+  // driver and follows a ethernet-like pattern.
+  ASSERT_EQ("eth3", proto_device.guest_ifname());
+  ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
+  ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.prefix_length(),
+            proto_device.ipv4_subnet().prefix_len());
+  ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());
+}
+
+TEST_F(ProtoUtilsTest, ConvertARCVMCellularDevice) {
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
+
+  ShillClient::Device shill_device;
+  shill_device.type = ShillClient::Device::Type::kCellular;
+  shill_device.ifname = "wwan0";
+  shill_device.shill_device_interface_property = "wwan0";
+  shill_device.primary_multiplexed_interface = "mbimmux0.1";
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr));
+  auto device =
+      std::make_unique<Device>(Device::Type::kARCVM, shill_device, "arc_wwan0",
+                               "eth3", std::move(config));
+
+  NetworkDevice proto_device;
+  FillDeviceProto(*device, &proto_device);
+
+  ASSERT_EQ("arc_wwan0", proto_device.ifname());
+  ASSERT_EQ("wwan0", proto_device.phys_ifname());
   // For ARCVM, the name of the virtio interface is controlled by the virtio
   // driver and follows a ethernet-like pattern.
   ASSERT_EQ("eth3", proto_device.guest_ifname());
