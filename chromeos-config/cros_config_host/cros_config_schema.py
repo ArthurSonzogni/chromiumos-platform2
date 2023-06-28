@@ -425,6 +425,13 @@ def _GenerateInferredAshSwitches(device_config):
             "--display-properties=%s" % json.dumps(display_properties)
         )
 
+    defer_external_display_timeout = device_config.get(
+        "power", {}).get("defer-external-display-timeout")
+    if defer_external_display_timeout:
+        ash_switches.add(
+            "--defer-external-display-timeout=%s"
+            % defer_external_display_timeout)
+
     if ash_enabled_features:
         ash_switches.add(
             "--enable-features=%s"
