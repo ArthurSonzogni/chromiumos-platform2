@@ -25,15 +25,12 @@
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 
-#include "missive/compression/compression_module.h"
-#include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/new_storage.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
-#include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -43,13 +40,7 @@ const Status kStorageUnavailableStatus =
     Status(error::UNAVAILABLE, "Storage unavailable");
 
 StorageModule::StorageModule(const Settings& settings)
-    : options_(settings.options),
-      async_start_upload_cb_(settings.async_start_upload_cb),
-      queues_container_(settings.queues_container),
-      encryption_module_(settings.encryption_module),
-      compression_module_(settings.compression_module),
-      signature_verification_dev_flag_(
-          settings.signature_verification_dev_flag) {}
+    : options_(settings.options) {}
 
 StorageModule::~StorageModule() = default;
 
@@ -137,12 +128,12 @@ void StorageModule::Create(
   instance->SetLegacyEnabledPriorities(settings.legacy_storage_enabled);
 
   // Initialize `instance`.
-  instance->InitStorage(std::move(callback));
+  instance->InitStorage(settings, std::move(callback));
 }
 
 // static
 void StorageModule::InitStorage(
-
+    const Settings& settings,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   // Partially bound callback which sets `storage_` or returns an
   // error status via `callback`. Run on the current default task runner.
@@ -151,14 +142,14 @@ void StorageModule::InitStorage(
                      std::move(callback));
 
   // Instantiate Storage.
-  NewStorage::Create(
-      {.options = options_,
-       .queues_container = queues_container_,
-       .encryption_module = encryption_module_,
-       .compression_module = compression_module_,
-       .signature_verification_dev_flag = signature_verification_dev_flag_,
-       .async_start_upload_cb = async_start_upload_cb_},
-      std::move(set_storage_cb));
+  NewStorage::Create({.options = settings.options,
+                      .queues_container = settings.queues_container,
+                      .encryption_module = settings.encryption_module,
+                      .compression_module = settings.compression_module,
+                      .signature_verification_dev_flag =
+                          settings.signature_verification_dev_flag,
+                      .async_start_upload_cb = settings.async_start_upload_cb},
+                     std::move(set_storage_cb));
 }
 
 void StorageModule::SetStorage(

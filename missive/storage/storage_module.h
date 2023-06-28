@@ -92,6 +92,7 @@ class StorageModule : public StorageModuleInterface {
   ~StorageModule() override;
 
   void InitStorage(
+      const Settings& settings,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
@@ -112,12 +113,6 @@ class StorageModule : public StorageModuleInterface {
 
   // Parameters used to create Storage
   const StorageOptions options_;
-  const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-  const scoped_refptr<QueuesContainer> queues_container_;
-  const scoped_refptr<EncryptionModuleInterface> encryption_module_;
-  const scoped_refptr<CompressionModule> compression_module_;
-  const scoped_refptr<SignatureVerificationDevFlag>
-      signature_verification_dev_flag_;
 };
 
 }  // namespace reporting
