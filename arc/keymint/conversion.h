@@ -5,6 +5,7 @@
 #ifndef ARC_KEYMINT_CONVERSION_H_
 #define ARC_KEYMINT_CONVERSION_H_
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -17,6 +18,15 @@ namespace arc::keymint {
 keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format);
 
 keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag);
+
+template <typename T, typename OutIter>
+inline OutIter copy_bytes_to_iterator(const T& value, OutIter dest) {
+  const uint8_t* value_ptr = reinterpret_cast<const uint8_t*>(&value);
+  return std::copy(value_ptr, value_ptr + sizeof(value), dest);
+}
+
+std::vector<uint8_t> authToken2AidlVec(
+    const arc::mojom::keymint::HardwareAuthToken& token);
 
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
                                                  const size_t size);
@@ -56,6 +66,10 @@ std::unique_ptr<::keymaster::UpgradeKeyRequest> MakeUpgradeKeyRequest(
     const arc::mojom::keymint::UpgradeKeyRequestPtr& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::UpdateOperationRequest> MakeUpdateOperationRequest(
+    const arc::mojom::keymint::UpdateRequestPtr& request,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -70,6 +84,9 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
 
 std::vector<uint8_t> MakeUpgradeKeyResult(
     const ::keymaster::UpgradeKeyResponse& km_response, uint32_t& error);
+
+std::vector<uint8_t> MakeUpdateResult(
+    const ::keymaster::UpdateOperationResponse& km_response, uint32_t& error);
 
 }  // namespace arc::keymint
 

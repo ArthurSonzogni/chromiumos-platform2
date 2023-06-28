@@ -349,7 +349,34 @@ void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateAadRequestPtr request,
 
 void KeyMintServer::Update(arc::mojom::keymint::UpdateRequestPtr request,
                            UpdateCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request = MakeUpdateOperationRequest(
+      request, backend_.keymint()->message_version());
+  auto input_size = km_request->input.buffer_size();
+
+  auto task_lambda = base::BindOnce(
+      [](UpdateCallback callback, const size_t input_size,
+         std::unique_ptr<::keymaster::UpdateOperationResponse> km_response) {
+        // Prepare mojo response.
+        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
+        auto response = MakeUpdateResult(*km_response, error);
+
+        // Run callback.
+        if (error != KM_ERROR_OK) {
+          std::move(callback).Run(error, std::nullopt);
+        } else if (km_response->input_consumed != input_size) {
+          error = KM_ERROR_UNKNOWN_ERROR;
+          std::move(callback).Run(error, std::nullopt);
+        } else {
+          std::move(callback).Run(error, std::move(response));
+        }
+      },
+      std::move(callback), std::move(input_size));
+
+  // Call KeyMint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::UpdateOperation,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::Finish(arc::mojom::keymint::FinishRequestPtr request,

@@ -19,6 +19,10 @@ constexpr std::array<uint8_t, 3> kBlob1{{3, 23, 59}};
 constexpr std::array<uint8_t, 4> kBlob2{{23, 46, 69, 92}};
 constexpr std::array<uint8_t, 5> kBlob3{{1, 2, 3, 4, 5}};
 constexpr int32_t kKeyMintMessageVersion = 4;
+constexpr uint64_t fakeChallenge = 224498432732987237;
+constexpr uint64_t fakeAuthenticatorId = 790712303;
+constexpr uint64_t fakeUserId = 321;
+constexpr uint64_t fakeTimeStamp = 4349843232312345627;
 
 ::testing::AssertionResult VerifyVectorUint8(const uint8_t* a,
                                              const size_t a_size,
@@ -98,6 +102,34 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
       static_cast<arc::mojom::keymint::Tag>(KM_TAG_APPLICATION_DATA),
       std::move(paramBlob));
   return parameters;
+}
+
+::arc::mojom::keymint::HardwareAuthTokenPtr CreateHardwareAuthToken() {
+  return ::arc::mojom::keymint::HardwareAuthToken::New(
+      fakeChallenge, fakeUserId, fakeAuthenticatorId,
+      arc::mojom::keymint::HardwareAuthenticatorType(HW_AUTH_ANY),
+      ::arc::mojom::keymint::Timestamp::New(fakeTimeStamp),
+      std::vector<uint8_t>{2, 3});
+}
+
+::arc::mojom::keymint::TimeStampTokenPtr CreateTimeStampToken() {
+  return ::arc::mojom::keymint::TimeStampToken::New(
+      fakeChallenge, ::arc::mojom::keymint::Timestamp::New(fakeTimeStamp),
+      std::vector<uint8_t>{2, 3});
+}
+
+::testing::AssertionResult VerifyHardwareAuthToken(
+    const ::keymaster::AuthorizationSet& a,
+    const arc::mojom::keymint::HardwareAuthToken& b) {
+  auto result = ::testing::AssertionResult(false);
+  for (size_t i = 0; i < a.size(); ++i) {
+    if (a[i].tag == static_cast<uint32_t>(KM_TAG_AUTH_TOKEN)) {
+      keymaster_blob_t blob = a[i].blob;
+      auto tokenAsVec(authToken2AidlVec(b));
+      result = VerifyVectorUint8(blob.data, blob.data_length, tokenAsVec);
+    }
+  }
+  return result;
 }
 
 }  // namespace
@@ -385,6 +417,31 @@ TEST(ConvertToMessage, UpgradeKeyRequest) {
                                 input->key_blob_to_upgrade));
   EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->upgrade_params,
                                                   input->upgrade_params));
+}
+
+TEST(ConvertToMessage, UpdateOperationRequest) {
+  // Prepare.
+  ::arc::mojom::keymint::HardwareAuthTokenPtr auth_token_ptr =
+      CreateHardwareAuthToken();
+
+  ::arc::mojom::keymint::TimeStampTokenPtr time_token_ptr =
+      CreateTimeStampToken();
+
+  auto input = arc::mojom::keymint::UpdateRequest::New(
+      65537, std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
+      std::move(auth_token_ptr), std::move(time_token_ptr));
+
+  // Convert.
+  auto output = MakeUpdateOperationRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  // We are not verifying the TimeStampTokenPtr now as it is not
+  // used in the KeyMint Reference implementation.
+  EXPECT_EQ(output->op_handle, input->op_handle);
+  EXPECT_TRUE(VerifyVectorUint8(output->input.begin(),
+                                output->input.available_read(), input->input));
+  EXPECT_TRUE(
+      VerifyHardwareAuthToken(output->additional_params, *input->auto_token));
 }
 
 }  // namespace arc::keymint

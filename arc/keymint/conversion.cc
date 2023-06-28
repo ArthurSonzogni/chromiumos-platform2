@@ -4,6 +4,7 @@
 
 #include "arc/keymint/conversion.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace arc::keymint {
@@ -101,6 +102,37 @@ class KmParamSet {
 };
 
 }  // namespace
+
+std::vector<uint8_t> authToken2AidlVec(
+    const arc::mojom::keymint::HardwareAuthToken& token) {
+  static_assert(
+      1 /* version size */ + sizeof(token.challenge) + sizeof(token.user_id) +
+              sizeof(token.authenticator_id) +
+              sizeof(token.authenticator_type) + sizeof(*token.timestamp) +
+              32 /* HMAC size */
+          == sizeof(hw_auth_token_t),
+      "HardwareAuthToken content size does not match hw_auth_token_t size");
+
+  std::vector<uint8_t> result;
+
+  if (token.mac.size() != 32) {
+    return result;
+  }
+
+  result.resize(sizeof(hw_auth_token_t));
+  auto pos = result.begin();
+  *pos++ = 0;  // Version byte
+  pos = copy_bytes_to_iterator(token.challenge, pos);
+  pos = copy_bytes_to_iterator(token.user_id, pos);
+  pos = copy_bytes_to_iterator(token.authenticator_id, pos);
+  pos = copy_bytes_to_iterator(
+      ::keymaster::hton(static_cast<uint32_t>(token.authenticator_type)), pos);
+  pos = copy_bytes_to_iterator(
+      ::keymaster::hton(token.timestamp->milli_seconds), pos);
+  pos = std::copy(token.mac.data(), token.mac.data() + token.mac.size(), pos);
+
+  return result;
+}
 
 // TODO(b/274723521) : Add more required ConvertEnum functions for KeyMint
 // Server.
@@ -256,6 +288,34 @@ std::unique_ptr<::keymaster::UpgradeKeyRequest> MakeUpgradeKeyRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::UpdateOperationRequest> MakeUpdateOperationRequest(
+    const arc::mojom::keymint::UpdateRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::UpdateOperationRequest>(
+      keymint_message_version);
+
+  out->op_handle = request->op_handle;
+  ConvertToKeymasterMessage(request->input, &out->input);
+
+  std::vector<arc::mojom::keymint::KeyParameterPtr> key_param_array;
+  // UpdateOperationRequest also carries TimeStampTokenPtr, which is
+  // unused yet and hence not converted. However, if it is used
+  // in future by the reference implementation and the AIDL interface,
+  // it will be added here.
+  if (request->auto_token) {
+    auto tokenAsVec(authToken2AidlVec(*request->auto_token));
+
+    auto key_param_ptr = arc::mojom::keymint::KeyParameter::New(
+        static_cast<arc::mojom::keymint::Tag>(KM_TAG_AUTH_TOKEN),
+        arc::mojom::keymint::KeyParameterValue::NewBlob(std::move(tokenAsVec)));
+
+    key_param_array.push_back(std::move(key_param_ptr));
+  }
+  ConvertToKeymasterMessage(std::move(key_param_array),
+                            &out->additional_params);
+  return out;
+}
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -365,6 +425,20 @@ std::vector<uint8_t> MakeUpgradeKeyResult(
       ConvertFromKeymasterMessage(km_response.upgraded_key.key_material,
                                   km_response.upgraded_key.key_material_size);
   return key_blob;
+}
+
+std::vector<uint8_t> MakeUpdateResult(
+    const ::keymaster::UpdateOperationResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::vector<uint8_t>();
+  }
+  // UpdateOperationResponse also carries a field - |input_consumed|,
+  // which is used in keymint_server.cc file.
+  // It also carries another field - |output_params|, which is a
+  // part of |output| returned from here.
+  return ConvertFromKeymasterMessage(km_response.output.begin(),
+                                     km_response.output.available_read());
 }
 
 }  // namespace arc::keymint
