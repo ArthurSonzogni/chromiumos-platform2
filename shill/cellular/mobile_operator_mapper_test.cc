@@ -202,6 +202,10 @@ class MobileOperatorMapperMainTest
     Mock::VerifyAndClearExpectations(&on_operator_changed_cb_);
   }
 
+  void VerifyAlpha2(const std::string& alpha2) {
+    EXPECT_EQ(alpha2, operator_info_->mcc_alpha2());
+  }
+
   void ResetOperatorInfo() {
     operator_info_->Reset();
     // Eat up any events caused by |Reset|.
@@ -1023,6 +1027,15 @@ TEST_P(MobileOperatorMapperMainTest, APNFilter) {
   VerifyMNOWithUUID("uuid130001");
   ASSERT_EQ(operator_info_->apn_list().size(), 1);
   EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_regex");
+}
+
+TEST_P(MobileOperatorMapperMainTest, Alpha2ByMCC) {
+  // Check derived alpha2 by setting MCCMNC.
+  UpdateMCCMNC("101999");  // No match.
+  VerifyAlpha2("");
+
+  UpdateMCCMNC("310001");  // Region US.
+  VerifyAlpha2("US");
 }
 
 class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {

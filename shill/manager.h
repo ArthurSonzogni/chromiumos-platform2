@@ -517,6 +517,10 @@ class Manager {
   // Emit TetheringStatus dbus property change signal.
   mockable void TetheringStatusChanged();
 
+  // Get the active cellular service operator two-letter country code defined in
+  // ISO 3166-1.
+  mockable std::optional<std::string> GetCellularOperatorCountryCode();
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

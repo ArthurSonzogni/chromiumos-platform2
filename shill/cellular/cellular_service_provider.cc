@@ -445,4 +445,16 @@ void CellularServiceProvider::ReleaseTetheringNetwork(
                                    base::BindOnce(std::move(callback), true));
 }
 
+std::optional<std::string> CellularServiceProvider::GetOperatorCountryCode() {
+  SLOG(3) << __func__;
+  const auto cellular_service = GetActiveService();
+  if (!cellular_service || !cellular_service->cellular()) {
+    return std::nullopt;
+  }
+  auto country = cellular_service->cellular()
+                     ->mobile_operator_info()
+                     ->serving_mcc_alpha2();
+  return country.empty() ? std::nullopt : std::optional<std::string>(country);
+}
+
 }  // namespace shill

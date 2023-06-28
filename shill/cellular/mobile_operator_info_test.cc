@@ -201,6 +201,12 @@ TEST_F(MobileOperatorInfoMainTest, mccmnc) {
   EXPECT_EQ(operator_info_->mccmnc(), mccmnc);
 }
 
+TEST_F(MobileOperatorInfoMainTest, mcc_alpha2) {
+  const std::string mcc_alpha2 = "US";
+  EXPECT_CALL(*home_, mcc_alpha2()).WillOnce(ReturnRef(mcc_alpha2));
+  EXPECT_EQ(operator_info_->mcc_alpha2(), mcc_alpha2);
+}
+
 TEST_F(MobileOperatorInfoMainTest, gid1) {
   const std::string gid1 = "gid1";
   EXPECT_CALL(*home_, gid1()).WillOnce(ReturnRef(gid1));
@@ -229,6 +235,12 @@ TEST_F(MobileOperatorInfoMainTest, serving_mccmnc) {
   const std::string mccmnc = "mccmnc";
   EXPECT_CALL(*serving_, mccmnc()).WillOnce(ReturnRef(mccmnc));
   EXPECT_EQ(operator_info_->serving_mccmnc(), mccmnc);
+}
+
+TEST_F(MobileOperatorInfoMainTest, serving_mcc_alpha2) {
+  const std::string mcc_alpha2 = "US";
+  EXPECT_CALL(*serving_, mcc_alpha2()).WillOnce(ReturnRef(mcc_alpha2));
+  EXPECT_EQ(operator_info_->serving_mcc_alpha2(), mcc_alpha2);
 }
 
 TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameKnownOperatorName) {

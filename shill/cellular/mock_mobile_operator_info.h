@@ -26,6 +26,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(bool, IsServingMobileNetworkOperatorKnown, (), (const, override));
 
   MOCK_METHOD(const std::string&, mccmnc, (), (const, override));
+  MOCK_METHOD(const std::string&, mcc_alpha2, (), (const, override));
   MOCK_METHOD(const std::vector<MobileOperatorMapper::MobileAPN>&,
               apn_list,
               (),
@@ -41,6 +42,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(const std::string&, serving_operator_name, (), (const, override));
   MOCK_METHOD(const std::string&, serving_country, (), (const, override));
   MOCK_METHOD(const std::string&, serving_uuid, (), (const, override));
+  MOCK_METHOD(const std::string&, serving_mcc_alpha2, (), (const, override));
 
   MOCK_METHOD(std::string, friendly_operator_name, (bool), (const, override));
   MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));
@@ -54,6 +56,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
 
  private:
   std::string empty_mccmnc_;
+  std::string empty_mcc_alpha2_;
   std::vector<MobileOperatorMapper::MobileAPN> empty_apn_list_;
   std::vector<MobileOperatorMapper::OnlinePortal> empty_olp_list_;
   std::string empty_operator_name_;
@@ -61,6 +64,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   std::string empty_uuid_;
   std::string empty_serving_country_;
   std::string empty_serving_mccmnc_;
+  std::string empty_serving_mcc_alpha2_;
   std::string empty_serving_operator_name_;
   std::string empty_serving_uuid_;
 };

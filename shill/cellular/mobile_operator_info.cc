@@ -138,6 +138,10 @@ const std::string& MobileOperatorInfo::mccmnc() const {
   return home_->mccmnc();
 }
 
+const std::string& MobileOperatorInfo::mcc_alpha2() const {
+  return home_->mcc_alpha2();
+}
+
 const std::string& MobileOperatorInfo::gid1() const {
   return home_->gid1();
 }
@@ -156,6 +160,10 @@ const std::string& MobileOperatorInfo::serving_country() const {
 
 const std::string& MobileOperatorInfo::serving_mccmnc() const {
   return serving_->mccmnc();
+}
+
+const std::string& MobileOperatorInfo::serving_mcc_alpha2() const {
+  return serving_->mcc_alpha2();
 }
 
 const std::vector<MobileOperatorMapper::MobileAPN>&

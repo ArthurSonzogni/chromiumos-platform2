@@ -172,6 +172,7 @@ class MobileOperatorMapper {
   virtual const std::string& operator_name() const;
   virtual const std::string& country() const;
   virtual const std::string& mccmnc() const;
+  virtual const std::string& mcc_alpha2() const;
   virtual const std::string& gid1() const;
 
   // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
@@ -284,6 +285,7 @@ class MobileOperatorMapper {
   void HandleOperatorNameUpdate();
   void HandleOnlinePortalUpdate();
   void HandleAPNListUpdate();
+  void HandleMCCAlpha2Update();
 
   // Accessor functions for testing purpose only.
   const std::vector<const mobile_operator_db::MobileOperatorDB*> databases() {
@@ -326,6 +328,8 @@ class MobileOperatorMapper {
   std::string operator_name_;
   std::string country_;
   std::string mccmnc_;
+  // Two-letter country code defined in ISO 3166-1 converted from MCC.
+  std::string mcc_alpha2_;
   std::string gid1_;
   std::vector<std::string> mccmnc_list_;
   EntitlementConfig entitlement_config_;

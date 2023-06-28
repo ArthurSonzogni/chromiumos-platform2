@@ -146,6 +146,10 @@ class MockManager : public Manager {
               FindActiveNetworkFromService,
               (const ServiceRefPtr&),
               (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetCellularOperatorCountryCode,
+              (),
+              ());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

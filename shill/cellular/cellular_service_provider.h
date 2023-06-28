@@ -101,6 +101,10 @@ class CellularServiceProvider : public ProviderInterface {
   mockable void ReleaseTetheringNetwork(
       Network* network, base::OnceCallback<void(bool is_success)> callback);
 
+  // Return current service operator two-letter country code defined in ISO
+  // 3166-1.
+  std::optional<std::string> GetOperatorCountryCode();
+
  private:
   friend class CellularServiceProviderTest;
   friend class TetheringManagerTest;

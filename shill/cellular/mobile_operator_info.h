@@ -114,10 +114,16 @@ class MobileOperatorInfo {
   virtual const std::string& operator_name() const;
   virtual const std::string& country() const;
   virtual const std::string& mccmnc() const;
+  // Home provider two-letter country code defined in ISO 3166-1 converted from
+  // MCC.
+  virtual const std::string& mcc_alpha2() const;
   virtual const std::string& serving_uuid() const;
   virtual const std::string& serving_operator_name() const;
   virtual const std::string& serving_country() const;
   virtual const std::string& serving_mccmnc() const;
+  // Serving operator two-letter country code defined in ISO 3166-1 converted
+  // from MCC.
+  virtual const std::string& serving_mcc_alpha2() const;
   const std::string& gid1() const;
 
   // Gets the friendly name for the service based on the home and serving

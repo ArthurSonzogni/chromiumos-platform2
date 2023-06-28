@@ -3103,4 +3103,8 @@ Manager::GetPortalDetectorProbingConfiguration() const {
   return config;
 }
 
+std::optional<std::string> Manager::GetCellularOperatorCountryCode() {
+  return cellular_service_provider()->GetOperatorCountryCode();
+}
+
 }  // namespace shill
