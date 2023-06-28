@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":bootsplash" ]
+  deps = [
+    ":bootsplash",
+    ":install_upstart_config",
+  ]
   if (use.test) {
     deps += [ ":bootsplash_testrunner" ]
   }
@@ -22,18 +25,26 @@ pkg_config("target_defaults") {
 
 static_library("libbootsplash") {
   sources = [
+    "bootsplash_daemon.cc",
     "frecon.cc",
     "paths.cc",
     "session_manager_client.cc",
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  libs = [ "bootstat" ]
 }
 
 executable("bootsplash") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libbootsplash" ]
+}
+
+# Install upstart configs and scripts.
+install_config("install_upstart_config") {
+  sources = [ "init/upstart/bootsplash.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
@@ -45,6 +56,7 @@ if (use.test) {
   }
   executable("bootsplash_testrunner") {
     sources = [
+      "bootsplash_daemon_test.cc",
       "frecon_test.cc",
       "paths_test.cc",
       "session_manager_client_test.cc",
