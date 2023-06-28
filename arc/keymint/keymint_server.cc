@@ -130,7 +130,23 @@ void KeyMintServer::RunKeyMintRequest(
 
 void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
                                   AddRngEntropyCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Convert input |data| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request =
+      std::make_unique<::keymaster::AddEntropyRequest>(kKeyMintMessageVersion);
+  ConvertToKeymasterMessage(data, &km_request->random_data);
+
+  // Call keymint.
+  RunKeyMintRequest(
+      FROM_HERE, &::keymaster::AndroidKeymaster::AddRngEntropy,
+      std::move(km_request),
+      base::BindOnce(
+          [](AddRngEntropyCallback callback,
+             std::unique_ptr<::keymaster::AddEntropyResponse> km_response) {
+            // Run callback.
+            std::move(callback).Run(km_response->error);
+          },
+          std::move(callback)));
 }
 
 void KeyMintServer::GetKeyCharacteristics(
