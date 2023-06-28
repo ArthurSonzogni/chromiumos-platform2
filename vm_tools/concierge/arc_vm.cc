@@ -1558,6 +1558,14 @@ std::vector<std::string> ArcVm::GetKernelParams(
       break;
   }
 
+  // Only force a particular value if one is set. Otherwise the board
+  // configuration may set it.
+  if (mini_instance_request.force_max_acquired_buffers_experiment() > 0) {
+    params.push_back(base::StringPrintf(
+        "androidboot.vendor.arc.sf.maxacquired=%d",
+        mini_instance_request.force_max_acquired_buffers_experiment()));
+  }
+
   return params;
 }
 

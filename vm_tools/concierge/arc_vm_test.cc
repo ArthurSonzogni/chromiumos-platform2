@@ -855,6 +855,39 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
       "false");
 }
 
+TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentDefault) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_FALSE(base::Contains(params, "androidboot.vendor.arc.sf.maxacquired"));
+}
+
+TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentOne) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_force_max_acquired_buffers_experiment(1);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.vendor.arc.sf.maxacquired=1"));
+}
+
+TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentTwo) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_force_max_acquired_buffers_experiment(2);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.vendor.arc.sf.maxacquired=2"));
+}
+
 class FakeSwapVmCallback {
  public:
   ArcVm::SwapVmCallback Create() {
