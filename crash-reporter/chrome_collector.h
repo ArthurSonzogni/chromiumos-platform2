@@ -66,6 +66,8 @@ class ChromeCollector : public CrashCollector {
   friend class ChromeCollectorTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
   FRIEND_TEST(ChromeCollectorTest, GoodLacros);
+  FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError);
+  FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_ExecutableCrash);
   FRIEND_TEST(ChromeCollectorTest, ParseCrashLogNoDump);
   FRIEND_TEST(ChromeCollectorTest, ParseCrashLogJSStack);
   FRIEND_TEST(ChromeCollectorTest, BadValues);
@@ -185,6 +187,9 @@ class ChromeCollector : public CrashCollector {
 
   // Returns true if the crash is caused by a hang during browser shutdown.
   bool is_browser_shutdown_hang() const { return is_browser_shutdown_hang_; }
+
+  // Getter to determine whether `crash_type_` is `kJavaScriptError`.
+  bool IsJavaScriptError() const;
 
   // The file where we write our special "done" marker (to indicate to Chrome
   // that we are finished dumping). Always stdout in production.

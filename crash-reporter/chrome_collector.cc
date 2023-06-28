@@ -420,6 +420,10 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
   return at == data.size();
 }
 
+bool ChromeCollector::IsJavaScriptError() const {
+  return crash_type_ == kJavaScriptError;
+}
+
 void ChromeCollector::AddLogIfNotTooBig(
     const char* log_map_key,
     const base::FilePath& complete_file_name,

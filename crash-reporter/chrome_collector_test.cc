@@ -421,6 +421,18 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
   EXPECT_TRUE(meta.find("upload_var_prod=Chrome_Lacros") != std::string::npos);
 }
 
+TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError) {
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
+      "", 1, 1, "", "--error_key=sample", "", "", "", 1));
+  EXPECT_TRUE(collector_.IsJavaScriptError());
+}
+
+TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ExecutableCrash) {
+  EXPECT_FALSE(collector_.HandleCrashWithDumpData("", 1, 1, "sample_executable",
+                                                  "", "", "", "", 1));
+  EXPECT_FALSE(collector_.IsJavaScriptError());
+}
+
 TEST_F(ChromeCollectorTest, ParseCrashLogNoDump) {
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
