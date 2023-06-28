@@ -147,8 +147,10 @@ has_s2idle() {
 get_s0ix_count() {
   if [ -e /sys/kernel/debug/pmc_core/substate_residencies ]; then
     # From Tigerlake with kernel >= 5.4
-    awk '/S0i3/ {print $2}' < /sys/kernel/debug/pmc_core/substate_residencies \
-      | tail -n 1
+    # Larger number means deeper state,
+    # so we sort all substates and check last one.
+    grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies | sort | \
+      awk '{print $2}' | tail -n 1
   elif [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
     # Kabylake / Skylake systems.
     cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec
