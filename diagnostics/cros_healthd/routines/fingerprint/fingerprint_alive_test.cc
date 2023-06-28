@@ -9,7 +9,7 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/fingerprint_alive/fingerprint_alive.h"
+#include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

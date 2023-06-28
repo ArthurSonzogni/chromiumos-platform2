@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/led_lit_up/led_lit_up.h"
-
 #include <memory>
 #include <optional>
 #include <utility>
@@ -14,6 +12,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
