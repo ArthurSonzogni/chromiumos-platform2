@@ -10,6 +10,10 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <net-base/ipv4_address.h>
@@ -18,6 +22,7 @@
 #include "patchpanel/metrics.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::Return;
 using testing::StrictMock;
 using testing::WithArg;
@@ -34,11 +39,17 @@ class MockCallback {
   MOCK_METHOD(void, OnProcessExited, (int));
 };
 
+ACTION_P(SetStderrFd, stderr_fd) {
+  *arg6.stderr_fd = stderr_fd;
+}
+
 }  // namespace
 
 class DHCPServerControllerTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    ASSERT_EQ(0, pipe(pipe_fds_));
+
     dhcp_server_controller_ = std::make_unique<DHCPServerController>(
         &metrics_, kTetheringDHCPServerUmaEventMetrics, "wlan0");
     dhcp_server_controller_->set_process_manager_for_testing(&process_manager_);
@@ -73,9 +84,20 @@ class DHCPServerControllerTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
   }
 
+  int read_fd() const { return pipe_fds_[0]; }
+  int write_fd() const { return pipe_fds_[1]; }
+
+  // The environment instances which are required for using
+  // base::FileDescriptorWatcher::WatchReadable. Declared them first to ensure
+  // they are the last things to be cleaned up.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   StrictMock<MetricsLibraryMock> metrics_;
   StrictMock<shill::MockProcessManager> process_manager_;
   std::unique_ptr<DHCPServerController> dhcp_server_controller_;
+
+  int pipe_fds_[2];
 };
 
 TEST_F(DHCPServerControllerTest, ConfigWithWrongSubnet) {
@@ -142,6 +164,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
   const auto config = CreateValidConfig();
   const auto cmd_path = base::FilePath("/usr/sbin/dnsmasq");
   const std::vector<std::string> cmd_args = {
+      "--log-facility=-",
       "--dhcp-authoritative",
       "--keep-in-foreground",
       "--log-dhcp",
@@ -166,9 +189,9 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
 
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, cmd_path, cmd_args, _, _, _))
-      .WillOnce(Return(pid));
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
+                                    _, cmd_path, cmd_args, _, _, _, _))
+      .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
 
   // Start() should be successful at the first time.
@@ -185,7 +208,7 @@ TEST_F(DHCPServerControllerTest, StartFailed) {
   constexpr pid_t invalid_pid = shill::ProcessManager::kInvalidPID;
 
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
       .WillOnce(Return(invalid_pid));
 
   // Start() should fail if receiving invalid pid.
@@ -202,8 +225,8 @@ TEST_F(DHCPServerControllerTest, StartAndStop) {
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
 
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(Return(pid));
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
+      .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
 
   EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
@@ -221,12 +244,14 @@ TEST_F(DHCPServerControllerTest, OnProcessExited) {
 
   // Store the exit callback at |exit_cb_at_process_manager|.
   base::OnceCallback<void(int)> exit_cb_at_process_manager;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(WithArg<5>([&exit_cb_at_process_manager](
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
+      .WillOnce(
+          DoAll(SetStderrFd(read_fd()),
+                WithArg<5>([&exit_cb_at_process_manager](
                                base::OnceCallback<void(int)> exit_callback) {
-        exit_cb_at_process_manager = std::move(exit_callback);
-        return pid;
-      }));
+                  exit_cb_at_process_manager = std::move(exit_callback);
+                  return pid;
+                })));
 
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
   ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
@@ -243,4 +268,34 @@ TEST_F(DHCPServerControllerTest, OnProcessExited) {
   // unexpectedly.
   std::move(exit_cb_at_process_manager).Run(exit_status);
 }
+
+TEST_F(DHCPServerControllerTest, Metric) {
+  const auto config = CreateValidConfig();
+  constexpr pid_t pid = 5;
+
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageRequest, 2);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageAck, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageNak, 1);
+  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageDecline, 1);
+
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
+      .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
+  EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
+  EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
+
+  base::WriteFileDescriptor(write_fd(), "DHCPREQUEST(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPNAK(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPDISCOVER(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPOFFER(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPREQUEST(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPACK(ap0)\n");
+  base::WriteFileDescriptor(write_fd(), "DHCPDECLINE(ap0)\n");
+  base::RunLoop().RunUntilIdle();
+}
+
 }  // namespace patchpanel

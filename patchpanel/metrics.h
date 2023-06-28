@@ -83,6 +83,10 @@ enum class TetheringDHCPServerUmaEvent {
   kStartSuccess = 2,
   kStop = 3,
   kStopSuccess = 4,
+  kDHCPMessageRequest = 5,
+  kDHCPMessageAck = 6,
+  kDHCPMessageNak = 7,
+  kDHCPMessageDecline = 8,
 
   kMaxValue,
 };

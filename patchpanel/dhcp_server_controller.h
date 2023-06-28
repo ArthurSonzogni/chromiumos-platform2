@@ -5,11 +5,13 @@
 #ifndef PATCHPANEL_DHCP_SERVER_CONTROLLER_H_
 #define PATCHPANEL_DHCP_SERVER_CONTROLLER_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
@@ -113,6 +115,11 @@ class DHCPServerController {
   // Callback when the process is exited unexpectedly.
   void OnProcessExitedUnexpectedly(int exit_status);
 
+  // Callback when the log from dnsmasq is available.
+  void OnDnsmasqLogReady();
+  // Handles the log from dnsmasq.
+  void HandleDnsmasqLog(const std::string& log);
+
   // UMA metrics client.
   MetricsLibraryInterface* metrics_;
 
@@ -133,6 +140,11 @@ class DHCPServerController {
   // The callback that is called when the dnsmasq process is exited
   // unexpectedly, null state iff the process is not running.
   ExitCallback exit_callback_;
+
+  // The file descriptor of the dnsmasq process's stderr.
+  base::ScopedFD log_fd_;
+  // Monitors the file descriptor of the dnsmasq process's stderr.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> log_watcher_;
 
   base::WeakPtrFactory<DHCPServerController> weak_ptr_factory_{this};
 };

@@ -4,6 +4,7 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
+#include <fcntl.h>
 #include <linux/capability.h>
 
 #include <utility>
@@ -11,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -21,6 +23,18 @@ namespace patchpanel {
 namespace {
 constexpr char kDnsmasqPath[] = "/usr/sbin/dnsmasq";
 constexpr char kLeaseTime[] = "12h";  // 12 hours
+
+constexpr char kDHCPRequest[] = "DHCPREQUEST";
+constexpr char kDHCPAck[] = "DHCPACK";
+constexpr char kDHCPNak[] = "DHCPNAK";
+constexpr char kDHCPDecline[] = "DHCPDECLINE";
+constexpr std::pair<const char*, TetheringDHCPServerUmaEvent> kEventTable[] = {
+    {kDHCPRequest, TetheringDHCPServerUmaEvent::kDHCPMessageRequest},
+    {kDHCPAck, TetheringDHCPServerUmaEvent::kDHCPMessageAck},
+    {kDHCPNak, TetheringDHCPServerUmaEvent::kDHCPMessageNak},
+    {kDHCPDecline, TetheringDHCPServerUmaEvent::kDHCPMessageDecline},
+};
+
 }  // namespace
 
 using Config = DHCPServerController::Config;
@@ -110,6 +124,7 @@ bool DHCPServerController::Start(const Config& config,
 
   LOG(INFO) << "Starting DHCP server at: " << ifname_ << ", config: " << config;
   std::vector<std::string> dnsmasq_args = {
+      "--log-facility=-",      // Logs to stderr.
       "--dhcp-authoritative",  // dnsmasq is the only DHCP server on a network.
       "--keep-in-foreground",  // Use foreground mode to prevent forking.
       "--log-dhcp",            // Log the DHCP event.
@@ -150,15 +165,31 @@ bool DHCPServerController::Start(const Config& config,
                              CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                              CAP_TO_MASK(CAP_NET_RAW);
 
-  const pid_t pid = process_manager_->StartProcessInMinijail(
+  int stderr_fd = -1;
+  const pid_t pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kDnsmasqPath), dnsmasq_args, /*environment=*/{},
       minijail_options,
       base::BindOnce(&DHCPServerController::OnProcessExitedUnexpectedly,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr()),
+      {nullptr, nullptr, &stderr_fd});
   if (pid < 0) {
     LOG(ERROR) << "Failed to start the DHCP server: " << ifname_;
     return false;
   }
+  log_fd_.reset(stderr_fd);
+
+  // Set stderr_fd non-blocking.
+  const int opt = fcntl(stderr_fd, F_GETFL) | O_NONBLOCK;
+  if (fcntl(stderr_fd, F_SETFL, opt) < 0) {
+    LOG(ERROR) << "Failed to set the stderr fd to non-blocking";
+    return false;
+  }
+
+  log_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      stderr_fd,
+      base::BindRepeating(&DHCPServerController::OnDnsmasqLogReady,
+                          // The callback will not outlive the object.
+                          base::Unretained(this)));
 
   pid_ = pid;
   config_ = config;
@@ -186,6 +217,9 @@ void DHCPServerController::Stop() {
   pid_ = std::nullopt;
   config_ = std::nullopt;
   exit_callback_.Reset();
+
+  log_watcher_.reset();
+  log_fd_.reset();
 }
 
 bool DHCPServerController::IsRunning() const {
@@ -198,6 +232,42 @@ void DHCPServerController::OnProcessExitedUnexpectedly(int exit_status) {
   pid_ = std::nullopt;
   config_ = std::nullopt;
   std::move(exit_callback_).Run(exit_status);
+}
+
+void DHCPServerController::OnDnsmasqLogReady() {
+  static std::string stash_token;
+  static char buf[256];
+
+  while (true) {
+    const ssize_t len = read(log_fd_.get(), buf, sizeof(buf));
+    if (len <= 0) {
+      break;
+    }
+
+    // Split to string.
+    base::CStringTokenizer tokenizer(buf, buf + len, "\n");
+    tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
+    while (tokenizer.GetNext()) {
+      if (tokenizer.token_is_delim()) {
+        HandleDnsmasqLog(stash_token);
+        stash_token = "";
+      } else {
+        stash_token += tokenizer.token();
+      }
+    }
+  }
+}
+
+void DHCPServerController::HandleDnsmasqLog(const std::string& log) {
+  // Redirect to syslog.
+  LOG(INFO) << log;
+
+  for (const auto& [msg, event] : kEventTable) {
+    if (log.find(msg) != std::string::npos) {
+      metrics_->SendEnumToUMA(dhcp_events_metric_name_, event);
+      break;
+    }
+  }
 }
 
 }  // namespace patchpanel
