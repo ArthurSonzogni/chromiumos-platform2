@@ -614,20 +614,6 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
-  // Cellular as upstream might indicate country other than the one used in
-  // WiFi. Request WiFiProvider to update the region but do that only when the
-  // underlying PHY is not a self-managed one. OnPhyInfoReady is called when it
-  // is ready.
-  bool phy_is_self_managed = manager_->wifi_provider()
-                                 ->GetPhyAtIndex(hotspot_dev_->phy_index())
-                                 ->reg_self_managed();
-  if (upstream_technology_ == Technology::kCellular && !phy_is_self_managed) {
-    manager_->wifi_provider()->UpdateRegAndPhyInfo(base::BindOnce(
-        &TetheringManager::OnPhyInfoReady, base::Unretained(this)));
-  } else {
-    OnPhyInfoReady();
-  }
-
   // Prepare the upstream network.
   if (upstream_technology_ == Technology::kCellular) {
     manager_->cellular_service_provider()->AcquireTetheringNetwork(
@@ -652,7 +638,7 @@ void TetheringManager::StartTetheringSession() {
   }
 }
 
-void TetheringManager::OnPhyInfoReady() {
+void TetheringManager::OnDownstreamDeviceEnabled() {
   // Prepare the downlink service.
   auto freq = manager_->wifi_provider()
                   ->GetPhyAtIndex(hotspot_dev_->phy_index())
@@ -701,15 +687,10 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   downstream_network_fd_.reset();
   downstream_network_started_ = false;
 
-  auto wifi_provider = manager_->wifi_provider();
   // Remove the downstream device if any.
   if (hotspot_dev_) {
-    if (!wifi_provider->GetPhyAtIndex(hotspot_dev_->phy_index())
-             ->reg_self_managed()) {
-      wifi_provider->ResetRegDomain();
-    }
     hotspot_dev_->DeconfigureService();
-    wifi_provider->DeleteLocalDevice(hotspot_dev_);
+    manager_->wifi_provider()->DeleteLocalDevice(hotspot_dev_);
     hotspot_dev_ = nullptr;
   }
   hotspot_service_up_ = false;
@@ -798,6 +779,8 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
       PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     }
     StopTetheringSession(StopReason::kError);
+  } else if (event == LocalDevice::DeviceEvent::kInterfaceEnabled) {
+    OnDownstreamDeviceEnabled();
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
     CheckAndStartDownstreamTetheredNetwork();

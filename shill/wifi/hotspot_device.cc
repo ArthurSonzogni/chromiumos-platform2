@@ -13,6 +13,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/manager.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -47,6 +48,9 @@ HotspotDevice::HotspotDevice(Manager* manager,
 HotspotDevice::~HotspotDevice() {}
 
 bool HotspotDevice::Start() {
+  auto wifi_phy = manager()->wifi_provider()->GetPhyAtIndex(phy_index());
+  CHECK(wifi_phy);
+
   prev_primary_iface_control_state_ = SupplicantProcessProxy()->GetInterface(
       primary_link_name_, &supplicant_primary_interface_path_);
 
@@ -68,7 +72,23 @@ bool HotspotDevice::Start() {
     }
   }
 
-  return CreateInterface();
+  // Create Soft AP interface.
+  if (!CreateInterface()) {
+    return false;
+  }
+
+  if (!wifi_phy->reg_self_managed()) {
+    // For non-self-managed solution, update the region domain and refresh Phy
+    // info.
+    manager()->wifi_provider()->UpdateRegAndPhyInfo(
+        base::BindOnce(&HotspotDevice::OnPhyInfoReady, base::Unretained(this)));
+  } else {
+    // TODO (b/281130838): Add a scan before sending out kInterfaceEnabled
+    // event.
+    OnPhyInfoReady();
+  }
+
+  return true;
 }
 
 bool HotspotDevice::Stop() {
@@ -82,8 +102,16 @@ bool HotspotDevice::Stop() {
       ret = false;
     }
   }
-
   supplicant_primary_interface_path_ = RpcIdentifier("");
+
+  auto wifi_phy = manager()->wifi_provider()->GetPhyAtIndex(phy_index());
+  if (wifi_phy == nullptr) {
+    ret = false;
+  } else if (!wifi_phy->reg_self_managed()) {
+    // For non-self-managed solution, reset the region domain to world.
+    manager()->wifi_provider()->ResetRegDomain();
+  }
+
   return ret;
 }
 
@@ -268,6 +296,11 @@ std::vector<std::vector<uint8_t>> HotspotDevice::GetStations() {
   }
 
   return stations;
+}
+
+void HotspotDevice::OnPhyInfoReady() {
+  // Phy information is up to date. Post interface enabled event.
+  PostDeviceEvent(DeviceEvent::kInterfaceEnabled);
 }
 
 }  // namespace shill

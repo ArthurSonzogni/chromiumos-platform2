@@ -39,6 +39,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
 
   enum class DeviceEvent {
     kInterfaceDisabled,  // Interface is disabled in kernel.
+    kInterfaceEnabled,   // Interface is enabled and ready to use.
     kServiceUp,          // A service is added and brought up.
     kServiceDown,        // A service is brought down and removed.
     kPeerConnected,      // A peer is connected.
@@ -99,6 +100,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
   ControlInterface* ControlInterface() const;
   EventDispatcher* Dispatcher() const;
+  Manager* manager() { return manager_; }
 
  private:
   friend class LocalDeviceTest;

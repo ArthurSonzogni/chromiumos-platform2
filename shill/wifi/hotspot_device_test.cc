@@ -26,18 +26,22 @@
 #include "shill/testing.h"
 #include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/mock_wifi_phy.h"
+#include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/wifi_security.h"
 
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
+using ::testing::WithArg;
 
 namespace shill {
 
@@ -63,20 +67,28 @@ class HotspotDeviceTest : public testing::Test {
  public:
   HotspotDeviceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
+        wifi_provider_(new NiceMock<MockWiFiProvider>(&manager_)),
         device_(new HotspotDevice(&manager_,
                                   kPrimaryInterfaceName,
                                   kInterfaceName,
                                   kDeviceAddress,
                                   kPhyIndex,
                                   cb.Get())),
+        wifi_phy_(kPhyIndex),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()) {
+    // Replace the Manager's WiFi provider with a mock.
+    manager_.wifi_provider_.reset(wifi_provider_);
+    // Update the Manager's map from technology to provider.
+    manager_.UpdateProviderMapping();
     manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
     ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
     ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, kIfacePath))
         .WillByDefault(Return(ByMove(std::move(supplicant_interface_proxy_))));
+    ON_CALL(*wifi_provider_, GetPhyAtIndex(kPhyIndex))
+        .WillByDefault(Return(&wifi_phy_));
   }
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
@@ -95,13 +107,15 @@ class HotspotDeviceTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
+  MockWiFiProvider* wifi_provider_;
 
   scoped_refptr<HotspotDevice> device_;
+  MockWiFiPhy wifi_phy_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
 };
 
-TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled) {
+TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled_NonSelfManaged) {
   // wpa_supplicant does not control wlan0 if WiFi is disabled.
   EXPECT_CALL(*supplicant_process_proxy_,
               GetInterface(kPrimaryInterfaceName, _))
@@ -110,20 +124,53 @@ TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled) {
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)))
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
+  ON_CALL(wifi_phy_, reg_self_managed()).WillByDefault(Return(false));
+  EXPECT_CALL(*wifi_provider_, UpdateRegAndPhyInfo(_))
+      .WillOnce(Invoke([&](auto callback) { std::move(callback).Run(); }));
   EXPECT_TRUE(device_->Start());
+  // Expect kInterfaceEnabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 
   // Expect disconnect wpa_supplicant from ap0 and wlan0.
   EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kIfacePath))
       .WillOnce(Return(true));
   EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kPrimaryIfacePath))
       .WillOnce(Return(true));
-
   // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
   // destroyed by caller not Kernel.
   EXPECT_CALL(cb, Run(_, _)).Times(0);
   EXPECT_TRUE(device_->Stop());
   DispatchPendingEvents();
+}
+
+TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled_SelfManaged) {
+  // wpa_supplicant does not control wlan0 if WiFi is disabled.
+  EXPECT_CALL(*supplicant_process_proxy_,
+              GetInterface(kPrimaryInterfaceName, _))
+      .WillOnce(Return(false));
+  // Expect to ask wpa_supplicant to control wlan0 first then ap0.
+  EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
+  ON_CALL(wifi_phy_, reg_self_managed()).WillByDefault(Return(true));
+  EXPECT_TRUE(device_->Start());
+  // Expect kInterfaceEnabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
+  DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
+
+  // Expect disconnect wpa_supplicant from ap0 and wlan0.
+  EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kIfacePath))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kPrimaryIfacePath))
+      .WillOnce(Return(true));
+  // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
+  // destroyed by caller not Kernel.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
+  EXPECT_TRUE(device_->Stop());
+  DispatchPendingEvents();
 }
 
 TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiEnabled) {
@@ -134,18 +181,23 @@ TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiEnabled) {
   // wpa_supplicant only need to control ap0.
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
+  ON_CALL(wifi_phy_, reg_self_managed()).WillByDefault(Return(false));
+  EXPECT_CALL(*wifi_provider_, UpdateRegAndPhyInfo(_))
+      .WillOnce(Invoke([&](auto callback) { std::move(callback).Run(); }));
   EXPECT_TRUE(device_->Start());
+  // Expect kInterfaceEnabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 
   // Expect disconnect wpa_supplicant from ap0 only.
   EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kIfacePath))
       .WillOnce(Return(true));
-
   // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
   // destroyed by caller not Kernel.
   EXPECT_CALL(cb, Run(_, _)).Times(0);
   EXPECT_TRUE(device_->Stop());
   DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
 }
 
 TEST_F(HotspotDeviceTest, DeviceExistStart) {
@@ -156,7 +208,13 @@ TEST_F(HotspotDeviceTest, DeviceExistStart) {
       .WillOnce(Return(false));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(kInterfaceName, _))
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
+  ON_CALL(wifi_phy_, reg_self_managed()).WillByDefault(Return(false));
+  EXPECT_CALL(*wifi_provider_, UpdateRegAndPhyInfo(_))
+      .WillOnce(Invoke([&](auto callback) { std::move(callback).Run(); }));
   EXPECT_TRUE(device_->Start());
+  // Expect kInterfaceEnabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
+  DispatchPendingEvents();
 }
 
 TEST_F(HotspotDeviceTest, InterfaceDisabledEvent) {
@@ -179,7 +237,6 @@ TEST_F(HotspotDeviceTest, InterfaceDisabledEvent) {
   EXPECT_EQ(device_->supplicant_state_,
             WPASupplicant::kInterfaceStateInterfaceDisabled);
   DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
 }
 
 TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
@@ -220,6 +277,11 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
       device_, kHotspotSSID, kHotspotPassphrase, WiFiSecurity::kWpa2,
       kHotspotFrequency);
   EXPECT_TRUE(device_->Start());
+  // Expect kInterfaceEnabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
   ON_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillByDefault(DoAll(SetArgPointee<1>(kNetworkPath), Return(true)));
   EXPECT_TRUE(device_->ConfigureService(std::move(service)));
@@ -256,7 +318,6 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   device_->PropertiesChangedTask(props);
   EXPECT_EQ(device_->supplicant_state_, WPASupplicant::kInterfaceStateInactive);
   DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
 }
 
 TEST_F(HotspotDeviceTest, StationAddedRemoved) {
@@ -286,7 +347,6 @@ TEST_F(HotspotDeviceTest, StationAddedRemoved) {
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerDisconnected, _)).Times(0);
   device_->StationRemoved(kStationPath1);
   DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
 }
 
 TEST_F(HotspotDeviceTest, GetStations) {

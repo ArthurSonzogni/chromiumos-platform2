@@ -107,6 +107,8 @@ std::ostream& operator<<(std::ostream& stream, LocalDevice::IfaceType type) {
 std::ostream& operator<<(std::ostream& stream, LocalDevice::DeviceEvent event) {
   if (event == LocalDevice::DeviceEvent::kInterfaceDisabled) {
     stream << "InterfaceDisabled";
+  } else if (event == LocalDevice::DeviceEvent::kInterfaceEnabled) {
+    stream << "InterfaceEnabled";
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     stream << "ServiceUp";
   } else if (event == LocalDevice::DeviceEvent::kServiceDown) {

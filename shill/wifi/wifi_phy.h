@@ -72,7 +72,7 @@ class WiFiPhy {
 
   // Returns true if the PHY handles 802.11d country notifications (for
   // automatic changes of regulatory domains).
-  bool reg_self_managed() const { return reg_self_managed_; }
+  mockable bool reg_self_managed() const { return reg_self_managed_; }
 
   std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
     return concurrency_combs_;
@@ -106,8 +106,6 @@ class WiFiPhy {
   // The key (band) is the NL band attribute (NL80211_BAND_2GHZ etc.) and the
   // value is just vector of Frequency structs (see above).
   using Frequencies = std::map<int, std::vector<Frequency>>;
-  // Returns map of available frequencies.
-  mockable const Frequencies& frequencies() const { return frequencies_; }
   // Utility function to choose frequency from the available frequencies with
   // |band| preference. Returns frequency or std::nullopt on error.
   std::optional<int> SelectFrequency(WiFiBand band) const;

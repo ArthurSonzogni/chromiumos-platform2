@@ -192,6 +192,8 @@ class TetheringManager : public Network::EventHandler {
   bool Load(const StoreInterface* storage);
   // Set tethering state and emit dbus property changed signal.
   void SetState(TetheringState state);
+  // Downstream device enabled event handler.
+  void OnDownstreamDeviceEnabled();
   // Peer assoc event handler.
   void OnPeerAssoc();
   // Peer disassoc event handler.
@@ -240,11 +242,6 @@ class TetheringManager : public Network::EventHandler {
   void FreeUpstreamNetwork();
   // Convert stop reason enum to string.
   static const char* StopReasonToString(StopReason reason);
-  // This is a callback that is used as notification by WiFiProvider that
-  // current PHY info is up to date - it is used during starting of tethering
-  // session when region needs to be updated.  The argument indicates if the
-  // regulatory domain change has been attempted.
-  void OnPhyInfoReady();
 
   // TODO(b/267804414): Remove it after fishfood.
   // Asynchronous function triggered when the Allowed property changes.

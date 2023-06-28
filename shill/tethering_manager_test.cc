@@ -282,6 +282,9 @@ class TetheringManagerTest : public testing::Test {
           .WillByDefault(Return(true));
       // Send upstream downstream ready events.
       DownStreamDeviceEvent(tethering_manager,
+                            LocalDevice::DeviceEvent::kInterfaceEnabled,
+                            hotspot_device_.get());
+      DownStreamDeviceEvent(tethering_manager,
                             LocalDevice::DeviceEvent::kServiceUp,
                             hotspot_device_.get());
       OnUpstreamNetworkAcquired(tethering_manager_,

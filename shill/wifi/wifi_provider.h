@@ -37,16 +37,6 @@ class WiFiPhy;
 class WiFiService;
 class WiFiSecurity;
 
-// This enum indicates information source for the regulatory information:
-// - kCurrent - value currently set in WiFi core (obtained from Netlink
-//   notifications,
-// - kCellular - value indicated by the Cellular (based on country/MCC of the
-//   serving operator).
-enum class RegulatorySource {
-  kCurrent,
-  kCellular,
-};
-
 // The WiFi Provider is the holder of all WiFi Services.  It holds both
 // visible (created due to an Endpoint becoming visible) and invisible
 // (created due to user or storage configuration) Services.
@@ -249,15 +239,6 @@ class WiFiProvider : public ProviderInterface {
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
 
-  // Returns regulatory domain (country alpha 2 code).
-  const std::string& country(RegulatorySource source) {
-    return country_[source];
-  }
-  // This function should be called to pass information about current country
-  // (for regulatory purposes).  The |source| indicates source of the
-  // information (see RegulatorySource above).
-  void NotifyCountry(const std::string& country, RegulatorySource source);
-
   // This is an explicit request to update regulatory region and refresh PHY
   // information afterwards.
   mockable void UpdateRegAndPhyInfo(base::OnceClosure callback);
@@ -335,9 +316,10 @@ class WiFiProvider : public ProviderInterface {
   // we request phy info for that phy index.
   void HandleNetlinkBroadcast(const shill::NetlinkMessage& message);
 
-  // Set regulatory domain to the country based on information obtained from
-  // |source|.  See RegulatorySource above.
-  mockable void SetRegDomain(RegulatorySource source);
+  // Set regulatory domain to |country|, include and set
+  // NL80211_ATTR_USER_REG_HINT_TYPE to NL80211_USER_REG_HINT_CELL_BASE if
+  // |is_cellular| is true.
+  mockable void SetRegDomain(std::string country, bool is_cellular);
   // Utility function handling timeout for setting of regulatory domain.
   void PhyUpdateTimeout();
   // Utility function used to detect the end of PHY info dump and responsible
@@ -364,8 +346,7 @@ class WiFiProvider : public ProviderInterface {
   // the map key.
   std::map<std::string, LocalDeviceRefPtr> local_devices_;
   // Regulatory information: ISO 3166 alpha2 country code (e.g. "US") if known.
-  // Indexed by the source of information - see enum RegulatorySource.
-  std::map<RegulatorySource, std::string> country_;
+  std::optional<std::string> country_;
   // Callbacks used during process of region/phy update (initiated by
   // a UpdateRegAndPhy() function).
   base::CancelableOnceClosure phy_update_timeout_cb_;

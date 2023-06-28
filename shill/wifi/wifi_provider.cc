@@ -1266,49 +1266,18 @@ void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   DeregisterLocalDevice(device);
 }
 
-void WiFiProvider::NotifyCountry(const std::string& country,
-                                 RegulatorySource source) {
-  SLOG(2) << "Country notification: " << country
-          << " (source: " << static_cast<int>(source) << ")";
-  country_[source] = country;
-  if (source == RegulatorySource::kCurrent) {
-    if (!phy_update_timeout_cb_.IsCancelled()) {
-      // We requested regdom change - let's check if the result is what we
-      // expect to be.
-      if (country != country_[RegulatorySource::kCellular] &&
-          country != kCustomWorldRegDomain &&
-          country != kIntersectionRegDomain) {
-        LOG(WARNING) << "Unexpected regulatory domain: got '" << country
-                     << "', want '" << country_[RegulatorySource::kCellular]
-                     << "'";
-      }
-    }
-    return;
-  }
-  auto& curr_country = country_[RegulatorySource::kCurrent];
-  if (!curr_country.empty() && curr_country != country) {
-    SLOG(2) << "Country mismatch: " << curr_country << '/' << country
-            << " (current/country)";
-  }
-}
-
-void WiFiProvider::SetRegDomain(RegulatorySource source) {
-  std::string reg_alpha2 = country_[source];
-
-  if (reg_alpha2.empty()) {
-    LOG(WARNING) << "Country info (source: " << static_cast<int>(source)
-                 << ") not available";
-    return;
-  }
+void WiFiProvider::SetRegDomain(std::string country, bool is_cellular) {
+  CHECK(!country.empty()) << "Missing alpha2";
 
   ReqSetRegMessage set_reg;
-  if (source == RegulatorySource::kCellular) {
+  if (is_cellular) {
     set_reg.attributes()->SetU32AttributeValue(NL80211_ATTR_USER_REG_HINT_TYPE,
                                                NL80211_USER_REG_HINT_CELL_BASE);
   }
   set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
-                                                reg_alpha2);
-  LOG(INFO) << "Requesting region change to: " << reg_alpha2;
+                                                country);
+  LOG(INFO) << "Requesting region change from: " << country_.value_or("none")
+            << " to: " << country;
   netlink_manager_->SendNl80211Message(
       &set_reg,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
@@ -1329,20 +1298,23 @@ void WiFiProvider::ResetRegDomain() {
 }
 
 void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
-  if (!country_[RegulatorySource::kCellular].empty() &&
-      country_[RegulatorySource::kCellular] !=
-          country_[RegulatorySource::kCurrent]) {
+  auto cellular_country = manager_->GetCellularOperatorCountryCode();
+  if (cellular_country.has_value() &&
+      (!country_.has_value() ||
+       base::CompareCaseInsensitiveASCII(cellular_country.value(),
+                                         country_.value()))) {
     phy_info_ready_cb_ = std::move(phy_ready_callback);
-    SetRegDomain(RegulatorySource::kCellular);
+    SetRegDomain(cellular_country.value(), true);
     phy_update_timeout_cb_.Reset(
         base::BindOnce(&WiFiProvider::PhyUpdateTimeout,
                        weak_ptr_factory_while_started_.GetWeakPtr()));
 
     manager_->dispatcher()->PostDelayedTask(
         FROM_HERE, phy_update_timeout_cb_.callback(), kPhyUpdateTimeout);
-  } else {
-    std::move(phy_ready_callback).Run();
+    return;
   }
+
+  std::move(phy_ready_callback).Run();
 }
 
 void WiFiProvider::PhyUpdateTimeout() {
@@ -1352,7 +1324,8 @@ void WiFiProvider::PhyUpdateTimeout() {
 }
 
 void WiFiProvider::RegionChanged(const std::string& country) {
-  NotifyCountry(country, RegulatorySource::kCurrent);
+  SLOG(2) << "Country notification: " << country;
+  country_ = country;
   GetPhyInfo(kAllPhys);
 }
 

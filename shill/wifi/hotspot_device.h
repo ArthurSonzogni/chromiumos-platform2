@@ -94,6 +94,8 @@ class HotspotDevice : public LocalDevice,
   bool RemoveInterface();
   void PropertiesChangedTask(const KeyValueStore& properties);
   void StateChanged(const std::string& new_state);
+  // Callback handler to handle the case when phy information is ready.
+  void OnPhyInfoReady();
 
   // Primary interface link name.
   std::string primary_link_name_;

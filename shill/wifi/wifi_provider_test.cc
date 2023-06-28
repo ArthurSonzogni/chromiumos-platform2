@@ -58,6 +58,7 @@ using ::testing::WithArg;
 
 namespace shill {
 
+namespace {
 const uint16_t kNl80211FamilyId = 0x13;
 
 // Bytes representing an NL80211_CMD_NEW_WIPHY message reporting the WiFi
@@ -370,6 +371,10 @@ const uint8_t kActiveScanTriggerNlMsg[] = {
     0x08, 0x00, 0x1e, 0x00, 0x99, 0x16, 0x00, 0x00, 0x08, 0x00, 0x1f, 0x00,
     0xad, 0x16, 0x00, 0x00, 0x08, 0x00, 0x20, 0x00, 0xc1, 0x16, 0x00, 0x00};
 
+const char kUS_Alpha2[] = "US";
+const char kWorld_Alpha2[] = "00";
+}  // namespace
+
 class WiFiProviderTest : public testing::Test {
  public:
   explicit WiFiProviderTest(EventDispatcher* dispatcher = nullptr)
@@ -674,6 +679,8 @@ class WiFiProviderTest : public testing::Test {
         &manager_, type, link_name, "00:00:00:00:00:00", 0, cb.Get());
     return dev;
   }
+
+  void SetCountry(std::string alpha2) { provider_.country_ = alpha2; }
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
@@ -2399,8 +2406,9 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
 TEST_F(WiFiProviderTest2, UpdatePhyInfo_NoChange) {
   // With region domains set correctly the notification callback should be
   // called immediately signaling no change ('false' as argument).
-  provider_.NotifyCountry("US", RegulatorySource::kCurrent);
-  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  SetCountry(kUS_Alpha2);
+  EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
+      .WillOnce(Return(kUS_Alpha2));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   int times_called = 0;
   provider_.UpdateRegAndPhyInfo(
@@ -2412,8 +2420,9 @@ TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
   // With different region domains we expect to request domain and phy update,
   // however our request might not get a reply, so we should time out and run
   // the callback.
-  provider_.NotifyCountry("00", RegulatorySource::kCurrent);
-  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  SetCountry(kWorld_Alpha2);
+  EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
+      .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(
@@ -2428,8 +2437,9 @@ TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
 
 TEST_F(WiFiProviderTest2, UpdatePhyInfo_Success) {
   // With different region domains we expect to request domain and phy update.
-  provider_.NotifyCountry("00", RegulatorySource::kCurrent);
-  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  SetCountry(kWorld_Alpha2);
+  EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
+      .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(
