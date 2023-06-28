@@ -216,6 +216,9 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
                                 side_volume_button_region),
           nullptr));
     }
+    // TODO(b/274762028): Check if the device has CrosEC.
+    case mojom::RoutineArgument::Tag::kLedLitUp:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
   }
 }
 

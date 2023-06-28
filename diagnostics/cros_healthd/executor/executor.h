@@ -77,10 +77,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       ash::cros_healthd::mojom::FingerprintCaptureType type,
       GetFingerprintFrameCallback callback) override;
   void GetFingerprintInfo(GetFingerprintInfoCallback callback) override;
-  void SetLedColor(ash::cros_healthd::mojom::DEPRECATED_LedName name,
-                   ash::cros_healthd::mojom::DEPRECATED_LedColor color,
+  void SetLedColor(ash::cros_healthd::mojom::LedName name,
+                   ash::cros_healthd::mojom::LedColor color,
                    SetLedColorCallback callback) override;
-  void ResetLedColor(ash::cros_healthd::mojom::DEPRECATED_LedName name,
+  void ResetLedColor(ash::cros_healthd::mojom::LedName name,
                      ResetLedColorCallback callback) override;
   void GetHciDeviceConfig(GetHciDeviceConfigCallback callback) override;
   void MonitorAudioJack(

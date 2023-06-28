@@ -8,6 +8,7 @@
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
+#include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
@@ -76,6 +77,11 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kVolumeButton:
       AddRoutine(std::make_unique<VolumeButtonRoutine>(
                      context_, routine_arg->get_volume_button()),
+                 std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kLedLitUp:
+      AddRoutine(std::make_unique<LedLitUpV2Routine>(
+                     context_, std::move(routine_arg->get_led_lit_up())),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

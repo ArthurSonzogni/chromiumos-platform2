@@ -7,6 +7,7 @@ module ash.cros_healthd.mojom;
 import "diagnostics/cros_healthd/mojom/executor.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
+import "diagnostics/mojom/public/cros_healthd_routines.mojom";
 
 interface Delegate {
   // Get fingerprint frame data with specific capture type. We only support
@@ -36,7 +37,7 @@ interface Delegate {
   //
   // The response:
   // * |err| - Error message if existed.
-  SetLedColor(DEPRECATED_LedName name, DEPRECATED_LedColor color) => (string? err);
+  SetLedColor(LedName name, LedColor color) => (string? err);
 
   // Switch the LED back to be automatically controlled by EC.
   //
@@ -45,7 +46,7 @@ interface Delegate {
   //
   // The response:
   // * |err| - Error message if existed.
-  ResetLedColor(DEPRECATED_LedName name) => (string? err);
+  ResetLedColor(LedName name) => (string? err);
 
   // Monitor audio jack events.
   //

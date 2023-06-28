@@ -24,6 +24,44 @@ void LogResetColorError(const std::optional<std::string>& err) {
   }
 }
 
+mojom::LedName ConvertToNewType(mojom::DEPRECATED_LedName name) {
+  switch (name) {
+    case mojom::DEPRECATED_LedName::kBattery:
+      return mojom::LedName::kBattery;
+    case mojom::DEPRECATED_LedName::kPower:
+      return mojom::LedName::kPower;
+    case mojom::DEPRECATED_LedName::kAdapter:
+      return mojom::LedName::kAdapter;
+    case mojom::DEPRECATED_LedName::kLeft:
+      return mojom::LedName::kLeft;
+    case mojom::DEPRECATED_LedName::kRight:
+      return mojom::LedName::kRight;
+    case mojom::DEPRECATED_LedName::kUnmappedEnumField:
+      LOG(WARNING) << "LedName UnmappedEnumField";
+      return mojom::LedName::kUnmappedEnumField;
+  }
+}
+
+mojom::LedColor ConvertToNewType(mojom::DEPRECATED_LedColor color) {
+  switch (color) {
+    case mojom::DEPRECATED_LedColor::kRed:
+      return mojom::LedColor::kRed;
+    case mojom::DEPRECATED_LedColor::kGreen:
+      return mojom::LedColor::kGreen;
+    case mojom::DEPRECATED_LedColor::kBlue:
+      return mojom::LedColor::kBlue;
+    case mojom::DEPRECATED_LedColor::kYellow:
+      return mojom::LedColor::kYellow;
+    case mojom::DEPRECATED_LedColor::kWhite:
+      return mojom::LedColor::kWhite;
+    case mojom::DEPRECATED_LedColor::kAmber:
+      return mojom::LedColor::kAmber;
+    case mojom::DEPRECATED_LedColor::kUnmappedEnumField:
+      LOG(WARNING) << "LedColor UnmappedEnumField";
+      return mojom::LedColor::kUnmappedEnumField;
+  }
+}
+
 }  // namespace
 
 LedLitUpRoutine::LedLitUpRoutine(
@@ -32,8 +70,8 @@ LedLitUpRoutine::LedLitUpRoutine(
     mojom::DEPRECATED_LedColor color,
     mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier)
     : context_(context),
-      name_(name),
-      color_(color),
+      name_(ConvertToNewType(name)),
+      color_(ConvertToNewType(color)),
       step_(TestStep::kInitialize) {
   // The disconnection of |replier_| is handled in |RunNextStep| to avoid
   // resetting the LED before the specified color is set.

@@ -535,8 +535,8 @@ void Executor::FetchCrashFromCrashSender(
                     /*combine_stdout_and_stderr=*/false);
 }
 
-void Executor::SetLedColor(mojom::DEPRECATED_LedName name,
-                           mojom::DEPRECATED_LedColor color,
+void Executor::SetLedColor(mojom::LedName name,
+                           mojom::LedColor color,
                            SetLedColorCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kLed,
@@ -553,7 +553,7 @@ void Executor::SetLedColor(mojom::DEPRECATED_LedName name,
   delegate_ptr->StartAsync();
 }
 
-void Executor::ResetLedColor(ash::cros_healthd::mojom::DEPRECATED_LedName name,
+void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
                              ResetLedColorCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kLed,

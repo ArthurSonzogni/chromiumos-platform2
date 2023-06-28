@@ -46,9 +46,9 @@ class LedLitUpRoutine final : public DiagnosticRoutineWithStatus {
   Context* context_;
 
   // The target LED.
-  ash::cros_healthd::mojom::DEPRECATED_LedName name_;
+  ash::cros_healthd::mojom::LedName name_;
   // The target color.
-  ash::cros_healthd::mojom::DEPRECATED_LedColor color_;
+  ash::cros_healthd::mojom::LedColor color_;
   // A replier that can answer whether the actual LED color matches the
   // expected color.
   mojo::Remote<ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>

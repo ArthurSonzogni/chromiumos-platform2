@@ -221,6 +221,9 @@ void RoutineAdapter::PopulateStatusUpdate(
           // of the V1 API.
           update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
           break;
+        case mojom::RoutineStateWaiting::Reason::kWaitingUserInput:
+          update->status = mojom::DiagnosticRoutineStatusEnum::kWaiting;
+          break;
         case mojom::RoutineStateWaiting::Reason::kUnmappedEnumField:
           update->status = mojom::DiagnosticRoutineStatusEnum::kWaiting;
           break;

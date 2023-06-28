@@ -47,7 +47,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 9, NextIndex: 9
+// NextMinVersion: 10, NextIndex: 10
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -69,6 +69,8 @@ union RoutineArgument {
   [MinVersion=7] PrimeSearchRoutineArgument prime_search@7;
   // Arguments to create a volume button routine.
   [MinVersion=8] VolumeButtonRoutineArgument volume_button@8;
+  // Arguments to create a LED lit up routine.
+  [MinVersion=9] LedLitUpRoutineArgument led_lit_up@9;
 };
 
 // This routine checks whether there is any memory problem by
@@ -165,6 +167,45 @@ struct VolumeButtonRoutineArgument {
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta timeout@1;
 };
 
+// Replier interface for the LED lit up routine.
+//
+// NextMinVersion: 1, NextIndex: 1
+[Stable]
+interface LedLitUpRoutineReplier {
+  // Returns whether the actual LED color matches the expected color.
+  //
+  // The response:
+  // * |matched| - true if the actual LED color matches the expected color.
+  //               Otherwise, false.
+  GetColorMatched@0() => (bool matched);
+};
+
+// The routine lights up the target LED in the specified color and requests the
+// caller to verify the change.
+//
+// The routine proceeds with the following steps:
+// 1. Set the specified LED with the specified color. If the LED name or color
+//    is not supported by EC, the routine reports error at this step.
+// 2. Invoke the |GetColorMatched| method of |replier|. The method should
+//    return |true| if the actual color matches the specified color and
+//    |false|, otherwise. Notice that there is no timeout so it will wait
+//    indefinitely.
+// 3. After receiving the response from |replier|, the color of the LED will
+//    be reset (back the auto control). If the replier disconnects before
+//    the response is received, the LED will also be reset.
+// 4. The status of the routine is then updated. The routine passes when the
+//    response is |true|. If the response is |false|, the routine fails.
+//
+// NextMinVersion: 1, NextIndex: 3
+struct LedLitUpRoutineArgument {
+  // The LED to be lit up.
+  LedName name@0;
+  // The color to be lit up.
+  LedColor color@1;
+  // A replier to answer whether the actual LED color matches the expected color.
+  pending_remote<LedLitUpRoutineReplier> replier@2;
+};
+
 // Interface exposed to clients for controlling a routine.
 //
 // NextMinVersion: 1, NextIndex: 3
@@ -226,11 +267,16 @@ struct RoutineStateRunning {};
 //
 // NextMinVersion: 1, NextIndex: 2
 struct RoutineStateWaiting {
+  // The reason why routine is waiting.
+  //
+  // NextMinVersion: 2, NextIndex: 3
   [Extensible]
   enum Reason {
     [Default] kUnmappedEnumField = 0,
     // Waiting for the job to be scheduled for running.
-    kWaitingToBeScheduled = 1
+    kWaitingToBeScheduled = 1,
+    // Waiting for user input.
+    [MinVersion=1] kWaitingUserInput = 2,
   };
   // Reason for why the routine is waiting.
   Reason reason@0;
@@ -258,6 +304,7 @@ union RoutineDetail {
   CpuCacheRoutineDetail cpu_cache;
   PrimeSearchRoutineDetail prime_search;
   VolumeButtonRoutineDetail volume_button;
+  LedLitUpRoutineDetail led_lit_up;
 };
 
 // Details regarding memory routine.
@@ -384,6 +431,11 @@ struct MemtesterResult {
 // NextMinVersion: 1, NextIndex: 0
 struct VolumeButtonRoutineDetail {};
 
+// Details regarding LED lit up routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct LedLitUpRoutineDetail {};
+
 // This will be used as the disconnect reason of the RoutineControl interface
 // when an exception occurs.
 //
@@ -410,4 +462,35 @@ enum DiskReadTypeEnum {
   [Default] kUnmappedEnumField = 0,
   kLinearRead = 1,
   kRandomRead = 2,
+};
+
+// Enumeration of each possible LEDs on a device. This enum type is a mirror of
+// the enums defined in EC. To find out the actual names of each installed LEDs,
+// please refer to the EC firmware.
+//
+// NextMinVersion: 1, NextIndex: 6
+[Extensible]
+enum LedName {
+  // The default value is for backward compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  kBattery = 1,
+  kPower = 2,
+  kAdapter = 3,
+  kLeft = 4,
+  kRight = 5,
+};
+
+// Enumeration of each possible LED colors.
+//
+// NextMinVersion: 1, NextIndex: 7
+[Extensible]
+enum LedColor {
+  // The default value is for backward compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  kRed = 1,
+  kGreen = 2,
+  kBlue = 3,
+  kYellow = 4,
+  kWhite = 5,
+  kAmber = 6,
 };

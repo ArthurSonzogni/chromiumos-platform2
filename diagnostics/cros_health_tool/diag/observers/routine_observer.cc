@@ -99,6 +99,7 @@ void RoutineObserver::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kCpuCache:
         case mojom::RoutineDetail::Tag::kPrimeSearch:
         case mojom::RoutineDetail::Tag::kVolumeButton:
+        case mojom::RoutineDetail::Tag::kLedLitUp:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(finished_state->detail->get_memory()));
