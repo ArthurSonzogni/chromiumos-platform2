@@ -27,6 +27,7 @@
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -276,7 +277,7 @@ class ArcVm final : public VmBaseImpl {
   // When aggressively inflates the balloon, it should stop when LMKD tries to
   // kill perceptible processes. The incremental diff should be 10 MiB since
   // perceptible processes usually have 30 ~ 100 MiB size.
-  static constexpr int32_t kAggressiveBalloonIncrementSize = 10 * MIB;
+  static constexpr int32_t kAggressiveBalloonIncrementSize = MiB(10);
 
   base::ScopedFD arcvm_lmkd_vsock_fd_;
   base::ScopedFD lmkd_client_fd_;

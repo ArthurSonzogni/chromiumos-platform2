@@ -17,6 +17,8 @@
 #include <spaced/dbus-proxy-mocks.h>
 #include <spaced/disk_usage_proxy.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 using ::testing::_;
 
 namespace vm_tools::concierge {
@@ -69,9 +71,9 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOut) {
 
   // Free space = 10 GiB
   EXPECT_CALL(*mock_, GetFreeDiskSpaceAsync(_, _, _, _))
-      .WillOnce(SpacedProxyReturnsSuccess((int64_t)10 << 30));
+      .WillOnce(SpacedProxyReturnsSuccess(GiB(10)));
   // Guest memory = 1 GiB
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_TRUE(result.result_.value());
 }
@@ -81,9 +83,9 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOutOnBorder) {
 
   // Free space = 3 GiB
   EXPECT_CALL(*mock_, GetFreeDiskSpaceAsync(_, _, _, _))
-      .WillOnce(SpacedProxyReturnsSuccess((int64_t)3 << 30));
+      .WillOnce(SpacedProxyReturnsSuccess(GiB(3)));
   // Guest memory = 1 GiB
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_TRUE(result.result_.value());
 }
@@ -93,9 +95,9 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOutFreeMemoryIsLow) {
 
   // Free space = 3 GiB - 1
   EXPECT_CALL(*mock_, GetFreeDiskSpaceAsync(_, _, _, _))
-      .WillOnce(SpacedProxyReturnsSuccess(((int64_t)3 << 30) - 1));
+      .WillOnce(SpacedProxyReturnsSuccess(GiB(3) - 1));
   // Guest memory = 1 GiB
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_FALSE(result.result_.value());
 }
@@ -107,7 +109,7 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOutFreeMemoryIsZero) {
   EXPECT_CALL(*mock_, GetFreeDiskSpaceAsync(_, _, _, _))
       .WillOnce(SpacedProxyReturnsSuccess(0));
   // Guest memory = 1 GiB
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_FALSE(result.result_.value());
 }
@@ -142,7 +144,7 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOutSpacedFailure) {
   // spaced return negative value
   EXPECT_CALL(*mock_, GetFreeDiskSpaceAsync(_, _, _, _))
       .WillOnce(SpacedProxyReturnsSuccess(-1));
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_FALSE(result.result_.value());
 }
@@ -161,7 +163,7 @@ TEST_F(VmmSwapLowDiskPolicyTest, CanSwapOutDBusFailure) {
                                        "dummy", "message", nullptr);
         std::move(error_callback).Run(error.get());
       });
-  policy_->CanEnable(1 << 30, result.Callback());
+  policy_->CanEnable(GiB(1), result.Callback());
   EXPECT_TRUE(result.result_.has_value());
   EXPECT_FALSE(result.result_.value());
 }

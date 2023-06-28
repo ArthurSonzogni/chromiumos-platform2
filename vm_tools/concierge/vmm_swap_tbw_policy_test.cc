@@ -11,6 +11,8 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools::concierge {
 
 TEST(VmmSwapTbwPolicyTest, CanSwapOut) {
@@ -295,7 +297,7 @@ TEST(VmmSwapTbwPolicyTest, RecordRecompileFile) {
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 
   // Less than page size.
-  EXPECT_LE(history_file.GetLength(), 4096);
+  EXPECT_LE(history_file.GetLength(), KiB(4));
 }
 
 }  // namespace vm_tools::concierge

@@ -94,6 +94,7 @@
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/if_method_exists.h"
@@ -182,7 +183,7 @@ constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
 // File path for the Bruschetta Bios file inside the DLC root.
 constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
 
-constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
+constexpr uint64_t kMinimumDiskSize = GiB(1);
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
 // vmlog_forwarder relies on creating a socket for crosvm to receive log
@@ -201,7 +202,7 @@ constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 // go above 99,999, however.
 constexpr int kMaxVmNameLength = 60;
 
-constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
+constexpr uint64_t kDefaultIoLimit = MiB(1);
 
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
@@ -253,7 +254,7 @@ const std::vector<std::string> kExtMkfsOpts = {
 // TODO(b/280391260): Use dynamic target based on device's disk size.
 // A TBW limit that is unlikely to impact disk health over the lifetime of a
 // given device
-constexpr uint64_t kTbwTargetForVmmSwapPerDay = 550 * 1024 * 1024;  // 550 MiB
+constexpr uint64_t kTbwTargetForVmmSwapPerDay = MiB(550);
 // The path to the history file for VmmSwapTbwPolicy.
 constexpr char kVmmSwapTbwHistoryFilePath[] =
     "/var/lib/vm_concierge/vmm_swap_policy/tbw_history";
@@ -261,7 +262,7 @@ constexpr char kVmmSwapTbwHistoryFilePath[] =
 // Maximum size of logs to send through D-Bus. Must be less than the maximum
 // D-Bus array length (64 MiB) and the configured maximum message size for the
 // system bus (usually 32 MiB).
-constexpr int64_t kMaxGetVmLogsSize = 30 * 1024 * 1024;  // 30 MiB
+constexpr int64_t kMaxGetVmLogsSize = MiB(30);
 
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
@@ -960,7 +961,7 @@ std::optional<int64_t> Service::GetAvailableMemory() {
         << "Failed to read available memory size from the D-Bus response";
     return std::nullopt;
   }
-  return available_kb * KIB;
+  return KiB(available_kb);
 }
 
 std::optional<int64_t> Service::GetForegroundAvailableMemory() {
@@ -982,7 +983,7 @@ std::optional<int64_t> Service::GetForegroundAvailableMemory() {
                   "D-Bus response";
     return std::nullopt;
   }
-  return available_kb * KIB;
+  return KiB(available_kb);
 }
 
 std::optional<MemoryMargins> Service::GetMemoryMargins() {
@@ -1007,8 +1008,8 @@ std::optional<MemoryMargins> Service::GetMemoryMargins() {
         << "Failed to read available moderate margin from the D-Bus response";
     return std::nullopt;
   }
-  margins.critical *= KIB;
-  margins.moderate *= KIB;
+  margins.critical *= KiB(1);
+  margins.moderate *= KiB(1);
   return margins;
 }
 
@@ -1049,7 +1050,7 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
         LOG(ERROR) << "Error popping dictionary entry from D-Bus message";
         return std::nullopt;
       }
-      value *= KIB;
+      value *= KiB(1);
       if (key == kChromeCriticalKey) {
         margins.chrome_critical = value;
       } else if (key == kChromeModerateKey) {

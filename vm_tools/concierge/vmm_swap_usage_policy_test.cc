@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
+#include "vm_tools/concierge/byte_unit.h"
 
 namespace vm_tools::concierge {
 TEST(VmmSwapUsagePolicyTest, PredictDuration) {
@@ -338,7 +339,7 @@ TEST(VmmSwapUsagePolicyTest, InitIfFileIsTooLong) {
   VmmSwapUsagePolicy policy;
 
   UsageHistoryEntryContainer container;
-  while (container.ByteSizeLong() <= 5 * 4096) {
+  while (container.ByteSizeLong() <= 5 * KiB(4)) {
     auto entry = container.add_entries();
     entry->set_start_time_us(now.ToDeltaSinceWindowsEpoch().InMicroseconds());
     // 1 hour

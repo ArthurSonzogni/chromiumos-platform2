@@ -45,6 +45,7 @@
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -156,10 +157,10 @@ constexpr base::TimeDelta kVmmSwapTrimWaitPeriod = base::Minutes(10);
 // The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
 static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
     {
-        .reclaim_target_cache = 322560 * KIB,
-        .critical_target_cache = 322560 * KIB,
+        .reclaim_target_cache = KiB(322'560),
+        .critical_target_cache = KiB(322'560),
         .moderate_target_cache = 0,
-        .responsive_max_deflate_bytes = 256 * MIB,
+        .responsive_max_deflate_bytes = MiB(256),
 };
 
 int GetIntFromVsockBuffer(const uint8_t* buf, size_t index) {
@@ -690,7 +691,7 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
   // No balloon policy parameters, so fall back to older policy.
   // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
   balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
-      margins.critical, 48 * MIB, vm);
+      margins.critical, MiB(48), vm);
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
@@ -1075,11 +1076,10 @@ void ArcVm::HandleLmkdVsockRead() {
   }
 
   // Proc size comes from LMKD in KB units
-  uint64_t freed_space =
-      DeflateBalloonOnLmkd(oom_score_adj, proc_size_kb * KIB);
+  uint64_t freed_space = DeflateBalloonOnLmkd(oom_score_adj, KiB(proc_size_kb));
 
   // LMKD expects a response in KB units
-  int freed_space_kb = freed_space / KIB;
+  int freed_space_kb = freed_space / KiB(1);
 
   // TODO(210075795) switch to using an int array for simplicity
   uint8_t lmkd_reply_buf[kLmkdPacketMaxSize];
@@ -1382,7 +1382,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
   // TODO(b/287128076): Remove deprecated use of guest_zram_size.
   int64_t zram_size = request.guest_zram_mib() != 0
-                          ? request.guest_zram_mib() * MIB
+                          ? MiB(request.guest_zram_mib())
                           : request.guest_zram_size();
 #pragma clang diagnostic pop
 

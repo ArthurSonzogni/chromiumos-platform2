@@ -33,6 +33,7 @@
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_metrics.h"
@@ -920,7 +921,7 @@ class FakeSwapVmCallback {
 // Test fixture for actually testing the ArcVm functionality.
 class ArcVmTest : public ::testing::Test {
  protected:
-  static constexpr int64_t kGuestMemorySize = 1 << 30;  // 1GiB
+  static constexpr int64_t kGuestMemorySize = GiB(1);
 
   void SetUp() override {
     FakeCrosvmControl::Init();
@@ -935,7 +936,7 @@ class ArcVmTest : public ::testing::Test {
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
-    vmm_swap_tbw_policy_->SetTargetTbwPerDay(512 * MIB);
+    vmm_swap_tbw_policy_->SetTargetTbwPerDay(MiB(512));
 
     // The following owned and destroyed by ArcVm class unique_ptr destructor.
     auto swap_policy_timer = std::make_unique<base::MockOneShotTimer>();
@@ -951,7 +952,7 @@ class ArcVmTest : public ::testing::Test {
     swap_metrics_heartbeat_timer_ = swap_metrics_heartbeat_timer.get();
 
     spaced_proxy_ = new org::chromium::SpacedProxyMock();
-    SpacedProxyReturnSuccessCallback(10LL << 30);  // 10GiB
+    SpacedProxyReturnSuccessCallback(GiB(10));
 
     disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
         std::unique_ptr<org::chromium::SpacedProxyMock>(spaced_proxy_));
@@ -982,7 +983,7 @@ class ArcVmTest : public ::testing::Test {
     // ago again will invalidate this enabled log on some test cases.
     vm_->vmm_swap_usage_policy_.OnEnabled(base::Time::Now() - base::Days(50));
 
-    SetBalloonStats(0, 1024 * MIB);
+    SetBalloonStats(0, MiB(1024));
   }
   void TearDown() override {
     vm_.reset();
@@ -1103,7 +1104,7 @@ class FakeAggressiveBalloonCallback {
 
 TEST_F(ArcVmTest, InflateAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(callback.counter_, 0);
   ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
@@ -1111,7 +1112,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloon) {
 
 TEST_F(ArcVmTest, InflateAggressiveBalloonDisableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
   vm_->InflateAggressiveBalloon(callback.Create());
   MemoryMargins margins;
@@ -1121,7 +1122,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonDisableBalloonPolicy) {
 TEST_F(ArcVmTest, InflateAggressiveBalloonTwice) {
   FakeAggressiveBalloonCallback callback1;
   FakeAggressiveBalloonCallback callback2;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback1.Create());
   vm_->InflateAggressiveBalloon(callback2.Create());
   ASSERT_EQ(callback1.counter_, 0);
@@ -1131,31 +1132,31 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonTwice) {
 
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimer) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   aggressive_balloon_timer_->Fire();
   ASSERT_EQ(callback.counter_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 110 * MIB);
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(110));
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
   ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerMultipleTimes) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   aggressive_balloon_timer_->Fire();
   aggressive_balloon_timer_->Fire();
   aggressive_balloon_timer_->Fire();
   ASSERT_EQ(callback.counter_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 130 * MIB);
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(130));
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 3);
   ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerFailedToSetBalloonSize) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   FakeCrosvmControl::Get()->result_set_balloon_size_ = false;
   aggressive_balloon_timer_->Fire();
@@ -1166,36 +1167,36 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerFailedToSetBalloonSize) {
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkd) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      30 * MIB),
-            30 * MIB);
+                                      MiB(30)),
+            MiB(30));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 70 * MIB);
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(70));
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
   ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
   vm_->InflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      30 * MIB),
-            30 * MIB);
+                                      MiB(30)),
+            MiB(30));
   MemoryMargins margins;
   EXPECT_TRUE(vm_->GetBalloonPolicy(margins, "arcvm"));
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(
-                kPlatformPerceptibleMaxOmmScoreAdjValue + 1, 30 * MIB),
+                kPlatformPerceptibleMaxOmmScoreAdjValue + 1, MiB(30)),
             0);
   ASSERT_EQ(callback.counter_, 0);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 0);
@@ -1204,11 +1205,11 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdBiggerThanActualBalloonSize) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      130 * MIB),
-            100 * MIB);
+                                      MiB(130)),
+            MiB(100));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 0);
@@ -1218,7 +1219,7 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdBiggerThanActualBalloonSize) {
 
 TEST_F(ArcVmTest, StopAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   vm_->InflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
   vm_->StopAggressiveBalloon(response);
@@ -1230,7 +1231,7 @@ TEST_F(ArcVmTest, StopAggressiveBalloon) {
 
 TEST_F(ArcVmTest, StopAggressiveBalloonReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
+  SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
   vm_->InflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
@@ -1331,7 +1332,7 @@ TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
-  const uint64_t target_size = 512 * MIB;
+  const uint64_t target_size = MiB(512);
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(target_size);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
@@ -1444,7 +1445,7 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainBeforeLowDiskPolicyResponse) {
   EXPECT_FALSE(EnableVmmSwap());
   EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 
-  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  std::move(spaced_proxy_success_callback_).Run(GiB(10));
   ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
   EXPECT_TRUE(swap_vm_callback.latest_response_.value().success());
   EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
@@ -1509,7 +1510,7 @@ TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
 }
 
 TEST_F(ArcVmTest, ForceEnableVmmSwapAgainExceedsTbwTarget) {
-  const uint64_t target_size = 512 * MIB;
+  const uint64_t target_size = MiB(512);
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(target_size);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
@@ -1558,7 +1559,7 @@ TEST_F(ArcVmTest, DisableVmmSwapAbortEnabling) {
   ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
   EXPECT_FALSE(swap_vm_callback.latest_response_.value().success());
 
-  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  std::move(spaced_proxy_success_callback_).Run(GiB(10));
   EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
@@ -1582,14 +1583,14 @@ TEST_F(ArcVmTest, DisableVmmSwapAbortEnablingAndReenable) {
   ASSERT_FALSE(swap_vm_callback.latest_response_.has_value());
 
   // Obsolete spaced response.
-  std::move(success_callback).Run(10LL << 30);  // 10GiB
+  std::move(success_callback).Run(GiB(10));
   ASSERT_TRUE(swap_vm_callback.latest_response_.has_value());
   EXPECT_TRUE(swap_vm_callback.latest_response_.value().success());
   EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
 
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   // The spaced response is ignored.
-  std::move(spaced_proxy_success_callback_).Run(10LL << 30);  // 10GiB
+  std::move(spaced_proxy_success_callback_).Run(GiB(10));
   EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
@@ -1693,8 +1694,8 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFile) {
   FakeCrosvmControl::Get()->vmm_swap_status_.metrics.swap_pages = 50;
   swap_metrics_heartbeat_timer_->Fire();
 
-  const int min_pages_4KiB = 50 * base::GetPageSize() / (4 << 10);
-  const int avg_pages_4KiB = 70 * base::GetPageSize() / (4 << 10);
+  const int min_pages_4KiB = 50 * base::GetPageSize() / KiB(4);
+  const int avg_pages_4KiB = 70 * base::GetPageSize() / KiB(4);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmMinPagesInFileName,
                                            min_pages_4KiB, _, _, _))
       .Times(1);
@@ -1719,8 +1720,8 @@ TEST_F(ArcVmTest, VmmSwapMetricsReportPagesInFileOnDestroy) {
   FakeCrosvmControl::Get()->vmm_swap_status_.metrics.swap_pages = 50;
   swap_metrics_heartbeat_timer_->Fire();
 
-  const int min_pages_4KiB = 50 * base::GetPageSize() / (4 << 10);
-  const int avg_pages_4KiB = 70 * base::GetPageSize() / (4 << 10);
+  const int min_pages_4KiB = 50 * base::GetPageSize() / KiB(4);
+  const int avg_pages_4KiB = 70 * base::GetPageSize() / KiB(4);
   EXPECT_CALL(*metrics_library_, SendToUMA(kMetricsArcvmMinPagesInFileName,
                                            min_pages_4KiB, _, _, _))
       .Times(1);

@@ -19,6 +19,7 @@
 
 #include "base/types/expected.h"
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/byte_unit.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -385,11 +386,11 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFile) {
   loader.status_.metrics.swap_pages = 51;
   heartbeat_timer->Fire();
 
-  const int min_pages = (50LL * 1024 * 1024) / 4096;        // 50MiB
-  const int max_pages = (2LL * 1024 * 1024 * 1024) / 4096;  // 2GiB
+  const int min_pages = MiB(50) / KiB(4);
+  const int max_pages = GiB(2) / KiB(4);
   const int buckets = 50;
-  const int min_pages_4KiB = 26 * base::GetPageSize() / 4096;
-  const int avg_pages_4KiB = 59 * base::GetPageSize() / 4096;
+  const int min_pages_4KiB = 26 * base::GetPageSize() / KiB(4);
+  const int avg_pages_4KiB = 59 * base::GetPageSize() / KiB(4);
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmMinPagesInFileName, min_pages_4KiB,
                         min_pages, max_pages, buckets))
@@ -416,7 +417,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroy) {
   loader.status_.metrics.swap_pages = 100;
   heartbeat_timer->Fire();
 
-  const int pages_4KiB = 100 * base::GetPageSize() / (4 << 10);
+  const int pages_4KiB = 100 * base::GetPageSize() / KiB(4);
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmMinPagesInFileName, pages_4KiB, _, _, _))
       .Times(1);

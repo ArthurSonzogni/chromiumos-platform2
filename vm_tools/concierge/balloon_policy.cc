@@ -19,15 +19,20 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools {
 namespace concierge {
 
+namespace {
 // LMKD's minfree level for killing the lowest priority apps. See
 // mOomMinFreeHigh in Android's
 // frameworks/base/services/core/java/com/android/server/am/ProcessList.java
 // NB: 64-bit systems multiply the last entry by 1.75, and the second last by
 // 1.5.
-constexpr int64_t MAX_OOM_MIN_FREE = 322560 * KIB;
+constexpr int64_t MAX_OOM_MIN_FREE = KiB(322'560);
+constexpr int64_t PAGE_BYTES = 4096;
+}  // namespace
 
 BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
     int64_t critical_host_available,
@@ -36,7 +41,7 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
     : critical_host_available_(critical_host_available),
       guest_available_bias_(guest_available_bias),
       max_balloon_actual_(0),
-      critical_guest_available_(400 * MIB) {
+      critical_guest_available_(MiB(400)) {
   LOG(INFO) << "BalloonInit: { "
             << "\"type\": \"BalanceAvailableBalloonPolicy\","
             << "\"vm\": \"" << vm << "\","
@@ -55,7 +60,7 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
     int64_t total_available_memory,
     ComponentMemoryMargins component_margins) {
   // returns delta size of balloon
-  constexpr int64_t MAX_CRITICAL_DELTA = 10 * MIB;
+  constexpr int64_t MAX_CRITICAL_DELTA = MiB(10);
 
   const int64_t balloon_actual = stats.balloon_actual;
   const int64_t guest_free = stats.stats_ffi.free_memory;
@@ -110,15 +115,16 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
   // by more than 1%, or we are within 1 MB of critical in host or guest.
   // Division by guest_above_critical and host_above_critical here are
   // safe since they will not be evaluated on that condition.
-  if (guest_above_critical < 1 * MIB || host_above_critical < 1 * MIB ||
+  if (guest_above_critical < MiB(1) || host_above_critical < MiB(1) ||
       balloon_delta_abs * 100 / guest_above_critical > 1 ||
       balloon_delta_abs * 100 / host_above_critical > 1) {
     // Finally, make sure the balloon delta won't cause a negative size.
     const int64_t delta = std::max(balloon_delta_capped, -balloon_actual);
     LOG(INFO) << "BalloonTrace:[" << vm << ","
-              << (game_mode ? "game_mode_on," : ",") << (balloon_actual / MIB)
-              << "," << (delta / MIB) << "," << (host_available / MIB) << ","
-              << (guest_cached / MIB) << "," << (guest_free / MIB) << "]";
+              << (game_mode ? "game_mode_on," : ",")
+              << (balloon_actual / MiB(1)) << "," << (delta / MiB(1)) << ","
+              << (host_available / MiB(1)) << "," << (guest_cached / MiB(1))
+              << "," << (guest_free / MiB(1)) << "]";
     return delta;
   }
 
@@ -178,7 +184,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(
     LOG(ERROR) << "Failed to get system memory info";
     return 0;
   }
-  const int64_t host_free = static_cast<int64_t>(meminfo.free) * KIB;
+  const int64_t host_free = KiB(static_cast<int64_t>(meminfo.free));
   return ComputeBalloonDeltaImpl(host_free, stats, uhost_available, game_mode,
                                  vm, total_available_memory, component_margins);
 }
@@ -276,23 +282,23 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   LOG(INFO) << "BalloonTrace[" << vm << ","
             << (game_mode ? "game_mode_on," : ",")
             // Balloon size.
-            << (stats.balloon_actual / MIB)
+            << (stats.balloon_actual / MiB(1))
             << ","
             // The amount we are changing the balloon.
-            << (delta / MIB)
+            << (delta / MiB(1))
             << ","
             // Host free memory above the low water mark.
-            << ((host_free - host_lwm_) / MIB)
+            << ((host_free - host_lwm_) / MiB(1))
             << ","
             // ChromeOS Available. We can compute host_available by knowing if
             // we are in game mode.
-            << (total_available_mem / MIB)
+            << (total_available_mem / MiB(1))
             << ","
             // Guest free memory above low water mark.
-            << ((guest_free - guest_lwm) / MIB)
+            << ((guest_free - guest_lwm) / MiB(1))
             << ","
             // Reclaimable guest cache (should match with LMKD's view).
-            << (guest_cache / MIB) << "]";
+            << (guest_cache / MiB(1)) << "]";
 
   return delta;
 }

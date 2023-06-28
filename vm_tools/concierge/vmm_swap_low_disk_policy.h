@@ -12,6 +12,8 @@
 #include <dbus/bus.h>
 #include <spaced/disk_usage_proxy.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools::concierge {
 
 // Allow enabling vmm-swap only when there is enough disk space available.
@@ -25,7 +27,7 @@ class VmmSwapLowDiskPolicy final {
   // 2 GiB which cryptohome starts cleaning up disk space
   // (`cryptohome::kTargetFreeSpaceAfterCleanup`) and spaced sends a low disk
   // signal for (`spaced::GetDiskSpaceState`).
-  static constexpr int64_t kTargetMinimumFreeDiskSpace = 2LL << 30;
+  static constexpr int64_t kTargetMinimumFreeDiskSpace = GiB(2);
 
   // Returns whether there is enough disk space even after vmm-swap is enabled.
   //

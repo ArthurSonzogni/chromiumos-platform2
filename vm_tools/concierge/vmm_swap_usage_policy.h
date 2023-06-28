@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
+#include "vm_tools/concierge/byte_unit.h"
 
 namespace vm_tools::concierge {
 
@@ -65,7 +66,7 @@ class VmmSwapUsagePolicy final {
   // weeks (24 hours * 7 days * 4 weeks).
   static constexpr size_t kUsageHistoryLength = 24 * 7 * kUsageHistoryNumWeeks;
   // 5 page size is the max file size.
-  static constexpr size_t kMaxFileSize = 5 * 4096;
+  static constexpr size_t kMaxFileSize = 5 * KiB(4);
   // The file can contain more than kUsageHistoryLength entries.
   static_assert(kMaxEntrySize * kUsageHistoryLength < kMaxFileSize,
                 "The usage history file does not have enough size to hold "

@@ -13,20 +13,26 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools {
 namespace concierge {
+
+namespace {
+constexpr int64_t PAGE_BYTES = 4096;
+}  // namespace
 
 // Test that shared and unevictable memory is subtracted from disk caches when
 // checking if the guest has low caches.
 TEST(BalloonPolocyTest, Unreclaimable) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
       .reclaim_target_cache = 0,
       .critical_target_cache = 0,
-      .moderate_target_cache = 200 * MIB};
+      .moderate_target_cache = MiB(200)};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
                                  "test");
 
@@ -34,8 +40,8 @@ TEST(BalloonPolocyTest, Unreclaimable) {
   // than the cache limit, that we keep free_memory at MaxFree.
   {
     BalloonStats stats = {{.free_memory = policy.MaxFree(),
-                           .disk_caches = 300 * MIB,
-                           .unevictable_memory = 101 * MIB}};
+                           .disk_caches = MiB(300),
+                           .unevictable_memory = MiB(101)}};
     EXPECT_EQ(
         0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
                                           margins.moderate /* host_available */,
@@ -46,9 +52,9 @@ TEST(BalloonPolocyTest, Unreclaimable) {
   // cache limit, that we keep free_memory at MaxFree.
   {
     BalloonStats stats = {{.free_memory = policy.MaxFree(),
-                           .disk_caches = 300 * MIB,
+                           .disk_caches = MiB(300),
 
-                           .shared_memory = 101 * MIB}};
+                           .shared_memory = MiB(101)}};
     EXPECT_EQ(
         0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
                                           margins.moderate /* host_available */,
@@ -58,9 +64,9 @@ TEST(BalloonPolocyTest, Unreclaimable) {
 
 // Test that having no limits still inflates the balloon to reduce excess free.
 TEST(BalloonPolicyTest, LimitCacheNoLimit) {
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  const MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  const MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {.reclaim_target_cache = 0,
                                                   .critical_target_cache = 0,
                                                   .moderate_target_cache = 0};
@@ -73,7 +79,7 @@ TEST(BalloonPolicyTest, LimitCacheNoLimit) {
   // Test that we don't inflate the balloon if it's just a little bit.
   {
     const BalloonStats stats = {
-        {.free_memory = policy.MaxFree() + MIB, .disk_caches = 0}};
+        {.free_memory = policy.MaxFree() + MiB(1), .disk_caches = 0}};
     EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
                                                 0 /* host_available */, false,
                                                 "test", 0, {}));
@@ -103,13 +109,13 @@ TEST(BalloonPolicyTest, LimitCacheNoLimit) {
 // Tests that moderate_target_cache works as expected.
 TEST(BalloonPolicyTest, LimitCacheModerate) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
       .reclaim_target_cache = 0,
       .critical_target_cache = 0,
-      .moderate_target_cache = 200 * MIB};
+      .moderate_target_cache = MiB(200)};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
                                  "test");
 
@@ -123,19 +129,19 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
   {
     BalloonStats stats = {{
         .free_memory = policy.MaxFree(),
-        .disk_caches = 1000 * MIB,
+        .disk_caches = MiB(1000),
     }};
-    EXPECT_EQ(
-        MIB, policy.ComputeBalloonDeltaImpl(
-                 0 /* host_free */, stats,
-                 limit_start - MIB /* host_available */, false, "test", 0, {}));
+    EXPECT_EQ(MiB(1), policy.ComputeBalloonDeltaImpl(
+                          0 /* host_free */, stats,
+                          limit_start - MiB(1) /* host_available */, false,
+                          "test", 0, {}));
   }
 
   // Test that when there is less cache left than the distance to target free,
   // we only inflate the balloon enough to reclaim that cache.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 300 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(300)}};
     const int64_t cache_above_limit =
         stats.stats_ffi.disk_caches - params.moderate_target_cache;
     EXPECT_EQ(cache_above_limit,
@@ -148,7 +154,7 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
   // guest MinFree() memory.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 2000 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(2000)}};
     const int64_t free_above_min =
         stats.stats_ffi.free_memory - policy.MinFree();
     EXPECT_EQ(free_above_min,
@@ -161,12 +167,12 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
 // Tests that critical_target_cache works as expected.
 TEST(BalloonPolicyTest, LimitCacheCritical) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
       .reclaim_target_cache = 0,
-      .critical_target_cache = 100 * MIB,
+      .critical_target_cache = MiB(100),
       .moderate_target_cache = 0};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
                                  "test");
@@ -180,18 +186,18 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
   // to the critical margin.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 1000 * MIB}};
-    EXPECT_EQ(
-        MIB, policy.ComputeBalloonDeltaImpl(
-                 0 /* host_free */, stats,
-                 limit_start - MIB /* host_available */, false, "test", 0, {}));
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(1000)}};
+    EXPECT_EQ(MiB(1), policy.ComputeBalloonDeltaImpl(
+                          0 /* host_free */, stats,
+                          limit_start - MiB(1) /* host_available */, false,
+                          "test", 0, {}));
   }
 
   // Test that when there is less cache left than the distance to target free,
   // we only inflate the balloon enough to reclaim that cache.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 150 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(150)}};
     const int64_t cache_above_limit =
         stats.stats_ffi.disk_caches - params.critical_target_cache;
     EXPECT_EQ(cache_above_limit,
@@ -204,7 +210,7 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
   // guest MinFree() memory.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 1000 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(1000)}};
     const int64_t free_above_min =
         stats.stats_ffi.free_memory - policy.MinFree();
     EXPECT_EQ(free_above_min,
@@ -217,11 +223,11 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
 // Tests that reclaim_target_cache works as expected.
 TEST(BalloonPolicyTest, LimitCacheReclaim) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
-      .reclaim_target_cache = 100 * MIB,
+      .reclaim_target_cache = MiB(100),
       .critical_target_cache = 0,
       .moderate_target_cache = 0};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
@@ -236,17 +242,17 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
   // to reclaiming in the host.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 1000 * MIB}};
-    EXPECT_EQ(MIB, policy.ComputeBalloonDeltaImpl(
-                       limit_start - MIB /* host_free */, stats,
-                       0 /* host_available */, false, "test", 0, {}));
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(1000)}};
+    EXPECT_EQ(MiB(1), policy.ComputeBalloonDeltaImpl(
+                          limit_start - MiB(1) /* host_free */, stats,
+                          0 /* host_available */, false, "test", 0, {}));
   }
 
   // Test that when there is less cache left than the distance to target free,
   // we only inflate the balloon enough to reclaim that cache.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 150 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(150)}};
     const int64_t cache_above_limit =
         stats.stats_ffi.disk_caches - params.reclaim_target_cache;
     EXPECT_EQ(cache_above_limit,
@@ -259,7 +265,7 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
   // guest MinFree() memory.
   {
     BalloonStats stats = {
-        {.free_memory = policy.MaxFree(), .disk_caches = 1000 * MIB}};
+        {.free_memory = policy.MaxFree(), .disk_caches = MiB(1000)}};
     const int64_t free_above_min =
         stats.stats_ffi.free_memory - policy.MinFree();
     EXPECT_EQ(free_above_min,
@@ -273,20 +279,20 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
 // expected.
 TEST(BalloonPolicyTest, LimitCacheModerateAndCritical) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
       .reclaim_target_cache = 0,
-      .critical_target_cache = 100 * MIB,
-      .moderate_target_cache = 200 * MIB};
+      .critical_target_cache = MiB(100),
+      .moderate_target_cache = MiB(200)};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
                                  "test");
 
   // Test that when we are limited by both moderate and critical available cache
   // limits, the smaller of the two is used.
   BalloonStats stats = {
-      {.free_memory = policy.MaxFree(), .disk_caches = 150 * MIB}};
+      {.free_memory = policy.MaxFree(), .disk_caches = MiB(150)}};
   const int64_t cache_above_limit =
       stats.stats_ffi.disk_caches - params.critical_target_cache;
   EXPECT_EQ(cache_above_limit,
@@ -298,17 +304,17 @@ TEST(BalloonPolicyTest, LimitCacheModerateAndCritical) {
 // Tests that the guest gets MinFree memory even if the host is very low.
 TEST(BalloonPolicyTest, LimitCacheGuestFreeLow) {
   // Values are roughly what a 4GB ARCVM would get (but rounded)
-  const int64_t host_lwm = 200 * MIB;
-  ZoneInfoStats guest_stats = {.sum_low = 200 * MIB, .totalreserve = 300 * MIB};
-  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const int64_t host_lwm = MiB(200);
+  ZoneInfoStats guest_stats = {.sum_low = MiB(200), .totalreserve = MiB(300)};
+  MemoryMargins margins = {.critical = MiB(400), .moderate = MiB(2000)};
   const LimitCacheBalloonPolicy::Params params = {
       .reclaim_target_cache = 0,
-      .critical_target_cache = 100 * MIB,
-      .moderate_target_cache = 200 * MIB};
+      .critical_target_cache = MiB(100),
+      .moderate_target_cache = MiB(200)};
   LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
                                  "test");
 
-  BalloonStats stats = {{.free_memory = 0, .disk_caches = 150 * MIB}};
+  BalloonStats stats = {{.free_memory = 0, .disk_caches = MiB(150)}};
   EXPECT_EQ(-policy.MinFree(),
             policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
                                            0 /* host_available */, false,

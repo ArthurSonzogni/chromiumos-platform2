@@ -11,12 +11,10 @@
 #include <stdint.h>
 #include <string>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools {
 namespace concierge {
-
-constexpr int64_t KIB = 1024;
-constexpr int64_t MIB = 1024 * 1024;
-constexpr int64_t PAGE_BYTES = 4096;
 
 struct BalloonStats {
   BalloonStatsFfi stats_ffi;
@@ -225,7 +223,7 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
 
   // Expose the minimum target for guest free memory for testing. The balloon
   // will be sized so that guest free memory is not below this amount.
-  int64_t MinFree() { return guest_zoneinfo_.sum_low - MIB; }
+  int64_t MinFree() { return guest_zoneinfo_.sum_low - MiB(1); }
 
   // Expose the maximum target for guest free memory for testing. The balloon
   // will be sized so that guest free memory is not above this amount.

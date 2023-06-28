@@ -20,6 +20,7 @@
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {
@@ -57,12 +58,12 @@ static constexpr int kDurationInFileMaxSeconds = 28 * 24 * 3600;  // 28 days
 static constexpr int kDurationInFileNumBuckets = 50;
 // Any memory savings less than 50MiB probably be considered a failure for
 // vmm-swap.
-static constexpr int kPagesInFileMin = (50LL * 1024 * 1024) / 4096;
+static constexpr int kPagesInFileMin = MiB(50) / KiB(4);
 // We shrink the guest memory size just before enabling vmm-swap. The swap
 // file's max size shouldn't be more than 1GiB regardless of how much memory
 // the device has. If the file is larger than 2GiB, it means something is
 // probably going wrong.
-static constexpr int kPagesInFileMax = (2LL * 1024 * 1024 * 1024) / 4096;
+static constexpr int kPagesInFileMax = GiB(2) / KiB(4);
 // The last bucket has less than 160 MiB size which is enough granularity.
 static constexpr int kPagesInFileNumBuckets = 50;
 
@@ -287,7 +288,7 @@ bool VmmSwapMetrics::SendPagesToUMA(const std::string& unprefixed_metrics_name,
                                     int64_t pages) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  int pages_4KiB = static_cast<int>((pages * base::GetPageSize()) / 4096);
+  int pages_4KiB = static_cast<int>((pages * base::GetPageSize()) / KiB(4));
   return metrics_->SendToUMA(GetMetricsName(vm_type_, unprefixed_metrics_name),
                              pages_4KiB, kPagesInFileMin, kPagesInFileMax,
                              kPagesInFileNumBuckets);

@@ -24,6 +24,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/balloon_policy.h"
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -601,7 +602,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vmm_swap_tbw_policy =
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
       .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
-      .guest_memory_size = memory_mib * MIB,
+      .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),
       .features = features,

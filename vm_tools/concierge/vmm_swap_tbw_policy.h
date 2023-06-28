@@ -15,6 +15,8 @@
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 
+#include "vm_tools/concierge/byte_unit.h"
+
 namespace vm_tools::concierge {
 
 // VmmSwapTbwPolicy tracks the TBW (Total Bytes Written) from vmm-swap feature
@@ -81,7 +83,7 @@ class VmmSwapTbwPolicy final {
   // most 22 (1+10 [tag+uint64] + 1+10 [tag+int64]) bytes/message.
   static constexpr int kEntrySize = 23;
   // The history file has 1 page size. This limit is bigger than kBufferSize.
-  static constexpr int kMaxEntriesInFile = 4096 / kEntrySize;
+  static constexpr int kMaxEntriesInFile = KiB(4) / kEntrySize;
 
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   int entries_in_file_ = 0;
