@@ -175,8 +175,6 @@ class Device {
   // The MAC address and IPv4 configuration for this virtual device.
   std::unique_ptr<Config> config_;
 
-  FRIEND_TEST(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages);
-
   base::WeakPtrFactory<Device> weak_factory_{this};
 };
 

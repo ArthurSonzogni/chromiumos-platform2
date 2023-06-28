@@ -583,11 +583,8 @@ class Datapath {
   // Owned by Manager
   System* system_;
 
-  FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);
   FRIEND_TEST(DatapathTest, ConfigureInterface);
-  FRIEND_TEST(DatapathTest, RemoveInboundIPv4DNAT);
-  FRIEND_TEST(DatapathTest, RemoveOutboundIPv4SNATMark);
   FRIEND_TEST(DatapathTest, ToggleInterface);
 
   // A map used for tracking the primary IPv4 dns address associated to a given
