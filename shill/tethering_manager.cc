@@ -41,10 +41,6 @@ namespace shill {
 
 namespace {
 
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kManager;
-}  // namespace Logging
-
 static constexpr char kSSIDPrefix[] = "chromeOS-";
 // Random suffix should provide enough uniqueness to have low SSID collision
 // possibility, while have enough anonymity among chromeOS population to make
@@ -658,11 +654,11 @@ void TetheringManager::StartTetheringSession() {
 
 void TetheringManager::OnPhyInfoReady() {
   // Prepare the downlink service.
-  auto& freqs = manager_->wifi_provider()
-                    ->GetPhyAtIndex(hotspot_dev_->phy_index())
-                    ->frequencies();
-  int freq = SelectFrequency(freqs);
-  if (freq < 0) {
+  auto freq = manager_->wifi_provider()
+                  ->GetPhyAtIndex(hotspot_dev_->phy_index())
+                  ->SelectFrequency(band_);
+
+  if (!freq.has_value()) {
     LOG(ERROR) << __func__ << ": failed to select frequency";
     PostSetEnabledResult(SetEnabledResult::kFailure);
     StopTetheringSession(StopReason::kError);
@@ -670,7 +666,7 @@ void TetheringManager::OnPhyInfoReady() {
   }
 
   std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
-      hotspot_dev_, hex_ssid_, passphrase_, security_, freq);
+      hotspot_dev_, hex_ssid_, passphrase_, security_, freq.value());
   if (!hotspot_dev_->ConfigureService(std::move(service))) {
     LOG(ERROR) << __func__ << ": failed to configure the hotspot service";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
@@ -1038,67 +1034,6 @@ const char* TetheringManager::EntitlementStatusName(EntitlementStatus status) {
     default:
       return "unknown";
   }
-}
-
-int TetheringManager::SelectFrequency(const WiFiPhy::Frequencies& bands) {
-  if (bands.empty()) {
-    LOG(ERROR) << "No valid band found";
-    return -1;
-  }
-  size_t total_freqs = std::accumulate(
-      bands.begin(), bands.end(), 0,
-      [](auto acc, auto band) { return acc + band.second.size(); });
-  if (total_freqs == 0) {
-    LOG(ERROR) << "No valid frequency found";
-    return -1;
-  }
-
-  std::vector<int> band_idxs;
-  switch (band_) {
-    case WiFiBand::kLowBand:
-      band_idxs = {NL80211_BAND_2GHZ};
-      break;
-    case WiFiBand::kHighBand:
-      band_idxs = {NL80211_BAND_5GHZ};
-      break;
-    case WiFiBand::kAllBands:
-    default:
-      // Note that the order matters - preferred band comes first.
-      band_idxs = {NL80211_BAND_5GHZ, NL80211_BAND_2GHZ};
-  }
-
-  int selected = -1;
-  std::vector<uint32_t> freqs;
-
-  for (auto bidx : band_idxs) {
-    auto band = bands.find(bidx);
-    if (band == bands.end()) {
-      continue;
-    }
-    freqs.reserve(band->second.size());
-    for (auto& freq : band->second) {
-      if (freq.flags & (1 << NL80211_FREQUENCY_ATTR_DISABLED |
-                        1 << NL80211_FREQUENCY_ATTR_NO_IR |
-                        1 << NL80211_FREQUENCY_ATTR_RADAR) ||
-          IsWiFiLimitedFreq(freq.value)) {
-        SLOG(3) << "Skipping freq: " << freq.value;
-        continue;
-      }
-      freqs.push_back(freq.value);
-    }
-    // We are moving now to a less preferred band, so if we have valid frequency
-    // let's just keep it.
-    if (!freqs.empty()) {
-      selected = freqs[base::RandInt(0, freqs.size() - 1)];
-      break;
-    }
-  }
-  if (selected == -1) {
-    LOG(ERROR) << "No usable frequency found";
-  } else {
-    LOG(INFO) << "Selected frequency: " << selected;
-  }
-  return selected;
 }
 
 void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {

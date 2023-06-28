@@ -529,6 +529,12 @@ const uint8_t kNewMultiChannelConcurrencyNlMsg[] = {
 
 uint32_t kWiFiPhyIndex = 0;
 
+// WiFi frequency constants
+constexpr uint32_t kLBStartFreq = 2412;
+constexpr uint32_t kChan11Freq = 2462;
+constexpr uint32_t kHBStartFreq = 5160;
+constexpr uint32_t kHBEndFreq = 5980;
+
 }  // namespace
 
 class WiFiPhyTest : public ::testing::Test {
@@ -612,6 +618,12 @@ class WiFiPhyTest : public ::testing::Test {
   void AssertApStaConcurrency(bool support) {
     ASSERT_EQ(wifi_phy_.SupportAPSTAConcurrency(), support);
   }
+
+  const WiFiPhy::Frequencies& frequencies() { return wifi_phy_.frequencies_; }
+
+  void SetFrequencies(WiFiPhy::Frequencies& frequencies) {
+    wifi_phy_.frequencies_ = frequencies;
+  }
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
@@ -681,7 +693,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   OnNewWiphy(msg);
   PhyDumpComplete();
-  EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
+  EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, frequencies());
 }
 
 TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
@@ -726,7 +738,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
     }
   }
 
-  EXPECT_NE(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
+  EXPECT_NE(kNewWiphyNlMsg_AllFrequencies, frequencies());
   OnNewWiphy(msg1);
   // Now parse the original packet and observe that the attributes get
   // overwritten with proper values, each frequency is visible only once and the
@@ -736,7 +748,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
   OnNewWiphy(msg2);
   PhyDumpComplete();
-  EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
+  EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, frequencies());
 }
 
 TEST_F(WiFiPhyTest, SupportsIftype) {
@@ -869,6 +881,105 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   };
   AssertPhyConcurrencyIsEqualTo(MultiChannelConcurrencyCombinations);
   AssertApStaConcurrency(true);
+}
+
+TEST_F(WiFiPhyTest, SelectFrequency_Empty) {
+  WiFiPhy::Frequencies frequencies;
+
+  WiFiBand band = WiFiBand::kLowBand;
+  auto freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_FALSE(freq.has_value());
+  band = WiFiBand::kHighBand;
+  freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_FALSE(freq.has_value());
+  band = WiFiBand::kAllBands;
+  freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_FALSE(freq.has_value());
+}
+
+TEST_F(WiFiPhyTest, SelectFrequency_NoValidHB) {
+  WiFiPhy::Frequencies frequencies = {
+      {0,
+       {
+           {.value = 2412},  // Channel 1
+           {.value = 2417},  // Channel 2
+           {.value = 2422},  // Channel 3
+           {.value = 2467},  // Channel 12
+           {.value = 2472},  // Channel 13
+       }},
+      {1,
+       {
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR, .value = 5200},
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR, .value = 5300},
+       }}};
+  SetFrequencies(frequencies);
+  auto freq = wifi_phy_.SelectFrequency(WiFiBand::kAllBands);
+  EXPECT_TRUE(freq.has_value());
+  EXPECT_GE(freq, kLBStartFreq);
+  EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
+  EXPECT_TRUE(base::Contains(frequencies[0], uint32_t(freq.value()),
+                             [](auto& f) { return f.value; }));
+}
+
+TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
+  WiFiPhy::Frequencies frequencies = {
+      {0,
+       {
+           {.value = 2412},  // Channel 1
+           {.value = 2417},  // Channel 2
+           {.value = 2422},  // Channel 3
+           {.value = 2467},  // Channel 12
+           {.value = 2472},  // Channel 13
+       }},
+      {1,
+       {
+           {.value = 5180},  // Channel 36
+           {.value = 5200},  // Channel 40
+           {.value = 5220},  // Channel 44
+           {.value = 5240},  // Channel 48
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR,
+            .value = 5260},  // Channel 52
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR,
+            .value = 5280},  // Channel 56
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR,
+            .value = 5300},  // Channel 60
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR,
+            .value = 5320},  // Channel 64
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_DISABLED,
+            .value = 5340},  // Channel 68
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_DISABLED,
+            .value = 5360},  // Channel 72
+       }}};
+
+  SetFrequencies(frequencies);
+  WiFiBand band = WiFiBand::kLowBand;
+  auto freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_TRUE(freq.has_value());
+  EXPECT_GE(freq, kLBStartFreq);
+  EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
+  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(band)],
+                             uint32_t(freq.value()),
+                             [](auto& f) { return f.value; }));
+
+  band = WiFiBand::kHighBand;
+  freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_TRUE(freq.has_value());
+  EXPECT_GE(freq, kHBStartFreq);
+  EXPECT_LE(freq, kHBEndFreq);
+  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(band)],
+                             uint32_t(freq.value()),
+                             [](auto& f) { return f.value; }));
+
+  // For other preferences the selected frequency should be in 2.4 or 5GHz,
+  // however with a valid 5GHz frequency it should be preferred.
+  band = WiFiBand::kAllBands;
+  freq = wifi_phy_.SelectFrequency(band);
+  EXPECT_TRUE(freq.has_value());
+  EXPECT_GE(freq, kHBStartFreq);
+  EXPECT_LE(freq, kHBEndFreq);
+  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(WiFiBand::kHighBand)],
+                             uint32_t(freq.value()),
+                             [](auto& f) { return f.value; }));
 }
 
 }  // namespace shill

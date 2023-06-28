@@ -108,6 +108,9 @@ class WiFiPhy {
   using Frequencies = std::map<int, std::vector<Frequency>>;
   // Returns map of available frequencies.
   mockable const Frequencies& frequencies() const { return frequencies_; }
+  // Utility function to choose frequency from the available frequencies with
+  // |band| preference. Returns frequency or std::nullopt on error.
+  std::optional<int> SelectFrequency(WiFiBand band) const;
 
  private:
   friend class WiFiPhyTest;

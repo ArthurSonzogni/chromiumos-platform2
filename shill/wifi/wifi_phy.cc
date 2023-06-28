@@ -4,6 +4,8 @@
 
 #include <utility>
 
+#include <base/rand_util.h>
+
 #include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/wifi/wifi_phy.h"
@@ -254,6 +256,68 @@ bool WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
 
 bool WiFiPhy::SupportAPSTAConcurrency() const {
   return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION);
+}
+
+std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
+  if (frequencies_.empty()) {
+    LOG(ERROR) << "No valid band found";
+    return std::nullopt;
+  }
+  size_t total_freqs = std::accumulate(
+      frequencies_.begin(), frequencies_.end(), 0,
+      [](auto acc, auto band) { return acc + band.second.size(); });
+  if (total_freqs == 0) {
+    LOG(ERROR) << "No valid frequency found";
+    return std::nullopt;
+  }
+
+  std::vector<int> band_idxs;
+  switch (band) {
+    case WiFiBand::kLowBand:
+      band_idxs = {NL80211_BAND_2GHZ};
+      break;
+    case WiFiBand::kHighBand:
+      band_idxs = {NL80211_BAND_5GHZ};
+      break;
+    case WiFiBand::kAllBands:
+    default:
+      // Note that the order matters - preferred band comes first.
+      band_idxs = {NL80211_BAND_5GHZ, NL80211_BAND_2GHZ};
+  }
+
+  int selected = -1;
+  std::vector<uint32_t> freqs;
+
+  for (auto bidx : band_idxs) {
+    auto band = frequencies_.find(bidx);
+    if (band == frequencies_.end()) {
+      continue;
+    }
+    freqs.reserve(band->second.size());
+    for (auto& freq : band->second) {
+      if (freq.flags & (1 << NL80211_FREQUENCY_ATTR_DISABLED |
+                        1 << NL80211_FREQUENCY_ATTR_NO_IR |
+                        1 << NL80211_FREQUENCY_ATTR_RADAR) ||
+          IsWiFiLimitedFreq(freq.value)) {
+        SLOG(3) << "Skipping freq: " << freq.value;
+        continue;
+      }
+      freqs.push_back(freq.value);
+    }
+    // We are moving now to a less preferred band, so if we have valid frequency
+    // let's just keep it.
+    if (!freqs.empty()) {
+      selected = freqs[base::RandInt(0, freqs.size() - 1)];
+      break;
+    }
+  }
+  if (selected == -1) {
+    LOG(ERROR) << "No usable frequency found";
+    return std::nullopt;
+  } else {
+    LOG(INFO) << "Selected frequency: " << selected;
+  }
+  return selected;
 }
 
 }  // namespace shill
