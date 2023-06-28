@@ -126,11 +126,10 @@ int CheckV2RoutineSupportStatus(mojom::RoutineArgumentPtr argument) {
       chromeos::mojo_services::kCrosHealthdRoutines,
       cros_healthd_routines_service_);
 
-  base::RunLoop run_loop;
-  cros_healthd_routines_service_->IsRoutineSupported(
-      std::move(argument),
-      base::BindOnce(&OutputSupportStatus).Then(run_loop.QuitClosure()));
-  run_loop.Run();
+  MojoResponseWaiter<mojom::SupportStatusPtr> waiter;
+  cros_healthd_routines_service_->IsRoutineSupported(std::move(argument),
+                                                     waiter.CreateCallback());
+  OutputSupportStatus(waiter.WaitForResponse());
 
   return EXIT_SUCCESS;
 }
