@@ -40,6 +40,15 @@ namespace rmad {
 
 class DBusServiceTestBase : public testing::Test {
  public:
+  struct RmadOptions {
+    bool is_state_file_exist = false;
+    RoVerificationStatus ro_verification_status =
+        RMAD_RO_VERIFICATION_NOT_TRIGGERED;
+    bool is_rmad_enabled_in_cros_config = true;
+    std::string main_fw_type = "normal";
+    bool rmad_setup_result = true;
+  };
+
   DBusServiceTestBase() {
     dbus::Bus::Options options;
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
@@ -59,28 +68,33 @@ class DBusServiceTestBase : public testing::Test {
     return temp_dir_.GetPath().AppendASCII("state");
   }
 
-  void SetUpDBusService(bool state_file_exist,
-                        RoVerificationStatus ro_verification_status,
-                        bool setup_success) {
-    base::FilePath state_file_path = GetStateFilePath();
-    if (state_file_exist) {
-      brillo::TouchFile(state_file_path);
-    }
+  void StartDBusService(const RmadOptions& options) {
     auto mock_tpm_manager_client =
         std::make_unique<NiceMock<MockTpmManagerClient>>();
-    ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(ro_verification_status), Return(true)));
     auto mock_cros_config_utils =
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(RmadConfig({.enabled = true})),
-                             Return(true)));
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
+
+    base::FilePath state_file_path = GetStateFilePath();
+    if (options.is_state_file_exist) {
+      brillo::TouchFile(state_file_path);
+    }
+    ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(options.ro_verification_status),
+                             Return(true)));
+    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(RmadConfig(
+                      {.enabled = options.is_rmad_enabled_in_cros_config})),
+                  Return(true)));
     ON_CALL(*mock_crossystem_utils,
             GetString(Eq(CrosSystemUtils::kMainFwTypeProperty), _))
-        .WillByDefault(DoAll(SetArgPointee<1>("normal"), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(options.main_fw_type), Return(true)));
+    ON_CALL(mock_rmad_service_, SetUp(_))
+        .WillByDefault(Return(options.rmad_setup_result));
+
     dbus_service_ = std::make_unique<DBusService>(
         mock_bus_, &mock_rmad_service_, state_file_path,
         std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils),
@@ -89,8 +103,6 @@ class DBusServiceTestBase : public testing::Test {
 
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
     dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
-
-    ON_CALL(mock_rmad_service_, SetUp(_)).WillByDefault(Return(setup_success));
   }
 
   template <typename RequestProtobufType, typename ReplyProtobufType>
@@ -222,16 +234,16 @@ class DBusServiceTest : public DBusServiceTestBase {
  protected:
   void SetUp() override {
     DBusServiceTestBase::SetUp();
-    SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
-
     EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(AnyNumber());
     EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
         .Times(AnyNumber());
+
+    StartDBusService({.is_state_file_exist = true});
   }
 };
 
 TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_NotRequired) {
-  SetUpDBusService(false, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+  StartDBusService({.is_state_file_exist = false});
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, false);
@@ -239,7 +251,9 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_NotRequired) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_RoVerificationPass) {
-  SetUpDBusService(false, RMAD_RO_VERIFICATION_PASS, true);
+  StartDBusService({
+      .ro_verification_status = RMAD_RO_VERIFICATION_PASS,
+  });
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
@@ -248,7 +262,9 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_RoVerificationPass) {
 
 TEST_F(DBusServiceIsRequiredTest,
        IsRmaRequired_RoVerificationUnsupportedTriggered) {
-  SetUpDBusService(false, RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED, true);
+  StartDBusService({
+      .ro_verification_status = RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED,
+  });
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
@@ -256,7 +272,7 @@ TEST_F(DBusServiceIsRequiredTest,
 }
 
 TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_StateFileExists) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+  StartDBusService({.is_state_file_exist = true});
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
@@ -264,8 +280,11 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_StateFileExists) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_InterfaceSetUpFailed) {
-  // The method call doesn't set up the interface so it works normally.
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, false);
+  StartDBusService({
+      .is_state_file_exist = true,
+      // The method call doesn't set up the interface so it works normally.
+      .rmad_setup_result = false,
+  });
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
@@ -273,10 +292,8 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_InterfaceSetUpFailed) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, SetUp(_));
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState());
-
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
@@ -284,6 +301,7 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
         std::move(callback).Run(reply, false);
       }));
 
+  StartDBusService({.is_state_file_exist = true});
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
@@ -291,11 +309,11 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
-  SetUpDBusService(false, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, SetUp(_)).Times(0);
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
       .Times(0);
 
+  StartDBusService({.is_state_file_exist = false});
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
@@ -303,11 +321,14 @@ TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_InterfaceSetUpFailed) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, false);
   EXPECT_CALL(mock_rmad_service_, SetUp(_));
   EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
       .Times(0);
 
+  StartDBusService({
+      .is_state_file_exist = true,
+      .rmad_setup_result = false,
+  });
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED, reply.error());
