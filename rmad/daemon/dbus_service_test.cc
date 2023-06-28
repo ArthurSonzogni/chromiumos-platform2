@@ -37,9 +37,9 @@ using testing::StrictMock;
 
 namespace rmad {
 
-class DBusServiceTest : public testing::Test {
+class DBusServiceTestBase : public testing::Test {
  public:
-  DBusServiceTest() {
+  DBusServiceTestBase() {
     dbus::Bus::Options options;
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     dbus::ObjectPath path(kRmadServicePath);
@@ -52,7 +52,7 @@ class DBusServiceTest : public testing::Test {
         .WillRepeatedly(Return());
     EXPECT_CALL(*mock_exported_object_, Unregister()).WillRepeatedly(Return());
   }
-  ~DBusServiceTest() override = default;
+  ~DBusServiceTestBase() override = default;
 
   base::FilePath GetStateFilePath() const {
     return temp_dir_.GetPath().AppendASCII("state");
@@ -222,7 +222,17 @@ class DBusServiceTest : public testing::Test {
   std::unique_ptr<DBusService> dbus_service_;
 };
 
-TEST_F(DBusServiceTest, IsRmaRequired_NotRequired) {
+class DBusServiceIsRequiredTest : public DBusServiceTestBase {};
+
+class DBusServiceTest : public DBusServiceTestBase {
+ protected:
+  void SetUp() override {
+    DBusServiceTestBase::SetUp();
+    SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
+  }
+};
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_NotRequired) {
   SetUpDBusService(false, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
@@ -230,7 +240,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_NotRequired) {
   EXPECT_FALSE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationPass) {
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_RoVerificationPass) {
   SetUpDBusService(false, RMAD_RO_VERIFICATION_PASS, true);
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
@@ -238,7 +248,8 @@ TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationPass) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationUnsupportedTriggered) {
+TEST_F(DBusServiceIsRequiredTest,
+       IsRmaRequired_RoVerificationUnsupportedTriggered) {
   SetUpDBusService(false, RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED, true);
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
@@ -246,7 +257,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationUnsupportedTriggered) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, IsRmaRequired_StateFileExists) {
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_StateFileExists) {
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
@@ -254,7 +265,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_StateFileExists) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_InterfaceSetUpFailed) {
   // The method call doesn't set up the interface so it works normally.
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, false);
   bool is_rma_required;
@@ -263,7 +274,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, GetCurrentState_Success) {
+TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
@@ -278,7 +289,7 @@ TEST_F(DBusServiceTest, GetCurrentState_Success) {
   EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
-TEST_F(DBusServiceTest, GetCurrentState_RmaNotRequired) {
+TEST_F(DBusServiceIsRequiredTest, GetCurrentState_RmaNotRequired) {
   SetUpDBusService(false, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
 
   GetStateReply reply;
@@ -287,7 +298,7 @@ TEST_F(DBusServiceTest, GetCurrentState_RmaNotRequired) {
   EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
-TEST_F(DBusServiceTest, GetCurrentState_InterfaceSetUpFailed) {
+TEST_F(DBusServiceIsRequiredTest, GetCurrentState_InterfaceSetUpFailed) {
   SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, false);
 
   GetStateReply reply;
@@ -297,7 +308,6 @@ TEST_F(DBusServiceTest, GetCurrentState_InterfaceSetUpFailed) {
 }
 
 TEST_F(DBusServiceTest, TransitionNextState) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionNextState(_, _))
       .WillOnce(Invoke([](const TransitionNextStateRequest& request,
                           RmadInterface::GetStateCallback callback) {
@@ -317,7 +327,6 @@ TEST_F(DBusServiceTest, TransitionNextState) {
 }
 
 TEST_F(DBusServiceTest, TransitionPreviousState) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionPreviousState(_))
       .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
@@ -332,7 +341,6 @@ TEST_F(DBusServiceTest, TransitionPreviousState) {
 }
 
 TEST_F(DBusServiceTest, AbortRma) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, AbortRma(_))
       .WillOnce(Invoke([](RmadInterface::AbortRmaCallback callback) {
         AbortRmaReply reply;
@@ -346,7 +354,6 @@ TEST_F(DBusServiceTest, AbortRma) {
 }
 
 TEST_F(DBusServiceTest, GetLog) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, GetLog(_))
       .WillOnce(Invoke([](RmadInterface::GetLogCallback callback) {
         GetLogReply reply;
@@ -362,7 +369,6 @@ TEST_F(DBusServiceTest, GetLog) {
 }
 
 TEST_F(DBusServiceTest, SaveLog) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, SaveLog(_, _))
       .WillOnce(Invoke([](const std::string& diagnostics_log_text,
                           RmadInterface::SaveLogCallback callback) {
@@ -380,7 +386,6 @@ TEST_F(DBusServiceTest, SaveLog) {
 }
 
 TEST_F(DBusServiceTest, SignalError) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -396,7 +401,6 @@ TEST_F(DBusServiceTest, SignalError) {
 }
 
 TEST_F(DBusServiceTest, SignalHardwareVerification) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -417,7 +421,6 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
 }
 
 TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -433,7 +436,6 @@ TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationOverall) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -449,7 +451,6 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationComponent) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -476,7 +477,6 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
 }
 
 TEST_F(DBusServiceTest, SignalProvision) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -501,7 +501,6 @@ TEST_F(DBusServiceTest, SignalProvision) {
 }
 
 TEST_F(DBusServiceTest, SignalFinalize) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -526,7 +525,6 @@ TEST_F(DBusServiceTest, SignalFinalize) {
 }
 
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -542,7 +540,6 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
 }
 
 TEST_F(DBusServiceTest, SignalPowerCableState) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -558,7 +555,6 @@ TEST_F(DBusServiceTest, SignalPowerCableState) {
 }
 
 TEST_F(DBusServiceTest, SignalExternalDisk) {
-  SetUpDBusService(true, RMAD_RO_VERIFICATION_NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");

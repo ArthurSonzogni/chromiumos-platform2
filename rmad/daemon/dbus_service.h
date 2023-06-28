@@ -81,7 +81,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   scoped_refptr<DaemonCallback> CreateDaemonCallback() const;
 
  private:
-  friend class DBusServiceTest;
+  friend class DBusServiceTestBase;
 
   bool CheckRmaCriteria() const;
   bool SetUpInterface();
