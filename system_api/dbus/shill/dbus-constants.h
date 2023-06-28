@@ -690,6 +690,7 @@ constexpr char kSecurity8021x[] = "802_1x";
 
 // WiFi Security options.
 constexpr char kSecurityNone[] = "none";
+constexpr char kSecurityOwe[] = "owe";
 constexpr char kSecurityWep[] = "wep";
 constexpr char kSecurityWpa[] = "wpa";
 constexpr char kSecurityWpaWpa2[] = "wpa+wpa2";

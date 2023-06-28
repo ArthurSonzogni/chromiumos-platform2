@@ -101,6 +101,7 @@ class WPASupplicant {
   static constexpr char kKeyManagementWPAPSK[] = "WPA-PSK";
   static constexpr char kKeyManagementWPAPSKSHA256[] = "WPA-PSK-SHA256";
   static constexpr char kKeyManagementSAE[] = "SAE";
+  static constexpr char kKeyManagementOWE[] = "OWE";
   static constexpr char kKeyManagementMethodPrefixEAP[] = "wpa-eap";
   static constexpr char kKeyManagementMethodSuffixEAP[] = "-eap";
   static constexpr char kKeyManagementMethodSuffixPSK[] = "-psk";
@@ -108,6 +109,7 @@ class WPASupplicant {
   static constexpr char kKeyManagementMethodSuiteB[] = "-suite-b";
   static constexpr char kKeyManagementMethodSuffixEAPSHA256[] = "-eap-sha256";
   static constexpr char kKeyManagementMethodSAE[] = "sae";
+  static constexpr char kKeyManagementMethodOWE[] = "owe";
   static constexpr char kKeyManagementNone[] = "NONE";
   static constexpr char kNetworkBgscanMethodLearn[] = "learn";
   // None is not a real method name, but we interpret 'none' as a request that

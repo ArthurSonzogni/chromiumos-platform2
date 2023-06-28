@@ -375,6 +375,8 @@ void WiFiService::SetSecurityProperties() {
         base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
                            WPASupplicant::kKeyManagementWPAPSKSHA256));
 #endif  // DISABLE_WPA3_SAE
+  } else if (security_ == WiFiSecurity::kOwe) {
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementOWE);
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
     SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
@@ -1334,7 +1336,8 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
         ft_eap = true;
       } else if (mgmt == WPASupplicant::kKeyManagementSAE) {
         ft_mgmt = WPASupplicant::kKeyManagementFTSAE;
-      } else if (mgmt != WPASupplicant::kKeyManagementNone) {
+      } else if (mgmt != WPASupplicant::kKeyManagementNone &&
+                 mgmt != WPASupplicant::kKeyManagementOWE) {
         LOG(ERROR) << "Unrecognized key management protocol " << mgmt;
         continue;
       }

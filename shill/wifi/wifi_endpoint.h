@@ -31,6 +31,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   struct SecurityFlags {
     bool rsn_8021x_wpa3 = false;
     bool rsn_8021x = false;
+    bool rsn_owe = false;
     bool rsn_psk = false;
     bool rsn_sae = false;
     bool wpa_8021x = false;
@@ -134,6 +135,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // For DeterminePhyModeFromFrequency
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
   // These test cases need access to the KeyManagement enum.
+  FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsOWE);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
@@ -150,7 +152,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     kKeyManagement802_1x,
     kKeyManagement802_1x_Wpa3,
     kKeyManagementPSK,
-    kKeyManagementSAE
+    kKeyManagementSAE,
+    kKeyManagementOWE,
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.

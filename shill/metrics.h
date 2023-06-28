@@ -314,6 +314,7 @@ class Metrics {
     kWirelessSecurityWpaAll = 16,
     kWirelessSecurityWpaAllEnterprise = 17,
     kWirelessSecurityWepEnterprise = 18,
+    kWirelessSecurityOwe = 20,
 
     kWirelessSecurityMax
   };

@@ -200,6 +200,14 @@ class WiFiEndpointTest : public PropertyStoreTest {
   scoped_refptr<MockWiFi> wifi_;
 };
 
+TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsOWE) {
+  std::set<WiFiEndpoint::KeyManagement> parsed_methods;
+  WiFiEndpoint::ParseKeyManagementMethods(MakeKeyManagementArgs({"owe"}),
+                                          &parsed_methods);
+  EXPECT_EQ(parsed_methods,
+            decltype(parsed_methods){WiFiEndpoint::kKeyManagementOWE});
+}
+
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
   std::set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
@@ -280,6 +288,10 @@ TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNSAE) {
   EXPECT_EQ(WiFiSecurity::kWpa3, ParseSecurity(MakeSecurityArgs("RSN", "sae")));
+}
+
+TEST_F(WiFiEndpointTest, ParseSecurityRSNOWE) {
+  EXPECT_EQ(WiFiSecurity::kOwe, ParseSecurity(MakeSecurityArgs("RSN", "owe")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {

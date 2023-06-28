@@ -403,6 +403,7 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
     flags->rsn_8021x = base::Contains(key_management, kKeyManagement802_1x);
     flags->rsn_psk = base::Contains(key_management, kKeyManagementPSK);
     flags->rsn_sae = base::Contains(key_management, kKeyManagementSAE);
+    flags->rsn_owe = base::Contains(key_management, kKeyManagementOWE);
   }
 
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA)) {
@@ -432,6 +433,8 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
     return flags->wpa_psk ? WiFiSecurity::kWpaWpa2 : WiFiSecurity::kWpa2;
   } else if (flags->wpa_psk) {
     return WiFiSecurity::kWpa;
+  } else if (flags->rsn_owe) {
+    return WiFiSecurity::kOwe;
   } else if (flags->privacy) {
     return WiFiSecurity::kWep;
   } else {
@@ -455,6 +458,8 @@ void WiFiEndpoint::ParseKeyManagementMethods(
   for (const auto& method : key_management_vec) {
     if (method == WPASupplicant::kKeyManagementMethodSAE) {
       key_management_methods->insert(kKeyManagementSAE);
+    } else if (method == WPASupplicant::kKeyManagementMethodOWE) {
+      key_management_methods->insert(kKeyManagementOWE);
     } else if (base::StartsWith(method,
                                 WPASupplicant::kKeyManagementMethodPrefixEAP) &&
                (base::Contains(method,
