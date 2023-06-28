@@ -46,12 +46,9 @@ shared_library("libcrossystem") {
 }
 
 install_config("install_libcrossystem_headers") {
-  # TODO(b/288866152): Once extra depedency headers are removed from
-  # crossystem.h, remove them here as well.
   sources = [
     "crossystem.h",
     "crossystem_fake.h",
-    "crossystem_impl.h",
     "crossystem_vboot_interface.h",
   ]
   install_path = "/usr/include/libcrossystem"
