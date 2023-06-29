@@ -147,8 +147,9 @@ fn hotplug_cpus_impl(root: &Path, action: HotplugCpuAction) -> Result<()> {
                     .split('-')
                     .last()
                     .context("can't get number of cores")?
+                    .trim()
                     .parse()?;
-                if num_cores >= 4 {
+                if num_cores >= 3 {
                     update_cpu_online_status(
                         root,
                         &format!("{}-{}", (num_cores / 2) + 1, num_cores),
