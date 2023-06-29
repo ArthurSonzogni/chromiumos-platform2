@@ -349,6 +349,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_devicesettings:s0
 /var/lib/devicesettings(/.*)?   u:object_r:cros_var_lib_devicesettings:s0
 /var/lib/swap(/.*)?             u:object_r:cros_var_lib_swap:s0
+/var/lib/flex_hwis_tool(/.*)?   u:object_r:cros_var_lib_flex_hwis_tool:s0
 /var/lock                       u:object_r:cros_var_lock:s0
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0

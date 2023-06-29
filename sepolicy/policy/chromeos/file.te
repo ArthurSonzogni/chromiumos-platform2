@@ -457,6 +457,7 @@ type cros_var_lib_vm_concierge_vmm_swap_policy, file_type, cros_file_type, cros_
 type cros_var_lib_vtpm, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_devicesettings, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_swap, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_flex_hwis_tool, file_type, cros_file_type, cros_var_file_type;
 
 # /var/lock
 type cros_var_lock, file_type, cros_file_type, cros_var_file_type;
