@@ -136,17 +136,17 @@ void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
       std::make_unique<::keymaster::AddEntropyRequest>(kKeyMintMessageVersion);
   ConvertToKeymasterMessage(data, &km_request->random_data);
 
+  auto task_lambda = base::BindOnce(
+      [](AddRngEntropyCallback callback,
+         std::unique_ptr<::keymaster::AddEntropyResponse> km_response) {
+        // Run callback.
+        std::move(callback).Run(km_response->error);
+      },
+      std::move(callback));
+
   // Call keymint.
-  RunKeyMintRequest(
-      FROM_HERE, &::keymaster::AndroidKeymaster::AddRngEntropy,
-      std::move(km_request),
-      base::BindOnce(
-          [](AddRngEntropyCallback callback,
-             std::unique_ptr<::keymaster::AddEntropyResponse> km_response) {
-            // Run callback.
-            std::move(callback).Run(km_response->error);
-          },
-          std::move(callback)));
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::AddRngEntropy,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::GetKeyCharacteristics(
@@ -269,17 +269,17 @@ void KeyMintServer::DeleteKey(const std::vector<uint8_t>& key_blob,
       backend_.keymint()->message_version());
   km_request->SetKeyMaterial(key_blob.data(), key_blob.size());
 
+  auto task_lambda = base::BindOnce(
+      [](DeleteKeyCallback callback,
+         std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
+        // Run callback.
+        std::move(callback).Run(km_response->error);
+      },
+      std::move(callback));
+
   // Call keymint.
-  RunKeyMintRequest(
-      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteKey,
-      std::move(km_request),
-      base::BindOnce(
-          [](DeleteKeyCallback callback,
-             std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
-            // Run callback.
-            std::move(callback).Run(km_response->error);
-          },
-          std::move(callback)));
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::DeleteKey,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
@@ -287,17 +287,17 @@ void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
   auto km_request = std::make_unique<::keymaster::DeleteAllKeysRequest>(
       backend_.keymint()->message_version());
 
+  auto task_lambda = base::BindOnce(
+      [](DeleteAllKeysCallback callback,
+         std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
+        // Run callback.
+        std::move(callback).Run(km_response->error);
+      },
+      std::move(callback));
+
   // Call keymint.
-  RunKeyMintRequest(
-      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteAllKeys,
-      std::move(km_request),
-      base::BindOnce(
-          [](DeleteAllKeysCallback callback,
-             std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
-            // Run callback.
-            std::move(callback).Run(km_response->error);
-          },
-          std::move(callback)));
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::DeleteAllKeys,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::DestroyAttestationIds(
