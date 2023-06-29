@@ -463,7 +463,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   const int64_t freed_vault_cache_space =
       free_disk_space.value() - old_free_disk_space.value();
   // Report only if something was deleted.
-  if (freed_gcache_space > 0) {
+  if (freed_vault_cache_space > 0) {
     ReportFreedCacheVaultDiskSpaceInMb(freed_vault_cache_space / 1024 / 1024);
   }
 
