@@ -22,9 +22,9 @@
 namespace util {
 
 // Maximum time to wait for ensuring a meta file is complete.
-constexpr base::TimeDelta kMaxHoldOffTime = base::Seconds(30);
-constexpr char kUndefined[] = "undefined";
-constexpr char kChromeOsProduct[] = "ChromeOS";
+inline constexpr base::TimeDelta kMaxHoldOffTime = base::Seconds(30);
+inline constexpr char kUndefined[] = "undefined";
+inline constexpr char kChromeOsProduct[] = "ChromeOS";
 
 // Crash information obtained in ChooseAction().
 struct CrashInfo {

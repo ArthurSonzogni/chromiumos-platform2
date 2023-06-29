@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& out, const CrashReport& cr);
 
 using MaybeCrashReport = std::optional<CrashReport>;
 
-constexpr size_t HASH_BITMAP_SIZE(1 << 15);
+inline constexpr size_t HASH_BITMAP_SIZE(1 << 15);
 
 class Parser {
  public:

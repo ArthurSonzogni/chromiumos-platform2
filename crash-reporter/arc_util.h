@@ -26,16 +26,17 @@ using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
 // NOTE: Not every crash type name is included in this file, only the ones used
 // to compute crash severity according to go/cros-stability-metrics#logic are
 // included to reduce redundancy and make sure names don't go out of sync.
-constexpr char kDataAppAnr[] = "data_app_anr";
-constexpr char kDataAppCrash[] = "data_app_crash";
-constexpr char kDataAppNativeCrash[] = "data_app_native_crash";
-constexpr char kNativeCrash[] = "native_crash";  // crash type of Android.
-constexpr char kSystemAppAnr[] = "system_app_anr";
-constexpr char kSystemAppCrash[] = "system_app_crash";
-constexpr char kSystemAppWtf[] = "system_app_wtf";
-constexpr char kSystemServerCrash[] = "system_server_crash";
-constexpr char kSystemServerWatchdog[] = "system_server_watchdog";
-constexpr char kSystemServerWtf[] = "system_server_wtf";
+inline constexpr char kDataAppAnr[] = "data_app_anr";
+inline constexpr char kDataAppCrash[] = "data_app_crash";
+inline constexpr char kDataAppNativeCrash[] = "data_app_native_crash";
+inline constexpr char kNativeCrash[] =
+    "native_crash";  // crash type of Android.
+inline constexpr char kSystemAppAnr[] = "system_app_anr";
+inline constexpr char kSystemAppCrash[] = "system_app_crash";
+inline constexpr char kSystemAppWtf[] = "system_app_wtf";
+inline constexpr char kSystemServerCrash[] = "system_server_crash";
+inline constexpr char kSystemServerWatchdog[] = "system_server_watchdog";
+inline constexpr char kSystemServerWtf[] = "system_server_wtf";
 
 extern const char kArcProduct[];
 

@@ -29,25 +29,26 @@
 namespace util {
 
 // URL to send official build crash reports to.
-constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
+inline constexpr char kReportUploadProdUrl[] =
+    "https://clients2.google.com/cr/report";
 
 // URL to send test/dev build crash reports to.
-constexpr char kReportUploadStagingUrl[] =
+inline constexpr char kReportUploadStagingUrl[] =
     "https://clients2.google.com/cr/staging_report";
 
 // Maximum crashes to send per 24 hours.
-constexpr int kMaxCrashRate = 32;
+inline constexpr int kMaxCrashRate = 32;
 
 // Maximum bytes of crash reports to send per 24 hours. Note that "whichever
 // comes last" maximum with kMaxCrashRate; that is, we'll always send 32 crashes
 // per 24 hours, even if that exceeds 24MB, and we'll always send 24MB per 24
 // hours, even if that exceeds 32 crashes.
-constexpr int kMaxCrashBytes = 24 * 1024 * 1024;
+inline constexpr int kMaxCrashBytes = 24 * 1024 * 1024;
 
 // Maximum time to sleep before attempting to send a crash report. This value is
 // inclusive as an upper bound, thus 0 means a crash report can be sent
 // immediately.
-constexpr int kMaxSpreadTimeInSeconds = 600;
+inline constexpr int kMaxSpreadTimeInSeconds = 600;
 
 // Parsed command line flags.
 struct CommandLineFlags {

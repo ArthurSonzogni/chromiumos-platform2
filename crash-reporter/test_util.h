@@ -19,7 +19,7 @@
 
 namespace test_util {
 
-constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
+inline constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
 
 // Parameter for crash severity unit tests. Used by multiple collectors to test
 // ComputeSeverity().

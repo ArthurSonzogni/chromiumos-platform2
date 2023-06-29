@@ -33,7 +33,8 @@ namespace anomaly {
 // egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295
 // comm="ThreadPoolForeg" exe="/opt/google/chrome/chrome"
 // subj=u:r:cros_browser:s0 key=(null)
-constexpr char kAuditLogPattern[] = R"(type=AVC [^(]+\(([\d\.]+)\S+ (.+))";
+inline constexpr char kAuditLogPattern[] =
+    R"(type=AVC [^(]+\(([\d\.]+)\S+ (.+))";
 
 // First group captures timestamp in RFC3339 format.
 // Second group captures the tag (i.e. service name).
@@ -47,7 +48,8 @@ constexpr char kAuditLogPattern[] = R"(type=AVC [^(]+\(([\d\.]+)\S+ (.+))";
 // e.g.3
 // `2020-05-14T19:37:04.202906Z INFO VM(3)[8947]:`
 // ` [devices/src/virtio/balloon.rs:290] ballon config changed`
-constexpr char kMessageLogPattern[] = R"((\S+) \S+ (\S*?)(?:\[\d+\])?:\s+(.+))";
+inline constexpr char kMessageLogPattern[] =
+    R"((\S+) \S+ (\S*?)(?:\[\d+\])?:\s+(.+))";
 
 // First group captures timestamp in RFC3339 format.
 // Second group captures the service name.
@@ -55,7 +57,7 @@ constexpr char kMessageLogPattern[] = R"((\S+) \S+ (\S*?)(?:\[\d+\])?:\s+(.+))";
 // e.g.
 // `2020-05-15T16:34:00.678394Z INFO kernel:`
 // ` [ 1608.687863] init: Connection from private client`
-constexpr char kUpstartLogPattern[] =
+inline constexpr char kUpstartLogPattern[] =
     R"((\S+) \S+ \S+: \[\s*\S+\] (\w+):\s+(.+))";
 
 // Describes an entry in log files.
