@@ -10,6 +10,7 @@
 #include <limits>
 #include <map>
 #include <string>
+#include <utility>
 
 #include <base/barrier_closure.h>
 #include <base/check.h>
@@ -411,6 +412,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
       if (name == constants::kUploadDataKeyProductKey &&
           value_str == constants::kProductNameChromeLacros) {
         *is_lacros_crash = true;
+      } else if (name == constants::kChromeProcessTypeKey) {
+        process_type_ = std::move(value_str);
       }
     }
 
@@ -422,6 +425,10 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
 
 bool ChromeCollector::IsJavaScriptError() const {
   return crash_type_ == kJavaScriptError;
+}
+
+bool ChromeCollector::CrashHasProcessType() const {
+  return !process_type_.empty();
 }
 
 void ChromeCollector::AddLogIfNotTooBig(

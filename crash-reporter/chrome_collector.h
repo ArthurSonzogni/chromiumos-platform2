@@ -66,6 +66,7 @@ class ChromeCollector : public CrashCollector {
   friend class ChromeCollectorTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
   FRIEND_TEST(ChromeCollectorTest, GoodLacros);
+  FRIEND_TEST(ChromeCollectorTest, ProcessTypeCheck);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_ExecutableCrash);
   FRIEND_TEST(ChromeCollectorTest, ParseCrashLogNoDump);
@@ -191,6 +192,10 @@ class ChromeCollector : public CrashCollector {
   // Getter to determine whether `crash_type_` is `kJavaScriptError`.
   bool IsJavaScriptError() const;
 
+  // Getter to determine whether `process_type_` has a value when parsing
+  // through the crash log.
+  bool CrashHasProcessType() const;
+
   // The file where we write our special "done" marker (to indicate to Chrome
   // that we are finished dumping). Always stdout in production.
   FILE* output_file_ptr_;
@@ -208,6 +213,8 @@ class ChromeCollector : public CrashCollector {
   bool is_browser_shutdown_hang_ = false;
 
   CrashType crash_type_ = kExecutableCrash;
+
+  std::string process_type_;
 };
 
 #endif  // CRASH_REPORTER_CHROME_COLLECTOR_H_

@@ -53,6 +53,12 @@ constexpr char kMinidumpExtensionWithDot[] = ".dmp";
 // in the google3 internal crash processing code.
 constexpr char kKindForMinidump[] = "minidump";
 
+// The crash key used by Chrome to record its process type (browser, renderer,
+// gpu-process, etc). Must match the key of the |ptype_key| variable inside
+// InitializeCrashpadImpl() in
+// https://source.chromium.org/chromium/chromium/src/+/main:components/crash/core/app/crashpad.cc
+constexpr char kChromeProcessTypeKey[] = "ptype";
+
 constexpr mode_t kSystemCrashFilesMode = 0660;
 
 }  // namespace constants

@@ -48,6 +48,9 @@ const char kCrashFormatGoodLacros[] =
     "upload_file_minidump\"; filename=\"dump\":3:abc"
     "prod:13:Chrome_Lacros";
 const char kCrashFormatNoDump[] = "value1:10:abcdefghijvalue2:5:12345";
+const char kCrashFormatProcessType[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:7:browser";
 const char kCrashFormatEmbeddedNewline[] =
     "value1:10:abcd\r\nghijvalue2:5:12\n34"
     "upload_file_minidump\"; filename=\"dump\":3:a\nc";
@@ -413,12 +416,32 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
                                        ChromeCollector::kExecutableCrash,
                                        &payload, &is_lacros_crash));
   EXPECT_TRUE(is_lacros_crash);
+  EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
   // Check to see if the values made it in properly.
   std::string meta = collector_.extra_metadata_;
   EXPECT_TRUE(meta.find("upload_var_prod=Chrome_Lacros") != std::string::npos);
+}
+
+TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  const FilePath& dir = scoped_temp_dir.GetPath();
+  FilePath payload;
+  bool is_lacros_crash;
+  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatProcessType, dir, "base",
+                                       ChromeCollector::kExecutableCrash,
+                                       &payload, &is_lacros_crash));
+  EXPECT_FALSE(is_lacros_crash);
+  EXPECT_TRUE(collector_.CrashHasProcessType());
+  EXPECT_EQ(payload, dir.Append("base.dmp"));
+  ExpectFileEquals("abc", payload);
+
+  // Check to see if the values made it in properly.
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_TRUE(meta.find("ptype=browser") != std::string::npos);
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError) {
