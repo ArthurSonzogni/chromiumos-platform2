@@ -190,6 +190,9 @@ void KeyMintServer::GenerateKey(
         // Run callback.
         if (response.has_value()) {
           std::move(callback).Run(error, std::move(response.value()));
+        } else {
+          std::move(callback).Run(error,
+                                  arc::mojom::keymint::KeyCreationResultPtr());
         }
       },
       std::move(callback));
