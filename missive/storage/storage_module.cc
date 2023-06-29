@@ -42,19 +42,14 @@ namespace reporting {
 const Status kStorageUnavailableStatus =
     Status(error::UNAVAILABLE, "Storage unavailable");
 
-StorageModule::StorageModule(
-    const StorageOptions& options,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    scoped_refptr<QueuesContainer> queues_container,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module,
-    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag)
-    : options_(options),
-      async_start_upload_cb_(async_start_upload_cb),
-      queues_container_(queues_container),
-      encryption_module_(encryption_module),
-      compression_module_(compression_module),
-      signature_verification_dev_flag_(signature_verification_dev_flag) {}
+StorageModule::StorageModule(const Settings& settings)
+    : options_(settings.options),
+      async_start_upload_cb_(settings.async_start_upload_cb),
+      queues_container_(settings.queues_container),
+      encryption_module_(settings.encryption_module),
+      compression_module_(settings.compression_module),
+      signature_verification_dev_flag_(
+          settings.signature_verification_dev_flag) {}
 
 StorageModule::~StorageModule() = default;
 
@@ -131,23 +126,15 @@ void StorageModule::SetLegacyEnabledPriorities(
 
 // static
 void StorageModule::Create(
-    const StorageOptions& options,
-    base::StringPiece legacy_storage_enabled,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    scoped_refptr<QueuesContainer> queues_container,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module,
-    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
+    const Settings& settings,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   // Call constructor.
   scoped_refptr<StorageModule> instance =
       // Cannot use `base::MakeRefCounted`, since constructor is protected.
-      base::WrapRefCounted(new StorageModule(
-          options, async_start_upload_cb, queues_container, encryption_module,
-          compression_module, signature_verification_dev_flag));
+      base::WrapRefCounted(new StorageModule(settings));
 
   // Enable/disable multi-generation action for all priorities.
-  instance->SetLegacyEnabledPriorities(legacy_storage_enabled);
+  instance->SetLegacyEnabledPriorities(settings.legacy_storage_enabled);
 
   // Initialize `instance`.
   instance->InitStorage(std::move(callback));
@@ -164,10 +151,14 @@ void StorageModule::InitStorage(
                      std::move(callback));
 
   // Instantiate Storage.
-  NewStorage::Create(options_, async_start_upload_cb_, queues_container_,
-                     encryption_module_, compression_module_,
-                     signature_verification_dev_flag_,
-                     std::move(set_storage_cb));
+  NewStorage::Create(
+      {.options = options_,
+       .queues_container = queues_container_,
+       .encryption_module = encryption_module_,
+       .compression_module = compression_module_,
+       .signature_verification_dev_flag = signature_verification_dev_flag_,
+       .async_start_upload_cb = async_start_upload_cb_},
+      std::move(set_storage_cb));
 }
 
 void StorageModule::SetStorage(

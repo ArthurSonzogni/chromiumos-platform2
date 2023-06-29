@@ -107,7 +107,6 @@ source_set("unit_tests") {
     "verification_test.cc",
   ]
   deps = [
-    ":decryption",
     ":encryption",
     ":encryption_module",
     ":encryption_module_interface",

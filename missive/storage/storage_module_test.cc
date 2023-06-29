@@ -72,15 +72,18 @@ class StorageModuleTest : public ::testing::Test {
   void CreateStorageModule(base::StringPiece legacy_storage_enabled) {
     test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
     StorageModule::Create(
-        options_, legacy_storage_enabled,
-        base::BindRepeating(TestUploaderInterface::AsyncProvideUploader),
-        QueuesContainer::Create(/*is_enabled=*/false),
-        EncryptionModule::Create(/*is_enabled=*/false),
-        CompressionModule::Create(
-            /*is_enabled=*/true, /*compression_threshold=*/0,
-            /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
-        base::MakeRefCounted<SignatureVerificationDevFlag>(
-            /*is_enabled=*/false),
+        {.options = options_,
+         .legacy_storage_enabled = legacy_storage_enabled,
+         .queues_container = QueuesContainer::Create(/*is_enabled=*/false),
+         .encryption_module = EncryptionModule::Create(/*is_enabled=*/false),
+         .compression_module = CompressionModule::Create(
+             /*is_enabled=*/true, /*compression_threshold=*/0,
+             /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
+         .signature_verification_dev_flag =
+             base::MakeRefCounted<SignatureVerificationDevFlag>(
+                 /*is_enabled=*/false),
+         .async_start_upload_cb =
+             base::BindRepeating(TestUploaderInterface::AsyncProvideUploader)},
         base::BindPostTaskToCurrentDefault(module_event.cb()));
     auto res = module_event.result();
     ASSERT_OK(res);

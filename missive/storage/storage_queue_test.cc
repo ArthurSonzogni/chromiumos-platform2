@@ -432,9 +432,9 @@ class StorageQueueTest
       // Decompress encrypted_wrapped_record if is was compressed.
       WrappedRecord wrapped_record;
       ASSERT_TRUE(encrypted_record.has_compression_information());
-      std::string decompressed_record = Decompression::DecompressRecord(
-          encrypted_record.encrypted_wrapped_record(),
-          encrypted_record.compression_information());
+      std::string decompressed_record =
+          test::DecompressRecord(encrypted_record.encrypted_wrapped_record(),
+                                 encrypted_record.compression_information());
       encrypted_record.set_encrypted_wrapped_record(decompressed_record);
       ASSERT_TRUE(wrapped_record.ParseFromString(
           encrypted_record.encrypted_wrapped_record()));
@@ -652,20 +652,22 @@ class StorageQueueTest
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
-        /*generation_guid=*/"GENERATION_GUID", options,
-        base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
-                            base::Unretained(this)),
-        base::BindRepeating(
-            [](scoped_refptr<StorageQueue> queue,
-               base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
-                   result_cb) {
-              // Returns empty candidates queue - no degradation allowed.
-              std::move(result_cb).Run({});
-            }),
-        test_encryption_module_,
-        CompressionModule::Create(/*is_enabled=*/true, kCompressionThreshold,
-                                  kCompressionType),
-        init_retry_cb, storage_queue_create_event.cb());
+        {.generation_guid = "GENERATION_GUID",
+         .options = options,
+         .async_start_upload_cb = base::BindRepeating(
+             &StorageQueueTest::AsyncStartMockUploader, base::Unretained(this)),
+         .degradation_candidates_cb = base::BindRepeating(
+             [](scoped_refptr<StorageQueue> queue,
+                base::OnceCallback<void(
+                    std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
+               // Returns empty candidates queue - no degradation allowed.
+               std::move(result_cb).Run({});
+             }),
+         .encryption_module = test_encryption_module_,
+         .compression_module = CompressionModule::Create(
+             /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
+         .init_retry_cb = init_retry_cb},
+        storage_queue_create_event.cb());
     return storage_queue_create_event.result();
   }
 

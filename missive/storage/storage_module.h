@@ -32,16 +32,21 @@ namespace reporting {
 
 class StorageModule : public StorageModuleInterface {
  public:
-  // Factory method creates |StorageModule| object.
+  // Transient settings used by `StorageModule` instantiation.
+  struct Settings {
+    const StorageOptions& options;
+    const base::StringPiece legacy_storage_enabled;
+    const scoped_refptr<QueuesContainer> queues_container;
+    const scoped_refptr<EncryptionModuleInterface> encryption_module;
+    const scoped_refptr<CompressionModule> compression_module;
+    const scoped_refptr<SignatureVerificationDevFlag>
+        signature_verification_dev_flag;
+    const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
+  };
+
+  // Factory method creates `StorageModule` object.
   static void Create(
-      const StorageOptions& options,
-      base::StringPiece legacy_storage_enabled,
-      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-      scoped_refptr<QueuesContainer> queues_container,
-      scoped_refptr<EncryptionModuleInterface> encryption_module,
-      scoped_refptr<CompressionModule> compression_module,
-      scoped_refptr<SignatureVerificationDevFlag>
-          signature_verification_dev_flag,
+      const Settings& settings,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
@@ -80,15 +85,8 @@ class StorageModule : public StorageModuleInterface {
   void SetLegacyEnabledPriorities(base::StringPiece legacy_storage_enabled);
 
  protected:
-  // Constructor can only be called by |Create| factory method.
-  explicit StorageModule(
-      const StorageOptions& options,
-      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-      scoped_refptr<QueuesContainer> queues_container,
-      scoped_refptr<EncryptionModuleInterface> encryption_module,
-      scoped_refptr<CompressionModule> compression_module,
-      scoped_refptr<SignatureVerificationDevFlag>
-          signature_verification_dev_flag);
+  // Constructor can only be called by `Create` factory method.
+  explicit StorageModule(const Settings& settings);
 
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;

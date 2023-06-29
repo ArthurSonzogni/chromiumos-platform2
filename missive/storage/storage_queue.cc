@@ -149,13 +149,7 @@ struct RecordHeader {
 
 // static
 void StorageQueue::Create(
-    std::string generation_guid,
-    const QueueOptions& options,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    DegradationCandidatesCb degradation_candidates_cb,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module,
-    InitRetryCb init_retry_cb,
+    const Settings& settings,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
         completion_cb) {
   // Initialize StorageQueue object loading the data.
@@ -215,25 +209,17 @@ void StorageQueue::Create(
   // Cannot use base::MakeRefCounted<StorageQueue>, because constructor is
   // private.
   scoped_refptr<StorageQueue> storage_queue =
-      base::WrapRefCounted(new StorageQueue(
-          std::move(generation_guid), std::move(sequenced_task_runner), options,
-          std::move(async_start_upload_cb),
-          std::move(degradation_candidates_cb), encryption_module,
-          compression_module));
+      base::WrapRefCounted(new StorageQueue(sequenced_task_runner, settings));
 
   // Asynchronously run initialization.
-  Start<StorageQueueInitContext>(std::move(storage_queue), init_retry_cb,
+  Start<StorageQueueInitContext>(std::move(storage_queue),
+                                 settings.init_retry_cb,
                                  std::move(completion_cb));
 }
 
 StorageQueue::StorageQueue(
-    std::string generation_guid,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-    const QueueOptions& options,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    DegradationCandidatesCb degradation_candidates_cb,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module)
+    const Settings& settings)
     : base::RefCountedDeleteOnSequence<StorageQueue>(sequenced_task_runner),
       sequenced_task_runner_(sequenced_task_runner),
       completion_closure_list_(
@@ -241,12 +227,12 @@ StorageQueue::StorageQueue(
       low_priority_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
       time_stamp_(base::Time::Now()),
-      options_(options),
-      generation_guid_(std::move(generation_guid)),
-      async_start_upload_cb_(async_start_upload_cb),
-      degradation_candidates_cb_(degradation_candidates_cb),
-      encryption_module_(encryption_module),
-      compression_module_(compression_module) {
+      options_(settings.options),
+      generation_guid_(std::move(settings.generation_guid)),
+      async_start_upload_cb_(settings.async_start_upload_cb),
+      degradation_candidates_cb_(settings.degradation_candidates_cb),
+      encryption_module_(settings.encryption_module),
+      compression_module_(settings.compression_module) {
   DETACH_FROM_SEQUENCE(storage_queue_sequence_checker_);
 }
 
@@ -426,9 +412,12 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
   ASSIGN_OR_RETURN(int64_t file_sequence_id,
                    GetFileSequenceIdFromPath(full_name));
 
-  auto file_or_status = SingleFile::Create(
-      full_name, file_info.GetSize(), options_.memory_resource(),
-      options_.disk_space_resource(), completion_closure_list_);
+  auto file_or_status =
+      SingleFile::Create({.filename = full_name,
+                          .size = file_info.GetSize(),
+                          .memory_resource = options_.memory_resource(),
+                          .disk_space_resource = options_.disk_space_resource(),
+                          .completion_closure_list = completion_closure_list_});
   if (!file_or_status.ok()) {
     return file_or_status.status();
   }
@@ -606,12 +595,16 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>> StorageQueue::AssignLastFile(
     ASSIGN_OR_RETURN(
         scoped_refptr<SingleFile> file,
         SingleFile::Create(
-            options_.directory()
-                .Append(options_.file_prefix())
-                .AddExtensionASCII(base::NumberToString(generation_id_))
-                .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
-            /*size=*/0, options_.memory_resource(),
-            options_.disk_space_resource(), completion_closure_list_));
+            {.filename =
+                 options_.directory()
+                     .Append(options_.file_prefix())
+                     .AddExtensionASCII(base::NumberToString(generation_id_))
+                     .AddExtensionASCII(
+                         base::NumberToString(next_sequencing_id_)),
+             .size = 0,
+             .memory_resource = options_.memory_resource(),
+             .disk_space_resource = options_.disk_space_resource(),
+             .completion_closure_list = completion_closure_list_}));
     next_sequencing_id_ = 0;
     auto insert_result = files_.emplace(next_sequencing_id_, file);
     CHECK(insert_result.second);
@@ -637,12 +630,16 @@ StorageQueue::OpenNewWriteableFile() {
   ASSIGN_OR_RETURN(
       scoped_refptr<SingleFile> new_file,
       SingleFile::Create(
-          options_.directory()
-              .Append(options_.file_prefix())
-              .AddExtensionASCII(base::NumberToString(generation_id_))
-              .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
-          /*size=*/0, options_.memory_resource(),
-          options_.disk_space_resource(), completion_closure_list_));
+          {.filename =
+               options_.directory()
+                   .Append(options_.file_prefix())
+                   .AddExtensionASCII(base::NumberToString(generation_id_))
+                   .AddExtensionASCII(
+                       base::NumberToString(next_sequencing_id_)),
+           .size = /*size=*/0,
+           .memory_resource = options_.memory_resource(),
+           .disk_space_resource = options_.disk_space_resource(),
+           .completion_closure_list = completion_closure_list_}));
   RETURN_IF_ERROR(new_file->Open(/*read_only=*/false));
   auto insert_result = files_.emplace(next_sequencing_id_, new_file);
   if (!insert_result.second) {
@@ -738,14 +735,16 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
   }
 
   // Synchronously write the metafile.
-  ASSIGN_OR_RETURN(
-      scoped_refptr<SingleFile> meta_file,
-      SingleFile::Create(
-          options_.directory()
-              .Append(METADATA_NAME)
-              .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
-          /*size=*/0, options_.memory_resource(),
-          options_.disk_space_resource(), completion_closure_list_));
+  ASSIGN_OR_RETURN(scoped_refptr<SingleFile> meta_file,
+                   SingleFile::Create(
+                       {.filename = options_.directory()
+                                        .Append(METADATA_NAME)
+                                        .AddExtensionASCII(base::NumberToString(
+                                            next_sequencing_id_)),
+                        .size = 0,
+                        .memory_resource = options_.memory_resource(),
+                        .disk_space_resource = options_.disk_space_resource(),
+                        .completion_closure_list = completion_closure_list_}));
   RETURN_IF_ERROR(meta_file->Open(/*read_only=*/false));
 
   // Account for the metadata file size.
@@ -801,11 +800,13 @@ Status StorageQueue::ReadMetadata(
     size_t size,
     int64_t sequencing_id,
     std::unordered_set<base::FilePath>* used_files_set) {
-  ASSIGN_OR_RETURN(
-      scoped_refptr<SingleFile> meta_file,
-      SingleFile::Create(meta_file_path, size, options_.memory_resource(),
-                         options_.disk_space_resource(),
-                         completion_closure_list_));
+  ASSIGN_OR_RETURN(scoped_refptr<SingleFile> meta_file,
+                   SingleFile::Create(
+                       {.filename = meta_file_path,
+                        .size = static_cast<int64_t>(size),
+                        .memory_resource = options_.memory_resource(),
+                        .disk_space_resource = options_.disk_space_resource(),
+                        .completion_closure_list = completion_closure_list_}));
   RETURN_IF_ERROR(meta_file->Open(/*read_only=*/true));
   // Metadata file format is:
   // - generation id (8 bytes)
@@ -918,10 +919,9 @@ Status StorageQueue::RestoreMetadata(
 
 void StorageQueue::DeleteUnusedFiles(
     const std::unordered_set<base::FilePath>& used_files_set) const {
-  // Note, that these files were not reserved against disk allowance and do not
-  // need to be discarded.
-  // If the deletion of a file fails, the file will be naturally handled next
-  // time.
+  // Note, that these files were not reserved against disk allowance and do
+  // not need to be discarded. If the deletion of a file fails, the file will
+  // be naturally handled next time.
   base::FileEnumerator dir_enum(options_.directory(),
                                 /*recursive=*/true,
                                 base::FileEnumerator::FILES);
@@ -1014,8 +1014,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
         storage_queue_->storage_queue_sequence_checker_);
 
     // Fill in initial sequencing information to track progress:
-    // use minimum of first_sequencing_id_ and first_unconfirmed_sequencing_id_
-    // if the latter has been recorded.
+    // use minimum of first_sequencing_id_ and
+    // first_unconfirmed_sequencing_id_ if the latter has been recorded.
     sequence_info_.set_generation_id(storage_queue_->generation_id_);
     sequence_info_.set_generation_guid(storage_queue_->generation_guid_);
     if (storage_queue_->first_unconfirmed_sequencing_id_.has_value()) {
@@ -1060,7 +1060,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       return;
     }
 
-    // Register with storage_queue, to make sure selected files are not removed.
+    // Register with storage_queue, to make sure selected files are not
+    // removed.
     ++(storage_queue_->active_read_operations_);
 
     if (uploader_) {
@@ -1086,8 +1087,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     current_file_ = files_.begin();
     current_pos_ = 0;
 
-    // If the first record we need to upload is unavailable, produce Gap record
-    // instead.
+    // If the first record we need to upload is unavailable, produce Gap
+    // record instead.
     if (sequence_info_.sequencing_id() < current_file_->first) {
       CallGapUpload(/*count=*/current_file_->first -
                     sequence_info_.sequencing_id());
@@ -1217,10 +1218,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   // Completes sequence information and makes a call to UploaderInterface
-  // instance provided by user, which can place processing of the record on any
-  // thread(s). Once it returns, it will schedule NextRecord to execute on the
-  // sequential thread runner of this StorageQueue. If |encrypted_record| is
-  // empty (has no |encrypted_wrapped_record| and/or |encryption_info|), it
+  // instance provided by user, which can place processing of the record on
+  // any thread(s). Once it returns, it will schedule NextRecord to execute on
+  // the sequential thread runner of this StorageQueue. If |encrypted_record|
+  // is empty (has no |encrypted_wrapped_record| and/or |encryption_info|), it
   // indicates a gap notification.
   void CallRecordUpload(EncryptedRecord encrypted_record,
                         ScopedReservation scoped_reservation) {
@@ -1267,14 +1268,15 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + count);
   }
 
-  // Schedules NextRecord to execute on the StorageQueue sequential task runner.
+  // Schedules NextRecord to execute on the StorageQueue sequential task
+  // runner.
   void ScheduleNextRecord(bool more_records) {
     Schedule(&ReadContext::NextRecord, base::Unretained(this), more_records);
   }
 
   // If more records are expected, retrieves the next record (if present) and
-  // sends for processing, or calls Response with error status. Otherwise, call
-  // Response(OK).
+  // sends for processing, or calls Response with error status. Otherwise,
+  // call Response(OK).
   void NextRecord(bool more_records) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
@@ -1299,10 +1301,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // Loads blob from the current file - reads header first, and then the body.
   // (SingleFile::Read call makes sure all the data is in the buffer).
   // After reading, verifies that data matches the hash stored in the header.
-  // If everything checks out, returns the reference to the data in the buffer:
-  // the buffer remains intact until the next call to SingleFile::Read.
-  // If anything goes wrong (file is shorter than expected, or record hash does
-  // not match), returns error.
+  // If everything checks out, returns the reference to the data in the
+  // buffer: the buffer remains intact until the next call to
+  // SingleFile::Read. If anything goes wrong (file is shorter than expected,
+  // or record hash does not match), returns error.
   StatusOr<base::StringPiece> EnsureBlob(int64_t sequencing_id) {
     if (!storage_queue_) {
       return Status(error::UNAVAILABLE, "StorageQueue shut down");
@@ -1552,11 +1554,11 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       record_.clear_needs_local_unencrypted_copy();
     }
 
-    // If `record_` requires to uphold reserved space, check whether disk space
-    // is sufficient. Note that this is only an approximate check, since other
-    // writes that have no reservation specified will not observe it anyway.
-    // As such, it relies on the Record's ByteSizeLong(), not accounting for
-    // compression and overhead.
+    // If `record_` requires to uphold reserved space, check whether disk
+    // space is sufficient. Note that this is only an approximate check, since
+    // other writes that have no reservation specified will not observe it
+    // anyway. As such, it relies on the Record's ByteSizeLong(), not
+    // accounting for compression and overhead.
     if (record_.reserved_space() > 0u) {
       const uint64_t space_used =
           storage_queue_->options().disk_space_resource()->GetUsed();
@@ -1585,8 +1587,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     *wrapped_record.mutable_record() = std::move(record_);
 
     // Calculate new record digest and store it in the record
-    // (for self-verification by the server). Do not store it in the queue yet,
-    // because the record might fail to write.
+    // (for self-verification by the server). Do not store it in the queue
+    // yet, because the record might fail to write.
     {
       std::string serialized_record;
       wrapped_record.record().SerializeToString(&serialized_record);
@@ -1655,7 +1657,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       return;
     }
 
-    // Memory reserved, serialize and compress wrapped record on a thread pool.
+    // Memory reserved, serialize and compress wrapped record on a thread
+    // pool.
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(&WriteContext::ProcessWrappedRecord,
@@ -1665,14 +1668,14 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   void ProcessWrappedRecord(WrappedRecord wrapped_record,
                             ScopedReservation scoped_reservation) {
-    // UTC time of 2122-01-01T00:00:00Z since Unix epoch 1970-01-01T00:00:00Z in
-    // microseconds
+    // UTC time of 2122-01-01T00:00:00Z since Unix epoch 1970-01-01T00:00:00Z
+    // in microseconds
     static constexpr int64_t kTime2122 = 4'796'668'800'000'000;
     // Log an error if the timestamp is larger than 2122-01-01T00:00:00Z. This
     // is the latest spot in the code before a record is compressed or
     // encrypted.
-    // TODO(b/254270304): Remove this log after M111 is released and no error is
-    // reported for 3 months.
+    // TODO(b/254270304): Remove this log after M111 is released and no error
+    // is reported for 3 months.
     LOG_IF(ERROR, wrapped_record.record().timestamp_us() > kTime2122)
         << "Unusually large timestamp (in milliseconds): "
         << wrapped_record.record().timestamp_us();
@@ -1703,7 +1706,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       ScopedReservation scoped_reservation,
       std::string compressed_record_result,
       std::optional<CompressionInformation> compression_information) {
-    // Reduce amount of memory reserved to the resulting size after compression.
+    // Reduce amount of memory reserved to the resulting size after
+    // compression.
     scoped_reservation.Reduce(compressed_record_result.size());
 
     // Encrypt the result. The callback is partially bounded to include
@@ -2314,40 +2318,30 @@ void StorageQueue::TestInjectErrorsForOperation(
 //
 StatusOr<scoped_refptr<StorageQueue::SingleFile>>
 StorageQueue::SingleFile::Create(
-    const base::FilePath& filename,
-    int64_t size,
-    scoped_refptr<ResourceManager> memory_resource,
-    scoped_refptr<ResourceManager> disk_space_resource,
-    scoped_refptr<RefCountedClosureList> completion_closure_list) {
+    const StorageQueue::SingleFile::Settings& settings) {
   // Reserve specified disk space for the file.
-  if (!disk_space_resource->Reserve(size)) {
+  if (!settings.disk_space_resource->Reserve(settings.size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
-                 << filename.MaybeAsASCII();
+                 << settings.filename.MaybeAsASCII();
     SendResExCaseToUma(ResourceExhaustedCase::DISK_SPACE_EXCEEDED_ADDING_FILE);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Not enough disk space available to include file=",
-                      filename.MaybeAsASCII()}));
+                      settings.filename.MaybeAsASCII()}));
   }
 
   // Cannot use base::MakeRefCounted, since the constructor is private.
-  return scoped_refptr<StorageQueue::SingleFile>(
-      new SingleFile(filename, size, memory_resource, disk_space_resource,
-                     completion_closure_list));
+  return scoped_refptr<StorageQueue::SingleFile>(new SingleFile(settings));
 }
 
 StorageQueue::SingleFile::SingleFile(
-    const base::FilePath& filename,
-    int64_t size,
-    scoped_refptr<ResourceManager> memory_resource,
-    scoped_refptr<ResourceManager> disk_space_resource,
-    scoped_refptr<RefCountedClosureList> completion_closure_list)
-    : completion_closure_list_(completion_closure_list),
-      filename_(filename),
-      size_(size),
-      buffer_(memory_resource),
-      memory_resource_(memory_resource),
-      disk_space_resource_(disk_space_resource) {
+    const StorageQueue::SingleFile::Settings& settings)
+    : completion_closure_list_(settings.completion_closure_list),
+      filename_(settings.filename),
+      size_(settings.size),
+      buffer_(settings.memory_resource),
+      memory_resource_(settings.memory_resource),
+      disk_space_resource_(settings.disk_space_resource) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 

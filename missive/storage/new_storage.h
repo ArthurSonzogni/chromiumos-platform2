@@ -61,15 +61,20 @@ namespace reporting {
 // - Queue directory names now have the format of <priority>.<generation GUID>
 class NewStorage : public StorageInterface {
  public:
-  // Creates NewStorage instance, and returns it with the completion callback.
+  // Transient settings used by `NewStorage` instantiation.
+  struct Settings {
+    const StorageOptions& options;
+    const scoped_refptr<QueuesContainer> queues_container;
+    const scoped_refptr<EncryptionModuleInterface> encryption_module;
+    const scoped_refptr<CompressionModule> compression_module;
+    const scoped_refptr<SignatureVerificationDevFlag>
+        signature_verification_dev_flag;
+    const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
+  };
+
+  // Creates NewStorage instance and returns it with the completion callback.
   static void Create(
-      const StorageOptions& options,
-      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-      scoped_refptr<QueuesContainer> queues_container,
-      scoped_refptr<EncryptionModuleInterface> encryption_module,
-      scoped_refptr<CompressionModule> compression_module,
-      scoped_refptr<SignatureVerificationDevFlag>
-          signature_verification_dev_flag,
+      const Settings& settings,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
           completion_cb);
 
@@ -138,13 +143,7 @@ class NewStorage : public StorageInterface {
 
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
-  NewStorage(const StorageOptions& options,
-             scoped_refptr<QueuesContainer> queues_container,
-             scoped_refptr<EncryptionModuleInterface> encryption_module,
-             scoped_refptr<CompressionModule> compression_module,
-             scoped_refptr<SignatureVerificationDevFlag>
-                 signature_verification_dev_flag,
-             UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
+  explicit NewStorage(const Settings& settings);
 
   // Initializes the object by adding all queues for all priorities.
   // Must be called once and only once after construction.

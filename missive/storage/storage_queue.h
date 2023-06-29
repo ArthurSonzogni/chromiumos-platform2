@@ -104,6 +104,17 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   using InitRetryCb = base::RepeatingCallback<StatusOr<base::TimeDelta>(
       Status init_status, size_t retry_count)>;
 
+  // Transient settings used by `StorageQueue` instantiation.
+  struct Settings {
+    const GenerationGuid generation_guid;
+    const QueueOptions& options;
+    const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
+    const DegradationCandidatesCb degradation_candidates_cb;
+    const scoped_refptr<EncryptionModuleInterface> encryption_module;
+    const scoped_refptr<CompressionModule> compression_module;
+    const InitRetryCb init_retry_cb;
+  };
+
   // UMA names
   static constexpr char kResourceExhaustedCaseUmaName[] =
       "Platform.Missive.ResourceExhaustedCase";
@@ -116,13 +127,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // uploading records - periodically or immediately after Write (and in the
   // near future - upon explicit Flush request).
   static void Create(
-      GenerationGuid generation_guid,
-      const QueueOptions& options,
-      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-      DegradationCandidatesCb degradation_candidates_cb,
-      scoped_refptr<EncryptionModuleInterface> encryption_module,
-      scoped_refptr<CompressionModule> compression_module,
-      InitRetryCb init_retry_cb,
+      const Settings& settings,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
           completion_cb);
 
@@ -229,15 +234,19 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Private envelope class for single file in a StorageQueue.
   class SingleFile : public base::RefCountedThreadSafe<SingleFile> {
    public:
+    // Transient settings used by `SingleFile` instantiation.
+    struct Settings {
+      const base::FilePath& filename;
+      const int64_t size = 0;
+      const scoped_refptr<ResourceManager> memory_resource;
+      const scoped_refptr<ResourceManager> disk_space_resource;
+      const scoped_refptr<RefCountedClosureList> completion_closure_list;
+    };
+
     // Factory method creates a SingleFile object for existing
     // or new file (of zero size). In case of any error (e.g. insufficient disk
     // space) returns status.
-    static StatusOr<scoped_refptr<SingleFile>> Create(
-        const base::FilePath& filename,
-        int64_t size,
-        scoped_refptr<ResourceManager> memory_resource,
-        scoped_refptr<ResourceManager> disk_space_resource,
-        scoped_refptr<RefCountedClosureList> completion_closure_list);
+    static StatusOr<scoped_refptr<SingleFile>> Create(const Settings& settings);
 
     Status Open(bool read_only);  // No-op if already opened.
     void Close();                 // No-op if not opened.
@@ -277,11 +286,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     friend class base::RefCountedThreadSafe<SingleFile>;
 
     // Private constructor, called by factory method only.
-    SingleFile(const base::FilePath& filename,
-               int64_t size,
-               scoped_refptr<ResourceManager> memory_resource,
-               scoped_refptr<ResourceManager> disk_space_resource,
-               scoped_refptr<RefCountedClosureList> completion_closure_list);
+    explicit SingleFile(const Settings& settings);
 
     SEQUENCE_CHECKER(sequence_checker_);
 
@@ -315,13 +320,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   };
 
   // Private constructor, to be called by Create factory method only.
-  StorageQueue(GenerationGuid generation_guid,
-               scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-               const QueueOptions& options,
-               UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-               DegradationCandidatesCb degradation_candidates_cb,
-               scoped_refptr<EncryptionModuleInterface> encryption_module,
-               scoped_refptr<CompressionModule> compression_module);
+  StorageQueue(scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+               const Settings& settings);
 
   // Initializes the object by enumerating files in the assigned directory
   // and determines the sequence information of the last record.

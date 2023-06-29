@@ -29,7 +29,8 @@ namespace {
 
 class TaskRunner : public ::testing::Test {
  protected:
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 // This is the simplest test - runs one action only on a sequenced task runner.
@@ -146,6 +147,7 @@ TEST_F(TaskRunner, SeriesOfDelays) {
           },
           &run_loop, &result),
       base::SequencedTaskRunner::GetCurrentDefault());
+  task_environment_.FastForwardUntilNoTasksRemain();
   run_loop.Run();
   EXPECT_EQ(result, 7u);
 }
@@ -207,7 +209,7 @@ TEST_F(TaskRunner, SeriesOfAsyncs) {
           },
           &run_loop, &result),
       base::SequencedTaskRunner::GetCurrentDefault());
-
+  task_environment_.FastForwardUntilNoTasksRemain();
   run_loop.Run();
   EXPECT_EQ(result, 7u);
 }

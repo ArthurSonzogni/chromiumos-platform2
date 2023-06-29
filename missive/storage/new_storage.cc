@@ -101,23 +101,27 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
   void InitQueue(Priority priority, QueueOptions queue_options) {
     CheckOnValidSequence();
     StorageQueue::Create(
-        generation_guid_,
-        /*options=*/queue_options,
-        // Note: the callback below belongs to the Queue and does not
-        // outlive NewStorage, so it cannot refer to `storage_` itself!
-        base::BindRepeating(&QueueUploaderInterface::AsyncProvideUploader,
-                            /*priority=*/priority,
-                            storage_->async_start_upload_cb_,
-                            storage_->encryption_module_),
-        // `queues_container_` refers a weak pointer only, so that its
-        // callback does not hold a reference to it.
-        base::BindPostTask(
-            storage_->sequenced_task_runner_,
-            base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
-                                storage_->queues_container_->GetWeakPtr(),
-                                priority)),
-        storage_->encryption_module_, storage_->compression_module_,
-        base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
+        {
+            .generation_guid = generation_guid_,
+            .options = queue_options,
+            // Note: the callback below belongs to the Queue and does not
+            // outlive NewStorage, so it cannot refer to `storage_` itself!
+            .async_start_upload_cb = base::BindRepeating(
+                &QueueUploaderInterface::AsyncProvideUploader,
+                /*priority=*/priority, storage_->async_start_upload_cb_,
+                storage_->encryption_module_),
+            // `queues_container_` refers a weak pointer only, so that its
+            // callback does not hold a reference to it.
+            .degradation_candidates_cb = base::BindPostTask(
+                storage_->sequenced_task_runner_,
+                base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
+                                    storage_->queues_container_->GetWeakPtr(),
+                                    priority)),
+            .encryption_module = storage_->encryption_module_,
+            .compression_module = storage_->compression_module_,
+            .init_retry_cb =
+                base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
+        },
         base::BindPostTaskToCurrentDefault(base::BindOnce(
             &CreateQueueContext::AddQueue, base::Unretained(this),
             /*priority=*/priority)));
@@ -153,12 +157,7 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
 };
 
 void NewStorage::Create(
-    const StorageOptions& options,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    scoped_refptr<QueuesContainer> queues_container,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module,
-    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
+    const NewStorage::Settings& settings,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
         completion_cb) {
   // Initializes NewStorage object and populates all the queues by reading the
@@ -297,33 +296,25 @@ void NewStorage::Create(
   // Create NewStorage object.
   // Cannot use base::MakeRefCounted<NewStorage>, because constructor is
   // private.
-  scoped_refptr<NewStorage> storage = base::WrapRefCounted(new NewStorage(
-      options, queues_container, encryption_module, compression_module,
-      signature_verification_dev_flag, std::move(async_start_upload_cb)));
+  auto storage = base::WrapRefCounted(new NewStorage(settings));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(std::move(storage), std::move(completion_cb));
 }
 
-NewStorage::NewStorage(
-    const StorageOptions& options,
-    scoped_refptr<QueuesContainer> queues_container,
-    scoped_refptr<EncryptionModuleInterface> encryption_module,
-    scoped_refptr<CompressionModule> compression_module,
-    scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
-    UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
-    : StorageInterface(queues_container,
-                       queues_container->sequenced_task_runner()),
-      options_(options),
-      encryption_module_(encryption_module),
-      key_delivery_(
-          KeyDelivery::Create(encryption_module, async_start_upload_cb)),
-      compression_module_(compression_module),
+NewStorage::NewStorage(const NewStorage::Settings& settings)
+    : StorageInterface(settings.queues_container,
+                       settings.queues_container->sequenced_task_runner()),
+      options_(settings.options),
+      encryption_module_(settings.encryption_module),
+      key_delivery_(KeyDelivery::Create(settings.encryption_module,
+                                        settings.async_start_upload_cb)),
+      compression_module_(settings.compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
-          options.signature_verification_public_key(),
-          signature_verification_dev_flag,
-          options.directory())),
-      async_start_upload_cb_(async_start_upload_cb) {
+          settings.options.signature_verification_public_key(),
+          settings.signature_verification_dev_flag,
+          settings.options.directory())),
+      async_start_upload_cb_(settings.async_start_upload_cb) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 

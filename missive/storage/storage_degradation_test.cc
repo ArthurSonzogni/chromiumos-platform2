@@ -697,14 +697,18 @@ class LegacyStorageDegradationTest
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     NewStorage::Create(
-        options,
-        base::BindRepeating(
-            &LegacyStorageDegradationTest::AsyncStartMockUploader,
-            base::Unretained(this)),
-        QueuesContainer::Create(/*is_enabled=*/is_degradation_enabled()),
-        encryption_module, base::MakeRefCounted<test::TestCompressionModule>(),
-        base::MakeRefCounted<SignatureVerificationDevFlag>(
-            /*is_enabled=*/false),
+        {.options = options,
+         .queues_container =
+             QueuesContainer::Create(/*is_enabled=*/is_degradation_enabled()),
+         .encryption_module = encryption_module,
+         .compression_module =
+             base::MakeRefCounted<test::TestCompressionModule>(),
+         .signature_verification_dev_flag =
+             base::MakeRefCounted<SignatureVerificationDevFlag>(
+                 /*is_enabled=*/false),
+         .async_start_upload_cb = base::BindRepeating(
+             &LegacyStorageDegradationTest::AsyncStartMockUploader,
+             base::Unretained(this))},
         e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
@@ -913,8 +917,8 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has any
-  // effect.
+  // Write records on a higher priority queue to see if records shedding has
+  // any effect.
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
@@ -968,8 +972,8 @@ TEST_P(LegacyStorageDegradationTest,
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has any
-  // effect.
+  // Write records on a higher priority queue to see if records shedding has
+  // any effect.
   if (is_degradation_enabled()) {
     LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
     EXPECT_CALL(
@@ -1015,8 +1019,8 @@ TEST_P(LegacyStorageDegradationTest,
       task_environment_.FastForwardBy(base::Seconds(1));
     }
 
-    // Add one more record, so that the last file is not empty (otherwise upload
-    // may be skipped).
+    // Add one more record, so that the last file is not empty (otherwise
+    // upload may be skipped).
     WriteStringOrDie(MANUAL_BATCH, kData[0]);
 
     {
@@ -1086,7 +1090,8 @@ TEST_P(LegacyStorageDegradationTest,
   options_.disk_space_resource()->Discard(to_reserve);
 }
 
-// Test Available files to delete in the lowest priority queue out of multiple.
+// Test Available files to delete in the lowest priority queue out of
+// multiple.
 TEST_P(LegacyStorageDegradationTest,
        WriteAttemptWithRecordsSheddingLowestQueue) {
   // The test will try to write this amount of records.
@@ -1108,8 +1113,8 @@ TEST_P(LegacyStorageDegradationTest,
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has any
-  // effect.
+  // Write records on a higher priority queue to see if records shedding has
+  // any effect.
   if (is_degradation_enabled()) {
     LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
     EXPECT_CALL(
@@ -1254,9 +1259,9 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has no
-  // effect. Expect upload even with failure, since there are other records in
-  // the queue.
+  // Write records on a higher priority queue to see if records shedding has
+  // no effect. Expect upload even with failure, since there are other records
+  // in the queue.
   {
     EXPECT_CALL(
         analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),

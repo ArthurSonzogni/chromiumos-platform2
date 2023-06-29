@@ -25,8 +25,7 @@
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 Decryptor::Handle::Handle(base::StringPiece shared_secret,
                           scoped_refptr<Decryptor> decryptor)
@@ -198,5 +197,4 @@ StatusOr<scoped_refptr<Decryptor>> Decryptor::Create() {
   return base::WrapRefCounted(new Decryptor());
 }
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

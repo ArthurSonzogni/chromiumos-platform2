@@ -37,11 +37,12 @@ static constexpr char kKeyDeliveryResultUma[] =
 class QueueOptions;
 
 // Storage options class allowing to set parameters individually, e.g.:
-// Storage::Create(Options()
+// Storage::Create({.options=Options()
 //                     .set_directory("/var/spool/reporting")
 //                     .set_max_record_size(4 * 1024u)
 //                     .set_max_total_files_size(64 * 1024u * 1024u)
 //                     .set_max_total_memory_size(256 * 1024u),
+//                  ...}
 //                 callback);
 class StorageOptions {
  public:
@@ -187,10 +188,10 @@ class StorageOptions {
 };
 
 // Single queue options class allowing to set parameters individually, e.g.:
-// StorageQueue::Create(QueueOptions(storage_options)
-//                        .set_subdirectory("reporting")
-//                        .set_file_prefix("p00000001"),
-//                      ...);
+// StorageQueue::Create({.options = QueueOptions(storage_options)
+//                         .set_subdirectory("reporting")
+//                         .set_file_prefix("p00000001"),
+//                      ...});
 // storage_options must outlive QueueOptions.
 class QueueOptions {
  public:

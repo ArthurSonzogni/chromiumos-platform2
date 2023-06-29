@@ -223,11 +223,15 @@ void MissiveImpl::CreateStorage(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Create `Storage`.
   StorageModule::Create(
-      std::move(storage_options), parameters.legacy_storage_enabled,
-      base::BindPostTaskToCurrentDefault(
-          base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
-      queues_container_, encryption_module_, compression_module_,
-      signature_verification_dev_flag_, std::move(callback));
+      {.options = std::move(storage_options),
+       .legacy_storage_enabled = parameters.legacy_storage_enabled,
+       .queues_container = queues_container_,
+       .encryption_module = encryption_module_,
+       .compression_module = compression_module_,
+       .signature_verification_dev_flag = signature_verification_dev_flag_,
+       .async_start_upload_cb = base::BindPostTaskToCurrentDefault(
+           base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr()))},
+      std::move(callback));
 }
 
 // static

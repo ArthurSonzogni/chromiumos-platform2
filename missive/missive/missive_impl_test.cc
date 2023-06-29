@@ -51,12 +51,11 @@ class MockStorageModule : public StorageModule {
   // As opposed to the production |StorageModule|, test module does not need to
   // call factory method - it is created directly by constructor. The
   MockStorageModule()
-      : StorageModule(StorageOptions(),
-                      /*async_start_upload_cb=*/base::DoNothing(),
-                      QueuesContainer::Create(/*is_enabled=*/false),
-                      /*encryption_module=*/nullptr,
-                      /*compression_module=*/nullptr,
-                      /*signature_verification_dev_flag=*/nullptr) {}
+      : StorageModule(
+            {.options = StorageOptions(),
+             .queues_container = QueuesContainer::Create(/*is_enabled=*/false),
+             .async_start_upload_cb =
+                 /*async_start_upload_cb=*/base::DoNothing()}) {}
 
   MOCK_METHOD(void,
               AddRecord,

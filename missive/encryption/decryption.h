@@ -18,8 +18,7 @@
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 // Full implementation of Decryptor, intended for use in tests and potentially
 // in reporting server (wrapped in a Java class).
@@ -113,7 +112,6 @@ class Decryptor : public base::RefCountedThreadSafe<Decryptor> {
   SEQUENCE_CHECKER(keys_sequence_checker_);
 };
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_ENCRYPTION_DECRYPTION_H_
