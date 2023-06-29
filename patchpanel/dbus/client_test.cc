@@ -15,7 +15,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus/mock_patchpanel_proxy.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {
@@ -92,8 +91,10 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
   response_device->set_ifname("vmtap1");
   response_device->set_phys_ifname("wlan0");
   response_device->set_guest_ifname("not_defined");
-  response_device->set_ipv4_addr(Ipv4Addr(100, 115, 92, 18));
-  response_device->set_host_ipv4_addr(Ipv4Addr(100, 115, 92, 17));
+  response_device->set_ipv4_addr(
+      net_base::IPv4Address(100, 115, 92, 18).ToInAddr().s_addr);
+  response_device->set_host_ipv4_addr(
+      net_base::IPv4Address(100, 115, 92, 17).ToInAddr().s_addr);
   auto* response_device_subnet = response_device->mutable_ipv4_subnet();
   response_device_subnet->set_addr(
       std::vector<uint8_t>{100, 115, 92, 16}.data(), 4);
@@ -154,8 +155,10 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
   response_device->set_ifname("vmtap2");
   response_device->set_phys_ifname("eth0");
   response_device->set_guest_ifname("not_defined");
-  response_device->set_ipv4_addr(Ipv4Addr(100, 115, 93, 34));
-  response_device->set_host_ipv4_addr(Ipv4Addr(100, 115, 93, 33));
+  response_device->set_ipv4_addr(
+      net_base::IPv4Address(100, 115, 93, 34).ToInAddr().s_addr);
+  response_device->set_host_ipv4_addr(
+      net_base::IPv4Address(100, 115, 93, 33).ToInAddr().s_addr);
   auto* response_device_subnet = response_device->mutable_ipv4_subnet();
   response_device_subnet->set_addr(
       std::vector<uint8_t>{100, 115, 93, 32}.data(), 4);

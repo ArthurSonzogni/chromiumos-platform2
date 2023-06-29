@@ -163,7 +163,7 @@ TEST(PrettyPrint, SocketAddrIn) {
 
   ipv4_sockaddr.sin_family = AF_INET;
   ipv4_sockaddr.sin_port = htons(1234);
-  ipv4_sockaddr.sin_addr.s_addr = Ipv4Addr(100, 115, 92, 10);
+  ipv4_sockaddr.sin_addr = net_base::IPv4Address(100, 115, 92, 10).ToInAddr();
   std::string expected_output =
       "{family: AF_INET, port: 1234, addr: 100.115.92.10}";
 

@@ -39,18 +39,6 @@ namespace patchpanel {
 net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
                                 uint32_t offset);
 
-// Returns the network-byte order int32 representation of the IPv4 address given
-// byte per byte, most significant bytes first.
-BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,
-                                          uint8_t b1,
-                                          uint8_t b2,
-                                          uint8_t b3) {
-  // Use base::HostToNet32() to keep the function constexpr.
-  return base::HostToNet32(
-      (static_cast<uint32_t>(b0) << 24) | (static_cast<uint32_t>(b1) << 16) |
-      (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b3));
-}
-
 // Returns a string representation of MAC address given.
 BRILLO_EXPORT std::string MacAddressToString(const MacAddress& addr);
 
