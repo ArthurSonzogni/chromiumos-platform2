@@ -35,12 +35,12 @@ pub async fn handle_dlc_state_changed<D: DbusConnectionTrait>(
         dlc_state.progress
     );
     if let Ok(steam_app_id) = dlc_to_steam_app_id(&dlc_state.id) {
-        info!("DLC state changed for shader cache DLC");
         // Note that INSTALLING and INSTALLED messages can be sent out of order
         // if the installation was very fast. Hence, INSTALLING state is
         // ignored. |dlc_queue.add_installing| is added during
         // |dlc_queue.next_to_install| inside |periodic_dlc_handler|.
         if dlc_state.state.enum_value() == Ok(State::INSTALLED) {
+            info!("Shader cache DLC installed");
             let mut dlc_queue = dlc_queue.write().await;
             dlc_queue.remove_installing(&steam_app_id);
             debug!(
@@ -51,6 +51,7 @@ pub async fn handle_dlc_state_changed<D: DbusConnectionTrait>(
                 warn!("Mount failed, {}", e);
             }
         } else if dlc_state.state.enum_value() == Ok(State::NOT_INSTALLED) {
+            info!("Shader cache DLC failed to install");
             debug!("Failed to install DLC for {}", steam_app_id);
             let mut dlc_queue = dlc_queue.write().await;
             if !dlc_queue.remove_installing(&steam_app_id) {
@@ -67,6 +68,8 @@ pub async fn handle_dlc_state_changed<D: DbusConnectionTrait>(
             {
                 warn!("Failed to notify failed mounts {}", e);
             }
+        } else if dlc_state.state.enum_value() == Ok(State::INSTALLING) {
+            debug!("Shader cache DLC install progress: {}", dlc_state.progress);
         }
     }
 }
