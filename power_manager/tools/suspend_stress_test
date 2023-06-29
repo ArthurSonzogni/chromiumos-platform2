@@ -40,6 +40,8 @@ DEFINE_string  ignore_wakeup_irq_name "none" "Wakeup IRQ name to ignore" I
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
+DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
+               "Ignore Intel s0ix substates and only check generic s0ix counter"
 
 dmesg_last_cycle() {
   lines=0
@@ -152,7 +154,8 @@ has_s2idle() {
 # Returns the S0ix residency counter as returned by the kernel.
 # The driver that provides these counters depends on the platform.
 get_s0ix_count() {
-  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ]; then
+  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ] &&
+     [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
     # From Tigerlake with kernel >= 5.4
     # Larger number means deeper state,
     # so we sort all substates and check last one.
@@ -230,7 +233,8 @@ fi
 check_s0ix_errors=0
 check_s2idle_errors=0
 if check_powerd_config --suspend_to_idle; then
-  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ] || \
+  if { [ -e /sys/kernel/debug/pmc_core/substate_residencies ] && \
+       [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; } || \
      [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
      [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ] || \
      [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
