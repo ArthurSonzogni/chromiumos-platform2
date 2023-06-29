@@ -948,7 +948,12 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   if (!nsinfo.outbound_ifname.empty()) {
-    StartRoutingDevice(nsinfo.current_outbound_device, nsinfo.host_ifname,
+    if (!nsinfo.current_outbound_device) {
+      LOG(ERROR) << __func__ << ": No shill Device known for ConnectNamespace "
+                 << nsinfo;
+      return false;
+    }
+    StartRoutingDevice(*nsinfo.current_outbound_device, nsinfo.host_ifname,
                        nsinfo.source);
   } else if (!nsinfo.route_on_vpn) {
     StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source);

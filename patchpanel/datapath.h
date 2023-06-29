@@ -81,8 +81,8 @@ struct ConnectedNamespace {
   // shill Device for routing outbound traffic from the client namespace. The
   // Device selected matches |outbound_ifname| if it is defined in the original
   // request, otherwise it matches the default logical or physical Device
-  // depending on |route_on_vpn|.
-  ShillClient::Device current_outbound_device;
+  // depending on |route_on_vpn| and depending if a default Device exists.
+  std::optional<ShillClient::Device> current_outbound_device;
 };
 
 // Describes a DNS DNAT redirection rule issued by dns-proxy.

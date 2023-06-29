@@ -116,9 +116,12 @@ class ShillClient {
     bool IsConnected() const;
   };
 
-  // Client callback for learning when shill default logical network changes.
+  // Client callback for learning when shill default logical and physical
+  // network change. |new_device| can be null if there is no logical or physical
+  // network currently. |prev_device| can be null if there was no logical or
+  // physical network before.
   using DefaultDeviceChangeHandler = base::RepeatingCallback<void(
-      const Device& new_device, const Device& prev_device)>;
+      const Device* new_device, const Device* prev_device)>;
   // Client callback for learning which shill Devices were created or removed by
   // shill.
   using DevicesChangeHandler = base::RepeatingCallback<void(
@@ -170,12 +173,14 @@ class ShillClient {
   // directly.
   virtual const Device* GetDevice(
       const std::string& shill_device_interface_property) const;
-  // Returns the cached default logical shill Device; does not initiate a
-  // property fetch.
-  virtual const Device& default_logical_device() const;
-  // Returns the cached default physical shill Device; does not initiate a
-  // property fetch.
-  virtual const Device& default_physical_device() const;
+  // Returns the cached default logical shill Device, or nullptr if there is no
+  // default logical Device defined. Does not initiate a property fetch and does
+  // not block.
+  virtual const Device* default_logical_device() const;
+  // Returns the cached default physical shill Device, or nullptr if there is no
+  // default physical Device defined. Does not initiate a property fetch and
+  // does not block.
+  virtual const Device* default_physical_device() const;
   // Returns interface names of all known shill physical Devices.
   const std::vector<Device> GetDevices() const;
 

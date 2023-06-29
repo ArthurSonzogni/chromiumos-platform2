@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -41,11 +42,11 @@ class FakeShillClient : public ShillClient {
 
   std::vector<dbus::ObjectPath> GetServices() override {
     std::vector<dbus::ObjectPath> services;
-    if (!fake_default_logical_ifname_.empty()) {
-      services.emplace_back(fake_default_logical_ifname_);
+    if (fake_default_logical_ifname_) {
+      services.emplace_back(*fake_default_logical_ifname_);
     }
-    if (!fake_default_physical_ifname_.empty()) {
-      services.emplace_back(fake_default_physical_ifname_);
+    if (fake_default_physical_ifname_) {
+      services.emplace_back(*fake_default_physical_ifname_);
     }
     return services;
   }
@@ -54,21 +55,21 @@ class FakeShillClient : public ShillClient {
       const dbus::ObjectPath& service_path) override {
     Device device = {.type = Device::Type::kUnknown};
     if (service_path.value() == fake_default_logical_ifname_) {
-      device.ifname = fake_default_logical_ifname_;
+      device.ifname = *fake_default_logical_ifname_;
       return device;
     }
     if (service_path.value() == fake_default_physical_ifname_) {
-      device.ifname = fake_default_physical_ifname_;
+      device.ifname = *fake_default_physical_ifname_;
       return device;
     }
     return std::nullopt;
   }
 
-  void SetFakeDefaultLogicalDevice(const std::string& ifname) {
+  void SetFakeDefaultLogicalDevice(std::optional<std::string> ifname) {
     fake_default_logical_ifname_ = ifname;
   }
 
-  void SetFakeDefaultPhysicalDevice(const std::string& ifname) {
+  void SetFakeDefaultPhysicalDevice(std::optional<std::string> ifname) {
     fake_default_physical_ifname_ = ifname;
   }
 
@@ -119,8 +120,8 @@ class FakeShillClient : public ShillClient {
 
  private:
   std::map<std::string, std::string> interface_names_;
-  std::string fake_default_logical_ifname_;
-  std::string fake_default_physical_ifname_;
+  std::optional<std::string> fake_default_logical_ifname_;
+  std::optional<std::string> fake_default_physical_ifname_;
   std::map<dbus::ObjectPath, Device> fake_device_properties_;
   std::set<dbus::ObjectPath> get_device_properties_calls_;
 };

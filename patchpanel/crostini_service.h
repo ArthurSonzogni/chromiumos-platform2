@@ -71,8 +71,8 @@ class CrostiniService {
 
   // Notifies CrostiniService about a change in the default logical Device.
   void OnShillDefaultLogicalDeviceChanged(
-      const ShillClient::Device& new_device,
-      const ShillClient::Device& prev_device);
+      const ShillClient::Device* new_device,
+      const ShillClient::Device* prev_device);
 
  private:
   std::unique_ptr<Device> AddTAP(VMType vm_type, uint32_t subnet_index);

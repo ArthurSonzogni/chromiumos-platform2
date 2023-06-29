@@ -73,7 +73,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
 
   ShillClient::Device wlan0_dev;
   wlan0_dev.ifname = "wlan0";
-  crostini->OnShillDefaultLogicalDeviceChanged(wlan0_dev, {});
+  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
 
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
@@ -125,7 +125,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
 
   ShillClient::Device wlan0_dev;
   wlan0_dev.ifname = "wlan0";
-  crostini->OnShillDefaultLogicalDeviceChanged(wlan0_dev, {});
+  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
 
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
@@ -186,7 +186,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   ShillClient::Device wlan0_dev;
   wlan0_dev.ifname = "wlan0";
-  crostini->OnShillDefaultLogicalDeviceChanged(wlan0_dev, {});
+  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
 
   // There should be no virtual device before any VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
@@ -352,7 +352,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       *datapath_,
       AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
                          ShillDeviceHasInterfaceName("wlan0"), parallels_addr));
-  crostini->OnShillDefaultLogicalDeviceChanged(wlan0_dev, {});
+  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   // The logical default Device changes.
@@ -366,7 +366,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       *datapath_,
       AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
                          ShillDeviceHasInterfaceName("eth0"), parallels_addr));
-  crostini->OnShillDefaultLogicalDeviceChanged(eth0_dev, wlan0_dev);
+  crostini->OnShillDefaultLogicalDeviceChanged(&eth0_dev, &wlan0_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   // The logical default Device is not available anymore.
@@ -374,7 +374,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("eth0"),
                                     parallels_addr));
-  crostini->OnShillDefaultLogicalDeviceChanged({}, eth0_dev);
+  crostini->OnShillDefaultLogicalDeviceChanged(nullptr, &eth0_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 

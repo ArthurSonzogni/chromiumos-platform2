@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -160,11 +161,11 @@ class Manager {
 
   // Callbacks from |shill_client_|.
   void OnShillDefaultLogicalDeviceChanged(
-      const ShillClient::Device& new_device,
-      const ShillClient::Device& prev_device);
+      const ShillClient::Device* new_device,
+      const ShillClient::Device* prev_device);
   void OnShillDefaultPhysicalDeviceChanged(
-      const ShillClient::Device& new_device,
-      const ShillClient::Device& prev_device);
+      const ShillClient::Device* new_device,
+      const ShillClient::Device* prev_device);
   void OnShillDevicesChanged(const std::vector<ShillClient::Device>& added,
                              const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& shill_device);

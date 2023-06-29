@@ -75,12 +75,12 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
   UpdateDefaultDevices();
 }
 
-const ShillClient::Device& ShillClient::default_logical_device() const {
-  return default_logical_device_;
+const ShillClient::Device* ShillClient::default_logical_device() const {
+  return &default_logical_device_;
 }
 
-const ShillClient::Device& ShillClient::default_physical_device() const {
-  return default_physical_device_;
+const ShillClient::Device* ShillClient::default_physical_device() const {
+  return &default_physical_device_;
 }
 
 const std::vector<ShillClient::Device> ShillClient::GetDevices() const {
@@ -231,7 +231,7 @@ void ShillClient::SetDefaultLogicalDevice(const Device& device) {
             << " to " << device;
   for (const auto& h : default_logical_device_handlers_) {
     if (!h.is_null()) {
-      h.Run(device, default_logical_device_);
+      h.Run(&device, &default_logical_device_);
     }
   }
   default_logical_device_ = device;
@@ -245,7 +245,7 @@ void ShillClient::SetDefaultPhysicalDevice(const Device& device) {
             << default_physical_device_ << " to " << device;
   for (const auto& h : default_physical_device_handlers_) {
     if (!h.is_null()) {
-      h.Run(device, default_physical_device_);
+      h.Run(&device, &default_physical_device_);
     }
   }
   default_physical_device_ = device;
@@ -256,7 +256,7 @@ void ShillClient::RegisterDefaultLogicalDeviceChangedHandler(
   default_logical_device_handlers_.emplace_back(handler);
   // Explicitly trigger the callback once to let it know of the the current
   // default interface. The previous interface is left empty.
-  handler.Run(default_logical_device_, {});
+  handler.Run(&default_logical_device_, nullptr);
 }
 
 void ShillClient::RegisterDefaultPhysicalDeviceChangedHandler(
@@ -264,7 +264,7 @@ void ShillClient::RegisterDefaultPhysicalDeviceChangedHandler(
   default_physical_device_handlers_.emplace_back(handler);
   // Explicitly trigger the callback once to let it know of the the current
   // default interface. The previous interface is left empty.
-  handler.Run(default_physical_device_, {});
+  handler.Run(&default_physical_device_, nullptr);
 }
 
 void ShillClient::RegisterDevicesChangedHandler(

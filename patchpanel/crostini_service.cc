@@ -26,6 +26,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {
@@ -299,8 +300,8 @@ void CrostiniService::CheckAdbSideloadingStatus() {
 }
 
 void CrostiniService::OnShillDefaultLogicalDeviceChanged(
-    const ShillClient::Device& new_device,
-    const ShillClient::Device& prev_device) {
+    const ShillClient::Device* new_device,
+    const ShillClient::Device* prev_device) {
   // b/197930417: Update Auto DNAT rules if a Parallels VM is running.
   const Device* parallels_device = nullptr;
   for (const auto& [_, dev] : taps_) {
@@ -313,10 +314,10 @@ void CrostiniService::OnShillDefaultLogicalDeviceChanged(
   if (parallels_device) {
     StopAutoDNAT(parallels_device);
   }
-  if (new_device.ifname.empty()) {
-    default_logical_device_ = std::nullopt;
+  if (new_device) {
+    default_logical_device_ = *new_device;
   } else {
-    default_logical_device_ = new_device;
+    default_logical_device_ = std::nullopt;
   }
   if (parallels_device) {
     StartAutoDNAT(parallels_device);

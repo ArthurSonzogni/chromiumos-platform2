@@ -123,21 +123,25 @@ Manager::~Manager() {
 }
 
 void Manager::OnShillDefaultLogicalDeviceChanged(
-    const ShillClient::Device& new_device,
-    const ShillClient::Device& prev_device) {
-  // Only take into account interface switches and ignore layer 3 property
-  // changes.
-  if (prev_device.ifname == new_device.ifname)
+    const ShillClient::Device* new_device,
+    const ShillClient::Device* prev_device) {
+  // Only take into account interface switches and new Device or removed Device
+  // events. Ignore any layer 3 property change.
+  if (!prev_device && !new_device) {
     return;
-
-  if (prev_device.type == ShillClient::Device::Type::kVPN) {
-    datapath_->StopVpnRouting(prev_device);
-    counters_svc_->OnVpnDeviceRemoved(prev_device.ifname);
+  }
+  if (prev_device && new_device && prev_device->ifname == new_device->ifname) {
+    return;
   }
 
-  if (new_device.type == ShillClient::Device::Type::kVPN) {
-    counters_svc_->OnVpnDeviceAdded(new_device.ifname);
-    datapath_->StartVpnRouting(new_device);
+  if (prev_device && prev_device->type == ShillClient::Device::Type::kVPN) {
+    datapath_->StopVpnRouting(*prev_device);
+    counters_svc_->OnVpnDeviceRemoved(prev_device->ifname);
+  }
+
+  if (new_device && new_device->type == ShillClient::Device::Type::kVPN) {
+    counters_svc_->OnVpnDeviceAdded(new_device->ifname);
+    datapath_->StartVpnRouting(*new_device);
   }
 
   // When the default logical network changes, Crostini's tap devices must leave
@@ -147,8 +151,12 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
   // update of the forwarding setup inside the default logical device change
   // handler CrostiniService::OnShillDefaultLogicalDeviceChanged.
   for (const auto* tap_device : cros_svc_->GetDevices()) {
-    StopForwarding(prev_device, tap_device->host_ifname());
-    StartForwarding(new_device, tap_device->host_ifname());
+    if (prev_device) {
+      StopForwarding(*prev_device, tap_device->host_ifname());
+    }
+    if (new_device) {
+      StartForwarding(*new_device, tap_device->host_ifname());
+    }
   }
   cros_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 
@@ -161,29 +169,38 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     if (!nsinfo.outbound_ifname.empty() || !nsinfo.route_on_vpn) {
       continue;
     }
-    StopForwarding(prev_device, nsinfo.host_ifname,
-                   ForwardingSet{.ipv6 = true});
-    nsinfo.current_outbound_device = new_device;
-    StartForwarding(new_device, nsinfo.host_ifname,
-                    ForwardingSet{.ipv6 = true});
+    if (prev_device) {
+      StopForwarding(*prev_device, nsinfo.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+      nsinfo.current_outbound_device = std::nullopt;
+    }
+    if (new_device) {
+      nsinfo.current_outbound_device = *new_device;
+      StartForwarding(*new_device, nsinfo.host_ifname,
+                      ForwardingSet{.ipv6 = true});
 
-    // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
-    // kernel to send RS. Add a delay for the forwarding to be set up.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
-                       nsinfo.netns_name),
-        base::Milliseconds(kIPv6RestartDelayMs));
+      // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
+      // kernel to send RS. Add a delay for the forwarding to be set up.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                         nsinfo.netns_name),
+          base::Milliseconds(kIPv6RestartDelayMs));
+    }
   }
 }
 
 void Manager::OnShillDefaultPhysicalDeviceChanged(
-    const ShillClient::Device& new_device,
-    const ShillClient::Device& prev_device) {
-  // Only take into account interface switches and ignore layer 3 property
-  // changes.
-  if (prev_device.ifname == new_device.ifname)
+    const ShillClient::Device* new_device,
+    const ShillClient::Device* prev_device) {
+  // Only take into account interface switches and new Device or removed Device
+  // events. Ignore any layer 3 property change.
+  if (!prev_device && !new_device) {
     return;
+  }
+  if (prev_device && new_device && prev_device->ifname == new_device->ifname) {
+    return;
+  }
 
   // When the default physical network changes, ConnectedNamespaces' devices
   // which follow the physical network must leave their current forwarding group
@@ -194,19 +211,24 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
     if (!nsinfo.outbound_ifname.empty() || nsinfo.route_on_vpn) {
       continue;
     }
-    StopForwarding(prev_device, nsinfo.host_ifname,
-                   ForwardingSet{.ipv6 = true});
-    nsinfo.current_outbound_device = new_device;
-    StartForwarding(new_device, nsinfo.host_ifname,
-                    ForwardingSet{.ipv6 = true});
+    if (prev_device) {
+      StopForwarding(*prev_device, nsinfo.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+      nsinfo.current_outbound_device = std::nullopt;
+    }
+    if (new_device) {
+      nsinfo.current_outbound_device = *new_device;
+      StartForwarding(*new_device, nsinfo.host_ifname,
+                      ForwardingSet{.ipv6 = true});
 
-    // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
-    // kernel to send RS. Add a delay for the forwarding to be set up.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
-                       nsinfo.netns_name),
-        base::Milliseconds(kIPv6RestartDelayMs));
+      // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
+      // kernel to send RS. Add a delay for the forwarding to be set up.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                         nsinfo.netns_name),
+          base::Milliseconds(kIPv6RestartDelayMs));
+    }
   }
 }
 
@@ -297,7 +319,10 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
     }
   }
   for (auto& [_, nsinfo] : connected_namespaces_) {
-    if (nsinfo.current_outbound_device.ifname == shill_device.ifname) {
+    if (!nsinfo.current_outbound_device) {
+      continue;
+    }
+    if (nsinfo.current_outbound_device->ifname == shill_device.ifname) {
       nsinfo.current_outbound_device = shill_device;
     }
   }
@@ -368,15 +393,15 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
 
 void Manager::OnCrostiniDeviceChanged(const Device& virtual_device,
                                       Device::ChangeEvent event) {
-  if (event == Device::ChangeEvent::kAdded) {
-    StartForwarding(shill_client_->default_logical_device(),
-                    virtual_device.host_ifname(),
-                    {.ipv6 = true, .multicast = true});
-  } else if (event == Device::ChangeEvent::kRemoved) {
-    StopForwarding(shill_client_->default_logical_device(),
-                   virtual_device.host_ifname());
+  auto default_logical_device = shill_client_->default_logical_device();
+  if (default_logical_device) {
+    if (event == Device::ChangeEvent::kAdded) {
+      StartForwarding(*default_logical_device, virtual_device.host_ifname(),
+                      {.ipv6 = true, .multicast = true});
+    } else if (event == Device::ChangeEvent::kRemoved) {
+      StopForwarding(*default_logical_device, virtual_device.host_ifname());
+    }
   }
-
   client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
@@ -646,7 +671,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   // TODO(b/273744897): Migrate ConnectNamespace to use a patchpanel Network id
   // instead of the interface name of the shill Device.
   const std::string& outbound_ifname = request.outbound_physical_device();
-  ShillClient::Device current_outbound_device;
+  const ShillClient::Device* current_outbound_device;
   if (!outbound_ifname.empty()) {
     // b/273741099: For multiplexed Cellular interfaces, callers expect
     // patchpanel to accept a shill Device kInterfaceProperty value and swap it
@@ -657,7 +682,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
                  << outbound_ifname;
       return response;
     }
-    current_outbound_device = *shill_device;
+    current_outbound_device = shill_device;
   } else if (request.route_on_vpn()) {
     current_outbound_device = shill_client_->default_logical_device();
   } else {
@@ -695,7 +720,9 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     LOG(ERROR) << "Failed to generate unique MAC address for connected "
                   "namespace host and peer interface";
   }
-  nsinfo.current_outbound_device = current_outbound_device;
+  if (current_outbound_device) {
+    nsinfo.current_outbound_device = *current_outbound_device;
+  }
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
@@ -724,8 +751,10 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   LOG(INFO) << "Connected network namespace " << nsinfo;
 
   // Start forwarding for IPv6.
-  StartForwarding(nsinfo.current_outbound_device, nsinfo.host_ifname,
-                  ForwardingSet{.ipv6 = true});
+  if (current_outbound_device) {
+    StartForwarding(*current_outbound_device, nsinfo.host_ifname,
+                    ForwardingSet{.ipv6 = true});
+  }
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
@@ -810,9 +839,11 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   // Remove the rules tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
-    StopForwarding(connected_namespace_it->second.current_outbound_device,
-                   connected_namespace_it->second.host_ifname,
-                   ForwardingSet{.ipv6 = true});
+    if (connected_namespace_it->second.current_outbound_device) {
+      StopForwarding(*connected_namespace_it->second.current_outbound_device,
+                     connected_namespace_it->second.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+    }
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
               << connected_namespace_it->second;
