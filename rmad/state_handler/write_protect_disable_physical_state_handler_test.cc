@@ -151,9 +151,8 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        TryGetNextStateCaseAtBoot_Succeeded_FactoryModeEnabled) {
-  // Set up environment for wiping the device and rebooted the device.
+  // Set up environment for wiping the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
 
   auto handler = CreateStateHandler(
       {.wp_status_list = {false}, .factory_mode_enabled = true});
@@ -181,9 +180,8 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        TryGetNextStateCaseAtBoot_Succeeded_KeepDeviceOpen) {
-  // Set up environment for not wiping the device and rebooted the device.
+  // Set up environment for not wiping the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
 
   auto handler = CreateStateHandler(
       {.wp_status_list = {false}, .factory_mode_enabled = false});
@@ -213,9 +211,8 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        TryGetNextStateCaseAtBoot_Failed) {
-  // Set up environment for not wiping the device and rebooted the device.
+  // Set up environment for not wiping the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
 
   // WP is still enabled.
   auto handler = CreateStateHandler(
@@ -225,56 +222,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
-}
-
-TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_AdditionalEcReboot) {
-  // Set up environment for not wiping the device and the device has not
-  // rebooted yet.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-
-  // Factory mode is enabled but we still need to do EC reboot.
-  bool factory_mode_toggled = false, powerwash_requested = false,
-       reboot_toggled = false;
-  auto handler =
-      CreateStateHandler({.wp_status_list = {false},
-                          .factory_mode_enabled = true,
-                          .factory_mode_toggled = &factory_mode_toggled,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  EXPECT_TRUE(handler->GetState().wp_disable_physical().keep_device_open());
-
-  RmadState state;
-  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_WAIT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
-
-  bool signal_sent = false;
-  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
-      .WillOnce(Assign(&signal_sent, true));
-
-  // Call to |mock_crossystem_utils_| during polling, get 0.
-  // Doesn't need to enable factory mode and still send the signal.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_FALSE(factory_mode_toggled);
-  EXPECT_TRUE(signal_sent);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
-  // Doesn't request powerwash and reboot after a delay.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
-
-  bool ec_rebooted;
-  EXPECT_TRUE(json_store_->GetValue(kEcRebooted, &ec_rebooted));
-  EXPECT_TRUE(ec_rebooted);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -339,10 +286,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
-
-  bool ec_rebooted;
-  EXPECT_TRUE(json_store_->GetValue(kEcRebooted, &ec_rebooted));
-  EXPECT_TRUE(ec_rebooted);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -397,10 +340,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_FALSE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
-
-  bool ec_rebooted;
-  EXPECT_TRUE(json_store_->GetValue(kEcRebooted, &ec_rebooted));
-  EXPECT_TRUE(ec_rebooted);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -456,10 +395,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
-
-  bool ec_rebooted;
-  EXPECT_TRUE(json_store_->GetValue(kEcRebooted, &ec_rebooted));
-  EXPECT_TRUE(ec_rebooted);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -511,10 +446,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
-
-  bool ec_rebooted;
-  EXPECT_TRUE(json_store_->GetValue(kEcRebooted, &ec_rebooted));
-  EXPECT_TRUE(ec_rebooted);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,

@@ -127,14 +127,7 @@ bool WriteProtectDisablePhysicalStateHandler::IsReadyForTransition() const {
   // - HWWP should be disabled.
   // - We can skip enabling factory mode, either factory mode is already enabled
   //   or we want to keep the device open.
-  // - We have triggered an EC reboot.
-  return IsEcRebooted() && CanSkipEnablingFactoryMode() && IsHwwpDisabled();
-}
-
-bool WriteProtectDisablePhysicalStateHandler::IsEcRebooted() const {
-  // TODO(chenghan): Use ectool to probe ro_at_boot for more precise check.
-  bool ec_rebooted = false;
-  return json_store_->GetValue(kEcRebooted, &ec_rebooted) && ec_rebooted;
+  return CanSkipEnablingFactoryMode() && IsHwwpDisabled();
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
@@ -208,7 +201,6 @@ void WriteProtectDisablePhysicalStateHandler::
 
 void WriteProtectDisablePhysicalStateHandler::RebootEc() {
   DLOG(INFO) << "Rebooting EC after physically removing WP";
-  json_store_->SetValue(kEcRebooted, true);
   json_store_->Sync();
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,

@@ -47,7 +47,6 @@ inline constexpr char kCcdBlocked[] = "ccd_blocked";
 inline constexpr char kWipeDevice[] = "wipe_device";
 inline constexpr char kWpDisableMethod[] = "wp_disable_method";
 inline constexpr char kMlbRepair[] = "mlb_repair";
-inline constexpr char kEcRebooted[] = "ec_rebooted";
 inline constexpr char kGscRebooted[] = "gsc_rebooted";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
