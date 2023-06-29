@@ -23,7 +23,7 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
-#include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
+#include "diagnostics/cros_health_tool/diag/routine_v2_client.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -74,16 +74,6 @@ mojom::DEPRECATED_LedColor DEPRECATED_LedColorFromString(
   return mojom::DEPRECATED_LedColor::kUnmappedEnumField;
 }
 
-void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
-  if (single_line_json) {
-    std::cout << "Output: ";
-    OutputSingleLineJson(output);
-    return;
-  }
-  std::cout << "Output: " << std::endl;
-  OutputJson(output);
-}
-
 int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       cros_healthd_routines_service_;
@@ -91,31 +81,10 @@ int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
       chromeos::mojo_services::kCrosHealthdRoutines,
       cros_healthd_routines_service_);
 
-  base::RunLoop run_loop;
-  mojo::Remote<mojom::RoutineControl> routine_control;
-  mojo::PendingReceiver<mojom::RoutineControl> pending_receiver =
-      routine_control.BindNewPipeAndPassReceiver();
-  routine_control.set_disconnect_with_reason_handler(
-      base::BindOnce(
-          [](base::OnceCallback<void(const base::Value::Dict&)>
-                 format_output_callback,
-             uint32_t error, const std::string& message) {
-            base::Value::Dict output;
-            SetJsonDictValue("error", error, &output);
-            SetJsonDictValue("message", message, &output);
-            std::cout << "Status: Error" << std::endl;
-            std::move(format_output_callback).Run(output);
-          },
-          base::BindOnce(&FormatJsonOutput, single_line_json))
-          .Then(run_loop.QuitClosure()));
-  cros_healthd_routines_service_->CreateRoutine(std::move(argument),
-                                                std::move(pending_receiver));
-  RoutineObserver observer = RoutineObserver(run_loop.QuitClosure());
-  observer.SetFormatOutputCallback(
-      base::BindOnce(&FormatJsonOutput, single_line_json));
-  routine_control->AddObserver(observer.BindNewPipdAndPassRemote());
-  routine_control->Start();
-  run_loop.Run();
+  RoutineV2Client v2_client{std::move(cros_healthd_routines_service_),
+                            single_line_json};
+  v2_client.CreateRoutine(std::move(argument));
+  v2_client.StartAndWaitUntilTerminated();
   return EXIT_SUCCESS;
 }
 
