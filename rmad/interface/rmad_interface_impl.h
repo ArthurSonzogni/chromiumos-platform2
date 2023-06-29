@@ -104,11 +104,9 @@ class RmadInterfaceImpl final : public RmadInterface {
   void ReplyCallback(
       base::OnceCallback<void(const ReplyProtobufType&, bool)> callback,
       const ReplyProtobufType reply) {
-    // Quit the daemon if we are no longer in RMA, or the current state requires
-    // to restart the daemon.
+    // Quit the daemon if we are no longer in RMA.
     bool quit_daemon = false;
-    if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED ||
-        kQuitDaemonStates.contains(current_state_case_)) {
+    if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
       quit_daemon = true;
     }
     std::move(callback).Run(reply, quit_daemon);

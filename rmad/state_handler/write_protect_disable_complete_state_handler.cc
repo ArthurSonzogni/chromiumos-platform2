@@ -13,6 +13,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
@@ -21,7 +22,8 @@ WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {
+    : BaseStateHandler(json_store, daemon_callback), reboot_scheduled_(false) {
+  gsc_utils_ = std::make_unique<GscUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
@@ -29,9 +31,12 @@ WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback,
+        std::unique_ptr<GscUtils> gsc_utils,
         std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      write_protect_utils_(std::move(write_protect_utils)) {}
+      gsc_utils_(std::move(gsc_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
+      reboot_scheduled_(false) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   WpDisableMethod wp_disable_method;
@@ -81,13 +86,45 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |WP disable complete| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
-
-  if (!write_protect_utils_->DisableSoftwareWriteProtection()) {
-    LOG(ERROR) << "Failed to disable software write protect";
-    return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
+  if (reboot_scheduled_) {
+    return NextStateCaseWrapper(RMAD_ERROR_EXPECT_REBOOT);
   }
 
-  return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
+  // Reboot GSC.
+  timer_.Start(
+      FROM_HERE, kRebootDelay,
+      base::BindOnce(&WriteProtectDisableCompleteStateHandler::RequestGscReboot,
+                     base::Unretained(this)));
+  reboot_scheduled_ = true;
+  return NextStateCaseWrapper(RMAD_ERROR_EXPECT_REBOOT);
+}
+
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisableCompleteStateHandler::TryGetNextStateCaseAtBoot() {
+  // If GSC has rebooted, disable software WP and transition to the next state.
+  if (IsGscRebooted()) {
+    // TODO(chenghan): Check if RO_AT_BOOT is 0.
+    if (!write_protect_utils_->DisableSoftwareWriteProtection()) {
+      LOG(ERROR) << "Failed to disable software write protect";
+      return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
+    }
+    // TODO(chenghan): Check if AP/EC SWWP are actually disabled.
+    return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
+  }
+
+  // Otherwise, stay on the same state.
+  return NextStateCaseWrapper(GetStateCase());
+}
+
+void WriteProtectDisableCompleteStateHandler::RequestGscReboot() {
+  json_store_->SetValue(kGscRebooted, true);
+  json_store_->Sync();
+  gsc_utils_->Reboot();
+}
+
+bool WriteProtectDisableCompleteStateHandler::IsGscRebooted() const {
+  bool gsc_rebooted = false;
+  return json_store_->GetValue(kGscRebooted, &gsc_rebooted) && gsc_rebooted;
 }
 
 }  // namespace rmad

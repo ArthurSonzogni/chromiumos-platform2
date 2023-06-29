@@ -48,17 +48,13 @@ inline constexpr char kWipeDevice[] = "wipe_device";
 inline constexpr char kWpDisableMethod[] = "wp_disable_method";
 inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kEcRebooted[] = "ec_rebooted";
+inline constexpr char kGscRebooted[] = "gsc_rebooted";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr char kCalibrationInstruction[] = "calibration_instruction";
 inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 inline constexpr char kPowerwashCount[] = "powerwash_count";
 inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
-
-// States that requires daemon to quit and restart when entering.
-inline constexpr auto kQuitDaemonStates =
-    base::MakeFixedFlatSet<RmadState::StateCase>(
-        {RmadState::StateCase::kWpDisableComplete});
 
 // Component traits.
 inline constexpr auto kComponentsNeedManualCalibration =
