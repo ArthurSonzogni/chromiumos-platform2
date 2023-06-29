@@ -42,11 +42,14 @@ Example usage:
 
 **Note: These models are CNN based.**
 
+The `convolution_benchmark_*_144x256` models are production model graphs with
+randomized weights, so we don't measure the accuracy of these models.
+
 | Model                                     | Latency (ms)  | Accuracy                                    | Power Usage | Max Memory |
 |-------------------------------------------|--------------:|--------------------------------------------:|-------------|------------|
 | selfie_segmentation_landscape_256x256     |          <= 6 | avg_err <=0.0000003<br/> std_dev<=5e-06     |         TBD |    <=100MB |
-| convolution_benchmark_1_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06        |         TBD |    <=100MB |
-| convolution_benchmark_2_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06        |         TBD |    <=100MB |
+| convolution_benchmark_1_144x256           |          <= 4 | -                                           |         TBD |    <=100MB |
+| convolution_benchmark_2_144x256           |          <= 4 | -                                           |         TBD |    <=100MB |
 
 ### Image Search
 
