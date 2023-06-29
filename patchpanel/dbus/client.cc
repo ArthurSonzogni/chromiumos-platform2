@@ -24,7 +24,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus-proxies.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -188,8 +187,8 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
   out->ifname = in.ifname();
   out->phys_ifname = in.phys_ifname();
   out->guest_ifname = in.guest_ifname();
-  out->ipv4_addr = ConvertUint32ToIPv4Address(in.ipv4_addr());
-  out->host_ipv4_addr = ConvertUint32ToIPv4Address(in.host_ipv4_addr());
+  out->ipv4_addr = net_base::IPv4Address(in.ipv4_addr());
+  out->host_ipv4_addr = net_base::IPv4Address(in.host_ipv4_addr());
   out->ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
 
   out->dns_proxy_ipv4_addr =
@@ -331,9 +330,9 @@ std::optional<Client::ConnectedNamespace> ConvertConnectedNamespace(
   out->ipv4_subnet = *ipv4_subnet;
 
   out->peer_ifname = in.peer_ifname();
-  out->peer_ipv4_address = ConvertUint32ToIPv4Address(in.peer_ipv4_address());
+  out->peer_ipv4_address = net_base::IPv4Address(in.peer_ipv4_address());
   out->host_ifname = in.host_ifname();
-  out->host_ipv4_address = ConvertUint32ToIPv4Address(in.host_ipv4_address());
+  out->host_ipv4_address = net_base::IPv4Address(in.host_ipv4_address());
   out->netns_name = in.netns_name();
   return out;
 }

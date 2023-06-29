@@ -35,12 +35,6 @@
 
 namespace patchpanel {
 
-// Returns the IPv4Address from the network-byte order uint32_t representation
-// of the IPv4 address.
-// TODO(b/279693340): Remove the function after all IPv4 address represented by
-// uint32_t are migrated to net_base::IPv4Address.
-net_base::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr);
-
 // Adds a positive offset of the IPv4Address.
 net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
                                 uint32_t offset);

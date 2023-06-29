@@ -24,7 +24,6 @@
 #include "patchpanel/firewall.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/multicast_forwarder.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
@@ -84,7 +83,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string bridge = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   uint32_t addr = provider.ConsumeIntegral<uint32_t>();
   int prefix_len = provider.ConsumeIntegralInRange<int>(0, 31);
-  const auto ipv4_addr = ConvertUint32ToIPv4Address(addr);
+  const auto ipv4_addr = net_base::IPv4Address(addr);
   const auto cidr =
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(ipv4_addr, prefix_len);
   SubnetAddress subnet_addr(cidr, base::DoNothing());
@@ -144,9 +143,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.AddTAP(ifname, &mac, &cidr, "");
   datapath.RemoveTAP(ifname);
   datapath.AddIPv4Route(
-      ConvertUint32ToIPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
+      net_base::IPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
   datapath.DeleteIPv4Route(
-      ConvertUint32ToIPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
+      net_base::IPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
   datapath.StartConnectionPinning(shill_device);
   datapath.StopConnectionPinning(shill_device);
   datapath.StartVpnRouting(shill_device);
