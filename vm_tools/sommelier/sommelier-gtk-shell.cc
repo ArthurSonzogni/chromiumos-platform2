@@ -47,19 +47,9 @@ static void sl_gtk_surface_set_dbus_properties(
   zaura_surface_set_application_id(host->proxy, application_id_str);
 }  // NOLINT(whitespace/indent)
 
-static void sl_gtk_surface_set_modal(struct wl_client* client,
-                                     struct wl_resource* resource) {}
-
-static void sl_gtk_surface_unset_modal(struct wl_client* client,
-                                       struct wl_resource* resource) {}
-
-static void sl_gtk_surface_present(struct wl_client* client,
-                                   struct wl_resource* resource,
-                                   uint32_t time) {}
-
 static const struct gtk_surface1_interface sl_gtk_surface_implementation = {
-    sl_gtk_surface_set_dbus_properties, sl_gtk_surface_set_modal,
-    sl_gtk_surface_unset_modal, sl_gtk_surface_present};
+    sl_gtk_surface_set_dbus_properties, /*set_modal=*/DoNothing,
+    /*unset_modal=*/DoNothing, /*present=*/DoNothing};
 
 static void sl_destroy_host_gtk_surface(struct wl_resource* resource) {
   struct sl_host_gtk_surface* host =
@@ -109,13 +99,9 @@ static void sl_gtk_shell_set_startup_id(struct wl_client* client,
       zaura_surface_set_startup_id(surface->proxy, host->startup_id);
 }
 
-static void sl_gtk_shell_system_bell(struct wl_client* client,
-                                     struct wl_resource* resource,
-                                     struct wl_resource* surface_resource) {}
-
 static const struct gtk_shell1_interface sl_gtk_shell_implementation = {
     sl_gtk_shell_get_gtk_surface, sl_gtk_shell_set_startup_id,
-    sl_gtk_shell_system_bell};
+    /*system_bell=*/DoNothing};
 
 static void sl_destroy_host_gtk_shell(struct wl_resource* resource) {
   struct sl_host_gtk_shell* host =

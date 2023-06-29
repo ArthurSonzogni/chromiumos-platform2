@@ -557,21 +557,10 @@ static void sl_aura_output_device_scale_factor(void* data,
   host->device_scale_factor = device_scale_factor;
 }
 
-static void sl_aura_output_insets(void* data,
-                                  struct zaura_output* output,
-                                  int top,
-                                  int left,
-                                  int bottom,
-                                  int right) {}
-
-static void sl_aura_output_logical_transform(void* data,
-                                             struct zaura_output* output,
-                                             int transform) {}
-
 static const struct zaura_output_listener sl_aura_output_listener = {
     sl_aura_output_scale, sl_aura_output_connection,
-    sl_aura_output_device_scale_factor, sl_aura_output_insets,
-    sl_aura_output_logical_transform};
+    sl_aura_output_device_scale_factor, /*insets=*/DoNothing,
+    /*logical_transform=*/DoNothing};
 
 static void sl_destroy_host_output(struct wl_resource* resource) {
   struct sl_host_output* host =
@@ -616,20 +605,10 @@ static void sl_xdg_output_logical_size(void* data,
   host->expecting_logical_size = false;
 }
 
-static void sl_xdg_output_done(void* data,
-                               struct zxdg_output_v1* zxdg_output_v1) {}
-
-static void sl_xdg_output_name(void* data,
-                               struct zxdg_output_v1* zxdg_output_v1,
-                               const char* name) {}
-
-static void sl_xdg_output_desc(void* data,
-                               struct zxdg_output_v1* zxdg_output_v1,
-                               const char* desc) {}
-
 static const struct zxdg_output_v1_listener sl_xdg_output_listener = {
     sl_xdg_output_logical_position, sl_xdg_output_logical_size,
-    sl_xdg_output_done, sl_xdg_output_name, sl_xdg_output_desc};
+    /*done=*/DoNothing,
+    /*name=*/DoNothing, /*desc=*/DoNothing};
 
 static void sl_bind_host_output(struct wl_client* client,
                                 void* data,

@@ -4,6 +4,7 @@
 
 #include "../sommelier.h"          // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "../sommelier-util.h"     // NOLINT(build/include_directory)
 #include "sommelier-dma-buf.h"     // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -259,14 +260,8 @@ static void sl_drm_format(void* data,
   }
 }
 
-static void sl_drm_modifier(void* data,
-                            struct zwp_linux_dmabuf_v1* linux_dmabuf,
-                            uint32_t format,
-                            uint32_t modifier_hi,
-                            uint32_t modifier_lo) {}
-
 static const struct zwp_linux_dmabuf_v1_listener sl_linux_dmabuf_listener = {
-    sl_drm_format, sl_drm_modifier};
+    sl_drm_format, /*modifier=*/DoNothing};
 
 static void sl_drm_callback_done(void* data,
                                  struct wl_callback* callback,

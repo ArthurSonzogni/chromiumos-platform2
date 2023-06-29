@@ -187,4 +187,14 @@ void ForwardEvent(void* data, T* resource, InArgs... args) {
   wl_function(host->resource, args...);
 }
 
+// Utility templated function to help readability of unimplemented/ignored
+// implementations of listener/implementation functions.
+// Example usage:
+//   static const struct zaura_output_listener sl_aura_output_listener = {
+//     DoNothing, DoNothing, DoNothing,
+//     DoNothing, DoNothing
+//   }
+template <typename... InArgs>
+void DoNothing(InArgs... ignored) {}
+
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_

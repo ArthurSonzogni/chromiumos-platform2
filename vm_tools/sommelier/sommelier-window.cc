@@ -181,18 +181,8 @@ void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
   }
 }
 
-static void sl_internal_xdg_popup_configure(void* data,
-                                            struct xdg_popup* xdg_popup,
-                                            int32_t x,
-                                            int32_t y,
-                                            int32_t width,
-                                            int32_t height) {}
-
-static void sl_internal_xdg_popup_done(void* data,
-                                       struct xdg_popup* xdg_popup) {}
-
 static const struct xdg_popup_listener sl_internal_xdg_popup_listener = {
-    sl_internal_xdg_popup_configure, sl_internal_xdg_popup_done};
+    /*configure=*/DoNothing, /*done=*/DoNothing};
 
 static void sl_internal_xdg_surface_configure(void* data,
                                               struct xdg_surface* xdg_surface,

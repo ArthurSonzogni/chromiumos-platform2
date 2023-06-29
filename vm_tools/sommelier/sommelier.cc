@@ -432,26 +432,6 @@ static void sl_internal_data_device_data_offer(
                              &sl_internal_data_offer_listener, host_data_offer);
 }
 
-static void sl_internal_data_device_enter(void* data,
-                                          struct wl_data_device* data_device,
-                                          uint32_t serial,
-                                          struct wl_surface* surface,
-                                          wl_fixed_t x,
-                                          wl_fixed_t y,
-                                          struct wl_data_offer* data_offer) {}
-
-static void sl_internal_data_device_leave(void* data,
-                                          struct wl_data_device* data_device) {}
-
-static void sl_internal_data_device_motion(void* data,
-                                           struct wl_data_device* data_device,
-                                           uint32_t time,
-                                           wl_fixed_t x,
-                                           wl_fixed_t y) {}
-
-static void sl_internal_data_device_drop(void* data,
-                                         struct wl_data_device* data_device) {}
-
 static void sl_internal_data_device_selection(
     void* data,
     struct wl_data_device* data_device,
@@ -466,9 +446,12 @@ static void sl_internal_data_device_selection(
 }
 
 static const struct wl_data_device_listener sl_internal_data_device_listener = {
-    sl_internal_data_device_data_offer, sl_internal_data_device_enter,
-    sl_internal_data_device_leave,      sl_internal_data_device_motion,
-    sl_internal_data_device_drop,       sl_internal_data_device_selection};
+    sl_internal_data_device_data_offer,
+    /*enter=*/DoNothing,
+    /*leave=*/DoNothing,
+    /*motion=*/DoNothing,
+    /*drop=*/DoNothing,
+    sl_internal_data_device_selection};
 
 void sl_host_seat_added(struct sl_host_seat* host) {
   struct sl_context* ctx = host->seat->ctx;
@@ -2426,10 +2409,6 @@ void sl_handle_property_notify(struct sl_context* ctx,
   }
 }
 
-static void sl_internal_data_source_target(void* data,
-                                           struct wl_data_source* data_source,
-                                           const char* mime_type) {}
-
 static void sl_internal_data_source_send(void* data,
                                          struct wl_data_source* data_source,
                                          const char* mime_type,
@@ -2467,7 +2446,7 @@ static void sl_internal_data_source_cancelled(
 }
 
 static const struct wl_data_source_listener sl_internal_data_source_listener = {
-    sl_internal_data_source_target, sl_internal_data_source_send,
+    /*target=*/DoNothing, sl_internal_data_source_send,
     sl_internal_data_source_cancelled};
 
 char* sl_copy_atom_name(xcb_get_atom_name_reply_t* reply) {
