@@ -6,8 +6,6 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use super::get_gbb_flags;
-use super::set_gbb_flags;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
 use crate::cr50::clear_terminal;
@@ -24,25 +22,20 @@ const MAX_RETRIES: i32 = 3;
 const RETRY_DELAY: i32 = 10;
 const FRECON_PID_FILE: &str = "/run/frecon/pid";
 
-fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<u32, HwsecError> {
+fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<(), HwsecError> {
     // Disable SW WP and set GBB_FLAG_FORCE_DEV_SWITCH_ON (0x8) to force boot in
     // developer mode after RMA reset.
 
-    // TODO: call flashrom with library instead of commands
     ctx.cmd_runner()
         .run(
-            "flashrom",
-            vec!["-p", "host", "--wp-disable", "--wp-range", "0,0"],
+            "futility",
+            vec!["gbb", "--flash", "--set", "--flags='+0x8'"],
         )
         .map_err(|_| {
-            eprintln!("Failed to run flashrom");
+            eprintln!("Failed to run futility");
             HwsecError::CommandRunnerError
         })?;
-
-    let flags: u32 = get_gbb_flags(ctx)?;
-    let new_flags: u32 = flags | 0x8;
-    set_gbb_flags(ctx, new_flags)?;
-    Ok(new_flags)
+    Ok(())
 }
 
 fn get_crossystem_hwid(ctx: &mut impl Context) -> Result<String, HwsecError> {
@@ -227,9 +220,6 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
-    use std::time::UNIX_EPOCH;
-
     use super::generate_challenge_url_and_display_challenge;
     use super::get_challenge_string_from_gsctool;
     use super::get_crossystem_hwid;
@@ -237,55 +227,7 @@ mod tests {
     use crate::command_runner::MockCommandOutput;
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::reset::gbb_force_dev_mode;
     use crate::error::HwsecError;
-
-    #[test]
-    fn test_gbb_force_dev_mode_successful() {
-        const NUM_TEST_CASES: u32 = 100;
-
-        let mut mock_ctx = MockContext::new();
-        for _ in 0..NUM_TEST_CASES {
-            let old_flag = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            mock_ctx.cmd_runner().add_expectation(
-                MockCommandInput::new(
-                    "flashrom",
-                    vec!["-p", "host", "--wp-disable", "--wp-range", "0,0"],
-                ),
-                MockCommandOutput::new(0, "", ""),
-            );
-            mock_ctx
-                .cmd_runner()
-                .add_successful_get_gbb_flags_interaction(old_flag);
-            mock_ctx
-                .cmd_runner()
-                .add_successful_set_gbb_flags_interaction(old_flag | 0x8);
-
-            let new_flag = gbb_force_dev_mode(&mut mock_ctx);
-            assert_eq!(new_flag, Ok(old_flag | 0x8));
-        }
-    }
-    #[test]
-    fn test_gbb_force_dev_mode_failed_to_get_flag() {
-        let mut mock_ctx = MockContext::new();
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new(
-                "flashrom",
-                vec!["-p", "host", "--wp-disable", "--wp-range", "0,0"],
-            ),
-            MockCommandOutput::new(0, "", ""),
-        );
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("futility", vec!["gbb", "--get", "--flash", "--flags"]),
-            MockCommandOutput::new(0, "Oops... no flag ><", ""),
-        );
-
-        let new_flag = gbb_force_dev_mode(&mut mock_ctx);
-        assert_eq!(new_flag, Err(HwsecError::VbootScriptResponseBadFormatError));
-    }
 
     #[test]
     fn test_get_crossystem_hwid() {

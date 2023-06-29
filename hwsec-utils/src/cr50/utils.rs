@@ -132,39 +132,6 @@ pub fn clear_terminal() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
 
-pub fn get_gbb_flags(ctx: &mut impl Context) -> Result<u32, HwsecError> {
-    let raw_response = ctx
-        .cmd_runner()
-        .output("futility", vec!["gbb", "--get", "--flash", "--flags"])
-        .map_err(|_| HwsecError::CommandRunnerError)?;
-    let re: regex::Regex = Regex::new(r"0x[0-9a-fA-F]{8}").unwrap();
-    if let Some(keyword_pos) = raw_response.find("flags:") {
-        let key_str = re
-            .find(&raw_response[keyword_pos..])
-            .ok_or(HwsecError::VbootScriptResponseBadFormatError)?
-            .as_str();
-        Ok(u32::from_str_radix(&key_str[2..], 16)
-            .map_err(|_| HwsecError::VbootScriptResponseBadFormatError)?)
-    } else {
-        Err(HwsecError::VbootScriptResponseBadFormatError)
-    }
-}
-
-pub fn set_gbb_flags(ctx: &mut impl Context, new_flags: u32) -> Result<(), HwsecError> {
-    ctx.cmd_runner()
-        .run(
-            "futility",
-            vec![
-                "gbb",
-                "--set",
-                "--flash",
-                &format!("--flags=0x{:08x}", new_flags),
-            ],
-        )
-        .map_err(|_| HwsecError::CommandRunnerError)
-        .map(|_| ())
-}
-
 pub fn extract_factory_config_from_gsctool_response(
     raw_response: &str,
 ) -> Result<FactoryConfig, HwsecError> {
