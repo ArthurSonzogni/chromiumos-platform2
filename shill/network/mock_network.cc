@@ -20,7 +20,8 @@ MockNetwork::MockNetwork(int interface_index,
               /*fixed_ip_params=*/false,
               /*control_interface=*/nullptr,
               /*dispatcher=*/nullptr,
-              /*metrics=*/nullptr) {}
+              /*metrics=*/nullptr,
+              /*network_applier=*/nullptr) {}
 
 MockNetwork::~MockNetwork() = default;
 

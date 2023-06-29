@@ -53,7 +53,8 @@ Network::Network(int interface_index,
                  bool fixed_ip_params,
                  ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
-                 Metrics* metrics)
+                 Metrics* metrics,
+                 NetworkApplier* network_applier)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -66,7 +67,7 @@ Network::Network(int interface_index,
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      network_applier_(NetworkApplier::GetInstance()) {}
+      network_applier_(network_applier) {}
 
 Network::~Network() {
   for (auto* ev : event_handlers_) {
@@ -221,6 +222,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   network_applier_->ApplyDNS(priority_,
                              ipconfig_ ? &ipconfig_->properties() : nullptr,
                              ip6config_ ? &ip6config_->properties() : nullptr);
+  ApplyMTU();
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -1175,6 +1177,29 @@ void Network::ApplyRoutingPolicy() {
   network_applier_->ApplyRoutingPolicy(interface_index_, interface_name_,
                                        technology_, priority_, GetAddresses(),
                                        rfc3442_dsts);
+}
+
+void Network::ApplyMTU() {
+  int mtu = INT32_MAX;
+  if (ipconfig_ && ipconfig_->properties().mtu > 0 &&
+      ipconfig_->properties().mtu < mtu) {
+    mtu = ipconfig_->properties().mtu;
+  }
+  if (ip6config_ && ip6config_->properties().mtu > 0 &&
+      ip6config_->properties().mtu < mtu) {
+    mtu = ip6config_->properties().mtu;
+  }
+  if (mtu == INT32_MAX) {
+    mtu = IPConfig::kDefaultMTU;
+  }
+  int min_mtu = ip6config_ ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+  if (mtu < min_mtu) {
+    LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
+              << min_mtu;
+    mtu = min_mtu;
+  }
+
+  network_applier_->ApplyMTU(interface_index_, mtu);
 }
 
 }  // namespace shill

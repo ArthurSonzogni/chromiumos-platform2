@@ -49,6 +49,7 @@
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
@@ -60,6 +61,7 @@ using testing::DoAll;
 using testing::ElementsAreArray;
 using testing::HasSubstr;
 using testing::Mock;
+using testing::NiceMock;
 using testing::NotNull;
 using testing::Return;
 using testing::SetArgPointee;
@@ -185,6 +187,7 @@ class DeviceInfoTest : public Test {
   MockSockets* mock_sockets_;  // Owned by DeviceInfo.
   MockTime time_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
+  NiceMock<MockNetworkApplier> network_applier_;
 
   base::ScopedTempDir temp_dir_;
   base::FilePath device_info_root_;
@@ -788,7 +791,8 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*fixed_ip_params=*/false,
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
-      /*metrics=*/&metrics_));
+      /*metrics=*/&metrics_,
+      /*network_applier=*/&network_applier_));
   MockNetworkEventHandler event_handler0;
   device0->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);
@@ -807,7 +811,8 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*fixed_ip_params=*/false,
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
-      /*metrics=*/&metrics_));
+      /*metrics=*/&metrics_,
+      /*network_applier=*/&network_applier_));
   device_info_.RegisterDevice(device1);
   device1->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);

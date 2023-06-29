@@ -250,8 +250,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
             ? *broadcast
             : IPAddress::CreateFromFamily_Deprecated(local->family()));
     added_addresses_.insert_or_assign(local->family(), *local);
-
-    SetMTU(properties.mtu);
   }
 
   if (!SetupExcludedRoutes(properties)) {
@@ -331,23 +329,6 @@ bool Connection::FixGatewayReachability(
   }
 
   return true;
-}
-
-void Connection::SetMTU(int32_t mtu) {
-  SLOG(this, 2) << __func__ << " " << mtu;
-  // Make sure the MTU value is valid.
-  if (mtu == IPConfig::kUndefinedMTU) {
-    mtu = IPConfig::kDefaultMTU;
-  } else {
-    int min_mtu = IsIPv6() ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
-    if (mtu < min_mtu) {
-      SLOG(this, 2) << __func__ << " MTU " << mtu
-                    << " is too small; adjusting up to " << min_mtu;
-      mtu = min_mtu;
-    }
-  }
-
-  rtnl_handler_->SetInterfaceMTU(interface_index_, mtu);
 }
 
 bool Connection::IsIPv6() {

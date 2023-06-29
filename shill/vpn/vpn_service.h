@@ -79,6 +79,11 @@ class VPNService : public Service,
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
 
+  // Create a VPN VirtualDevice as device_. virtual for overriding in unit test.
+  mockable bool CreateDevice(const std::string& if_name, int if_index);
+
+  VirtualDeviceRefPtr device_;
+
  private:
   friend class VPNServiceTest;
   FRIEND_TEST(ManagerTest, FindDeviceFromService);
@@ -93,8 +98,6 @@ class VPNService : public Service,
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
-  // Create a VPN VirtualDevice as device_.
-  bool CreateDevice(const std::string& if_name, int if_index);
   void ConfigureDevice(std::unique_ptr<IPConfig::Properties> ipv4_props,
                        std::unique_ptr<IPConfig::Properties> ipv6_props);
   void CleanupDevice();
@@ -112,7 +115,6 @@ class VPNService : public Service,
 
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;
-  VirtualDeviceRefPtr device_;
 
   // Indicates whether the default physical service state, which is known from
   // Manager, is online. Helps distinguish between a network->network transition

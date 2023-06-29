@@ -12,6 +12,7 @@
 #include <base/memory/ptr_util.h>
 
 #include "shill/ipconfig.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/network/network_priority.h"
 #include "shill/routing_policy_service.h"
 #include "shill/routing_table.h"
@@ -59,6 +60,7 @@ constexpr uint32_t kCatchallPriority =
 NetworkApplier::NetworkApplier()
     : resolver_(Resolver::GetInstance()),
       rule_table_(RoutingPolicyService::GetInstance()),
+      rtnl_handler_(RTNLHandler::GetInstance()),
       proc_fs_(std::make_unique<ProcFsStub>("")) {}
 
 NetworkApplier::~NetworkApplier() = default;
@@ -73,11 +75,13 @@ NetworkApplier* NetworkApplier::GetInstance() {
 std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
     Resolver* resolver,
     RoutingPolicyService* rule_table,
+    RTNLHandler* rtnl_handler,
     std::unique_ptr<ProcFsStub> proc_fs) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new NetworkApplier());
   ptr->resolver_ = resolver;
   ptr->rule_table_ = rule_table;
+  ptr->rtnl_handler_ = rtnl_handler;
   ptr->proc_fs_ = std::move(proc_fs);
   return ptr;
 }
@@ -258,6 +262,10 @@ void NetworkApplier::ApplyRoutingPolicy(
     rule_table_->AddRule(interface_index, iif_rule.FlipFamily());
   }
   proc_fs_->FlushRoutingCache();
+}
+
+void NetworkApplier::ApplyMTU(int interface_index, int mtu) {
+  rtnl_handler_->SetInterfaceMTU(interface_index, mtu);
 }
 
 }  // namespace shill

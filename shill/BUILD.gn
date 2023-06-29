@@ -762,6 +762,7 @@ if (use.test) {
       "network/mock_dhcp_provider.cc",
       "network/mock_dhcp_proxy.cc",
       "network/mock_network.cc",
+      "network/mock_network_applier.cc",
       "network/mock_proc_fs_stub.cc",
       "network/mock_slaac_controller.cc",
       "network/network_applier_test.cc",

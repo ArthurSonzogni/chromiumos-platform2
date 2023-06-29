@@ -45,6 +45,18 @@ constexpr int kInterfaceIndex = 123;
 
 namespace shill {
 
+class VPNServiceInTest : public VPNService {
+ public:
+  VPNServiceInTest(Manager* manager, VPNDriver* driver)
+      : VPNService(manager, base::WrapUnique(driver)) {}
+
+  bool CreateDevice(const std::string& if_name, int if_index) override {
+    device_ = new MockVirtualDevice(this->manager(), if_name, if_index,
+                                    Technology::kVPN);
+    return true;
+  }
+};
+
 class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
@@ -55,7 +67,7 @@ class VPNServiceTest : public testing::Test {
     driver_ = new MockVPNDriver();
     // There is at least one online service when the test service is created.
     EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
-    service_ = new VPNService(&manager_, base::WrapUnique(driver_));
+    service_ = new VPNServiceInTest(&manager_, driver_);
   }
 
   ~VPNServiceTest() override = default;

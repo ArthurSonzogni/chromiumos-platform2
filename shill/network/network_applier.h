@@ -10,9 +10,11 @@
 #include <vector>
 
 #include <base/no_destructor.h>
+#include <net-base/ipv4_address.h>
 
-#include "net-base/ipv4_address.h"
 #include "shill/ipconfig.h"
+#include "shill/mockable.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/resolver.h"
@@ -35,6 +37,7 @@ class NetworkApplier {
   static std::unique_ptr<NetworkApplier> CreateForTesting(
       Resolver* resolver,
       RoutingPolicyService* rule_table,
+      RTNLHandler* rtnl_handler,
       std::unique_ptr<ProcFsStub> proc_fs);
 
   // Clear all configurations applied to a certain interface.
@@ -61,6 +64,8 @@ class NetworkApplier {
                           const std::vector<IPAddress>& all_addresses,
                           const std::vector<net_base::IPv4CIDR>& rfc3442_dsts);
 
+  mockable void ApplyMTU(int interface_index, int mtu);
+
  protected:
   NetworkApplier();
   NetworkApplier(const NetworkApplier&) = delete;
@@ -72,6 +77,7 @@ class NetworkApplier {
   // Cache singleton pointers for performance and test purposes.
   Resolver* resolver_;
   RoutingPolicyService* rule_table_;
+  RTNLHandler* rtnl_handler_;
 
   // A ProcFsStub instance with no specific interface_name, for the purpose of
   // calling FlushRoutingCache().

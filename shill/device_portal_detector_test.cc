@@ -64,7 +64,8 @@ class TestNetwork : public Network {
                 /*fixed_ip_params=*/false,
                 /*control_interface=*/nullptr,
                 /*dispatcher=*/nullptr,
-                metrics) {}
+                metrics,
+                /*network_applier=*/nullptr) {}
   ~TestNetwork() override = default;
   TestNetwork(const TestNetwork&) = delete;
   TestNetwork& operator=(const TestNetwork&) = delete;

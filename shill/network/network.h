@@ -146,13 +146,15 @@ class Network {
     kConnected,
   };
 
-  explicit Network(int interface_index,
-                   const std::string& interface_name,
-                   Technology technology,
-                   bool fixed_ip_params,
-                   ControlInterface* control_interface,
-                   EventDispatcher* dispatcher,
-                   Metrics* metrics);
+  explicit Network(
+      int interface_index,
+      const std::string& interface_name,
+      Technology technology,
+      bool fixed_ip_params,
+      ControlInterface* control_interface,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      NetworkApplier* network_applier = NetworkApplier::GetInstance());
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -320,6 +322,11 @@ class Network {
   // Visibility is public for usage in unit tests.
   void OnPortalDetectorResult(const PortalDetector::Result& result);
 
+  // Helper functions to prepare data and call corresponding NetworkApplier
+  // function. Protected for manual-triggering in test.
+  void ApplyRoutingPolicy();
+  mockable void ApplyMTU();
+
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
     connection_ = std::move(connection);
@@ -420,10 +427,6 @@ class Network {
 
   // Report the current IP type metrics (v4, v6 or dual-stack) to UMA.
   void ReportIPType();
-
-  // Helper function to prepare data and call corresponding NetworkApplier
-  // function.
-  void ApplyRoutingPolicy();
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.

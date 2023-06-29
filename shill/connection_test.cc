@@ -132,8 +132,6 @@ class ConnectionTest : public Test {
     return connection_->FixGatewayReachability(local, gateway);
   }
 
-  void SetMTU(int32_t mtu) { return connection_->SetMTU(mtu); }
-
   void SetLocal(const IPAddress& local) { connection_->local_ = local; }
 
   scoped_refptr<MockDevice> CreateDevice(Technology technology) {
@@ -250,8 +248,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   IPAddress test_local_address(local_address_);
@@ -279,8 +275,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
   AddIncludedRoutes({"1.1.1.1/10", "3.3.3.3/5"});
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   IPAddress test_local_address(local_address_);
@@ -307,8 +301,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   IPAddress test_local_address(local_address_);
@@ -336,8 +328,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
   AddIncludedRoutes({"1.1.1.1/10"});
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   IPAddress test_local_address(local_address_);
@@ -384,8 +374,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
               AddInterfaceAddress(device->interface_index(),
                                   IsIPAddress(local_address_, kPrefix0),
                                   IsIPAddress(broadcast_address_, 0)));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
 
   // SetupExcludedRoutes should create RTN_THROW entries for both networks.
   EXPECT_CALL(routing_table_,
@@ -415,8 +403,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
               AddInterfaceAddress(device->interface_index(),
                                   IsIPv6Address(local_ipv6_address_),
                                   IsDefaultAddress()));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
@@ -436,8 +422,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
               AddInterfaceAddress(device->interface_index(),
                                   IsIPv6Address(local_ipv6_address_),
                                   IsDefaultAddress()));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
@@ -462,8 +446,6 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
                                   IsIPAddress(local_address_, kPrefix0),
                                   IsIPAddress(broadcast_address_, 0)));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _)).Times(1);
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
@@ -496,8 +478,6 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
 
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
@@ -520,8 +500,6 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
@@ -537,7 +515,6 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   // Initial setup: routes but no IP configuration.
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _)).Times(0);
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _)).Times(0);
   connection_->UpdateFromIPConfig(ipv4_properties_);
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
@@ -560,8 +537,6 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Config with a different address should cause address and route flush.
@@ -577,8 +552,6 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   ipv4_properties_.address = kIPAddress1;
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
@@ -602,8 +575,6 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
               CreateBlackholeRoute(device->interface_index(),
                                    IPAddress::kFamilyIPv6, 0, table_id))
       .WillOnce(Return(true));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
@@ -623,8 +594,6 @@ TEST_F(ConnectionTest, PointToPointNetwork) {
   properties.address = kLocal;
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, IsDefaultAddress(), _));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(properties);
 
   // Destruct cleanup.
@@ -674,56 +643,6 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   EXPECT_FALSE(FixGatewayReachability(local, gateway));
 }
 
-TEST_F(ConnectionTest, SetMTU) {
-  auto device = CreateDevice(Technology::kUnknown);
-  connection_ = CreateConnection(device);
-
-  testing::InSequence seq;
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
-  SetMTU(0);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
-  SetMTU(IPConfig::kUndefinedMTU);
-
-  // Test IPv4 minimum MTU.
-  SetLocal(local_address_);
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv4MTU));
-  SetMTU(1);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv4MTU));
-  SetMTU(IPConfig::kMinIPv4MTU - 1);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv4MTU));
-  SetMTU(IPConfig::kMinIPv4MTU);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv4MTU + 1));
-  SetMTU(IPConfig::kMinIPv4MTU + 1);
-
-  // Test IPv6 minimum MTU.
-  SetLocal(local_ipv6_address_);
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv6MTU));
-  SetMTU(1);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv6MTU));
-  SetMTU(IPConfig::kMinIPv6MTU - 1);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv6MTU));
-  SetMTU(IPConfig::kMinIPv6MTU);
-
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kMinIPv6MTU + 1));
-  SetMTU(IPConfig::kMinIPv6MTU + 1);
-}
-
 TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
@@ -738,8 +657,6 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   // Default route should not be added if default_route is false.
@@ -750,8 +667,6 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
       .Times(0);
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   // IPv6 default route should not be added by shill if Flimflam type is
@@ -763,8 +678,6 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
       .Times(0);
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
-                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   // Destruct cleanup.

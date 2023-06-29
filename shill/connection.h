@@ -68,7 +68,6 @@ class Connection {
   // Ensure the destination subnets specified in |properties.exclusion_list|
   // will not be served by this connection.
   bool SetupExcludedRoutes(const IPConfig::Properties& properties);
-  void SetMTU(int32_t mtu);
 
   int interface_index_;
   const std::string interface_name_;

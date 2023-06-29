@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
@@ -27,8 +28,10 @@
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/mock_network_applier.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_slaac_controller.h"
+#include "shill/network/network_applier.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
@@ -138,14 +141,16 @@ class NetworkInTest : public Network {
                 bool fixed_ip_params,
                 ControlInterface* control_interface,
                 EventDispatcher* dispatcher,
-                Metrics* metrics)
+                Metrics* metrics,
+                NetworkApplier* network_applier)
       : Network(interface_index,
                 interface_name,
                 technology,
                 fixed_ip_params,
                 control_interface,
                 dispatcher,
-                metrics) {}
+                metrics,
+                network_applier) {}
 
   MOCK_METHOD(std::unique_ptr<Connection>,
               CreateConnection,
@@ -165,6 +170,8 @@ class NetworkInTest : public Network {
                const IPAddress& gateway,
                const std::vector<std::string>& dns_list),
               (override));
+
+  void TriggerApplyMTU() { ApplyMTU(); }
 };
 
 class NetworkTest : public ::testing::Test {
@@ -172,8 +179,8 @@ class NetworkTest : public ::testing::Test {
   NetworkTest() : manager_(&control_interface_, &dispatcher_, nullptr) {
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
-        /*fixed_ip_params=*/false, &control_interface_, &dispatcher_,
-        &metrics_);
+        /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
+        &network_applier_);
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->set_routing_table_for_testing(&routing_table_);
     network_->RegisterEventHandler(&event_handler_);
@@ -238,6 +245,7 @@ class NetworkTest : public ::testing::Test {
   MockNetworkEventHandler event_handler_;
   MockNetworkEventHandler event_handler2_;
   NiceMock<MockRoutingTable> routing_table_;
+  NiceMock<MockNetworkApplier> network_applier_;
 
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
@@ -990,6 +998,55 @@ TEST_F(NetworkTest, IsConnectedViaTether) {
       ByteArray(vendor_option2, vendor_option2 + strlen(vendor_option2));
   network_->ipconfig()->UpdateProperties(properties);
   EXPECT_FALSE(network_->IsConnectedViaTether());
+}
+
+TEST_F(NetworkTest, ApplyMTU) {
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kDefaultMTU));
+  network_->TriggerApplyMTU();
+
+  // IPv4
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  IPConfig::Properties properties;
+  properties.mtu = 1480;
+  network_->ipconfig()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
+  network_->TriggerApplyMTU();
+
+  properties.mtu = 400;  // less than IPConfig::kMinIPv4MTU
+  network_->ipconfig()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv4MTU));
+  network_->TriggerApplyMTU();
+
+  // IPv6
+  network_->set_ipconfig(nullptr);
+  network_->set_ip6config(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  properties.mtu = 1480;
+  network_->ip6config()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
+  network_->TriggerApplyMTU();
+
+  properties.mtu = 800;  // less than IPConfig::kMinIPv6MTU
+  network_->ip6config()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv6MTU));
+  network_->TriggerApplyMTU();
+
+  // Dual Stack
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  properties.mtu = 1480;
+  network_->ipconfig()->UpdateProperties(properties);
+  properties.mtu = 1400;
+  network_->ip6config()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_,
+              ApplyMTU(kTestIfindex, 1400));  // the smaller of two
+  network_->TriggerApplyMTU();
+
+  properties.mtu = 800;  // less than IPConfig::kMinIPv6MTU
+  network_->ipconfig()->UpdateProperties(properties);
+  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv6MTU));
+  network_->TriggerApplyMTU();
 }
 
 // This group of tests verify the interaction between Network and Connection,

@@ -13,6 +13,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_policy_service.h"
+#include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
@@ -97,12 +98,13 @@ class NetworkApplierTest : public Test {
     auto temp_proc_fs_ptr = std::make_unique<MockProcFsStub>("");
     proc_fs_ = temp_proc_fs_ptr.get();
     network_applier_ = NetworkApplier::CreateForTesting(
-        &resolver_, &rule_table_, std::move(temp_proc_fs_ptr));
+        &resolver_, &rule_table_, &rtnl_handler_, std::move(temp_proc_fs_ptr));
   }
 
  protected:
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingPolicyService> rule_table_;
+  MockRTNLHandler rtnl_handler_;
   MockProcFsStub* proc_fs_;  // owned by network_applier_;
   std::unique_ptr<NetworkApplier> network_applier_;
 };
