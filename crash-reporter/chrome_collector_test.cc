@@ -191,7 +191,7 @@ class ChromeCollectorTest : public ::testing::Test {
   // Set things up so that the call to get the DriErrorState will return the
   // indicating string. Set to "<empty>" to avoid creating a DriErrorState.
   void SetUpDriErrorStateToReturn(std::string result) {
-    std::function<void(base::OnceCallback<void(const std::string&)> &&)>
+    std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler = [this, result](
                       base::OnceCallback<void(const std::string&)> callback) {
           task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
@@ -205,7 +205,7 @@ class ChromeCollectorTest : public ::testing::Test {
   // Set things up so that the call to get the DriErrorState will give the
   // indicated Error.
   void SetUpDriErrorStateToErrorOut(brillo::Error* error) {
-    std::function<void(base::OnceCallback<void(brillo::Error*)> &&)> handler =
+    std::function<void(base::OnceCallback<void(brillo::Error*)>&&)> handler =
         [this, error](base::OnceCallback<void(brillo::Error*)> callback) {
           task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
               FROM_HERE, base::BindOnce(std::move(callback), error));
@@ -218,7 +218,7 @@ class ChromeCollectorTest : public ::testing::Test {
   // Set things up so that the call to CallDmesgAsync will return the
   // indicating string.
   void SetUpCallDmesgToReturn(std::string result) {
-    std::function<void(base::OnceCallback<void(const std::string&)> &&)>
+    std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler = [this, result](
                       base::OnceCallback<void(const std::string&)> callback) {
           task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
@@ -232,7 +232,7 @@ class ChromeCollectorTest : public ::testing::Test {
   // Set things up so that the call to CallDmesgAsync will error out with the
   // indicated Error.
   void SetUpCallDmesgToErrorOut(brillo::Error* error) {
-    std::function<void(base::OnceCallback<void(brillo::Error*)> &&)> handler =
+    std::function<void(base::OnceCallback<void(brillo::Error*)>&&)> handler =
         [this, error](base::OnceCallback<void(brillo::Error*)> callback) {
           task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
               FROM_HERE, base::BindOnce(std::move(callback), error));
@@ -1033,6 +1033,52 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+}
+
+TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
+  FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
+  ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "123"));
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
+      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_TRUE(collector_.is_browser_shutdown_hang());
+}
+
+TEST_F(ChromeCollectorTest,
+       HandleCrashWithDumpData_NotShutdownHang_NoShutdownBrowserPidFile) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
+  FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
+      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_FALSE(collector_.is_browser_shutdown_hang());
+}
+
+TEST_F(ChromeCollectorTest,
+       HandleCrashWithDumpData_NotShutdownHang_WrongShutdownBrowserPid) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
+  FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
+  ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "77"));
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
+      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_FALSE(collector_.is_browser_shutdown_hang());
 }
 
 TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {

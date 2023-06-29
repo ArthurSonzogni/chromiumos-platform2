@@ -88,6 +88,8 @@ bool ChromeCollector::HandleCrashWithDumpData(
     const std::string& executable_name,
     const std::string& non_exe_error_key,
     const std::string& dump_dir,
+    const std::string& aborted_browser_pid_path,
+    const std::string& shutdown_browser_pid_path,
     int signal) {
   // Perform basic input validation.
   CHECK(pid >= (pid_t)0) << "--pid= must be set";
@@ -181,7 +183,7 @@ bool ChromeCollector::HandleCrashWithDumpData(
     AddCrashMetaUploadFile(it.first, it.second.BaseName().value());
   }
 
-  base::FilePath aborted_path(kAbortedBrowserPidPath);
+  base::FilePath aborted_path(aborted_browser_pid_path);
   std::string pid_data;
   if (base::ReadFileToString(aborted_path, &pid_data)) {
     base::TrimWhitespaceASCII(pid_data, base::TRIM_TRAILING, &pid_data);
@@ -191,10 +193,11 @@ bool ChromeCollector::HandleCrashWithDumpData(
     }
   }
 
-  base::FilePath shutdown_path(kShutdownBrowserPidPath);
+  base::FilePath shutdown_path(shutdown_browser_pid_path);
   if (base::ReadFileToString(shutdown_path, &pid_data)) {
     base::TrimWhitespaceASCII(pid_data, base::TRIM_TRAILING, &pid_data);
     if (pid_data == base::NumberToString(pid)) {
+      is_browser_shutdown_hang_ = true;
       AddCrashMetaUploadData("browser_shutdown_hang", "true");
       base::DeleteFile(shutdown_path);
     }
@@ -238,9 +241,9 @@ bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
     return false;
   }
 
-  return HandleCrashWithDumpData(data, pid, uid, exe_name,
-                                 "" /*non_exe_error_key*/, "" /* dump_dir */,
-                                 signal);
+  return HandleCrashWithDumpData(
+      data, pid, uid, exe_name, /*non_exe_error_key=*/"", /*dump_dir=*/"",
+      kAbortedBrowserPidPath, kShutdownBrowserPidPath, signal);
 }
 
 bool ChromeCollector::HandleCrashThroughMemfd(
@@ -257,8 +260,9 @@ bool ChromeCollector::HandleCrashThroughMemfd(
     return false;
   }
 
-  return HandleCrashWithDumpData(data, pid, uid, executable_name,
-                                 non_exe_error_key, dump_dir, signal);
+  return HandleCrashWithDumpData(
+      data, pid, uid, executable_name, non_exe_error_key, dump_dir,
+      kAbortedBrowserPidPath, kShutdownBrowserPidPath, signal);
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string& data,

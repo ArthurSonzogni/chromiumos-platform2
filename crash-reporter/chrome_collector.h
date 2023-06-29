@@ -74,6 +74,11 @@ class ChromeCollector : public CrashCollector {
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithEmbeddedNuls);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithWeirdFilename);
+  FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang);
+  FRIEND_TEST(ChromeCollectorTest,
+              HandleCrashWithDumpData_NotShutdownHang_NoShutdownBrowserPidFile);
+  FRIEND_TEST(ChromeCollectorTest,
+              HandleCrashWithDumpData_NotShutdownHang_WrongShutdownBrowserPid);
 
   enum CrashType {
     // An executable received a signal like SIGSEGV or SIGILL; the sort of thing
@@ -93,6 +98,8 @@ class ChromeCollector : public CrashCollector {
                                const std::string& executable_name,
                                const std::string& non_exe_error_key,
                                const std::string& dump_dir,
+                               const std::string& aborted_browser_pid_path,
+                               const std::string& shutdown_browser_pid_path,
                                int signal);
 
   // Crashes are expected to be in a TLV-style format of:
@@ -176,6 +183,9 @@ class ChromeCollector : public CrashCollector {
                          const base::FilePath& complete_file_name,
                          std::map<std::string, base::FilePath>* logs);
 
+  // Returns true if the crash is caused by a hang during browser shutdown.
+  bool is_browser_shutdown_hang() const { return is_browser_shutdown_hang_; }
+
   // The file where we write our special "done" marker (to indicate to Chrome
   // that we are finished dumping). Always stdout in production.
   FILE* output_file_ptr_;
@@ -189,6 +199,8 @@ class ChromeCollector : public CrashCollector {
   int signal_ = -1;
 
   bool is_lacros_crash_ = false;
+
+  bool is_browser_shutdown_hang_ = false;
 
   CrashType crash_type_ = kExecutableCrash;
 };
