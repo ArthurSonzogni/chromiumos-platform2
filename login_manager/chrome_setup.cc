@@ -289,6 +289,9 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("tablet_form_factor"))
     builder->AddArg("--enable-tablet-form-factor");
 
+  if (builder->UseFlagIsSet("arc_erofs"))
+    builder->AddArg("--arc-erofs");
+
   std::string arc_scale;
   if (cros_config &&
       cros_config->GetString(kArcScalePath, kArcScaleProperty, &arc_scale)) {
