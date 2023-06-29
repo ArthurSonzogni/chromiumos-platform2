@@ -27,7 +27,6 @@
 #include "patchpanel/iptables.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
 #include "patchpanel/shill_client.h"

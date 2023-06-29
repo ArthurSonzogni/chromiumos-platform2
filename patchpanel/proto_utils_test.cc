@@ -17,7 +17,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/device.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 

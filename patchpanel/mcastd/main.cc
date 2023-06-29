@@ -11,7 +11,6 @@
 #include <brillo/daemons/daemon.h>
 
 #include "patchpanel/multicast_forwarder.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/system.h"
 
 // Stand-alone daemon to proxy mDNS and SSDP packets between a pair of

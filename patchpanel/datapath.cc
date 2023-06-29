@@ -32,6 +32,7 @@
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
 #include "patchpanel/iptables.h"
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {

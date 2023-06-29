@@ -16,8 +16,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
-#include "patchpanel/net_util.h"
-
 namespace patchpanel {
 namespace {
 

@@ -26,7 +26,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {

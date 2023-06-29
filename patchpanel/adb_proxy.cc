@@ -31,6 +31,7 @@
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/net_util.h"
 #include "patchpanel/patchpanel_daemon.h"
 
 namespace patchpanel {

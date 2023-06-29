@@ -18,8 +18,6 @@
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
 
-#include "patchpanel/net_util.h"
-
 namespace patchpanel {
 
 namespace {

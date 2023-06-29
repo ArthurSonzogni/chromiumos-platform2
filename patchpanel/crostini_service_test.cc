@@ -23,7 +23,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/mock_datapath.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 
 using testing::_;

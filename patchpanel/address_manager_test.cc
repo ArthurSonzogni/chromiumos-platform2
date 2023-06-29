@@ -11,8 +11,6 @@
 #include <base/rand_util.h>
 #include <gtest/gtest.h>
 
-#include "patchpanel/net_util.h"
-
 namespace patchpanel {
 
 using GuestType = AddressManager::GuestType;

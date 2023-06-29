@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/iptables.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/system.h"
 
 using testing::_;

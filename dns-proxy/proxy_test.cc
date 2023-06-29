@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/functional/callback.h>
-#include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <chromeos/patchpanel/mock_message_dispatcher.h>
 #include <dbus/mock_bus.h>

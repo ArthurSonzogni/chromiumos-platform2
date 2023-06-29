@@ -16,6 +16,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
+#include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/scoped_ns.h"
 

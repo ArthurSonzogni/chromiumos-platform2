@@ -17,8 +17,6 @@
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
 
-#include "patchpanel/net_util.h"
-
 namespace patchpanel {
 
 namespace {

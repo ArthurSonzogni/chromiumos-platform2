@@ -30,7 +30,6 @@
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/metrics.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/shill_client.h"
 
