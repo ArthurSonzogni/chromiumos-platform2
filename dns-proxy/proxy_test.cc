@@ -1408,10 +1408,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  std::string peer_ipv6_addr = "::1";
-  struct in6_addr ipv6_addr;
-  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
-
+  const auto peer_ipv6_addr = *net_base::IPv6Address::CreateFromString("::1");
   std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
@@ -1437,7 +1434,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1532,10 +1529,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   auto dev =
       virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
 
-  std::string peer_ipv6_addr = "::1";
-  struct in6_addr ipv6_addr;
-  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
-
+  const auto peer_ipv6_addr = *net_base::IPv6Address::CreateFromString("::1");
   const std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
@@ -1554,7 +1548,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   EXPECT_CALL(
       *mock_client,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", peer_ipv6_addr, IsEmpty(), _))
+                  "vmtap0", peer_ipv6_addr.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1568,7 +1562,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1609,10 +1603,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  std::string peer_ipv6_addr = "::1";
-  struct in6_addr ipv6_addr;
-  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
-
+  const auto peer_ipv6_addr = *net_base::IPv6Address::CreateFromString("::1");
   std::vector<net_base::IPv6Address> ipv6_dns_addresses = {
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8888"),
       *net_base::IPv6Address::CreateFromString("2001:4860:4860::8844")};
@@ -1639,7 +1630,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg_unrelated_ifindex);
 
   shill::RTNLMessage msg_unrelated_scope(
@@ -1649,7 +1640,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg_unrelated_scope);
 }
 
@@ -1815,17 +1806,14 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
 
-  std::string peer_ipv6_addr = "::1";
-  struct in6_addr ipv6_addr;
-  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
-
+  const auto peer_ipv6_addr = *net_base::IPv6Address::CreateFromString("::1");
   auto dev =
       virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
       .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                          "arc_eth0", peer_ipv6_addr, IsEmpty(), _))
+                          "arc_eth0", peer_ipv6_addr.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1839,7 +1827,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1878,10 +1866,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
 
-  std::string peer_ipv6_addr = "::1";
-  struct in6_addr ipv6_addr;
-  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
-
+  const auto peer_ipv6_addr = *net_base::IPv6Address::CreateFromString("::1");
   auto dev =
       virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
@@ -1900,7 +1885,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg_unrelated_ifindex);
 
   shill::RTNLMessage msg_unrelated_scope(
@@ -1910,7 +1895,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
   proxy.RTNLMessageHandler(msg_unrelated_scope);
 }
 
