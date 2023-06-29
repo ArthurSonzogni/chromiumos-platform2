@@ -4,7 +4,6 @@
 
 #include "shill/manager.h"
 
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
@@ -133,17 +132,10 @@ constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay = base::Milliseconds(500);
 // Maximum shift value used to compute the always-on VPN backoff time.
 constexpr uint32_t kAlwaysOnVpnBackoffMaxShift = 7u;
 
-// Copied from patchpanel/net_util.h so avoid circular build dependency with
-// libpatchpanel-util.
-constexpr uint32_t IPv4Addr(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
-  return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
-}
-
 // Known IPv4 address range valid for DNS proxy.
-constexpr const struct in_addr kDNSProxyBaseAddr = {
-    .s_addr = IPv4Addr(100, 115, 92, 0)};
-constexpr const struct in_addr kDNSProxyNetmask = {
-    .s_addr = IPv4Addr(255, 255, 254, 0)};
+const net_base::IPv4CIDR kDNSProxyAllocationRange =
+    *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        net_base::IPv4Address(100, 115, 92, 0), 23);
 
 constexpr std::initializer_list<Technology> kDefaultTechnologyOrder = {
     Technology::kVPN, Technology::kEthernet, Technology::kWiFi,
@@ -2869,11 +2861,10 @@ bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
   }
 
   for (const auto& addr : addrs) {
-    struct in_addr p_addr4;
-    if (inet_pton(AF_INET, addr.c_str(), &p_addr4) == 1) {
+    const auto ipv4_addr = net_base::IPv4Address::CreateFromString(addr);
+    if (ipv4_addr) {
       // Verify proxy's IPv4 address.
-      if ((p_addr4.s_addr & kDNSProxyNetmask.s_addr) ==
-          kDNSProxyBaseAddr.s_addr) {
+      if (kDNSProxyAllocationRange.InSameSubnetWith(*ipv4_addr)) {
         continue;
       }
       ClearDNSProxyAddresses();
@@ -2884,8 +2875,8 @@ bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
       return false;
     }
 
-    struct in6_addr p_addr6;
-    if (inet_pton(AF_INET6, addr.c_str(), &p_addr6) != 1) {
+    const auto ipv6_addr = net_base::IPv6Address::CreateFromString(addr);
+    if (!ipv6_addr) {
       ClearDNSProxyAddresses();
       LOG(ERROR) << "DNS proxy address " << addr
                  << " is not valid, cleared DNS proxy address(es)";
