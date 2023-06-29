@@ -24,71 +24,55 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
+#include "vm_tools/concierge/vmm_swap_history_file.h"
 
 namespace vm_tools::concierge {
 
 namespace {
 constexpr base::TimeDelta WEEK = base::Days(7);
-
-base::expected<size_t, std::string> WriteEntry(base::File& file,
-                                               const UsageHistoryEntry& entry) {
-  // Consecutively serialized bytes from multiple UsageHistoryEntryContainers
-  // can be deserialized as single merged UsageHistoryEntryContainer.
-  UsageHistoryEntryContainer container;
-  UsageHistoryEntry* new_entry = container.add_entries();
-  new_entry->CopyFrom(entry);
-  if (container.SerializeToFileDescriptor(file.GetPlatformFile())) {
-    return base::ok(container.GetCachedSize());
-  } else {
-    return base::unexpected("failed to write usage history");
-  }
-}
 }  // namespace
 
 bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (history_file_.IsValid()) {
+  if (history_file_.has_value()) {
     LOG(ERROR) << "Usage history file is already loaded";
     return false;
   }
   history_file_path_ = path;
 
-  history_file_ =
+  base::File file =
       base::File(path, base::File::FLAG_CREATE | base::File::FLAG_READ |
                            base::File::FLAG_WRITE);
-  if (history_file_.IsValid()) {
+  if (file.IsValid()) {
     LOG(INFO) << "Usage history file is created at: " << path;
+    history_file_ = std::move(file);
     return true;
   }
 
-  if (history_file_.error_details() != base::File::FILE_ERROR_EXISTS) {
+  if (file.error_details() != base::File::FILE_ERROR_EXISTS) {
     LOG(ERROR) << "Failed to create usage history file: "
-               << history_file_.error_details();
+               << file.ErrorToString(file.error_details());
     return false;
   }
 
   LOG(INFO) << "Load usage history from: " << path;
-  history_file_ =
-      base::File(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                           base::File::FLAG_WRITE);
-  if (!history_file_.IsValid()) {
+  file = base::File(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
+                              base::File::FLAG_WRITE);
+  if (!file.IsValid()) {
     LOG(ERROR) << "Failed to open usage history file: "
-               << history_file_.error_details();
+               << file.ErrorToString(file.error_details());
     return false;
   }
 
   // Load entries in the file and move the file offset to the tail
-  auto file_size = LoadFromFile(history_file_, time);
-  if (file_size.has_value()) {
-    history_file_size_ = file_size.value();
+  if (LoadFromFile(file, time)) {
+    history_file_ = std::move(file);
+    return true;
   } else {
-    LOG(ERROR) << "Failed to load usage history from file: " +
-                      file_size.error();
     DeleteFile();
     usage_history_.Clear();
+    return false;
   }
-
-  return file_size.has_value();
 }
 
 void VmmSwapUsagePolicy::OnEnabled(base::Time time) {
@@ -129,19 +113,13 @@ void VmmSwapUsagePolicy::OnDisabled(base::Time time) {
   }
   latest_entry->duration = time - latest_entry->start;
 
-  if (history_file_.IsValid()) {
-    UsageHistoryEntry entry;
-    entry.set_start_time_us(
-        latest_entry->start.ToDeltaSinceWindowsEpoch().InMicroseconds());
-    entry.set_duration_us(latest_entry->duration.value().InMicroseconds());
-    entry.set_is_shutdown(false);
-    WriteEntryToFile(entry, time);
-  }
+  WriteEnabledDurationEntry(latest_entry->start,
+                            latest_entry->duration.value());
 }
 
 void VmmSwapUsagePolicy::OnDestroy(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!(is_enabled_ && history_file_.IsValid())) {
+  if (!(is_enabled_ && history_file_.has_value())) {
     return;
   }
 
@@ -157,11 +135,7 @@ void VmmSwapUsagePolicy::OnDestroy(base::Time time) {
   } else {
     start_time = time;
   }
-  UsageHistoryEntry entry;
-  entry.set_start_time_us(
-      start_time.ToDeltaSinceWindowsEpoch().InMicroseconds());
-  entry.set_is_shutdown(true);
-  WriteEntryToFile(entry, time);
+  WriteShutdownEntry(start_time);
 }
 
 base::TimeDelta VmmSwapUsagePolicy::PredictDuration(base::Time now) {
@@ -234,49 +208,84 @@ void VmmSwapUsagePolicy::AddEnableRecordIfMissing(base::Time time) {
   }
 }
 
-// Write an `UsageHistoryEntry` to file.
-//
-// This also rotates the file if the file size is too big.
-void VmmSwapUsagePolicy::WriteEntryToFile(const UsageHistoryEntry& entry,
-                                          base::Time time) {
+// Rotates the file if the file size is too big.
+bool VmmSwapUsagePolicy::TryRotateFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (history_file_size_ >= kMaxFileSize - kMaxEntrySize &&
+  if ((history_file_->GetLength() >= kMaxFileSize - kMaxEntrySize) &&
       !RotateHistoryFile(time)) {
     LOG(ERROR) << "Failed to rotate usage history to file";
     DeleteFile();
-    return;
+    return false;
   }
-  auto entry_size = WriteEntry(history_file_, entry);
-  if (entry_size.has_value()) {
-    history_file_size_ += entry_size.value();
-  } else {
-    LOG(ERROR) << "Failed to add a new usage history to file";
-    DeleteFile();
-  }
+  return true;
 }
 
-base::expected<size_t, std::string> VmmSwapUsagePolicy::LoadFromFile(
-    base::File& file, base::Time now) {
+bool VmmSwapUsagePolicy::WriteEntry(UsageHistoryEntry entry,
+                                    base::Time time,
+                                    bool try_rotate) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!history_file_.has_value()) {
+    return false;
+  } else if (try_rotate) {
+    if (!TryRotateFile(time)) {
+      return false;
+    }
+  }
+
+  if (!VmmSwapWriteEntry<UsageHistoryEntryContainer>(history_file_.value(),
+                                                     std::move(entry))) {
+    LOG(ERROR) << "Failed to write usage history to file";
+    DeleteFile();
+    return false;
+  }
+  return true;
+}
+
+bool VmmSwapUsagePolicy::WriteEnabledDurationEntry(base::Time time,
+                                                   base::TimeDelta duration,
+                                                   bool try_rotate) {
+  UsageHistoryEntry entry;
+  entry.set_start_time_us(time.ToDeltaSinceWindowsEpoch().InMicroseconds());
+  entry.set_duration_us(duration.InMicroseconds());
+  entry.set_is_shutdown(false);
+  return WriteEntry(std::move(entry), time, try_rotate);
+}
+
+bool VmmSwapUsagePolicy::WriteShutdownEntry(base::Time time) {
+  UsageHistoryEntry entry;
+  entry.set_start_time_us(time.ToDeltaSinceWindowsEpoch().InMicroseconds());
+  entry.set_is_shutdown(true);
+  return WriteEntry(std::move(entry), time, true);
+}
+
+bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!file.IsValid()) {
-    return base::unexpected("usage history file is invalid to load");
+    LOG(ERROR) << "usage history file is invalid to load";
+    return false;
   }
 
   int64_t file_size = file.GetLength();
   if (file_size < 0) {
-    return base::unexpected("get length of history file: " +
-                            file.ErrorToString(file.GetLastFileError()));
+    LOG(ERROR) << "get length of history file: "
+               << file.ErrorToString(file.GetLastFileError());
+    return false;
   } else if (file_size > kMaxFileSize) {
     // Validates the file size because this loads all entries at once.
-    return base::unexpected(
-        base::StrCat({"usage history file: ", base::NumberToString(file_size),
-                      " is bigger than ", base::NumberToString(kMaxFileSize)}));
+    LOG(ERROR) << "usage history file: " << base::NumberToString(file_size)
+               << " is bigger than " << base::NumberToString(kMaxFileSize);
+    return false;
   }
 
   UsageHistoryEntryContainer container;
   if (!container.ParseFromFileDescriptor(file.GetPlatformFile())) {
-    return base::unexpected("parse usage history");
+    LOG(ERROR) << "parse usage history";
+    return false;
+  } else if (static_cast<int64_t>(container.ByteSizeLong()) != file_size) {
+    LOG(ERROR) << "parse usage history size";
+    return false;
   }
+
   base::Time previous_time;
   std::optional<base::Time> shutdown_time;
   for (auto entry : container.entries()) {
@@ -284,18 +293,19 @@ base::expected<size_t, std::string> VmmSwapUsagePolicy::LoadFromFile(
         base::Microseconds(entry.start_time_us()));
     base::TimeDelta duration = base::Microseconds(entry.duration_us());
     if ((now - time).is_negative()) {
-      return base::unexpected("usage history file has invalid time (too new)");
+      LOG(ERROR) << "usage history file has invalid time (too new)";
+      return false;
     } else if ((time - previous_time).is_negative()) {
-      return base::unexpected(
-          "usage history file has invalid time (old than lastest)");
+      LOG(ERROR) << "usage history file has invalid time (old than lastest)";
+      return false;
     }
 
     if (entry.is_shutdown()) {
       shutdown_time = time;
     } else {
       if (duration.is_negative()) {
-        return base::unexpected(
-            "usage history file has invalid duration (negative)");
+        LOG(ERROR) << "usage history file has invalid duration (negative)";
+        return false;
       }
       if (time + duration > now - kUsageHistoryNumWeeks * WEEK) {
         struct SwapPeriod period_entry;
@@ -327,53 +337,52 @@ base::expected<size_t, std::string> VmmSwapUsagePolicy::LoadFromFile(
     }
   }
 
-  return file_size;
+  return true;
 }
 
 bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::FilePath tmp_file_path = history_file_path_.AddExtension("tmp");
-  base::File tmp_file = base::File(
-      tmp_file_path, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
-                         base::File::FLAG_WRITE);
-  if (!tmp_file.IsValid()) {
+
+  history_file_ = base::File(tmp_file_path, base::File::FLAG_CREATE_ALWAYS |
+                                                base::File::FLAG_READ |
+                                                base::File::FLAG_WRITE);
+  if (!history_file_->IsValid()) {
     LOG(ERROR) << "Failed to create new usage history file: "
-               << tmp_file.error_details();
+               << history_file_->ErrorToString(history_file_->error_details());
+    DeleteFile();
     return false;
   }
+  bool success = true;
 
-  UsageHistoryEntry entry;
-  for (auto iter = usage_history_.Begin(); iter; ++iter) {
+  for (auto iter = usage_history_.Begin(); success && iter; ++iter) {
     if (iter->duration.has_value() && (iter->start + iter->duration.value()) >
                                           time - kUsageHistoryNumWeeks * WEEK) {
-      entry.set_start_time_us(
-          iter->start.ToDeltaSinceWindowsEpoch().InMicroseconds());
-      entry.set_duration_us(iter->duration.value().InMicroseconds());
-      entry.set_is_shutdown(false);
-      auto entry_size = WriteEntry(tmp_file, entry);
-      if (entry_size.has_value()) {
-        history_file_size_ += entry_size.value();
-      } else {
+      if (!WriteEnabledDurationEntry(iter->start, iter->duration.value(),
+                                     /* try_rotate */ false)) {
         LOG(ERROR) << "Failed to add a new usage history to file";
-        DeleteFile();
-        return false;
+        success = false;
       }
     }
   }
 
   base::File::Error error;
-  if (!base::ReplaceFile(tmp_file_path, history_file_path_, &error)) {
-    LOG(ERROR) << "Failed to replace usage history file: " << error;
-    if (!brillo::DeleteFile(tmp_file_path)) {
-      LOG(ERROR) << "Failed to delete usage tmp history file";
-    }
-    DeleteFile();
-    return false;
+  if (success &&
+      !base::ReplaceFile(tmp_file_path, history_file_path_, &error)) {
+    LOG(ERROR) << "Failed to replace usage history file: "
+               << history_file_->ErrorToString(error);
+    success = false;
   }
 
-  // The obsolete history file is closed. The file is automatically disposed
-  // since the file is already unlinked by rename(2).
-  history_file_ = std::move(tmp_file);
+  if (!success) {
+    // If Write*Entry() method fails to write an entry, it deletes the original
+    // file and closes the temporary file descriptor.
+    // Remove the remaining temporary file here.
+    if (!brillo::DeleteFile(tmp_file_path)) {
+      LOG(ERROR) << "Failed to delete tmp history file";
+    }
+    return false;
+  }
 
   LOG(INFO) << "Usage history file is rotated";
 
@@ -385,8 +394,8 @@ void VmmSwapUsagePolicy::DeleteFile() {
   if (!brillo::DeleteFile(history_file_path_)) {
     LOG(ERROR) << "Failed to delete usage history file.";
   }
-  // Stop writing entries to the file.
-  history_file_.Close();
+  // Stop writing entries to the file and close the file.
+  history_file_ = std::nullopt;
 }
 
 }  // namespace vm_tools::concierge

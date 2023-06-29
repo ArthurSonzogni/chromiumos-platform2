@@ -77,14 +77,31 @@ class VmmSwapUsagePolicy final {
   base::RingBuffer<SwapPeriod, kUsageHistoryLength> usage_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool is_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
-  size_t history_file_size_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
-  base::File history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::optional<base::File> history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   void AddEnableRecordIfMissing(base::Time time);
-  void WriteEntryToFile(const UsageHistoryEntry& entry, base::Time time);
-  base::expected<size_t, std::string> LoadFromFile(base::File& file,
-                                                   base::Time now);
+  bool TryRotateFile(base::Time time);
+  bool WriteEntry(UsageHistoryEntry entry, base::Time time, bool try_rotate);
+  // Write enabled duration entry to the history file.
+  //
+  // If the file is not present, this do nothing.
+  // This rotates the file if the file size may exceeds the max file size.
+  // This deletes the file if it fails to rotate the file or to write an entry.
+  //
+  // This returns false in either of cases when:
+  //
+  // * The file is already deleted,
+  // * It fails to rotate the file, or
+  // * It fails to write an entry.
+  bool WriteEnabledDurationEntry(base::Time time,
+                                 base::TimeDelta duration,
+                                 bool try_rotate = true);
+  // Write shutdown entry to the history file.
+  //
+  // Behaves the similar to |WriteEnabledDurationEntry|.
+  bool WriteShutdownEntry(base::Time time);
+  bool LoadFromFile(base::File& file, base::Time now);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();
 

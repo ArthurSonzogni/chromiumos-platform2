@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -17,6 +18,7 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 
+#include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
 
 namespace vm_tools::concierge {
@@ -95,16 +97,29 @@ class VmmSwapTbwPolicy final {
                 "kTbwHistoryLength entries");
 
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
-  size_t history_file_size_ = 0;
   base::RingBuffer<BytesWritten, kTbwHistoryLength> tbw_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
-  base::File history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::optional<base::File> history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
 
-  base::expected<size_t, std::string> LoadFromFile(base::File& file,
-                                                   base::Time now);
-  base::expected<void, std::string> LoadFromOldFormattedFile(base::File& file,
-                                                             base::Time now);
+  bool TryRotateFile(base::Time time);
+  bool WriteEntry(TbwHistoryEntry entry, base::Time time, bool try_rotate);
+  // Write tbw entry to the history file.
+  //
+  // If the file is not present, this do nothing.
+  // This rotates the file if the file size may exceeds the max file size.
+  // This deletes the file if it fails to rotate the file or to write an entry.
+  //
+  // This returns false in either of cases when:
+  //
+  // * The file is already deleted,
+  // * It fails to rotate the file, or
+  // * It fails to write an entry.
+  bool WriteBytesWrittenEntry(uint64_t bytes_written,
+                              base::Time time,
+                              bool try_rotate = true);
+  bool LoadFromFile(base::File& file, base::Time now);
+  bool LoadFromOldFormattedFile(base::File& file, base::Time now);
   void AppendEntry(uint64_t bytes_written, base::Time time);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();
