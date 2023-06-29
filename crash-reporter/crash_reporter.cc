@@ -26,6 +26,7 @@
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <metrics/metrics_library.h>
+#include <metrics/metrics_writer.h>
 
 #include "crash-reporter/arc_java_collector.h"
 #include "crash-reporter/arc_util.h"
@@ -481,11 +482,16 @@ int main(int argc, char* argv[]) {
     user_crash_attrs = *attrs;
   }
 
+  // Use a nonblocking writer to prevent deadlocking if the crashed process was
+  // holding the metrics file lock.
+  scoped_refptr<SynchronousMetricsWriter> metrics_writer =
+      base::MakeRefCounted<SynchronousMetricsWriter>(
+          /*use_nonblocking_lock=*/true);
   // Used for consent verification and metrics reporting.
   scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
       metrics_lib = base::MakeRefCounted<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
-          std::make_unique<MetricsLibrary>());
+          std::make_unique<MetricsLibrary>(metrics_writer));
   std::vector<CollectorInfo> collectors;
 
 #if USE_ARCPP || USE_ARCVM
