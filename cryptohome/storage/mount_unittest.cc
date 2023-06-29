@@ -233,6 +233,10 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
       expected_root_mount_map{
           {
               vault_mount_point.Append(kRootHomeSuffix),
+              vault_mount_point.Append(kRootHomeSuffix),
+          },
+          {
+              vault_mount_point.Append(kRootHomeSuffix),
               brillo::cryptohome::home::GetRootPath(username),
           },
           {

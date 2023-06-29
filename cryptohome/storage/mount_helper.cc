@@ -819,6 +819,11 @@ bool MountHelper::MountHomesAndDaemonStores(
   if (!BindAndPush(user_home, user_home, RemountOption::kShared))
     return false;
 
+  // Same as above for |root_home|, to ensure submounts are propagated
+  // correctly.
+  if (!BindAndPush(root_home, root_home, RemountOption::kShared))
+    return false;
+
   // Mount /home/chronos/user.
   if (legacy_mount_ && !MountLegacyHome(user_home))
     return false;
