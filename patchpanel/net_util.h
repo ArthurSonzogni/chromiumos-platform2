@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <linux/if_packet.h>
 #include <linux/in6.h>
@@ -89,10 +88,6 @@ BRILLO_EXPORT uint16_t Icmpv6Checksum(const uint8_t* icmp6_packet, size_t len);
 
 // Returns true if multicast forwarding should be enabled for this interface.
 BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
-
-// Returns the IP family from the string |ip_address|. If |ip_address| is
-// invalid, returns AF_UNSPEC (0).
-BRILLO_EXPORT sa_family_t GetIpFamily(const std::string& ip_address);
 
 }  // namespace patchpanel
 

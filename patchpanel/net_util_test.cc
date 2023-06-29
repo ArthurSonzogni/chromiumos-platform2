@@ -130,30 +130,6 @@ TEST(IPv4, SetSockaddrIn) {
   EXPECT_EQ("{family: AF_INET, port: 0, addr: 192.168.1.37}", stream.str());
 }
 
-TEST(IpFamily, GetIpFamily) {
-  struct {
-    std::string ip_address;
-    sa_family_t family;
-  } test_cases[] = {
-      {"0.0.0.0", AF_INET},
-      {"100.115.92.6", AF_INET},
-      {"255.255.255.255", AF_INET},
-      {"::", AF_INET6},
-      {"fe80::", AF_INET6},
-      {"fe80::f699:9fff:fef4:4fe4", AF_INET6},
-      {"", AF_UNSPEC},
-      {"1234", AF_UNSPEC},
-      {"0.0.0.0/0", AF_UNSPEC},
-      {"1.1.1.256", AF_UNSPEC},
-      {"fe80:f699:9fff:fef4:4fe4", AF_UNSPEC},
-      {"fg80::", AF_UNSPEC},
-  };
-
-  for (const auto& t : test_cases) {
-    EXPECT_EQ(GetIpFamily(t.ip_address), t.family);
-  }
-}
-
 TEST(PrettyPrint, SocketAddrIn) {
   struct sockaddr_in ipv4_sockaddr = {};
   std::ostringstream stream;

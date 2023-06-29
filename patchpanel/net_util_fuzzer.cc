@@ -40,10 +40,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Icmpv6Checksum
   Icmpv6Checksum(data, size);
 
-  // GetIpFamily
-  std::string ip_address(reinterpret_cast<const char*>(data), size);
-  GetIpFamily(ip_address);
-
   return 0;
 }
 

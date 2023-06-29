@@ -4,6 +4,7 @@
 
 #include "patchpanel/net_util.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <net/if.h>
 #include <string.h>
@@ -323,15 +324,6 @@ bool IsMulticastInterface(const std::string& ifname) {
 
   close(fd);
   return (ifr.ifr_flags & IFF_MULTICAST);
-}
-
-sa_family_t GetIpFamily(const std::string& ip_address) {
-  struct in6_addr addr;
-  if (inet_pton(AF_INET, ip_address.c_str(), &addr.s6_addr) == 1)
-    return AF_INET;
-  if (inet_pton(AF_INET6, ip_address.c_str(), &addr.s6_addr) == 1)
-    return AF_INET6;
-  return AF_UNSPEC;
 }
 
 }  // namespace patchpanel
