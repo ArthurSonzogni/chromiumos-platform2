@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -136,11 +137,12 @@ class SHILL_EXPORT RTNLMessage {
 
   struct RdnssOption {
     RdnssOption() : lifetime(0) {}
-    RdnssOption(uint32_t lifetime_in, std::vector<IPAddress> addresses_in)
+    RdnssOption(uint32_t lifetime_in,
+                std::vector<net_base::IPv6Address> addresses_in)
         : lifetime(lifetime_in), addresses(addresses_in) {}
     std::string ToString() const;
     uint32_t lifetime;
-    std::vector<IPAddress> addresses;
+    std::vector<net_base::IPv6Address> addresses;
   };
 
   // Packs the attribute map into a ByteString, with the proper alignment.

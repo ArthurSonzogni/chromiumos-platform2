@@ -162,7 +162,10 @@ void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
 
   const RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
-  rdnss_addresses_ = rdnss_option.addresses;
+  rdnss_addresses_.clear();
+  for (const auto& ipv6_addr : rdnss_option.addresses) {
+    rdnss_addresses_.push_back(IPAddress(ipv6_addr));
+  }
 
   // Stop any existing timer.
   StopRDNSSTimer();

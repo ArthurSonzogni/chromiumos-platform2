@@ -713,7 +713,7 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader* hdr,
 bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
                                    int length,
                                    uint32_t lifetime) {
-  const int addr_length = IPAddress::GetAddressLength(IPAddress::kFamilyIPv6);
+  const size_t addr_length = net_base::IPv6Address::kAddressLength;
 
   // Verify data size are multiple of individual address size.
   if (length % addr_length != 0) {
@@ -721,12 +721,10 @@ bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
   }
 
   // Parse the DNS server addresses.
-  std::vector<IPAddress> dns_server_addresses;
+  std::vector<net_base::IPv6Address> dns_server_addresses;
   while (length > 0) {
-    auto addr = IPAddress::CreateFromByteString(IPAddress::kFamilyIPv6,
-                                                ByteString(data, addr_length));
-    DCHECK(addr.has_value());
-    dns_server_addresses.push_back(std::move(*addr));
+    dns_server_addresses.push_back(
+        *net_base::IPv6Address::CreateFromBytes({data, addr_length}));
     length -= addr_length;
     data += addr_length;
   }

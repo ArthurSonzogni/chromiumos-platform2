@@ -47,7 +47,7 @@ class SLAACControllerTest : public testing::Test {
   std::unique_ptr<RTNLMessage> BuildRdnssMessage(
       RTNLMessage::Mode mode,
       uint32_t lifetime,
-      const std::vector<IPAddress>& dns_servers);
+      const std::vector<net_base::IPv6Address>& dns_servers);
   std::unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
                                                    const IPAddress& address,
                                                    unsigned char flags,
@@ -75,7 +75,7 @@ void SLAACControllerTest::SendRTNLMessage(const RTNLMessage& message) {
 std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildRdnssMessage(
     RTNLMessage::Mode mode,
     uint32_t lifetime,
-    const std::vector<IPAddress>& dns_servers) {
+    const std::vector<net_base::IPv6Address>& dns_servers) {
   auto message =
       std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0, 0, 0,
                                     kTestIfindex, IPAddress::kFamilyIPv6);
@@ -104,9 +104,9 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   EXPECT_EQ(0, dns_server_addresses_out.size());
 
   // Setup IPv6 dns server addresses.
-  std::vector<IPAddress> dns_server_addresses_in = {
-      *IPAddress::CreateFromString(kTestIPAddress1),
-      *IPAddress::CreateFromString(kTestIPAddress2),
+  std::vector<net_base::IPv6Address> dns_server_addresses_in = {
+      *net_base::IPv6Address::CreateFromString(kTestIPAddress1),
+      *net_base::IPv6Address::CreateFromString(kTestIPAddress2),
   };
 
   // Infinite lifetime
