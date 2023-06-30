@@ -129,14 +129,13 @@ constexpr char kFakeRecordId[] = "fake_record_id";
 constexpr char kFakeSecondRecordId[] = "fake_second_record_id";
 constexpr char kFakeResetSecret[] = "fake_reset_secret";
 
-// Set to match the 5 minute timer and a 1 minute extension in AuthSession.
-constexpr int kAuthSessionExtensionDuration = 60;
 // Upper limit of the Size of user specified name.
 constexpr int kUserSpecifiedNameSizeLimit = 256;
+
+// Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr auto kAuthSessionTimeout = base::Minutes(5);
 constexpr base::TimeDelta kAuthFactorStatusUpdateDelay = base::Seconds(30);
-constexpr auto kAuthSessionExtension =
-    base::Seconds(kAuthSessionExtensionDuration);
+constexpr auto kAuthSessionExtension = base::Seconds(60);
 
 // Returns a blob "derived" from provided blob to generate fake vkk_key from
 // user secret in tests.
@@ -444,8 +443,6 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
 
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
@@ -462,8 +459,6 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
 
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
@@ -725,15 +720,13 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
   // Calling AuthenticateAuthFactor.
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -763,8 +756,7 @@ TEST_F(AuthSessionTest,
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -827,7 +819,6 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -857,8 +848,7 @@ TEST_F(AuthSessionTest,
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -924,7 +914,6 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -950,8 +939,7 @@ TEST_F(AuthSessionTest,
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -1006,7 +994,6 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1027,8 +1014,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -1044,8 +1030,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   ASSERT_THAT(authenticate_future.Get(), NotOk());
   EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
 // Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor
@@ -1074,13 +1059,11 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
       test_backing_apis);
 
   // Setting the expectation that the user does not exist.
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_FALSE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1138,13 +1121,11 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
       backing_apis_);
 
   // Setting the expectation that the user does not exist.
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_FALSE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1369,13 +1350,14 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                                         .Find(kFakeLabel)
                                         ->auth_factor()
                                         .auth_block_state();
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_TRUE(auth_session.user_exists());
 
   // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
@@ -1441,13 +1423,14 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1487,13 +1470,14 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1531,17 +1515,17 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   TestFuture<base::UnguessableToken> timeout_future;
   auth_session.SetOnTimeoutCallback(
       timeout_future.GetCallback<const base::UnguessableToken&>());
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
   EXPECT_FALSE(timeout_future.IsReady());
 
   task_environment_.FastForwardBy(kAuthSessionTimeout);
 
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(timeout_future.IsReady());
   EXPECT_EQ(timeout_future.Get(), auth_session.token());
@@ -1559,16 +1543,16 @@ TEST_F(AuthSessionTest, TimeoutTestCallbackAfterTimeout) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
 
   task_environment_.FastForwardBy(kAuthSessionTimeout);
 
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 
   TestFuture<base::UnguessableToken> timeout_future;
@@ -1599,11 +1583,12 @@ TEST_F(AuthSessionTest, TimeoutTestAfterPowerSuspend) {
                             .auth_factor_map = AuthFactorMap(),
                             .migrate_to_user_secret_stash = false},
                            backing_apis_);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
 
   // Have the device power off for 30 seconds
@@ -1615,13 +1600,15 @@ TEST_F(AuthSessionTest, TimeoutTestAfterPowerSuspend) {
   task_environment_.RunUntilIdle();
 
   EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout - time_passed);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
   // Go forward the remaining lifetime (|kAuthSessionTimeout| - |time_passed|):
   clock_.Advance(kAuthSessionTimeout - time_passed);
   task_environment_.FastForwardBy(kAuthSessionTimeout - time_passed);
   task_environment_.RunUntilIdle();
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
 TEST_F(AuthSessionTest, ExtensionTest) {
@@ -1636,11 +1623,12 @@ TEST_F(AuthSessionTest, ExtensionTest) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
 
   // Test.
@@ -1653,7 +1641,6 @@ TEST_F(AuthSessionTest, ExtensionTest) {
   // Fast forward to end the lifetime of the AuthSession and check if properly
   // invalidates.
   task_environment_.FastForwardBy(requested_delay);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
@@ -1756,13 +1743,14 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
 
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
   // Test that RemoveAuthFactor success removes the factor from the map.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
@@ -1788,7 +1776,9 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   ASSERT_THAT(remove_future.Get(), IsOk());
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeOtherLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
   // Test that RemoveAuthFactor failure doesn't remove the factor from the map.
   user_data_auth::RemoveAuthFactorRequest remove_request2;
@@ -1805,7 +1795,9 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
             user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment
@@ -2649,7 +2641,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -2749,7 +2740,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -2947,7 +2937,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -3057,7 +3046,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -3161,7 +3149,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -3417,8 +3404,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Verify.
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 
   // Test.
@@ -3455,7 +3440,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -3528,8 +3512,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 
   // Verify.
-  EXPECT_EQ(auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 
   // Test.
@@ -3565,7 +3547,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -4189,8 +4170,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(new_auth_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(new_auth_session.authorized_intents(), IsEmpty());
 
   // Verify.
@@ -4203,7 +4182,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       AuthenticatePasswordAuthFactor(new_pass, new_auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(new_auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       new_auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -5138,13 +5116,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
 
   // Verify.
   EXPECT_THAT(verify_future.Get(), IsOk());
-  EXPECT_EQ(verify_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(verify_session.authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
   EXPECT_THAT(decrypt_future.Get(), NotOk());
-  EXPECT_EQ(decrypt_session.status(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(decrypt_session.authorized_intents(), IsEmpty());
 }
 

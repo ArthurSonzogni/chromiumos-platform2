@@ -311,7 +311,7 @@ void ReplyWithAuthenticationResult(
     reply.add_authorized_for(AuthIntentToProto(auth_intent));
   }
 
-  if (auth_session->status() == AuthStatus::kAuthStatusAuthenticated) {
+  if (auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
     reply.set_seconds_left(auth_session->GetRemainingTime().InSeconds());
   }
 
@@ -2410,7 +2410,7 @@ CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
   }
 
   // Check if the AuthSession is properly authenticated.
-  if (auth_session->status() != AuthStatus::kAuthStatusAuthenticated) {
+  if (!auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
     LOG(ERROR) << "AuthSession is not authenticated.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthedInGetAuthedAS),
@@ -3404,11 +3404,12 @@ void UserDataAuth::GetAuthSessionStatusImpl(
   // Default is invalid unless there is evidence otherwise.
   reply.set_status(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION);
 
-  if (auth_session->status() == AuthStatus::kAuthStatusFurtherFactorRequired) {
+  base::TimeDelta remaining_time = auth_session->GetRemainingTime();
+  if (remaining_time.is_max()) {
     reply.set_status(
         user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED);
-  } else if (auth_session->status() == AuthStatus::kAuthStatusAuthenticated) {
-    reply.set_time_left(auth_session->GetRemainingTime().InSeconds());
+  } else if (!remaining_time.is_zero()) {
+    reply.set_time_left(remaining_time.InSeconds());
     reply.set_status(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED);
   }
 }

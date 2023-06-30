@@ -418,8 +418,7 @@ TEST_F(AuthSessionInterfaceTest,
                                                  AuthIntent::kDecrypt);
     EXPECT_THAT(auth_session_status, IsOk());
     AuthSession* auth_session = auth_session_status.value().Get();
-    EXPECT_THAT(auth_session->status(),
-                AuthStatus::kAuthStatusFurtherFactorRequired);
+    EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
     serialized_token = auth_session->serialized_token();
   }
 
@@ -1079,8 +1078,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
             kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
     EXPECT_THAT(auth_session_status, IsOk());
     AuthSession* auth_session = auth_session_status.value().Get();
-    EXPECT_THAT(auth_session->status(),
-                AuthStatus::kAuthStatusFurtherFactorRequired);
+    EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
     serialized_token = auth_session->serialized_token();
     serialized_public_token = auth_session->serialized_public_token();
   }
@@ -1107,7 +1105,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
   {
     InUseAuthSession auth_session =
         auth_session_manager_->FindAuthSession(serialized_token);
-    EXPECT_THAT(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
+    EXPECT_THAT(
+        auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
     EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
               time_left_after_authenticate);
   }
@@ -1681,7 +1681,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
 
     ASSERT_TRUE(auth_session);
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
+    EXPECT_THAT(
+        auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
     EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
               time_left_after_authenticate);
     EXPECT_THAT(

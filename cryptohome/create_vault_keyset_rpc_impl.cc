@@ -61,7 +61,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
   DCHECK_EQ(request.auth_session_id(), auth_session_->serialized_token());
   // At this point AuthSession should be authenticated as it needs
   // FileSystemKeys to wrap the new credentials.
-  if (auth_session_->status() != AuthStatus::kAuthStatusAuthenticated) {
+  if (!auth_session_->authorized_intents().contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocCreateVaultKeysetRpcImplUnauthedInCreateVaultKeyset),

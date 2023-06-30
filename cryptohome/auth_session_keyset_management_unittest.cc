@@ -70,10 +70,12 @@ namespace cryptohome {
 namespace {
 
 using ::testing::_;
+using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Optional;
 using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
@@ -663,8 +665,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   // Verify that the authentication succeeds after migration.
   AuthSession auth_session2 = StartAuthSession(/*enable_uss_migration=*/true);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session2.status());
+  EXPECT_THAT(auth_session2.authorized_intents(), IsEmpty());
   ASSERT_EQ(auth_session2.auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
   AuthenticatePasswordFactor(auth_session2, kDefaultLabel, kPassword);
@@ -738,8 +739,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   {
     AuthSession auth_session = StartAuthSession(/*enable_uss_migration=*/true);
-    EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-                auth_session.status());
+    EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
     EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
         AuthFactorStorageType::kVaultKeyset));
     EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
@@ -880,8 +880,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   AuthSession auth_session =
       StartAuthSessionWithMockAuthBlockUtility(/*enable_uss_migration=*/true);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 
   // Test that authenticating the password should migrate VaultKeyset to
   // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
@@ -921,8 +920,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   // Verify that the authentication succeeds after migration.
   AuthSession auth_session2 =
       StartAuthSessionWithMockAuthBlockUtility(/*enable_uss_migration=*/true);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session2.status());
+  EXPECT_THAT(auth_session2.authorized_intents(), IsEmpty());
 
   // Test that authenticating the password should migrate VaultKeyset to
   // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
@@ -1139,8 +1137,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   AuthSession auth_session = StartAuthSessionWithMockAuthBlockUtility(
       /*enable_uss_migration=*/false);
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.status());
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
   EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
@@ -1222,10 +1219,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
                                                    AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value().Get();
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->status());
+  EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(

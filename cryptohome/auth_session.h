@@ -56,22 +56,6 @@ namespace cryptohome {
 using AuthFactorStatusUpdateCallback = base::RepeatingCallback<void(
     user_data_auth::AuthFactorWithStatus, const std::string&)>;
 
-// This enum holds the states an AuthSession could be in during the session.
-enum class AuthStatus {
-  // kAuthStatusFurtherFactorRequired is a state where the session is waiting
-  // for one or more factors so that the session can continue the processes of
-  // authenticating a user. This is the state the AuthSession starts in by
-  // default.
-  kAuthStatusFurtherFactorRequired,
-  // kAuthStatusTimedOut tells the user to restart the AuthSession because
-  // the session has timed out.
-  kAuthStatusTimedOut,
-  // kAuthStatusAuthenticated tells the user that the session is authenticated
-  // and that file system keys are available should they be required.
-  kAuthStatusAuthenticated
-  // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
-};
-
 // The list of all intents satisfied when the auth session is "fully
 // authenticated". Useful for places that want to set the "fully authenticated"
 // state.
@@ -148,9 +132,6 @@ class AuthSession final {
   const std::string& serialized_public_token() const {
     return serialized_public_token_;
   }
-
-  // This function return the current status of this AuthSession.
-  AuthStatus status() const { return status_; }
 
   // Returns the intents that the AuthSession has been authorized for.
   const base::flat_set<AuthIntent>& authorized_intents() const {
@@ -709,13 +690,15 @@ class AuthSession final {
   const bool is_ephemeral_user_;
   const AuthIntent auth_intent_;
 
-  AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
+  // The intents which this session is currently authorized for.
   base::flat_set<AuthIntent> authorized_intents_;
 
   // The wall clock timer object for recording AuthSession lifetime.
   std::unique_ptr<base::WallClockTimer> timeout_timer_;
   // The wall clock timer object to send AuthFactor status update periodically.
   std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer_;
+  // Boolean that indicates if this session was timed out.
+  bool timed_out_ = false;
 
   base::TimeTicks auth_session_creation_time_;
   base::TimeTicks authenticated_time_;

@@ -24,15 +24,15 @@
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 
-using base::test::TaskEnvironment;
+using ::base::test::TaskEnvironment;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::Eq;
 using ::testing::IsNull;
-using testing::NiceMock;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 namespace cryptohome {
 
@@ -163,7 +163,9 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
     ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
 
     EXPECT_TRUE(auth_session->OnUserCreated().ok());
-    EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
+    EXPECT_THAT(
+        auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   }
 
   // Before expiration we should be able to look up the session again.

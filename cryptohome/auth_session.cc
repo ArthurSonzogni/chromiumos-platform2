@@ -462,7 +462,6 @@ void AuthSession::SetAuthorizedForIntents(
   authorized_intents_.insert(new_authorized_intents.begin(),
                              new_authorized_intents.end());
   if (authorized_intents_.contains(AuthIntent::kDecrypt)) {
-    status_ = AuthStatus::kAuthStatusAuthenticated;
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
   }
@@ -494,8 +493,9 @@ void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
 }
 
 void AuthSession::SendAuthFactorStatusUpdateSignal() {
-  // If the auth session is timed out we won't need to send another signal.
-  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+  // If the auth session is not authorized for anything we won't need to send
+  // another signal.
+  if (authorized_intents_.empty()) {
     return;
   }
   // If the auth factor status update callback is not set (testing purposes),
@@ -550,9 +550,8 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
 
 CryptohomeStatus AuthSession::ExtendTimeoutTimer(
     const base::TimeDelta extension_duration) {
-  // Check to make sure that the AuthSession is still valid before we stop the
-  // timer.
-  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+  // Check to make sure that the AuthSession hasn't already been timed out.
+  if (timed_out_) {
     // AuthSession timed out before timeout_timer_.Stop() could be called.
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
@@ -954,7 +953,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   ReportTimerDuration(auth_session_performance_timer.get());
 
   if (migrate_to_user_secret_stash_ &&
-      status_ == AuthStatus::kAuthStatusAuthenticated &&
+      authorized_intents_.contains(AuthIntent::kDecrypt) &&
       IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
 
@@ -1499,7 +1498,7 @@ void AuthSession::AuthenticateAuthFactor(
 void AuthSession::RemoveAuthFactor(
     const user_data_auth::RemoveAuthFactorRequest& request,
     StatusCallback on_done) {
-  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+  if (!authorized_intents_.contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInRemoveAuthFactor),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -1760,7 +1759,7 @@ CryptohomeStatus AuthSession::RemoveAuthFactorFromUssInMemory(
 void AuthSession::UpdateAuthFactor(
     const user_data_auth::UpdateAuthFactorRequest& request,
     StatusCallback on_done) {
-  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+  if (!authorized_intents_.contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInUpdateAuthFactor),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -2995,11 +2994,7 @@ void AuthSession::AddAuthFactor(
     StatusCallback on_done) {
   // Preconditions:
   DCHECK_EQ(request.auth_session_id(), serialized_token_);
-  // TODO(b/216804305): Verify the auth session is authenticated, after
-  // `OnUserCreated()` is changed to mark the session authenticated.
-  // At this point AuthSession should be authenticated as it needs
-  // FileSystemKeys to wrap the new credentials.
-  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+  if (!authorized_intents_.contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInAddAuthFactor),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3670,7 +3665,7 @@ void AuthSession::ResetRateLimiterCredentials() {
 
 base::TimeDelta AuthSession::GetRemainingTime() const {
   // If the session is already timed out, return zero (no remaining time).
-  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+  if (timed_out_) {
     return base::TimeDelta();
   }
   // Otherwise, if the timer isn't running yet, return infinity.
@@ -3696,22 +3691,20 @@ void AuthSession::SetOnTimeoutCallback(
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout) {
   on_timeout_ = std::move(on_timeout);
   // If the session is already timed out, trigger the callback immediately.
-  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+  if (timed_out_) {
     std::move(on_timeout_).Run(token_);
   }
 }
 
 void AuthSession::SetAuthFactorStatusUpdateCallback(
     const AuthFactorStatusUpdateCallback& callback) {
-  if (status_ != AuthStatus::kAuthStatusTimedOut) {
-    auth_factor_status_update_callback_ = callback;
-  }
+  auth_factor_status_update_callback_ = callback;
 }
 
 void AuthSession::AuthSessionTimedOut() {
   LOG(INFO) << "AuthSession: timed out.";
-  status_ = AuthStatus::kAuthStatusTimedOut;
   authorized_intents_.clear();
+  timed_out_ = true;
   // After this callback, it's possible that |this| has been deleted.
   std::move(on_timeout_).Run(token_);
 }
