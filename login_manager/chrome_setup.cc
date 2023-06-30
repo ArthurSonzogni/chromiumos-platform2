@@ -90,12 +90,6 @@ const char kPowerPath[] = "/power";
 const char kAllowAmbientEQField[] = "allow-ambient-eq";
 const char kAllowAmbientEQFeature[] = "AllowAmbientEQ";
 
-constexpr char kHibernateField[] = "disable-hibernate";
-constexpr char kHibernateFeature[] = "Hibernate";
-
-constexpr char kPowerdHibernateExperimentFlag[] =
-    "/var/lib/power_manager/enable_hibernate_experiment";
-
 constexpr char kPowerdRoPrefPath[] = "/usr/share/power_manager";
 constexpr char kPowerdBoardSpecificPrefPath[] =
     "/usr/share/power_manager/board_specific";
@@ -684,7 +678,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpOzoneNNPalmPropertiesFlag(builder, cros_config);
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
-  SetUpHibernateFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpModemFlag(builder, cros_config);
   SetUpHPEngageOneProAIOSystem(builder);
@@ -957,28 +950,6 @@ bool GetPowerdPref(const char* pref_name,
   }
 
   return false;
-}
-
-// Enables the "Hibernate" feature if "disable-hibernate" is set to 0 in
-// the powerd preferences or the experimental flag is enabled.
-void SetUpHibernateFlag(ChromiumCommandBuilder* builder,
-                        brillo::CrosConfigInterface* cros_config) {
-  std::string hibernate_str;
-
-  // If the experimental flag is set, enable resume from hibernation.
-  if (base::PathExists(base::FilePath(kPowerdHibernateExperimentFlag))) {
-    builder->AddFeatureEnableOverride(kHibernateFeature);
-    return;
-  }
-
-  if (!GetPowerdPref(kHibernateField, cros_config, &hibernate_str)) {
-    return;
-  }
-
-  base::TrimWhitespaceASCII(hibernate_str, base::TRIM_ALL, &hibernate_str);
-  if (hibernate_str == "0") {
-    builder->AddFeatureEnableOverride(kHibernateFeature);
-  }
 }
 
 void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,
