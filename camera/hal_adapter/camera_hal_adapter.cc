@@ -25,6 +25,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
+#include <brillo/files/file_util.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
 
@@ -57,7 +58,11 @@ constexpr char kArcvmVendorTagSectionName[] = "com.google.arcvm";
 constexpr char kArcvmVendorTagHostTimeTagName[] = "hostSensorTimestamp";
 constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
 
+// File format: the first line contains "on" or "off".
 const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
+// File format: each line contains one public camera id.
+const base::FilePath kCameraIdsWithFallbackSolutionFilePath(
+    "/run/camera/camera_ids_with_sw_privacy_switch_fallback");
 constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 
@@ -896,6 +901,7 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
   // |n| where |n| is the number of builtin cameras.
   cameras.insert(cameras.end(), unexposed_physical_cameras.begin(),
                  unexposed_physical_cameras.end());
+  std::stringstream file_content;
   for (size_t i = 0; i < cameras.size(); i++) {
     int module_id = std::get<1>(cameras[i]);
     int camera_id = std::get<2>(cameras[i]);
@@ -907,7 +913,15 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
                                     ? TORCH_MODE_STATUS_AVAILABLE_OFF
                                     : TORCH_MODE_STATUS_NOT_AVAILABLE;
     default_torch_mode_status_map_[i] = torch_mode_status_map_[i];
+
+    // Save public camera ids using the fallback solution for the SW privacy
+    // switch to a file to let Chrome know.
+    if (camera_interfaces_[module_id].second->set_privacy_switch_state ==
+        nullptr) {
+      file_content << i << "\n";
+    }
   }
+  base::WriteFile(kCameraIdsWithFallbackSolutionFilePath, file_content.str());
 
   // Now we map internal physical camera IDs to public and store the mappings
   // in |physical_camera_id_map_|.
