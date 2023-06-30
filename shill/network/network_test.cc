@@ -1101,7 +1101,7 @@ class NetworkStartTest : public NetworkTest {
 
   void TriggerSLAACUpdate() {
     TriggerSLAACNameServersUpdate(
-        {*IPAddress::CreateFromString(kIPv6SLAACNameserver)});
+        {*net_base::IPv6Address::CreateFromString(kIPv6SLAACNameserver)});
     TriggerSLAACAddressUpdate();
   }
 
@@ -1119,7 +1119,8 @@ class NetworkStartTest : public NetworkTest {
     dispatcher_.task_environment().RunUntilIdle();
   }
 
-  void TriggerSLAACNameServersUpdate(const std::vector<IPAddress>& dns_list) {
+  void TriggerSLAACNameServersUpdate(
+      const std::vector<net_base::IPv6Address>& dns_list) {
     EXPECT_CALL(*slaac_controller_, GetRDNSSAddresses())
         .WillRepeatedly(Return(dns_list));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kRDNSS);
@@ -1491,8 +1492,8 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   TriggerSLAACAddressUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
-  const IPAddress dns_server =
-      *IPAddress::CreateFromString(kIPv6SLAACNameserver);
+  const auto dns_server =
+      *net_base::IPv6Address::CreateFromString(kIPv6SLAACNameserver);
 
   // A valid DNS should bring the network up.
   ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);

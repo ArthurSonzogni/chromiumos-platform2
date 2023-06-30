@@ -11,6 +11,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
@@ -51,7 +52,7 @@ class SLAACController {
   mockable std::vector<IPAddress> GetAddresses() const;
 
   // Get the IPv6 DNS server addresses received from RDNSS.
-  mockable std::vector<IPAddress> GetRDNSSAddresses() const;
+  mockable std::vector<net_base::IPv6Address> GetRDNSSAddresses() const;
 
  private:
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
@@ -87,7 +88,7 @@ class SLAACController {
 
   std::vector<AddressData> slaac_addresses_;
 
-  std::vector<IPAddress> rdnss_addresses_;
+  std::vector<net_base::IPv6Address> rdnss_addresses_;
   base::CancelableOnceClosure rdnss_expired_callback_;
 
   // Callbacks registered by RegisterCallbacks().

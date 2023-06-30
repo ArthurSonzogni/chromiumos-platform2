@@ -97,7 +97,7 @@ std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
 }
 
 TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
-  std::vector<IPAddress> dns_server_addresses_out;
+  std::vector<net_base::IPv6Address> dns_server_addresses_out;
 
   // No IPv6 dns server addresses.
   dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();

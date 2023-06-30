@@ -687,7 +687,7 @@ void Network::OnIPv6ConfigUpdated() {
 }
 
 void Network::OnIPv6DnsServerAddressesChanged() {
-  std::vector<IPAddress> rdnss = slaac_controller_->GetRDNSSAddresses();
+  const auto rdnss = slaac_controller_->GetRDNSSAddresses();
   if (rdnss.size() == 0) {
     if (!ip6config()) {
       return;
@@ -707,13 +707,7 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 
   std::vector<std::string> addresses_str;
   for (const auto& ip : rdnss) {
-    std::string address_str;
-    if (!ip.IntoString(&address_str)) {
-      LOG(ERROR) << interface_name_
-                 << ": Unable to convert IPv6 address into a string!";
-      continue;
-    }
-    addresses_str.push_back(address_str);
+    addresses_str.push_back(ip.ToString());
   }
 
   // Done if no change in server addresses.

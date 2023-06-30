@@ -28,7 +28,10 @@ class MockSLAACController : public SLAACController {
 
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const override));
 
-  MOCK_METHOD(std::vector<IPAddress>, GetRDNSSAddresses, (), (const override));
+  MOCK_METHOD(std::vector<net_base::IPv6Address>,
+              GetRDNSSAddresses,
+              (),
+              (const override));
 
   void RegisterCallback(UpdateCallback update_callback) override {
     update_callback_ = update_callback;
