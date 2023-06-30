@@ -8,6 +8,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/strings/string_utils.h>
 
+#include "bootsplash/utils.h"
+
 namespace paths {
 
 namespace {
@@ -33,6 +35,38 @@ base::FilePath Get(base::StringPiece file_path) {
     return g_test_prefix->Append(file_path);
   }
   return base::FilePath(file_path);
+}
+
+base::FilePath GetBootSplashAssetsDir(bool feature_simon_enabled) {
+  base::FilePath boot_splash_assets_dir;
+  bool is_hi_res_display = utils::IsHiResDisplay();
+
+  /* Determine which assets to use for boot splash screen. */
+  boot_splash_assets_dir = paths::Get(paths::kChromeOsAssetsDir);
+  if (feature_simon_enabled) {
+    boot_splash_assets_dir =
+        boot_splash_assets_dir.Append(paths::kFeatureOobeSimonDir);
+    if (is_hi_res_display) {
+      boot_splash_assets_dir =
+          boot_splash_assets_dir.Append(paths::kSplash200PercentDir);
+    } else {
+      boot_splash_assets_dir =
+          boot_splash_assets_dir.Append(paths::kSplash100PercentDir);
+    }
+  } else {
+    if (is_hi_res_display) {
+      boot_splash_assets_dir =
+          boot_splash_assets_dir.Append(paths::kImages200PercentDir);
+    } else {
+      boot_splash_assets_dir =
+          boot_splash_assets_dir.Append(paths::kImages100PercentDir);
+    }
+  }
+
+  LOG(INFO) << "Boot splash assets directory: '" << boot_splash_assets_dir
+            << "'";
+
+  return boot_splash_assets_dir;
 }
 
 }  // namespace paths

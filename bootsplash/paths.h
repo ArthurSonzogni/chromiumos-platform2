@@ -13,6 +13,17 @@ namespace paths {
 constexpr char kFreconVt[] = "/run/frecon/vt0";
 
 constexpr char kFreconHiRes[] = "/run/frecon/hi_res";
+
+constexpr char kChromeOsAssetsDir[] = "/usr/share/chromeos-assets/";
+
+constexpr char kFeatureOobeSimonDir[] = "animated_splash_screen/";
+
+constexpr char kImages100PercentDir[] = "images_100_percent/";
+constexpr char kImages200PercentDir[] = "images_200_percent/";
+
+constexpr char kSplash100PercentDir[] = "splash_100_percent/";
+constexpr char kSplash200PercentDir[] = "splash_200_percent/";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);
@@ -21,6 +32,9 @@ base::FilePath Get(base::StringPiece file_path);
 // For example, if "/tmp" is set as the prefix, Get("/run/foo") will return
 // "/tmp/run/foo". Passing "" will reset the prefix.
 void SetPrefixForTesting(const base::FilePath& prefix);
+
+// Get the boot splash assets directory.
+base::FilePath GetBootSplashAssetsDir(bool feature_simon_enabled);
 
 }  // namespace paths
 
