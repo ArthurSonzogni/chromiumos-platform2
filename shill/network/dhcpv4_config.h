@@ -47,10 +47,6 @@ class DHCPv4Config {
   // success, and false otherwise.
   static bool ParseClasslessStaticRoutes(const std::string& classless_routes,
                                          IPConfig::Properties* properties);
-
-  // Returns the string representation of the IP address |address|, or an
-  // empty string on failure.
-  static std::string GetIPv4AddressString(unsigned int address);
 };
 
 }  // namespace shill

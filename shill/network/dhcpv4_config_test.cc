@@ -13,12 +13,6 @@
 
 namespace shill {
 
-TEST(DHCPv4ConfigTest, GetIPv4AddressString) {
-  EXPECT_EQ("255.255.255.255", DHCPv4Config::GetIPv4AddressString(0xffffffff));
-  EXPECT_EQ("0.0.0.0", DHCPv4Config::GetIPv4AddressString(0));
-  EXPECT_EQ("1.2.3.4", DHCPv4Config::GetIPv4AddressString(0x04030201));
-}
-
 TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kDefaultAddress = "0.0.0.0";
   const std::string kDefaultDestination = kDefaultAddress + "/0";

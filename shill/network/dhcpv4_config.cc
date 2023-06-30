@@ -4,8 +4,6 @@
 
 #include "shill/network/dhcpv4_config.h"
 
-#include <arpa/inet.h>
-
 #include <iterator>
 #include <utility>
 
@@ -15,6 +13,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -28,16 +27,6 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 }  // namespace Logging
-
-// static
-std::string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
-  char str[INET_ADDRSTRLEN];
-  if (inet_ntop(AF_INET, &address, str, std::size(str))) {
-    return str;
-  }
-  LOG(ERROR) << "Unable to convert IPv4 address to string: " << address;
-  return "";
-}
 
 // static
 bool DHCPv4Config::ParseClasslessStaticRoutes(
@@ -63,9 +52,10 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
   while (route_iterator != route_strings.end()) {
     const auto& destination_as_string = *route_iterator;
     route_iterator++;
-    const auto destination = IPAddress::CreateFromPrefixString(
-        destination_as_string, IPAddress::kFamilyIPv4);
-    if (!destination.has_value()) {
+
+    const auto destination =
+        net_base::IPv4CIDR::CreateFromCIDRString(destination_as_string);
+    if (!destination) {
       LOG(ERROR) << "In " << __func__ << ": Expected an IP address/prefix "
                  << "but got an unparsable: " << destination_as_string;
       return false;
@@ -75,24 +65,24 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     const auto& gateway_as_string = *route_iterator;
     route_iterator++;
     const auto gateway =
-        IPAddress::CreateFromString(gateway_as_string, IPAddress::kFamilyIPv4);
-    if (!gateway.has_value()) {
+        net_base::IPv4Address::CreateFromString(gateway_as_string);
+    if (!gateway) {
       LOG(ERROR) << "In " << __func__ << ": Expected a router IP address "
                  << "but got an unparsable: " << gateway_as_string;
       return false;
     }
 
-    if (destination->prefix() == 0 && properties->gateway.empty()) {
+    if (destination->prefix_length() == 0 && properties->gateway.empty()) {
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
       SLOG(2) << "In " << __func__ << ": Setting default gateway to "
               << gateway_as_string;
-      CHECK(gateway->IntoString(&properties->gateway));
+      properties->gateway = gateway->ToString();
     } else {
       IPConfig::Route route;
-      CHECK(destination->IntoString(&route.host));
-      route.prefix = destination->prefix();
-      CHECK(gateway->IntoString(&route.gateway));
+      route.host = destination->address().ToString();
+      route.prefix = destination->prefix_length();
+      route.gateway = gateway->ToString();
       routes.push_back(route);
       SLOG(2) << "In " << __func__ << ": Adding route to to "
               << destination_as_string << " via " << gateway_as_string;
@@ -117,7 +107,8 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     const brillo::Any& value = it.second;
     SLOG(2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
-      properties->address = GetIPv4AddressString(value.Get<uint32_t>());
+      properties->address =
+          net_base::IPv4Address(value.Get<uint32_t>()).ToString();
       if (properties->address.empty()) {
         return false;
       }
@@ -125,7 +116,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       properties->subnet_prefix = value.Get<uint8_t>();
     } else if (key == kConfigurationKeyBroadcastAddress) {
       properties->broadcast_address =
-          GetIPv4AddressString(value.Get<uint32_t>());
+          net_base::IPv4Address(value.Get<uint32_t>()).ToString();
       if (properties->broadcast_address.empty()) {
         return false;
       }
@@ -135,7 +126,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         LOG(ERROR) << "No routers provided.";
         default_gateway_parse_error = true;
       } else {
-        properties->gateway = GetIPv4AddressString(routers[0]);
+        properties->gateway = net_base::IPv4Address(routers[0]).ToString();
         if (properties->gateway.empty()) {
           LOG(ERROR) << "Failed to parse router parameter provided.";
           default_gateway_parse_error = true;
@@ -144,7 +135,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     } else if (key == kConfigurationKeyDNS) {
       const auto& servers = value.Get<std::vector<uint32_t>>();
       for (auto it = servers.begin(); it != servers.end(); ++it) {
-        std::string server = GetIPv4AddressString(*it);
+        std::string server = net_base::IPv4Address(*it).ToString();
         if (server.empty()) {
           return false;
         }
