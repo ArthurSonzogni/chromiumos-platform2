@@ -71,6 +71,11 @@ std::optional<IPAddress> IPAddress::CreateFromBytes(
   return std::nullopt;
 }
 
+bool IPAddress::IsZero() const {
+  return std::visit([](auto&& address) -> bool { return address.IsZero(); },
+                    address_);
+}
+
 bool IPAddress::operator==(const IPAddress& rhs) const {
   return address_ == rhs.address_;
 }

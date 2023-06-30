@@ -59,6 +59,9 @@ class NET_BASE_EXPORT IPAddress {
   explicit constexpr IPAddress(const IPv6Address& address)
       : address_(address) {}
 
+  // Returns true if the address is "0.0.0.0" or "::".
+  bool IsZero() const;
+
   // Compares with |rhs|. The comparation rule follows IPv4Address and
   // IPv6Address if the family of |rhs| is the same. Otherwise, the IPv4Address
   // is less than IPv6Address.

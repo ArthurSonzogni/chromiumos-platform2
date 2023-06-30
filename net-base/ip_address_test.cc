@@ -84,6 +84,13 @@ TEST(IPAddressTest, CreateFromBytes) {
   EXPECT_EQ(ipv6_addr.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
 }
 
+TEST(IPAddressTest, IsZero) {
+  EXPECT_TRUE(IPAddress(IPFamily::kIPv4).IsZero());
+  EXPECT_TRUE(IPAddress(IPFamily::kIPv6).IsZero());
+
+  EXPECT_FALSE(IPAddress(IPv4Address(0, 0, 0, 1)).IsZero());
+}
+
 TEST(IPAddressTest, OperatorCmp) {
   const IPAddress kOrderedAddresses[] = {
       // We define that a IPv4 address is less than a IPv6 address.
