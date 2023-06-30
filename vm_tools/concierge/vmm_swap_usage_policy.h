@@ -53,8 +53,8 @@ class VmmSwapUsagePolicy final {
   base::TimeDelta PredictDuration(base::Time now = base::Time::Now());
 
   // Each repeated message has 1 byte tag & length varint prepended. The length
-  // varint is 1 byte because TbwHistoryEntry is at most 24 bytes.
-  // TbwHistoryEntry has at most 24 (1+10 [tag+int64] + 1+10 [tag+int64] + 1+1
+  // varint is 1 byte because UsageHistoryEntry is at most 24 bytes.
+  // UsageHistoryEntry has at most 24 (1+10 [tag+int64] + 1+10 [tag+int64] + 1+1
   // [tag+bool]) bytes/message.
   static constexpr int kMaxEntrySize = 26;
 

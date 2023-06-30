@@ -75,20 +75,27 @@ class VmmSwapTbwPolicy final {
   // The `time` is injectable for testing purpose.
   bool CanSwapOut(base::Time time = base::Time::Now()) const;
 
+  // Each repeated message has 1 byte tag & length varint prepended. The length
+  // varint is 1 byte because TbwHistoryEntry is at most 22 bytes.
+  // TbwHistoryEntry has at most 22 (1+10 [tag+uint64] + 1+10 [tag+int64])
+  // bytes/message.
+  static constexpr int kMaxEntrySize = 24;
+
  private:
   struct BytesWritten {
     base::Time started_at;
     uint64_t size;
   };
   static constexpr size_t kTbwHistoryLength = 28;
-  // The first 1 byte indicates the entry message size. TbwHistoryEntry has at
-  // most 22 (1+10 [tag+uint64] + 1+10 [tag+int64]) bytes/message.
-  static constexpr int kEntrySize = 23;
-  // The history file has 1 page size. This limit is bigger than kBufferSize.
-  static constexpr int kMaxEntriesInFile = KiB(4) / kEntrySize;
+  // 1 page size is the max file size.
+  static constexpr size_t kMaxFileSize = KiB(4);
+  // The file can contain more than kTbwHistoryLength entries.
+  static_assert(kMaxEntrySize * kTbwHistoryLength < kMaxFileSize,
+                "The tbw history file does not have enough size to hold "
+                "kTbwHistoryLength entries");
 
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
-  int entries_in_file_ = 0;
+  size_t history_file_size_ = 0;
   base::RingBuffer<BytesWritten, kTbwHistoryLength> tbw_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
@@ -96,6 +103,8 @@ class VmmSwapTbwPolicy final {
 
   base::expected<size_t, std::string> LoadFromFile(base::File& file,
                                                    base::Time now);
+  base::expected<void, std::string> LoadFromOldFormattedFile(base::File& file,
+                                                             base::Time now);
   void AppendEntry(uint64_t bytes_written, base::Time time);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();

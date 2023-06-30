@@ -260,7 +260,7 @@ const std::vector<std::string> kExtMkfsOpts = {
 constexpr uint64_t kTbwTargetForVmmSwapPerDay = MiB(550);
 // The path to the history file for VmmSwapTbwPolicy.
 constexpr char kVmmSwapTbwHistoryFilePath[] =
-    "/var/lib/vm_concierge/vmm_swap_policy/tbw_history";
+    "/var/lib/vm_concierge/vmm_swap_policy/tbw_history2";
 
 // Maximum size of logs to send through D-Bus. Must be less than the maximum
 // D-Bus array length (64 MiB) and the configured maximum message size for the

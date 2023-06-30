@@ -509,7 +509,8 @@ TEST(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
   ASSERT_TRUE(before_policy.Init(history_file_path, now));
 
   int64_t before_file_size = -1;
-  for (int i = 0; before_file_size < 5 * 4096 - 25; i++) {
+  for (int i = 0;
+       before_file_size < 5 * 4096 - VmmSwapUsagePolicy::kMaxEntrySize; i++) {
     before_policy.OnEnabled(now);
     now += base::Hours(1);
     before_policy.OnDisabled(now);

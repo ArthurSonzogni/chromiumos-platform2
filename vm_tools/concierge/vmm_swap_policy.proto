@@ -12,6 +12,14 @@ message TbwHistoryEntry {
   uint64 size = 2;
 }
 
+// Container for multiple TbwHistoryEntry
+// The file /var/lib/vm_concierge/vmm_swap_policy/tbw_history2 is serialized
+// with TbwHistoryEntryContainer.
+message TbwHistoryEntryContainer {
+  // The entries
+  repeated TbwHistoryEntry entries = 1;
+}
+
 // A history entry for VmmSwapUsagePolicy.
 message UsageHistoryEntry {
   // The microseconds relative to Windows epoch (1601-01-01 00:00:00 UTC).
