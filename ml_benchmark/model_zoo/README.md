@@ -10,7 +10,7 @@ DUT via the `chromeos-base/ml-test-assets` package:
 
 `emerge-${BOARD} ml-test-assets && cros deploy <DUT> ml-test-assets`
 
-The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.3.tar.xz)
+The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.4.tar.xz)
 
 ## Tools
 
@@ -40,7 +40,8 @@ Example usage:
 
 ### Video Conferencing
 
-**Note: These models are CNN based.**
+* **Note 1 : These models are CNN based.**
+* **Note 2 : selfie_segmentation_landscape_256x256 has an F16 and F32 variant, indicated by the filename.**
 
 The `convolution_benchmark_*_144x256` models are production model graphs with
 randomized weights, so we don't measure the accuracy of these models.
