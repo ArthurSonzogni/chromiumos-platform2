@@ -20,6 +20,16 @@ TEST(IPFamily, ToString) {
   EXPECT_EQ(ToString(IPFamily::kIPv6), "IPv6");
 }
 
+TEST(IPAddressTest, FamilyConstructor) {
+  constexpr IPAddress ipv4_default(IPFamily::kIPv4);
+  EXPECT_EQ(ipv4_default.GetFamily(), IPFamily::kIPv4);
+  EXPECT_TRUE(ipv4_default.ToIPv4Address()->IsZero());
+
+  constexpr IPAddress ipv6_default(IPFamily::kIPv6);
+  EXPECT_EQ(ipv6_default.GetFamily(), IPFamily::kIPv6);
+  EXPECT_TRUE(ipv6_default.ToIPv6Address()->IsZero());
+}
+
 TEST(IPAddressTest, IPv4Constructor) {
   constexpr IPv4Address ipv4_addr(192, 168, 10, 1);
   constexpr IPAddress address(ipv4_addr);
@@ -151,6 +161,16 @@ TEST(IPCIDR, CreateFromAddressAndPrefix) {
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv6_addr), 0));
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv6_addr), 64));
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv6_addr), 128));
+}
+
+TEST(IPCIDR, FamilyConstructor) {
+  constexpr IPCIDR ipv4_default(IPFamily::kIPv4);
+  EXPECT_EQ(ipv4_default.GetFamily(), IPFamily::kIPv4);
+  EXPECT_EQ(ipv4_default.ToString(), "0.0.0.0/0");
+
+  constexpr IPCIDR ipv6_default(IPFamily::kIPv6);
+  EXPECT_EQ(ipv6_default.GetFamily(), IPFamily::kIPv6);
+  EXPECT_EQ(ipv6_default.ToString(), "::/0");
 }
 
 TEST(IPCIDR, GetPrefixAddress) {

@@ -47,6 +47,13 @@ class NET_BASE_EXPORT IPAddress {
   static std::optional<IPAddress> CreateFromBytes(
       base::span<const uint8_t> bytes);
 
+  // Creates the IPAddress by the family. The created address is all-zero.
+  // (i.e. "0.0.0.0" for IPv4, "::" for IPv6)
+  explicit constexpr IPAddress(IPFamily family)
+      : address_(family == IPFamily::kIPv4
+                     ? std::variant<IPv4Address, IPv6Address>(IPv4Address())
+                     : std::variant<IPv4Address, IPv6Address>(IPv6Address())) {}
+
   explicit constexpr IPAddress(const IPv4Address& address)
       : address_(address) {}
   explicit constexpr IPAddress(const IPv6Address& address)
@@ -95,6 +102,13 @@ class NET_BASE_EXPORT IPCIDR {
   // std::nullopt if the prefix length is invalid.
   static std::optional<IPCIDR> CreateFromAddressAndPrefix(
       const IPAddress& address, int prefix_length);
+
+  // Creates the IPCIDR by the family. The created CIDR is all-zero.
+  // (i.e. "0.0.0.0/0" for IPv4, "::/0" for IPv6)
+  explicit constexpr IPCIDR(IPFamily family)
+      : cidr_(family == IPFamily::kIPv4
+                  ? std::variant<IPv4CIDR, IPv6CIDR>(IPv4CIDR())
+                  : std::variant<IPv4CIDR, IPv6CIDR>(IPv6CIDR())) {}
 
   explicit constexpr IPCIDR(const IPv4CIDR& cidr) : cidr_(cidr) {}
   explicit constexpr IPCIDR(const IPv6CIDR& cidr) : cidr_(cidr) {}
