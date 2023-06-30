@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 // Ignore Wconversion warnings in dbus headers.
@@ -38,12 +39,29 @@ class FakeShillClient : public ShillClient {
   explicit FakeShillClient(scoped_refptr<dbus::Bus> bus, System* system)
       : ShillClient(bus, system) {}
 
-  std::pair<Device, Device> GetDefaultDevices() override {
-    Device default_logical_device = {.type = Device::Type::kUnknown,
-                                     .ifname = fake_default_logical_ifname_};
-    Device default_physical_device = {.type = Device::Type::kUnknown,
-                                      .ifname = fake_default_physical_ifname_};
-    return std::make_pair(default_logical_device, default_physical_device);
+  std::vector<dbus::ObjectPath> GetServices() override {
+    std::vector<dbus::ObjectPath> services;
+    if (!fake_default_logical_ifname_.empty()) {
+      services.emplace_back(fake_default_logical_ifname_);
+    }
+    if (!fake_default_physical_ifname_.empty()) {
+      services.emplace_back(fake_default_physical_ifname_);
+    }
+    return services;
+  }
+
+  std::optional<Device> GetDeviceFromServicePath(
+      const dbus::ObjectPath& service_path) override {
+    Device device = {.type = Device::Type::kUnknown};
+    if (service_path.value() == fake_default_logical_ifname_) {
+      device.ifname = fake_default_logical_ifname_;
+      return device;
+    }
+    if (service_path.value() == fake_default_physical_ifname_) {
+      device.ifname = fake_default_physical_ifname_;
+      return device;
+    }
+    return std::nullopt;
   }
 
   void SetFakeDefaultLogicalDevice(const std::string& ifname) {

@@ -72,7 +72,7 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
                      weak_factory_.GetWeakPtr()));
   // Shill client needs to know about the current default devices in case the
   // default devices are available prior to the client.
-  SetDefaultDevices(GetDefaultDevices());
+  UpdateDefaultDevices();
 }
 
 const ShillClient::Device& ShillClient::default_logical_device() const {
@@ -106,19 +106,7 @@ void ShillClient::ScanDevices() {
   UpdateDevices(it->second);
 }
 
-std::pair<ShillClient::Device, ShillClient::Device>
-ShillClient::GetDefaultDevices() {
-  brillo::VariantDictionary manager_properties;
-  if (!manager_proxy_->GetProperties(&manager_properties, nullptr)) {
-    LOG(ERROR) << "Unable to get Manager properties";
-    return {};
-  }
-  auto services =
-      brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
-          manager_properties, shill::kServicesProperty);
-
-  Device default_logical_device = {};
-  Device default_physical_device = {};
+void ShillClient::UpdateDefaultDevices() {
   // Iterate through Services listed as the shill Manager "Services" properties.
   // This Service DBus path list is built in shill with the Manager function
   // EnumerateAvailableServices() which uses the vector of Services with the
@@ -130,55 +118,86 @@ ShillClient::GetDefaultDevices() {
   //     always be in the "online" state.
   //   - the shill Manager Technology order property has VPN in front
   //     (Manager.GetServiceOrder).
-  for (const auto& service_path : services) {
-    brillo::VariantDictionary service_properties;
-    org::chromium::flimflam::ServiceProxy service_proxy(bus_, service_path);
-    if (!service_proxy.GetProperties(&service_properties, nullptr)) {
-      LOG(ERROR) << "Unable to get Service properties for "
-                 << service_path.value();
-      return {};
-    }
-
-    // Check if there is any connected Service at the moment.
-    if (const auto it = service_properties.find(shill::kIsConnectedProperty);
-        it == service_properties.end()) {
-      LOG(ERROR) << "Service " << service_path.value() << " missing property "
-                 << shill::kIsConnectedProperty;
-      return {};
-    } else if (!it->second.TryGet<bool>()) {
-      return {};
-    }
-
-    std::string service_type = brillo::GetVariantValueOrDefault<std::string>(
-        service_properties, shill::kTypeProperty);
-    if (service_type.empty()) {
-      LOG(ERROR) << "Service " << service_path.value() << " missing property "
-                 << shill::kTypeProperty;
-      return {};
-    }
-
-    auto device_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
-        service_properties, shill::kDeviceProperty);
-    if (!device_path.IsValid()) {
-      LOG(WARNING) << "Service " << service_path.value() << " missing property "
-                   << shill::kDeviceProperty;
-      return {};
-    }
-
-    if (ParseDeviceType(service_type) == ShillClient::Device::Type::kVPN) {
-      GetDeviceProperties(device_path, &default_logical_device);
-    } else {
-      GetDeviceProperties(device_path, &default_physical_device);
-      // When there is no VPN connected, the default logical device corresponds
-      // to the default physical device.
-      if (default_logical_device.type == ShillClient::Device::Type::kUnknown) {
-        default_logical_device = default_physical_device;
-      }
-      // Stops once the first default physical Device has been found.
-      break;
-    }
+  const auto services = GetServices();
+  if (services.empty()) {
+    SetDefaultLogicalDevice({});
+    SetDefaultPhysicalDevice({});
+    return;
   }
-  return std::make_pair(default_logical_device, default_physical_device);
+  auto first_device = GetDeviceFromServicePath(services[0]);
+  if (!first_device) {
+    SetDefaultLogicalDevice({});
+    SetDefaultPhysicalDevice({});
+    return;
+  }
+  SetDefaultLogicalDevice(*first_device);
+
+  // No VPN connection, the logical and physical Devices are the same.
+  if (first_device->type != ShillClient::Device::Type::kVPN) {
+    SetDefaultPhysicalDevice(*first_device);
+    return;
+  }
+
+  // In case of a VPN, also get the physical Device properties.
+  if (services.size() < 2) {
+    LOG(ERROR) << "No physical Service found";
+    SetDefaultPhysicalDevice({});
+    return;
+  }
+  auto second_device = GetDeviceFromServicePath(services[1]);
+  if (!second_device) {
+    LOG(ERROR) << "Could not update the default physical Device";
+    SetDefaultPhysicalDevice({});
+    return;
+  }
+  SetDefaultPhysicalDevice(*second_device);
+}
+
+std::vector<dbus::ObjectPath> ShillClient::GetServices() {
+  brillo::VariantDictionary manager_properties;
+  if (!manager_proxy_->GetProperties(&manager_properties, nullptr)) {
+    LOG(ERROR) << "Unable to get Manager properties";
+    return {};
+  }
+  return brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
+      manager_properties, shill::kServicesProperty);
+}
+
+std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
+    const dbus::ObjectPath& service_path) {
+  brillo::VariantDictionary service_properties;
+  org::chromium::flimflam::ServiceProxy service_proxy(bus_, service_path);
+  if (!service_proxy.GetProperties(&service_properties, nullptr)) {
+    LOG(ERROR) << "Unable to get Service properties for "
+               << service_path.value();
+    return std::nullopt;
+  }
+
+  // Check if there is any connected Service at the moment.
+  if (const auto it = service_properties.find(shill::kIsConnectedProperty);
+      it == service_properties.end()) {
+    LOG(ERROR) << "Service " << service_path.value() << " missing property "
+               << shill::kIsConnectedProperty;
+    return std::nullopt;
+  } else if (!it->second.TryGet<bool>()) {
+    // There is no default Device if there is no connected Service.
+    LOG(INFO) << "Service " << service_path.value() << " was not connected";
+    return std::nullopt;
+  }
+
+  auto device_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
+      service_properties, shill::kDeviceProperty);
+  if (!device_path.IsValid()) {
+    LOG(ERROR) << "Service " << service_path.value() << " missing property "
+               << shill::kDeviceProperty;
+    return std::nullopt;
+  }
+
+  Device device = {};
+  if (!GetDeviceProperties(device_path, &device)) {
+    return std::nullopt;
+  }
+  return device;
 }
 
 void ShillClient::OnManagerPropertyChangeRegistration(
@@ -201,33 +220,35 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
 
   // All registered DefaultDeviceChangeHandler objects should be called if
   // the default network has changed or if shill::kDevicesProperty has changed.
-  SetDefaultDevices(GetDefaultDevices());
+  UpdateDefaultDevices();
 }
 
-void ShillClient::SetDefaultDevices(const std::pair<Device, Device>& devices) {
-  auto default_logical_device = devices.first;
-  auto default_physical_device = devices.second;
-  if (default_logical_device_.ifname != default_logical_device.ifname) {
-    LOG(INFO) << "Default network changed from " << default_logical_device_
-              << " to " << default_logical_device;
-
-    for (const auto& h : default_logical_device_handlers_) {
-      if (!h.is_null())
-        h.Run(default_logical_device, default_logical_device_);
-    }
-    default_logical_device_ = default_logical_device;
+void ShillClient::SetDefaultLogicalDevice(const Device& device) {
+  if (default_logical_device_.ifname == device.ifname) {
+    return;
   }
-
-  if (default_physical_device_.ifname != default_physical_device.ifname) {
-    LOG(INFO) << "Default physical device changed from "
-              << default_physical_device_ << " to " << default_physical_device;
-
-    for (const auto& h : default_physical_device_handlers_) {
-      if (!h.is_null())
-        h.Run(default_physical_device, default_physical_device_);
+  LOG(INFO) << "Default network changed from " << default_logical_device_
+            << " to " << device;
+  for (const auto& h : default_logical_device_handlers_) {
+    if (!h.is_null()) {
+      h.Run(device, default_logical_device_);
     }
-    default_physical_device_ = default_physical_device;
   }
+  default_logical_device_ = device;
+}
+
+void ShillClient::SetDefaultPhysicalDevice(const Device& device) {
+  if (default_physical_device_.ifname == device.ifname) {
+    return;
+  }
+  LOG(INFO) << "Default physical device changed from "
+            << default_physical_device_ << " to " << device;
+  for (const auto& h : default_physical_device_handlers_) {
+    if (!h.is_null()) {
+      h.Run(device, default_physical_device_);
+    }
+  }
+  default_physical_device_ = device;
 }
 
 void ShillClient::RegisterDefaultLogicalDeviceChangedHandler(
@@ -445,27 +466,29 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   org::chromium::flimflam::DeviceProxy proxy(bus_, device_path);
   brillo::VariantDictionary props;
   if (!proxy.GetProperties(&props, nullptr)) {
-    LOG(WARNING) << "Unable to get shill Device properties for "
-                 << device_path.value();
+    LOG(ERROR) << "Unable to get shill Device properties for "
+               << device_path.value();
     return false;
   }
 
   const auto& type_it = props.find(shill::kTypeProperty);
   if (type_it == props.end()) {
-    LOG(WARNING) << "shill Device properties is missing Type for "
-                 << device_path.value();
+    LOG(ERROR) << "shill Device properties is missing Type for "
+               << device_path.value();
     return false;
   }
   const std::string& type_str = type_it->second.TryGet<std::string>();
   output->type = ParseDeviceType(type_str);
-  if (output->type == Device::Type::kUnknown)
-    LOG(WARNING) << "Unknown shill Device type " << type_str << " for "
-                 << device_path.value();
+  if (output->type == Device::Type::kUnknown) {
+    LOG(ERROR) << "Unknown shill Device type " << type_str << " for "
+               << device_path.value();
+    return false;
+  }
 
   const auto& interface_it = props.find(shill::kInterfaceProperty);
   if (interface_it == props.end()) {
-    LOG(WARNING) << "shill Device properties is missing Interface for "
-                 << device_path.value();
+    LOG(ERROR) << "shill Device properties is missing Interface for "
+               << device_path.value();
     return false;
   }
   output->shill_device_interface_property =
@@ -475,7 +498,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   if (output->type == Device::Type::kCellular) {
     const auto& it = props.find(shill::kPrimaryMultiplexedInterfaceProperty);
     if (it == props.end()) {
-      LOG(WARNING) << "shill Device properties is missing "
+      LOG(WARNING) << "shill Cellular Device properties is missing "
                    << shill::kPrimaryMultiplexedInterfaceProperty << " for "
                    << device_path.value();
     } else {
@@ -493,8 +516,8 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   } else {
     const auto it = if_nametoindex_.find(output->ifname);
     if (it == if_nametoindex_.end()) {
-      LOG(WARNING) << "Could not obtain the interface index of "
-                   << output->ifname;
+      LOG(ERROR) << "Could not obtain the interface index of "
+                 << output->ifname;
       return false;
     }
     output->ifindex = it->second;
@@ -502,8 +525,8 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
 
   const auto& ipconfigs_it = props.find(shill::kIPConfigsProperty);
   if (ipconfigs_it == props.end()) {
-    LOG(WARNING) << "shill Device properties is missing IPConfigs for "
-                 << device_path.value();
+    LOG(ERROR) << "shill Device properties is missing IPConfigs for "
+               << device_path.value();
     return false;
   }
   output->ipconfig = ParseIPConfigsProperty(device_path, ipconfigs_it->second);

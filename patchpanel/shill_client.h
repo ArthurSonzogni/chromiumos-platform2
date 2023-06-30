@@ -195,15 +195,25 @@ class ShillClient {
                               const brillo::Any& property_value);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
-  // by |device_path|. Returns false if an error occurs. Notes that this method
+  // by |device_path|. Returns false if an error occurs. Note that this method
   // will block the current thread.
   virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
                                    Device* output);
 
-  // Returns the current default logical and physical shill Device for the
-  // system, or an empty pair of shill Device result when the system has no
-  // default network.
-  virtual std::pair<Device, Device> GetDefaultDevices();
+  // Updates the current default logical and physical shill Devices for the
+  // system, and notifies listeners if there was any change.
+  void UpdateDefaultDevices();
+
+  // Returns the DBus paths of all shill Services. Can be overridden for
+  // testing.
+  virtual std::vector<dbus::ObjectPath> GetServices();
+
+  // Fetches shill Device DBus properties of the shill Device which has selected
+  // the shill Service with DBus path |service_path|. Returns std::nullopt if an
+  // error occurs or if the Service is not currently active. Note that this
+  // method will block the current thread. Can be overridden for testing.
+  virtual std::optional<Device> GetDeviceFromServicePath(
+      const dbus::ObjectPath& service_path);
 
  private:
   // Updates the list of currently known shill Devices, adding or removing
@@ -212,13 +222,16 @@ class ShillClient {
   // change.
   void UpdateDevices(const brillo::Any& property_value);
 
-  // Sets the internal variable tracking the system default logical network and
-  // default physical network. Calls the registered client handlers if the
-  // default logical network or the default physical network changed. The
-  // arguments is a pair of default logical network and default physical
-  // network. If a VPN is connected, the logical Device pertains to the
+  // Sets the internal shill Device variable tracking the system default logical
+  // network. Calls the registered client handlers if the default logical
+  // network changed. If a VPN is connected, the logical Device pertains to the
   // VPN connection.
-  void SetDefaultDevices(const std::pair<Device, Device>& devices);
+  void SetDefaultLogicalDevice(const Device& device);
+
+  // Sets the internal shill Device variable tracking the system default
+  // physical network. Calls the registered client handlers if the default
+  // physical network changed.
+  void SetDefaultPhysicalDevice(const Device& device);
 
   // Parses the |ipconfig_properties| as the IPConfigs property of the shill
   // Device identified by |device_path|, which should be a list of object paths
