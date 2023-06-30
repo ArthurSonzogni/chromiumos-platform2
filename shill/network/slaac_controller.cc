@@ -6,6 +6,7 @@
 
 #include <linux/rtnetlink.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -84,24 +85,27 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
   const auto addr_bytes = msg.HasAttribute(IFA_LOCAL)
                               ? msg.GetAttribute(IFA_LOCAL)
                               : msg.GetAttribute(IFA_ADDRESS);
-  const auto address = IPAddress::CreateFromByteStringAndPrefix(
-      msg.family(), addr_bytes, status.prefix_len);
-  if (!address.has_value()) {
-    LOG(ERROR) << "Failed to create IPAddress: length="
+  const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(
+      {addr_bytes.GetConstData(), addr_bytes.GetLength()});
+  if (!ipv6_addr) {
+    LOG(ERROR) << "Failed to create IPv6Address: address length="
                << addr_bytes.GetLength();
     return;
   }
-
-  std::vector<AddressData>::iterator iter;
-  for (iter = slaac_addresses_.begin(); iter != slaac_addresses_.end();
-       ++iter) {
-    if (*address == iter->address) {
-      break;
-    }
+  const auto ipv6_cidr = net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+      *ipv6_addr, status.prefix_len);
+  if (!ipv6_cidr) {
+    LOG(ERROR) << "Failed to create IPv6CIDR: prefix length="
+               << status.prefix_len;
+    return;
   }
+
+  const auto iter = std::find_if(
+      slaac_addresses_.begin(), slaac_addresses_.end(),
+      [&](const AddressData& data) { return data.cidr == *ipv6_cidr; });
   if (iter != slaac_addresses_.end()) {
     if (msg.mode() == RTNLMessage::kModeDelete) {
-      LOG(INFO) << "RTNL cache: Delete address " << address->ToString()
+      LOG(INFO) << "RTNL cache: Delete address " << ipv6_cidr->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.erase(iter);
     } else {
@@ -110,14 +114,14 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     }
   } else {
     if (msg.mode() == RTNLMessage::kModeAdd) {
-      LOG(INFO) << "RTNL cache: Add address " << address->ToString()
+      LOG(INFO) << "RTNL cache: Add address " << ipv6_cidr->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.insert(
           slaac_addresses_.begin(),
-          AddressData(std::move(*address), status.flags, status.scope));
+          AddressData(*ipv6_cidr, status.flags, status.scope));
     } else if (msg.mode() == RTNLMessage::kModeDelete) {
       LOG(WARNING) << "RTNL cache: Deleting non-cached address "
-                   << address->ToString() << " for interface "
+                   << ipv6_cidr->ToString() << " for interface "
                    << interface_index_;
     }
   }
@@ -198,10 +202,10 @@ void SLAACController::RDNSSExpired() {
   }
 }
 
-std::vector<IPAddress> SLAACController::GetAddresses() const {
-  std::vector<IPAddress> result;
+std::vector<net_base::IPv6CIDR> SLAACController::GetAddresses() const {
+  std::vector<net_base::IPv6CIDR> result;
   for (const auto& address_data : slaac_addresses_) {
-    result.push_back(address_data.address);
+    result.push_back(address_data.cidr);
   }
   return result;
 }

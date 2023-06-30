@@ -49,7 +49,7 @@ class SLAACController {
   // Return the list of all SLAAC-configured addresses. The order is guaranteed
   // to match kernel preference so that the first element is always the
   // preferred address.
-  mockable std::vector<IPAddress> GetAddresses() const;
+  mockable std::vector<net_base::IPv6CIDR> GetAddresses() const;
 
   // Get the IPv6 DNS server addresses received from RDNSS.
   mockable std::vector<net_base::IPv6Address> GetRDNSSAddresses() const;
@@ -62,11 +62,11 @@ class SLAACController {
   // The data struct to store IP address received from RTNL together with its
   // flags and scope information.
   struct AddressData {
-    AddressData(const IPAddress& address_in,
+    AddressData(const net_base::IPv6CIDR& cidr_in,
                 unsigned char flags_in,
                 unsigned char scope_in)
-        : address(address_in), flags(flags_in), scope(scope_in) {}
-    IPAddress address;
+        : cidr(cidr_in), flags(flags_in), scope(scope_in) {}
+    net_base::IPv6CIDR cidr;
     unsigned char flags;
     unsigned char scope;
   };

@@ -569,14 +569,9 @@ void Network::OnIPv6AddressChanged() {
   }
 
   const auto& primary_address = slaac_addresses[0];
-  CHECK_EQ(primary_address.family(), IPAddress::kFamilyIPv6);
   IPConfig::Properties properties;
-  if (!primary_address.IntoString(&properties.address)) {
-    LOG(ERROR) << logging_tag_
-               << ": Unable to convert IPv6 address into a string";
-    return;
-  }
-  properties.subnet_prefix = primary_address.prefix();
+  properties.address = primary_address.address().ToString();
+  properties.subnet_prefix = primary_address.prefix_length();
 
   RoutingTableEntry default_route(IPAddress::kFamilyIPv6);
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
@@ -605,7 +600,7 @@ void Network::OnIPv6AddressChanged() {
   std::string sep;
   for (const auto& addr : slaac_addresses) {
     addresses_str += sep;
-    addresses_str += addr.ToString();
+    addresses_str += addr.address().ToString();
     sep = ",";
   }
   LOG(INFO) << logging_tag_ << ": Updating IPv6 addresses to [" << addresses_str
@@ -756,7 +751,9 @@ NetworkPriority Network::GetPriority() {
 std::vector<IPAddress> Network::GetAddresses() const {
   std::vector<IPAddress> result;
   if (slaac_controller_) {
-    result = slaac_controller_->GetAddresses();
+    for (const auto& slaac_addr : slaac_controller_->GetAddresses()) {
+      result.push_back(IPAddress(slaac_addr));
+    }
   }
 
   const auto insert_addr = [&result](const std::string& addr_str, int prefix) {

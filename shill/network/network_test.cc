@@ -1111,10 +1111,10 @@ class NetworkStartTest : public NetworkTest {
           entry->gateway = *IPAddress::CreateFromString(kIPv6SLAACGateway);
           return true;
         }));
-    static IPAddress addr = *IPAddress::CreateFromStringAndPrefix(
+    const auto cidr = *net_base::IPv6CIDR::CreateFromStringAndPrefix(
         kIPv6SLAACAddress, kIPv6SLAACPrefix);
     EXPECT_CALL(*slaac_controller_, GetAddresses())
-        .WillRepeatedly(Return(std::vector<IPAddress>{addr}));
+        .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{cidr}));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
     dispatcher_.task_environment().RunUntilIdle();
   }
@@ -1445,9 +1445,11 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   ON_CALL(*connection_, IsIPv6()).WillByDefault(Return(true));
 
   // Changing the address should trigger the connection update.
-  IPAddress new_addr = *IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
+  const auto new_addr =
+      *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
   EXPECT_CALL(*slaac_controller_, GetAddresses())
-      .WillRepeatedly(Return(std::vector<IPAddress>{new_addr}));
+      .WillRepeatedly(Return(
+          std::vector<net_base::IPv6CIDR>{net_base::IPv6CIDR(new_addr)}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1467,9 +1469,9 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 prefix changes, a signal is emitted.
-  new_addr.set_prefix(64);
   EXPECT_CALL(*slaac_controller_, GetAddresses())
-      .WillRepeatedly(Return(std::vector<IPAddress>{new_addr}));
+      .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{
+          *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64)}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
