@@ -588,6 +588,7 @@ type cros_shadow_file, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_tz_data_file, file_type, cros_file_type, cros_var_file_type; # It's cros_var_file_type because it can modified by user settings.
 
 type cros_iioservice_test_exec, exec_type, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_python_exec, exec_type, file_type, cros_file_type, cros_uncategorized_file_type;
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
 

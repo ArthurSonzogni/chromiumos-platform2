@@ -251,6 +251,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/local/sbin/iioservice_simpleclient u:object_r:cros_iioservice_test_exec:s0
 
 /usr/local/share/tast(/.*)?     u:object_r:cros_dev_tast_test:s0
+/usr/local/lib/python.*/lib-dynload(/.*)? u:object_r:cros_python_exec:s0
 
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
 

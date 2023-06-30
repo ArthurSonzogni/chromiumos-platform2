@@ -83,3 +83,9 @@ is_arc_vm(`
   allow cros_chromeos_install cros_iioservice_test_exec:file create_file_perms;
   ', (`cros_chromeos_install'))
 ')
+
+# Special handling for permissions that are only needed for the no_arc board reven.
+no_arc(`
+  allow cros_chromeos_install cros_python_exec:dir { create_dir_perms getattr };
+  allow cros_chromeos_install cros_python_exec:file create_file_perms;
+')
