@@ -177,6 +177,8 @@ TEST_F(ShillClientTest, DefaultDeviceChangedHandlerCalledOnNewDefaultDevice) {
   client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
   EXPECT_EQ(default_logical_device_->ifname, "eth0");
   EXPECT_EQ(default_physical_device_->ifname, "eth0");
 
@@ -184,6 +186,8 @@ TEST_F(ShillClientTest, DefaultDeviceChangedHandlerCalledOnNewDefaultDevice) {
   client_->SetFakeDefaultPhysicalDevice("wlan0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
   EXPECT_EQ(default_logical_device_->ifname, "wlan0");
   EXPECT_EQ(default_physical_device_->ifname, "wlan0");
 }
@@ -193,6 +197,8 @@ TEST_F(ShillClientTest, DefaultDeviceChangedHandlerNotCalledForSameDefault) {
   client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
   EXPECT_EQ(default_logical_device_->ifname, "eth0");
   EXPECT_EQ(default_physical_device_->ifname, "eth0");
 
@@ -222,31 +228,51 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   wlan_dev.service_path = "/service/3";
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
 
+  // There is no network initially.
+  ASSERT_EQ(nullptr, client_->default_logical_device());
+  ASSERT_EQ(nullptr, client_->default_physical_device());
+
   // One network device appears.
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultLogicalDevice("wlan0");
   client_->SetFakeDefaultPhysicalDevice("wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
   EXPECT_EQ(default_logical_device_->ifname, "wlan0");
   EXPECT_EQ(default_physical_device_->ifname, "wlan0");
+  ASSERT_NE(nullptr, client_->default_logical_device());
+  ASSERT_NE(nullptr, client_->default_physical_device());
+  EXPECT_EQ(client_->default_logical_device()->ifname, "wlan0");
+  EXPECT_EQ(client_->default_physical_device()->ifname, "wlan0");
 
-  // A second device appears.
-  default_logical_device_ = std::nullopt;
-  default_physical_device_ = std::nullopt;
+  // A second device appears, the default interface does not change yet.
   devices = {eth0_path, wlan0_path};
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  EXPECT_FALSE(default_logical_device_.has_value());
-  EXPECT_FALSE(default_physical_device_.has_value());
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
+  EXPECT_EQ(default_logical_device_->ifname, "wlan0");
+  EXPECT_EQ(default_physical_device_->ifname, "wlan0");
+  ASSERT_NE(nullptr, client_->default_logical_device());
+  ASSERT_NE(nullptr, client_->default_physical_device());
+  EXPECT_EQ(client_->default_logical_device()->ifname, "wlan0");
+  EXPECT_EQ(client_->default_physical_device()->ifname, "wlan0");
 
   // The second device becomes the default interface.
   client_->SetFakeDefaultLogicalDevice("eth0");
   client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
+  ASSERT_TRUE(default_logical_device_.has_value());
+  ASSERT_TRUE(default_physical_device_.has_value());
   EXPECT_EQ(default_logical_device_->ifname, "eth0");
   EXPECT_EQ(default_physical_device_->ifname, "eth0");
+  ASSERT_NE(nullptr, client_->default_logical_device());
+  ASSERT_NE(nullptr, client_->default_physical_device());
+  EXPECT_EQ(client_->default_logical_device()->ifname, "eth0");
+  EXPECT_EQ(client_->default_physical_device()->ifname, "eth0");
 
   // The first device disappears.
   devices = {eth0_path};
@@ -255,6 +281,8 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   // The default device is still the same.
   EXPECT_EQ(default_logical_device_->ifname, "eth0");
   EXPECT_EQ(default_physical_device_->ifname, "eth0");
+  EXPECT_EQ(client_->default_logical_device()->ifname, "eth0");
+  EXPECT_EQ(client_->default_physical_device()->ifname, "eth0");
 
   // All devices have disappeared.
   devices = {};
@@ -262,10 +290,10 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   client_->SetFakeDefaultLogicalDevice(std::nullopt);
   client_->SetFakeDefaultPhysicalDevice(std::nullopt);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  ASSERT_TRUE(default_logical_device_.has_value());
-  EXPECT_TRUE(default_logical_device_->ifname.empty());
-  ASSERT_TRUE(default_physical_device_.has_value());
-  EXPECT_TRUE(default_physical_device_->ifname.empty());
+  ASSERT_FALSE(default_logical_device_.has_value());
+  ASSERT_FALSE(default_physical_device_.has_value());
+  ASSERT_EQ(nullptr, client_->default_logical_device());
+  ASSERT_EQ(nullptr, client_->default_physical_device());
 }
 
 TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {

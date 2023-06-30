@@ -56,6 +56,18 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
   return it != enum2str.end() ? it->second : "Unknown";
 }
 
+void RunDefaultNetworkListeners(
+    const std::optional<ShillClient::Device>& new_device,
+    const std::optional<ShillClient::Device>& prev_device,
+    const std::vector<ShillClient::DefaultDeviceChangeHandler>& listeners) {
+  const auto* new_p = new_device ? new_device.operator->() : nullptr;
+  const auto* prev_p = prev_device ? prev_device.operator->() : nullptr;
+  for (const auto& h : listeners) {
+    if (!h.is_null()) {
+      h.Run(new_p, prev_p);
+    }
+  }
+}
 }  // namespace
 
 bool ShillClient::Device::IsConnected() const {
@@ -76,11 +88,17 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
 }
 
 const ShillClient::Device* ShillClient::default_logical_device() const {
-  return &default_logical_device_;
+  if (!default_logical_device_) {
+    return nullptr;
+  }
+  return default_logical_device_.operator->();
 }
 
 const ShillClient::Device* ShillClient::default_physical_device() const {
-  return &default_physical_device_;
+  if (!default_physical_device_) {
+    return nullptr;
+  }
+  return default_physical_device_.operator->();
 }
 
 const std::vector<ShillClient::Device> ShillClient::GetDevices() const {
@@ -120,37 +138,37 @@ void ShillClient::UpdateDefaultDevices() {
   //     (Manager.GetServiceOrder).
   const auto services = GetServices();
   if (services.empty()) {
-    SetDefaultLogicalDevice({});
-    SetDefaultPhysicalDevice({});
+    SetDefaultLogicalDevice(std::nullopt);
+    SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
   auto first_device = GetDeviceFromServicePath(services[0]);
   if (!first_device) {
-    SetDefaultLogicalDevice({});
-    SetDefaultPhysicalDevice({});
+    SetDefaultLogicalDevice(std::nullopt);
+    SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  SetDefaultLogicalDevice(*first_device);
+  SetDefaultLogicalDevice(first_device);
 
   // No VPN connection, the logical and physical Devices are the same.
   if (first_device->type != ShillClient::Device::Type::kVPN) {
-    SetDefaultPhysicalDevice(*first_device);
+    SetDefaultPhysicalDevice(first_device);
     return;
   }
 
   // In case of a VPN, also get the physical Device properties.
   if (services.size() < 2) {
     LOG(ERROR) << "No physical Service found";
-    SetDefaultPhysicalDevice({});
+    SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
   auto second_device = GetDeviceFromServicePath(services[1]);
   if (!second_device) {
     LOG(ERROR) << "Could not update the default physical Device";
-    SetDefaultPhysicalDevice({});
+    SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  SetDefaultPhysicalDevice(*second_device);
+  SetDefaultPhysicalDevice(second_device);
 }
 
 std::vector<dbus::ObjectPath> ShillClient::GetServices() {
@@ -223,31 +241,34 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
   UpdateDefaultDevices();
 }
 
-void ShillClient::SetDefaultLogicalDevice(const Device& device) {
-  if (default_logical_device_.ifname == device.ifname) {
+void ShillClient::SetDefaultLogicalDevice(const std::optional<Device>& device) {
+  if (!default_logical_device_ && !device) {
     return;
   }
-  LOG(INFO) << "Default network changed from " << default_logical_device_
-            << " to " << device;
-  for (const auto& h : default_logical_device_handlers_) {
-    if (!h.is_null()) {
-      h.Run(&device, &default_logical_device_);
-    }
+  if (default_logical_device_ && device &&
+      default_logical_device_->ifname == device->ifname) {
+    return;
   }
+  LOG(INFO) << "Default logical device changed from " << default_logical_device_
+            << " to " << device;
+  RunDefaultNetworkListeners(device, default_logical_device_,
+                             default_logical_device_handlers_);
   default_logical_device_ = device;
 }
 
-void ShillClient::SetDefaultPhysicalDevice(const Device& device) {
-  if (default_physical_device_.ifname == device.ifname) {
+void ShillClient::SetDefaultPhysicalDevice(
+    const std::optional<Device>& device) {
+  if (!default_physical_device_ && !device) {
+    return;
+  }
+  if (default_physical_device_ && device &&
+      default_physical_device_->ifname == device->ifname) {
     return;
   }
   LOG(INFO) << "Default physical device changed from "
             << default_physical_device_ << " to " << device;
-  for (const auto& h : default_physical_device_handlers_) {
-    if (!h.is_null()) {
-      h.Run(&device, &default_physical_device_);
-    }
-  }
+  RunDefaultNetworkListeners(device, default_physical_device_,
+                             default_physical_device_handlers_);
   default_physical_device_ = device;
 }
 
@@ -256,7 +277,9 @@ void ShillClient::RegisterDefaultLogicalDeviceChangedHandler(
   default_logical_device_handlers_.emplace_back(handler);
   // Explicitly trigger the callback once to let it know of the the current
   // default interface. The previous interface is left empty.
-  handler.Run(&default_logical_device_, nullptr);
+  if (default_logical_device_) {
+    handler.Run(default_logical_device_.operator->(), nullptr);
+  }
 }
 
 void ShillClient::RegisterDefaultPhysicalDeviceChangedHandler(
@@ -264,7 +287,9 @@ void ShillClient::RegisterDefaultPhysicalDeviceChangedHandler(
   default_physical_device_handlers_.emplace_back(handler);
   // Explicitly trigger the callback once to let it know of the the current
   // default interface. The previous interface is left empty.
-  handler.Run(&default_physical_device_, nullptr);
+  if (default_physical_device_) {
+    handler.Run(default_physical_device_.operator->(), nullptr);
+  }
 }
 
 void ShillClient::RegisterDevicesChangedHandler(
@@ -546,9 +571,10 @@ const ShillClient::Device* ShillClient::GetDevice(
     const std::string& shill_device_interface_property) const {
   // To find the VPN Device, the default logical Device must be checked
   // separately.
-  if (default_logical_device_.shill_device_interface_property ==
-      shill_device_interface_property) {
-    return &default_logical_device_;
+  if (default_logical_device_ &&
+      default_logical_device_->shill_device_interface_property ==
+          shill_device_interface_property) {
+    return default_logical_device_.operator->();
   }
   for (const auto& [_, device] : devices_) {
     if (device.shill_device_interface_property ==
@@ -608,10 +634,12 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   // TODO(b/273741099): Handle the VPN Device. Since the VPN Device is not
   // exposed in kDevicesProperty, ShillClient never registers a signal handler
   // for Device property changes on the VPN Device.
-  if (default_physical_device_.ifname == device_it->second.ifname) {
+  if (default_physical_device_ &&
+      default_physical_device_->ifname == device_it->second.ifname) {
     default_physical_device_ = device_it->second;
   }
-  if (default_logical_device_.ifname == device_it->second.ifname) {
+  if (default_logical_device_ &&
+      default_logical_device_->ifname == device_it->second.ifname) {
     default_logical_device_ = device_it->second;
   }
 
@@ -648,6 +676,21 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
   }
   return stream << ", ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
                 << ", service: " << dev.service_path << "}";
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const std::optional<ShillClient::Device>& dev) {
+  if (!dev) {
+    return stream << "none";
+  }
+  return stream << *dev;
+}
+
+std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev) {
+  if (!dev) {
+    return stream << "none";
+  }
+  return stream << *dev;
 }
 
 std::ostream& operator<<(std::ostream& stream,

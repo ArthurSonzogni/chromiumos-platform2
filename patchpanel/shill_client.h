@@ -231,12 +231,12 @@ class ShillClient {
   // network. Calls the registered client handlers if the default logical
   // network changed. If a VPN is connected, the logical Device pertains to the
   // VPN connection.
-  void SetDefaultLogicalDevice(const Device& device);
+  void SetDefaultLogicalDevice(const std::optional<Device>& device);
 
   // Sets the internal shill Device variable tracking the system default
   // physical network. Calls the registered client handlers if the default
   // physical network changed.
-  void SetDefaultPhysicalDevice(const Device& device);
+  void SetDefaultPhysicalDevice(const std::optional<Device>& device);
 
   // Parses the |ipconfig_properties| as the IPConfigs property of the shill
   // Device identified by |device_path|, which should be a list of object paths
@@ -245,11 +245,11 @@ class ShillClient {
                                   const brillo::Any& ipconfig_paths);
 
   // Tracks the system default physical network chosen by shill.
-  Device default_physical_device_;
+  std::optional<Device> default_physical_device_;
   // Tracks the system default logical network chosen by shill. This corresponds
   // to the physical or VPN shill Device associated with the default logical
   // network service.
-  Device default_logical_device_;
+  std::optional<Device> default_logical_device_;
   // Maps of all current shill physical Devices, indexed by shill Device
   // identifier. VPN Devices are ignored.
   std::map<dbus::ObjectPath, Device> devices_;
@@ -288,6 +288,9 @@ class ShillClient {
 };
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev);
+std::ostream& operator<<(std::ostream& stream,
+                         const std::optional<ShillClient::Device>& dev);
+std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev);
 std::ostream& operator<<(std::ostream& stream,
                          const ShillClient::Device::Type type);
 std::ostream& operator<<(std::ostream& stream,
