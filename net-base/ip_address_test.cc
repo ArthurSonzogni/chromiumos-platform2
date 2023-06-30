@@ -15,6 +15,11 @@ TEST(IPFamily, ToSAFamily) {
   EXPECT_EQ(ToSAFamily(IPFamily::kIPv6), AF_INET6);
 }
 
+TEST(IPFamily, ToString) {
+  EXPECT_EQ(ToString(IPFamily::kIPv4), "IPv4");
+  EXPECT_EQ(ToString(IPFamily::kIPv6), "IPv6");
+}
+
 TEST(IPAddressTest, IPv4Constructor) {
   constexpr IPv4Address ipv4_addr(192, 168, 10, 1);
   constexpr IPAddress address(ipv4_addr);

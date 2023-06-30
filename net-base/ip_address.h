@@ -28,6 +28,9 @@ enum class NET_BASE_EXPORT IPFamily {
 // Converts from IPFamily enum to sa_family_t.
 NET_BASE_EXPORT sa_family_t ToSAFamily(IPFamily family);
 
+// Converts from IPFamily enum to std::String.
+NET_BASE_EXPORT std::string ToString(IPFamily family);
+
 // Represents an family-agnostic IP address, either a IPv4 or a IPv6 address.
 class NET_BASE_EXPORT IPAddress {
  public:
@@ -131,6 +134,8 @@ class NET_BASE_EXPORT IPCIDR {
  private:
   std::variant<IPv4CIDR, IPv6CIDR> cidr_;
 };
+
+NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os, IPFamily family);
 
 NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
                                          const IPAddress& address);

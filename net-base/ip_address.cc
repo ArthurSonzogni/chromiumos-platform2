@@ -17,6 +17,15 @@ sa_family_t ToSAFamily(IPFamily family) {
   }
 }
 
+std::string ToString(IPFamily family) {
+  switch (family) {
+    case IPFamily::kIPv4:
+      return "IPv4";
+    case IPFamily::kIPv6:
+      return "IPv6";
+  }
+}
+
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
     const std::string& address_string) {
@@ -240,6 +249,11 @@ bool IPCIDR::InSameSubnetWith(const IPAddress& b) const {
 std::string IPCIDR::ToString() const {
   return std::visit([](auto&& cidr) -> std::string { return cidr.ToString(); },
                     cidr_);
+}
+
+std::ostream& operator<<(std::ostream& os, IPFamily family) {
+  os << ToString(family);
+  return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const IPAddress& address) {
