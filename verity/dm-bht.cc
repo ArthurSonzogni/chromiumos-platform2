@@ -159,6 +159,8 @@ int dm_bht_create(struct dm_bht* bht,
 
   if (std::string(alg_name) != kSha256HashName) {
     status = -EINVAL;
+    LOG(ERROR) << "Unsupported hashing algorithm: " << alg_name << "; only "
+               << kSha256HashName << " is supported";
     goto bad_hash_alg;
   }
 
@@ -232,8 +234,9 @@ int dm_bht_create(struct dm_bht* bht,
   bht->read_cb = &dm_bht_read_callback_stub;
 
   status = dm_bht_initialize_entries(bht);
-  if (status)
+  if (status) {
     goto bad_entries_alloc;
+  }
 
   /* We compute depth such that there is only be 1 block at level 0. */
   CHECK_EQ(bht->levels[0].count, 1);
