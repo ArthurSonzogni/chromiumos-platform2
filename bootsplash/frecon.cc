@@ -13,18 +13,16 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 
-#include "bootsplash/test_util.h"
-
 #include "bootsplash/frecon.h"
+#include "bootsplash/paths.h"
 
 namespace {
 
 constexpr char kFreconPath[] = "/sbin/frecon";
 constexpr char kFreconPidfile[] = "/run/frecon/pid";
-constexpr char kFreconVt[] = "/run/frecon/vt0";
 
 int GetRunningFreconPid() {
-  std::ifstream pidfile(bootsplash::GetPath(kFreconPidfile));
+  std::ifstream pidfile(paths::Get(kFreconPidfile).value());
 
   if (!pidfile.is_open()) {
     // Frecon is not running.
@@ -52,8 +50,12 @@ bool Frecon::InitFrecon() {
   }
 
   std::vector<std::string> argv = {
-      GetPath(kFreconPath), "--daemon",     "--no-login",
-      "--enable-vt1",       "--enable-osc", "--pre-create-vts",
+      paths::Get(kFreconPath).value(),
+      "--daemon",
+      "--no-login",
+      "--enable-vt1",
+      "--enable-osc",
+      "--pre-create-vts",
   };
   std::string output;
   if (!base::GetAppOutputAndError(argv, &output)) {
@@ -68,9 +70,10 @@ bool Frecon::InitFrecon() {
   }
   LOG(INFO) << "Frecon started with pid " << frecon_pid_;
 
-  frecon_vt_.open(GetPath(kFreconVt), std::ofstream::out | std::ofstream::app);
+  frecon_vt_.open(paths::Get(paths::kFreconVt).value(),
+                  std::ofstream::out | std::ofstream::app);
   if (!frecon_vt_.is_open()) {
-    LOG(ERROR) << "Failed to open " << kFreconVt;
+    LOG(ERROR) << "Failed to open " << paths::kFreconVt;
     return false;
   }
 

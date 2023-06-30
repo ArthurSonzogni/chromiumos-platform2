@@ -22,7 +22,7 @@ pkg_config("target_defaults") {
 static_library("libbootsplash") {
   sources = [
     "frecon.cc",
-    "test_util.cc",
+    "paths.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -35,10 +35,16 @@ executable("bootsplash") {
 
 if (use.test) {
   pkg_config("libchrome_test_config") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
   }
   executable("bootsplash_testrunner") {
-    sources = [ "frecon_test.cc" ]
+    sources = [
+      "frecon_test.cc",
+      "paths_test.cc",
+    ]
     run_test = true
     configs += [
       "//common-mk:test",
