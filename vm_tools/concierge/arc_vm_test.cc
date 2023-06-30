@@ -384,7 +384,11 @@ TEST(ArcVmParamsTest, GuestZramSize0) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  // TODO(b/287128076): Remove deprecated use of guest_zram_size.
   request.set_guest_zram_size(0);
+#pragma clang diagnostic pop
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=0"));
@@ -394,7 +398,11 @@ TEST(ArcVmParamsTest, GuestZramSize100) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  // TODO(b/287128076): Remove deprecated use of guest_zram_size.
   request.set_guest_zram_size(100);
+#pragma clang diagnostic pop
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=100"));
@@ -404,7 +412,11 @@ TEST(ArcVmParamsTest, GuestZramSizeMiB) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  // TODO(b/287128076): Remove deprecated use of guest_zram_size.
   request.set_guest_zram_size(100);
+#pragma clang diagnostic pop
   request.set_guest_zram_mib(100);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
