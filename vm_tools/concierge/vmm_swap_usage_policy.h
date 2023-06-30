@@ -6,6 +6,7 @@
 #define VM_TOOLS_CONCIERGE_VMM_SWAP_USAGE_POLICY_H_
 
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/containers/ring_buffer.h>
@@ -13,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
@@ -81,7 +83,8 @@ class VmmSwapUsagePolicy final {
 
   void AddEnableRecordIfMissing(base::Time time);
   void WriteEntryToFile(const UsageHistoryEntry& entry, base::Time time);
-  bool LoadFromFile(base::Time now);
+  base::expected<size_t, std::string> LoadFromFile(base::File& file,
+                                                   base::Time now);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();
 

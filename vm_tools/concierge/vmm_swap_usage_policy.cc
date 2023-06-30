@@ -16,6 +16,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/sequence_checker.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <brillo/files/file_util.h>
@@ -76,14 +78,17 @@ bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
   }
 
   // Load entries in the file and move the file offset to the tail
-  if (!LoadFromFile(time)) {
-    LOG(ERROR) << "Failed to load usage history from file";
+  auto file_size = LoadFromFile(history_file_, time);
+  if (file_size.has_value()) {
+    history_file_size_ = file_size.value();
+  } else {
+    LOG(ERROR) << "Failed to load usage history from file: " +
+                      file_size.error();
     DeleteFile();
     usage_history_.Clear();
-    return false;
   }
 
-  return true;
+  return file_size.has_value();
 }
 
 void VmmSwapUsagePolicy::OnEnabled(base::Time time) {
@@ -250,34 +255,27 @@ void VmmSwapUsagePolicy::WriteEntryToFile(const UsageHistoryEntry& entry,
   }
 }
 
-bool VmmSwapUsagePolicy::LoadFromFile(base::Time now) {
+base::expected<size_t, std::string> VmmSwapUsagePolicy::LoadFromFile(
+    base::File& file, base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!history_file_.IsValid()) {
-    LOG(ERROR) << "Usage history file is invalid to load";
-    return false;
+  if (!file.IsValid()) {
+    return base::unexpected("usage history file is invalid to load");
   }
 
-  int64_t file_size = history_file_.GetLength();
+  int64_t file_size = file.GetLength();
   if (file_size < 0) {
-    LOG(ERROR) << "Failed to get length of history file: "
-               << history_file_.GetLastFileError();
-    DeleteFile();
-    return false;
+    return base::unexpected("get length of history file: " +
+                            file.ErrorToString(file.GetLastFileError()));
   } else if (file_size > kMaxFileSize) {
     // Validates the file size because this loads all entries at once.
-    LOG(ERROR) << "Usage history file: " << file_size << " is bigger than "
-               << kMaxFileSize;
-    DeleteFile();
-    return false;
-  } else {
-    history_file_size_ = file_size;
+    return base::unexpected(
+        base::StrCat({"usage history file: ", base::NumberToString(file_size),
+                      " is bigger than ", base::NumberToString(kMaxFileSize)}));
   }
 
   UsageHistoryEntryContainer container;
-  if (!container.ParseFromFileDescriptor(history_file_.GetPlatformFile())) {
-    LOG(ERROR) << "Failed to parse usage history";
-    DeleteFile();
-    return false;
+  if (!container.ParseFromFileDescriptor(file.GetPlatformFile())) {
+    return base::unexpected("parse usage history");
   }
   base::Time previous_time;
   std::optional<base::Time> shutdown_time;
@@ -286,19 +284,18 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::Time now) {
         base::Microseconds(entry.start_time_us()));
     base::TimeDelta duration = base::Microseconds(entry.duration_us());
     if ((now - time).is_negative()) {
-      LOG(WARNING) << "Usage history file has invalid time (too new).";
-      return false;
+      return base::unexpected("usage history file has invalid time (too new)");
     } else if ((time - previous_time).is_negative()) {
-      LOG(WARNING) << "Usage history file has invalid time (old than lastest).";
-      return false;
+      return base::unexpected(
+          "usage history file has invalid time (old than lastest)");
     }
 
     if (entry.is_shutdown()) {
       shutdown_time = time;
     } else {
       if (duration.is_negative()) {
-        LOG(WARNING) << "Usage history file has invalid duration (negative).";
-        return false;
+        return base::unexpected(
+            "usage history file has invalid duration (negative)");
       }
       if (time + duration > now - kUsageHistoryNumWeeks * WEEK) {
         struct SwapPeriod period_entry;
@@ -330,7 +327,7 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::Time now) {
     }
   }
 
-  return true;
+  return file_size;
 }
 
 bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {

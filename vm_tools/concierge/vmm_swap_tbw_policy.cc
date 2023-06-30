@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -15,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -90,15 +92,18 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
     history_file_ = base::File(history_file_path_, base::File::FLAG_OPEN |
                                                        base::File::FLAG_READ |
                                                        base::File::FLAG_WRITE);
-    if (LoadFromFile(now)) {
+    auto num_entries = LoadFromFile(history_file_, now);
+    if (num_entries.has_value()) {
+      entries_in_file_ = num_entries.value();
       return true;
+    } else {
+      LOG(ERROR) << "Failed to load tbw history file: " << num_entries.error();
     }
   } else {
     LOG(ERROR) << "Failed to create tbw history file: "
                << history_file_.error_details();
   }
 
-  LOG(ERROR) << "Failed to load tbw history file. Use pessimisitic history.";
   DeleteFile();
 
   // Initialize pessimistic entries as fallback.
@@ -156,15 +161,14 @@ bool VmmSwapTbwPolicy::CanSwapOut(base::Time time) const {
          tbw_1day < target_1day;
 }
 
-bool VmmSwapTbwPolicy::LoadFromFile(base::Time now) {
+base::expected<size_t, std::string> VmmSwapTbwPolicy::LoadFromFile(
+    base::File& file, base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!history_file_.IsValid()) {
-    LOG(ERROR) << "Failed to open tbw history file: "
-               << history_file_.error_details();
-    return false;
+  if (!file.IsValid()) {
+    return base::unexpected("usage history file is invalid to load");
   }
-  google::protobuf::io::FileInputStream input_stream(
-      history_file_.GetPlatformFile());
+  int entries_in_file = 0;
+  google::protobuf::io::FileInputStream input_stream(file.GetPlatformFile());
   TbwHistoryEntry entry;
   base::Time previous_time;
   while (true) {
@@ -176,38 +180,35 @@ bool VmmSwapTbwPolicy::LoadFromFile(base::Time now) {
       // TbwHistoryEntry message is less than 127 bytes. The MSB is reserved
       // for future extensibility.
       if (*message_size > 127) {
-        LOG(ERROR) << "Tbw history message size is invalid: " << *message_size;
-        return false;
+        return base::unexpected("tbw history message size is invalid: " +
+                                base::NumberToString(*message_size));
       }
       // Consume 1 byte for message size field.
       input_stream.BackUp(size - 1);
     } else if (input_stream.GetErrno()) {
-      LOG(ERROR) << "Failed to parse tbw history message size: errno: "
-                 << input_stream.GetErrno();
-      return false;
+      return base::unexpected("parse tbw history message size: errno: " +
+                              base::NumberToString(input_stream.GetErrno()));
     } else {
       // EOF
       break;
     }
 
     if (!entry.ParseFromBoundedZeroCopyStream(&input_stream, *message_size)) {
-      LOG(ERROR) << "Failed to parse tbw history entry";
-      return false;
+      return base::unexpected("parse tbw history entry");
     }
     base::Time time = base::Time::FromDeltaSinceWindowsEpoch(
         base::Microseconds(entry.time_us()));
     if ((now - time).is_negative()) {
-      LOG(WARNING) << "Tbw history file has invalid time (too new).";
-      return false;
+      return base::unexpected("tbw history file has invalid time (too new)");
     } else if ((time - previous_time).is_negative()) {
-      LOG(WARNING) << "Tbw history file has invalid time (old than lastest).";
-      return false;
+      return base::unexpected(
+          "tbw history file has invalid time (old than lastest)");
     }
     AppendEntry(entry.size(), time);
-    entries_in_file_++;
+    entries_in_file++;
     previous_time = time;
   }
-  return true;
+  return entries_in_file;
 }
 
 void VmmSwapTbwPolicy::AppendEntry(uint64_t bytes_written, base::Time time) {

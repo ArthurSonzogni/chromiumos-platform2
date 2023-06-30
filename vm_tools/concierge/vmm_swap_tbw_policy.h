@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/containers/ring_buffer.h>
@@ -14,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "vm_tools/concierge/byte_unit.h"
 
@@ -92,7 +94,8 @@ class VmmSwapTbwPolicy final {
   base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
   base::File history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
 
-  bool LoadFromFile(base::Time now);
+  base::expected<size_t, std::string> LoadFromFile(base::File& file,
+                                                   base::Time now);
   void AppendEntry(uint64_t bytes_written, base::Time time);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();
