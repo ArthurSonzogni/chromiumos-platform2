@@ -112,20 +112,136 @@ TEST(ConvertFromKeymasterMessage, Uint8Vector) {
 }
 
 TEST(ConvertFromKeymasterMessage, EnumConversionKeyFormat) {
-  // Convert
-  keymaster_key_format_t output =
-      ConvertEnum(arc::mojom::keymint::KeyFormat::PKCS8);
-
   // Verify.
-  EXPECT_EQ(output, KM_KEY_FORMAT_PKCS8);
+  EXPECT_EQ(KM_KEY_FORMAT_PKCS8,
+            ConvertEnum(arc::mojom::keymint::KeyFormat::PKCS8));
+  EXPECT_EQ(KM_KEY_FORMAT_X509,
+            ConvertEnum(arc::mojom::keymint::KeyFormat::X509));
+  EXPECT_EQ(KM_KEY_FORMAT_RAW,
+            ConvertEnum(arc::mojom::keymint::KeyFormat::RAW));
 }
 
 TEST(ConvertFromKeymasterMessage, EnumConversionTag) {
-  // Convert
-  keymaster_tag_t output = ConvertEnum(arc::mojom::keymint::Tag::CALLER_NONCE);
-
   // Verify.
-  EXPECT_EQ(output, KM_TAG_CALLER_NONCE);
+  // TODO(b/274723521): Add KM_TAG_HARDWARE_TYPE
+  EXPECT_EQ(KM_TAG_PURPOSE, ConvertEnum(arc::mojom::keymint::Tag::PURPOSE));
+  EXPECT_EQ(KM_TAG_ALGORITHM, ConvertEnum(arc::mojom::keymint::Tag::ALGORITHM));
+  EXPECT_EQ(KM_TAG_KEY_SIZE, ConvertEnum(arc::mojom::keymint::Tag::KEY_SIZE));
+  EXPECT_EQ(KM_TAG_BLOCK_MODE,
+            ConvertEnum(arc::mojom::keymint::Tag::BLOCK_MODE));
+  EXPECT_EQ(KM_TAG_DIGEST, ConvertEnum(arc::mojom::keymint::Tag::DIGEST));
+  EXPECT_EQ(KM_TAG_PADDING, ConvertEnum(arc::mojom::keymint::Tag::PADDING));
+  EXPECT_EQ(KM_TAG_CALLER_NONCE,
+            ConvertEnum(arc::mojom::keymint::Tag::CALLER_NONCE));
+  EXPECT_EQ(KM_TAG_MIN_MAC_LENGTH,
+            ConvertEnum(arc::mojom::keymint::Tag::MIN_MAC_LENGTH));
+  EXPECT_EQ(KM_TAG_EC_CURVE, ConvertEnum(arc::mojom::keymint::Tag::EC_CURVE));
+  EXPECT_EQ(KM_TAG_RSA_PUBLIC_EXPONENT,
+            ConvertEnum(arc::mojom::keymint::Tag::RSA_PUBLIC_EXPONENT));
+  EXPECT_EQ(KM_TAG_INCLUDE_UNIQUE_ID,
+            ConvertEnum(arc::mojom::keymint::Tag::INCLUDE_UNIQUE_ID));
+  EXPECT_EQ(KM_TAG_RSA_OAEP_MGF_DIGEST,
+            ConvertEnum(arc::mojom::keymint::Tag::RSA_OAEP_MGF_DIGEST));
+  EXPECT_EQ(KM_TAG_BOOTLOADER_ONLY,
+            ConvertEnum(arc::mojom::keymint::Tag::BOOTLOADER_ONLY));
+  EXPECT_EQ(KM_TAG_ROLLBACK_RESISTANCE,
+            ConvertEnum(arc::mojom::keymint::Tag::ROLLBACK_RESISTANCE));
+  EXPECT_EQ(KM_TAG_EARLY_BOOT_ONLY,
+            ConvertEnum(arc::mojom::keymint::Tag::EARLY_BOOT_ONLY));
+  EXPECT_EQ(KM_TAG_ACTIVE_DATETIME,
+            ConvertEnum(arc::mojom::keymint::Tag::ACTIVE_DATETIME));
+  EXPECT_EQ(KM_TAG_ORIGINATION_EXPIRE_DATETIME,
+            ConvertEnum(arc::mojom::keymint::Tag::ORIGINATION_EXPIRE_DATETIME));
+  EXPECT_EQ(KM_TAG_USAGE_EXPIRE_DATETIME,
+            ConvertEnum(arc::mojom::keymint::Tag::USAGE_EXPIRE_DATETIME));
+  EXPECT_EQ(KM_TAG_MIN_SECONDS_BETWEEN_OPS,
+            ConvertEnum(arc::mojom::keymint::Tag::MIN_SECONDS_BETWEEN_OPS));
+  EXPECT_EQ(KM_TAG_MAX_USES_PER_BOOT,
+            ConvertEnum(arc::mojom::keymint::Tag::MAX_USES_PER_BOOT));
+  EXPECT_EQ(KM_TAG_USAGE_COUNT_LIMIT,
+            ConvertEnum(arc::mojom::keymint::Tag::USAGE_COUNT_LIMIT));
+  EXPECT_EQ(KM_TAG_USER_ID, ConvertEnum(arc::mojom::keymint::Tag::USER_ID));
+  EXPECT_EQ(KM_TAG_USER_SECURE_ID,
+            ConvertEnum(arc::mojom::keymint::Tag::USER_SECURE_ID));
+  EXPECT_EQ(KM_TAG_NO_AUTH_REQUIRED,
+            ConvertEnum(arc::mojom::keymint::Tag::NO_AUTH_REQUIRED));
+  EXPECT_EQ(KM_TAG_USER_AUTH_TYPE,
+            ConvertEnum(arc::mojom::keymint::Tag::USER_AUTH_TYPE));
+  EXPECT_EQ(KM_TAG_AUTH_TIMEOUT,
+            ConvertEnum(arc::mojom::keymint::Tag::AUTH_TIMEOUT));
+  EXPECT_EQ(KM_TAG_ALLOW_WHILE_ON_BODY,
+            ConvertEnum(arc::mojom::keymint::Tag::ALLOW_WHILE_ON_BODY));
+  EXPECT_EQ(
+      KM_TAG_TRUSTED_USER_PRESENCE_REQUIRED,
+      ConvertEnum(arc::mojom::keymint::Tag::TRUSTED_USER_PRESENCE_REQUIRED));
+  EXPECT_EQ(
+      KM_TAG_TRUSTED_CONFIRMATION_REQUIRED,
+      ConvertEnum(arc::mojom::keymint::Tag::TRUSTED_CONFIRMATION_REQUIRED));
+  EXPECT_EQ(KM_TAG_UNLOCKED_DEVICE_REQUIRED,
+            ConvertEnum(arc::mojom::keymint::Tag::UNLOCKED_DEVICE_REQUIRED));
+  EXPECT_EQ(KM_TAG_APPLICATION_ID,
+            ConvertEnum(arc::mojom::keymint::Tag::APPLICATION_ID));
+  EXPECT_EQ(KM_TAG_APPLICATION_DATA,
+            ConvertEnum(arc::mojom::keymint::Tag::APPLICATION_DATA));
+  EXPECT_EQ(KM_TAG_CREATION_DATETIME,
+            ConvertEnum(arc::mojom::keymint::Tag::CREATION_DATETIME));
+  EXPECT_EQ(KM_TAG_ORIGIN, ConvertEnum(arc::mojom::keymint::Tag::ORIGIN));
+  EXPECT_EQ(KM_TAG_ROOT_OF_TRUST,
+            ConvertEnum(arc::mojom::keymint::Tag::ROOT_OF_TRUST));
+  EXPECT_EQ(KM_TAG_OS_VERSION,
+            ConvertEnum(arc::mojom::keymint::Tag::OS_VERSION));
+  EXPECT_EQ(KM_TAG_OS_PATCHLEVEL,
+            ConvertEnum(arc::mojom::keymint::Tag::OS_PATCHLEVEL));
+  EXPECT_EQ(KM_TAG_UNIQUE_ID, ConvertEnum(arc::mojom::keymint::Tag::UNIQUE_ID));
+  EXPECT_EQ(KM_TAG_ATTESTATION_CHALLENGE,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_CHALLENGE));
+  EXPECT_EQ(KM_TAG_ATTESTATION_APPLICATION_ID,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_APPLICATION_ID));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_BRAND,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_BRAND));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_DEVICE,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_DEVICE));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_PRODUCT,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_PRODUCT));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_SERIAL,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_SERIAL));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_IMEI,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_IMEI));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_MEID,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_MEID));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_MANUFACTURER,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_MANUFACTURER));
+  EXPECT_EQ(KM_TAG_ATTESTATION_ID_MODEL,
+            ConvertEnum(arc::mojom::keymint::Tag::ATTESTATION_ID_MODEL));
+  EXPECT_EQ(KM_TAG_VENDOR_PATCHLEVEL,
+            ConvertEnum(arc::mojom::keymint::Tag::VENDOR_PATCHLEVEL));
+  EXPECT_EQ(KM_TAG_BOOT_PATCHLEVEL,
+            ConvertEnum(arc::mojom::keymint::Tag::BOOT_PATCHLEVEL));
+  EXPECT_EQ(KM_TAG_DEVICE_UNIQUE_ATTESTATION,
+            ConvertEnum(arc::mojom::keymint::Tag::DEVICE_UNIQUE_ATTESTATION));
+  EXPECT_EQ(KM_TAG_IDENTITY_CREDENTIAL_KEY,
+            ConvertEnum(arc::mojom::keymint::Tag::IDENTITY_CREDENTIAL_KEY));
+  EXPECT_EQ(KM_TAG_STORAGE_KEY,
+            ConvertEnum(arc::mojom::keymint::Tag::STORAGE_KEY));
+  EXPECT_EQ(KM_TAG_ASSOCIATED_DATA,
+            ConvertEnum(arc::mojom::keymint::Tag::ASSOCIATED_DATA));
+  EXPECT_EQ(KM_TAG_NONCE, ConvertEnum(arc::mojom::keymint::Tag::NONCE));
+  EXPECT_EQ(KM_TAG_MAC_LENGTH,
+            ConvertEnum(arc::mojom::keymint::Tag::MAC_LENGTH));
+  EXPECT_EQ(KM_TAG_RESET_SINCE_ID_ROTATION,
+            ConvertEnum(arc::mojom::keymint::Tag::RESET_SINCE_ID_ROTATION));
+  EXPECT_EQ(KM_TAG_CONFIRMATION_TOKEN,
+            ConvertEnum(arc::mojom::keymint::Tag::CONFIRMATION_TOKEN));
+  EXPECT_EQ(KM_TAG_CERTIFICATE_SERIAL,
+            ConvertEnum(arc::mojom::keymint::Tag::CERTIFICATE_SERIAL));
+  EXPECT_EQ(KM_TAG_CERTIFICATE_SUBJECT,
+            ConvertEnum(arc::mojom::keymint::Tag::CERTIFICATE_SUBJECT));
+  EXPECT_EQ(KM_TAG_CERTIFICATE_NOT_BEFORE,
+            ConvertEnum(arc::mojom::keymint::Tag::CERTIFICATE_NOT_BEFORE));
+  EXPECT_EQ(KM_TAG_CERTIFICATE_NOT_AFTER,
+            ConvertEnum(arc::mojom::keymint::Tag::CERTIFICATE_NOT_AFTER));
+  EXPECT_EQ(KM_TAG_MAX_BOOT_LEVEL,
+            ConvertEnum(arc::mojom::keymint::Tag::MAX_BOOT_LEVEL));
 }
 
 TEST(ConvertFromKeymasterMessage, KeyParameterVector) {
