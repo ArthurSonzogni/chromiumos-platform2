@@ -23,6 +23,7 @@ static_library("libbootsplash") {
   sources = [
     "frecon.cc",
     "paths.cc",
+    "utils.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -44,6 +45,7 @@ if (use.test) {
     sources = [
       "frecon_test.cc",
       "paths_test.cc",
+      "utils_test.cc",
     ]
     run_test = true
     configs += [

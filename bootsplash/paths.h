@@ -12,6 +12,7 @@ namespace paths {
 
 constexpr char kFreconVt[] = "/run/frecon/vt0";
 
+constexpr char kFreconHiRes[] = "/run/frecon/hi_res";
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);
