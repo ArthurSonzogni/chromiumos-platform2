@@ -532,17 +532,17 @@ void Network::ConfigureStaticIPv6Address() {
   if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
     return;
   }
-  const auto local = IPAddress::CreateFromStringAndPrefix(
-      ipv6_static_properties_->address, ipv6_static_properties_->subnet_prefix,
-      IPAddress::kFamilyIPv6);
-  if (!local.has_value()) {
+  const auto local = net_base::IPv6CIDR::CreateFromStringAndPrefix(
+      ipv6_static_properties_->address, ipv6_static_properties_->subnet_prefix);
+  if (!local) {
     LOG(ERROR) << logging_tag_ << ": Local address "
-               << ipv6_static_properties_->address << " is invalid";
+               << ipv6_static_properties_->address << "/"
+               << ipv6_static_properties_->subnet_prefix << " is invalid";
     return;
   }
   LOG(INFO) << logging_tag_ << ": configuring static IPv6 address " << *local;
-  rtnl_handler_->AddInterfaceAddress(interface_index_, *local,
-                                     local->GetDefaultBroadcast());
+  rtnl_handler_->AddInterfaceAddress(interface_index_, IPAddress(*local),
+                                     IPAddress(local->GetBroadcast()));
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
