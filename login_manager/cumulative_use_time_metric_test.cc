@@ -251,6 +251,15 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return true;
   }
 
+  bool SendTimeToUMA(base::StringPiece name,
+                     base::TimeDelta sample,
+                     base::TimeDelta min,
+                     base::TimeDelta max,
+                     size_t buckets) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   void SetOutputFile(const std::string& output_file) override {
     ADD_FAILURE() << "Should not be reached";
   }

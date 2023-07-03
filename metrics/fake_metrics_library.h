@@ -49,6 +49,11 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   bool SendUserActionToUMA(const std::string& action) override;
   bool SendCrashToUMA(const char* crash_kind) override;
   bool SendCrosEventToUMA(const std::string& event) override;
+  bool SendTimeToUMA(base::StringPiece name,
+                     base::TimeDelta sample,
+                     base::TimeDelta min,
+                     base::TimeDelta max,
+                     size_t num_buckets) override;
 #if USE_METRICS_UPLOADER
   bool SendRepeatedToUMA(const std::string& name,
                          int sample,

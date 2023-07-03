@@ -9,6 +9,7 @@
 
 #include "metrics/metrics_library.h"
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 class MetricsLibraryMock : public MetricsLibraryInterface {
@@ -34,6 +35,14 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
   MOCK_METHOD(bool, SendUserActionToUMA, (const std::string&), (override));
   MOCK_METHOD(bool, SendCrashToUMA, (const char* crash_kind), (override));
   MOCK_METHOD(bool, SendCrosEventToUMA, (const std::string& event), (override));
+  MOCK_METHOD(bool,
+              SendTimeToUMA,
+              (base::StringPiece,
+               base::TimeDelta,
+               base::TimeDelta,
+               base::TimeDelta,
+               size_t),
+              (override));
   MOCK_METHOD(void, SetOutputFile, (const std::string&), (override));
 #if USE_METRICS_UPLOADER
   MOCK_METHOD(bool,

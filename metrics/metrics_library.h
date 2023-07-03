@@ -15,6 +15,8 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_piece.h>
+#include <base/time/time.h>
 
 #include "metrics/metrics_writer.h"
 #include "policy/libpolicy.h"
@@ -72,6 +74,11 @@ class MetricsLibraryInterface {
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
   virtual bool SendCrashToUMA(const char* crash_kind) = 0;
   virtual bool SendCrosEventToUMA(const std::string& event) = 0;
+  virtual bool SendTimeToUMA(base::StringPiece name,
+                             base::TimeDelta sample,
+                             base::TimeDelta min,
+                             base::TimeDelta max,
+                             size_t buckets) = 0;
 #if USE_METRICS_UPLOADER
   virtual bool SendRepeatedToUMA(const std::string& name,
                                  int sample,
@@ -279,6 +286,14 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // must first be registered in metrics_library.cc.  See that file for
   // more details.
   bool SendCrosEventToUMA(const std::string& event) override;
+
+  // Sends timing data in milliseconds to UMA. Uses `SendToUMA()` under the hood
+  // and converts the timedeltas to milliseconds before handing it off.
+  bool SendTimeToUMA(base::StringPiece name,
+                     base::TimeDelta sample,
+                     base::TimeDelta min,
+                     base::TimeDelta max,
+                     size_t buckets) override;
 
 #if USE_METRICS_UPLOADER
   // Sends |num_samples| samples with the same value to chrome.

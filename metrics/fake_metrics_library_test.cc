@@ -146,6 +146,21 @@ TEST_F(FakeMetricsLibraryTest, SendSparseToUMA) {
   EXPECT_THAT(lib().GetCalls("metric2"), ElementsAre(20, 21));
 }
 
+TEST_F(FakeMetricsLibraryTest, SendTimeToUMA) {
+  using base::Seconds;
+  lib().SendTimeToUMA("metric1", Seconds(3), Seconds(0), Seconds(100), 10);
+  lib().SendTimeToUMA("metric2", Seconds(20), Seconds(0), Seconds(100), 10);
+  lib().SendTimeToUMA("metric2", Seconds(21), Seconds(0), Seconds(100), 10);
+
+  EXPECT_EQ(lib().NumCalls("metric1"), 1);
+  EXPECT_EQ(lib().GetLast("metric1"), 3000);
+  EXPECT_THAT(lib().GetCalls("metric1"), ElementsAre(3000));
+
+  EXPECT_EQ(lib().NumCalls("metric2"), 2);
+  EXPECT_EQ(lib().GetLast("metric2"), 21000);
+  EXPECT_THAT(lib().GetCalls("metric2"), ElementsAre(20000, 21000));
+}
+
 TEST_F(FakeMetricsLibraryTest, Clear) {
   // Send an UMA, and ensure we can read it again.
   lib().SendToUMA("metric", 1, 0, 100, 10);

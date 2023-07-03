@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <base/uuid.h>
 #include <brillo/files/safe_fd.h>
 #include <errno.h>
@@ -417,6 +418,15 @@ bool MetricsLibrary::SendUserActionToUMA(const std::string& action) {
 bool MetricsLibrary::SendCrashToUMA(const char* crash_kind) {
   return metrics_writer_->WriteMetrics(
       {metrics::MetricSample::CrashSample(crash_kind)});
+}
+
+bool MetricsLibrary::SendTimeToUMA(base::StringPiece name,
+                                   base::TimeDelta sample,
+                                   base::TimeDelta min,
+                                   base::TimeDelta max,
+                                   size_t buckets) {
+  return SendToUMA(std::string(name), sample.InMilliseconds(),
+                   min.InMilliseconds(), max.InMilliseconds(), buckets);
 }
 
 void MetricsLibrary::SetPolicyProvider(policy::PolicyProvider* provider) {

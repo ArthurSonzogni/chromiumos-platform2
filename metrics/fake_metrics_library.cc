@@ -4,6 +4,8 @@
 
 #include "metrics/fake_metrics_library.h"
 
+#include "base/time/time.h"
+
 const int kMaxNumberOfSamples = 512;
 
 void FakeMetricsLibrary::Init() {}
@@ -79,6 +81,15 @@ bool FakeMetricsLibrary::SendCrashToUMA(const char* crash_kind) {
 
 bool FakeMetricsLibrary::SendCrosEventToUMA(const std::string& event) {
   return false;
+}
+
+bool FakeMetricsLibrary::SendTimeToUMA(base::StringPiece name,
+                                       base::TimeDelta sample,
+                                       base::TimeDelta min,
+                                       base::TimeDelta max,
+                                       size_t num_buckets) {
+  return SendToUMA(std::string(name), sample.InMilliseconds(),
+                   min.InMilliseconds(), max.InMilliseconds(), num_buckets);
 }
 
 #if USE_METRICS_UPLOADER
