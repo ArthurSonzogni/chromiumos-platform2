@@ -415,7 +415,9 @@ void EvdevPowerButtonObserver::InitializationFail(
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevPowerButtonObserver::ReportProperties(LibevdevWrapper* dev) {}
+void EvdevPowerButtonObserver::ReportProperties(LibevdevWrapper* dev) {
+  observer_->OnConnectedToEventNode();
+}
 
 EvdevVolumeButtonObserver::EvdevVolumeButtonObserver(
     mojo::PendingRemote<mojom::VolumeButtonObserver> observer)

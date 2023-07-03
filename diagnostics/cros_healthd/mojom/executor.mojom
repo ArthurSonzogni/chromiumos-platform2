@@ -157,6 +157,8 @@ interface PowerButtonObserver {
     kRepeat,
   };
   OnEvent(ButtonState button_state);
+  // Called when the power button event node is connected.
+  OnConnectedToEventNode();
 };
 
 // Implemented by clients who desire volume button notifications.

@@ -40,6 +40,11 @@ class PowerButtonRoutineTest : public testing::Test {
         mojom::PowerButtonObserver::ButtonState::kUp);
   }
 
+  void EmitConnectedToEventNodeEvent() {
+    power_button_observer_->OnConnectedToEventNode();
+    power_button_observer_.FlushForTesting();
+  }
+
   void VerifyRoutineResult(PowerButtonRoutine& routine,
                            mojom::DiagnosticRoutineStatusEnum expected_status,
                            const std::string& expected_status_message) {
@@ -49,6 +54,16 @@ class PowerButtonRoutineTest : public testing::Test {
     EXPECT_EQ(update_.progress_percent, 100);
     VerifyNonInteractiveUpdate(update_.routine_update_union, expected_status,
                                expected_status_message);
+  }
+
+  void VerifyWaitingState(PowerButtonRoutine& routine, int progress_percent) {
+    mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                                 mojom::RoutineUpdateUnionPtr()};
+    routine.PopulateStatusUpdate(&update_, /*include_output*/ true);
+    EXPECT_EQ(update_.progress_percent, progress_percent);
+    VerifyInteractiveUpdate(
+        update_.routine_update_union,
+        mojom::DiagnosticRoutineUserMessageEnum::kPressPowerButton);
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
@@ -76,6 +91,36 @@ TEST_F(PowerButtonRoutineTest, ErrorWhenTimeoutTooLong) {
   routine.Start();
   VerifyRoutineResult(routine, mojom::DiagnosticRoutineStatusEnum::kError,
                       "Timeout is not in range [1, 600]");
+}
+
+TEST_F(PowerButtonRoutineTest, RunningStateAfterStart) {
+  PowerButtonRoutine routine{&mock_context_, /*timeout_seconds=*/10};
+  routine.Start();
+  EXPECT_EQ(routine.GetStatus(), mojom::DiagnosticRoutineStatusEnum::kRunning);
+}
+
+TEST_F(PowerButtonRoutineTest, WaitingStateAfterConnectedToEventNode) {
+  ExpectBindEventObserver();
+
+  PowerButtonRoutine routine{&mock_context_, /*timeout_seconds=*/10};
+  routine.Start();
+  EmitConnectedToEventNodeEvent();
+
+  VerifyWaitingState(routine, 0);
+}
+
+TEST_F(PowerButtonRoutineTest, ProgressPercentIncreasesWithTime) {
+  ExpectBindEventObserver();
+
+  const base::TimeDelta timeout = base::Seconds(/*timeout_seconds=*/10);
+  PowerButtonRoutine routine{&mock_context_,
+                             static_cast<uint32_t>(timeout.InSeconds())};
+  routine.Start();
+  EmitConnectedToEventNodeEvent();
+
+  task_environment_.FastForwardBy(timeout / 4);
+
+  VerifyWaitingState(routine, 25);
 }
 
 TEST_F(PowerButtonRoutineTest, PassedWhenEventReceived) {

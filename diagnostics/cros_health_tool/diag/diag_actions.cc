@@ -693,6 +693,12 @@ bool DiagActions::ProcessInteractiveResultAndContinue(
       // routine through |HandleGetLedColorMatchedInvocation|.
       skip_sending_continue_command = true;
       break;
+    case mojom::DiagnosticRoutineUserMessageEnum::kPressPowerButton:
+      std::cout << "Press the power button." << std::endl;
+      // Don't send the continue command because the underlying routine will
+      // proceed when the power button is pressed.
+      skip_sending_continue_command = true;
+      break;
     case mojom::DiagnosticRoutineUserMessageEnum::kUnknown:
       LOG(ERROR) << "Unknown routine user message enum";
       RemoveRoutine();

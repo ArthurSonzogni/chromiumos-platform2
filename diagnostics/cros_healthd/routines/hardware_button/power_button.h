@@ -5,10 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_HARDWARE_BUTTON_POWER_BUTTON_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_HARDWARE_BUTTON_POWER_BUTTON_H_
 
+#include <optional>
 #include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -36,6 +38,7 @@ class PowerButtonRoutine final
   // ash::cros_healthd::mojom::PowerButtonObserver overrides:
   void OnEvent(ash::cros_healthd::mojom::PowerButtonObserver::ButtonState
                    button_state) override;
+  void OnConnectedToEventNode() override;
 
  private:
   void OnTimeout();
@@ -49,6 +52,8 @@ class PowerButtonRoutine final
   mojo::Remote<ash::cros_healthd::mojom::ProcessControl> process_control_;
   // The callback to stop monitoring and report failure on timeout.
   base::CancelableOnceClosure timeout_callback_;
+  // When the routine started. Used to calculate progress_percent.
+  std::optional<base::TimeTicks> start_ticks_ = std::nullopt;
   // Maximum time to wait for a power button event.
   uint32_t timeout_seconds_{0};
   // Context object used to communicate with the executor.
