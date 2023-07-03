@@ -81,5 +81,6 @@ unlinkat: 1
 lchown: 1
 uname: 1
 fstatfs: 1
+fstatfs64: 1
 getrandom: 1
 fchmod: 1
