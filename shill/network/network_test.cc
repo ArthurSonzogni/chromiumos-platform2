@@ -1166,6 +1166,27 @@ class NetworkStartTest : public NetworkTest {
     }
   }
 
+  // Verifies that GetAddresses() returns all configured addresses, in the order
+  // of IPv4->IPv6.
+  void VerifyGetAddresses(IPConfigType ipv4_type, IPConfigType ipv6_type) {
+    std::vector<IPAddress> expected_result;
+    if (ipv4_type != IPConfigType::kNone) {
+      expected_result.push_back(*IPAddress::CreateFromStringAndPrefix(
+          GetIPPropertiesFromType(ipv4_type).address,
+          GetIPPropertiesFromType(ipv4_type).subnet_prefix));
+    }
+    if (ipv6_type != IPConfigType::kNone) {
+      expected_result.push_back(*IPAddress::CreateFromStringAndPrefix(
+          GetIPPropertiesFromType(ipv6_type).address,
+          GetIPPropertiesFromType(ipv6_type).subnet_prefix));
+    }
+    std::vector<IPAddress> result = network_->GetAddresses();
+    ASSERT_EQ(result.size(), expected_result.size());
+    for (size_t i = 0; i < result.size(); i++) {
+      EXPECT_EQ(result[i], expected_result[i]);
+    }
+  }
+
   void VerifyIPTypeReportScheduled(Metrics::IPType type) {
     // Report should be triggered at T+30.
     dispatcher_.task_environment().FastForwardBy(base::Seconds(20));
@@ -1550,6 +1571,7 @@ TEST_F(NetworkStartTest, IPv6OnlyLinkProtocol) {
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6LinkProtocol);
+  VerifyGetAddresses(IPConfigType::kNone, IPConfigType::kIPv6LinkProtocol);
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPRequestIPFailure) {
@@ -1682,6 +1704,7 @@ TEST_F(NetworkStartTest, DualStackSLAACFirst) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
+  VerifyGetAddresses(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPFirst) {
@@ -1702,6 +1725,7 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
+  VerifyGetAddresses(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
   VerifyIPTypeReportScheduled(Metrics::kIPTypeDualStack);
 }
 
@@ -1728,6 +1752,8 @@ TEST_F(NetworkStartTest, DualStackLinkProtocol) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4LinkProtocol,
                   IPConfigType::kIPv6LinkProtocol);
+  VerifyGetAddresses(IPConfigType::kIPv4LinkProtocol,
+                     IPConfigType::kIPv6LinkProtocol);
 }
 
 // Verifies that the exposed IPConfig objects should be cleared on stopped.

@@ -756,13 +756,16 @@ std::vector<IPAddress> Network::GetAddresses() const {
     }
   }
 
+  // Addresses are returned in the order of IPv4 -> IPv6 to ensure
+  // backward-compatibility that callers can use result[0] to match legacy
+  // local() result.
   const auto insert_addr = [&result](const std::string& addr_str, int prefix) {
     auto addr = IPAddress::CreateFromStringAndPrefix(addr_str, prefix);
     if (!addr.has_value()) {
       LOG(ERROR) << "Invalid IP address: " << addr_str << "/" << prefix;
       return;
     }
-    result.push_back(std::move(*addr));
+    result.insert(result.begin(), std::move(*addr));
   };
 
   if (link_protocol_ipv6_properties_ &&
@@ -775,7 +778,7 @@ std::vector<IPAddress> Network::GetAddresses() const {
     insert_addr(ipconfig()->properties().address,
                 ipconfig()->properties().subnet_prefix);
   }
-  // link_protocol_ipv4_properties_ should already be reflected in ipconfig_
+  // link_protocol_ipv4_properties_ should already be reflected in ipconfig_.
   return result;
 }
 
