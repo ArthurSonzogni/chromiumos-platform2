@@ -38,6 +38,7 @@ getgid: 1
 getpid: 1
 getpriority: 1
 getrandom: 1
+getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
@@ -46,35 +47,43 @@ getuid: 1
 #   0x6458     == DRM_IOCTL_I915_GEM_THROTTLE
 #   0x40046460 == DRM_IOCTL_I915_GEM_SW_FINISH
 #   0x40086409 == DRM_IOCTL_GEM_CLOSE
+#   0x40086478 == DRM_IOCTL_I915_PERF_REMOVE_CONFIG
 #   0x400c645f == DRM_IOCTL_I915_GEM_SET_DOMAIN
 #   0x4020645d == DRM_IOCTL_I915_GEM_PWRITE
 #   0x40406469 == DRM_IOCTL_I915_GEM_EXECBUFFER2
 #   0x80106463 == DRM_IOCTL_I915_GEM_GET_APERTURE
 #   0xc0086457 == DRM_IOCTL_I915_GEM_BUSY
 #   0xc008646d == DRM_IOCTL_I915_GEM_CONTEXT_CREATE
+#   0xc00864bf == DRM_IOCTL_SYNCOBJ_CREATE
+#   0xc00864c0 == DRM_IOCTL_SYNCOBJ_DESTROY
 #   0xc00c6466 == DRM_IOCTL_I915_GEM_MADVISE
+#   0xc010640c == DRM_IOCTL_GET_CAP
 #   0xc0106446 == DRM_IOCTL_I915_GETPARAM
 #   0xc010645b == DRM_IOCTL_I915_GEM_CREATE
 #   0xc0106461 == DRM_IOCTL_I915_GEM_SET_TILING
 #   0xc010646c == DRM_IOCTL_I915_GEM_WAIT
+#   0xc010646d == DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT
 #   0xc0106471 == DRM_IOCTL_I915_REG_READ
 #   0xc0106479 == DRM_IOCTL_I915_QUERY
 #   0xc0186472 == DRM_IOCTL_I915_GET_RESET_STATS
 #   0xc0186473 == DRM_IOCTL_I915_GEM_USERPTR
 #   0xc0186474 == DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM
 #   0xc0186475 == DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM
+#   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
+#   0xc02064c3 == DRM_IOCTL_SYNCOBJ_WAIT
 #   0xc028645e == DRM_IOCTL_I915_GEM_MMAP
 #   0xc0406400 == DRM_IOCTL_VERSION
 #   0xc0406469 == DRM_IOCTL_I915_GEM_EXECBUFFER2_WR
-#   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
 ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 || \
-       arg1 == 0x40086409 || arg1 == 0x400c645f || arg1 == 0x4020645d || \
-       arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
-       arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \
-       arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc0106471 || \
-       arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186474 || \
-       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc028645e || \
-       arg1 == 0xc0406400 || arg1 == 0xc010646c || arg1 == 0xc0186473 || \
+       arg1 == 0x40086409 || arg1 == 0x40086478 || arg1 == 0x400c645f || \
+       arg1 == 0x4020645d || arg1 == 0x40406469 || arg1 == 0x80106463 || \
+       arg1 == 0xc0086457 || arg1 == 0xc008646d || arg1 == 0xc00864bf || \
+       arg1 == 0xc00864c0 || arg1 == 0xc00c6466 || arg1 == 0xc010640c || \
+       arg1 == 0xc0106446 || arg1 == 0xc010645b || arg1 == 0xc0106461 || \
+       arg1 == 0xc010646c || arg1 == 0xc010646d || arg1 == 0xc0106471 || \
+       arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || \
+       arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc0206464 || \
+       arg1 == 0xc02064c3 || arg1 == 0xc028645e || arg1 == 0xc0406400 || \
        arg1 == 0xc0406469
 kill: 1
 listen: 1
@@ -104,6 +113,7 @@ sched_getaffinity: 1
 sched_setaffinity: 1
 sched_setscheduler: 1
 sched_yield: 1
+sendmsg: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1
