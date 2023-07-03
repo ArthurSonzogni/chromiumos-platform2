@@ -4,8 +4,9 @@
 
 #include <memory>
 
-#include <base/run_loop.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,8 +18,6 @@
 namespace diagnostics {
 namespace {
 
-using ::testing::_;
-using ::testing::Invoke;
 using ::testing::StrictMock;
 
 // Tests for the BluetoothEventHub class.
@@ -58,23 +57,23 @@ class BluetoothEventHubTest : public testing::Test {
 // Test that we will observe adapter property changed events when an adapter is
 // added.
 TEST_F(BluetoothEventHubTest, ObserveAdapterPropertyChanged) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_adapter_proxy(), SetPropertyChangedCallback(_))
-      .WillOnce(Invoke([&](auto _) { run_loop.Quit(); }));
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_adapter_proxy(), SetPropertyChangedCallback)
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   fake_bluetooth_event_hub()->SendAdapterAdded(mock_adapter_proxy());
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 // Test that we will observe device property changed events when an device is
 // added.
 TEST_F(BluetoothEventHubTest, ObserveDevicePropertyChanged) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_device_proxy(), SetPropertyChangedCallback(_))
-      .WillOnce(Invoke([&](auto _) { run_loop.Quit(); }));
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_device_proxy(), SetPropertyChangedCallback)
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   fake_bluetooth_event_hub()->SendDeviceAdded(mock_device_proxy());
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 }  // namespace diagnostics
