@@ -13,7 +13,6 @@
 #include <base/files/important_file_writer.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
 
 #include "smbprovider/kerberos_artifact_client_interface.h"
