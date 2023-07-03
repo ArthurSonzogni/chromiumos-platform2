@@ -21,13 +21,14 @@
 namespace {
 
 constexpr char kNVChipPath[] = "NVChip";
-constexpr size_t kNVChipSize = 1024 * 1024;  // 1MB.
+constexpr size_t kNVChipSize = 10 * 1024 * 1024;  // 10MB.
 constexpr char kWoringDirectory[] = ".";
 
 // The old NVChip size that need to migrate to new format.
 constexpr size_t kOldNVChipSize = 16384;
 
 struct NVChipMigrateData {
+  int version = 0;
   std::string chip_data;
 };
 
@@ -119,6 +120,35 @@ bool ChownDirectoryContents(const base::FilePath& dir, uid_t uid, gid_t gid) {
   return true;
 }
 
+bool IncreaseNVChipSize(const base::FilePath& chip_path, size_t size) {
+  if (HANDLE_EINTR(truncate(chip_path.value().c_str(), size)) < 0) {
+    PLOG(ERROR) << "Failed to truncate " << chip_path.value();
+    return false;
+  }
+
+  brillo::ProcessImpl e2fsck_process;
+  e2fsck_process.AddArg("/sbin/e2fsck");
+  e2fsck_process.AddArg("-f");
+  e2fsck_process.AddArg(chip_path.value());
+  e2fsck_process.SetCloseUnusedFileDescriptors(true);
+  e2fsck_process.RedirectOutput("/dev/null");
+  // Ignore the result of e2fsck.
+  e2fsck_process.Run();
+
+  brillo::ProcessImpl resize2fs_process;
+  resize2fs_process.AddArg("/sbin/resize2fs");
+  resize2fs_process.AddArg("-f");
+  resize2fs_process.AddArg(chip_path.value());
+  resize2fs_process.SetCloseUnusedFileDescriptors(true);
+  resize2fs_process.RedirectOutput("/dev/null");
+  if (resize2fs_process.Run() != 0) {
+    LOG(ERROR) << "Failed to resize2fs the NVChip.";
+    return false;
+  }
+
+  return true;
+}
+
 bool PrepareMigrateNVChip(const base::FilePath& chip_path,
                           int64_t chip_size,
                           NVChipMigrateData* migrate_data) {
@@ -139,6 +169,15 @@ bool PrepareMigrateNVChip(const base::FilePath& chip_path,
       LOG(ERROR) << "Failed to format the NVChip to ext4.";
       return false;
     }
+    migrate_data->version = 1;
+    return true;
+  } else if (chip_size < kNVChipSize) {
+    // Increase the nv chip size.
+    if (!IncreaseNVChipSize(chip_path, kNVChipSize)) {
+      LOG(ERROR) << "Failed to migrate NVChip to bigger size.";
+      return false;
+    }
+    migrate_data->version = 2;
     return true;
   } else {
     LOG(ERROR) << "Unknown NVChip size.";
@@ -149,6 +188,11 @@ bool PrepareMigrateNVChip(const base::FilePath& chip_path,
 bool MigrateNVChip(const base::FilePath& chip_path,
                    const base::FilePath& mount_point,
                    const NVChipMigrateData& migrate_data) {
+  if (migrate_data.version != 1) {
+    // Nothing to migrate.
+    return true;
+  }
+
   base::FilePath new_chip_path = mount_point.Append(kNVChipPath);
   if (!brillo::WriteStringToFile(new_chip_path, migrate_data.chip_data)) {
     LOG(ERROR) << "Failed to create the NVChip.";
