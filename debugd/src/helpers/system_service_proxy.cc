@@ -4,6 +4,7 @@
 
 #include "debugd/src/helpers/system_service_proxy.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -45,12 +46,18 @@ scoped_refptr<dbus::Bus> SystemServiceProxy::ConnectToSystemBus() {
   return bus;
 }
 
-std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
+std::unique_ptr<dbus::Response> SystemServiceProxy::CallMethodAndGetResponse(
     const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
   dbus::ObjectProxy* object_proxy =
       bus_->GetObjectProxy(service_name_, object_path);
   std::unique_ptr<dbus::Response> response = object_proxy->CallMethodAndBlock(
       method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  return response;
+}
+
+std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponseAsValue(
+    const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
+  auto response = CallMethodAndGetResponse(object_path, method_call);
   if (!response)
     return std::nullopt;
 
@@ -64,7 +71,7 @@ std::optional<base::Value::Dict> SystemServiceProxy::GetProperties(
                                kDBusPropertiesGetAllMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(interface_name);
-  auto response = CallMethodAndGetResponse(object_path, &method_call);
+  auto response = CallMethodAndGetResponseAsValue(object_path, &method_call);
   if (!response || !response->is_dict())
     return std::nullopt;
   return std::move(response->GetDict());

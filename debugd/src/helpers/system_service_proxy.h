@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -45,9 +46,13 @@ class SystemServiceProxy {
 
   // Calls the specified D-Bus method |method_call| on a D-Bus object
   // identified by |object_path| and waits for the response until the default
-  // timeout is reached. Returns the response represented as a base::Value or a
-  // std::nullopt on error.
-  std::optional<base::Value> CallMethodAndGetResponse(
+  // timeout is reached. Return the response.
+  std::unique_ptr<dbus::Response> CallMethodAndGetResponse(
+      const dbus::ObjectPath& object_path, dbus::MethodCall* method_call);
+
+  // Similar to CallMethodAndGetResponse, but returns the response represented
+  // as a base::Value or a std::nullopt on error.
+  std::optional<base::Value> CallMethodAndGetResponseAsValue(
       const dbus::ObjectPath& object_path, dbus::MethodCall* method_call);
 
   // Gets the properties associated with the interface named |interface_name|

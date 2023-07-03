@@ -19,6 +19,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
+#include <power_manager/proto_bindings/battery_saver.pb.h>
+
+#include "debugd/src/helpers/system_service_proxy.h"
 
 namespace debugd {
 
@@ -94,6 +98,34 @@ bool SchedulerConfigurationUtils::ParseCPUNumbers(
   }
 
   return true;
+}
+
+bool SchedulerConfigurationUtils::IsBatterySaverModeOn() {
+  // Talk to power_manager to get battery saver mode status.
+  auto proxy =
+      SystemServiceProxy::Create(power_manager::kPowerManagerInterface);
+  if (!proxy) {
+    LOG(ERROR) << "Failed to create dbus proxy";
+    return false;
+  }
+
+  dbus::MethodCall method(power_manager::kPowerManagerInterface,
+                          power_manager::kGetBatterySaverModeState);
+  auto response = proxy->CallMethodAndGetResponse(
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath), &method);
+  if (!response) {
+    LOG(ERROR) << "Failed to get power manager response";
+    return false;
+  }
+
+  dbus::MessageReader reader(response.get());
+  power_manager::BatterySaverModeState result;
+  if (!reader.PopArrayOfBytesAsProto(&result)) {
+    LOG(ERROR) << "Failed to get Battery Saver state";
+    return false;
+  }
+
+  return result.enabled();
 }
 
 bool SchedulerConfigurationUtils::LookupFDAndWriteFlag(

@@ -31,6 +31,23 @@ faccessat2: 1
 restart_syscall: 1
 exit: 1
 arch_prctl: 1
+poll: 1
+pread64: 1
+socket: 1
+connect: 1
+sendto: 1
+sendmsg: 1
+recvmsg: 1
+getsockname: 1
+fcntl: 1
+geteuid: 1
+getresuid: 1
+getresgid: 1
+gettid: 1
+getpid: 1
+fstatfs: 1
+clock_getres: 1
+getrandom: 1
 # Definitions for prctl
 # PR_SCHED_CORE = 0x3e
 # PR_SET_SCHED_CORE = 0x200

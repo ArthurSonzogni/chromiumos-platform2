@@ -11,6 +11,7 @@ group("all") {
     ":audit_log_filter",
     ":bt_usb_disconnect_helper",
     ":capture_packets",
+    ":cryptohome-proto",
     ":cups_uri_helper",
     ":debugd",
     ":debugd-adaptors",
@@ -20,7 +21,6 @@ group("all") {
     ":dev_features_rootfs_verification",
     ":dev_features_ssh",
     ":dev_features_usb_boot",
-    ":external-proto",
     ":folder_size_dump",
     ":generate_logs",
     ":icmp",
@@ -29,6 +29,7 @@ group("all") {
     ":modetest_helper",
     ":netif",
     ":network_status",
+    ":power_manager-proto",
     ":scheduler_configuration_helper",
     ":typec_connector_class_helper",
     ":usb4_devinfo_helper",
@@ -60,13 +61,20 @@ pkg_config("target_defaults") {
   ]
 }
 
-proto_library("external-proto") {
+proto_library("cryptohome-proto") {
   proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
   proto_out_dir = "include"
   sources = [
     "${proto_in_dir}/key.proto",
     "${proto_in_dir}/rpc.proto",
   ]
+}
+
+proto_library("power_manager-proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/power_manager"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/battery_saver.proto" ]
+  all_dependent_pkg_deps = [ "protobuf" ]
 }
 
 generate_dbus_adaptors("debugd-adaptors") {
@@ -151,8 +159,8 @@ static_library("libdebugd") {
     "rootdev",
   ]
   deps = [
+    ":cryptohome-proto",
     ":debugd-adaptors",
-    ":external-proto",
     ":scheduler_configuration_utils",
   ]
 }
@@ -168,6 +176,10 @@ static_library("debugd_dbus_utils") {
 static_library("scheduler_configuration_utils") {
   sources = [ "src/helpers/scheduler_configuration_utils.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [
+    ":debugd_dbus_utils",
+    ":power_manager-proto",
+  ]
 }
 
 pkg_config("debugd_config") {
@@ -318,11 +330,9 @@ executable("network_status") {
 }
 
 executable("scheduler_configuration_helper") {
-  sources = [
-    "src/helpers/scheduler_configuration_helper.cc",
-    "src/helpers/scheduler_configuration_utils.cc",
-  ]
+  sources = [ "src/helpers/scheduler_configuration_helper.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [ ":scheduler_configuration_utils" ]
 }
 
 pkg_config("usb4_devinfo_helper_config") {

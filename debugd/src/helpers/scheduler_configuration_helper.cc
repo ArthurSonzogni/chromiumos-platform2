@@ -66,6 +66,8 @@ void EnterSandbox() {
   minijail_bind(jail.get(), "/", "/", 0);
   minijail_bind(jail.get(), "/proc", "/proc", 0);
   minijail_bind(jail.get(), "/dev/log", "/dev/log", 0);
+  minijail_mount_with_data(jail.get(), "tmpfs", "/run", "tmpfs", 0, "");
+  minijail_bind(jail.get(), "/run/dbus", "/run/dbus", 0);
   minijail_mount_dev(jail.get());
   minijail_remount_proc_readonly(jail.get());
   minijail_enter_pivot_root(jail.get(), "/mnt/empty");
@@ -141,7 +143,9 @@ int main(int argc, char* argv[]) {
 
   int status = 1;
   size_t num_cores_disabled = 0;
-  if (FLAGS_policy == kPerformanceScheduler) {
+  if (utils.IsBatterySaverModeOn()) {
+    status = 0;
+  } else if (FLAGS_policy == kPerformanceScheduler) {
     status = utils.EnablePerformanceConfiguration(&num_cores_disabled) ? 0 : 1;
   } else if (FLAGS_policy == kConservativeScheduler) {
     status = utils.EnableConservativeConfiguration(&num_cores_disabled) ? 0 : 1;

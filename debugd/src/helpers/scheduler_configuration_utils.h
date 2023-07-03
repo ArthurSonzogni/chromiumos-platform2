@@ -58,6 +58,9 @@ class SchedulerConfigurationUtils {
   static bool ParseCPUNumbers(const std::string& cpus,
                               std::vector<std::string>* result);
 
+  // Talks to system dbus to get the current battery saver mode status.
+  bool IsBatterySaverModeOn();
+
  private:
   enum class DisableSiblingsResult {
     PHYSICAL_CORE,
