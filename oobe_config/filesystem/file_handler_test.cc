@@ -11,14 +11,14 @@
 #include <unistd.h>
 
 #include <base/command_line.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/logging.h>
-#include <brillo/process/process.h>
-#include <gtest/gtest.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/notreached.h>
+#include <brillo/process/process.h>
+#include <gtest/gtest.h>
 #include <sys/file.h>
 
 namespace oobe_config {
@@ -125,24 +125,6 @@ class FileHandlerTest : public ::testing::Test {
     ASSERT_TRUE(write_file.Run(kFileData));
     ASSERT_TRUE(base::ReadFileToString(rooted_path, &read_data));
     ASSERT_EQ(read_data, kFileData);
-    ASSERT_TRUE(base::DeleteFile(rooted_path));
-  }
-
-  void VerifyAppendFunction(
-      const std::string& path,
-      base::RepeatingCallback<bool(const std::string&)> create_file,
-      base::RepeatingCallback<bool(const std::string&)> append_file) {
-    base::FilePath rooted_path = RootedPath(path);
-
-    ASSERT_FALSE(base::PathExists(rooted_path));
-    if (!base::PathExists(rooted_path.DirName())) {
-      ASSERT_TRUE(base::CreateDirectory(rooted_path.DirName()));
-    }
-    std::string read_data;
-    ASSERT_TRUE(create_file.Run(kFileData));
-    ASSERT_TRUE(append_file.Run(kExtensionData));
-    ASSERT_TRUE(base::ReadFileToString(rooted_path, &read_data));
-    ASSERT_EQ(read_data, kFileDataExtended);
     ASSERT_TRUE(base::DeleteFile(rooted_path));
   }
 
@@ -429,15 +411,6 @@ TEST_F(FileHandlerTest,
   ASSERT_TRUE(base::DeletePathRecursively(path));
 }
 
-TEST_F(FileHandlerTest, CreateAndExtendRollbackMetricsData) {
-  VerifyAppendFunction(
-      FileHandlerTest::kExpectedRollbackMetricsData,
-      base::BindRepeating(&FileHandler::CreateRollbackMetricsDataAtomically,
-                          base::Unretained(&file_handler_)),
-      base::BindRepeating(&FileHandler::ExtendRollbackMetricsData,
-                          base::Unretained(&file_handler_)));
-}
-
 TEST_F(FileHandlerTest, RemoveRollbackMetricsData) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedRollbackMetricsData,
@@ -514,6 +487,56 @@ TEST_F(FileHandlerTest, DoNotLockIfFileIsLockedInAnotherProcess) {
   ASSERT_TRUE(file_handler_.LockFileNoBlocking(*file));
 
   file_handler_.UnlockFile(*file);
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, ExtendFile) {
+  base::FilePath path = RootedPath(kTestPreserveData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+
+  file_handler_.ExtendOpenedFile(*file, kExtensionData);
+
+  std::optional<std::string> read_data = file_handler_.GetOpenedFileData(*file);
+  ASSERT_TRUE(read_data.has_value());
+  ASSERT_EQ(read_data.value(), kFileDataExtended);
+
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, LockAndExtendFile) {
+  base::FilePath path = RootedPath(kTestPreserveData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+  ASSERT_TRUE(file_handler_.LockFileNoBlocking(*file));
+
+  file_handler_.ExtendOpenedFile(*file, kExtensionData);
+
+  std::optional<std::string> read_data = file_handler_.GetOpenedFileData(*file);
+  ASSERT_TRUE(read_data.has_value());
+  ASSERT_EQ(read_data.value(), kFileDataExtended);
+
+  file_handler_.UnlockFile(*file);
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, TruncateFile) {
+  base::FilePath path = RootedPath(kTestPreserveData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+
+  file_handler_.TruncateOpenedFile(*file, std::strlen(kFileDataTruncated));
+
+  std::optional<std::string> read_data = file_handler_.GetOpenedFileData(*file);
+  ASSERT_TRUE(read_data.has_value());
+  ASSERT_EQ(read_data.value(), kFileDataTruncated);
+
   ASSERT_TRUE(base::DeletePathRecursively(path));
 }
 

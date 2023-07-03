@@ -157,50 +157,6 @@ std::optional<base::File> FileHandler::OpenRollbackMetricsDataFile() const {
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
 }
 
-bool FileHandler::ExtendRollbackMetricsData(
-    const std::string& rollback_metrics_event_data) const {
-  std::optional<base::File> rollback_metrics_file =
-      OpenRollbackMetricsDataFile();
-  if (!rollback_metrics_file.has_value()) {
-    LOG(ERROR) << "Cannot open Rollback metrics file.";
-    return false;
-  }
-
-  // We use flock to avoid synchronization issues between processes when
-  // handling events in the metrics file. We are ok with the possibility of the
-  // file being deleted while performing this action and losing the
-  // corresponding metric.
-  // If the lock is busy we do not wait for the lock to be released. It is
-  // preferable to lose the metric than risk blocking Rollback.
-  if (!LockFileNoBlocking(*rollback_metrics_file)) {
-    LOG(ERROR) << "Cannot lock Rollback metrics file.";
-    return false;
-  }
-
-  // File is opened in append mode; we can write the event data to the current
-  // position to extend it.
-  int initial_length = rollback_metrics_file->GetLength();
-  if (rollback_metrics_file->WriteAtCurrentPos(
-          rollback_metrics_event_data.c_str(),
-          rollback_metrics_event_data.length()) !=
-      rollback_metrics_event_data.length()) {
-    LOG(ERROR) << "Unable to write event in Rollback metrics file.";
-    UnlockFile(*rollback_metrics_file);
-    return false;
-  }
-
-  if (rollback_metrics_file->GetLength() !=
-      (initial_length + rollback_metrics_event_data.length())) {
-    // If the lengths do not match, the output file is not the expected one.
-    LOG(ERROR) << "The Rollback metrics file is corrupted.";
-    UnlockFile(*rollback_metrics_file);
-    return false;
-  }
-
-  UnlockFile(*rollback_metrics_file);
-  return true;
-}
-
 bool FileHandler::RemoveRollbackMetricsData() const {
   return base::DeleteFile(
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
@@ -244,6 +200,25 @@ std::optional<std::string> FileHandler::GetOpenedFileData(
 
   std::string data(file_content.begin(), file_content.end());
   return data;
+}
+
+bool FileHandler::ExtendOpenedFile(base::File& file,
+                                   const std::string& data) const {
+  // File is opened in append mode; we can write the event data to the current
+  // position to extend it.
+  int initial_length = file.GetLength();
+  if (file.WriteAtCurrentPos(data.c_str(), data.length()) != data.length()) {
+    LOG(ERROR) << "Unable to write data in file.";
+    return false;
+  }
+
+  if (file.GetLength() != (initial_length + data.length())) {
+    // If the lengths do not match, the output file is not the expected one.
+    LOG(ERROR) << "The file is corrupted.";
+    return false;
+  }
+
+  return true;
 }
 
 void FileHandler::TruncateOpenedFile(base::File& file, const int length) const {

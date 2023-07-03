@@ -102,11 +102,6 @@ class FileHandler {
   // Opens the rollback metrics file in read and write mode and returns it if
   // the operation is successful.
   std::optional<base::File> OpenRollbackMetricsDataFile() const;
-  // Attempts to extends rollback metrics data file with the event data
-  // provided. Returns true if it is possible to lock the file and write the new
-  // event.
-  bool ExtendRollbackMetricsData(
-      const std::string& rollback_metrics_event_data) const;
   // Removes the file with rollback metrics data.
   bool RemoveRollbackMetricsData() const;
 
@@ -121,8 +116,11 @@ class FileHandler {
   // Retrieves all content of an opened file. Returns an empty string if there
   // was an error while reading the file.
   std::optional<std::string> GetOpenedFileData(base::File& file) const;
+  // Extends the file with the data provided. The caller must ensure the file
+  // is opened in append mode.
+  bool ExtendOpenedFile(base::File& file, const std::string& data) const;
   // Truncates the file to the length provided. The caller must ensure the file
-  // is locked.
+  // is opened.
   void TruncateOpenedFile(base::File& file, const int length) const;
   // Unlocks the file provided.
   void UnlockFile(base::File& file) const;

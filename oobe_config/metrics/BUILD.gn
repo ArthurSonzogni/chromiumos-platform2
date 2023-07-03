@@ -1,0 +1,72 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libmetrics" ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+source_set("metrics_uma") {
+  sources = [ "metrics_uma.cc" ]
+  all_dependent_configs = [ ":target_defaults" ]
+}
+
+proto_library("enterprise_rollback_metrics_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/oobe_config/metrics"
+  sources = [ "enterprise_rollback_metrics_data.proto" ]
+
+  # PIC is required for shared libraries and their dependencies.
+  use_pic = true
+  standalone = true
+}
+
+shared_library("libenterprise_rollback_metrics") {
+  sources = [ "enterprise_rollback_metrics_handler.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":enterprise_rollback_metrics_proto",
+    "//oobe_config/filesystem:filesystem",
+  ]
+  install_path = "lib"
+}
+
+install_config("install_pkgconfig") {
+  sources = [ "libenterprise_rollback_metrics.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
+install_config("install_headers") {
+  sources = [ "enterprise_rollback_metrics_handler.h" ]
+  install_path = "/usr/include/oobe_config/metrics"
+}
+
+install_config("install_proto_header") {
+  sources = [ "${root_gen_dir}/include/oobe_config/metrics/enterprise_rollback_metrics_data.pb.h" ]
+  install_path = "/usr/include/oobe_config/metrics/"
+  deps = [ ":enterprise_rollback_metrics_proto" ]
+}
+
+if (use.test) {
+  executable("libenterprise_rollback_metrics_test") {
+    sources = [ "enterprise_rollback_metrics_handler_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libenterprise_rollback_metrics",
+      "//common-mk/testrunner",
+      "//oobe_config/filesystem:filesystem_for_testing",
+    ]
+  }
+}

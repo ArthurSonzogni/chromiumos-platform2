@@ -16,11 +16,15 @@ group("all") {
     ":oobe_config_save",
     ":rollback_cleanup",
     "filesystem:install_headers",
+    "metrics:install_headers",
+    "metrics:install_pkgconfig",
+    "metrics:install_proto_header",
   ]
   if (use.test) {
     deps += [
       ":oobe_config_test",
       "filesystem:filesystem_test",
+      "metrics:libenterprise_rollback_metrics_test",
     ]
   }
   if (use.fuzzer) {
@@ -38,7 +42,6 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libmetrics",
     "libmojo",
 
     # system_api depends on protobuf (or protobuf-lite). It must
@@ -73,7 +76,6 @@ static_library("liboobeconfig") {
     "encryption/openssl_encryption.cc",
     "encryption/pstore_storage.cc",
     "load_oobe_config_rollback.cc",
-    "metrics/metrics_uma.cc",
     "network_exporter.cc",
     "oobe_config.cc",
   ]
@@ -87,6 +89,8 @@ static_library("liboobeconfig") {
     ":librollback_helper_mojom",
     ":oobe_config_proto",
     "filesystem:filesystem",
+    "metrics:libenterprise_rollback_metrics",
+    "metrics:metrics_uma",
   ]
 }
 
