@@ -53,6 +53,12 @@ class DlpAdaptorTestHelper {
 
   static ino_t GetInodeValue(const std::string& path);
 
+  bool IsFanotifyWatcherActive() const {
+    return adaptor_->fanotify_watcher_->IsActive();
+  }
+
+  void ReCreateAdaptor();
+
  private:
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;

@@ -4,6 +4,7 @@
 
 #include "dlp/dlp_adaptor_test_helper.h"
 
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -83,6 +84,22 @@ void DlpAdaptorTestHelper::OnFileDeleted(ino_t inode) {
 
 ino_t DlpAdaptorTestHelper::GetInodeValue(const std::string& path) {
   return DlpAdaptor::GetInodeValue(path);
+}
+
+void DlpAdaptorTestHelper::ReCreateAdaptor() {
+  ASSERT_NE(adaptor_.get(), nullptr);
+  adaptor_.reset();
+
+  EXPECT_TRUE(home_dir_.Delete());
+  EXPECT_TRUE(home_dir_.CreateUniqueTempDir());
+
+  base::ScopedFD fd_1, fd_2;
+  EXPECT_TRUE(base::CreatePipe(&fd_1, &fd_2));
+
+  adaptor_ = std::make_unique<DlpAdaptor>(
+      std::make_unique<brillo::dbus_utils::DBusObject>(
+          nullptr, bus_, dbus::ObjectPath(kObjectPath)),
+      feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath());
 }
 
 }  // namespace dlp

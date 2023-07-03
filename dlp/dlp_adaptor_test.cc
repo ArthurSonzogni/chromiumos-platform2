@@ -14,8 +14,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/process/process_handle.h>
 #include <base/run_loop.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "dlp/dlp_adaptor_test_helper.h"
@@ -30,6 +32,7 @@ namespace {
 // Some arbitrary D-Bus message serial number. Required for mocking D-Bus calls.
 constexpr int kDBusSerial = 123;
 constexpr int kPid = 1234;
+constexpr int kIoTaskId = 12345;
 
 class FileOpenRequestResultWaiter {
  public:
@@ -82,6 +85,16 @@ TResponse ParseResponse(const std::vector<uint8_t>& response_blob) {
   EXPECT_TRUE(
       response.ParseFromArray(response_blob.data(), response_blob.size()));
   return response;
+}
+
+// Pseudo-random proto made of determined 10 bytes.
+std::vector<uint8_t> RandomProtoBlob() {
+  const size_t random_proto_size = 10;
+  std::vector<uint8_t> proto_blob(random_proto_size);
+  for (uint8_t i = 0; i < random_proto_size; ++i) {
+    proto_blob.push_back(i);
+  }
+  return proto_blob;
 }
 
 }  // namespace
@@ -141,11 +154,38 @@ class DlpAdaptorTest : public ::testing::Test {
     return proto_blob;
   }
 
+  std::vector<uint8_t> CreateSerializedRequestFileAccessRequest(
+      std::vector<std::string> files_paths, int pid, DlpComponent component) {
+    RequestFileAccessRequest request;
+    *request.mutable_files_paths() = {files_paths.begin(), files_paths.end()};
+    request.set_process_id(pid);
+    request.set_destination_component(component);
+
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+    return proto_blob;
+  }
+
   std::vector<uint8_t> CreateSerializedCheckFilesTransferRequest(
       std::vector<std::string> files_paths, const std::string& destination) {
     CheckFilesTransferRequest request;
     *request.mutable_files_paths() = {files_paths.begin(), files_paths.end()};
     request.set_destination_url(destination);
+    request.set_file_action(FileAction::TRANSFER);
+    request.set_io_task_id(kIoTaskId);
+
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+    return proto_blob;
+  }
+
+  std::vector<uint8_t> CreateSerializedCheckFilesTransferRequest(
+      std::vector<std::string> files_paths, DlpComponent destination) {
+    CheckFilesTransferRequest request;
+    *request.mutable_files_paths() = {files_paths.begin(), files_paths.end()};
+    request.set_destination_component(destination);
+    request.set_file_action(FileAction::TRANSFER);
+    request.set_io_task_id(kIoTaskId);
 
     std::vector<uint8_t> proto_blob(request.ByteSizeLong());
     request.SerializeToArray(proto_blob.data(), proto_blob.size());
@@ -178,7 +218,7 @@ class DlpAdaptorTest : public ::testing::Test {
     std::move(*response_callback).Run(response.get());
   }
 
-  void StubIsFilesTransferRestricted(
+  void StubReplyBadProto(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
       dbus::MockObjectProxy::ResponseCallback* response_callback,
@@ -187,12 +227,36 @@ class DlpAdaptorTest : public ::testing::Test {
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
 
+    std::vector<uint8_t> proto_blob = RandomProtoBlob();
+    writer.AppendArrayOfBytes(proto_blob.data(), proto_blob.size());
+    std::move(*response_callback).Run(response.get());
+  }
+
+  void StubIsFilesTransferRestricted(
+      dbus::MethodCall* method_call,
+      int /* timeout_ms */,
+      dbus::MockObjectProxy::ResponseCallback* response_callback,
+      dbus::MockObjectProxy::ErrorCallback* error_callback) {
+    dbus::MessageReader reader(method_call);
+    IsFilesTransferRestrictedRequest request;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
+
+    method_call->SetSerial(kDBusSerial);
+    auto response = dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+
     IsFilesTransferRestrictedResponse response_proto;
-    for (const auto& [file_metadata, restriction_level] : files_restrictions_) {
-      FileRestriction* file_restriction =
-          response_proto.add_files_restrictions();
-      *file_restriction->mutable_file_metadata() = file_metadata;
-      file_restriction->set_restriction_level(restriction_level);
+    for (const auto& file : request.transferred_files()) {
+      for (const auto& [file_metadata, restriction_level] :
+           files_restrictions_) {
+        if (file.inode() == file_metadata.inode()) {
+          FileRestriction* file_restriction =
+              response_proto.add_files_restrictions();
+          *file_restriction->mutable_file_metadata() = file_metadata;
+          file_restriction->set_restriction_level(restriction_level);
+          break;
+        }
+      }
     }
 
     writer.AppendProtoAsArrayOfBytes(response_proto);
@@ -246,9 +310,38 @@ class DlpAdaptorTest : public ::testing::Test {
     return result;
   }
 
+  void InitDatabase() {
+    database_directory_ = std::make_unique<base::ScopedTempDir>();
+    ASSERT_TRUE(database_directory_->CreateUniqueTempDir());
+    base::RunLoop run_loop;
+    GetDlpAdaptor()->InitDatabase(database_directory_->GetPath(),
+                                  run_loop.QuitClosure());
+    run_loop.Run();
+  }
+
+  void SetRulesAndInitFanotify() {
+    GetDlpAdaptor()->SetFanotifyWatcherStartedForTesting(false);
+    SetDlpFilesPolicyRequest request;
+    ::dlp::DlpFilesRule* rule = request.add_rules();
+    rule->add_source_urls("example.com");
+    rule->add_destination_urls("*");
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+    std::vector<uint8_t> response_blob =
+        GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+    SetDlpFilesPolicyResponse response =
+        ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+    EXPECT_FALSE(response.has_error_message());
+    EXPECT_TRUE(helper_.IsFanotifyWatcherActive());
+  }
+
  protected:
   bool is_file_policy_restricted_;
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
+  std::unique_ptr<base::ScopedTempDir> database_directory_;
 
   DlpAdaptorTestHelper helper_;
 };
@@ -262,12 +355,7 @@ TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
 }
 
 TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   FileOpenRequestResultWaiter waiter;
   helper_.ProcessFileOpenRequest(
@@ -277,12 +365,7 @@ TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
 }
 
 TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
@@ -302,13 +385,29 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
   EXPECT_TRUE(waiter.GetResult());
 }
 
+TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatchedCallFailed) {
+  InitDatabase();
+
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
+
+  is_file_policy_restricted_ = false;
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
+
+  FileOpenRequestResultWaiter waiter;
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+
+  EXPECT_FALSE(waiter.GetResult());
+}
+
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
@@ -327,6 +426,24 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
 
   EXPECT_FALSE(waiter.GetResult());
 }
+
+TEST_F(DlpAdaptorTest, RestrictedFileAllowedForItself) {
+  InitDatabase();
+
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
+
+  FileOpenRequestResultWaiter waiter;
+  helper_.ProcessFileOpenRequest(inode, base::GetCurrentProcId(),
+                                 waiter.GetCallback());
+
+  EXPECT_TRUE(waiter.GetResult());
+}
+
 //
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   // Create database.
@@ -403,13 +520,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
 // This test makes sure this doesn't happen anymore.
 // http://b/281497666
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request access by inodes.
   base::FilePath file_path;
@@ -456,7 +567,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
         &allowed, &lifeline_fd, &request_file_access_run_loop));
     GetDlpAdaptor()->RequestFileAccess(
         std::move(response), CreateSerializedRequestFileAccessRequest(
-                                 {file_path.value()}, kPid, "destination"));
+                                 {file_path.value()}, kPid, DlpComponent::USB));
     request_file_access_run_loop.Run();
 
     EXPECT_TRUE(allowed);
@@ -480,14 +591,49 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
   }
 }
 
+TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
+  InitDatabase();
+
+  // Create file to request access by inodes.
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+
+  // Add the file to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
+
+  // Request access to the file.
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
+  bool allowed;
+  base::ScopedFD lifeline_fd;
+  base::RunLoop request_file_access_run_loop;
+  response->set_return_callback(base::BindOnce(
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
+        RequestFileAccessResponse response =
+            ParseResponse<RequestFileAccessResponse>(proto_blob);
+        *allowed = response.allowed();
+        lifeline_fd->reset(dup(fd.get()));
+        run_loop->Quit();
+      },
+      &allowed, &lifeline_fd, &request_file_access_run_loop));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, DlpComponent::USB));
+  request_file_access_run_loop.Run();
+
+  EXPECT_FALSE(allowed);
+  EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+}
+
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request access by inodes.
   base::FilePath file_path;
@@ -505,8 +651,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
   files_restrictions_.push_back(
       {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
 
-  // Second loop run with cached results
-  for (int i = 0; i < 2; ++i) {
+  // Second loop run with cached results, third with another destination.
+  for (int i = 0; i < 3; ++i) {
     // Request access to the file.
     auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
         std::vector<uint8_t>, base::ScopedFD>>(nullptr);
@@ -523,17 +669,18 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
           run_loop->Quit();
         },
         &allowed, &lifeline_fd, &request_file_access_run_loop));
-    // Only the first call needs to query the proxy - the second call is
+    // The first and third call needs to query the proxy - the second call is
     // answered from the cache
-    if (i == 0) {
+    if (i == 0 || i == 2) {
       EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
                   DoCallMethodWithErrorCallback(_, _, _, _))
           .WillOnce(
               Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
     }
+    const std::string destination = i < 2 ? "destination" : "destination2";
     GetDlpAdaptor()->RequestFileAccess(
         std::move(response), CreateSerializedRequestFileAccessRequest(
-                                 {file_path.value()}, kPid, "destination"));
+                                 {file_path.value()}, kPid, destination));
     request_file_access_run_loop.Run();
 
     EXPECT_FALSE(allowed);
@@ -552,13 +699,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request access by inodes.
   base::FilePath file_path1;
@@ -616,13 +757,7 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request access by inodes.
   base::FilePath file_path;
@@ -670,13 +805,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
 }
 //
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create file to request access by inode.
   base::FilePath file_path;
@@ -690,6 +819,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   FileMetadata file_metadata;
   file_metadata.set_path(file_path.value());
+  file_metadata.set_inode(inode);
   files_restrictions_.push_back(
       {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
@@ -734,13 +864,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create file to request access by inode.
   base::FilePath file_path;
@@ -830,13 +954,7 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSources) {
-  // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request sources by inodes.
   base::FilePath file_path1;
@@ -896,12 +1014,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   EXPECT_EQ(response.files_metadata_size(), 0u);
 
   // Create database and add pending files.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Check that the pending entries were added.
   response = GetFilesSources({inode1, inode2});
@@ -919,17 +1032,45 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
+TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabaseNotAdded) {
+  // Create files to request sources by inodes.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database. The addition will be pending, so success
+  // is returned.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
+
+  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+
+  EXPECT_EQ(response.files_metadata_size(), 0u);
+
+  helper_.ReCreateAdaptor();
+
+  // Create database and add pending files.
+  InitDatabase();
+
+  // Check that the pending entries were not added.
+  response = GetFilesSources({inode1, inode2});
+
+  EXPECT_EQ(response.files_metadata_size(), 0u);
+}
+
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   // Enable feature.
   helper_.SetDatabaseCleanupFeatureEnabled(true);
 
   // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request sources by inodes.
   base::FilePath file_path1;
@@ -950,11 +1091,11 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
                    /*expected_result=*/true);
 
   // Delete one of the files.
-  base::DeleteFile(file_path2);
+  brillo::DeleteFile(file_path2);
   // Reinitialize database.
   GetDlpAdaptor()->CloseDatabaseForTesting();
   base::RunLoop run_loop2;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
+  GetDlpAdaptor()->InitDatabase(database_directory_->GetPath(),
                                 run_loop2.QuitClosure());
   run_loop2.Run();
 
@@ -973,12 +1114,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   helper_.SetDatabaseCleanupFeatureEnabled(false);
 
   // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request sources by inodes.
   base::FilePath file_path1;
@@ -999,11 +1135,11 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
                    /*expected_result=*/true);
 
   // Delete one of the files.
-  base::DeleteFile(file_path2);
+  brillo::DeleteFile(file_path2);
   // Reinitialize database.
   GetDlpAdaptor()->CloseDatabaseForTesting();
   base::RunLoop run_loop2;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
+  GetDlpAdaptor()->InitDatabase(database_directory_->GetPath(),
                                 run_loop2.QuitClosure());
   run_loop2.Run();
 
@@ -1023,13 +1159,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
+  SetRulesAndInitFanotify();
   // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request sources by inodes.
   base::FilePath file_path1;
@@ -1050,7 +1182,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
                    /*expected_result=*/true);
 
   // Delete one of the files.
-  base::DeleteFile(file_path2);
+  brillo::DeleteFile(file_path2);
   // Notify that file was deleted.
   helper_.OnFileDeleted(inode2);
 
@@ -1062,16 +1194,24 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
   EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
+
+  // Reinitialize database.
+  GetDlpAdaptor()->CloseDatabaseForTesting();
+  InitDatabase();
+
+  // Delete the other file.
+  brillo::DeleteFile(file_path1);
+  // Notify that file was deleted.
+  helper_.OnFileDeleted(inode1);
+
+  response = GetFilesSources({inode1, inode2});
+
+  ASSERT_EQ(response.files_metadata_size(), 0u);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
   // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files to request sources by inodes.
   base::FilePath file_path1;
@@ -1108,7 +1248,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
-TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
+TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EmptyProto) {
   SetDlpFilesPolicyRequest request;
   request.add_rules();
   std::vector<uint8_t> proto_blob(request.ByteSizeLong());
@@ -1117,10 +1257,305 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
   std::vector<uint8_t> response_blob =
       GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
 
-  RequestFileAccessResponse response =
-      ParseResponse<RequestFileAccessResponse>(response_blob);
+  SetDlpFilesPolicyResponse response =
+      ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
 
   EXPECT_FALSE(response.has_error_message());
+  EXPECT_FALSE(helper_.IsFanotifyWatcherActive());
+}
+
+TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_BadProto) {
+  std::vector<uint8_t> response_blob =
+      GetDlpAdaptor()->SetDlpFilesPolicy(RandomProtoBlob());
+
+  SetDlpFilesPolicyResponse response =
+      ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+  EXPECT_TRUE(response.has_error_message());
+}
+
+TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EnableDisable) {
+  // Testing fanotify watcher start for real.
+  GetDlpAdaptor()->SetFanotifyWatcherStartedForTesting(false);
+
+  // Send non-empty policy -> enabled.
+  {
+    SetDlpFilesPolicyRequest request;
+    ::dlp::DlpFilesRule* rule = request.add_rules();
+    rule->add_source_urls("example.com");
+    rule->add_destination_urls("*");
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+    std::vector<uint8_t> response_blob =
+        GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+    SetDlpFilesPolicyResponse response =
+        ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+    EXPECT_FALSE(response.has_error_message());
+    EXPECT_TRUE(helper_.IsFanotifyWatcherActive());
+  }
+
+  // Send another non-empty policy -> enabled.
+  {
+    SetDlpFilesPolicyRequest request;
+    ::dlp::DlpFilesRule* rule = request.add_rules();
+    rule->add_source_urls("example.com");
+    rule->add_destination_urls("google.com");
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+    std::vector<uint8_t> response_blob =
+        GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+    SetDlpFilesPolicyResponse response =
+        ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+    EXPECT_FALSE(response.has_error_message());
+    EXPECT_TRUE(helper_.IsFanotifyWatcherActive());
+  }
+
+  // Send same non-empty policy -> enabled.
+  {
+    SetDlpFilesPolicyRequest request;
+    ::dlp::DlpFilesRule* rule = request.add_rules();
+    rule->add_source_urls("example.com");
+    rule->add_destination_urls("google.com");
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+    std::vector<uint8_t> response_blob =
+        GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+    SetDlpFilesPolicyResponse response =
+        ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+    EXPECT_FALSE(response.has_error_message());
+    EXPECT_TRUE(helper_.IsFanotifyWatcherActive());
+  }
+
+  // Send empty policy -> disabled.
+  {
+    SetDlpFilesPolicyRequest request;
+    std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+    request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+    std::vector<uint8_t> response_blob =
+        GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+    SetDlpFilesPolicyResponse response =
+        ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
+
+    EXPECT_FALSE(response.has_error_message());
+    EXPECT_FALSE(helper_.IsFanotifyWatcherActive());
+  }
+}
+
+TEST_F(DlpAdaptorTest, AddZeroFilesToTheDaemon) {
+  AddFilesAndCheck({}, /*expected_result=*/true);
+}
+
+TEST_F(DlpAdaptorTest, AddFiles_BadProto) {
+  bool success;
+  std::unique_ptr<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
+      response = std::make_unique<
+          brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+          nullptr);
+  base::RunLoop run_loop;
+  response->set_return_callback(base::BindOnce(
+      [](bool* success, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        AddFilesResponse response = ParseResponse<AddFilesResponse>(proto_blob);
+        *success = response.error_message().empty();
+        run_loop->Quit();
+      },
+      &success, &run_loop));
+  GetDlpAdaptor()->AddFiles(std::move(response), RandomProtoBlob());
+  run_loop.Run();
+  EXPECT_FALSE(success);
+}
+
+TEST_F(DlpAdaptorTest, AddFiles_NonExistentFile) {
+  AddFilesAndCheck(
+      {CreateAddFileRequest(base::FilePath("/tmp/non-existent-file"), "source",
+                            "referrer")},
+      /*expected_result=*/false);
+}
+
+TEST_F(DlpAdaptorTest, RequestFileAccess_BadProto) {
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
+  base::ScopedFD lifeline_fd;
+  base::RunLoop request_file_access_run_loop;
+  RequestFileAccessResponse request_file_response;
+  response->set_return_callback(base::BindOnce(
+      [](RequestFileAccessResponse* response, base::ScopedFD* lifeline_fd,
+         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+         const base::ScopedFD& fd) {
+        *response = ParseResponse<RequestFileAccessResponse>(proto_blob);
+        lifeline_fd->reset(dup(fd.get()));
+        run_loop->Quit();
+      },
+      &request_file_response, &lifeline_fd, &request_file_access_run_loop));
+  GetDlpAdaptor()->RequestFileAccess(std::move(response), RandomProtoBlob());
+  request_file_access_run_loop.Run();
+
+  EXPECT_FALSE(request_file_response.allowed());
+  EXPECT_FALSE(request_file_response.error_message().empty());
+  EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+}
+
+TEST_F(DlpAdaptorTest, RequestFileAccess_NonExistentFile) {
+  InitDatabase();
+
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
+  base::ScopedFD lifeline_fd;
+  base::RunLoop request_file_access_run_loop;
+  RequestFileAccessResponse request_file_response;
+  response->set_return_callback(base::BindOnce(
+      [](RequestFileAccessResponse* response, base::ScopedFD* lifeline_fd,
+         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+         const base::ScopedFD& fd) {
+        *response = ParseResponse<RequestFileAccessResponse>(proto_blob);
+        lifeline_fd->reset(dup(fd.get()));
+        run_loop->Quit();
+      },
+      &request_file_response, &lifeline_fd, &request_file_access_run_loop));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response),
+      CreateSerializedRequestFileAccessRequest({"/tmp/non-existent-file"}, kPid,
+                                               "destination"));
+  request_file_access_run_loop.Run();
+
+  EXPECT_TRUE(request_file_response.allowed());
+  EXPECT_TRUE(request_file_response.error_message().empty());
+  EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+}
+
+TEST_F(DlpAdaptorTest, GetFilesSources_BadProto) {
+  GetFilesSourcesResponse result;
+  std::unique_ptr<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
+      response = std::make_unique<
+          brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+          nullptr);
+  base::RunLoop run_loop;
+  response->set_return_callback(base::BindOnce(
+      [](GetFilesSourcesResponse* result, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        *result = ParseResponse<GetFilesSourcesResponse>(proto_blob);
+        run_loop->Quit();
+      },
+      &result, &run_loop));
+
+  GetDlpAdaptor()->GetFilesSources(std::move(response), RandomProtoBlob());
+  run_loop.Run();
+
+  EXPECT_FALSE(result.error_message().empty());
+}
+
+TEST_F(DlpAdaptorTest, CheckFilesTransfer_BadProto) {
+  InitDatabase();
+
+  CheckFilesTransferResponse result;
+  base::RunLoop run_loop;
+
+  auto response = std::make_unique<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+      nullptr);
+  response->set_return_callback(base::BindOnce(
+      [](CheckFilesTransferResponse* result, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        *result = ParseResponse<CheckFilesTransferResponse>(proto_blob);
+        run_loop->Quit();
+      },
+      &result, &run_loop));
+  GetDlpAdaptor()->CheckFilesTransfer(std::move(response), RandomProtoBlob());
+  run_loop.Run();
+
+  EXPECT_FALSE(result.error_message().empty());
+  EXPECT_TRUE(result.files_paths().empty());
+}
+
+TEST_F(DlpAdaptorTest, CheckFilesTransfer_DbNotInitialized) {
+  CheckFilesTransferResponse result;
+  base::RunLoop run_loop;
+
+  // Create files.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1"),
+                    CreateAddFileRequest(file_path2, source2, "referrer2")},
+                   /*expected_result=*/true);
+
+  auto response = std::make_unique<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+      nullptr);
+  response->set_return_callback(base::BindOnce(
+      [](CheckFilesTransferResponse* result, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        *result = ParseResponse<CheckFilesTransferResponse>(proto_blob);
+        run_loop->Quit();
+      },
+      &result, &run_loop));
+  GetDlpAdaptor()->CheckFilesTransfer(
+      std::move(response),
+      CreateSerializedCheckFilesTransferRequest(
+          {file_path1.value(), file_path2.value()}, DlpComponent::USB));
+  run_loop.Run();
+
+  EXPECT_FALSE(result.error_message().empty());
+  EXPECT_TRUE(result.files_paths().empty());
+}
+
+TEST_F(DlpAdaptorTest, CheckFilesTransfer_IsFilesTransferRestrictedBadProto) {
+  // Create database.
+  InitDatabase();
+
+  CheckFilesTransferResponse result;
+  base::RunLoop run_loop;
+
+  // Create file.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+
+  const std::string source1 = "source1";
+
+  // Add the file to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1")},
+                   /*expected_result=*/true);
+
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyBadProto));
+
+  auto response = std::make_unique<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+      nullptr);
+  response->set_return_callback(base::BindOnce(
+      [](CheckFilesTransferResponse* result, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        *result = ParseResponse<CheckFilesTransferResponse>(proto_blob);
+        run_loop->Quit();
+      },
+      &result, &run_loop));
+  GetDlpAdaptor()->CheckFilesTransfer(
+      std::move(response), CreateSerializedCheckFilesTransferRequest(
+                               {file_path1.value()}, DlpComponent::USB));
+  run_loop.Run();
+
+  EXPECT_FALSE(result.error_message().empty());
+  EXPECT_TRUE(result.files_paths().empty());
 }
 
 class DlpAdaptorCheckFilesTransferTest
@@ -1148,25 +1583,24 @@ INSTANTIATE_TEST_SUITE_P(DlpAdaptor,
 
 TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
   // Create database.
-  base::ScopedTempDir database_directory;
-  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
-  base::RunLoop run_loop;
-  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
-                                run_loop.QuitClosure());
-  run_loop.Run();
+  InitDatabase();
 
   // Create files.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
+  base::FilePath file_path3;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path3));
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
   const std::string referrer1 = "referrer1";
   const std::string referrer2 = "referrer2";
 
-  // Add the files to the database.
+  // Add two of the files to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
                     CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
@@ -1174,51 +1608,58 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   files_restrictions_.clear();
   FileMetadata file1_metadata;
+  file1_metadata.set_inode(inode1);
   file1_metadata.set_path(file_path1.value());
   FileMetadata file2_metadata;
   file2_metadata.set_path(file_path2.value());
+  file2_metadata.set_inode(inode2);
   files_restrictions_.push_back(
       {std::move(file1_metadata), RestrictionLevel::LEVEL_BLOCK});
   files_restrictions_.push_back({std::move(file2_metadata), GetParam()});
+  const int is_files_transfer_restricted_calls =
+      (GetParam() == LEVEL_UNSPECIFIED || GetParam() == LEVEL_WARN_CANCEL) ? 2
+                                                                           : 1;
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
+      .Times(is_files_transfer_restricted_calls)
+      .WillRepeatedly(
+          Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
-  // Request access to the file.
-  auto response = std::make_unique<
-      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
-      nullptr);
+  // Do 2 times for cache.
+  for (int i = 0; i < 2; i++) {
+    // Request access to the file.
+    auto response = std::make_unique<
+        brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+        nullptr);
 
-  std::vector<std::string> restricted_files_paths;
-  base::RunLoop check_files_transfer_run_loop;
-  response->set_return_callback(base::BindOnce(
-      [](std::vector<std::string>* restricted_files_paths,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob) {
-        CheckFilesTransferResponse response =
-            ParseResponse<CheckFilesTransferResponse>(proto_blob);
-        restricted_files_paths->insert(restricted_files_paths->begin(),
-                                       response.files_paths().begin(),
-                                       response.files_paths().end());
-        run_loop->Quit();
-      },
-      &restricted_files_paths, &check_files_transfer_run_loop));
-  GetDlpAdaptor()->CheckFilesTransfer(
-      std::move(response),
-      CreateSerializedCheckFilesTransferRequest(
-          {file_path1.value(), file_path2.value()}, "destination"));
-  check_files_transfer_run_loop.Run();
+    std::vector<std::string> restricted_files_paths;
+    base::RunLoop check_files_transfer_run_loop;
+    response->set_return_callback(base::BindOnce(
+        [](std::vector<std::string>* restricted_files_paths,
+           base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob) {
+          CheckFilesTransferResponse response =
+              ParseResponse<CheckFilesTransferResponse>(proto_blob);
+          restricted_files_paths->insert(restricted_files_paths->begin(),
+                                         response.files_paths().begin(),
+                                         response.files_paths().end());
+          run_loop->Quit();
+        },
+        &restricted_files_paths, &check_files_transfer_run_loop));
+    GetDlpAdaptor()->CheckFilesTransfer(
+        std::move(response),
+        CreateSerializedCheckFilesTransferRequest(
+            {file_path1.value(), file_path2.value(), file_path3.value()},
+            "destination"));
+    check_files_transfer_run_loop.Run();
 
-  if (GetParam() == RestrictionLevel::LEVEL_BLOCK ||
-      GetParam() == RestrictionLevel::LEVEL_WARN_CANCEL) {
-    EXPECT_EQ(restricted_files_paths.size(), 2u);
-  } else {
-    EXPECT_EQ(restricted_files_paths.size(), 1u);
-    EXPECT_EQ(restricted_files_paths[0], file_path1.value());
+    if (GetParam() == RestrictionLevel::LEVEL_BLOCK ||
+        GetParam() == RestrictionLevel::LEVEL_WARN_CANCEL) {
+      EXPECT_EQ(restricted_files_paths.size(), 2u);
+    } else {
+      EXPECT_EQ(restricted_files_paths.size(), 1u);
+      EXPECT_EQ(restricted_files_paths[0], file_path1.value());
+    }
   }
-}
-
-TEST_F(DlpAdaptorTest, AddZeroFilesToTheDaemon) {
-  AddFilesAndCheck({}, /*expected_result=*/true);
 }
 
 }  // namespace dlp

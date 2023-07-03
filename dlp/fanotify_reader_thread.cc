@@ -110,8 +110,8 @@ void FanotifyReaderThread::RunLoop() {
     ssize_t bytes_read =
         HANDLE_EINTR(read(fanotify_fd_, buffer, sizeof(buffer)));
     if (bytes_read < 0) {
-      PLOG(WARNING) << "read from fanotify fd failed";
-      ForwardUMAErrorToParentThread(FanotifyError::kFdError);
+      PLOG(WARNING) << "read from fanotify fd failed, possibly exiting";
+      // Not reporting UMA because the parent object might already be deleted.
       return;
     }
 
