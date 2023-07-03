@@ -5,10 +5,12 @@
 #ifndef OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_FOR_TESTING_H_
 #define OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_FOR_TESTING_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
+#include <brillo/process/process.h>
 
 #include "oobe_config/filesystem/file_handler.h"
 
@@ -57,6 +59,11 @@ class FileHandlerForTesting : public FileHandler {
   // Removes the file that indicates metrics reporting is enabled.
   bool RemoveMetricsReportingEnabledFile() const;
 
+  // Reads rollback metrics file.
+  bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
+  // Writes rollback metrics file.
+  bool WriteRollbackMetricsData(const std::string& data) const;
+
   // Reads data staged to be preserved across powerwash in pstore from
   // oobe_config_save directory.
   bool ReadPstoreData(std::string* data) const;
@@ -67,6 +74,12 @@ class FileHandlerForTesting : public FileHandler {
   // Removes the file that pstore creates when it preserves data across a
   // reboot.
   bool RemoveRamoopsData() const;
+
+  // Locks the rollback metrics file. Locks are per file descriptor. We need to
+  // spawn a separate process to hold the lock. Returns the process holding the
+  // lock so it can be killed to release it.
+  std::unique_ptr<brillo::Process> StartLockMetricsFileProcess(
+      const base::FilePath& build_directory) const;
 
   base::FilePath GetFullPath(
       const std::string& path_without_root) const override;

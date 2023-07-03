@@ -1,0 +1,56 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libbrillo" ]
+}
+
+source_set("filesystem") {
+  sources = [ "file_handler.cc" ]
+  all_dependent_configs = [ ":target_defaults" ]
+
+  # PIC is required for shared libraries and their dependencies.
+  configs += [ "//common-mk:pic" ]
+}
+
+install_config("install_headers") {
+  sources = [ "file_handler.h" ]
+  install_path = "/usr/include/oobe_config/filesystem"
+}
+
+if (use.test || use.fuzzer) {
+  source_set("filesystem_for_testing") {
+    sources = [ "file_handler_for_testing.cc" ]
+    configs += [ "//common-mk:test" ]
+    deps = [ ":filesystem" ]
+  }
+}
+
+if (use.test) {
+  pkg_config("test_helper_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+  executable("hold_lock_file_for_tests") {
+    sources = [ "hold_lock_file_for_tests.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+    ]
+    deps = [ ":filesystem_for_testing" ]
+  }
+  executable("filesystem_test") {
+    sources = [ "file_handler_test.cc" ]
+    run_test = true
+    deps = [
+      ":filesystem_for_testing",
+      ":hold_lock_file_for_tests",
+      "//common-mk/testrunner",
+    ]
+  }
+}

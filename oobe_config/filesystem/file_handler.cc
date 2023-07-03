@@ -4,8 +4,16 @@
 
 #include "oobe_config/filesystem/file_handler.h"
 
+#include <optional>
+#include <vector>
+
+#include <base/posix/eintr_wrapper.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
+#include <base/logging.h>
+#include <sys/file.h>
 
 namespace oobe_config {
 
@@ -131,18 +139,66 @@ bool FileHandler::HasRollbackMetricsData() const {
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
 }
 
-bool FileHandler::ReadRollbackMetricsData(
-    std::string* rollback_metrics_data) const {
-  return base::ReadFileToString(
-      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
-      rollback_metrics_data);
+bool FileHandler::CreateRollbackMetricsDataAtomically(
+    const std::string& rollback_metrics_metadata) const {
+  if (!base::ImportantFileWriter::WriteFileAtomically(
+          GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
+          rollback_metrics_metadata)) {
+    LOG(ERROR)
+        << "Failed to create and write Rollback metrics file atomically.";
+    return false;
+  }
+
+  return true;
 }
 
-bool FileHandler::WriteRollbackMetricsData(
-    const std::string& rollback_metrics_data) const {
-  return base::WriteFile(
-      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
-      rollback_metrics_data);
+std::optional<base::File> FileHandler::OpenRollbackMetricsDataFile() const {
+  return OpenFile(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
+}
+
+bool FileHandler::ExtendRollbackMetricsData(
+    const std::string& rollback_metrics_event_data) const {
+  std::optional<base::File> rollback_metrics_file =
+      OpenRollbackMetricsDataFile();
+  if (!rollback_metrics_file.has_value()) {
+    LOG(ERROR) << "Cannot open Rollback metrics file.";
+    return false;
+  }
+
+  // We use flock to avoid synchronization issues between processes when
+  // handling events in the metrics file. We are ok with the possibility of the
+  // file being deleted while performing this action and losing the
+  // corresponding metric.
+  // If the lock is busy we do not wait for the lock to be released. It is
+  // preferable to lose the metric than risk blocking Rollback.
+  if (!LockFileNoBlocking(*rollback_metrics_file)) {
+    LOG(ERROR) << "Cannot lock Rollback metrics file.";
+    return false;
+  }
+
+  // File is opened in append mode; we can write the event data to the current
+  // position to extend it.
+  int initial_length = rollback_metrics_file->GetLength();
+  if (rollback_metrics_file->WriteAtCurrentPos(
+          rollback_metrics_event_data.c_str(),
+          rollback_metrics_event_data.length()) !=
+      rollback_metrics_event_data.length()) {
+    LOG(ERROR) << "Unable to write event in Rollback metrics file.";
+    UnlockFile(*rollback_metrics_file);
+    return false;
+  }
+
+  if (rollback_metrics_file->GetLength() !=
+      (initial_length + rollback_metrics_event_data.length())) {
+    // If the lengths do not match, the output file is not the expected one.
+    LOG(ERROR) << "The Rollback metrics file is corrupted.";
+    UnlockFile(*rollback_metrics_file);
+    return false;
+  }
+
+  UnlockFile(*rollback_metrics_file);
+  return true;
 }
 
 bool FileHandler::RemoveRollbackMetricsData() const {
@@ -154,6 +210,49 @@ base::FileEnumerator FileHandler::RamoopsFileEnumerator() const {
   return base::FileEnumerator(GetFullPath(kRamoopsPath),
                               /*recursive=*/false, base::FileEnumerator::FILES,
                               kRamoopsFilePattern);
+}
+
+std::optional<base::File> FileHandler::OpenFile(
+    const base::FilePath& path) const {
+  base::File file;
+  file.Initialize(path, base::File::FLAG_READ | base::File::FLAG_OPEN |
+                            base::File::FLAG_APPEND);
+  if (!file.IsValid()) {
+    return std::nullopt;
+  }
+  return file;
+}
+
+bool FileHandler::LockFileNoBlocking(const base::File& file) const {
+  // base::File locking uses POSIX record locks instead of flock. We get the
+  // file descriptor and make the system call to flock manually.
+  if (HANDLE_EINTR(flock(file.GetPlatformFile(), LOCK_EX | LOCK_NB)) < 0) {
+    return false;
+  }
+  return true;
+}
+
+std::optional<std::string> FileHandler::GetOpenedFileData(
+    base::File& file) const {
+  // Read the full content of the file from the beginning.
+  std::vector<char> file_content(file.GetLength());
+  if (file.Read(0, file_content.data(), file_content.size()) !=
+      file_content.size()) {
+    LOG(ERROR) << "Unexpected data file read length.";
+    return std::nullopt;
+  }
+
+  std::string data(file_content.begin(), file_content.end());
+  return data;
+}
+
+void FileHandler::TruncateOpenedFile(base::File& file, const int length) const {
+  file.SetLength(length);
+}
+
+void FileHandler::UnlockFile(base::File& file) const {
+  std::ignore = flock(file.GetPlatformFile(), LOCK_UN);
+  return;
 }
 
 base::FilePath FileHandler::GetFullPath(

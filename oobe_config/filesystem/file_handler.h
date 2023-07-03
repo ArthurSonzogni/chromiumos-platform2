@@ -5,6 +5,7 @@
 #ifndef OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_H_
 #define OOBE_CONFIG_FILESYSTEM_FILE_HANDLER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_enumerator.h>
@@ -91,17 +92,40 @@ class FileHandler {
   // oobe_config_save directory.
   bool WritePstoreData(const std::string& data) const;
 
-  // Checks if rollback metrics data exists.
+  // Checks if the file with rollback metrics data exists.
   bool HasRollbackMetricsData() const;
-  // Reads rollback metrics data file.
-  bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
-  // Writes rollback metrics data file.
-  bool WriteRollbackMetricsData(const std::string& rollback_metrics_data) const;
-  // Removes rollback metrics data file.
+  // Creates the rollback metrics file containing the metadata about the
+  // current Rollback. The file is created atomically to ensure it contains the
+  // metadata and replaces any previously existing content.
+  bool CreateRollbackMetricsDataAtomically(
+      const std::string& rollback_metrics_metadata) const;
+  // Opens the rollback metrics file in read and write mode and returns it if
+  // the operation is successful.
+  std::optional<base::File> OpenRollbackMetricsDataFile() const;
+  // Attempts to extends rollback metrics data file with the event data
+  // provided. Returns true if it is possible to lock the file and write the new
+  // event.
+  bool ExtendRollbackMetricsData(
+      const std::string& rollback_metrics_event_data) const;
+  // Removes the file with rollback metrics data.
   bool RemoveRollbackMetricsData() const;
 
   // Returns a file enumerator to contents of pstore after reboot.
   base::FileEnumerator RamoopsFileEnumerator() const;
+
+  // Opens in append mode. Returns the file if this operation is successful.
+  std::optional<base::File> OpenFile(const base::FilePath& path) const;
+  // Attempts to lock corresponding file descriptor using flock. Returns false
+  // if it is not possible to lock the file.
+  bool LockFileNoBlocking(const base::File& file) const;
+  // Retrieves all content of an opened file. Returns an empty string if there
+  // was an error while reading the file.
+  std::optional<std::string> GetOpenedFileData(base::File& file) const;
+  // Truncates the file to the length provided. The caller must ensure the file
+  // is locked.
+  void TruncateOpenedFile(base::File& file, const int length) const;
+  // Unlocks the file provided.
+  void UnlockFile(base::File& file) const;
 
  protected:
   static constexpr char kPreservePath[] =

@@ -9,15 +9,19 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_config_restore",
+    ":install_minijail_config_save",
     ":liboobeconfig",
     ":oobe_config_restore",
     ":oobe_config_save",
-    ":install_minijail_config_restore",
-    ":install_minijail_config_save",
     ":rollback_cleanup",
+    "filesystem:install_headers",
   ]
   if (use.test) {
-    deps += [ ":oobe_config_test" ]
+    deps += [
+      ":oobe_config_test",
+      "filesystem:filesystem_test",
+    ]
   }
   if (use.fuzzer) {
     deps += [
@@ -68,7 +72,6 @@ static_library("liboobeconfig") {
   sources = [
     "encryption/openssl_encryption.cc",
     "encryption/pstore_storage.cc",
-    "filesystem/file_handler.cc",
     "load_oobe_config_rollback.cc",
     "metrics/metrics_uma.cc",
     "network_exporter.cc",
@@ -83,6 +86,7 @@ static_library("liboobeconfig") {
   deps = [
     ":librollback_helper_mojom",
     ":oobe_config_proto",
+    "filesystem:filesystem",
   ]
 }
 
@@ -195,8 +199,6 @@ if (use.test) {
   executable("oobe_config_test") {
     sources = [
       "encryption/openssl_encryption_test.cc",
-      "filesystem/file_handler_for_testing.cc",
-      "filesystem/file_handler_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
     ]
@@ -209,6 +211,7 @@ if (use.test) {
     libs = [ "hwsec_test" ]
     deps = [
       ":liboobeconfig",
+      "filesystem:filesystem_for_testing",
       "//common-mk/testrunner",
     ]
   }
@@ -216,10 +219,7 @@ if (use.test) {
 
 if (use.fuzzer) {
   executable("load_oobe_config_rollback_fuzzer") {
-    sources = [
-      "filesystem/file_handler_for_testing.cc",
-      "load_oobe_config_rollback_fuzzer.cc",
-    ]
+    sources = [ "load_oobe_config_rollback_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
@@ -227,6 +227,7 @@ if (use.fuzzer) {
     deps = [
       ":liboobeconfig",
       ":oobe_config_proto",
+      "filesystem:filesystem_for_testing",
     ]
     pkg_deps = [ "libprotobuf-mutator" ]
   }

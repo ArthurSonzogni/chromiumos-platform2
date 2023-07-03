@@ -5,22 +5,40 @@
 #include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 
-#include <unistd.h>
+#include <memory>
 #include <optional>
+#include <signal.h>
+#include <unistd.h>
 
+#include <base/command_line.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <brillo/process/process.h>
 #include <gtest/gtest.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
+#include <sys/file.h>
 
 namespace oobe_config {
 namespace {
 
 constexpr char kFileData[] =
     "5468696e6b20676f6f642e20537065616b20676f6f642e20446f20676f6f642e0d0a";
+constexpr char kExtensionData[] =
+    "96e4f026742ff00a0da0d76206707a724a24d0df4d6f7f406454ea7503af47300f6a";
+constexpr char kFileDataExtended[] =
+    "5468696e6b20676f6f642e20537065616b20676f6f642e20446f20676f6f642e0d0a96e4f0"
+    "26742ff00a0da0d76206707a724a24d0df4d6f7f406454ea7503af47300f6a";
+constexpr char kFileDataTruncated[] = "5468696e6b206";
+
+base::FilePath GetBuildDirectory() {
+  // Required to spawn a new process and test file locking.
+  base::FilePath executable_path =
+      base::CommandLine::ForCurrentProcess()->GetProgram();
+  return base::FilePath(executable_path.DirName());
+}
 
 }  // namespace
 
@@ -53,6 +71,8 @@ class FileHandlerTest : public ::testing::Test {
   static constexpr char kExpectedRollbackMetricsData[] =
       "mnt/stateful_partition/unencrypted/preserve/"
       "enterprise-rollback-metrics-data";
+  static constexpr char kTestPreserveData[] =
+      "mnt/stateful_partition/unencrypted/preserve/test";
 
   void VerifyHasFunction(const std::string& path,
                          base::RepeatingCallback<bool()> has_path) {
@@ -108,6 +128,24 @@ class FileHandlerTest : public ::testing::Test {
     ASSERT_TRUE(base::DeleteFile(rooted_path));
   }
 
+  void VerifyAppendFunction(
+      const std::string& path,
+      base::RepeatingCallback<bool(const std::string&)> create_file,
+      base::RepeatingCallback<bool(const std::string&)> append_file) {
+    base::FilePath rooted_path = RootedPath(path);
+
+    ASSERT_FALSE(base::PathExists(rooted_path));
+    if (!base::PathExists(rooted_path.DirName())) {
+      ASSERT_TRUE(base::CreateDirectory(rooted_path.DirName()));
+    }
+    std::string read_data;
+    ASSERT_TRUE(create_file.Run(kFileData));
+    ASSERT_TRUE(append_file.Run(kExtensionData));
+    ASSERT_TRUE(base::ReadFileToString(rooted_path, &read_data));
+    ASSERT_EQ(read_data, kFileDataExtended);
+    ASSERT_TRUE(base::DeleteFile(rooted_path));
+  }
+
   void VerifyRemoveFunction(const std::string& path,
                             base::RepeatingCallback<bool()> remove_file) {
     base::FilePath rooted_path = RootedPath(path);
@@ -139,6 +177,19 @@ class FileHandlerTest : public ::testing::Test {
     ASSERT_TRUE(base::ReadFileToString(rooted_path, &read_data));
     ASSERT_EQ(read_data, std::string());
     ASSERT_TRUE(base::DeleteFile(rooted_path));
+  }
+
+  bool InitializeFileWithData(const base::FilePath& path) {
+    if (!base::PathExists(path.DirName())) {
+      if (!base::CreateDirectory(path.DirName())) {
+        return false;
+      }
+    }
+    if (!base::WriteFile(path, kFileData)) {
+      return false;
+    }
+
+    return base::PathExists(path);
   }
 
   base::FilePath RootedPath(const std::string& path) {
@@ -355,16 +406,35 @@ TEST_F(FileHandlerTest, HasRollbackMetricsData) {
                                         base::Unretained(&file_handler_)));
 }
 
-TEST_F(FileHandlerTest, ReadRollbackMetricsData) {
-  VerifyReadFunction(FileHandlerTest::kExpectedRollbackMetricsData,
-                     base::BindRepeating(&FileHandler::ReadRollbackMetricsData,
-                                         base::Unretained(&file_handler_)));
-}
-
-TEST_F(FileHandlerTest, WriteRollbackMetricsData) {
+TEST_F(FileHandlerTest, CreateRollbackMetricsDataAtomically) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedRollbackMetricsData,
-      base::BindRepeating(&FileHandler::WriteRollbackMetricsData,
+      base::BindRepeating(&FileHandler::CreateRollbackMetricsDataAtomically,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest,
+       CreateRollbackMetricsDataAtomicallyReplacesExistingFile) {
+  base::FilePath path = RootedPath(kExpectedRollbackMetricsData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+
+  ASSERT_TRUE(
+      file_handler_.CreateRollbackMetricsDataAtomically(kExtensionData));
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+  std::string read_data;
+  ASSERT_TRUE(file_handler_.ReadRollbackMetricsData(&read_data));
+  ASSERT_EQ(read_data, kExtensionData);
+
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, CreateAndExtendRollbackMetricsData) {
+  VerifyAppendFunction(
+      FileHandlerTest::kExpectedRollbackMetricsData,
+      base::BindRepeating(&FileHandler::CreateRollbackMetricsDataAtomically,
+                          base::Unretained(&file_handler_)),
+      base::BindRepeating(&FileHandler::ExtendRollbackMetricsData,
                           base::Unretained(&file_handler_)));
 }
 
@@ -394,6 +464,75 @@ TEST_F(FileHandlerTest, RemoveRamoops) {
       FileHandlerTest::kExpectedRamoopsData,
       base::BindRepeating(&FileHandlerForTesting::RemoveRamoopsData,
                           base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, OpenAndReadFile) {
+  base::FilePath path = RootedPath(kTestPreserveData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+  std::optional<std::string> read_data = file_handler_.GetOpenedFileData(*file);
+  ASSERT_TRUE(read_data.has_value());
+  ASSERT_EQ(read_data.value(), kFileData);
+
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, FlockFailsAfterLockFileNoBlocking) {
+  base::FilePath path = RootedPath(kExpectedRollbackMetricsData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> opened_file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(opened_file.has_value());
+  ASSERT_TRUE(file_handler_.LockFileNoBlocking(*opened_file));
+
+  std::optional<base::File> new_opened_file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(new_opened_file.has_value());
+  ASSERT_EQ(flock(new_opened_file->GetPlatformFile(), LOCK_EX | LOCK_NB), -1);
+
+  file_handler_.UnlockFile(*opened_file);
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, DoNotLockIfFileIsLockedInAnotherProcess) {
+  base::FilePath path = RootedPath(kExpectedRollbackMetricsData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  auto lock_process =
+      file_handler_.StartLockMetricsFileProcess(GetBuildDirectory());
+  ASSERT_NE(lock_process, nullptr);
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+  ASSERT_FALSE(file_handler_.LockFileNoBlocking(*file));
+
+  // Kill the process to unlock the file. Attempting to lock again should
+  // succeed.
+  lock_process->Kill(SIGKILL, /*timeout=*/5);
+
+  ASSERT_TRUE(file_handler_.LockFileNoBlocking(*file));
+
+  file_handler_.UnlockFile(*file);
+  ASSERT_TRUE(base::DeletePathRecursively(path));
+}
+
+TEST_F(FileHandlerTest, LockAndTruncateFile) {
+  base::FilePath path = RootedPath(kTestPreserveData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  std::optional<base::File> file = file_handler_.OpenFile(path);
+  ASSERT_TRUE(file.has_value());
+  ASSERT_TRUE(file_handler_.LockFileNoBlocking(*file));
+
+  file_handler_.TruncateOpenedFile(*file, std::strlen(kFileDataTruncated));
+
+  std::optional<std::string> read_data = file_handler_.GetOpenedFileData(*file);
+  ASSERT_TRUE(read_data.has_value());
+  ASSERT_EQ(read_data.value(), kFileDataTruncated);
+
+  file_handler_.UnlockFile(*file);
+  ASSERT_TRUE(base::DeletePathRecursively(path));
 }
 
 }  // namespace oobe_config
