@@ -974,13 +974,13 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
 
   switch (msg.mode()) {
     case shill::RTNLMessage::kModeAdd: {
-      const auto tmp_addr = msg.GetIfaAddress();
-      const auto peer_ipv6_addr =
-          tmp_addr ? tmp_addr->ToIPv6Address() : std::nullopt;
-      if (!peer_ipv6_addr) {
+      const auto ifa_addr = msg.GetIfaAddress();
+      if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
         LOG(ERROR) << *this << " IFA_ADDRESS in RTNL message is invalid";
         return;
       }
+
+      const auto peer_ipv6_addr = ifa_addr->ToIPv6CIDR()->address();
       if (ns_peer_ipv6_address_ == peer_ipv6_addr) {
         return;
       }

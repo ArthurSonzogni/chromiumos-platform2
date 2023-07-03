@@ -108,17 +108,17 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
 
   const auto default_addr = IPAddress::CreateFromFamily(message.family());
   if (auto addr = message.GetRtaDst(); addr.has_value()) {
-    entry->dst = std::move(*addr);
+    entry->dst = IPAddress(*addr);
   } else {
     entry->dst = default_addr;
   }
   if (auto addr = message.GetRtaSrc(); addr.has_value()) {
-    entry->src = std::move(*addr);
+    entry->src = IPAddress(*addr);
   } else {
     entry->src = default_addr;
   }
   if (auto addr = message.GetRtaGateway(); addr.has_value()) {
-    entry->gateway = std::move(*addr);
+    entry->gateway = IPAddress(*addr);
   } else {
     entry->gateway = default_addr;
   }

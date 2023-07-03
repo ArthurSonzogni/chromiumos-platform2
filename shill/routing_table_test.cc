@@ -155,11 +155,11 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
          entry.table == RoutingTable::GetInterfaceTableId(index) &&
          status.protocol == RTPROT_BOOT && status.scope == entry.scope &&
          status.type == RTN_UNICAST && arg->HasAttribute(RTA_DST) &&
-         arg->GetRtaDst() == entry.dst &&
+         arg->GetRtaDst() == entry.dst.ToIPCIDR() &&
          ((!arg->HasAttribute(RTA_SRC) && entry.src.IsDefault()) ||
-          arg->GetRtaSrc() == entry.src) &&
+          arg->GetRtaSrc() == entry.src.ToIPCIDR()) &&
          ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsDefault()) ||
-          arg->GetRtaGateway() == entry.gateway) &&
+          arg->GetRtaGateway() == entry.gateway.ToIPAddress()) &&
          arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
          arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
          priority == entry.metric;
@@ -443,7 +443,8 @@ MATCHER_P2(IsRoutingQuery, destination, index, "") {
          arg->family() == destination.family() &&
          arg->flags() == NLM_F_REQUEST && status.table == 0 &&
          status.protocol == 0 && status.scope == 0 && status.type == 0 &&
-         arg->HasAttribute(RTA_DST) && arg->GetRtaDst() == destination &&
+         arg->HasAttribute(RTA_DST) &&
+         arg->GetRtaDst() == destination.ToIPCIDR() &&
          !arg->HasAttribute(RTA_SRC) && !arg->HasAttribute(RTA_GATEWAY) &&
          arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
          !arg->HasAttribute(RTA_PRIORITY);

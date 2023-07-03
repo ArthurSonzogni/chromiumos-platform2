@@ -386,6 +386,35 @@ std::string IndexToName(int ifindex) {
   return std::string(buf);
 }
 
+// Creates net_base::IPAddress by ByteString and Family. It's used to provide
+// similar interface as shill::IPAddress::CreateFromBytes().
+// TODO(b/279693340): Remove it when we deprecate ByteString and
+// IPAddress::Family.
+std::optional<net_base::IPAddress> CreateIPAddress(const ByteString& addr_bytes,
+                                                   IPAddress::Family family) {
+  const auto addr = net_base::IPAddress::CreateFromBytes(
+      {addr_bytes.GetConstData(), addr_bytes.GetLength()});
+  if (!addr || (family != IPAddress::kFamilyUnknown &&
+                net_base::ToSAFamily(addr->GetFamily()) != family)) {
+    return std::nullopt;
+  }
+  return addr;
+}
+
+// Creates net_base::IPCIDR by ByteString, prefix length, and Family. It's used
+// to provide similar interface as shill::IPAddress::CreateFromBytes().
+// TODO(b/279693340): Remove it when we deprecate ByteString and
+// IPAddress::Family.
+std::optional<net_base::IPCIDR> CreateIPCIDR(const ByteString& addr_bytes,
+                                             int prefix_length,
+                                             IPAddress::Family family) {
+  const auto addr = CreateIPAddress(addr_bytes, family);
+  if (!addr) {
+    return std::nullopt;
+  }
+  return net_base::IPCIDR::CreateFromAddressAndPrefix(*addr, prefix_length);
+}
+
 }  // namespace
 
 struct RTNLHeader {
@@ -943,27 +972,25 @@ std::string RTNLMessage::GetIflaIfname() const {
   return GetStringAttribute(IFLA_IFNAME);
 }
 
-std::optional<IPAddress> RTNLMessage::GetIfaAddress() const {
-  return IPAddress::CreateFromByteStringAndPrefix(
-      family_, GetAttribute(IFA_ADDRESS), address_status_.prefix_len);
+std::optional<net_base::IPCIDR> RTNLMessage::GetIfaAddress() const {
+  return CreateIPCIDR(GetAttribute(IFA_ADDRESS), address_status_.prefix_len,
+                      family_);
 }
 
 uint32_t RTNLMessage::GetRtaTable() const {
   return GetUint32Attribute(RTA_TABLE);
 }
 
-std::optional<IPAddress> RTNLMessage::GetRtaDst() const {
-  return IPAddress::CreateFromByteStringAndPrefix(
-      family_, GetAttribute(RTA_DST), route_status_.dst_prefix);
+std::optional<net_base::IPCIDR> RTNLMessage::GetRtaDst() const {
+  return CreateIPCIDR(GetAttribute(RTA_DST), route_status_.dst_prefix, family_);
 }
 
-std::optional<IPAddress> RTNLMessage::GetRtaSrc() const {
-  return IPAddress::CreateFromByteStringAndPrefix(
-      family_, GetAttribute(RTA_SRC), route_status_.src_prefix);
+std::optional<net_base::IPCIDR> RTNLMessage::GetRtaSrc() const {
+  return CreateIPCIDR(GetAttribute(RTA_SRC), route_status_.src_prefix, family_);
 }
 
-std::optional<IPAddress> RTNLMessage::GetRtaGateway() const {
-  return IPAddress::CreateFromByteString(family_, GetAttribute(RTA_GATEWAY));
+std::optional<net_base::IPAddress> RTNLMessage::GetRtaGateway() const {
+  return CreateIPAddress(GetAttribute(RTA_GATEWAY), family_);
 }
 
 uint32_t RTNLMessage::GetRtaOif() const {
@@ -990,14 +1017,12 @@ std::string RTNLMessage::GetFraIifname() const {
   return GetStringAttribute(FRA_IIFNAME);
 }
 
-std::optional<IPAddress> RTNLMessage::GetFraSrc() const {
-  return IPAddress::CreateFromByteStringAndPrefix(
-      family_, GetAttribute(FRA_SRC), route_status_.src_prefix);
+std::optional<net_base::IPCIDR> RTNLMessage::GetFraSrc() const {
+  return CreateIPCIDR(GetAttribute(FRA_SRC), route_status_.src_prefix, family_);
 }
 
-std::optional<IPAddress> RTNLMessage::GetFraDst() const {
-  return IPAddress::CreateFromByteStringAndPrefix(
-      family_, GetAttribute(FRA_DST), route_status_.dst_prefix);
+std::optional<net_base::IPCIDR> RTNLMessage::GetFraDst() const {
+  return CreateIPCIDR(GetAttribute(FRA_DST), route_status_.dst_prefix, family_);
 }
 
 uint32_t RTNLMessage::GetFraFwmark() const {
@@ -1090,9 +1115,8 @@ std::string RTNLMessage::ToString() const {
     case RTNLMessage::kTypeAddress:
       if (const auto addr = GetIfaAddress(); addr.has_value()) {
         details = base::StringPrintf(
-            "%s/%d if %s[%d] flags %s scope %d", addr->ToString().c_str(),
-            address_status_.prefix_len, IndexToName(interface_index_).c_str(),
-            interface_index_,
+            "%s if %s[%d] flags %s scope %d", addr->ToString().c_str(),
+            IndexToName(interface_index_).c_str(), interface_index_,
             address_status_.flags
                 ? PrintFlags(address_status_.flags, kIfaFlags).c_str()
                 : "0",
@@ -1103,11 +1127,9 @@ std::string RTNLMessage::ToString() const {
       break;
     case RTNLMessage::kTypeRoute:
       if (const auto addr = GetRtaSrc(); addr.has_value())
-        details += base::StringPrintf("src %s/%d ", addr->ToString().c_str(),
-                                      route_status_.src_prefix);
+        details += base::StringPrintf("src %s ", addr->ToString().c_str());
       if (const auto addr = GetRtaDst(); addr.has_value())
-        details += base::StringPrintf("dst %s/%d ", addr->ToString().c_str(),
-                                      route_status_.dst_prefix);
+        details += base::StringPrintf("dst %s ", addr->ToString().c_str());
       if (const auto addr = GetRtaGateway(); addr.has_value())
         details += "via " + addr->ToString() + " ";
       if (HasAttribute(RTA_OIF))
@@ -1127,11 +1149,9 @@ std::string RTNLMessage::ToString() const {
       if (HasAttribute(FRA_OIFNAME))
         details += "oif " + GetFraOifname() = " ";
       if (const auto addr = GetFraSrc(); addr.has_value())
-        details += base::StringPrintf("src %s/%d ", addr->ToString().c_str(),
-                                      route_status_.src_prefix);
+        details += base::StringPrintf("src %s ", addr->ToString().c_str());
       if (const auto addr = GetFraDst(); addr.has_value())
-        details += base::StringPrintf("dst %s/%d ", addr->ToString().c_str(),
-                                      route_status_.dst_prefix);
+        details += base::StringPrintf("dst %s ", addr->ToString().c_str());
       if (HasAttribute(FRA_FWMARK))
         details += base::StringPrintf("fwmark 0x%X/0x%X ", GetFraFwmark(),
                                       GetFraFwmask());

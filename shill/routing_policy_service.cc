@@ -204,10 +204,10 @@ bool RoutingPolicyService::ParseRoutingPolicyMessage(
   }
 
   if (auto tmp_dst = message.GetFraDst(); tmp_dst.has_value()) {
-    entry->dst = std::move(*tmp_dst);
+    entry->dst = IPAddress(*tmp_dst);
   }
   if (auto tmp_src = message.GetFraSrc(); tmp_src.has_value()) {
-    entry->src = std::move(*tmp_src);
+    entry->src = IPAddress(*tmp_src);
   }
 
   return true;
