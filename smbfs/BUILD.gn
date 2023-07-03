@@ -38,8 +38,6 @@ pkg_config("target_defaults") {
 
 static_library("libsmbfs") {
   sources = [
-    "authpolicy_client.cc",
-    "authpolicy_client.h",
     "filesystem.cc",
     "filesystem.h",
     "fuse_session.cc",
