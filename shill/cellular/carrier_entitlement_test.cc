@@ -174,11 +174,12 @@ class CarrierEntitlementTest : public testing::Test {
         .WillOnce(Return(brillo_connection_));
     if (http_method != kGet) {
       EXPECT_CALL(*brillo_connection_, MockSetRequestData(_, _))
-          .WillOnce(DoAll(WithArgs<0, 1>(Invoke([=](brillo::Stream* stream,
+          .WillOnce(
+              DoAll(WithArgs<0, 1>(Invoke([=, this](brillo::Stream* stream,
                                                     brillo::ErrorPtr* err) {
-                            this->VerifyRequestData(stream, err, content);
-                          })),
-                          Return(true)));
+                      this->VerifyRequestData(stream, err, content);
+                    })),
+                    Return(true)));
     }
   }
 
