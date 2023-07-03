@@ -49,6 +49,8 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(kDefaultJsonStoreFilePath),
+      test_dir_path_(
+          base::FilePath(kDefaultWorkingDirPath).Append(kTestDirPath)),
       is_external_utils_initialized_(false),
       is_interface_set_up_(false) {
   // Establish connection to the executor process.
@@ -71,12 +73,14 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          RmadInterface* rmad_interface,
                          const base::FilePath& state_file_path,
+                         const base::FilePath& test_dir_path,
                          std::unique_ptr<TpmManagerClient> tpm_manager_client,
                          std::unique_ptr<CrosConfigUtils> cros_config_utils,
                          std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
       state_file_path_(state_file_path),
+      test_dir_path_(test_dir_path),
       tpm_manager_client_(std::move(tpm_manager_client)),
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
@@ -173,7 +177,13 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
 }
 
-bool DBusService::CheckRmaCriteria() const {
+bool DBusService::IsRMAAllowed() const {
+  // Always allow Shimless RMA if test directory exist for development.
+  int cros_debug;
+  if (crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1 &&
+      base::PathExists(test_dir_path_)) {
+    return true;
+  }
   // Only allow Shimless RMA in normal mode.
   if (std::string mainfw_type;
       !crossystem_utils_->GetMainFwType(&mainfw_type) ||
@@ -183,6 +193,13 @@ bool DBusService::CheckRmaCriteria() const {
   // Only allow Shimless RMA if it's enabled in cros_config.
   if (RmadConfig config;
       !cros_config_utils_->GetRmadConfig(&config) || !config.enabled) {
+    return false;
+  }
+  return true;
+}
+
+bool DBusService::CheckRmaCriteria() const {
+  if (!IsRMAAllowed()) {
     return false;
   }
   // Shimless RMA is allowed. Trigger it when either condition is satisfied:

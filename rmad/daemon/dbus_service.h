@@ -39,6 +39,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   explicit DBusService(const scoped_refptr<dbus::Bus>& bus,
                        RmadInterface* rmad_interface,
                        const base::FilePath& state_file_path,
+                       const base::FilePath& test_dir_path,
                        std::unique_ptr<TpmManagerClient> tpm_manager_client,
                        std::unique_ptr<CrosConfigUtils> cros_config_utils,
                        std::unique_ptr<CrosSystemUtils> crossystem_utils);
@@ -83,6 +84,7 @@ class DBusService : public brillo::DBusServiceDaemon {
  private:
   friend class DBusServiceTestBase;
 
+  bool IsRMAAllowed() const;
   bool CheckRmaCriteria() const;
   bool SetUpInterface();
 
@@ -193,6 +195,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   RmadInterface* rmad_interface_;
   // RMA state file path.
   base::FilePath state_file_path_;
+  // RMA test directory path.
+  base::FilePath test_dir_path_;
   // External utils to communicate with tpm_manager.
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
   // External utils to get cros_config data.

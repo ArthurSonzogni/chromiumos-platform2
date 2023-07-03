@@ -47,6 +47,9 @@ class DBusServiceTestBase : public testing::Test {
     bool is_rmad_enabled_in_cros_config = true;
     std::string main_fw_type = "normal";
     bool rmad_setup_result = true;
+    // Sets to std::nullopt makes getter return error.
+    std::optional<bool> is_cros_debug = false;
+    bool is_test_directory_exist = false;
   };
 
   DBusServiceTestBase() {
@@ -68,6 +71,10 @@ class DBusServiceTestBase : public testing::Test {
     return temp_dir_.GetPath().AppendASCII("state");
   }
 
+  base::FilePath GetTestDirecotryPath() const {
+    return temp_dir_.GetPath().AppendASCII(".test");
+  }
+
   void StartDBusService(const RmadOptions& options) {
     auto mock_tpm_manager_client =
         std::make_unique<NiceMock<MockTpmManagerClient>>();
@@ -80,6 +87,12 @@ class DBusServiceTestBase : public testing::Test {
     if (options.is_state_file_exist) {
       brillo::TouchFile(state_file_path);
     }
+    // It is ok to use file instead of directory here because we only check if
+    // it exists.
+    base::FilePath test_dir_path = GetTestDirecotryPath();
+    if (options.is_test_directory_exist) {
+      brillo::TouchFile(test_dir_path);
+    }
     ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
         .WillByDefault(DoAll(SetArgPointee<0>(options.ro_verification_status),
                              Return(true)));
@@ -88,6 +101,16 @@ class DBusServiceTestBase : public testing::Test {
             DoAll(SetArgPointee<0>(RmadConfig(
                       {.enabled = options.is_rmad_enabled_in_cros_config})),
                   Return(true)));
+    if (options.is_cros_debug.has_value()) {
+      ON_CALL(*mock_crossystem_utils,
+              GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+          .WillByDefault(DoAll(SetArgPointee<1>(options.is_cros_debug.value()),
+                               Return(true)));
+    } else {
+      ON_CALL(*mock_crossystem_utils,
+              GetString(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+          .WillByDefault(Return(false));
+    }
     ON_CALL(*mock_crossystem_utils,
             GetString(Eq(CrosSystemUtils::kMainFwTypeProperty), _))
         .WillByDefault(
@@ -96,7 +119,7 @@ class DBusServiceTestBase : public testing::Test {
         .WillByDefault(Return(options.rmad_setup_result));
 
     dbus_service_ = std::make_unique<DBusService>(
-        mock_bus_, &mock_rmad_service_, state_file_path,
+        mock_bus_, &mock_rmad_service_, state_file_path, test_dir_path,
         std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils),
         std::move(mock_crossystem_utils));
     ASSERT_EQ(dbus_service_->OnEventLoopStarted(), EX_OK);
@@ -289,6 +312,85 @@ TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_InterfaceSetUpFailed) {
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotAllowed) {
+  StartDBusService({
+      .is_state_file_exist = true,
+      .is_rmad_enabled_in_cros_config = false,  // Disable rmad by cros_config.
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, false);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotNormalMode) {
+  StartDBusService({
+      .is_state_file_exist = true,
+      .main_fw_type = "not_normal",  // Disable rmad by fw type.
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, false);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsDevMode) {
+  // Set cros debug and test directory to override the check of cros_config and
+  // fw_type.
+  StartDBusService({
+      .is_state_file_exist = true,
+      .is_rmad_enabled_in_cros_config = false,
+      .main_fw_type = "not_normal",
+      .is_cros_debug = true,
+      .is_test_directory_exist = true,
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, true);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotDevModeNoCrosDebug) {
+  // Failed to get cros_debug should not bypass the check of cros_config and
+  // fw_type.
+  StartDBusService({
+      .is_state_file_exist = true,
+      .is_rmad_enabled_in_cros_config = false,
+      .main_fw_type = "not_normal",
+      .is_cros_debug = std::nullopt,
+      .is_test_directory_exist = true,
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, false);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotDevModeCrosDebugIsFalse) {
+  // cros_debug sets to false should not bypass the check of cros_config and
+  // fw_type.
+  StartDBusService({
+      .is_state_file_exist = true,
+      .is_rmad_enabled_in_cros_config = false,
+      .main_fw_type = "not_normal",
+      .is_cros_debug = false,
+      .is_test_directory_exist = true,
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, false);
+}
+
+TEST_F(DBusServiceIsRequiredTest, IsRmaRequired_IsNotDevModeNoTestDir) {
+  // No test directory should not bypass the check of cros_config and fw_type.
+  StartDBusService({
+      .is_state_file_exist = true,
+      .is_rmad_enabled_in_cros_config = false,
+      .main_fw_type = "not_normal",
+      .is_cros_debug = true,
+      .is_test_directory_exist = false,
+  });
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, false);
 }
 
 TEST_F(DBusServiceIsRequiredTest, GetCurrentState_Success) {
