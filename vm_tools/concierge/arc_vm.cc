@@ -692,6 +692,7 @@ void ArcVm::HandleUserlandReady() {
   MakeRtVcpu();
 
   virtio_blk_metrics_->ReportBootMetrics(apps::VmType::ARCVM, vsock_cid_);
+  virtio_blk_metrics_->ScheduleDailyMetrics(apps::VmType::ARCVM, vsock_cid_);
 }
 
 // static

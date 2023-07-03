@@ -13,6 +13,7 @@
 
 #include <base/sequence_checker.h>
 #include <base/strings/string_piece.h>
+#include <base/timer/timer.h>
 #include <metrics/metrics_library.h>
 #include <vm_applications/apps.pb.h>
 
@@ -33,6 +34,30 @@ class VshFileReader {
   virtual ~VshFileReader() = default;
 };
 
+// Represents indices of stat values you can read from `/sys/block/*/stat`.
+enum SysBlockStatIndex {
+  // Number of read I/Os
+  kReadIosIndex = 0,
+  // Number of sectors read
+  kReadSectorsIndex = 2,
+  // Number of write I/Os
+  kWriteIosIndex = 4,
+  // Number of sectors written
+  kWriteSectorsIndex = 6,
+  // Total active time of the block device in milliseconds. The actual max size
+  // of this metrics is int32_t, but uint64_t is used for easier parse.
+  kIoTicksIndex = 9,
+  // Number of discard IOs
+  kDiscardIosIndex = 11,
+  // Number of flush IOs
+  kFlushIosIndex = 15,
+  kMaxSysBlockStatIndex = 17,
+};
+
+// Represents stat values you can read from `/sys/block/*/stat`. Defined as an
+// array instead of a struct, since we iterate on them a lot
+using SysBlockStat = std::array<uint64_t, kMaxSysBlockStatIndex>;
+
 // Sends virtio-blk related metrics to UMA.
 //
 // Calculates block device metrics by reading the guest stat files like
@@ -44,18 +69,33 @@ class VirtioBlkMetrics {
   explicit VirtioBlkMetrics(
       base::raw_ref<MetricsLibraryInterface> metrics_library,
       std::unique_ptr<VshFileReader> vhs_file_reader =
-          std::make_unique<VshFileReader>())
+          std::make_unique<VshFileReader>(),
+      std::unique_ptr<base::RepeatingTimer> daily_report_timer =
+          std::make_unique<base::RepeatingTimer>())
       : metrics_library_(metrics_library),
-        vsh_file_reader_(std::move(vhs_file_reader)) {}
+        vsh_file_reader_(std::move(vhs_file_reader)),
+        daily_report_timer_(std::move(daily_report_timer)) {}
 
-  // Calculates and sends virtio-blk metrics of the guest with `cid`. `disks` is
-  // a vector of the the file name of the block device in the guest like `vda`.
+  // Calculates and sends virtio-blk metrics of the guest with `cid`. `disks`
+  // is a vector of the the file name of the block device in the guest like
+  // `vda`.
   void ReportMetrics(uint32_t cid,
                      const std::string& metrics_category_name,
                      const std::vector<std::string>& disks) const;
 
+  // Calculates and sends the delta virtio-blk metrics of the guest with `cid`
+  // from the metrics of `previous_block_stat`. `ReportDeltaMetrics` also
+  // updates the given `previous_block_stat` with the new stats.
+  void ReportDeltaMetrics(uint32_t cid,
+                          const std::string& metrics_category_name,
+                          const std::vector<std::string>& disks,
+                          SysBlockStat& previous_block_stat) const;
+
   // Report Virtio-blk metrics on a VM boot.
   void ReportBootMetrics(apps::VmType vm_type, uint32_t cid) const;
+
+  // Schedule the daily report of the virtio-blk metrics.
+  void ScheduleDailyMetrics(apps::VmType vm_type, uint32_t cid);
 
  private:
   // Stores a pointer to the metrics library instance
@@ -64,6 +104,13 @@ class VirtioBlkMetrics {
   // Stores a guest file reader
   const std::unique_ptr<VshFileReader> vsh_file_reader_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Timer which fires for the daily report
+  std::unique_ptr<base::RepeatingTimer> daily_report_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Stores the SysBlockStat retrieved in the previous daily ArcVM report.
+  SysBlockStat previous_block_stat_ GUARDED_BY_CONTEXT(sequence_checker_){};
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);

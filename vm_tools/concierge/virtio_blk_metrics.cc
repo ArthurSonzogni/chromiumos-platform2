@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -44,30 +45,6 @@ constexpr std::array<std::string_view, 3> kArcVmDisks = {
 
 constexpr int kSectorSize = 512;
 constexpr char kSysBlockPath[] = "/sys/block";
-
-// Represents indices of stat values you can read from `/sys/block/*/stat`.
-enum SysBlockStatIndex {
-  // Number of read I/Os
-  kReadIosIndex = 0,
-  // Number of sectors read
-  kReadSectorsIndex = 2,
-  // Number of write I/Os
-  kWriteIosIndex = 4,
-  // Number of sectors written
-  kWriteSectorsIndex = 6,
-  // Total active time of the block device in milliseconds. The actual max size
-  // of this metrics is int32_t, but uint64_t is used for easier parse.
-  kIoTicksIndex = 9,
-  // Number of discard IOs
-  kDiscardIosIndex = 11,
-  // Number of flush IOs
-  kFlushIosIndex = 15,
-  kMaxSysBlockStatIndex = 17,
-};
-
-// Represents stat values you can read from `/sys/block/*/stat`. Defined as an
-// array instead of a struct, since we iterate on them a lot
-using SysBlockStat = std::array<uint64_t, kMaxSysBlockStatIndex>;
 
 // Parses `/sys/block/*/stat` file, which contains numbers separated by spaces
 // in one line. See https://www.kernel.org/doc/html/next/block/stat.html.
@@ -251,6 +228,15 @@ void VirtioBlkMetrics::ReportMetrics(
     uint32_t cid,
     const std::string& metrics_category_name,
     const std::vector<std::string>& disks) const {
+  SysBlockStat zero_stat{};
+  ReportDeltaMetrics(cid, metrics_category_name, disks, zero_stat);
+}
+
+void VirtioBlkMetrics::ReportDeltaMetrics(
+    uint32_t cid,
+    const std::string& metrics_category_name,
+    const std::vector<std::string>& disks,
+    SysBlockStat& previous_block_stat) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   const std::optional<std::vector<SysBlockStat>> block_stats =
@@ -268,6 +254,11 @@ void VirtioBlkMetrics::ReportMetrics(
     }
   }
 
+  for (int i = 0; i < total_stat.size(); i++) {
+    total_stat[i] -= previous_block_stat[i];
+    previous_block_stat[i] = total_stat[i];
+  }
+
   SendBlockMetricsToUma(total_stat, metrics_category_name, metrics_library_);
 }
 
@@ -279,6 +270,20 @@ void VirtioBlkMetrics::ReportBootMetrics(apps::VmType vm_type,
   const std::vector<std::string> arcvm_blocks = GetDisksToReport(vm_type);
 
   ReportMetrics(cid, metrics_category, arcvm_blocks);
+}
+
+void VirtioBlkMetrics::ScheduleDailyMetrics(apps::VmType vm_type,
+                                            uint32_t cid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  const std::string metrics_category = GetMetricsCategoryName(vm_type, "Daily");
+  const std::vector<std::string> arcvm_blocks = GetDisksToReport(vm_type);
+
+  daily_report_timer_->Start(
+      FROM_HERE, base::Days(1),
+      base::BindRepeating(&VirtioBlkMetrics::ReportDeltaMetrics,
+                          base::Unretained(this), cid, metrics_category,
+                          arcvm_blocks, std::ref(previous_block_stat_)));
 }
 
 }  // namespace vm_tools::concierge

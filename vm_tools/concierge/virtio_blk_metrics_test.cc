@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/time/time.h>
+#include <base/timer/mock_timer.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
@@ -23,27 +24,26 @@ using ::testing::StrictMock;
 
 namespace vm_tools::concierge {
 
-using Files = std::map<const std::string, const std::string>;
+using Files = std::map<const std::string, std::string>;
 
 class VirtioBlkMetricsTest : public ::testing::Test {};
 
 class FakeGuestFileReader : public VshFileReader {
  public:
   explicit FakeGuestFileReader(Files faked_files)
-      : faked_files_(std::move(faked_files)) {}
+      : faked_files(std::move(faked_files)) {}
 
   std::optional<std::string> Read(uint32_t cid,
                                   const std::string& path) const override {
-    return faked_files_.at(path);
+    return faked_files.at(path);
   }
 
   std::optional<bool> CheckIfExists(uint32_t cid,
                                     const std::string& path) const override {
-    return faked_files_.find(path) != faked_files_.end();
+    return faked_files.find(path) != faked_files.end();
   }
 
- private:
-  Files faked_files_;
+  Files faked_files;
 };
 
 TEST_F(VirtioBlkMetricsTest, ReportMetricsReportsCorrectMetrics) {
@@ -292,6 +292,176 @@ TEST_F(VirtioBlkMetricsTest, ReportBootMetricsReportsCorrectDisksAndNames) {
   }
 
   metrics_reporter.ReportBootMetrics(apps::VmType::ARCVM, 0);
+}
+
+TEST_F(VirtioBlkMetricsTest, ReportDeltaMetricsReportsCorrectMetrics) {
+  StrictMock<MetricsLibraryMock> metrics_library;
+
+  const std::vector<std::string> disks{"vda"};
+  FakeGuestFileReader* file_reader = new FakeGuestFileReader({
+      {"/sys/block/vda/stat",
+       // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+       " 100        0            10000         10          100"
+       // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+       " 0              10000          10           0          10"
+       // time_in_queue, discard_ios, discard_merges, discard_sectors,
+       " 100             100          0               1000"
+       // discard_ticks, flush_ios, flush_ticks
+       " 10              100        10\n"},
+  });
+
+  VirtioBlkMetrics metrics_reporter(
+      raw_ref<MetricsLibraryInterface>::from_ptr(&metrics_library),
+      std::unique_ptr<VshFileReader>(static_cast<VshFileReader*>(file_reader)));
+
+  const char* name_prefix = "Disk";
+  // First, metrics should be calculated based on the file contents
+  const std::tuple<const char*, int> expected_first_metrics[] = {
+      {"Disk.IoTicks", 10},
+      {"Disk.IoSize", (10000 * 2) * 512 / 1024 / 1024},
+      {"Disk.IoCount", 100 * 4},
+      {"Disk.KbPerTicks", (10000 * 2) * 512 / 1024 / 10},
+  };
+
+  for (const auto& [expected_metrics_name, expected_sample_value] :
+       expected_first_metrics) {
+    EXPECT_CALL(metrics_library, SendToUMA(expected_metrics_name,
+                                           expected_sample_value, _, _, _))
+        .Times(1)
+        .WillOnce(testing::Return(true));
+  }
+
+  SysBlockStat previous_block_stat{};
+  metrics_reporter.ReportDeltaMetrics(0, name_prefix, disks,
+                                      previous_block_stat);
+
+  // previous_block_stat should be updated to the new stat.
+  EXPECT_EQ(previous_block_stat[kReadIosIndex], 100);
+
+  // Now, stats increased to 5000, 500, or 50
+  file_reader->faked_files["/sys/block/vda/stat"] =
+      // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+      " 500        0            50000         50          500"
+      // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+      " 0              50000          50           0          50"
+      // time_in_queue, discard_ios, discard_merges, discard_sectors,
+      " 500             500          0               5000"
+      // discard_ticks, flush_ios, flush_ticks
+      " 50              500        50\n";
+
+  const std::tuple<const char*, int> expected_second_metrics[] = {
+      {"Disk.IoTicks", 50 - 10},
+      {"Disk.IoSize", (50000 * 2 - 10000 * 2) * 512 / 1024 / 1024},
+      {"Disk.IoCount", 500 * 4 - 100 * 4},
+      {"Disk.KbPerTicks", (50000 * 2 - 10000 * 2) * 512 / 1024 / 40},
+  };
+
+  for (const auto& [expected_metrics_name, expected_sample_value] :
+       expected_second_metrics) {
+    EXPECT_CALL(metrics_library, SendToUMA(expected_metrics_name,
+                                           expected_sample_value, _, _, _))
+        .Times(1)
+        .WillOnce(testing::Return(true));
+  }
+
+  metrics_reporter.ReportDeltaMetrics(0, name_prefix, disks,
+                                      previous_block_stat);
+}
+
+TEST_F(VirtioBlkMetricsTest,
+       ScheduleDailyMetricsReportsCorrectDisksAndMetrics) {
+  StrictMock<MetricsLibraryMock> metrics_library;
+  base::MockRepeatingTimer* timer = new base::MockRepeatingTimer;
+  FakeGuestFileReader* file_reader = new FakeGuestFileReader({
+      {"/sys/block/vda/stat",
+       // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+       " 100        0            1000          10          100"
+       // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+       " 0              1000           10           0          10"
+       // time_in_queue, discard_ios, discard_merges, discard_sectors,
+       " 100             100          0               1000"
+       // discard_ticks, flush_ios, flush_ticks
+       " 10              100        10\n"},
+      {"/sys/block/vdb/stat",
+       // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+       " 100        0            1000          10          100"
+       // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+       " 0              1000           10           0          10"
+       // time_in_queue, discard_ios, discard_merges, discard_sectors,
+       " 100             100          0               1000"
+       // discard_ticks, flush_ios, flush_ticks
+       " 10              100        10\n"},
+      {"/sys/block/vde/stat",
+       // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+       " 100        0            1000          10          100"
+       // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+       " 0              1000           10           0          10"
+       // time_in_queue, discard_ios, discard_merges, discard_sectors,
+       " 100             100          0               1000"
+       // discard_ticks, flush_ios, flush_ticks
+       " 10              100        10\n"},
+  });
+
+  VirtioBlkMetrics metrics_reporter(
+      raw_ref<MetricsLibraryInterface>::from_ptr(&metrics_library),
+      std::unique_ptr<VshFileReader>(static_cast<VshFileReader*>(file_reader)),
+      std::unique_ptr<base::RepeatingTimer>(
+          static_cast<base::RepeatingTimer*>(timer)));
+
+  // First, metrics should be calculated based on the file contents
+  const std::tuple<const char*, int> expected_first_metrics[] = {
+      {"Virtualization.ARCVM.Disk.Daily.IoTicks", 10 * 3},
+      {"Virtualization.ARCVM.Disk.Daily.IoSize",
+       (1000 * 2 * 3) * 512 / 1024 / 1024},
+      {"Virtualization.ARCVM.Disk.Daily.IoCount", 100 * 3 * 4},
+      {"Virtualization.ARCVM.Disk.Daily.KbPerTicks",
+       (1000 * 2 * 3) * 512 / 1024 / 30},
+  };
+
+  for (const auto& [expected_metrics_name, expected_sample_value] :
+       expected_first_metrics) {
+    EXPECT_CALL(metrics_library, SendToUMA(expected_metrics_name,
+                                           expected_sample_value, _, _, _))
+        .Times(1)
+        .WillOnce(testing::Return(true));
+  }
+
+  metrics_reporter.ScheduleDailyMetrics(apps::VmType::ARCVM, 0);
+
+  // Fire the first report
+  timer->Fire();
+
+  // Now, stats of vda increased by 4000, 400, or 40.
+  file_reader->faked_files["/sys/block/vda/stat"] =
+      // read_ios, read_merges, read_sectors, read_ticks, write_ios,
+      " 500        0            5000          50          500"
+      // write_merges, write_sectors, write_ticks, in_flight, io_ticks,
+      " 0              5000           50           0          50"
+      // time_in_queue, discard_ios, discard_merges, discard_sectors,
+      " 500             500          0               5000"
+      // discard_ticks, flush_ios, flush_ticks
+      " 50              500        50\n";
+
+  const std::tuple<const char*, int> expected_second_metrics[] = {
+      // Increased by 40
+      {"Virtualization.ARCVM.Disk.Daily.IoTicks", 40},
+      {"Virtualization.ARCVM.Disk.Daily.IoSize",
+       (4000 * 2) * 512 / 1024 / 1024},
+      {"Virtualization.ARCVM.Disk.Daily.IoCount", 400 * 4},
+      {"Virtualization.ARCVM.Disk.Daily.KbPerTicks",
+       (4000 * 2) * 512 / 1024 / 40},
+  };
+
+  for (const auto& [expected_metrics_name, expected_sample_value] :
+       expected_second_metrics) {
+    EXPECT_CALL(metrics_library, SendToUMA(expected_metrics_name,
+                                           expected_sample_value, _, _, _))
+        .Times(1)
+        .WillOnce(testing::Return(true));
+  }
+
+  // Fire the second report
+  timer->Fire();
 }
 
 }  // namespace vm_tools::concierge
