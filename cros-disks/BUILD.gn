@@ -172,6 +172,7 @@ if (use.seccomp) {
     arch = getenv("ARCH")
     sources = [
       "seccomp_policy/archivemount-seccomp-$arch.policy",
+      "seccomp_policy/drivefs-seccomp-$arch.policy",
       "seccomp_policy/fusebox-seccomp-$arch.policy",
       "seccomp_policy/mkfs-seccomp-$arch.policy",
       "seccomp_policy/mount-zip-seccomp-$arch.policy",
@@ -182,6 +183,7 @@ if (use.seccomp) {
     # NOSORT
     outputs = [
       "archivemount-seccomp.policy",
+      "drivefs-seccomp.policy",
       "fusebox-seccomp.policy",
       "mkfs-seccomp.policy",
       "mount-zip-seccomp.policy",

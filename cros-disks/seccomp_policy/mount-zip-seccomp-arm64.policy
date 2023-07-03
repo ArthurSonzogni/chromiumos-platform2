@@ -12,13 +12,13 @@ clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
-dup3: 1
 dup: 1
+dup3: 1
 execve: 1
 exit: 1
 exit_group: 1
-faccessat2: 1
 faccessat: 1
+faccessat2: 1
 fallocate: 1
 fcntl: 1
 fstat: 1
@@ -47,8 +47,8 @@ newfstatat: 1
 openat: 1
 pipe2: 1
 ppoll: 1
-prctl: arg0 == PR_SET_NAME
 pread64: 1
+prctl: arg0 == PR_SET_NAME
 prlimit64: 1
 pwrite64: 1
 read: 1

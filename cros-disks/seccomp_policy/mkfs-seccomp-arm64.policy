@@ -8,8 +8,8 @@ rseq: 1
 brk: 1
 close: 1
 connect: 1
-dup3: 1
 dup: 1
+dup3: 1
 execve: 1
 exit: 1
 exit_group: 1
