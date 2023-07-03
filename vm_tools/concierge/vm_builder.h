@@ -100,19 +100,23 @@ class VmBuilder {
 
   // Override flags for O_DIRECT for already appended disks.
   VmBuilder& EnableODirect(bool enable);
+  // Override flags for O_DIRECT for already appended Nth disk.
+  VmBuilder& EnableODirectN(int n, bool enable);
   // Override flags for multiple_workers for already appended disks.
   VmBuilder& EnableMultipleWorkers(bool enable);
   // Override options for the async runtime for already appended disks.
   VmBuilder& SetBlockAsyncExecutor(AsyncExecutor executor);
   // Override block size for already appended disks.
   VmBuilder& SetBlockSize(size_t block_size);
+  VmBuilder& SetBlockSizeN(size_t n, size_t block_size);
 
   VmBuilder& SetVmmSwapDir(base::FilePath vmm_swap_dir);
 
-  // Builds the command line required to start a VM. Returns an empty list if
-  // the vm args are invalid.
+  // Builds the command line required to start a VM. Optionally Applies
+  // dev_params to modify the configuration. Consumes this (the builder).
+  // Returns an empty list if the vm args are invalid.
   base::StringPairs BuildVmArgs(
-      CustomParametersForDev* dev_params = nullptr) const;
+      CustomParametersForDev* dev_params = nullptr) &&;
 
   static void SetValidWaylandRegexForTesting(char* regex);
 
@@ -122,6 +126,7 @@ class VmBuilder {
   // Builds the parameters for `crosvm run` to start a VM based on this
   // VmBuilder's settings.
   base::StringPairs BuildRunParams() const;
+  bool ProcessCustomParameters(const CustomParametersForDev& devparams);
 
   base::FilePath kernel_;
   base::FilePath initrd_;

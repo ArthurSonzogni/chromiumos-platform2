@@ -30,7 +30,6 @@
 #include <base/logging.h>
 #include <base/memory/page_size.h>
 #include <base/memory/ptr_util.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -77,15 +76,6 @@ constexpr char kDevConfFilePath[] = "/usr/local/vms/etc/arcvm_dev.conf";
 
 // Custom parameter key to override the kernel path
 constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
-
-// Custom parameter key to override the o_direct= disk parameter.
-constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
-
-// Custom parameter key to override the multiple_workers= disk parameter.
-constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
-
-// Custom parameter key to override the async executor for the disk devices.
-constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
 // Custom parameter key to skip total bytes written management for ARCVM swap.
 // TODO(b/284408104): Rename this to skip whole vmm-swap policies to unblock
@@ -514,32 +504,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     }
   }
 
-  if (custom_parameters.ObtainSpecialParameter(kKeyToOverrideODirect)
-          .value_or("false") == "true") {
-    vm_builder.EnableODirect(true);
-    /* block size for DM-verity root file system */
-    vm_builder.SetBlockSize(4096);
-  }
-
-  if (custom_parameters
-          .ObtainSpecialParameter(kKeyToOverrideBlockMultipleWorkers)
-          .value_or("false") == "true") {
-    vm_builder.EnableMultipleWorkers(true);
-  }
-
-  const auto block_async_executor = custom_parameters.ObtainSpecialParameter(
-      kKeyToOverrideIoBlockAsyncExecutor);
-  if (block_async_executor) {
-    const auto executor_enum =
-        StringToAsyncExecutor(block_async_executor.value());
-    if (!executor_enum.has_value()) {
-      LOG(ERROR) << "Unknown value for BLOCK_ASYNC_EXECUTOR: "
-                 << block_async_executor.value();
-      return false;
-    }
-    vm_builder.SetBlockAsyncExecutor(executor_enum.value());
-  }
-
   if (custom_parameters.ObtainSpecialParameter(kKeyToSkipVmmTbwManagement)
           .value_or("false") == "true") {
     skip_tbw_management_ = true;
@@ -551,7 +515,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
           .value_or(kernel.value());
   vm_builder.SetKernel(base::FilePath(kernel_path));
 
-  auto args = vm_builder.BuildVmArgs(&custom_parameters);
+  auto args = std::move(vm_builder).BuildVmArgs(&custom_parameters);
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the

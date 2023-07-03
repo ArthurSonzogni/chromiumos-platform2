@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/logging.h>
@@ -25,6 +26,19 @@ namespace {
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
+
+// Custom parameter key to override the o_direct= disk parameter.
+constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
+
+// Custom parameter key to override the o_direct= disk parameter for specific
+// Nth entry.
+constexpr char kKeyToOverrideODirectN[] = "O_DIRECT_N";
+
+// Custom parameter key to override the multiple_workers= disk parameter.
+constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
+
+// Custom parameter key to override the async executor for the disk devices.
+constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
 }  // namespace
 
@@ -281,6 +295,11 @@ VmBuilder& VmBuilder::EnableODirect(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableODirectN(int n, bool enable) {
+  disks_.at(n).o_direct = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableMultipleWorkers(bool enable) {
   for (auto& d : disks_) {
     d.multiple_workers = enable;
@@ -302,13 +321,64 @@ VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetBlockSizeN(size_t n, size_t block_size) {
+  disks_.at(n).block_size = block_size;
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetVmmSwapDir(base::FilePath vmm_swap_dir) {
   vmm_swap_dir_ = std::move(vmm_swap_dir);
   return *this;
 }
 
-base::StringPairs VmBuilder::BuildVmArgs(
-    CustomParametersForDev* devparams) const {
+bool VmBuilder::ProcessCustomParameters(
+    const CustomParametersForDev& devparams) {
+  if (devparams.ObtainSpecialParameter(kKeyToOverrideODirect)
+          .value_or("false") == "true") {
+    EnableODirect(true);
+    /* block size for DM-verity root file system */
+    SetBlockSize(4096);
+  }
+  for (auto value : devparams.ObtainSpecialParameters(kKeyToOverrideODirectN)) {
+    int64_t n;
+    if (!base::StringToInt64(value, &n)) {
+      LOG(ERROR) << "Unknown value for " << kKeyToOverrideODirectN << ": "
+                 << value;
+      return false;
+    }
+    EnableODirectN(n, true);
+
+    /* block size for DM-verity root file system */
+    SetBlockSizeN(n, 4096);
+  }
+
+  if (devparams.ObtainSpecialParameter(kKeyToOverrideBlockMultipleWorkers)
+          .value_or("false") == "true") {
+    EnableMultipleWorkers(true);
+  }
+
+  const auto block_async_executor =
+      devparams.ObtainSpecialParameter(kKeyToOverrideIoBlockAsyncExecutor);
+  if (block_async_executor) {
+    const auto executor_enum =
+        StringToAsyncExecutor(block_async_executor.value());
+    if (!executor_enum.has_value()) {
+      LOG(ERROR) << "Unknown value for BLOCK_ASYNC_EXECUTOR: "
+                 << block_async_executor.value();
+      return false;
+    }
+    SetBlockAsyncExecutor(executor_enum.value());
+  }
+  return true;
+}
+
+base::StringPairs VmBuilder::BuildVmArgs(CustomParametersForDev* devparams) && {
+  if (devparams) {
+    if (!ProcessCustomParameters(*devparams)) {
+      return {};
+    }
+  }
+
   base::StringPairs post_run_args = BuildRunParams();
 
   // Early-return when BuildRunParams() failed.

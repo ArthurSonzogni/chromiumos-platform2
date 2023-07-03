@@ -288,7 +288,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
-  if (!StartProcess(vm_builder.BuildVmArgs()))
+  if (!StartProcess(std::move(vm_builder).BuildVmArgs()))
     return false;
 
   // Create a stub for talking to the maitre'd instance inside the VM.
