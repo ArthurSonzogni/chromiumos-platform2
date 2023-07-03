@@ -78,7 +78,8 @@ enum class UpdateExtraCommand : uint16_t {
   kTouchpadDebug = 8,
   kConsoleReadInit = 9,
   kConsoleReadNext = 10,
-  kMaxValue = kConsoleReadNext
+  kGetVersionString = 11,
+  kMaxValue = kGetVersionString,
 };
 const char* ToString(UpdateExtraCommand subcommand);
 

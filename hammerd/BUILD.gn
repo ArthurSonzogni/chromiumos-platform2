@@ -52,6 +52,7 @@ static_library("libhammerd") {
     "dbus_wrapper.cc",
     "fmap_utils.cc",
     "hammer_updater.cc",
+    "i2c_endpoint.cc",
     "pair_utils.cc",
     "process_lock.cc",
     "update_fw.cc",

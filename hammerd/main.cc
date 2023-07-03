@@ -19,6 +19,7 @@
 #include <re2/re2.h>
 
 #include "hammerd/hammer_updater.h"
+#include "hammerd/i2c_endpoint.h"
 #include "hammerd/process_lock.h"
 #include "hammerd/usb_utils.h"
 
@@ -44,6 +45,11 @@ static bool check_usb_path(const std::string& path) {
   return RE2::FullMatch(path, pattern);
 }
 
+static bool check_i2c_path(const std::string& path) {
+  RE2 pattern("[1-9][0-9]*-[[:xdigit:]]{4}");
+  return RE2::FullMatch(path, pattern);
+}
+
 int main(int argc, const char* argv[]) {
   // hammerd should be triggered by upstart job.
   // The default value of arguments are stored in `/etc/init/hammerd.conf`, and
@@ -58,6 +64,10 @@ int main(int argc, const char* argv[]) {
                 "A string of combined USB bus and port.\n"
                 "    Format: '<bus>-<port>'\n"
                 "    e.g. '1-1.1' implies USB bus is 1 and port is 1.1");
+  DEFINE_string(i2c_path, "",
+                "I2C bus number and address.\n"
+                "    Format: '<bus>-<hexaddr>'\n"
+                "    e.g. '4-0056'");
   DEFINE_int32(autosuspend_delay_ms, -1, "USB autosuspend delay time (ms)");
   DEFINE_bool(at_boot, false,
               "Invoke process at boot time. "
@@ -86,22 +96,38 @@ int main(int argc, const char* argv[]) {
     return static_cast<int>(ExitStatus::kSuccess);
   }
 
-  if (FLAGS_vendor_id < 0 || FLAGS_product_id < 0 || FLAGS_usb_path.empty()) {
-    LOG(ERROR) << "Must specify USB vendor/product ID and bus/port number.";
+  if (FLAGS_usb_path.size() && (FLAGS_vendor_id < 0 || FLAGS_product_id < 0)) {
+    LOG(ERROR) << "Must specify USB vendor/product ID.";
     return static_cast<int>(ExitStatus::kNeedUsbInfo);
   }
 
-  if (!check_usb_path(FLAGS_usb_path)) {
+  if (!(FLAGS_usb_path.empty() ^ FLAGS_i2c_path.empty())) {
+    LOG(ERROR) << "Must specity exactly one of --i2c_path/--usb_path.";
+    return static_cast<int>(ExitStatus::kNeedUsbInfo);
+  }
+
+  if (!FLAGS_usb_path.empty() && !check_usb_path(FLAGS_usb_path)) {
     LOG(ERROR) << "--usb_path should follow the format: '<bus>-<port>'.";
     return static_cast<int>(ExitStatus::kNeedUsbInfo);
   }
 
+  if (!FLAGS_i2c_path.empty() && !check_i2c_path(FLAGS_i2c_path)) {
+    LOG(ERROR) << "--i2c_path should follow the format: '<bus>-<hexaddr>'.";
+    return static_cast<int>(ExitStatus::kNeedUsbInfo);
+  }
+
+  std::unique_ptr<hammerd::UsbEndpointInterface> endpoint;
+  if (!FLAGS_usb_path.empty()) {
+    endpoint = std::make_unique<hammerd::UsbEndpoint>(
+        FLAGS_vendor_id, FLAGS_product_id, FLAGS_usb_path);
+  } else {
+    endpoint = std::make_unique<hammerd::I2CEndpoint>(FLAGS_i2c_path);
+  }
+  std::unique_ptr<hammerd::FirmwareUpdaterInterface> fw_updater =
+      std::make_unique<hammerd::FirmwareUpdater>(std::move(endpoint));
+
   if (FLAGS_get_console_log) {
     LOG(INFO) << "Getting EC console log. FW update will not be performed.";
-    std::unique_ptr<hammerd::FirmwareUpdaterInterface> fw_updater =
-        std::make_unique<hammerd::FirmwareUpdater>(
-            std::make_unique<hammerd::UsbEndpoint>(
-                FLAGS_vendor_id, FLAGS_product_id, FLAGS_usb_path));
     hammerd::UsbConnectStatus connect_status = fw_updater->TryConnectUsb();
     if (connect_status != hammerd::UsbConnectStatus::kSuccess) {
       LOG(ERROR) << "Failed to connect USB.";
@@ -158,9 +184,6 @@ int main(int argc, const char* argv[]) {
   // The task executor registers a task runner with the current thread, which
   // is used by DBusWrapper to send signals.
   base::SingleThreadTaskExecutor task_executor;
-  auto fw_updater = std::make_unique<hammerd::FirmwareUpdater>(
-      std::make_unique<hammerd::UsbEndpoint>(FLAGS_vendor_id, FLAGS_product_id,
-                                             FLAGS_usb_path));
   hammerd::HammerUpdater updater(ec_image, touchpad_image, touchpad_product_id,
                                  touchpad_fw_ver, std::move(fw_updater),
                                  FLAGS_at_boot, update_condition);
