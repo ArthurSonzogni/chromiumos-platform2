@@ -49,10 +49,11 @@ MATCHER_P(IsNeighborProbeMessage, address, "") {
         arg->HasAttribute(NDA_DST)))
     return false;
 
-  const auto msg_address = shill::IPAddress::CreateFromByteString(
-      arg->family(), arg->GetAttribute(NDA_DST));
+  const auto addr_bytes = arg->GetAttribute(NDA_DST);
+  const auto msg_address = net_base::IPAddress::CreateFromBytes(
+      {addr_bytes.GetConstData(), addr_bytes.GetLength()});
   CHECK(msg_address.has_value());
-  const auto expected_address = shill::IPAddress::CreateFromString(address);
+  const auto expected_address = net_base::IPAddress::CreateFromString(address);
   CHECK(expected_address.has_value());
   return msg_address == expected_address;
 }
@@ -93,7 +94,7 @@ class FakeNeighborReachabilityEventHandler {
   }
 
   void Run(int ifindex,
-           const shill::IPAddress& ip_addr,
+           const net_base::IPAddress& ip_addr,
            NeighborLinkMonitor::NeighborRole role,
            NeighborReachabilityEventSignal::EventType event_type) {
     if (!enabled_)
@@ -180,11 +181,12 @@ class NeighborLinkMonitorTest : public testing::Test {
                                         uint16_t nud_state) {
     ASSERT_NE(registered_listener_, nullptr);
 
-    const auto addr = shill::IPAddress::CreateFromString(address);
-    CHECK(addr.has_value());
-    shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
-                           kTestInterfaceIndex, addr->family());
-    msg.SetAttribute(NDA_DST, addr->address());
+    const auto addr = net_base::IPAddress::CreateFromString(address);
+    CHECK(addr);
+    shill::RTNLMessage msg(
+        shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0, kTestInterfaceIndex,
+        static_cast<unsigned char>(net_base::ToSAFamily(addr->GetFamily())));
+    msg.SetAttribute(NDA_DST, shill::ByteString(addr->ToByteString(), false));
     if (mode == shill::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(
           shill::RTNLMessage::NeighborStatus(nud_state, 0, 0));

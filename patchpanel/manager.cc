@@ -539,8 +539,6 @@ void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
 
 patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
-  using shill::IPAddress;
-
   // b/273741099: For multiplexed Cellular interfaces, callers expect patchpanel
   // to accept a shill Device kInterfaceProperty value and swap it with the name
   // of the primary multiplexed interface.
@@ -619,7 +617,7 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
 
 void Manager::OnNeighborReachabilityEvent(
     int ifindex,
-    const shill::IPAddress& ip_addr,
+    const net_base::IPAddress& ip_addr,
     NeighborLinkMonitor::NeighborRole role,
     NeighborReachabilityEventSignal::EventType event_type) {
   client_notifier_->OnNeighborReachabilityEvent(ifindex, ip_addr, role,

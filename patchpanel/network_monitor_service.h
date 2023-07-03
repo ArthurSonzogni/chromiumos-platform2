@@ -18,9 +18,9 @@
 #pragma GCC diagnostic pop
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <shill/net/ip_address.h>
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
+#include <net-base/ip_address.h>
 
 #include "patchpanel/shill_client.h"
 
@@ -93,7 +93,7 @@ class NeighborLinkMonitor {
 
   using NeighborReachabilityEventHandler = base::RepeatingCallback<void(
       int ifindex,
-      const shill::IPAddress& ip_addr,
+      const net_base::IPAddress& ip_addr,
       NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type)>;
 
@@ -138,13 +138,13 @@ class NeighborLinkMonitor {
       kReachable,
     };
 
-    WatchingEntry(shill::IPAddress addr, NeighborRole role);
+    WatchingEntry(const net_base::IPAddress& addr, NeighborRole role);
     WatchingEntry(const WatchingEntry&) = delete;
     WatchingEntry& operator=(const WatchingEntry&) = delete;
 
     std::string ToString() const;
 
-    shill::IPAddress addr;
+    net_base::IPAddress addr;
     NeighborRole role;
 
     // Reflects the NUD state of |addr| in the kernel neighbor table. Notes that
@@ -170,13 +170,12 @@ class NeighborLinkMonitor {
   void Start();
   void Stop();
 
-  void AddWatchingEntries(int prefix_length,
-                          const std::string& addr,
-                          const std::string& gateway,
+  void AddWatchingEntries(const net_base::IPCIDR& local_cidr,
+                          const net_base::IPAddress& gateway,
                           const std::vector<std::string>& dns_addresses);
 
   // Creates a new entry if not exist or updates the role of an existing entry.
-  void UpdateWatchingEntry(const shill::IPAddress& addr, NeighborRole role);
+  void UpdateWatchingEntry(const net_base::IPAddress& addr, NeighborRole role);
 
   void SendNeighborDumpRTNLMessage();
   void SendNeighborProbeRTNLMessage(const WatchingEntry& entry);
@@ -184,7 +183,7 @@ class NeighborLinkMonitor {
 
   int ifindex_;
   const std::string ifname_;
-  std::map<shill::IPAddress, WatchingEntry> watching_entries_;
+  std::map<net_base::IPAddress, WatchingEntry> watching_entries_;
   std::unique_ptr<shill::RTNLListener> listener_;
 
   // Timer for running ProbeAll().

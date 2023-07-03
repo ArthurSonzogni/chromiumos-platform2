@@ -365,7 +365,7 @@ void PatchpanelAdaptor::OnNetworkConfigurationChanged() {
 
 void PatchpanelAdaptor::OnNeighborReachabilityEvent(
     int ifindex,
-    const shill::IPAddress& ip_addr,
+    const net_base::IPAddress& ip_addr,
     NeighborLinkMonitor::NeighborRole role,
     NeighborReachabilityEventSignal::EventType event_type) {
   NeighborReachabilityEventSignal signal;

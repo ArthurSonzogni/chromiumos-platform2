@@ -99,7 +99,7 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   void OnNetworkConfigurationChanged() override;
   void OnNeighborReachabilityEvent(
       int ifindex,
-      const shill::IPAddress& ip_addr,
+      const net_base::IPAddress& ip_addr,
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type) override;
 

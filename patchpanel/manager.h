@@ -47,7 +47,7 @@ class Manager {
     virtual void OnNetworkConfigurationChanged() = 0;
     virtual void OnNeighborReachabilityEvent(
         int ifindex,
-        const shill::IPAddress& ip_addr,
+        const net_base::IPAddress& ip_addr,
         NeighborLinkMonitor::NeighborRole role,
         NeighborReachabilityEventSignal::EventType event_type) = 0;
   };
@@ -181,7 +181,7 @@ class Manager {
   // Callback from |network_monitor_svc_|.
   void OnNeighborReachabilityEvent(
       int ifindex,
-      const shill::IPAddress& ip_addr,
+      const net_base::IPAddress& ip_addr,
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type);
 
