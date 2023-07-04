@@ -50,9 +50,6 @@ class ModuleConnector {
 
   // Open camera device
   virtual std::unique_ptr<DeviceConnector> OpenDevice(int cam_id) = 0;
-
-  // Get vendor tag by the tag name; False is returned if not found.
-  virtual bool GetVendorTagByName(const std::string name, uint32_t* tag) = 0;
 };
 
 class HalModuleConnector : public ModuleConnector {
@@ -67,11 +64,8 @@ class HalModuleConnector : public ModuleConnector {
   int GetNumberOfCameras() override;
   int GetCameraInfo(int cam_id, camera_info* info) override;
   std::unique_ptr<DeviceConnector> OpenDevice(int cam_id) override;
-  bool GetVendorTagByName(const std::string name, uint32_t* tag) override;
 
  private:
-  void GetVendorTagsOnHalThread();
-
   void GetNumberOfCamerasOnHalThread(int* result);
   void GetCameraInfoOnHalThread(int cam_id, camera_info* info, int* result);
   void OpenDeviceOnHalThread(int cam_id,
@@ -104,7 +98,6 @@ class ClientModuleConnector : public ModuleConnector {
   int GetNumberOfCameras() override;
   int GetCameraInfo(int cam_id, camera_info* info) override;
   std::unique_ptr<DeviceConnector> OpenDevice(int cam_id) override;
-  bool GetVendorTagByName(const std::string name, uint32_t* tag) override;
 
  private:
   CameraHalClient* cam_client_;
@@ -132,9 +125,6 @@ class CameraHalClient : public cros::mojom::CameraHalClient,
   // Open camera device
   void OpenDevice(int cam_id,
                   mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops);
-
-  // Get vendor tag by the tag name; False is returned if not found.
-  bool GetVendorTagByName(const std::string name, uint32_t* tag);
 
  private:
   // Establishes a connection to dispatcher and registers to CameraHalDispatcher
