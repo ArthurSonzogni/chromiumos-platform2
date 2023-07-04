@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
   DEFINE_string(get_total_disk_space, "",
                 "Gets total disk space available on the given path");
   DEFINE_bool(get_root_device_size, false, "Gets the size of the root device");
-  DEFINE_bool(monitor_stateful, false,
+  DEFINE_bool(monitor, false,
               "Monitors the space available on the stateful partition");
   DEFINE_bool(human, false, "Print human-readable numbers");
 
@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
   }
 
-  if (FLAGS_monitor_stateful) {
+  if (FLAGS_monitor) {
     EchoSpacedObserver observer;
     disk_usage_proxy->AddObserver(&observer);
     disk_usage_proxy->StartMonitoring();
