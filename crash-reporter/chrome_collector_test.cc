@@ -1083,6 +1083,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
       kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
       aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
   EXPECT_TRUE(collector_.is_browser_shutdown_hang());
+  EXPECT_FALSE(collector_.is_signal_fatal());
 }
 
 TEST_F(ChromeCollectorTest,
@@ -1098,6 +1099,7 @@ TEST_F(ChromeCollectorTest,
       kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
       aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
   EXPECT_FALSE(collector_.is_browser_shutdown_hang());
+  EXPECT_FALSE(collector_.is_signal_fatal());
 }
 
 TEST_F(ChromeCollectorTest,
@@ -1114,6 +1116,21 @@ TEST_F(ChromeCollectorTest,
       kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
       aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
   EXPECT_FALSE(collector_.is_browser_shutdown_hang());
+  EXPECT_FALSE(collector_.is_signal_fatal());
+}
+
+TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_Signal_Fatal) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
+  FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
+      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), 11));
+  EXPECT_TRUE(collector_.is_signal_fatal());
 }
 
 TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {

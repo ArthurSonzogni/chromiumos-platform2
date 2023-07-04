@@ -82,6 +82,7 @@ class ChromeCollector : public CrashCollector {
               HandleCrashWithDumpData_NotShutdownHang_NoShutdownBrowserPidFile);
   FRIEND_TEST(ChromeCollectorTest,
               HandleCrashWithDumpData_NotShutdownHang_WrongShutdownBrowserPid);
+  FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_Signal_Fatal);
 
   enum CrashType {
     // An executable received a signal like SIGSEGV or SIGILL; the sort of thing
@@ -185,6 +186,12 @@ class ChromeCollector : public CrashCollector {
   void AddLogIfNotTooBig(const char* log_map_key,
                          const base::FilePath& complete_file_name,
                          std::map<std::string, base::FilePath>* logs);
+
+  // Returns true if the signal number of the crash is fatal. This should check
+  // against the simulated (non-fatal) signal number in chromium.
+  // Reference: `kSimulatedSigno` in
+  // third_party/crashpad/crashpad/util/posix/signals.h in the chromium repo.
+  bool is_signal_fatal() const { return signal_ != -1; }
 
   // Returns true if the crash is caused by a hang during browser shutdown.
   bool is_browser_shutdown_hang() const { return is_browser_shutdown_hang_; }
