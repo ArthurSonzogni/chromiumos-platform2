@@ -12,9 +12,9 @@ namespace screenshot {
 class DisplayBuffer {
  public:
   struct Result {
-    const uint32_t width;
-    const uint32_t height;
-    const uint32_t stride;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
     void* buffer;
   };
   DisplayBuffer(const DisplayBuffer&) = delete;
@@ -22,7 +22,7 @@ class DisplayBuffer {
 
   DisplayBuffer() = default;
   virtual ~DisplayBuffer() = default;
-  virtual Result Capture() = 0;
+  virtual Result Capture(bool rotate) = 0;
 };
 
 }  // namespace screenshot

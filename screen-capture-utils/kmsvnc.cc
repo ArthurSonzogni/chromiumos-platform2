@@ -27,6 +27,7 @@ namespace {
 constexpr const char kInternalSwitch[] = "internal";
 constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
+constexpr const char kRotateSwitch[] = "rotate";
 
 constexpr const int kFindCrtcMaxRetries = 5;
 const timespec kFindCrtcRetryInterval{0, 100000000};  // 100ms
@@ -135,6 +136,7 @@ int VncMain() {
     LOG(ERROR) << "--internal, --external and --crtc-id are exclusive";
     return 1;
   }
+  const bool rotate = cmdline->HasSwitch(kRotateSwitch);
 
   CrtcFinder finder;
   if (cmdline->HasSwitch(kInternalSwitch)) {
@@ -166,22 +168,19 @@ int VncMain() {
   uint32_t crtc_width = crtc->width();
   uint32_t crtc_height = crtc->height();
 
-  // vncViewer requires a width with multiple of 4
-  // Pad the width
-  uint32_t vnc_width = getVncWidth(crtc_width);
-  uint32_t vnc_height = crtc_height;
+  // vncViewer requires a width (but not height) with multiple of 4
+  // Pad the width. Swap width and height if rotatation is requested.
+  uint32_t vnc_width = getVncWidth(rotate ? crtc_height : crtc_width);
+  uint32_t vnc_height = rotate ? crtc_width : crtc_height;
 
   LOG(INFO) << "Starting with CRTC size of: " << crtc_width << " "
             << crtc_height;
   LOG(INFO) << "with VNC view-port size of: " << vnc_width << " " << vnc_height;
 
-  if (vnc_width != crtc_width) {
+  if (vnc_width % 4 > 0) {
     LOG(INFO) << "Vnc viewport width has been right-padded to be "
               << "vnc lib compatible multiple of 4.";
   }
-
-  CHECK_LT(vnc_width - crtc_width, 4);
-  CHECK_GE(vnc_width, crtc_width);
 
   const rfbScreenInfoPtr server =
       rfbGetScreen(0 /*argc*/, nullptr /*argv*/, vnc_width, vnc_height,
@@ -197,13 +196,14 @@ int VncMain() {
   display_buffer.reset(new screenshot::EglDisplayBuffer(
       crtc.get(), 0, 0, crtc_width, crtc_height));
 
-  std::vector<char> buffer(vnc_width * vnc_height * kBytesPerPixel);
+  std::vector<uint32_t> buffer(vnc_width * vnc_height);
 
   // This is ARGB buffer.
   {
-    auto capture_result = display_buffer->Capture();
-    ConvertBuffer(capture_result, buffer.data(), vnc_width);
-    server->frameBuffer = buffer.data();
+    auto capture_result = display_buffer->Capture(rotate);
+    ConvertBuffer(capture_result, reinterpret_cast<char*>(buffer.data()),
+                  vnc_width);
+    server->frameBuffer = reinterpret_cast<char*>(buffer.data());
   }
   // http://libvncserver.sourceforge.net/doc/html/rfbproto_8h_source.html#l00150
   server->serverFormat.redMax = 255;
@@ -214,11 +214,11 @@ int VncMain() {
   server->serverFormat.blueShift = 0;
 
   // Create uinput devices and hook up input events.
-  const std::unique_ptr<Uinput> uinput = Uinput::Create(server);
+  const std::unique_ptr<Uinput> uinput = Uinput::Create(server, rotate);
 
   rfbInitServer(server);
 
-  std::vector<char> prev(vnc_width * vnc_height * kBytesPerPixel);
+  std::vector<uint32_t> prev(vnc_width * vnc_height);
 
   ScopedSigaction sa1(SIGINT, SignalHandler);
   ScopedSigaction sa2(SIGTERM, SignalHandler);
@@ -228,26 +228,24 @@ int VncMain() {
     timer.Frame();
     timer.MaybePrint();
 
-    auto capture_result = display_buffer->Capture();
+    auto capture_result = display_buffer->Capture(rotate);
     // Keep the previous framebuffer around for comparison.
     prev.swap(buffer);
     // Copy the current data to the buffer.
-    ConvertBuffer(capture_result, buffer.data(), vnc_width);
+    ConvertBuffer(capture_result, reinterpret_cast<char*>(buffer.data()),
+                  vnc_width);
     // Update VNC server's view to the swapped current buffer.
-    server->frameBuffer = buffer.data();
+    server->frameBuffer = reinterpret_cast<char*>(buffer.data());
 
     // Find rectangle of modification.
     int min_x = vnc_width;
     int min_y = vnc_height;
     int max_x = 0;
     int max_y = 0;
-    const char* current = buffer.data();
+
     for (int y = 0; y < vnc_height; y++) {
       for (int x = 0; x < vnc_width; x++) {
-        if (*reinterpret_cast<const uint32_t*>(
-                &current[(x + y * vnc_width) * kBytesPerPixel]) ==
-            *reinterpret_cast<uint32_t*>(
-                &prev[(x + y * vnc_width) * kBytesPerPixel])) {
+        if (buffer[x + y * vnc_width] == prev[x + y * vnc_width]) {
           continue;
         }
         max_x = std::max(x, max_x);

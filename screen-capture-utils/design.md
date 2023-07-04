@@ -66,9 +66,10 @@ Development was done typically with rammus.
 
 ### Display orientation
 
-Tablets can be rotated, and we don't handle this yet, sorry! You will have to
-turn you head 90 degrees to the left to view the display in the correct
-orientation for now.
+Tablets can be rotated, you can pass --rotate to `screenshot` and `kmsvnc`
+to rotate the captured screeen 90 degrees clockwise. This works correctly
+with `kukui` devices. Other orientations are not supported at this moment
+in the sprit of YAGNI.
 
 ### Keyboard handling
 

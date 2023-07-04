@@ -24,7 +24,9 @@ class Uinput {
   // plain function pointers for input event callbacks, meaning the callback is
   // static and we cannot simply attach a particular Uinput instance to a server
   // instance.
-  static std::unique_ptr<Uinput> Create(rfbScreenInfoPtr server);
+  // If |rotate| is true, the instance will translate the pointer coordinates
+  // to handle rotation.
+  static std::unique_ptr<Uinput> Create(rfbScreenInfoPtr server, bool rotate);
 
   Uinput(const Uinput&) = delete;
   Uinput& operator=(const Uinput&) = delete;

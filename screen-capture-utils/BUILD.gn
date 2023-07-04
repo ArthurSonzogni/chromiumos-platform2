@@ -70,6 +70,7 @@ if (use.test) {
   }
   executable("run_kmsvnc_test") {
     sources = [
+      "egl_capture_test.cc",
       "kmsvnc_utils_test.cc",
       "uinput.cc",
       "uinput_test.cc",

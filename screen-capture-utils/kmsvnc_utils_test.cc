@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "screen-capture-utils/egl_capture.h"
 #include "screen-capture-utils/kmsvnc_utils.h"
 
 namespace screenshot {

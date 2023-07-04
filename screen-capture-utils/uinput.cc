@@ -5,6 +5,7 @@
 #include "screen-capture-utils/uinput.h"
 
 #include <cstdint>
+#include <utility>
 
 #include <fcntl.h>
 #include <linux/uinput.h>
@@ -97,7 +98,7 @@ class ScopedUinputFD final {
 // The actual implementation returned by Uinput::Create.
 class UinputImpl final : public Uinput {
  public:
-  explicit UinputImpl(rfbScreenInfoPtr server);
+  UinputImpl(rfbScreenInfoPtr server, bool rotate);
   ~UinputImpl() override;
 
  private:
@@ -109,18 +110,26 @@ class UinputImpl final : public Uinput {
 
   ScopedUinputFD keyboard_;
   ScopedUinputFD pointer_;
+  const bool rotate_;
+  const uint32_t vnc_width_;
 };
 
 // The current live instance, or nullptr if no instances exist.
 UinputImpl* g_uinput{nullptr};
 
-UinputImpl::UinputImpl(rfbScreenInfoPtr server) {
+UinputImpl::UinputImpl(rfbScreenInfoPtr server, bool rotate)
+    : rotate_(rotate), vnc_width_(server->width) {
   CHECK(!g_uinput) << "Only one Uinput instance may exist at a time";
   g_uinput = this;
 
   // Setup devices.
   SetupKeyboard();
-  SetupPointer(server->width, server->height);
+  uint32_t width = server->width;
+  uint32_t height = server->height;
+  if (rotate) {
+    std::swap(width, height);
+  }
+  SetupPointer(width, height);
 
   // Setup callbacks.
   server->kbdAddEvent = [](rfbBool down, rfbKeySym keySym, rfbClientPtr cl) {
@@ -204,6 +213,10 @@ void UinputImpl::OnPtrAddEvent(int buttonMask,
                                int x,
                                int y,
                                rfbClientPtr cl) const {
+  if (rotate_) {
+    x = vnc_width_ - x - 1;
+    std::swap(x, y);
+  }
   pointer_.Emit(EV_KEY, BTN_LEFT, buttonMask & 1);
   pointer_.Emit(EV_ABS, ABS_X, x);
   pointer_.Emit(EV_ABS, ABS_Y, y);
@@ -293,8 +306,8 @@ int KeySymToScancode(rfbKeySym key) {
 }
 
 // static
-std::unique_ptr<Uinput> Uinput::Create(rfbScreenInfoPtr server) {
-  return std::make_unique<UinputImpl>(server);
+std::unique_ptr<Uinput> Uinput::Create(rfbScreenInfoPtr server, bool rotate) {
+  return std::make_unique<UinputImpl>(server, rotate);
 }
 
 }  // namespace screenshot

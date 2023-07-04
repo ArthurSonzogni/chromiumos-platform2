@@ -29,8 +29,6 @@
 namespace screenshot {
 namespace {
 
-constexpr int kBytesPerPixel = 4;
-
 GLuint LoadShader(const GLenum type, const char* const src) {
   GLuint shader = 0;
   shader = glCreateShader(type);
@@ -168,7 +166,7 @@ EglDisplayBuffer::EglDisplayBuffer(
       height_(height),
       device_(gbm_create_device(crtc_.file().GetPlatformFile())),
       display_(eglGetDisplay(EGL_DEFAULT_DISPLAY)),
-      buffer_(width_ * height_ * kBytesPerPixel) {
+      buffer_(width_ * height_) {
   CHECK(device_) << "gbm_create_device failed";
 
   CHECK(display_ != EGL_NO_DISPLAY) << "Could not get EGLDisplay";
@@ -286,7 +284,7 @@ EglDisplayBuffer::~EglDisplayBuffer() {
   eglTerminate(display_);
 }
 
-DisplayBuffer::Result EglDisplayBuffer::Capture() {
+DisplayBuffer::Result EglDisplayBuffer::Capture(bool rotate) {
   WaitVBlank(crtc_.file().GetPlatformFile());
 
   auto connected_planes = crtc_.GetConnectedPlanes();
@@ -339,13 +337,18 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
   // TODO(uekawa): potentially improve speed by creating a bo and writing to
   // it instead of reading out.
   glReadPixels(x_, y_, width_, height_, GL_BGRA_EXT, GL_UNSIGNED_BYTE,
-               buffer_.data());
+               reinterpret_cast<char*>(buffer_.data()));
 
-  return {
-      width_, height_,
-      width_ * kBytesPerPixel,            // stride
-      static_cast<void*>(buffer_.data())  // buffer
+  DisplayBuffer::Result result{
+      .width = width_,
+      .height = height_,
+      .stride = width_ * kBytesPerPixel,
+      .buffer = static_cast<void*>(buffer_.data()),
   };
+  if (rotate) {
+    Rotate(result, rotated_);
+  }
+  return result;
 }
 
 void EglDisplayBuffer::SetUVRect(float crop_x,
@@ -369,6 +372,24 @@ void EglDisplayBuffer::SetUVRect(float crop_x,
       // clang-format on
   };
   glUniform2fv(uvs_uniform_location_, 4, uvs);
+}
+
+void EglDisplayBuffer::Rotate(DisplayBuffer::Result& result,
+                              std::vector<uint32_t>& rotated) {
+  const uint32_t width = result.width;
+  const uint32_t height = result.height;
+  uint32_t* buffer = reinterpret_cast<uint32_t*>(result.buffer);
+  rotated.resize(width * height);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      rotated[x * height + (height - y - 1)] = buffer[x + y * width];
+    }
+  }
+  memcpy(reinterpret_cast<char*>(buffer), rotated.data(),
+         width * height * kBytesPerPixel);
+  result.width = height;
+  result.height = width;
+  result.stride = result.width * kBytesPerPixel;
 }
 
 }  // namespace screenshot

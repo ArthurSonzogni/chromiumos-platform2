@@ -2,12 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/check_op.h>
+#include <cstdint>
+
+#include "screen-capture-utils/egl_capture.h"
 #include "screen-capture-utils/kmsvnc_utils.h"
 
 namespace screenshot {
 
 uint32_t getVncWidth(uint32_t crtc_width) {
-  return (crtc_width + 3) / 4 * 4;
+  const uint32_t vnc_width = (crtc_width + 3) / 4 * 4;
+  CHECK_LT(vnc_width - crtc_width, 4);
+  CHECK_GE(vnc_width, crtc_width);
+  return vnc_width;
 }
 
 void ConvertBuffer(const DisplayBuffer::Result& from,
