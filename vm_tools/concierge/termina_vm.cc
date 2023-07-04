@@ -288,8 +288,16 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
-  if (!StartProcess(std::move(vm_builder).BuildVmArgs()))
+  auto args = std::move(vm_builder).BuildVmArgs();
+  if (!args) {
+    LOG(ERROR) << "Failed to build VM arguments";
     return false;
+  }
+
+  if (!StartProcess(std::move(args).value())) {
+    LOG(ERROR) << "Failed to start VM process";
+    return false;
+  }
 
   // Create a stub for talking to the maitre'd instance inside the VM.
   stub_ = std::make_unique<vm_tools::Maitred::Stub>(grpc::CreateChannel(

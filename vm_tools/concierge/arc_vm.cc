@@ -516,6 +516,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   vm_builder.SetKernel(base::FilePath(kernel_path));
 
   auto args = std::move(vm_builder).BuildVmArgs(&custom_parameters);
+  if (!args) {
+    LOG(ERROR) << "Failed to build VM arguments";
+    return false;
+  }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
@@ -524,7 +528,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup).Append("tasks")));
 
-  if (!StartProcess(std::move(args))) {
+  if (!StartProcess(std::move(args).value())) {
     LOG(ERROR) << "Failed to start VM process";
     // Release any network resources.
     network_client_->NotifyArcVmShutdown(vsock_cid_);

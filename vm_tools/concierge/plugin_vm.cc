@@ -733,7 +733,13 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kPluginVmCpuCgroup).Append("tasks")));
 
-  if (!StartProcess(std::move(vm_builder).BuildVmArgs())) {
+  auto args = std::move(vm_builder).BuildVmArgs();
+  if (!args) {
+    LOG(ERROR) << "Failed to build VM arguments";
+    return false;
+  }
+
+  if (!StartProcess(std::move(args).value())) {
     LOG(ERROR) << "Failed to start VM process";
     return false;
   }

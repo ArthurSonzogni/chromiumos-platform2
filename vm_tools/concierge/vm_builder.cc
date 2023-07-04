@@ -372,10 +372,11 @@ bool VmBuilder::ProcessCustomParameters(
   return true;
 }
 
-base::StringPairs VmBuilder::BuildVmArgs(CustomParametersForDev* devparams) && {
+std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
+    CustomParametersForDev* devparams) && {
   if (devparams) {
     if (!ProcessCustomParameters(*devparams)) {
-      return {};
+      return std::nullopt;
     }
   }
 
@@ -383,7 +384,7 @@ base::StringPairs VmBuilder::BuildVmArgs(CustomParametersForDev* devparams) && {
 
   // Early-return when BuildRunParams() failed.
   if (post_run_args.empty())
-    return post_run_args;
+    return std::nullopt;
 
   base::StringPairs pre_run_args;
   std::vector<std::string> pre_crosvm_args;

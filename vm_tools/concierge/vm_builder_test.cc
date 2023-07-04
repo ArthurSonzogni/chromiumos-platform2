@@ -13,14 +13,14 @@ namespace vm_tools::concierge {
 
 TEST(VmBuilderTest, DefaultValuesSucceeds) {
   VmBuilder builder;
-  EXPECT_FALSE(std::move(builder).BuildVmArgs().empty());
+  EXPECT_FALSE(std::move(builder).BuildVmArgs()->empty());
 }
 
 TEST(VmBuilderTest, CustomParametersWithCrosvmFlags) {
   CustomParametersForDev dev{R"(prerun:--log-level=debug)"};
 
   VmBuilder builder;
-  auto result = std::move(builder).BuildVmArgs(&dev);
+  auto result = std::move(builder).BuildVmArgs(&dev).value();
 
   EXPECT_EQ(result[0].first, "/usr/bin/crosvm");
   EXPECT_EQ(result[1].first, "--log-level");
@@ -35,7 +35,7 @@ precrosvm:-f
 precrosvm:-o=/run/vm/crosvm_strace)"};
 
   VmBuilder builder;
-  auto result = std::move(builder).BuildVmArgs(&dev);
+  auto result = std::move(builder).BuildVmArgs(&dev).value();
   EXPECT_EQ(result[0].first, "/usr/local/bin/strace");
   EXPECT_EQ(result[1].first, "-f");
   EXPECT_EQ(result[1].second, "");
@@ -62,7 +62,7 @@ TEST(VmBuilderTest, ODirectN) {
           .path = base::FilePath("/dev/zero"),
       },
   });
-  auto result = std::move(builder).BuildVmArgs(&dev);
+  auto result = std::move(builder).BuildVmArgs(&dev).value();
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {
@@ -92,7 +92,7 @@ O_DIRECT_N=2)"};
           .path = base::FilePath("/dev/zero"),
       },
   });
-  auto result = std::move(builder).BuildVmArgs(&dev);
+  auto result = std::move(builder).BuildVmArgs(&dev).value();
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {

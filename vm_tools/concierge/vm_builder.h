@@ -114,8 +114,8 @@ class VmBuilder {
 
   // Builds the command line required to start a VM. Optionally Applies
   // dev_params to modify the configuration. Consumes this (the builder).
-  // Returns an empty list if the vm args are invalid.
-  base::StringPairs BuildVmArgs(
+  // Returns std::nullopt on failure.
+  std::optional<base::StringPairs> BuildVmArgs(
       CustomParametersForDev* dev_params = nullptr) &&;
 
   static void SetValidWaylandRegexForTesting(char* regex);
