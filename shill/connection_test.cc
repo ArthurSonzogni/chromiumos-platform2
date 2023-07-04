@@ -8,24 +8,26 @@
 #include <linux/rtnetlink.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_routing_policy_service.h"
 #include "shill/mock_routing_table.h"
-#include "shill/net/mock_rtnl_handler.h"
+#include "shill/network/address_service.h"
 #include "shill/routing_policy_entry.h"
 #include "shill/routing_table_entry.h"
 
 using testing::_;
 using testing::AnyNumber;
+using testing::Eq;
 using testing::Mock;
 using testing::Return;
 using testing::StrictMock;
@@ -84,6 +86,20 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
          arg.scope == RT_SCOPE_LINK;
 }
 
+net_base::IPCIDR CreateAndUnwrapIPCIDR(const std::string& addr_str,
+                                       int prefix_length) {
+  const auto ret =
+      net_base::IPCIDR::CreateFromStringAndPrefix(addr_str, prefix_length);
+  CHECK(ret.has_value()) << addr_str << "is not a valid IP";
+  return *ret;
+}
+
+net_base::IPv4Address CreateAndUnwrapIPv4Address(const std::string& addr_str) {
+  const auto ret = net_base::IPv4Address::CreateFromString(addr_str);
+  CHECK(ret.has_value()) << addr_str << "is not a valid IP";
+  return *ret;
+}
+
 IPAddress CreateAndUnwrapIPAddress(const std::string& addr_str) {
   const auto ret = IPAddress::CreateFromString(addr_str);
   CHECK(ret.has_value()) << addr_str << "is not a valid IP";
@@ -92,18 +108,41 @@ IPAddress CreateAndUnwrapIPAddress(const std::string& addr_str) {
 
 }  // namespace
 
+class MockAddressService : public AddressService {
+ public:
+  MockAddressService() = default;
+  MockAddressService(const MockAddressService&) = delete;
+  MockAddressService& operator=(const MockAddressService&) = delete;
+
+  ~MockAddressService() override = default;
+
+  MOCK_METHOD(void, FlushAddress, (int), (override));
+
+  MOCK_METHOD(bool,
+              RemoveAddressOtherThan,
+              (int, const net_base::IPCIDR&),
+              (override));
+
+  MOCK_METHOD(void,
+              AddAddress,
+              (int,
+               const net_base::IPCIDR&,
+               const std::optional<net_base::IPv4Address>&),
+              (override));
+};
+
 class ConnectionTest : public Test {
  public:
   ConnectionTest()
       : manager_(&control_, nullptr, nullptr),
         connection_(nullptr),
-        local_address_(CreateAndUnwrapIPAddress(kIPAddress0)),
-        broadcast_address_(CreateAndUnwrapIPAddress(kBroadcastAddress0)),
+        local_address_(CreateAndUnwrapIPCIDR(kIPAddress0, kPrefix0)),
+        broadcast_address_(CreateAndUnwrapIPv4Address(kBroadcastAddress0)),
         gateway_ipv4_address_(CreateAndUnwrapIPAddress(kGatewayAddress0)),
         gateway_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6GatewayAddress)),
         default_address_(
             IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4)),
-        local_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6Address)) {}
+        local_ipv6_address_(CreateAndUnwrapIPCIDR(kIPv6Address, 0)) {}
 
   void SetUp() override {
     ipv4_properties_.address = kIPAddress0;
@@ -207,7 +246,7 @@ class ConnectionTest : public Test {
         device->interface_index(), device->link_name(), fixed_ip_params,
         device->technology());
     connection->routing_table_ = &routing_table_;
-    connection->rtnl_handler_ = &rtnl_handler_;
+    connection->address_service_ = &address_service_;
     return connection;
   }
 
@@ -216,15 +255,15 @@ class ConnectionTest : public Test {
   std::unique_ptr<Connection> connection_;
   IPConfig::Properties ipv4_properties_;
   IPConfig::Properties ipv6_properties_;
-  const IPAddress local_address_;
-  const IPAddress broadcast_address_;
+  const net_base::IPCIDR local_address_;
+  const net_base::IPv4Address broadcast_address_;
   const IPAddress gateway_ipv4_address_;
   const IPAddress gateway_ipv6_address_;
   const IPAddress default_address_;
-  const IPAddress local_ipv6_address_;
+  const net_base::IPCIDR local_ipv6_address_;
   std::vector<IPAddress> dhcp_classless_static_route_dsts_;
   StrictMock<MockRoutingTable> routing_table_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  MockAddressService address_service_;
 };
 
 TEST_F(ConnectionTest, InitState) {
@@ -241,10 +280,10 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -255,9 +294,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
@@ -267,10 +304,10 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -282,9 +319,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
@@ -294,10 +329,10 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -308,9 +343,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
@@ -320,10 +353,10 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -335,9 +368,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddConfigWithDHCPClasslessStaticRoutes) {
@@ -370,10 +401,10 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   ipv4_properties_.default_route = false;
   ipv4_properties_.exclusion_list = {kExcludeAddress1, kExcludeAddress2};
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
 
   // SetupExcludedRoutes should create RTN_THROW entries for both networks.
   EXPECT_CALL(routing_table_,
@@ -390,47 +421,39 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPv6Address(local_ipv6_address_),
-                                  IsDefaultAddress()));
+  EXPECT_CALL(address_service_,
+              AddAddress(device->interface_index(), local_ipv6_address_,
+                         Eq(std::nullopt)));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
   EXPECT_TRUE(connection_->IsIPv6());
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPv6Address(local_ipv6_address_)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
   auto device = CreateDevice(Technology::kEthernet);
   connection_ = CreateConnection(device);
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPv6Address(local_ipv6_address_),
-                                  IsDefaultAddress()));
+  EXPECT_CALL(address_service_,
+              AddAddress(device->interface_index(), local_ipv6_address_,
+                         Eq(std::nullopt)));
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
   EXPECT_TRUE(connection_->IsIPv6());
 
   // Destruct cleanup
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPv6Address(local_ipv6_address_)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddConfigWithPeer) {
@@ -441,17 +464,15 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   IPAddress peer_address = CreateAndUnwrapIPAddress(kPeerAddress);
   ipv4_properties_.peer_address = kPeerAddress;
   ipv4_properties_.gateway = std::string();
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _)).Times(1);
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
@@ -470,10 +491,12 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   EXPECT_CALL(routing_table_, AddRoute(device->interface_index(),
                                        IsLinkRouteTo(gateway_address)))
       .WillOnce(Return(true));
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix1),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(
+          device->interface_index(),
+          *net_base::IPCIDR::CreateFromStringAndPrefix(kIPAddress0, kPrefix1),
+          net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -481,9 +504,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix1)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddConfigReverse) {
@@ -493,19 +514,17 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
 
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
@@ -513,14 +532,14 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   connection_ = CreateConnection(device, true);
 
   // Initial setup: routes but no IP configuration.
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _)).Times(0);
+  EXPECT_CALL(address_service_, AddAddress(_, _, _)).Times(0);
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
   connection_->UpdateFromIPConfig(ipv4_properties_);
   Mock::VerifyAndClearExpectations(&routing_table_);
-  Mock::VerifyAndClearExpectations(&rtnl_handler_);
+  Mock::VerifyAndClearExpectations(&address_service_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
+  EXPECT_CALL(address_service_, FlushAddress(_)).Times(0);
 }
 
 TEST_F(ConnectionTest, HasOtherAddress) {
@@ -530,10 +549,10 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   // Config with first address.
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(local_address_, kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(device->interface_index(), local_address_,
+                 net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -541,14 +560,27 @@ TEST_F(ConnectionTest, HasOtherAddress) {
 
   // Config with a different address should cause address and route flush.
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(device->interface_index()));
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(
-                  device->interface_index(),
-                  *IPAddress::CreateFromStringAndPrefix(kIPAddress1, kPrefix0),
-                  IsIPAddress(broadcast_address_, 0)));
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     IsIPAddress(local_address_, kPrefix0)));
+
+  EXPECT_CALL(
+      address_service_,
+      RemoveAddressOtherThan(
+          device->interface_index(),
+          *net_base::IPCIDR::CreateFromStringAndPrefix(kIPAddress1, kPrefix0)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      address_service_,
+      AddAddress(
+          device->interface_index(),
+          *net_base::IPCIDR::CreateFromStringAndPrefix(kIPAddress1, kPrefix0),
+          net_base::IPv4Address::CreateFromString(kBroadcastAddress0)));
+  // EXPECT_CALL(rtnl_handler_,
+  //             AddInterfaceAddress(
+  //                 device->interface_index(),
+  //                 *IPAddress::CreateFromStringAndPrefix(kIPAddress1,
+  //                 kPrefix0), IsIPAddress(broadcast_address_, 0)));
+  // EXPECT_CALL(rtnl_handler_,
+  //             RemoveInterfaceAddress(device->interface_index(),
+  //                                    IsIPAddress(local_address_, kPrefix0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv4_address_, 0), table_id));
@@ -556,10 +588,7 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(device->interface_index(),
-                                     *IPAddress::CreateFromStringAndPrefix(
-                                         kIPAddress1, kPrefix0)));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, BlackholeIPv6) {
@@ -569,7 +598,7 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   const auto table_id =
       RoutingTable::GetInterfaceTableId(device->interface_index());
   ipv4_properties_.blackhole_ipv6 = true;
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
+  EXPECT_CALL(address_service_, AddAddress(_, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
   EXPECT_CALL(routing_table_,
               CreateBlackholeRoute(device->interface_index(),
@@ -578,7 +607,7 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, PointToPointNetwork) {
@@ -592,12 +621,12 @@ TEST_F(ConnectionTest, PointToPointNetwork) {
   IPConfig::Properties properties(ipv4_properties_);
   properties.peer_address = kRemote;
   properties.address = kLocal;
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
+  EXPECT_CALL(address_service_, AddAddress(_, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, IsDefaultAddress(), _));
   connection_->UpdateFromIPConfig(properties);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 TEST_F(ConnectionTest, FixGatewayReachability) {
@@ -653,7 +682,7 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
       RoutingTable::GetInterfaceTableId(device->interface_index());
   ipv6_properties_.default_route = true;
   ipv6_properties_.method = kTypeVPN;
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
+  EXPECT_CALL(address_service_, AddAddress(_, _, _));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id));
@@ -662,7 +691,7 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   // Default route should not be added if default_route is false.
   ipv6_properties_.default_route = false;
   ipv6_properties_.method = kTypeVPN;
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
+  EXPECT_CALL(address_service_, AddAddress(_, _, _));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
@@ -673,7 +702,7 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   // ethernet.
   ipv6_properties_.default_route = true;
   ipv6_properties_.method = kTypeEthernet;
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _));
+  EXPECT_CALL(address_service_, AddAddress(_, _, _));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_ipv6_address_, 0), table_id))
@@ -681,7 +710,7 @@ TEST_F(ConnectionTest, SetIPv6DefaultRoute) {
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _));
+  EXPECT_CALL(address_service_, FlushAddress(device->interface_index()));
 }
 
 }  // namespace shill

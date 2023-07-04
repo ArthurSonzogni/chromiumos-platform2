@@ -75,6 +75,8 @@ class NetworkApplier {
   friend class base::NoDestructor<NetworkApplier>;
 
   // Cache singleton pointers for performance and test purposes.
+  // TODO(b/264963034): Let NetworkApplier own those services after external
+  // dependencies on them are removed.
   Resolver* resolver_;
   RoutingPolicyService* rule_table_;
   RTNLHandler* rtnl_handler_;

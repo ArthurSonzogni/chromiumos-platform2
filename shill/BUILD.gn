@@ -329,6 +329,7 @@ static_library("libshill") {
     "metrics.cc",
     "mojom/mojo_passpoint_service.cc",
     "mojom/mojo_service_provider.cc",
+    "network/address_service.cc",
     "network/dhcp_controller.cc",
     "network/dhcp_provider.cc",
     "network/dhcpv4_config.cc",

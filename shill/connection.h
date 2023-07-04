@@ -20,8 +20,7 @@
 
 namespace shill {
 
-class RTNLHandler;
-class Resolver;
+class AddressService;
 class RoutingTable;
 
 // The Connection maintains the implemented state of an IPConfig.
@@ -73,11 +72,6 @@ class Connection {
   const std::string interface_name_;
   Technology technology_;
 
-  // Cache for the addresses added earlier by Connection. Note that current
-  // Connection implementation only supports adding at most one IPv4 and one
-  // IPv6 address.
-  std::map<IPAddress::Family, IPAddress> added_addresses_;
-
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
   bool fixed_ip_params_;
   uint32_t table_id_;
@@ -86,7 +80,7 @@ class Connection {
 
   // Store cached copies of singletons for speed/ease of testing
   RoutingTable* routing_table_;
-  RTNLHandler* rtnl_handler_;
+  AddressService* address_service_;
 };
 
 }  // namespace shill

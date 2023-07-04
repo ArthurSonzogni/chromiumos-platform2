@@ -16,10 +16,11 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/ip_address.h>
 
 #include "shill/logging.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/rtnl_handler.h"
+#include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
@@ -48,7 +49,7 @@ Connection::Connection(int interface_index,
       local_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       gateway_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      address_service_(AddressService::GetInstance()) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", " << interface_name
                 << ", " << technology << ")";
 }
@@ -59,9 +60,7 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   if (!fixed_ip_params_) {
-    for (const auto& [family, addr] : added_addresses_) {
-      rtnl_handler_->RemoveInterfaceAddress(interface_index_, addr);
-    }
+    address_service_->FlushAddress(interface_index_);
   }
 }
 
@@ -221,20 +220,26 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     gateway = IPAddress::CreateFromFamily(properties.address_family);
   }
 
-  // Skip address configuration if the address is from SLAAC. Note that IPv6 VPN
-  // uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
+  auto local_cidr = *net_base::IPCIDR::CreateFromStringAndPrefix(
+      properties.address, properties.subnet_prefix);
+  auto broadcast_address =
+      broadcast && local_cidr.GetFamily() == net_base::IPFamily::kIPv4
+          ? net_base::IPv4Address::CreateFromString(
+                properties.broadcast_address)
+          : std::nullopt;
+  // Skip address configuration if the address is from SLAAC. Note that IPv6
+  // VPN uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
   const bool skip_ip_configuration = properties.method == kTypeIPv6;
   if (!fixed_ip_params_ && !skip_ip_configuration) {
-    if (const auto it = added_addresses_.find(local->family());
-        it != added_addresses_.end() && it->second != local) {
-      // The address has changed for this interface.  We need to flush
-      // everything and start over.
+    if (address_service_->RemoveAddressOtherThan(interface_index_,
+                                                 local_cidr)) {
+      // The address has changed for this interface.  We need to flush the
+      // routes and start over.
       LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
-      // TODO(b/243336792): FlushRoutesWithTag() will not remove the IPv6 routes
-      // managed by the kernel so this will not cause any problem now. Revisit
-      // this part later.
+      // TODO(b/243336792): FlushRoutesWithTag() will not remove the IPv6
+      // routes managed by the kernel so this will not cause any problem now.
+      // Revisit this part later.
       routing_table_->FlushRoutesWithTag(interface_index_);
-      rtnl_handler_->RemoveInterfaceAddress(interface_index_, it->second);
     }
 
     LOG(INFO) << __func__ << ": Installing with parameters:"
@@ -243,13 +248,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
               << (broadcast.has_value() ? broadcast->ToString() : "<empty>")
               << " gateway="
               << (gateway.has_value() ? gateway->ToString() : "<empty>");
-
-    rtnl_handler_->AddInterfaceAddress(
-        interface_index_, *local,
-        broadcast.has_value()
-            ? *broadcast
-            : IPAddress::CreateFromFamily_Deprecated(local->family()));
-    added_addresses_.insert_or_assign(local->family(), *local);
+    address_service_->AddAddress(interface_index_, local_cidr,
+                                 broadcast_address);
   }
 
   if (!SetupExcludedRoutes(properties)) {
