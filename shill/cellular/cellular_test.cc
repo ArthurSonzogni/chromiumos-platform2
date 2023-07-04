@@ -1883,6 +1883,13 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
               Start(Field(&Network::StartOptions::dhcp, Optional(_))))
       .Times(0);
 
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  SetCapability3gppModemSimpleProxy();
+
   auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
   EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
                                           kTestInterfaceName))
@@ -1923,6 +1930,46 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexDHCP) {
 
   device_->DefaultLinkUp();
   EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, DefaultLinkUpConfigureFailure) {
+  // No IPv4 or IPv6 settings in bearer.
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestInterfaceName);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring)).Times(0);
+
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
+  EXPECT_CALL(*default_pdn_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))))
+      .Times(0);
+
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  SetCapability3gppModemSimpleProxy();
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName))
+      .Times(0);
+
+  device_->DefaultLinkUp();
+
+  EXPECT_FALSE(device_->selected_service());
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 

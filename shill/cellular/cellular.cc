@@ -1578,8 +1578,7 @@ void Cellular::DefaultLinkUp() {
   if (!default_pdn_->Configure(
           capability_->GetActiveBearer(ApnList::ApnType::kDefault))) {
     LOG(INFO) << LoggingTag() << ": Default link network configuration failed";
-    // TODO(b/282250501): Update Cellular interface IP configurations.
-    // Add disconnect here.
+    Disconnect(nullptr, "link configuration failed.");
     return;
   }
 
