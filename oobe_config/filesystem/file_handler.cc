@@ -157,6 +157,13 @@ std::optional<base::File> FileHandler::OpenRollbackMetricsDataFile() const {
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
 }
 
+bool FileHandler::ReadRollbackMetricsData(
+    std::string* rollback_metrics_data) const {
+  return base::ReadFileToString(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
+      rollback_metrics_data);
+}
+
 bool FileHandler::RemoveRollbackMetricsData() const {
   return base::DeleteFile(
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));

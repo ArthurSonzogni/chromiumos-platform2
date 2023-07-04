@@ -74,13 +74,6 @@ bool FileHandlerForTesting::RemoveMetricsReportingEnabledFile() const {
       GetFullPath(kChronosPath).Append(kMetricsReportingEnabledFileName));
 }
 
-bool FileHandlerForTesting::ReadRollbackMetricsData(
-    std::string* rollback_metrics_data) const {
-  return base::ReadFileToString(
-      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
-      rollback_metrics_data);
-}
-
 bool FileHandlerForTesting::WriteRollbackMetricsData(
     const std::string& data) const {
   return base::WriteFile(

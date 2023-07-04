@@ -411,6 +411,13 @@ TEST_F(FileHandlerTest,
   ASSERT_TRUE(base::DeletePathRecursively(path));
 }
 
+TEST_F(FileHandlerTest, ReadRollbackMetricsData) {
+  VerifyReadFunction(
+      FileHandlerTest::kExpectedRollbackMetricsData,
+      base::BindRepeating(&FileHandlerForTesting::ReadRollbackMetricsData,
+                          base::Unretained(&file_handler_)));
+}
+
 TEST_F(FileHandlerTest, RemoveRollbackMetricsData) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedRollbackMetricsData,

@@ -124,6 +124,45 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   return true;
 }
 
+bool EnterpriseRollbackMetricsHandler::ReportEventNow(
+    EnterpriseRollbackEvent event) const {
+  // We only track rollback events if the metrics file was created. Calling
+  // this method if metrics are not enabled is not an error.
+  if (!file_handler_.HasRollbackMetricsData()) {
+    LOG(INFO) << "Rollback event: " << event << ". Not recording metrics.";
+    return false;
+  }
+
+  // We need to read the file to obtain the rollback metadata. We do not lock
+  // the file because we do not need to read or change the existing events to
+  // report the new event.
+  std::string rollback_metrics_data;
+  if (!file_handler_.ReadRollbackMetricsData(&rollback_metrics_data)) {
+    LOG(ERROR) << "Error reading rollback metrics data.";
+    return false;
+  }
+
+  EnterpriseRollbackMetricsData metrics_data;
+  if (!metrics_data.ParseFromString(rollback_metrics_data)) {
+    LOG(ERROR) << "Could not parse EnterpriseRollbackMetricsData proto.";
+    return false;
+  }
+
+  EventData new_event_data;
+  new_event_data.set_event(event);
+  RecordStructuredMetric(new_event_data, metrics_data.rollback_metadata());
+
+  // If there were previous events tracked in the file, we get this chance to
+  // attempt to report them as well.
+  if (metrics_data.event_data_size() > 0) {
+    if (!ReportTrackedEvents()) {
+      LOG(ERROR) << "Not possible to report tracked events.";
+    }
+  }
+
+  return true;
+}
+
 bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
   // This method should only be called if the rollback metrics file exists, but
   // it is possible that the file was deleted by another process simultaneously.

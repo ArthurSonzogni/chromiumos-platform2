@@ -59,8 +59,6 @@ class FileHandlerForTesting : public FileHandler {
   // Removes the file that indicates metrics reporting is enabled.
   bool RemoveMetricsReportingEnabledFile() const;
 
-  // Reads rollback metrics file.
-  bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
   // Writes rollback metrics file.
   bool WriteRollbackMetricsData(const std::string& data) const;
 

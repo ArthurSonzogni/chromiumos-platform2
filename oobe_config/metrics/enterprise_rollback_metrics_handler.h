@@ -56,6 +56,12 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   // limitation is expected.
   bool TrackEvent(const EnterpriseRollbackEvent& event) const;
 
+  // Reports event immediately instead of adding it to the rollback metrics
+  // file. Caller must ensure this method is called after powerwash. Returns
+  // true if rollback events are being tracked and event is reported
+  // successfully. Attempts to report old events tracked in the file as well.
+  bool ReportEventNow(EnterpriseRollbackEvent event) const;
+
   // Attempts to report the events tracked in the rollback metrics file. Locks
   // the file during the process to avoid synchronization issues.
   // Removes reported events from the file, but keeps the rollback metadata.

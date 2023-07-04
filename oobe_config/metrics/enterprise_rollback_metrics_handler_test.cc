@@ -286,6 +286,58 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 }
 
+// TODO(b/261850979): Check structure metric corresponding to the event is
+// reported immediately when implemented.
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       ReportingEventNowAlsoReportsPreviouslyTrackedEvents) {
+  EnterpriseRollbackMetricsData rollback_metrics_data;
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.ReportEventNow(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+
+  // Previous events should have also been reported.
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 0);
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       ReportingEventNowDoesNotReportPreviouslyTrackedEventsIfFileIsLocked) {
+  EnterpriseRollbackMetricsData rollback_metrics_data;
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
+
+  auto lock_process =
+      file_handler_.StartLockMetricsFileProcess(GetBuildDirectory());
+  EXPECT_NE(lock_process, nullptr);
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.ReportEventNow(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+
+  lock_process->Kill(SIGKILL, /*timeout=*/5);
+
+  // Previous events have not been reported.
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
+}
+
 TEST_F(EnterpriseRollbackMetricsHandlerTest, StopTrackingDeletesMetricFile) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));

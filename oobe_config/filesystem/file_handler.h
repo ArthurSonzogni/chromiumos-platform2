@@ -102,6 +102,8 @@ class FileHandler {
   // Opens the rollback metrics file in read and write mode and returns it if
   // the operation is successful.
   std::optional<base::File> OpenRollbackMetricsDataFile() const;
+  // Reads rollback metrics file.
+  bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
   // Removes the file with rollback metrics data.
   bool RemoveRollbackMetricsData() const;
 
