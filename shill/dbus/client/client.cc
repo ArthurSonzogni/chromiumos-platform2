@@ -776,6 +776,8 @@ std::unique_ptr<Client::ManagerPropertyAccessor> Client::ManagerProperties(
 std::unique_ptr<Client::ServicePropertyAccessor>
 Client::DefaultServicePropertyAccessor(const base::TimeDelta& timeout) const {
   if (default_service_proxy_.get() == nullptr) {
+    LOG(ERROR) << "Failed to create property accessor because "
+                  "there is no default service.";
     return nullptr;
   }
   return std::make_unique<PropertyAccessor<ServiceProxyInterface>>(
@@ -786,7 +788,12 @@ std::unique_ptr<brillo::VariantDictionary> Client::GetDefaultServiceProperties(
     const base::TimeDelta& timeout) const {
   brillo::ErrorPtr error;
   brillo::VariantDictionary properties;
-  if (!DefaultServicePropertyAccessor(timeout)->Get(&properties, &error)) {
+
+  auto property_accessor = DefaultServicePropertyAccessor(timeout);
+  if (!property_accessor)
+    return nullptr;
+
+  if (!property_accessor->Get(&properties, &error)) {
     LOG(ERROR) << "Failed to obtain default service properties: "
                << error->GetMessage();
     return nullptr;
