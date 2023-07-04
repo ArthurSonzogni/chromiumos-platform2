@@ -91,37 +91,35 @@ write_deps("libshill-net_deps") {
   target = "libshill-net"
 }
 
-net_sources = [
-  "attribute_list.cc",
-  "byte_string.cc",
-  "control_netlink_attribute.cc",
-  "event_history.cc",
-  "generic_netlink_message.cc",
-  "ieee80211.cc",
-  "io_handler_factory.cc",
-  "io_handler_factory_container.cc",
-  "io_input_handler.cc",
-  "io_ready_handler.cc",
-  "ip_address.cc",
-  "netlink_attribute.cc",
-  "netlink_fd.cc",
-  "netlink_manager.cc",
-  "netlink_message.cc",
-  "netlink_packet.cc",
-  "netlink_sock_diag.cc",
-  "netlink_socket.cc",
-  "nl80211_attribute.cc",
-  "nl80211_message.cc",
-  "process_manager.cc",
-  "rtnl_handler.cc",
-  "rtnl_listener.cc",
-  "rtnl_message.cc",
-  "shill_time.cc",
-  "sockets.cc",
-]
-
 shared_library("libshill-net") {
-  sources = net_sources
+  sources = [
+    "attribute_list.cc",
+    "byte_string.cc",
+    "control_netlink_attribute.cc",
+    "event_history.cc",
+    "generic_netlink_message.cc",
+    "ieee80211.cc",
+    "io_handler_factory.cc",
+    "io_handler_factory_container.cc",
+    "io_input_handler.cc",
+    "io_ready_handler.cc",
+    "ip_address.cc",
+    "netlink_attribute.cc",
+    "netlink_fd.cc",
+    "netlink_manager.cc",
+    "netlink_message.cc",
+    "netlink_packet.cc",
+    "netlink_sock_diag.cc",
+    "netlink_socket.cc",
+    "nl80211_attribute.cc",
+    "nl80211_message.cc",
+    "process_manager.cc",
+    "rtnl_handler.cc",
+    "rtnl_listener.cc",
+    "rtnl_message.cc",
+    "shill_time.cc",
+    "sockets.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [ ":${target_name}_deps" ]
   install_path = "lib"
