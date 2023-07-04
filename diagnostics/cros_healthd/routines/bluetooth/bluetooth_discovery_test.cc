@@ -62,16 +62,16 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
     routine_ = std::make_unique<BluetoothDiscoveryRoutine>(&mock_context_);
   }
 
-  // Ensure the adapter powered is on when the powered is |current_powered| at
-  // first.
-  void SetEnsurePoweredOnCall(bool current_powered, bool is_success = true) {
+  // Change the powered from |current_powered| to |target_powered|.
+  void SetChangePoweredCall(bool current_powered,
+                            bool target_powered,
+                            bool is_success = true) {
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(current_powered));
-    if (!current_powered) {
+    if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
           .WillOnce(Invoke(
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                EXPECT_TRUE(powered);
                 std::move(on_finish).Run(is_success);
               }));
     }
@@ -169,13 +169,15 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOff) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
   // Stop Discovery.
   SetStopDiscoveryCall(/*dbus_result_discovering=*/false);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
@@ -192,13 +194,15 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOn) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/true);
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
   // Stop Discovery.
   SetStopDiscoveryCall(/*dbus_result_discovering=*/false);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
@@ -214,7 +218,10 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedPowerOnAdapter) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Failed to power on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false, /*is_success=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true,
+                       /*is_success=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -228,7 +235,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery, but get unexpected discovering status in HCI level.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   for (int i = 0; i < kHciDiscoveringValidationMaxRetries + 1; i++) {
@@ -236,6 +243,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
   }
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   task_environment_.FastForwardBy(kHciDiscoveringValidationRetryDelay *
@@ -252,13 +261,15 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
   // Stop Discovery, but get unexpected discovering status in D-Bus level.
   SetStopDiscoveryCall(/*dbus_result_discovering=*/true);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -274,7 +285,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(WithArg<1>(
@@ -283,6 +294,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
           })));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -296,7 +309,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
@@ -306,6 +319,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
           Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
           })));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -330,6 +345,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, PreCheckFailed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -343,7 +360,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   // Set error return code.
@@ -357,6 +374,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
           })));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -371,7 +390,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   // Set error return code.
@@ -385,6 +404,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
           })));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(
@@ -397,14 +418,15 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
 TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   // Pre-check.
-  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
-  EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   // Trigger timeout.

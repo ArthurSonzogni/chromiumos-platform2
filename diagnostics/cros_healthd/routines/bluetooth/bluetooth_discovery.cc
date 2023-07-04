@@ -272,6 +272,7 @@ void BluetoothDiscoveryRoutine::SetResultAndStop(
   }
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
+  ResetPoweredState();
   UpdateStatus(status, std::move(status_message));
 }
 
