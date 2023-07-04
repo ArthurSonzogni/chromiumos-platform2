@@ -333,7 +333,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fGenerateVersionedNoUserPresence) {
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ true, &auth_time_secret_hash,
                         nullptr, nullptr),
-            MakeCredentialResponse::VERIFICATION_FAILED);
+            MakeCredentialResponse::VERIFICATION_TIMEOUT);
   presence_requested_expected_ = kMaxRetries;
 }
 
@@ -371,7 +371,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fGenerateNoUserPresence) {
           ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence));
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ false, nullptr, nullptr, nullptr),
-            MakeCredentialResponse::VERIFICATION_FAILED);
+            MakeCredentialResponse::VERIFICATION_TIMEOUT);
   presence_requested_expected_ = kMaxRetries;
 }
 
@@ -408,7 +408,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fSignPresenceNoPresence) {
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), GetCredId(),
                     PresenceRequirement::kPowerButton, &signature),
-            MakeCredentialResponse::VERIFICATION_FAILED);
+            GetAssertionResponse::VERIFICATION_TIMEOUT);
   presence_requested_expected_ = kMaxRetries;
 }
 
@@ -425,7 +425,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fSignPresenceSuccess) {
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), GetCredId(),
                     PresenceRequirement::kPowerButton, &signature),
-            MakeCredentialResponse::SUCCESS);
+            GetAssertionResponse::SUCCESS);
   EXPECT_EQ(signature, util::SignatureToDerBytes(GetSigR(), GetSigS()));
   presence_requested_expected_ = 1;
 }
@@ -441,7 +441,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fSignVersionedSuccess) {
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), credential_id, PresenceRequirement::kNone,
                     &signature),
-            MakeCredentialResponse::SUCCESS);
+            GetAssertionResponse::SUCCESS);
   EXPECT_EQ(signature, util::SignatureToDerBytes(GetSigR(), GetSigS()));
 }
 

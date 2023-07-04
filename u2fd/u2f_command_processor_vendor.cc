@@ -276,9 +276,15 @@ U2fCommandProcessorVendor::SendU2fGenerateWaitForPresence(
 
   if (!generate_result.ok()) {
     LOG(ERROR) << "U2F_GENERATE failed:" << generate_result.status() << ".";
-    // TODO(b/235286980): Return suitable error depending on the generate_result
-    // here.
-    return MakeCredentialResponse::VERIFICATION_FAILED;
+    if (generate_result.err_status()->ToTPMRetryAction() ==
+        TPMRetryAction::kUserPresence) {
+      return MakeCredentialResponse::VERIFICATION_TIMEOUT;
+    } else {
+      // Other errors emitted here are kind of internal errors, as user
+      // verification should be treated as passed as soon as Chrome's UI dialog
+      // reports success and reached here.
+      return MakeCredentialResponse::INTERNAL_ERROR;
+    }
   }
   if (!generate_result->public_key) {
     LOG(ERROR) << "No public key in generate result.";
@@ -316,9 +322,15 @@ U2fCommandProcessorVendor::SendU2fSignWaitForPresence(
 
   if (!sign_result.ok()) {
     LOG(ERROR) << "U2F_SIGN failed:" << sign_result.status() << ".";
-    // TODO(b/235286980): Return suitable error depending on the sign_result
-    // here.
-    return GetAssertionResponse::VERIFICATION_FAILED;
+    if (sign_result.err_status()->ToTPMRetryAction() ==
+        TPMRetryAction::kUserPresence) {
+      return GetAssertionResponse::VERIFICATION_TIMEOUT;
+    } else {
+      // Other errors emitted here are kind of internal errors, as user
+      // verification should be treated as passed as soon as Chrome's UI dialog
+      // reports success and reached here.
+      return GetAssertionResponse::INTERNAL_ERROR;
+    }
   }
 
   std::optional<std::vector<uint8_t>> opt_signature =

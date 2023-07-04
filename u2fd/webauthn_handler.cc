@@ -253,7 +253,7 @@ void WebAuthnHandler::MakeCredential(
 
   if (request.verification_type() == VerificationType::VERIFICATION_UNKNOWN) {
     LOG(ERROR) << "MakeCredential: Unknown verification type.";
-    response.set_status(MakeCredentialResponse::VERIFICATION_FAILED);
+    response.set_status(MakeCredentialResponse::INVALID_REQUEST);
     method_response->Return(response);
     return;
   }
@@ -738,7 +738,7 @@ void WebAuthnHandler::GetAssertion(
 
   if (request.verification_type() == VerificationType::VERIFICATION_UNKNOWN) {
     LOG(ERROR) << "GetAssertion: Unknown verification type.";
-    response.set_status(GetAssertionResponse::VERIFICATION_FAILED);
+    response.set_status(GetAssertionResponse::INVALID_REQUEST);
     method_response->Return(response);
     return;
   }
