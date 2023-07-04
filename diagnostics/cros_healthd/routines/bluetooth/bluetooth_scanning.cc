@@ -266,6 +266,7 @@ void BluetoothScanningRoutine::SetResultAndStop(
     const std::string& status_message) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
+  ResetPoweredState();
   UpdateStatus(status, status_message);
 }
 

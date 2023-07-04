@@ -68,16 +68,16 @@ class BluetoothScanningRoutineTest : public testing::Test {
                                                           std::nullopt);
   }
 
-  // Ensure the adapter powered is on when the powered is |current_powered| at
-  // first.
-  void SetEnsurePoweredOnCall(bool current_powered, bool is_success = true) {
+  // Change the powered from |current_powered| to |target_powered|.
+  void SetChangePoweredCall(bool current_powered,
+                            bool target_powered,
+                            bool is_success = true) {
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(current_powered));
-    if (!current_powered) {
+    if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
           .WillOnce(Invoke(
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                EXPECT_TRUE(powered);
                 std::move(on_finish).Run(is_success);
               }));
     }
@@ -243,7 +243,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Set up fake data.
   SetScannedDeviceData(dbus::ObjectPath("/org/bluez/dev_70_88_6B_92_34_70"),
                        "70:88:6B:92:34:70", "GID6B", {-54, -66, -62}, 2360344,
@@ -255,6 +255,8 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
                        {});
   // Start scanning.
   SetSwitchDiscoveryCall();
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
@@ -271,9 +273,11 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start scanning.
   SetSwitchDiscoveryCall();
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
@@ -290,7 +294,10 @@ TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Failed to power on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false, /*is_success=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true,
+                       /*is_success=*/false);
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -304,13 +311,15 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(WithArg<1>(
           Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
           })));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -324,7 +333,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   // Ensure adapter is powered on.
-  SetEnsurePoweredOnCall(/*current_powered=*/false);
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
@@ -336,6 +345,8 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
           Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
           })));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
@@ -362,6 +373,8 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
