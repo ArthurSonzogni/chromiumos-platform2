@@ -112,4 +112,23 @@ TEST(VmBuilderTest, ODirectTooLargeNDeath) {
   ASSERT_DEATH({ auto result = std::move(builder).BuildVmArgs(&dev); },
                "out_of_range");
 }
+
+TEST(VmBuilderTest, DefaultKernel) {
+  VmBuilder builder;
+  builder.SetKernel(base::FilePath("/dev/null"));
+  auto result = std::move(builder).BuildVmArgs().value();
+
+  EXPECT_EQ(result[result.size() - 1].first, "/dev/null");
+}
+
+TEST(VmBuilderTest, CustomKernel) {
+  CustomParametersForDev dev{R"(KERNEL_PATH=/dev/zero)"};
+
+  VmBuilder builder;
+  builder.SetKernel(base::FilePath("/dev/null"));
+  auto result = std::move(builder).BuildVmArgs(&dev).value();
+
+  EXPECT_EQ(result[result.size() - 1].first, "/dev/zero");
+}
+
 }  // namespace vm_tools::concierge

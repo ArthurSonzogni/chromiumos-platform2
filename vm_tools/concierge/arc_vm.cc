@@ -74,9 +74,6 @@ constexpr unsigned int kVSockPort = 4242;
 // Path to the development configuration file (only visible in dev mode).
 constexpr char kDevConfFilePath[] = "/usr/local/vms/etc/arcvm_dev.conf";
 
-// Custom parameter key to override the kernel path
-constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
-
 // Custom parameter key to skip total bytes written management for ARCVM swap.
 // TODO(b/284408104): Rename this to skip whole vmm-swap policies to unblock
 // integration tests
@@ -510,10 +507,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   }
 
   // Finally set the path to the kernel.
-  const std::string kernel_path =
-      custom_parameters.ObtainSpecialParameter(kKeyToOverrideKernelPath)
-          .value_or(kernel.value());
-  vm_builder.SetKernel(base::FilePath(kernel_path));
+  vm_builder.SetKernel(std::move(kernel));
 
   auto args = std::move(vm_builder).BuildVmArgs(&custom_parameters);
   if (!args) {

@@ -40,6 +40,9 @@ constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
 // Custom parameter key to override the async executor for the disk devices.
 constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
+// Custom parameter key to override the kernel path
+constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
+
 }  // namespace
 
 VmBuilder::VmBuilder() = default;
@@ -368,6 +371,12 @@ bool VmBuilder::ProcessCustomParameters(
       return false;
     }
     SetBlockAsyncExecutor(executor_enum.value());
+  }
+
+  if (auto kernel_override =
+          devparams.ObtainSpecialParameter(kKeyToOverrideKernelPath);
+      kernel_override) {
+    kernel_ = base::FilePath(kernel_override.value());
   }
   return true;
 }
