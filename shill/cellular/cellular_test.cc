@@ -1878,7 +1878,7 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
-                                   Cellular::LinkState::kUp);
+                                   Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))))
       .Times(0);
