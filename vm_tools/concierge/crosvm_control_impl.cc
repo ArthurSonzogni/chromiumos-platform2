@@ -111,7 +111,7 @@ bool CrosvmControlImpl::DisableVmmSwap(const std::string& socket_path,
       .socket_path = socket_path.c_str(),
       .slow_file_cleanup = slow_file_cleanup,
   };
-  return crosvm_client_swap_disable_vm2(&args);
+  return crosvm_client_swap_disable_vm(&args);
 }
 
 bool CrosvmControlImpl::VmmSwapStatus(const std::string& socket_path,
