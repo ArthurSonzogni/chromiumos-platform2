@@ -21,9 +21,6 @@
 
 namespace {
 
-// For TPM 1.2 only: Directory to mount for access to tcsd socket.
-constexpr char kTcsdDir[] = "/run/tcsd";
-
 // Minijail APIs tend to return the errno value directly, so pull that out and
 // then return success based on it.
 static inline bool mj_call(int ret) {
@@ -151,13 +148,6 @@ void enter_vfs_namespace() {
 
   // Mount /run/lock so that lock file for crossystem is shared.
   PCHECK(mj_call(minijail_bind(j.get(), "/run/lock", "/run/lock", 1)));
-
-  if (USE_TPM) {
-    // For TPM 1.2 only: Enable utilities that communicate with TPM via tcsd -
-    // mount directory containing tcsd socket.
-    mkdir(kTcsdDir, 0755);
-    PCHECK(mj_call(minijail_bind(j.get(), kTcsdDir, kTcsdDir, 0)));
-  }
 
   minijail_enter(j.get());
 }
