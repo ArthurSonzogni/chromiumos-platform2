@@ -141,6 +141,19 @@ constexpr std::initializer_list<Technology> kDefaultTechnologyOrder = {
     Technology::kVPN, Technology::kEthernet, Technology::kWiFi,
     Technology::kCellular};
 
+// Note that the generated code of std::sort is huge (~8KB for this case).
+void SortServicesImpl(bool compare_connectivity_state,
+                      const std::vector<Technology>& tech_order,
+                      std::vector<ServiceRefPtr>* services) {
+  std::sort(services->begin(), services->end(),
+            [compare_connectivity_state, &tech_order](
+                const ServiceRefPtr& a, const ServiceRefPtr& b) -> bool {
+              return Service::Compare(a, b, compare_connectivity_state,
+                                      tech_order)
+                  .first;
+            });
+}
+
 }  // namespace
 
 Manager::Manager(ControlInterface* control_interface,
@@ -1691,11 +1704,8 @@ void Manager::SortServicesTask() {
   // Refresh all traffic counters before the sort.
   RefreshAllTrafficCountersTask();
 
-  sort(services_.begin(), services_.end(),
-       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
-         return Service::Compare(a, b, true /* compare connectivity */, order)
-             .first;
-       });
+  SortServicesImpl(/*compare_connectivity_state=*/true, technology_order_,
+                   &services_);
 
   uint32_t ranking_order = 0;
   bool found_dns = false;
@@ -2029,10 +2039,8 @@ void Manager::ConnectToBestWiFiService() {
 void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
   std::vector<ServiceRefPtr> services_copy = services_;
   constexpr bool kCompareConnectivityState = false;
-  sort(services_copy.begin(), services_copy.end(),
-       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
-         return Service::Compare(a, b, kCompareConnectivityState, order).first;
-       });
+  SortServicesImpl(kCompareConnectivityState, technology_order_,
+                   &services_copy);
   std::set<Technology> connecting_technologies;
   for (const auto& service : services_copy) {
     if (!service->connectable()) {
