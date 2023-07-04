@@ -188,14 +188,16 @@ void MulticastCountersService::SetupJumpRules(Iptables::Command command,
     // Skip adding jump rules when already exist.
     if (command == Iptables::Command::kA &&
         datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                  Iptables::Command::kC, args)) {
+                                  Iptables::Command::kC, args,
+                                  /*log_failures=*/false)) {
       continue;
     }
 
     // Skip deleting jump rules when not exist.
     if (command == Iptables::Command::kD &&
         !datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                   Iptables::Command::kC, args)) {
+                                   Iptables::Command::kC, args,
+                                   /*log_failures=*/false)) {
       LOG(WARNING) << "Jump rules does not exist, skip deleting jump rules for "
                    << ifname;
       continue;
