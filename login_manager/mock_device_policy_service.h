@@ -38,10 +38,6 @@ class MockDevicePolicyService : public DevicePolicyService {
               Retrieve,
               (const PolicyNamespace&, std::vector<uint8_t>*),
               (override));
-  MOCK_METHOD(std::vector<std::string>,
-              ListComponentIds,
-              (PolicyDomain),
-              (override));
   MOCK_METHOD(bool,
               HandleOwnerLogin,
               (const std::string&, PK11SlotDescriptor*, brillo::ErrorPtr*),

@@ -106,11 +106,6 @@ class PolicyService {
   virtual bool Retrieve(const PolicyNamespace& ns,
                         std::vector<uint8_t>* policy_blob);
 
-  // Returns a list of all component IDs in the given |domain| for which policy
-  // is stored. Returns an empty vector if |domain| does not support component
-  // IDs (e.g. POLICY_DOMAIN_CHROME).
-  virtual std::vector<std::string> ListComponentIds(PolicyDomain domain);
-
   // Persists policy of the namespace |ns| to disk synchronously and passes
   // |completion| and the result to OnPolicyPersisted().
   virtual void PersistPolicy(const PolicyNamespace& ns, Completion completion);
@@ -165,14 +160,6 @@ class PolicyService {
  private:
   // Returns the file path of the policy for the given namespace |ns|.
   base::FilePath GetPolicyPath(const PolicyNamespace& ns);
-
-  using ComponentIdFilter = bool (*)(const std::string& component_id);
-
-  // Returns the component ID parts of all policy filenames in |policy_dir_|
-  // that start with |policy_filename_prefix|. IDs where |filter| returns false
-  // are filtered out.
-  std::vector<std::string> FindComponentIds(
-      const std::string& policy_filename_prefix, ComponentIdFilter filter);
 
   using PolicyStoreMap =
       std::map<PolicyNamespace, std::unique_ptr<PolicyStore>>;
