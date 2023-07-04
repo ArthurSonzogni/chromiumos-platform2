@@ -195,7 +195,6 @@
           "has-base-magnetometer": true,
           "has-hdmi": true,
           "has-lid-light-sensor": true,
-          "has-sd-reader": true,
           "has-touchscreen": true,
           "psu-type": "battery",
           "recovery-input": "KEYBOARD",
