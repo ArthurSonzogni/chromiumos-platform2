@@ -21,6 +21,7 @@ namespace {
 #if USE_TPM_DYNAMIC
 
 constexpr char kTpmForceAllowTpmFile[] = "/var/lib/tpm_manager/force_allow_tpm";
+constexpr char kAllowedStateFile[] = "/var/lib/tpm_manager/.allowed";
 constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 
 // The path to check the TPM is enabled or not.
@@ -185,6 +186,25 @@ std::optional<bool> IsForceAllow() {
   return static_cast<bool>(force_allow);
 }
 
+std::optional<bool> GetPreviousAllowedState() {
+  base::FilePath file_path(kAllowedStateFile);
+  std::string file_content;
+
+  if (!base::ReadFileToString(file_path, &file_content)) {
+    return {};
+  }
+
+  std::string allow_state_str;
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &allow_state_str);
+
+  int allow_state = 0;
+  if (!base::StringToInt(allow_state_str, &allow_state)) {
+    LOG(ERROR) << "allow_state is not a number";
+    return {};
+  }
+  return static_cast<bool>(allow_state);
+}
+
 #endif
 
 }  // namespace
@@ -218,6 +238,11 @@ bool TpmAllowlistImpl::IsAllowed() {
                    << ": Disallow TPM when OS running from installer.";
       return false;
     }
+  }
+
+  std::optional<bool> previous_allow_state = GetPreviousAllowedState();
+  if (previous_allow_state.has_value()) {
+    return previous_allow_state.value();
   }
 
   if (!tpm_status_->IsTpmEnabled()) {
