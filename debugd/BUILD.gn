@@ -24,6 +24,7 @@ group("all") {
     ":folder_size_dump",
     ":generate_logs",
     ":icmp",
+    ":install_tmpfilesd_dev",
     ":libdebugd",
     ":modetest_helper",
     ":netif",
@@ -190,6 +191,11 @@ executable("debugd") {
     ":debugd_share_config",
     ":libdebugd",
   ]
+}
+
+install_config("install_tmpfilesd_dev") {
+  sources = [ "tmpfiles.d/on-demand/debugd-dev.conf" ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
 }
 
 pkg_config("capture_packets_config") {
