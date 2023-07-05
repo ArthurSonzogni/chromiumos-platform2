@@ -6,24 +6,25 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <dbus/authpolicy/dbus-constants.h>
+#include <dbus/kerberos/dbus-constants.h>
+#include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 namespace smbfs {
 
 FakeKerberosArtifactClient::FakeKerberosArtifactClient() = default;
 
-void FakeKerberosArtifactClient::GetUserKerberosFiles(
-    const std::string& object_guid, GetUserKerberosFilesCallback callback) {
+void FakeKerberosArtifactClient::GetKerberosFiles(
+    const std::string& principal_name, GetKerberosFilesCallback callback) {
   ++call_count_;
 
-  if (!kerberos_files_map_.count(object_guid)) {
+  if (!kerberos_files_map_.count(principal_name)) {
     LOG(ERROR) << "FakeKerberosArtifactClient: No Kerberos Files found";
-    std::move(callback).Run(false /* success */, "", "");
+    std::move(callback).Run(/*success=*/false, "", "");
     return;
   }
 
-  const authpolicy::KerberosFiles& files = kerberos_files_map_[object_guid];
-  std::move(callback).Run(true /* success */, files.krb5cc(), files.krb5conf());
+  const kerberos::KerberosFiles& files = kerberos_files_map_[principal_name];
+  std::move(callback).Run(/*success=*/true, files.krb5cc(), files.krb5conf());
 }
 
 void FakeKerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
@@ -32,15 +33,15 @@ void FakeKerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
   signal_callback_ = std::move(signal_callback);
 
   std::move(on_connected_callback)
-      .Run(authpolicy::kAuthPolicyInterface,
-           authpolicy::kUserKerberosFilesChangedSignal, true /* success */);
+      .Run(kerberos::kKerberosInterface, kerberos::kKerberosFilesChangedSignal,
+           /*success=*/true);
 }
 
 void FakeKerberosArtifactClient::FireSignal() {
   DCHECK(IsConnected());
 
-  dbus::Signal signal_to_send(authpolicy::kAuthPolicyInterface,
-                              authpolicy::kUserKerberosFilesChangedSignal);
+  dbus::Signal signal_to_send(kerberos::kKerberosInterface,
+                              kerberos::kKerberosFilesChangedSignal);
 
   signal_callback_.Run(&signal_to_send);
 }
@@ -54,9 +55,9 @@ uint32_t FakeKerberosArtifactClient::GetFilesMethodCallCount() const {
 }
 
 void FakeKerberosArtifactClient::AddKerberosFiles(
-    const std::string& account_guid,
-    const authpolicy::KerberosFiles& kerberos_files) {
-  kerberos_files_map_[account_guid] = kerberos_files;
+    const std::string& principal_name,
+    const kerberos::KerberosFiles& kerberos_files) {
+  kerberos_files_map_[principal_name] = kerberos_files;
 }
 
 void FakeKerberosArtifactClient::ResetKerberosFiles() {

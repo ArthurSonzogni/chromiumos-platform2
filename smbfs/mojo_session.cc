@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "smbfs/fuse_session.h"
+#include "smbfs/kerberos_artifact_client_interface.h"
 #include "smbfs/kerberos_artifact_synchronizer.h"
 #include "smbfs/kerberos_client.h"
 #include "smbfs/smb_filesystem.h"

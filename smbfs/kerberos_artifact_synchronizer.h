@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 
@@ -22,11 +21,11 @@ class Signal;
 
 namespace smbfs {
 
-// KerberosArtifactSynchronizer manages a Kerberos user's kr5conf and krb5ccache
-// files. It takes ownership of a KerberosArtifactClientInterface on
-// construction. SetupKerberos fetches a users Kerberos files from AuthPolicy
-// and writes a copy to the tempfs. The Kerberos files are kept
-// up-to-date by connecting to AuthPolicy's D-Bus signal.
+// `KerberosArtifactSynchronizer` manages kr5conf and krb5ccache files. It takes
+// ownership of a `KerberosArtifactClientInterface` on construction.
+// `SetupKerberos` fetches Kerberos files from kerberosd and writes a copy to
+// the tmpfs. The Kerberos files are kept up-to-date by connecting to
+// kerberosd's D-Bus signal.
 class KerberosArtifactSynchronizer {
  public:
   using SetupKerberosCallback = base::OnceCallback<void(bool setup_success)>;
@@ -40,15 +39,15 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer& operator=(const KerberosArtifactSynchronizer&) =
       delete;
 
-  // Sets up Kerberos for user with |account_identifier_|. User must be ChromAD.
-  // |callback| is run with the result. May only be called once per instance.
+  // Sets up Kerberos for user with |account_identifier_|. |callback| is run
+  // with the result. May only be called once per instance.
   void SetupKerberos(SetupKerberosCallback callback);
 
  private:
-  // Calls GetUserKerberosFiles on |client_|.
+  // Calls GetKerberosFiles on |client_|.
   void GetFiles(SetupKerberosCallback callback);
 
-  // Response handler for GetUserKerberosFiles.
+  // Response handler for GetKerberosFiles.
   void OnGetFilesResponse(SetupKerberosCallback callback,
                           bool success,
                           const std::string& krb5_ccache_data,
@@ -65,15 +64,15 @@ class KerberosArtifactSynchronizer {
   // false if it fails. The parent directory of |path| must exist.
   bool WriteFile(const base::FilePath& path, const std::string& kerberos_file);
 
-  // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Runs as a callback
-  // to GetFiles().
+  // Connects to the 'KerberosFilesChanged' D-Bus signal. Runs as a callback
+  // to `GetFiles()`.
   void ConnectToKerberosFilesChangedSignal(SetupKerberosCallback callback,
                                            bool success);
 
-  // Callback for 'UserKerberosFilesChanged' D-Bus signal.
+  // Callback for 'KerberosFilesChanged' D-Bus signal.
   void OnKerberosFilesChanged(dbus::Signal* signal);
 
-  // Called after connecting to 'UserKerberosFilesChanged' signal. Verifies that
+  // Called after connecting to 'KerberosFilesChanged' signal. Verifies that
   // the signal connected successfully.
   void OnKerberosFilesChangedSignalConnected(SetupKerberosCallback callback,
                                              const std::string& interface_name,

@@ -10,18 +10,18 @@
 #include <string>
 #include <utility>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/object_proxy.h>
+#include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 #include "smbfs/kerberos_artifact_client_interface.h"
 
 namespace smbfs {
 
-// FakeKerberosArtifactClient fakes communication with the
-// org.chromium.AuthPolicy service.
+// FakeKerberosArtifactClient fakes communication with the org.chromium.Kerberos
+// service.
 class FakeKerberosArtifactClient : public KerberosArtifactClientInterface {
  public:
   FakeKerberosArtifactClient();
@@ -30,8 +30,8 @@ class FakeKerberosArtifactClient : public KerberosArtifactClientInterface {
       delete;
 
   // KerberosArtifactClientInterface overrides.
-  void GetUserKerberosFiles(const std::string& object_guid,
-                            GetUserKerberosFilesCallback callback) override;
+  void GetKerberosFiles(const std::string& principal_name,
+                        GetKerberosFilesCallback callback) override;
 
   void ConnectToKerberosFilesChangedSignal(
       dbus::ObjectProxy::SignalCallback signal_callback,
@@ -41,17 +41,17 @@ class FakeKerberosArtifactClient : public KerberosArtifactClientInterface {
   // signal.
   void FireSignal();
 
-  // Test helper method. Returns the number of times that the
-  // GetUserKerberosFiles method has been called.
+  // Test helper method. Returns the number of times that the GetKerberosFiles
+  // method has been called.
   uint32_t GetFilesMethodCallCount() const;
 
   // Test helper method. Returns whether a signal has been connected to.
   bool IsConnected() const;
 
   // Test helper method. Adds |kerberos_files| to the |kerberos_files_map_| with
-  // the key |object_guid|.
-  void AddKerberosFiles(const std::string& object_guid,
-                        const authpolicy::KerberosFiles& kerberos_files);
+  // the key |principal_name|.
+  void AddKerberosFiles(const std::string& principal_name,
+                        const kerberos::KerberosFiles& kerberos_files);
 
   // Test helper method. Clears |kerberos_files_map_|.
   void ResetKerberosFiles();
@@ -60,7 +60,7 @@ class FakeKerberosArtifactClient : public KerberosArtifactClientInterface {
   uint32_t call_count_ = 0;
   dbus::ObjectProxy::SignalCallback signal_callback_;
   // Maps account_id : KerberosFiles.
-  std::map<std::string, authpolicy::KerberosFiles> kerberos_files_map_;
+  std::map<std::string, kerberos::KerberosFiles> kerberos_files_map_;
 };
 
 }  // namespace smbfs

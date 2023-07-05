@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
 #include <utility>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
+#include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 #include "smbfs/fake_kerberos_artifact_client.h"
 #include "smbfs/kerberos_artifact_synchronizer.h"
@@ -46,9 +47,9 @@ void ExpectFileNotEqual(const base::FilePath& path,
   EXPECT_NE(expected_contents, actual_contents);
 }
 
-authpolicy::KerberosFiles CreateKerberosFilesProto(
-    const std::string& krb5cc, const std::string& krb5conf) {
-  authpolicy::KerberosFiles kerberos_files;
+kerberos::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
+                                                 const std::string& krb5conf) {
+  kerberos::KerberosFiles kerberos_files;
   kerberos_files.set_krb5cc(krb5cc);
   kerberos_files.set_krb5conf(krb5conf);
   return kerberos_files;
@@ -85,12 +86,12 @@ class KerberosArtifactSynchronizerTest : public testing::Test {
   std::unique_ptr<KerberosArtifactSynchronizer> synchronizer_;
 };
 
-// SetupKerberos makes a call to GetUserKerberosFiles.
+// SetupKerberos makes a call to GetKerberosFiles.
 TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosCallsGetFiles) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
 
@@ -103,7 +104,7 @@ TEST_F(KerberosArtifactSynchronizerTest, KerberosFilesWriteToCorrectLocation) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupSuccess));
@@ -117,7 +118,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosConnectsToSignal) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
 
@@ -130,7 +131,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupSuccess));
@@ -141,13 +142,13 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
 }
 
 // Synchronizer calls GetFiles an additional time when the signal fires, but
-// GetUserKerberosFiles() fails.
+// GetKerberosFiles() fails.
 TEST_F(KerberosArtifactSynchronizerTest,
        GetFilesRunsOnSignalFireWithGetFilesFailure) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupSuccess));
@@ -163,7 +164,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesOverwritesOldFiles) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupSuccess));
@@ -174,7 +175,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesOverwritesOldFiles) {
   const std::string new_krb5cc = "new test creds";
   const std::string new_krb5conf = "new test conf";
 
-  authpolicy::KerberosFiles new_kerberos_files =
+  kerberos::KerberosFiles new_kerberos_files =
       CreateKerberosFilesProto(new_krb5cc, new_krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, new_kerberos_files);
   fake_artifact_client_->FireSignal();
@@ -188,7 +189,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesOverwritesOldFiles) {
 
 // SetupKerberos fails when the getting the user's kerberos files fails.
 TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosFailsKerberosFilesEmpty) {
-  authpolicy::KerberosFiles kerberos_files;
+  kerberos::KerberosFiles kerberos_files;
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
 
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupFailure));
@@ -201,7 +202,7 @@ TEST_F(KerberosArtifactSynchronizerTest,
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(kTestUserGuid, kerberos_files);
   synchronizer_->SetupKerberos(base::BindOnce(&ExpectSetupSuccess));

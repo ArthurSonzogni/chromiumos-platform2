@@ -4,14 +4,18 @@
 
 #include "smbfs/kerberos_artifact_synchronizer.h"
 
+#include <string>
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <dbus/message.h>
+
+#include "smbfs/kerberos_artifact_client_interface.h"
 
 namespace smbfs {
 
@@ -37,7 +41,7 @@ void KerberosArtifactSynchronizer::SetupKerberos(
 
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
   DCHECK(callback);
-  client_->GetUserKerberosFiles(
+  client_->GetKerberosFiles(
       account_identifier_,
       base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
                      base::Unretained(this), std::move(callback)));

@@ -21,7 +21,7 @@ kerberos::ErrorType GetErrorAndProto(
     dbus::Response* response,
     kerberos::GetKerberosFilesResponse* response_proto) {
   if (!response) {
-    DLOG(ERROR) << "KerberosClient: Failed to call to kerberos.";
+    DLOG(ERROR) << "KerberosClient: Failed to call kerberos.";
     return kerberos::ERROR_DBUS_FAILURE;
   }
 
@@ -46,8 +46,8 @@ KerberosClient::KerberosClient(scoped_refptr<dbus::Bus> bus)
           kerberos::kKerberosServiceName,
           dbus::ObjectPath(kerberos::kKerberosServicePath))) {}
 
-void KerberosClient::GetUserKerberosFiles(
-    const std::string& principal_name, GetUserKerberosFilesCallback callback) {
+void KerberosClient::GetKerberosFiles(const std::string& principal_name,
+                                      GetKerberosFilesCallback callback) {
   dbus::MethodCall method_call(kerberos::kKerberosInterface,
                                kerberos::kGetKerberosFilesMethod);
   dbus::MessageWriter writer(&method_call);
@@ -56,7 +56,7 @@ void KerberosClient::GetUserKerberosFiles(
   writer.AppendProtoAsArrayOfBytes(request);
   kerberos_object_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::BindOnce(&KerberosClient::HandleGetUserKeberosFiles,
+      base::BindOnce(&KerberosClient::HandleGetKerberosFiles,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
@@ -68,8 +68,8 @@ void KerberosClient::ConnectToKerberosFilesChangedSignal(
       std::move(signal_callback), std::move(on_connected_callback));
 }
 
-void KerberosClient::HandleGetUserKeberosFiles(
-    GetUserKerberosFilesCallback callback, dbus::Response* response) {
+void KerberosClient::HandleGetKerberosFiles(GetKerberosFilesCallback callback,
+                                            dbus::Response* response) {
   kerberos::GetKerberosFilesResponse response_proto;
   bool success =
       (GetErrorAndProto(response, &response_proto) == kerberos::ERROR_NONE);
