@@ -24,6 +24,9 @@ constexpr char kImages200PercentDir[] = "images_200_percent/";
 constexpr char kSplash100PercentDir[] = "splash_100_percent/";
 constexpr char kSplash200PercentDir[] = "splash_200_percent/";
 
+constexpr char kBootSplashFilenamePrefix[] = "boot_splash_frame";
+constexpr char kImageExtension[] = ".png";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

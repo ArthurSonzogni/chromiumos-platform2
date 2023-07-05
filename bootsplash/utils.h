@@ -9,6 +9,8 @@ namespace utils {
 
 bool IsHiResDisplay();
 
+int GetMaxBootSplashFrameNumber(bool feature_simon_enabled);
+
 }  // namespace utils
 
 #endif  // BOOTSPLASH_UTILS_H_
