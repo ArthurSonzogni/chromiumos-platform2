@@ -211,10 +211,10 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   tpm_information.set_vendor_specific("xCG fTPM");
   tpm_information.set_tpm_model(3);
   tpm_information.set_firmware_version(4);
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
-      .WillOnce(
-          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
-            out_reply->set_enabled(true);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmNonsensitiveStatus)
+      .WillOnce(WithArg<1>(
+          Invoke([](tpm_manager::GetTpmNonsensitiveStatusReply* out_reply) {
+            out_reply->set_is_enabled(true);
             return true;
           })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
@@ -367,10 +367,10 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
         *error = brillo::Error::Create(FROM_HERE, "", "", "GetStatus failed");
         return false;
       })));
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmNonsensitiveStatus)
       .WillOnce(WithArgs<2>(Invoke([](brillo::ErrorPtr* error) {
-        *error =
-            brillo::Error::Create(FROM_HERE, "", "", "GetTpmStatus failed");
+        *error = brillo::Error::Create(FROM_HERE, "", "",
+                                       "GetTpmNonsensitiveStatus failed");
         return false;
       })));
 
@@ -481,10 +481,10 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileDoesNotExist) {
 
 TEST_F(AgentPluginTestFixture, TestNoTpm) {
   SetupObjectProxies(false);
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
-      .WillOnce(
-          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
-            out_reply->set_enabled(true);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmNonsensitiveStatus)
+      .WillOnce(WithArg<1>(
+          Invoke([](tpm_manager::GetTpmNonsensitiveStatusReply* out_reply) {
+            out_reply->set_is_enabled(true);
             return true;
           })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
@@ -499,10 +499,10 @@ TEST_F(AgentPluginTestFixture, TestNoTpm) {
 
 TEST_F(AgentPluginTestFixture, TestTpmDisabled) {
   SetupObjectProxies(false);
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
-      .WillOnce(
-          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
-            out_reply->set_enabled(false);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmNonsensitiveStatus)
+      .WillOnce(WithArg<1>(
+          Invoke([](tpm_manager::GetTpmNonsensitiveStatusReply* out_reply) {
+            out_reply->set_is_enabled(false);
             return true;
           })));
 
@@ -521,10 +521,10 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
             out_reply->set_verified_boot(param.boot_mode);
             return true;
           })));
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
-      .WillOnce(
-          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
-            out_reply->set_enabled(true);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmNonsensitiveStatus)
+      .WillOnce(WithArg<1>(
+          Invoke([](tpm_manager::GetTpmNonsensitiveStatusReply* out_reply) {
+            out_reply->set_is_enabled(true);
             return true;
           })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)

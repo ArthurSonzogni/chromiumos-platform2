@@ -219,17 +219,17 @@ metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
   }
 
   // Check if TPM is enabled.
-  tpm_manager::GetTpmStatusRequest status_request;
-  tpm_manager::GetTpmStatusReply status_reply;
+  tpm_manager::GetTpmNonsensitiveStatusRequest status_request;
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
   brillo::ErrorPtr error;
 
-  if (!tpm_manager_proxy_->GetTpmStatus(status_request, &status_reply, &error,
-                                        kWaitForServicesTimeoutMs) ||
+  if (!tpm_manager_proxy_->GetTpmNonsensitiveStatus(
+          status_request, &status_reply, &error, kWaitForServicesTimeoutMs) ||
       error.get()) {
     LOG(ERROR) << "Failed to get TPM status " << error->GetMessage();
     return metrics::Tpm::kFailedRetrieval;
   }
-  if (status_reply.has_enabled() && !status_reply.enabled()) {
+  if (!status_reply.is_enabled()) {
     LOG(INFO) << "TPM is disabled on device";
     return metrics::Tpm::kSuccess;
   }
