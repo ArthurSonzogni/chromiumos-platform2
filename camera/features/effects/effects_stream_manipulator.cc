@@ -229,6 +229,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     bool blob_result_pending = false;
     bool blob_intermediate_yuv_pending = false;
     bool still_capture_processor_pending = false;
+    base::TimeTicks processing_time_start;
   };
 
   // Per-stream state, spanning multiple frames.
@@ -298,8 +299,10 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   void ResetState();
   StreamContext* GetStreamContext(const camera3_stream_t*) const;
   void ReturnStillCaptureResult(Camera3CaptureDescriptor result);
-  void OnFrameStarted(StreamContext& stream_context);
-  void OnFrameCompleted(StreamContext& stream_context);
+  void OnFrameStarted(StreamContext& stream_context,
+                      base::TimeTicks processing_time_start);
+  void OnFrameCompleted(StreamContext& stream_context,
+                        base::TimeTicks processing_time_start);
   void PostProcess(int64_t timestamp,
                    GLuint texture,
                    uint32_t width,
@@ -466,8 +469,7 @@ EffectsStreamManipulatorImpl::StreamContext::GetCaptureContext(
 }
 
 void EffectsStreamManipulatorImpl::OnFrameStarted(
-    StreamContext& stream_context) {
-  auto now = base::TimeTicks::Now();
+    StreamContext& stream_context, base::TimeTicks processing_time_start) {
   auto stream_type = stream_context.yuv_stream_for_blob
                          ? CameraEffectStreamType::kBlob
                          : CameraEffectStreamType::kYuv;
@@ -475,19 +477,19 @@ void EffectsStreamManipulatorImpl::OnFrameStarted(
   if (!stream_context.last_processed_frame_timestamp.is_null()) {
     metrics_.RecordFrameProcessingInterval(
         last_set_effect_config_, stream_type,
-        now - stream_context.last_processed_frame_timestamp);
+        processing_time_start - stream_context.last_processed_frame_timestamp);
   }
-  stream_context.last_processed_frame_timestamp = now;
+  stream_context.last_processed_frame_timestamp = processing_time_start;
 }
 
 void EffectsStreamManipulatorImpl::OnFrameCompleted(
-    StreamContext& stream_context) {
+    StreamContext& stream_context, base::TimeTicks process_time_start) {
   auto stream_type = stream_context.yuv_stream_for_blob
                          ? CameraEffectStreamType::kBlob
                          : CameraEffectStreamType::kYuv;
   metrics_.RecordFrameProcessingLatency(
       last_set_effect_config_, stream_type,
-      base::TimeTicks::Now() - stream_context.last_processed_frame_timestamp);
+      base::TimeTicks::Now() - process_time_start);
 }
 
 void EffectsStreamManipulatorImpl::CaptureContext::CheckForCompletion() && {
@@ -836,6 +838,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         stream_context->original_stream == result_buffer.stream()) {
       CaptureContext& capture_context =
           *stream_context->GetCaptureContext(result.frame_number());
+      capture_context.processing_time_start = processing_time_start;
       still_capture_processor_->QueuePendingAppsSegments(
           result.frame_number(), *result_buffer.buffer(),
           base::ScopedFD(result_buffer.take_release_fence()));
@@ -846,7 +849,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
     // From this point onwards, we should only be dealing with YUV buffers.
     DCHECK_NE(result_buffer.stream()->format, HAL_PIXEL_FORMAT_BLOB);
-    OnFrameStarted(*stream_context);
 
     if (result_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
       VLOGF(1) << "EffectsStreamManipulator received failed buffer: "
@@ -887,6 +889,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     it->second->result_buffer = std::move(result_buffer),
     it->second->processing_time_start = processing_time_start,
     ++num_processed_streams;
+
+    OnFrameStarted(*stream_context, processing_time_start);
   }
 
   if (last_set_effect_config_.HasEnabledEffects()) {
@@ -1096,7 +1100,7 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
   }
 
   if (StreamContext* stream_context = GetStreamContext(result_buffer.stream)) {
-    OnFrameCompleted(*stream_context);
+    OnFrameCompleted(*stream_context, process_context->processing_time_start);
   }
 }
 
@@ -1113,7 +1117,7 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
           *stream_context->GetCaptureContext(result.frame_number());
       capture_context.yuv_buffer = {};
       capture_context.still_capture_processor_pending = false;
-      OnFrameCompleted(*stream_context);
+      OnFrameCompleted(*stream_context, capture_context.processing_time_start);
       std::move(capture_context).CheckForCompletion();
     }
     metrics_.RecordStillShotTaken();
