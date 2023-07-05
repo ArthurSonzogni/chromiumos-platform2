@@ -227,6 +227,9 @@ constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 // Feature name of per-boot-vm-shader-cache
 constexpr char kPerBootVmShaderCacheFeature[] = "VmPerBootShaderCache";
 
+// Feature name of borealis-provision.
+constexpr char kBorealisProvisionFeature[] = "BorealisProvision";
+
 constexpr gid_t kCrosvmUGid = 299;
 
 // A feature name for throttling ARCVM's crosvm with cpu.cfs_quota_us.
@@ -2113,6 +2116,20 @@ StartVmResponse Service::StartVmInternal(
   // Group the CPUs by their physical package ID to determine CPU cluster
   // layout.
   SetVmCpuArgs(cpus, vm_builder);
+
+  // TODO(b/288361720): This is temporary while we test the 'provision'
+  // mount option. Once we're satisfied things are stable, we'll make this
+  // the default and remove this feature check.
+  if (classification == VmId::Type::BOREALIS) {
+    std::string error;
+    std::optional<bool> provision =
+        IsFeatureEnabled(kBorealisProvisionFeature, &error);
+    if (!provision.has_value()) {
+      LOG(WARNING) << "Failed to check borealis provision feature: " << error;
+    } else if (provision.value()) {
+      vm_builder.AppendKernelParam("maitred.provision_stateful");
+    }
+  }
 
   auto vm = TerminaVm::Create(TerminaVm::Config{
       .vsock_cid = vsock_cid,

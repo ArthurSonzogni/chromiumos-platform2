@@ -62,6 +62,15 @@ constexpr char kMaitredPortParam[] = "maitred.listen_port=";
 constexpr char kMaitredPortParamFmt[] = "maitred.listen_port=%d";
 constexpr char kMaitredStartProcessesParam[] = "maitred.no_startup_processes";
 
+// TODO(b/288361720): These are temporary while we test the 'provision'
+// mount option. Once we're satisfied things are stable, we'll make this
+// the default and remove the kernel parameter.
+constexpr char kMaitredMountProvisionParam[] = "maitred.provision_stateful";
+// Expected path to mount-stateful executable on Borealis.
+constexpr char kMountStatefulPath[] = "/etc/init.d/mount-stateful";
+// "provision" flag enables provisioning, see b/234764695.
+constexpr char kExt4MountProvisionFlag[] = "provision";
+
 // File descriptor for log messages. Defaults to stderr.
 // Needs to be a global variable because logging::LogMessageHandlerFunction is
 // just a function pointer so we can't bind any variables to it via
@@ -166,6 +175,9 @@ int main(int argc, char** argv) {
   int startup_port = vm_tools::kDefaultStartupListenerPort;
   // Check for kernel parameter to disable startup processes.
   bool run_startup_processes = true;
+  // Check for the kernel parameter to enable "provision" flag when mounting
+  // stable. Only intended to be used for Borealis.
+  bool provision = false;
 
   // Parse kernel command line
   std::string kernel_parameters;
@@ -186,6 +198,8 @@ int main(int argc, char** argv) {
         startup_port = read_port;
       } else if (p == kMaitredStartProcessesParam) {
         run_startup_processes = false;
+      } else if (p == kMaitredMountProvisionParam) {
+        provision = true;
       }
     }
   }
@@ -223,6 +237,12 @@ int main(int argc, char** argv) {
       }
 
       std::vector<std::string> argv(req.argv().begin(), req.argv().end());
+      // If provisioning is being used, check if the current process is
+      // mounting stateful and append the "provision" option.
+      if (provision && argv.at(0) == kMountStatefulPath) {
+        argv.push_back(kExt4MountProvisionFlag);
+      }
+
       std::map<string, string> env;
       for (const auto& pair : req.env()) {
         env[pair.first] = pair.second;
