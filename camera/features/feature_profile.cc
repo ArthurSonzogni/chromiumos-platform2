@@ -8,10 +8,13 @@
 
 #include <iomanip>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/system/sys_info.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -53,9 +56,20 @@ std::optional<FeatureProfile::DeviceMetadata> ProbeDeviceMetadata() {
       .model_name = conf->GetModelName(),
       .camera_info = {},
   };
-  for (const auto& info : conf->GetPlatformCameraInfo()) {
-    m.camera_info.push_back(
-        {.module_id = info.module_id(), .sensor_id = info.sensor_id()});
+
+  // GetPlatformCameraInfo() makes camera LED flash while reading
+  // EEPROM. Since it is only used for brya, skip calling it in
+  // strongbad series. (b/213525227).
+  const std::set<std::string> kIgnoreGetPlatformCameraInfoBoards = {
+      "strongbad",
+      "strongbad64",
+  };
+  const std::string board = base::SysInfo::GetLsbReleaseBoard();
+  if (!base::Contains(kIgnoreGetPlatformCameraInfoBoards, board)) {
+    for (const auto& info : conf->GetPlatformCameraInfo()) {
+      m.camera_info.push_back(
+          {.module_id = info.module_id(), .sensor_id = info.sensor_id()});
+    }
   }
   return m;
 }
