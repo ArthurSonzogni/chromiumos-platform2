@@ -1320,9 +1320,11 @@
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
             "--enable-touchview",
+            "--force-tablet-power-button",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
             "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
-            "--has-internal-stylus"
+            "--has-internal-stylus",
+            "--oobe-force-tablet-first-run"
           ]
         },
         "wifi": {
@@ -1538,9 +1540,11 @@
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
             "--enable-touchview",
+            "--force-tablet-power-button",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
             "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
-            "--has-internal-stylus"
+            "--has-internal-stylus",
+            "--oobe-force-tablet-first-run"
           ]
         },
         "wifi": {
@@ -1792,9 +1796,11 @@
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
             "--enable-touchview",
+            "--force-tablet-power-button",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
             "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
-            "--has-internal-stylus"
+            "--has-internal-stylus",
+            "--oobe-force-tablet-first-run"
           ]
         },
         "wifi": {
@@ -2026,9 +2032,11 @@
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
             "--enable-touchview",
+            "--force-tablet-power-button",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
             "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
-            "--has-internal-stylus"
+            "--has-internal-stylus",
+            "--oobe-force-tablet-first-run"
           ]
         },
         "wifi": {
@@ -2245,9 +2253,11 @@
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/default_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/default_small.jpg",
             "--enable-touchview",
+            "--force-tablet-power-button",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
             "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
-            "--has-internal-stylus"
+            "--has-internal-stylus",
+            "--oobe-force-tablet-first-run"
           ]
         },
         "wifi": {

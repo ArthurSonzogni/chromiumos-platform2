@@ -964,6 +964,13 @@ def _build_ash_flags(config: Config) -> dict:
     ):
         _add_flag("enable-touchview")
 
+    if form_factor in (
+        topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE,
+    ):
+        _add_flag("force-tablet-power-button")
+        _add_flag("oobe-force-tablet-first-run")
+
     hevc_support = _overlay_presence(
         hw_features.soc.hevc_support, config.program.platform.hevc_support
     )
