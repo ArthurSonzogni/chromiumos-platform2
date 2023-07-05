@@ -37,7 +37,7 @@ CarrierEntitlement::CarrierEntitlement(
       check_cb_(check_cb),
       transport_(brillo::http::Transport::CreateDefault()),
       request_in_progress_(false),
-      last_src_address_(IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4)),
+      last_src_address_(net_base::IPFamily::kIPv4),
       weak_ptr_factory_(this) {}
 
 CarrierEntitlement::~CarrierEntitlement() {
@@ -47,8 +47,8 @@ CarrierEntitlement::~CarrierEntitlement() {
 }
 
 void CarrierEntitlement::Check(
-    const IPAddress& src_address,
-    const std::vector<IPAddress>& dns_list,
+    const net_base::IPAddress& src_address,
+    const std::vector<net_base::IPAddress>& dns_list,
     const std::string& interface_name,
     const MobileOperatorMapper::EntitlementConfig& config) {
   last_dns_list_ = dns_list;
@@ -59,10 +59,11 @@ void CarrierEntitlement::Check(
                 /* user_triggered */ true);
 }
 
-void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
-                                       const std::vector<IPAddress>& dns_list,
-                                       const std::string& interface_name,
-                                       bool user_triggered) {
+void CarrierEntitlement::CheckInternal(
+    const net_base::IPAddress& src_address,
+    const std::vector<net_base::IPAddress>& dns_list,
+    const std::string& interface_name,
+    bool user_triggered) {
   SLOG(3) << __func__;
   if (request_in_progress_) {
     LOG(WARNING)
@@ -95,15 +96,7 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
         Metrics::kCellularEntitlementCheckFailedToBuildPayload);
     return;
   }
-  std::string addr_string;
-  if (!src_address.IntoString(&addr_string)) {
-    LOG(ERROR) << "Failed to parse source IP address for entitlement check: "
-               << src_address.ToString();
-    SendResult(Result::kGenericError);
-    metrics_->NotifyCellularEntitlementCheckResult(
-        Metrics::kCellularEntitlementCheckFailedToParseIp);
-    return;
-  }
+  const std::string addr_string = src_address.ToString();
   std::vector<std::string> dns_list_str;
   for (auto& ip : dns_list) {
     dns_list_str.push_back(ip.ToString());
@@ -111,7 +104,7 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
   transport_->SetDnsServers(dns_list_str);
   transport_->SetLocalIpAddress(addr_string);
   transport_->SetDnsInterface(interface_name);
-  if (src_address.family() == IPAddress::kFamilyIPv6) {
+  if (src_address.GetFamily() == net_base::IPFamily::kIPv6) {
     transport_->SetDnsLocalIPv6Address(addr_string);
   } else {
     transport_->SetDnsLocalIPv4Address(addr_string);

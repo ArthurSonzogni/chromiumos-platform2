@@ -19,11 +19,11 @@
 #include <gmock/gmock-more-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -49,7 +49,7 @@ using brillo::http::request_type::kPost;
 namespace shill {
 
 namespace {
-constexpr char kSrcIp[] = "192.168.88.5";
+constexpr net_base::IPAddress kSrcIp(net_base::IPv4Address(192, 168, 88, 5));
 constexpr char kImsi[] = "001010000000004";
 constexpr char kInterfaceName[] = "wwan8";
 constexpr char kUrl[] = "testurl.com";
@@ -64,9 +64,7 @@ class CarrierEntitlementTest : public testing::Test {
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         url_(url),
-        interface_name_(kInterfaceName),
-        ip_address_(IPAddress::CreateFromString(kSrcIp, IPAddress::kFamilyIPv4)
-                        .value()) {
+        interface_name_(kInterfaceName) {
     config_.url = url;
     config_.method = method;
     config_.params = params;
@@ -169,7 +167,7 @@ class CarrierEntitlementTest : public testing::Test {
 
   void ExpectCreateConnection(const char* http_method,
                               const std::string& content) {
-    ExpectSetupBeforeHttpCall(kSrcIp);
+    ExpectSetupBeforeHttpCall(kSrcIp.ToString());
     EXPECT_CALL(*transport_, CreateConnection(url_, http_method, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
     if (http_method != kGet) {
@@ -209,7 +207,6 @@ class CarrierEntitlementTest : public testing::Test {
   std::string req_data_;
   std::string url_;
   std::string interface_name_;
-  IPAddress ip_address_;
 };
 
 class CarrierEntitlementTestNoParams : public CarrierEntitlementTest {
@@ -227,7 +224,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckAllowed) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUserNotAllowedToTether) {
@@ -240,7 +237,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUserNotAllowedToTether) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUserNotAllowedToTether));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedUser) {
@@ -252,7 +249,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedUser) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUnrecognizedUser));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckHttpSyntaxError) {
@@ -264,7 +261,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckHttpSyntaxError) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckHttpSyntaxErrorOnServer));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
@@ -273,7 +270,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
@@ -283,7 +280,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckInternalErrorOnServer));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
@@ -295,7 +292,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUnrecognizedUser));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
@@ -305,7 +302,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckInternalErrorOnServer));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedHttpStatusCode) {
@@ -316,7 +313,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedHttpStatusCode) {
       metrics_,
       NotifyCellularEntitlementCheckResult(
           Metrics::kCellularEntitlementCheckUnrecognizedHttpStatusCode));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckErrorCallback) {
@@ -326,7 +323,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckErrorCallback) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckHttpRequestError));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
@@ -335,7 +332,7 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
@@ -362,7 +359,7 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckReturnsNotAllowed) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
@@ -389,7 +386,7 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckErrorCallback) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
@@ -421,7 +418,7 @@ TEST_F(CarrierEntitlementTestGet, CheckAllowed) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 class CarrierEntitlementTestWithImsi : public CarrierEntitlementTest {
@@ -438,7 +435,7 @@ TEST_F(CarrierEntitlementTestWithImsi, CheckAllowed) {
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(ip_address_, {}, interface_name_, config_);
+  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
 }
 
 }  // namespace shill

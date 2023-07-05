@@ -3079,7 +3079,7 @@ void Cellular::EntitlementCheck(
   }
 
   auto network_addresses = GetPrimaryNetwork()->GetAddresses();
-  if (network_addresses.empty()) {
+  if (network_addresses.empty() || !network_addresses[0].ToIPAddress()) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNoIp);
@@ -3090,10 +3090,21 @@ void Cellular::EntitlementCheck(
     return;
   }
 
+  // Convert DNS servers from std::vector<shill::IPAddress> to
+  // std::vector<net_base::IPAddress>.
+  std::vector<net_base::IPAddress> dns_servers;
+  for (const auto& ip : GetPrimaryNetwork()->GetDNSServers()) {
+    const auto dns_server = ip.ToIPAddress();
+    if (dns_server) {
+      dns_servers.push_back(*dns_server);
+    } else {
+      LOG(WARNING) << "Invalid DNS server: " << ip;
+    }
+  }
+
   entitlement_check_callback_ = std::move(callback);
   // TODO(b/285242955): Use all available addresses instead of only primary one.
-  carrier_entitlement_->Check(network_addresses[0],
-                              GetPrimaryNetwork()->GetDNSServers(),
+  carrier_entitlement_->Check(*network_addresses[0].ToIPAddress(), dns_servers,
                               GetPrimaryNetwork()->interface_name(),
                               mobile_operator_info_->entitlement_config());
 }
