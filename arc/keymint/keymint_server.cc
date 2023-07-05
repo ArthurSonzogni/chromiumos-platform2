@@ -403,7 +403,22 @@ void KeyMintServer::Finish(arc::mojom::keymint::FinishRequestPtr request,
 }
 
 void KeyMintServer::Abort(uint64_t op_handle, AbortCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Prepare keymint request.
+  auto km_request = std::make_unique<::keymaster::AbortOperationRequest>(
+      backend_.keymint()->message_version());
+  km_request->op_handle = op_handle;
+
+  auto task_lambda = base::BindOnce(
+      [](AbortCallback callback,
+         std::unique_ptr<::keymaster::AbortOperationResponse> km_response) {
+        // Run callback.
+        std::move(callback).Run(km_response->error);
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::AbortOperation,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 }  // namespace arc::keymint
