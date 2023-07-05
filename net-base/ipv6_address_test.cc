@@ -180,12 +180,12 @@ TEST(IPv6CIDR, CreateFromAddressAndPrefix) {
 }
 
 TEST(IPv6CIDR, DefaultConstructor) {
-  const IPv6CIDR default_cidr;
+  constexpr IPv6CIDR default_cidr;
   EXPECT_EQ(default_cidr.address(), IPv6Address());
   EXPECT_EQ(default_cidr.prefix_length(), 0);
 
-  const auto address = *IPv6Address::CreateFromString("::1");
-  const auto cidr = IPv6CIDR(address);
+  constexpr IPv6Address address(kGoodData);
+  constexpr auto cidr = IPv6CIDR(address);
   EXPECT_EQ(cidr.address(), address);
   EXPECT_EQ(cidr.prefix_length(), 0);
 }

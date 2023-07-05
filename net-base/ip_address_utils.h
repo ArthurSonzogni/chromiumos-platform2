@@ -129,8 +129,9 @@ class NET_BASE_EXPORT CIDR {
     return CIDR(address, prefix_length);
   }
 
-  constexpr CIDR() : address_(Address()), prefix_length_(0) {}
-  explicit CIDR(const Address& address) : CIDR(address, 0) {}
+  constexpr CIDR() : CIDR(Address()) {}
+  constexpr explicit CIDR(const Address& address)
+      : address_(address), prefix_length_(0) {}
 
   // Getter methods for the internal data.
   const Address& address() const { return address_; }

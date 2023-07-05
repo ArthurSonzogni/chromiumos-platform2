@@ -170,6 +170,16 @@ TEST(IPCIDR, CreateFromAddressAndPrefix) {
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv6_addr), 128));
 }
 
+TEST(IPCIDR, ConstexprConstructor) {
+  constexpr IPv4Address ipv4_addr(192, 168, 10, 1);
+  constexpr IPv4CIDR ipv4_cidr(ipv4_addr);
+
+  constexpr IPCIDR cidr1(ipv4_addr);
+  constexpr IPCIDR cidr2(ipv4_cidr);
+  EXPECT_EQ(cidr1.address().ToString(), ipv4_addr.ToString());
+  EXPECT_EQ(cidr2.address().ToString(), ipv4_addr.ToString());
+}
+
 TEST(IPCIDR, FamilyConstructor) {
   constexpr IPCIDR ipv4_default(IPFamily::kIPv4);
   EXPECT_EQ(ipv4_default.GetFamily(), IPFamily::kIPv4);

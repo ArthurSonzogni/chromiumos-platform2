@@ -115,6 +115,8 @@ class NET_BASE_EXPORT IPCIDR {
 
   explicit constexpr IPCIDR(const IPv4CIDR& cidr) : cidr_(cidr) {}
   explicit constexpr IPCIDR(const IPv6CIDR& cidr) : cidr_(cidr) {}
+  explicit constexpr IPCIDR(const IPv4Address& addr) : cidr_(IPv4CIDR(addr)) {}
+  explicit constexpr IPCIDR(const IPv6Address& addr) : cidr_(IPv6CIDR(addr)) {}
 
   // Getter methods for the internal data.
   IPAddress address() const;

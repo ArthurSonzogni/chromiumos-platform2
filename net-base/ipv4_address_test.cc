@@ -179,12 +179,12 @@ TEST(IPv4CIDR, CreateFromAddressAndPrefix) {
 }
 
 TEST(IPv4CIDR, DefaultConstructor) {
-  const IPv4CIDR default_cidr;
+  constexpr IPv4CIDR default_cidr;
   EXPECT_EQ(default_cidr.address(), IPv4Address());
   EXPECT_EQ(default_cidr.prefix_length(), 0);
 
-  const IPv4Address address(192, 168, 10, 1);
-  const auto cidr = IPv4CIDR(address);
+  constexpr IPv4Address address(192, 168, 10, 1);
+  constexpr auto cidr = IPv4CIDR(address);
   EXPECT_EQ(cidr.address(), address);
   EXPECT_EQ(cidr.prefix_length(), 0);
 }
