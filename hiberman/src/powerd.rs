@@ -120,10 +120,10 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
                 log_duration("Got powerd HibernateResumeReady signal", duration);
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
                 metrics_logger.log_duration_sample(
-                    "Platform.Hibernate.HibernateResumeReady",
+                    "Platform.Hibernate.ResumeTime.HibernateResumeReady",
                     duration,
-                    DurationMetricUnit::Seconds,
-                    10,
+                    DurationMetricUnit::Milliseconds,
+                    10000,
                 );
                 return Ok(());
             }
