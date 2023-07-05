@@ -74,6 +74,36 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
             proto.container_ipv4_subnet().prefix_len());
 }
 
+TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
+  const uint32_t subnet_index = 0;
+  const auto parallels_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  const auto parallels_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.2");
+
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kParallelsVM, subnet_index);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr));
+  auto parallels_device =
+      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
+                               "vmtap1", "", std::move(config));
+
+  ParallelsVmStartupResponse proto;
+  FillParallelsAllocationProto(*parallels_device, &proto);
+  ASSERT_EQ("vmtap1", proto.tap_device_ifname());
+  EXPECT_EQ(parallels_ipv4_address,
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
+  EXPECT_EQ(parallels_ipv4_subnet.address(),
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
+  EXPECT_EQ(parallels_ipv4_subnet.prefix_length(),
+            proto.ipv4_subnet().prefix_len());
+}
+
 TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   const uint32_t subnet_index = 0;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);

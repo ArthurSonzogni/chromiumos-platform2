@@ -46,10 +46,6 @@ constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(25);
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
-// By convention, the IPv4 address of the VM guest is always the second unicast
-// address in the IPv4 subnet assigned to the guest.
-constexpr size_t kGuestAddressOffset = 2;
-
 void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
                   dbus::ObjectProxy* vmplugin_service_proxy,
                   const VmId& id) {
@@ -175,11 +171,7 @@ bool PluginVm::Shutdown() {
 
 VmBaseImpl::Info PluginVm::GetInfo() const {
   VmBaseImpl::Info info = {
-      .ipv4_address = subnet_->CIDRAtOffset(kGuestAddressOffset)
-                          .value_or(net_base::IPv4CIDR())
-                          .address()
-                          .ToInAddr()
-                          .s_addr,
+      .ipv4_address = network_alloc_.parallels_ipv4_address.ToInAddr().s_addr,
       .pid = process_.pid(),
       .cid = 0,
       .seneschal_server_handle = seneschal_server_handle(),
@@ -643,25 +635,21 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   }
 
   // Get the network interface.
-  patchpanel::Client::VirtualDevice network_device;
-  if (!network_client_->NotifyParallelsVmStartup(id_hash_, subnet_index,
-                                                 &network_device)) {
-    LOG(ERROR) << "No network devices available";
+  const auto network_alloc =
+      network_client_->NotifyParallelsVmStartup(id_hash_, subnet_index);
+  if (!network_alloc) {
+    LOG(ERROR) << "No network allocation available from patchpanel";
     return false;
   }
-  if (!network_device.ipv4_subnet) {
-    LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
-    return false;
-  }
-  subnet_ = std::make_unique<patchpanel::Subnet>(*network_device.ipv4_subnet,
-                                                 base::DoNothing());
+  network_alloc_ = *network_alloc;
 
   // Open the tap device.
-  base::ScopedFD tap_fd = OpenTapDevice(network_device.ifname, enable_vnet_hdr,
-                                        nullptr /*ifname_out*/);
+  base::ScopedFD tap_fd =
+      OpenTapDevice(network_alloc->tap_device_ifname, enable_vnet_hdr,
+                    nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_device.ifname;
+               << network_alloc->tap_device_ifname;
     return false;
   }
 

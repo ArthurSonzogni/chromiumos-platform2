@@ -39,9 +39,8 @@ class BRILLO_EXPORT FakeClient : public Client {
       uint32_t cid) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  bool NotifyParallelsVmStartup(uint64_t vm_id,
-                                int subnet_index,
-                                Client::VirtualDevice* device) override;
+  std::optional<Client::ParallelsAllocation> NotifyParallelsVmStartup(
+      uint64_t vm_id, int subnet_index) override;
   bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(const base::ScopedFD& socket) override;

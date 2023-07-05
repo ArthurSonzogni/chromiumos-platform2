@@ -40,10 +40,9 @@ bool FakeClient::NotifyTerminaVmShutdown(uint32_t cid) {
   return true;
 }
 
-bool FakeClient::NotifyParallelsVmStartup(uint64_t vm_id,
-                                          int subnet_index,
-                                          Client::VirtualDevice* device) {
-  return true;
+std::optional<Client::ParallelsAllocation> FakeClient::NotifyParallelsVmStartup(
+    uint64_t vm_id, int subnet_index) {
+  return std::nullopt;
 }
 
 bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {

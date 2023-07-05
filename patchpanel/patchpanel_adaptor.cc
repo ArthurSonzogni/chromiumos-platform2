@@ -220,31 +220,34 @@ ParallelsVmShutdownResponse PatchpanelAdaptor::ParallelsVmShutdown(
 
 ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
     const ParallelsVmStartupRequest& request) {
-  LOG(INFO) << "Parallels VM starting up";
+  const int subnet_index = request.subnet_index();
+  const uint64_t vm_id = request.id();
+  LOG(INFO) << __func__ << "(cid: " << vm_id
+            << ", subnet_index: " << subnet_index << ")";
   RecordDbusEvent(DbusUmaEvent::kParallelsVmStartup);
 
-  if (request.subnet_index() < 0) {
-    LOG(ERROR) << "Invalid subnet index: " << request.subnet_index();
+  if (subnet_index < 0) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << ", subnet_index: " << subnet_index
+               << "): Invalid subnet index";
     return {};
   }
-  const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
-  const uint64_t vm_id = request.id();
-  const auto* const guest_device =
-      manager_->ParallelsVmStartup(vm_id, subnet_index);
-  if (!guest_device) {
-    LOG(DFATAL) << "Parallels VM TAP Device missing";
+  const auto* const parallels_device =
+      manager_->ParallelsVmStartup(vm_id, static_cast<uint32_t>(subnet_index));
+  if (!parallels_device) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << ", subnet_index: " << subnet_index
+               << "): Failed to create virtual Device";
     return {};
   }
-  if (!guest_device->config().ipv4_subnet()) {
-    LOG(DFATAL) << "Missing required subnet for {cid: " << vm_id << "}";
+  if (!parallels_device->config().ipv4_subnet()) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << ", subnet_index: " << subnet_index
+               << "): Missing IPv4 subnet";
     return {};
   }
-
   ParallelsVmStartupResponse response;
-  auto* dev = response.mutable_device();
-  dev->set_guest_type(NetworkDevice::PARALLELS_VM);
-  FillDeviceProto(*guest_device, dev);
-
+  FillParallelsAllocationProto(*parallels_device, &response);
   RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
   return response;
 }

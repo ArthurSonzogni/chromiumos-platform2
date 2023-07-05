@@ -23,6 +23,11 @@ namespace patchpanel {
 void FillTerminaAllocationProto(const Device& termina_device,
                                 TerminaVmStartupResponse* output);
 
+// Fills a protobuf ParallelsVmStartupResponse object with the given
+// |parallels_device| Device.
+void FillParallelsAllocationProto(const Device& parallels_device,
+                                  ParallelsVmStartupResponse* output);
+
 // Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);
 

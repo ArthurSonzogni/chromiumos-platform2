@@ -54,19 +54,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     client->NotifyArcStartup(provider.ConsumeIntegral<pid_t>());
     client->NotifyArcVmStartup(provider.ConsumeIntegral<uint32_t>());
     client->NotifyArcVmShutdown(provider.ConsumeIntegral<uint32_t>());
-    Client::VirtualDevice device;
-    device.ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
-    device.phys_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
-    device.guest_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
-    device.ipv4_addr = ConsumeIPv4Address(provider);
-    device.host_ipv4_addr = ConsumeIPv4Address(provider);
-    device.ipv4_subnet = ConsumeIPv4CIDR(provider);
-    device.dns_proxy_ipv4_addr = ConsumeIPv4Address(provider);
-    device.dns_proxy_ipv6_addr = ConsumeIPv6Address(provider);
     client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>());
     client->NotifyTerminaVmShutdown(provider.ConsumeIntegral<uint32_t>());
     client->NotifyParallelsVmStartup(provider.ConsumeIntegral<uint64_t>(),
-                                     provider.ConsumeIntegral<int>(), &device);
+                                     provider.ConsumeIntegral<int>());
     client->NotifyParallelsVmShutdown(provider.ConsumeIntegral<uint64_t>());
     // TODO(garrick): Enable the following once the memory leaks in Chrome OS
     // DBus are resolved.

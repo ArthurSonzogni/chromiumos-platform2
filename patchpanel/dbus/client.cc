@@ -265,6 +265,29 @@ std::optional<Client::TerminaAllocation> ConvertTerminaAllocation(
   return termina_alloc;
 }
 
+std::optional<Client::ParallelsAllocation> ConvertParallelsAllocation(
+    const ParallelsVmStartupResponse& in) {
+  if (!in.has_ipv4_subnet()) {
+    LOG(ERROR) << __func__ << ": No Parallels IPv4 subnet found";
+    return std::nullopt;
+  }
+  const auto parallels_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  const auto parallels_address =
+      net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
+  if (!parallels_subnet) {
+    LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 subnet";
+    return std::nullopt;
+  }
+  if (!parallels_address) {
+    LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 address";
+    return std::nullopt;
+  }
+  Client::ParallelsAllocation parallels_alloc;
+  parallels_alloc.tap_device_ifname = in.tap_device_ifname();
+  parallels_alloc.parallels_ipv4_subnet = *parallels_subnet;
+  parallels_alloc.parallels_ipv4_address = *parallels_address;
+  return parallels_alloc;
+}
 std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
   auto out = std::make_optional<Client::NetworkClientInfo>();
@@ -593,9 +616,8 @@ class ClientImpl : public Client {
       uint32_t cid) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  bool NotifyParallelsVmStartup(uint64_t vm_id,
-                                int subnet_index,
-                                Client::VirtualDevice* device) override;
+  std::optional<ParallelsAllocation> NotifyParallelsVmStartup(
+      uint64_t vm_id, int subnet_index) override;
   bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(const base::ScopedFD& socket) override;
@@ -881,9 +903,8 @@ bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {
   return true;
 }
 
-bool ClientImpl::NotifyParallelsVmStartup(uint64_t vm_id,
-                                          int subnet_index,
-                                          Client::VirtualDevice* device) {
+std::optional<Client::ParallelsAllocation> ClientImpl::NotifyParallelsVmStartup(
+    uint64_t vm_id, int subnet_index) {
   ParallelsVmStartupRequest request;
   request.set_id(vm_id);
   request.set_subnet_index(subnet_index);
@@ -897,24 +918,22 @@ bool ClientImpl::NotifyParallelsVmStartup(uint64_t vm_id,
         return proxy->ParallelsVmStartup(request, response, error);
       },
       proxy_.get(), request, &response, &error));
+
   if (!result) {
-    LOG(ERROR) << "ParallelsVm network startup failed: " << error->GetMessage();
-    return false;
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << ", subnet_index: " << subnet_index
+               << "): Parallels VM network startup failed: "
+               << error->GetMessage();
+    return std::nullopt;
   }
 
-  if (!response.has_device()) {
-    LOG(ERROR) << "No virtual device found";
-    return false;
+  const auto network_alloc = ConvertParallelsAllocation(response);
+  if (!network_alloc) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << ", subnet_index: " << subnet_index
+               << "): Failed to convert Parallels VM network configuration";
   }
-
-  const auto response_device = ConvertVirtualDevice(response.device());
-  if (!response_device) {
-    LOG(ERROR) << "Invalid virtual device response";
-    return false;
-  }
-
-  *device = *response_device;
-  return true;
+  return network_alloc;
 }
 
 bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {

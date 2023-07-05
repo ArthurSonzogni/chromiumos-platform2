@@ -35,6 +35,16 @@ void FillTerminaAllocationProto(const Device& termina_device,
           .ToByteString());
 }
 
+void FillParallelsAllocationProto(const Device& parallels_device,
+                                  ParallelsVmStartupResponse* output) {
+  DCHECK(parallels_device.config().ipv4_subnet());
+  output->set_tap_device_ifname(parallels_device.host_ifname());
+  FillSubnetProto(parallels_device.config().ipv4_subnet()->base_cidr(),
+                  output->mutable_ipv4_subnet());
+  output->set_ipv4_address(
+      parallels_device.config().guest_ipv4_addr().ToByteString());
+}
+
 void FillDeviceProto(const Device& virtual_device,
                      patchpanel::NetworkDevice* output) {
   output->set_ifname(virtual_device.host_ifname());

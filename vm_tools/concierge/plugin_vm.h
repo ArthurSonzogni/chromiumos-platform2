@@ -23,7 +23,6 @@
 #include <brillo/process/process.h>
 #include <dbus/exported_object.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <chromeos/patchpanel/subnet.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
@@ -153,8 +152,8 @@ class PluginVm final : public VmBaseImpl {
   // Individual directories, such as /etc, are mounted plugin jail.
   base::ScopedTempDir root_dir_;
 
-  // The subnet assigned to the VM.
-  std::unique_ptr<patchpanel::Subnet> subnet_;
+  // Network IPv4 subnet and tap device allocation from patchpanel.
+  patchpanel::Client::ParallelsAllocation network_alloc_;
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;

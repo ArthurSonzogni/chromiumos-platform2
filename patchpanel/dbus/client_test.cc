@@ -143,28 +143,18 @@ TEST_F(ClientTest, NotifyTerminaVmShutdown) {
 TEST_F(ClientTest, NotifyParallelsVmStartup) {
   const uint64_t id = 5;
   const int subnet_index = 4;
+  const auto parallels_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  const auto parallels_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.2");
 
   ParallelsVmStartupResponse response_proto;
-  auto* response_device = response_proto.mutable_device();
-  response_device->set_ifname("vmtap2");
-  response_device->set_phys_ifname("eth0");
-  response_device->set_guest_ifname("not_defined");
-  response_device->set_ipv4_addr(
-      net_base::IPv4Address(100, 115, 93, 34).ToInAddr().s_addr);
-  response_device->set_host_ipv4_addr(
-      net_base::IPv4Address(100, 115, 93, 33).ToInAddr().s_addr);
-  auto* response_device_subnet = response_device->mutable_ipv4_subnet();
-  response_device_subnet->set_addr(
-      std::vector<uint8_t>{100, 115, 93, 32}.data(), 4);
-  response_device_subnet->set_prefix_len(28);
-  response_device->set_guest_type(NetworkDevice::PARALLELS_VM);
-  response_device->set_dns_proxy_ipv4_addr(
-      std::vector<uint8_t>{100, 115, 93, 5}.data(), 4);
-  response_device->set_dns_proxy_ipv6_addr(
-      std::vector<uint8_t>{0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0xbf,
-                           0xc7, 0x4a, 0xd2}
-          .data(),
-      16);
+  response_proto.set_tap_device_ifname("vmtap2");
+  auto* response_subnet = response_proto.mutable_ipv4_subnet();
+  response_subnet->set_addr(parallels_ipv4_subnet.address().ToByteString());
+  response_subnet->set_prefix_len(
+      static_cast<uint32_t>(parallels_ipv4_subnet.prefix_length()));
+  response_proto.set_ipv4_address(parallels_ipv4_address.ToByteString());
 
   EXPECT_CALL(*proxy_,
               ParallelsVmStartup(
@@ -174,18 +164,11 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
                   _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
-  Client::VirtualDevice device;
-  bool result = client_->NotifyParallelsVmStartup(id, subnet_index, &device);
-  EXPECT_TRUE(result);
-  EXPECT_EQ("vmtap2", device.ifname);
-  EXPECT_EQ("eth0", device.phys_ifname);
-  EXPECT_EQ("not_defined", device.guest_ifname);
-  EXPECT_EQ("100.115.93.34", device.ipv4_addr.ToString());
-  EXPECT_EQ("100.115.93.33", device.host_ipv4_addr.ToString());
-  EXPECT_EQ("100.115.93.32/28", device.ipv4_subnet->ToString());
-  EXPECT_EQ(Client::GuestType::kParallelsVm, device.guest_type);
-  EXPECT_EQ("100.115.93.5", device.dns_proxy_ipv4_addr->ToString());
-  EXPECT_EQ("2001:db8::bfc7:4ad2", device.dns_proxy_ipv6_addr->ToString());
+  auto result = client_->NotifyParallelsVmStartup(id, subnet_index);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ("vmtap2", result->tap_device_ifname);
+  EXPECT_EQ(parallels_ipv4_subnet, result->parallels_ipv4_subnet);
+  EXPECT_EQ(parallels_ipv4_address, result->parallels_ipv4_address);
 }
 
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {

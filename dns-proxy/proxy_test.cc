@@ -171,9 +171,9 @@ class MockPatchpanelClient : public patchpanel::Client {
               (uint32_t),
               (override));
   MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<patchpanel::Client::ParallelsAllocation>,
               NotifyParallelsVmStartup,
-              (uint64_t, int, patchpanel::Client::VirtualDevice*),
+              (uint64_t, int),
               (override));
   MOCK_METHOD(bool, NotifyParallelsVmShutdown, (uint64_t), (override));
   MOCK_METHOD(bool, DefaultVpnRouting, (const base::ScopedFD&), (override));
