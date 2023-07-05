@@ -72,9 +72,8 @@ LECredentialManagerImpl::LECredentialManagerImpl(
       return;
     }
     root_hash_ = result->new_root;
-
-    hash_tree_->GenerateAndStoreHashCache();
   }
+  hash_tree_->GenerateAndStoreHashCache();
 }
 
 LECredStatus LECredentialManagerImpl::InsertCredential(
@@ -1039,6 +1038,7 @@ bool LECredentialManagerImpl::ReplayLogEntries(
       ReportLEReplayResult(is_full_replay, LEReplayError::kOperationError);
       return false;
     }
+    hash_tree_->GenerateAndStoreHashCache();
     cur_root_hash.clear();
     hash_tree_->GetRootHash(&cur_root_hash);
     if (cur_root_hash != log_entry.root) {

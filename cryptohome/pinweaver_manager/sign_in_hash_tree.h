@@ -271,8 +271,10 @@ class SignInHashTree {
   // bits_per_per_level_ = 0);
   Label GetFreeLabel();
 
-  // Fills the current root hash from |inner_hash_array_| into
-  // |root_hash|. Before that, it regenerates the entire |inner_hash_array_|.
+  // Fills the current root hash from |inner_hash_array_| into |root_hash|.
+  // Note that it DOESN'T regenerate the entire |inner_hash_array_|, the
+  // caller need to additionally call GenerateInnerHashArray() or similar
+  // functions to do so.
   void GetRootHash(std::vector<uint8_t>* root_hash);
 
  private:

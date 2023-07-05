@@ -276,7 +276,6 @@ SignInHashTree::Label SignInHashTree::GetFreeLabel() {
 }
 
 void SignInHashTree::GetRootHash(std::vector<uint8_t>* root_hash) {
-  GenerateInnerHashArray();
   root_hash->assign(inner_hash_array_[0], inner_hash_array_[0] + kHashSize);
 }
 
