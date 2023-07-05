@@ -26,6 +26,11 @@ constexpr char kLogFilePathForTesting[] = "/run/rgbkbd/log";
 
 bool IsDevMode(crossystem::Crossystem* crossystem) {
   std::optional<int> value = crossystem->VbGetSystemPropertyInt("cros_debug");
+  if (!value) {
+    LOG(INFO) << "crossystem cros_debug value: Empty";
+  } else {
+    LOG(INFO) << "crossystem cros_debug value: " << *value;
+  }
   return value && *value == 1;
 }
 
