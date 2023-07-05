@@ -77,6 +77,7 @@ EOF
     "${DATA_ROOT}/usr/local/bin/update-cros-list"
 
   install -D -m 0644 -t /usr/local/lib/systemd/system \
+    "${DATA_ROOT}/usr/local/lib/systemd/system/install-refvm.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/maitred.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/opt-google-cros\\x2dcontainers.mount" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/update-cros-list.service" \
@@ -140,10 +141,36 @@ EOF
 
   # Run the refvm installer on startup, if the appropriate OEM string is set.
   # We do this in .profile so that install messages are shown in the terminal.
-  cat << EOF >> /home/chronos/.profile
-if sudo dmidecode -t 11 -q | grep -q refvm:install=true; then
-  exec sudo /usr/local/bin/install-refvm
-fi
+  cat << "EOF" >> /home/chronos/.profile
+run_installer() {
+  if sudo dmidecode -t 11 -q | grep -q refvm:install=true; then
+    interactive=true
+    if sudo dmidecode -t 11 -q | grep -q refvm:noninteractive=true; then
+      interactive=false
+    fi
+
+    sudo journalctl --follow --no-tail --unit=install-refvm &
+    # No stdin for systemctl to avoid changing terminal options.
+    sudo systemctl --quiet start install-refvm.service < /dev/null
+    kill %1
+
+    if ! systemctl --quiet is-active install-refvm.service; then
+      if [[ "${interactive}" == true ]]; then
+        echo "Returning to a shell for debugging."
+        return
+      fi
+    fi
+
+    if [[ "${interactive}" == true ]]; then
+      read -r -p "Press ENTER to shut down."
+    fi
+
+    sudo systemctl poweroff
+    exit
+  fi
+}
+
+run_installer
 EOF
 
   # Disable garcon auto-updates.
