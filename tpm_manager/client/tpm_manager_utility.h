@@ -154,17 +154,6 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
   // the nvram at |index|.
   virtual bool LockSpace(uint32_t index);
 
-  // Gets the current status of the ownership taken signal. Returns |true| iff
-  // the signal is connected, no matter if it's connected successfully or not.
-  // |is_successful| indicates if the dbus signal connection is successful or
-  // not. |has_received| indicates if this instance has received the ownership
-  // taken signal. Once |has_received| is set as |true|,|local_data| gets
-  // updated. Any output parameter will be ignored to be set if the value is
-  // |nullptr|.
-  virtual bool GetOwnershipTakenSignalStatus(bool* is_successful,
-                                             bool* has_received,
-                                             LocalData* local_data);
-
   // Add callback which would be trigger after got tpm ownership.
   virtual void AddOwnershipCallback(OwnershipCallback ownership_callback);
 
@@ -263,10 +252,6 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
 
   // Records if it's a successful signal connection once connected.
   bool is_connection_successful_{false};
-
-  // |ownership_taken_signal_| stores the data once the ownership
-  // taken signal is received.
-  std::optional<OwnershipTakenSignal> ownership_taken_signal_;
 
   std::vector<OwnershipCallback> ownership_callbacks_;
 };

@@ -425,26 +425,6 @@ bool TpmManagerUtility::LockSpace(uint32_t index) {
   return true;
 }
 
-bool TpmManagerUtility::GetOwnershipTakenSignalStatus(bool* is_successful,
-                                                      bool* has_received,
-                                                      LocalData* local_data) {
-  base::AutoLock lock(ownership_signal_lock_);
-  if (!is_connected_) {
-    return false;
-  }
-  if (is_successful) {
-    *is_successful = is_connection_successful_;
-  }
-  if (has_received) {
-    *has_received = static_cast<bool>(ownership_taken_signal_);
-  }
-  // Copies |LocalData| when both the data source and destination is ready.
-  if (ownership_taken_signal_ && local_data) {
-    *local_data = ownership_taken_signal_->local_data();
-  }
-  return true;
-}
-
 void TpmManagerUtility::AddOwnershipCallback(
     OwnershipCallback ownership_callback) {
   base::AutoLock lock(ownership_callback_lock_);
@@ -453,10 +433,6 @@ void TpmManagerUtility::AddOwnershipCallback(
 
 void TpmManagerUtility::OnOwnershipTaken(const OwnershipTakenSignal& signal) {
   LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";
-  {
-    base::AutoLock lock(ownership_signal_lock_);
-    ownership_taken_signal_ = signal;
-  }
   base::AutoLock lock(ownership_callback_lock_);
   for (auto& callback : ownership_callbacks_) {
     callback.Run();

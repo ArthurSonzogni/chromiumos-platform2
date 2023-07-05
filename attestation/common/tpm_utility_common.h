@@ -42,7 +42,7 @@ class TpmUtilityCommon : public TpmUtility {
   bool GetOwnerPassword(std::string* password);
 
  private:
-  void UpdateTpmLocalData(const tpm_manager::LocalData& local_data);
+  void UpdateTpmStatus();
   void OnOwnershipTakenSignal();
   void BuildValidPCR0Values();
 
