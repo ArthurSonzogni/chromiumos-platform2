@@ -213,6 +213,16 @@ CrashCollector::ComputedCrashSeverity UserCollector::ComputeSeverity(
     };
   }
 
+  // When `handling_early_chrome_crash_` is true, the crash is a Chrome_ChromeOS
+  // crash. Thus, the computed product group here is `kUi` and the severity is
+  // `kFatal`.
+  if (handling_early_chrome_crash_) {
+    return ComputedCrashSeverity{
+        .crash_severity = CrashSeverity::kFatal,
+        .product_group = Product::kUi,
+    };
+  }
+
   return ComputedCrashSeverity{
       .crash_severity = CrashSeverity::kError,
       .product_group = Product::kPlatform,

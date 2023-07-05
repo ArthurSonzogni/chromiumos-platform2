@@ -95,6 +95,7 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, ShouldDumpUserConsentProductionImage);
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
+  FRIEND_TEST(UserCollectorTest, ComputeSeverity_HandleEarlyChromeCrashes);
   FRIEND_TEST(UserCollectorNoFixtureTest, GuessChromeProductNameTest);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, BasicTrue);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BasicTrue);
@@ -167,10 +168,15 @@ class UserCollector : public UserCollectorBase {
                   uid_t uid,
                   const std::string& exec,
                   std::string* reason) override;
+
   ErrorType ConvertCoreToMinidump(pid_t pid,
                                   const base::FilePath& container_dir,
                                   const base::FilePath& core_path,
                                   const base::FilePath& minidump_path) override;
+
+  void SetHandlingEarlyChromeCrashForTesting(bool early_chrome_crash) {
+    handling_early_chrome_crash_ = early_chrome_crash;
+  }
 
   std::string core_pattern_file_;
   std::string core_pipe_limit_file_;

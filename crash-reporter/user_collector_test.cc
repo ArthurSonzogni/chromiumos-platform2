@@ -693,6 +693,17 @@ TEST_F(UserCollectorTest, ComputeSeverity_NotSessionManagerExecutable) {
             CrashCollector::Product::kPlatform);
 }
 
+TEST_F(UserCollectorTest, ComputeSeverity_HandleEarlyChromeCrashes) {
+  collector_.SetHandlingEarlyChromeCrashForTesting(true);
+
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("test exec name");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group, CrashCollector::Product::kUi);
+}
+
 struct CopyStdinToCoreFileTestParams {
   std::string test_name;
   std::string input;
@@ -914,7 +925,8 @@ TEST_P(CopyStdinToCoreFileTest, Test) {
     ASSERT_TRUE(test_util::CreateFile(kLooseModeFile, ""));
   }
 
-  collector_.handling_early_chrome_crash_ = params.handling_early_chrome_crash;
+  collector_.SetHandlingEarlyChromeCrashForTesting(
+      params.handling_early_chrome_crash);
 
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0) << strerror(errno);
