@@ -17,7 +17,6 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
 
-#include "shill/connection.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
@@ -324,13 +323,14 @@ class Network {
 
   // Helper functions to prepare data and call corresponding NetworkApplier
   // function. Protected for manual-triggering in test.
+  // TODO(b/264963034): Currently ApplyAddress and ApplyRoute needs to be called
+  // per each IP family therefore |properties| is passed as an argument. Change
+  // to apply both IPv4 and IPv6 together and use NetworkConfig instead.
+  mockable void ApplyAddress(const IPConfig::Properties& properties);
+  mockable void ApplyRoute(const IPConfig::Properties& properties);
   void ApplyRoutingPolicy();
   mockable void ApplyMTU();
 
-  // Only used in tests.
-  void set_connection_for_testing(std::unique_ptr<Connection> connection) {
-    connection_ = std::move(connection);
-  }
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
     dhcp_provider_ = provider;
@@ -339,6 +339,9 @@ class Network {
     routing_table_ = routing_table;
   }
   void set_state_for_testing(State state) { state_ = state; }
+  void set_primary_family_for_testing(IPAddress::Family family) {
+    primary_family_ = family;
+  }
   const std::vector<EventHandler*>& event_handlers() const {
     return event_handlers_;
   }
@@ -366,11 +369,6 @@ class Network {
   // |ipconfig->properties.method| to kTypeIPv6so that Connection skips address
   // configuration and only does routing policy setup.
   void SetupConnection(IPConfig* ipconfig);
-
-  // Creates a Connection object can be used in this Network object. Isolate
-  // this function only for unit tests, so that we can inject a mock Connection
-  // object easily.
-  mockable std::unique_ptr<Connection> CreateConnection() const;
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
@@ -450,7 +448,13 @@ class Network {
 
   State state_ = State::kIdle;
 
-  std::unique_ptr<Connection> connection_;
+  // A temporary helper flag simulating the legacy SetupConnection() state. Also
+  // indicates which IPConfig will be seen by legacy Service->IPConfig dbus API.
+  //  kFamilyUnknown - network configuration has not been applied.
+  //  kFamilyIPv6 - IPv6 configuration has been applied, but not IPv4.
+  //  kFamilyIPv4 - IPv4 configuration has been applied (IPv6 can be yes or no).
+  IPAddress::Family primary_family_ = IPAddress::kFamilyUnknown;
+
   std::unique_ptr<ProcFsStub> proc_fs_;
 
   std::unique_ptr<DHCPController> dhcp_controller_;

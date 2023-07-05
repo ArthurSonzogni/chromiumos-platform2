@@ -15,10 +15,10 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -42,8 +42,10 @@ namespace {
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::Field;
 using ::testing::InvokeWithoutArgs;
+using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -153,10 +155,6 @@ class NetworkInTest : public Network {
                 metrics,
                 network_applier) {}
 
-  MOCK_METHOD(std::unique_ptr<Connection>,
-              CreateConnection,
-              (),
-              (const override));
   MOCK_METHOD(std::unique_ptr<SLAACController>,
               CreateSLAACController,
               (),
@@ -172,7 +170,21 @@ class NetworkInTest : public Network {
                const std::vector<std::string>& dns_list),
               (override));
 
-  void TriggerApplyMTU() { ApplyMTU(); }
+  MOCK_METHOD(void,
+              ApplyAddress,
+              (const IPConfig::Properties& properties),
+              (override));
+  MOCK_METHOD(void,
+              ApplyRoute,
+              (const IPConfig::Properties& properties),
+              (override));
+  void TriggerApplyAddress(IPConfig::Properties properties) {
+    Network::ApplyAddress(properties);
+  }
+  void TriggerApplyRoute(IPConfig::Properties properties) {
+    Network::ApplyRoute(properties);
+  }
+  void TriggerApplyMTU() { Network::ApplyMTU(); }
 };
 
 class NetworkTest : public ::testing::Test {
@@ -189,11 +201,6 @@ class NetworkTest : public ::testing::Test {
     proc_fs_ = dynamic_cast<MockProcFsStub*>(network_->set_proc_fs_for_testing(
         std::make_unique<NiceMock<MockProcFsStub>>(kTestIfname)));
     EXPECT_CALL(dhcp_provider_, CreateController).Times(0);
-    ON_CALL(*network_, CreateConnection()).WillByDefault([this]() {
-      auto ret = std::make_unique<NiceMock<MockConnection>>();
-      connection_ = ret.get();
-      return ret;
-    });
     ON_CALL(*network_, CreateSLAACController()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockSLAACController>>();
       slaac_controller_ = ret.get();
@@ -219,7 +226,7 @@ class NetworkTest : public ::testing::Test {
 
   void SetNetworkStateToConnected() {
     network_->set_state_for_testing(Network::State::kConnected);
-    network_->set_connection_for_testing(std::make_unique<MockConnection>());
+    network_->set_primary_family_for_testing(IPAddress::kFamilyIPv4);
   }
 
   // Ensure local() and gateway() being available for portal detection.
@@ -253,7 +260,6 @@ class NetworkTest : public ::testing::Test {
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
   MockDHCPController* dhcp_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
-  MockConnection* connection_ = nullptr;
   MockProcFsStub* proc_fs_ = nullptr;
 };
 
@@ -1037,6 +1043,117 @@ TEST_F(NetworkTest, ApplyMTU) {
   network_->TriggerApplyMTU();
 }
 
+TEST_F(NetworkTest, ApplyAddress) {
+  IPConfig::Properties properties;
+  const auto ipv4_local =
+      net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
+  const auto ipv4_broadcast =
+      net_base::IPv4Address::CreateFromString("192.168.1.100");
+  const auto ipv6_local =
+      net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
+
+  properties.address_family = IPAddress::kFamilyIPv4;
+  properties.method = kTypeDHCP;
+  properties.address = ipv4_local->address().ToString();
+  properties.subnet_prefix = ipv4_local->prefix_length();
+  EXPECT_CALL(network_applier_,
+              ApplyAddress(kTestIfindex, *ipv4_local, Eq(std::nullopt)));
+  network_->TriggerApplyAddress(properties);
+
+  properties.broadcast_address = ipv4_broadcast->ToString();
+  EXPECT_CALL(network_applier_,
+              ApplyAddress(kTestIfindex, *ipv4_local, ipv4_broadcast));
+  network_->TriggerApplyAddress(properties);
+
+  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.method = kTypeIPv6;
+  properties.address = ipv6_local->address().ToString();
+  properties.subnet_prefix = ipv6_local->prefix_length();
+  properties.broadcast_address = "";
+  // SLAAC (kTypeIPv6) address should not trigger ApplyAddress.
+  EXPECT_CALL(network_applier_, ApplyAddress(kTestIfindex, _, _)).Times(0);
+  network_->TriggerApplyAddress(properties);
+
+  properties.method = kTypeVPN;
+  // IPv6 VPN address should trigger ApplyAddress.
+  EXPECT_CALL(network_applier_,
+              ApplyAddress(kTestIfindex, *ipv6_local, Eq(std::nullopt)));
+  network_->TriggerApplyAddress(properties);
+}
+
+TEST_F(NetworkTest, ApplyRoute) {
+  IPConfig::Properties properties;
+  const auto ipv4_gateway =
+      net_base::IPAddress::CreateFromString("192.168.1.1");
+  properties.address_family = IPAddress::kFamilyIPv4;
+  properties.method = kTypeDHCP;
+  properties.address = "192.168.100.100";
+  properties.subnet_prefix = 16;
+  properties.gateway = ipv4_gateway->ToString();
+  properties.default_route = true;
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
+                         false, true, false, IsEmpty(), IsEmpty(), IsEmpty()));
+  network_->TriggerApplyRoute(properties);
+
+  properties.subnet_prefix = 24;
+  // If gateway is out of local subnet then |fix_gateway_reachability|.
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
+                         true, true, false, _, _, _));
+  network_->TriggerApplyRoute(properties);
+
+  properties.method = kTypeVPN;
+  properties.gateway = "";
+  // No gateway is a valid configuration.
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4,
+                         Eq(std::nullopt), false, true, false, _, _, _));
+  network_->TriggerApplyRoute(properties);
+
+  properties.gateway = "0.0.0.0";
+  // So does zero-address gateway.
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4,
+                         Eq(std::nullopt), false, true, false, _, _, _));
+  network_->TriggerApplyRoute(properties);
+
+  properties.gateway = ipv4_gateway->ToString();
+  properties.subnet_prefix = 16;
+  properties.default_route = false;
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
+                         false, false, false, _, _, _));
+  network_->TriggerApplyRoute(properties);
+
+  properties.blackhole_ipv6 = true;
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
+                         false, false, true, _, _, _));
+  network_->TriggerApplyRoute(properties);
+}
+
+TEST_F(NetworkTest, ApplyRouteIPv6) {
+  IPConfig::Properties properties;
+  const auto ipv6_gateway = net_base::IPAddress::CreateFromString("fe80::abcd");
+
+  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.method = kTypeVPN;
+  properties.gateway = ipv6_gateway->ToString();
+  properties.default_route = true;
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv6, ipv6_gateway,
+                         false, true, false, IsEmpty(), IsEmpty(), IsEmpty()));
+  network_->TriggerApplyRoute(properties);
+
+  properties.method = kTypeIPv6;
+  // Don't need to add default route for SLAAC.
+  EXPECT_CALL(network_applier_,
+              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv6, ipv6_gateway,
+                         false, false, false, _, _, _));
+  network_->TriggerApplyRoute(properties);
+}
+
 // This group of tests verify the interaction between Network and Connection,
 // and the events sent out from Network, on calling Network::Start() and other
 // IP acquisition events.
@@ -1172,24 +1289,10 @@ class NetworkStartTest : public NetworkTest {
     dispatcher_.task_environment().RunUntilIdle();
   }
 
-  // Expect calling CreateConnection() on Network, followed by a
-  // UpdateFromIPConfig() call on the created Connection object. These two
-  // expectation need to be set at the same time since they are called together
-  // in the source code, and here the MockConnection object is only created when
-  // CreateConnection() is really called.
-  void ExpectCreateConnectionWithIPConfig(IPConfigType ipconfig_type) {
-    EXPECT_CALL(*network_, CreateConnection())
-        .WillOnce([this, ipconfig_type]() {
-          auto ret = std::make_unique<NiceMock<MockConnection>>();
-          connection_ = ret.get();
-          ExpectConnectionUpdateFromIPConfig(ipconfig_type);
-          return ret;
-        });
-  }
-
   void ExpectConnectionUpdateFromIPConfig(IPConfigType ipconfig_type) {
     const auto expected_props = GetIPPropertiesFromType(ipconfig_type);
-    EXPECT_CALL(*connection_, UpdateFromIPConfig(expected_props));
+    EXPECT_CALL(*network_, ApplyAddress(expected_props));
+    EXPECT_CALL(*network_, ApplyRoute(expected_props));
   }
 
   // Verifies the IPConfigs object exposed by Network is expected.
@@ -1280,7 +1383,8 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
                                                /*is_failure=*/true));
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
                                                 /*is_failure=*/true));
-  EXPECT_CALL(*network_, CreateConnection()).Times(0);
+  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/false);
   InvokeStart(test_opts);
@@ -1292,7 +1396,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
   const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4Static);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
 
   ExpectCreateDHCPController(/*request_ip_result=*/false);
   InvokeStart(test_opts);
@@ -1302,7 +1406,8 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPFailure) {
   const TestOptions test_opts = {.dhcp = true};
-  EXPECT_CALL(*network_, CreateConnection()).Times(0);
+  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
@@ -1323,7 +1428,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPFailureWithStaticIP) {
   const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4Static);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
@@ -1349,7 +1454,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCP) {
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4DHCP);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
   EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
@@ -1366,7 +1471,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
   const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4Static);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
@@ -1408,7 +1513,7 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
   partial_config.dns_servers = {kIPv4StaticNameServer};
   network_->OnStaticIPConfigChanged(partial_config);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4Static);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
   ConfigureStaticIPv4Config();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4Static, IPConfigType::kNone);
@@ -1430,7 +1535,7 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPAfterDHCPConnected) {
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4DHCP);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
@@ -1447,7 +1552,7 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocol) {
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4LinkProtocol);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocol);
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4LinkProtocol, IPConfigType::kNone);
@@ -1463,7 +1568,7 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithStaticIP) {
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4LinkProtocolWithStatic);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocolWithStatic);
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4LinkProtocolWithStatic,
@@ -1480,7 +1585,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnGetSLAACAddress(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPv6ConfiguredWithSLAACAddress(network_->interface_index()));
@@ -1496,20 +1601,18 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
 TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   const TestOptions test_opts = {.accept_ra = true};
   InvokeStart(test_opts);
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(connection_);
-
-  // Note that the following code relies on the RoutingTable and DeviceInfo
-  // setup in TriggerSLAACUpdate().
-  ON_CALL(*connection_, IsIPv6()).WillByDefault(Return(true));
+  Mock::VerifyAndClearExpectations(&network_applier_);
 
   // Changing the address should trigger the connection update.
   const auto new_addr =
       *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
+  EXPECT_CALL(*network_, ApplyAddress(_));
+  EXPECT_CALL(*network_, ApplyRoute(_));
   EXPECT_CALL(*slaac_controller_, GetAddresses())
       .WillRepeatedly(Return(
           std::vector<net_base::IPv6CIDR>{net_base::IPv6CIDR(new_addr)}));
@@ -1526,12 +1629,16 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 address does not change, no signal is emitted.
+  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 prefix changes, a signal is emitted.
+  EXPECT_CALL(*network_, ApplyAddress(_));
+  EXPECT_CALL(*network_, ApplyRoute(_));
   EXPECT_CALL(*slaac_controller_, GetAddresses())
       .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64)}));
@@ -1561,7 +1668,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
       *net_base::IPv6Address::CreateFromString(kIPv6SLAACNameserver);
 
   // A valid DNS should bring the network up.
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1572,9 +1679,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   TriggerSLAACNameServersUpdate({dns_server});
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(connection_);
-
-  ON_CALL(*connection_, IsIPv6()).WillByDefault(Return(true));
+  Mock::VerifyAndClearExpectations(&network_applier_);
 
   // If the IPv6 DNS server addresses does not change, no signal is emitted.
   TriggerSLAACNameServersUpdate({dns_server});
@@ -1591,6 +1696,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // Reset the DNS server.
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1609,7 +1715,7 @@ TEST_F(NetworkStartTest, IPv6OnlyLinkProtocol) {
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6LinkProtocol);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6LinkProtocol);
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6LinkProtocol);
@@ -1672,7 +1778,7 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
 
   // Connection should be reconfigured with IPv6 on IPv4 failure. Connection
   // should be reset.
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   TriggerDHCPFailureCallback();
   // TODO(b/232177767): We do not verify IPConfigs here, since currently we only
@@ -1724,7 +1830,7 @@ TEST_F(NetworkStartTest, RFC8925Option108AfterIPv4Connected) {
   TriggerSLAACUpdate();
 
   // Connection should be reconfigured with IPv6. Connection should be reset.
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   TriggerDHCPOption108Callback();
 }
@@ -1737,7 +1843,7 @@ TEST_F(NetworkStartTest, DualStackSLAACFirst) {
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
@@ -1757,12 +1863,13 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
 
-  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4DHCP);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
-  // This function will not be called when IPv6 config comes after IPv4.
-  EXPECT_CALL(*connection_, UpdateFromIPConfig).Times(0);
+  // These functions will not be called when IPv6 config comes after IPv4.
+  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
@@ -1779,15 +1886,8 @@ TEST_F(NetworkStartTest, DualStackLinkProtocol) {
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
-  // Need to set two expectations in the lambda so cannot use
-  // ExpectCreateConnectionWithIPConfig() directly.
-  EXPECT_CALL(*network_, CreateConnection()).WillOnce([this]() {
-    auto ret = std::make_unique<NiceMock<MockConnection>>();
-    connection_ = ret.get();
-    ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6LinkProtocol);
-    ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocol);
-    return ret;
-  });
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6LinkProtocol);
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocol);
 
   InvokeStart(test_opts);
 

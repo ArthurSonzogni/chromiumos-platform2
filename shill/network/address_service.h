@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -25,6 +26,10 @@ class AddressService {
   virtual ~AddressService();
 
   static AddressService* GetInstance();
+
+  // Helper factory function for test code with dependency injection.
+  static std::unique_ptr<AddressService> CreateForTesting(
+      RTNLHandler* rtnl_handler);
 
   // Removes all addresses previous configured onto |interface_index|.
   mockable void FlushAddress(int interface_index);

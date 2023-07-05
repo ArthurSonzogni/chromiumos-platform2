@@ -15,6 +15,7 @@
 #include <base/functional/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
+#include <net-base/ip_address.h>
 
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_message.h"
@@ -107,9 +108,10 @@ class RoutingTable {
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutes(int interface_index);
 
-  // Iterate over all routing tables removing routes tagged with |tag|.
-  // Route entries are immediately purged from our copy of the routing table.
-  virtual void FlushRoutesWithTag(int tag);
+  // Iterate over all routing tables removing routes tagged with |tag| of IP
+  // family |family|. Route entries are immediately purged from our copy of the
+  // routing table.
+  virtual void FlushRoutesWithTag(int tag, net_base::IPFamily family);
 
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);

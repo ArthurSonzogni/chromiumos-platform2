@@ -4,7 +4,10 @@
 
 #include "shill/network/address_service.h"
 
+#include <memory>
+
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 
 namespace shill {
@@ -13,9 +16,19 @@ AddressService::AddressService() : rtnl_handler_(RTNLHandler::GetInstance()) {}
 
 AddressService::~AddressService() = default;
 
+// static
 AddressService* AddressService::GetInstance() {
   static base::NoDestructor<AddressService> instance;
   return instance.get();
+}
+
+// static
+std::unique_ptr<AddressService> AddressService::CreateForTesting(
+    RTNLHandler* rtnl_handler) {
+  // Using `new` to access a non-public constructor.
+  auto ptr = base::WrapUnique(new AddressService());
+  ptr->rtnl_handler_ = rtnl_handler;
+  return ptr;
 }
 
 void AddressService::FlushAddress(int interface_index) {

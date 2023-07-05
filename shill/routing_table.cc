@@ -31,6 +31,7 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <net-base/ip_address.h>
 
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
@@ -365,12 +366,13 @@ void RoutingTable::FlushRoutes(int interface_index) {
   table->second.clear();
 }
 
-void RoutingTable::FlushRoutesWithTag(int tag) {
+void RoutingTable::FlushRoutesWithTag(int tag, net_base::IPFamily family) {
   SLOG(2) << __func__;
 
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
-      if (nent->tag == tag) {
+      if (nent->tag == tag &&
+          nent->dst.family() == net_base::ToSAFamily(family)) {
         RemoveRouteFromKernelTable(table.first, *nent);
         nent = table.second.erase(nent);
       } else {

@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/ipconfig.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -74,7 +73,6 @@ class StaticIPParametersTest : public Test {
     network_ = std::make_unique<Network>(
         1, ifname, Technology::kEthernet, false, &control_interface_,
         &dispatcher_, &metrics_, &network_applier_);
-    network_->set_connection_for_testing(std::make_unique<MockConnection>());
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
     // Call SetupConnection() explicitly to make this IPConfig object being

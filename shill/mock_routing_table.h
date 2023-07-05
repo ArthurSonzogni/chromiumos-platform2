@@ -43,7 +43,7 @@ class MockRoutingTable : public RoutingTable {
               (int, const IPAddress&, const IPAddress&, uint32_t),
               (override));
   MOCK_METHOD(void, FlushRoutes, (int), (override));
-  MOCK_METHOD(void, FlushRoutesWithTag, (int), (override));
+  MOCK_METHOD(void, FlushRoutesWithTag, (int, net_base::IPFamily), (override));
   MOCK_METHOD(void, ResetTable, (int), (override));
 };
 

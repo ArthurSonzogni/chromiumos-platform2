@@ -6,6 +6,7 @@
 
 #include <linux/fib_rules.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -15,7 +16,9 @@
 #include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
 #include "shill/routing_policy_service.h"
 #include "shill/routing_table.h"
@@ -64,6 +67,8 @@ constexpr uint32_t kCatchallPriority =
 NetworkApplier::NetworkApplier()
     : resolver_(Resolver::GetInstance()),
       rule_table_(RoutingPolicyService::GetInstance()),
+      routing_table_(RoutingTable::GetInstance()),
+      address_service_(AddressService::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       proc_fs_(std::make_unique<ProcFsStub>("")) {}
 
@@ -78,13 +83,17 @@ NetworkApplier* NetworkApplier::GetInstance() {
 // static
 std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
     Resolver* resolver,
+    RoutingTable* routing_table,
     RoutingPolicyService* rule_table,
+    AddressService* address_service,
     RTNLHandler* rtnl_handler,
     std::unique_ptr<ProcFsStub> proc_fs) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new NetworkApplier());
   ptr->resolver_ = resolver;
+  ptr->routing_table_ = routing_table;
   ptr->rule_table_ = rule_table;
+  ptr->address_service_ = address_service;
   ptr->rtnl_handler_ = rtnl_handler;
   ptr->proc_fs_ = std::move(proc_fs);
   return ptr;
@@ -92,6 +101,12 @@ std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
 
 void NetworkApplier::Clear(int interface_index) {
   rule_table_->FlushRules(interface_index);
+  routing_table_->FlushRoutes(interface_index);
+  routing_table_->FlushRoutesWithTag(interface_index,
+                                     net_base::IPFamily::kIPv4);
+  routing_table_->FlushRoutesWithTag(interface_index,
+                                     net_base::IPFamily::kIPv6);
+  address_service_->FlushAddress(interface_index);
   proc_fs_->FlushRoutingCache();
 }
 
@@ -277,6 +292,133 @@ void NetworkApplier::ApplyRoutingPolicy(
 
 void NetworkApplier::ApplyMTU(int interface_index, int mtu) {
   rtnl_handler_->SetInterfaceMTU(interface_index, mtu);
+}
+
+void NetworkApplier::ApplyRoute(
+    int interface_index,
+    net_base::IPFamily family,
+    const std::optional<net_base::IPAddress>& gateway,
+    bool fix_gateway_reachability,
+    bool default_route,
+    bool blackhole_ipv6,
+    const std::vector<net_base::IPCIDR>& excluded_routes,
+    const std::vector<net_base::IPCIDR>& included_routes,
+    const std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>&
+        rfc3442_routes) {
+  const uint32_t table_id = RoutingTable::GetInterfaceTableId(interface_index);
+  CHECK(!gateway || gateway->GetFamily() == family);
+  IPAddress empty_ip =
+      IPAddress::CreateFromFamily(net_base::ToSAFamily(family));
+
+  // 0. Flush existing routes set by shill.
+  routing_table_->FlushRoutesWithTag(interface_index, family);
+
+  // 1. Fix gateway reachablity (add an on-link /32 route to the gateway) if
+  // the gateway is not currently on-link. Note this only applies for IPv4 as
+  // IPv6 uses the link local address for gateway.
+  if (fix_gateway_reachability) {
+    CHECK(gateway);
+    CHECK(gateway->GetFamily() == net_base::IPFamily::kIPv4);
+    net_base::IPv4CIDR gateway_only =
+        *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+            *gateway->ToIPv4Address(), 32);
+    auto entry = RoutingTableEntry::Create(
+                     IPAddress(gateway_only),
+                     IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                     IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4))
+                     .SetScope(RT_SCOPE_LINK)
+                     .SetTable(table_id)
+                     .SetType(RTN_UNICAST)
+                     .SetTag(interface_index);
+    if (!routing_table_->AddRoute(interface_index, entry)) {
+      LOG(ERROR) << "Unable to add link-scoped route to gateway " << entry
+                 << ", if " << interface_index;
+    }
+  }
+
+  // 2. Default route and IPv6 blackhole route
+  if (default_route) {
+    if (!routing_table_->SetDefaultRoute(
+            interface_index, gateway ? IPAddress(*gateway) : empty_ip,
+            table_id)) {
+      LOG(ERROR) << "Unable to add default route via "
+                 << (gateway ? gateway->ToString() : "onlink") << ", if "
+                 << interface_index;
+    }
+  }
+
+  if (blackhole_ipv6) {
+    if (!routing_table_->CreateBlackholeRoute(
+            interface_index, IPAddress::kFamilyIPv6, 0, table_id)) {
+      LOG(ERROR) << "Unable to add IPv6 blackhole route, if "
+                 << interface_index;
+    }
+  }
+
+  // 3. Excluded Routes
+  // Since each Network has its own dedicated routing table, exclusion is as
+  // simple as adding an RTN_THROW entry for each item on the list. Traffic that
+  // matches the RTN_THROW entry will cause the kernel to stop traversing our
+  // routing table and try the next rule in the list.
+  for (const auto& excluded_prefix : excluded_routes) {
+    if (excluded_prefix.GetFamily() != family) {
+      LOG(WARNING) << "Unmatched IP family for excluded route "
+                   << excluded_prefix;
+      continue;
+    }
+    auto entry = RoutingTableEntry::Create(empty_ip, empty_ip, empty_ip)
+                     .SetScope(RT_SCOPE_LINK)
+                     .SetTable(table_id)
+                     .SetType(RTN_THROW)
+                     .SetTag(interface_index);
+    entry.dst = IPAddress(excluded_prefix);
+    if (!routing_table_->AddRoute(interface_index, entry)) {
+      LOG(WARNING) << "Unable to setup excluded route " << entry << ", if "
+                   << interface_index;
+    }
+  }
+
+  // 4. Included Routes
+  for (const auto& included_prefix : included_routes) {
+    if (included_prefix.GetFamily() != family) {
+      LOG(WARNING) << "Unmatched IP family for included route "
+                   << included_prefix;
+      continue;
+    }
+    auto entry =
+        RoutingTableEntry::Create(IPAddress(included_prefix), empty_ip,
+                                  gateway ? IPAddress(*gateway) : empty_ip)
+            .SetTable(table_id)
+            .SetTag(interface_index);
+    if (!routing_table_->AddRoute(interface_index, entry)) {
+      LOG(WARNING) << "Unable to setup included route " << entry << ", if "
+                   << interface_index;
+    }
+  }
+
+  // 5. RFC 3442 Static Classless Routes from DHCPv4
+  for (const auto& [route_prefix, route_gateway] : rfc3442_routes) {
+    IPAddress empty_ip = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
+    auto entry = RoutingTableEntry::Create(IPAddress(route_prefix), empty_ip,
+                                           IPAddress(route_gateway))
+                     .SetTable(table_id)
+                     .SetTag(interface_index);
+    if (!routing_table_->AddRoute(interface_index, entry)) {
+      LOG(WARNING) << "Unable to setup static classless route " << entry
+                   << ", if " << interface_index;
+    }
+  }
+}
+
+void NetworkApplier::ApplyAddress(
+    int interface_index,
+    const net_base::IPCIDR& local,
+    const std::optional<net_base::IPv4Address>& broadcast) {
+  if (address_service_->RemoveAddressOtherThan(interface_index, local)) {
+    // The address has changed for this interface.
+    LOG(INFO) << __func__ << ": Flushing old addresses.";
+  }
+  address_service_->AddAddress(interface_index, local, broadcast);
 }
 
 }  // namespace shill

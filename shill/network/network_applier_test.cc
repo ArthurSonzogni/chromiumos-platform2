@@ -10,9 +10,12 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "net-base/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_policy_service.h"
+#include "shill/mock_routing_table.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/network_applier.h"
@@ -21,6 +24,7 @@
 #include "shill/technology.h"
 
 using testing::_;
+using testing::Eq;
 using testing::Mock;
 using testing::Return;
 using testing::ReturnRef;
@@ -90,6 +94,23 @@ MATCHER_P5(IsValidSrcRuleWithUid, family, priority, src, uid, table, "") {
          arg.uid_range->end == uid && arg.table == table;
 }
 
+MATCHER_P(IsValidRoute, dst, "") {
+  return dst.Equals(arg.dst);
+}
+
+MATCHER_P2(IsValidRouteThrough, dst, gateway, "") {
+  return dst.Equals(arg.dst) && gateway.Equals(arg.gateway);
+}
+
+MATCHER_P(IsValidThrowRoute, dst, "") {
+  return dst.Equals(arg.dst) && arg.type == RTN_THROW;
+}
+
+MATCHER_P(IsLinkRouteTo, dst, "") {
+  return dst.Equals(arg.dst) && arg.src.IsDefault() &&
+         arg.gateway.IsDefault() && arg.scope == RT_SCOPE_LINK;
+}
+
 }  // namespace
 
 class NetworkApplierTest : public Test {
@@ -97,13 +118,19 @@ class NetworkApplierTest : public Test {
   NetworkApplierTest() {
     auto temp_proc_fs_ptr = std::make_unique<MockProcFsStub>("");
     proc_fs_ = temp_proc_fs_ptr.get();
+    address_service_ = AddressService::CreateForTesting(&address_rtnl_handler_);
     network_applier_ = NetworkApplier::CreateForTesting(
-        &resolver_, &rule_table_, &rtnl_handler_, std::move(temp_proc_fs_ptr));
+        &resolver_, &routing_table_, &rule_table_, address_service_.get(),
+        &rtnl_handler_, std::move(temp_proc_fs_ptr));
   }
 
  protected:
   StrictMock<MockResolver> resolver_;
+  StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRoutingPolicyService> rule_table_;
+  StrictMock<MockRTNLHandler> address_rtnl_handler_;
+  std::unique_ptr<AddressService>
+      address_service_;  // mocked at RTNLHandler level
   MockRTNLHandler rtnl_handler_;
   MockProcFsStub* proc_fs_;  // owned by network_applier_;
   std::unique_ptr<NetworkApplier> network_applier_;
@@ -343,7 +370,7 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
       all_addresses, std::vector<net_base::IPv4CIDR>());
 }
 
-TEST_F(NetworkApplierTest,
+TEST_F(NetworkApplierRoutingPolicyTest,
        ApplyRoutingPolicy_NonDefaultPhysicalWithClasslessStaticRoute) {
   const int kInterfaceIndex = 4;
   const std::string kInterfaceName = "wlan0";
@@ -522,6 +549,203 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
   network_applier_->ApplyRoutingPolicy(
       kInterfaceIndex, kInterfaceName, Technology::kCellular, priority,
       all_addresses, std::vector<net_base::IPv4CIDR>());
+}
+
+using NetworkApplierRouteTest = NetworkApplierTest;
+
+TEST_F(NetworkApplierRouteTest, IPv4Simple) {
+  const int kInterfaceIndex = 3;
+  const int kTableID = 1003;
+  const auto gateway = net_base::IPAddress::CreateFromString("192.168.1.1");
+
+  EXPECT_CALL(routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              CreateBlackholeRoute(kInterfaceIndex, IPAddress::kFamilyIPv6, 0,
+                                   kTableID))
+      .WillOnce(Return(true));
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                               gateway, false, true, true, {}, {}, {});
+}
+
+TEST_F(NetworkApplierRouteTest, IPv4FixGatewayReachability) {
+  const int kInterfaceIndex = 3;
+  const auto gateway = net_base::IPAddress::CreateFromString("192.168.1.1");
+  const auto gateway_cidr =
+      net_base::IPCIDR::CreateFromAddressAndPrefix(*gateway, 32);
+
+  EXPECT_CALL(routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsLinkRouteTo(IPAddress(*gateway_cidr))));
+
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                               gateway, true, false, false, {}, {}, {});
+}
+
+TEST_F(NetworkApplierRouteTest, IPv4WithStaticRoutes) {
+  const int kInterfaceIndex = 3;
+  const int kTableID = 1003;
+  const auto gateway = net_base::IPAddress::CreateFromString("192.168.1.1");
+  const auto excluded_dst =
+      net_base::IPCIDR::CreateFromCIDRString("10.1.0.0/16");
+  const auto included_dst =
+      net_base::IPCIDR::CreateFromCIDRString("10.1.1.0/24");
+  const auto rfc3442_dst =
+      net_base::IPv4CIDR::CreateFromCIDRString("192.168.200.0/24");
+  const auto rfc3442_gateway =
+      net_base::IPv4Address::CreateFromString("192.168.100.1");
+
+  EXPECT_CALL(routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidRouteThrough(IPAddress(*included_dst),
+                                                    IPAddress(*gateway))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex,
+                       IsValidRouteThrough(IPAddress(*rfc3442_dst),
+                                           IPAddress(*rfc3442_gateway))))
+      .WillOnce(Return(true));
+
+  network_applier_->ApplyRoute(
+      kInterfaceIndex, net_base::IPFamily::kIPv4, gateway, false, true, false,
+      {*excluded_dst}, {*included_dst}, {{*rfc3442_dst, *rfc3442_gateway}});
+}
+
+TEST_F(NetworkApplierRouteTest, IPv4NoGateway) {
+  const int kInterfaceIndex = 3;
+  const int kTableID = 1003;
+  const auto excluded_dst =
+      net_base::IPCIDR::CreateFromCIDRString("10.1.0.0/16");
+  const auto included_dst =
+      net_base::IPCIDR::CreateFromCIDRString("10.1.1.0/24");
+  const auto rfc3442_dst =
+      net_base::IPv4CIDR::CreateFromCIDRString("192.168.200.0/24");
+  const auto rfc3442_gateway =
+      net_base::IPv4Address::CreateFromString("192.168.100.1");
+
+  EXPECT_CALL(routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
+  EXPECT_CALL(
+      routing_table_,
+      SetDefaultRoute(kInterfaceIndex,
+                      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                      kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex, IsValidRoute(IPAddress(*included_dst))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex,
+                       IsValidRouteThrough(IPAddress(*rfc3442_dst),
+                                           IPAddress(*rfc3442_gateway))))
+      .WillOnce(Return(true));
+
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                               std::nullopt, false, true, false,
+                               {*excluded_dst}, {*included_dst},
+                               {{*rfc3442_dst, *rfc3442_gateway}});
+}
+
+TEST_F(NetworkApplierRouteTest, IPv6) {
+  const int kInterfaceIndex = 3;
+  const int kTableID = 1003;
+  const auto gateway = net_base::IPAddress::CreateFromString("fe80::abcd");
+  const auto excluded_dst =
+      net_base::IPCIDR::CreateFromCIDRString("2001:db8::/60");
+  const auto included_dst =
+      net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:1::/64");
+
+  EXPECT_CALL(routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv6));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidRouteThrough(IPAddress(*included_dst),
+                                                    IPAddress(*gateway))))
+      .WillOnce(Return(true));
+
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                               gateway, false, true, false, {*excluded_dst},
+                               {*included_dst}, {});
+}
+
+using NetworkApplierAddressTest = NetworkApplierTest;
+
+TEST_F(NetworkApplierAddressTest, AddAddressFlow) {
+  const int kInterfaceIndex = 3;
+  const auto ipv4_addr_1 =
+      *net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
+  const auto ipv4_addr_2 =
+      *net_base::IPCIDR::CreateFromCIDRString("192.168.2.2/24");
+  const auto ipv6_addr_1 =
+      *net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
+
+  EXPECT_CALL(
+      address_rtnl_handler_,
+      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_1, Eq(std::nullopt)))
+      .WillOnce(Return(true));
+  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_1, std::nullopt);
+
+  // Adding a second IPv4 address should remove the first one.
+  EXPECT_CALL(address_rtnl_handler_,
+              RemoveInterfaceAddress(kInterfaceIndex, ipv4_addr_1));
+  EXPECT_CALL(
+      address_rtnl_handler_,
+      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_2, Eq(std::nullopt)))
+      .WillOnce(Return(true));
+  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_2, std::nullopt);
+
+  // Adding an IPv6 address will not remove the IPv4 one.
+  EXPECT_CALL(
+      address_rtnl_handler_,
+      AddInterfaceAddress(kInterfaceIndex, ipv6_addr_1, Eq(std::nullopt)))
+      .WillOnce(Return(true));
+  network_applier_->ApplyAddress(kInterfaceIndex, ipv6_addr_1, std::nullopt);
+
+  // Similarly adding an IPv4 address will not remove the IPv6 one.
+  EXPECT_CALL(address_rtnl_handler_,
+              RemoveInterfaceAddress(kInterfaceIndex, ipv4_addr_2));
+  EXPECT_CALL(
+      address_rtnl_handler_,
+      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_1, Eq(std::nullopt)))
+      .WillOnce(Return(true));
+  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_1, std::nullopt);
+}
+
+TEST_F(NetworkApplierAddressTest, IPv4WithBroadcast) {
+  const int kInterfaceIndex = 3;
+  const auto local = *net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
+  const auto broadcast =
+      net_base::IPv4Address::CreateFromString("192.168.1.200");
+
+  EXPECT_CALL(address_rtnl_handler_,
+              AddInterfaceAddress(kInterfaceIndex, local, broadcast))
+      .WillOnce(Return(true));
+  network_applier_->ApplyAddress(kInterfaceIndex, local, broadcast);
 }
 
 }  // namespace shill

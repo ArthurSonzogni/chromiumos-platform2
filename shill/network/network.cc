@@ -10,6 +10,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -18,8 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/ip_address.h>
 
-#include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -215,10 +216,11 @@ void Network::SetupConnection(IPConfig* ipconfig) {
             << IPAddress::GetAddressFamilyName(
                    ipconfig->properties().address_family)
             << " connection";
-  if (connection_ == nullptr) {
-    connection_ = CreateConnection();
+  if (primary_family_ == IPAddress::kFamilyUnknown) {
+    primary_family_ = ipconfig->properties().address_family;
   }
-  connection_->UpdateFromIPConfig(ipconfig->properties());
+  ApplyAddress(ipconfig->properties());
+  ApplyRoute(ipconfig->properties());
   ApplyRoutingPolicy();
   network_applier_->ApplyDNS(priority_,
                              ipconfig_ ? &ipconfig_->properties() : nullptr,
@@ -244,11 +246,6 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   if (ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
     current_ipconfig_change_handler_.Run();
   }
-}
-
-std::unique_ptr<Connection> Network::CreateConnection() const {
-  return std::make_unique<Connection>(interface_index_, interface_name_,
-                                      fixed_ip_params_, technology_);
 }
 
 void Network::Stop() {
@@ -307,7 +304,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   routing_table_->DeregisterDevice(interface_index_, interface_name_);
   state_ = State::kIdle;
-  connection_ = nullptr;
+  primary_family_ = IPAddress::kFamilyUnknown;
   network_applier_->Clear(interface_index_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
@@ -484,14 +481,13 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
     LOG(INFO) << logging_tag_ << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
-    if (!connection_ || !connection_->IsIPv6()) {
-      // Destroy the IPv4 connection (if exists) to clear the state in kernel at
-      // first. It is possible that this function is called when we have a valid
-      // DHCP lease now (e.g., triggered by a renew failure). We need to
-      // withdraw the effect of the previous IPv4 lease at first. Static IP is
-      // handled above so it's guaranteed that there is no valid IPv4 lease.
-      // Also see b/261681299.
-      connection_ = nullptr;
+    if (primary_family_ == IPAddress::kFamilyIPv4) {
+      // Clear the state in kernel at first. It is possible that this function
+      // is called when we have a valid DHCP lease now (e.g., triggered by a
+      // renew failure). We need to withdraw the effect of the previous IPv4
+      // lease at first. Static IP is handled above so it's guaranteed that
+      // there is no valid IPv4 lease. Also see b/261681299.
+      primary_family_ = IPAddress::kFamilyUnknown;
       network_applier_->Clear(interface_index_);
       SetupConnection(ip6config());
     }
@@ -596,7 +592,7 @@ void Network::OnIPv6AddressChanged() {
 
   // No matter whether the primary address changes, any address change will
   // need to trigger address-based routing rule to be updated.
-  if (connection_) {
+  if (primary_family_ != IPAddress::kFamilyUnknown) {
     ApplyRoutingPolicy();
   }
 
@@ -674,7 +670,7 @@ void Network::OnIPv6ConfigUpdated() {
     // is ready for connection (contained both IP address and DNS servers), and
     // there is no existing IPv4 connection. We always prefer IPv4 configuration
     // over IPv6.
-    if (!IsConnected() || connection_->IsIPv6()) {
+    if (primary_family_ != IPAddress::kFamilyIPv4) {
       SetupConnection(ip6config());
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
@@ -733,7 +729,7 @@ void Network::EnableARPFiltering() {
 }
 
 void Network::SetPriority(NetworkPriority priority) {
-  if (!connection_) {
+  if (primary_family_ == IPAddress::kFamilyUnknown) {
     LOG(WARNING) << logging_tag_ << ": " << __func__
                  << " called but no connection exists";
     return;
@@ -1059,7 +1055,7 @@ void Network::StartConnectionDiagnostics() {
               << ": Not connected, cannot start connection diagnostics";
     return;
   }
-  DCHECK(connection_ != nullptr);
+  DCHECK(primary_family_ != IPAddress::kFamilyUnknown);
 
   const auto local_address = local();
   if (!local_address) {
@@ -1165,6 +1161,7 @@ void Network::ReportIPType() {
 }
 
 void Network::ApplyRoutingPolicy() {
+  SLOG(2) << logging_tag_ << ": " << __func__;
   std::vector<net_base::IPv4CIDR> rfc3442_dsts;
   if (ipconfig_) {
     for (const auto& route :
@@ -1172,8 +1169,9 @@ void Network::ApplyRoutingPolicy() {
       const auto dst = net_base::IPv4CIDR::CreateFromStringAndPrefix(
           route.host, route.prefix);
       if (!dst) {
-        LOG(ERROR) << "Failed to parse static route destination address "
-                   << route.host << ", prefix length" << route.prefix;
+        LOG(WARNING) << logging_tag_
+                     << ": Failed to parse static route destination address "
+                     << route.host << ", prefix length" << route.prefix;
         continue;
       }
       rfc3442_dsts.push_back(*dst);
@@ -1185,7 +1183,140 @@ void Network::ApplyRoutingPolicy() {
                                        rfc3442_dsts);
 }
 
+void Network::ApplyRoute(const IPConfig::Properties& properties) {
+  auto family = net_base::FromSAFamily(properties.address_family);
+  if (!family) {
+    LOG(ERROR) << logging_tag_ << ": Invalid IP family";
+    return;
+  }
+  SLOG(2) << logging_tag_ << ": " << __func__ << " on "
+          << net_base::ToString(*family);
+
+  // nullopt means no gateway, a valid value for p2p networks. Present of
+  // |peer_address| also suggest that this is a p2p network. Also accepts
+  // "0.0.0.0" and "::" as indicators of no gateway.
+  auto gateway = net_base::IPAddress::CreateFromString(properties.gateway);
+  if (!gateway && !properties.gateway.empty()) {
+    LOG(ERROR) << logging_tag_ << ": Gateway address " << properties.gateway
+               << " is invalid";
+    return;
+  }
+  if (gateway && gateway->IsZero()) {
+    gateway = std::nullopt;
+  }
+  if (!properties.peer_address.empty()) {
+    const auto peer =
+        net_base::IPAddress::CreateFromString(properties.peer_address);
+    if (!peer) {
+      LOG(ERROR) << logging_tag_ << ": Peer address " << properties.peer_address
+                 << " is invalid";
+      return;
+    }
+    gateway = std::nullopt;
+  }
+  CHECK(!gateway || gateway->GetFamily() == family);
+
+  // Check if an IPv4 gateway is on-link, and add a /32 on-link route to the
+  // gateway if not. Note that IPv6 uses link local address for gateway so this
+  // is not needed.
+  bool fix_gateway_reachability = false;
+  if (gateway && gateway->GetFamily() == net_base::IPFamily::kIPv4) {
+    auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
+        properties.address, properties.subnet_prefix);
+    if (!local) {
+      LOG(ERROR) << logging_tag_ << ": Local address " << properties.address
+                 << " with prefix length " << properties.subnet_prefix
+                 << " is invalid";
+      return;
+    }
+    fix_gateway_reachability = !local->InSameSubnetWith(*gateway);
+    if (fix_gateway_reachability) {
+      LOG(WARNING)
+          << logging_tag_ << ": Gateway " << gateway->ToString()
+          << " is unreachable from local address/prefix " << local->ToString()
+          << ", mitigating this by creating a link route to the gateway.";
+    }
+  }
+
+  // For IPv4 and IPv6 VPNs shill has to create default route by itself.
+  // For IPv6 physical networks with RAs it is done by kernel.
+  // Note that IPv6 VPN uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
+  bool default_route =
+      properties.default_route && (properties.method != kTypeIPv6);
+
+  bool blackhole_ipv6 = properties.blackhole_ipv6;
+
+  const auto parse_prefix_list = [&logging_tag = this->logging_tag_](
+                                     const std::vector<std::string>& in) {
+    std::vector<net_base::IPCIDR> out;
+    for (const auto& prefix_str : in) {
+      auto prefix = net_base::IPCIDR::CreateFromCIDRString(prefix_str);
+      if (!prefix) {
+        LOG(WARNING) << logging_tag << ": Invalid CIDR string " << prefix_str;
+        continue;
+      }
+      out.push_back(*prefix);
+    }
+    return out;
+  };
+  auto excluded_routes = parse_prefix_list(properties.exclusion_list);
+  auto included_routes = parse_prefix_list(properties.inclusion_list);
+
+  std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>
+      rfc3442_routes;
+  for (const auto& route : properties.dhcp_classless_static_routes) {
+    auto prefix =
+        net_base::IPv4CIDR::CreateFromStringAndPrefix(route.host, route.prefix);
+    if (!prefix) {
+      LOG(WARNING) << logging_tag_ << ": Invalid route destination "
+                   << route.host << "/" << route.prefix;
+      continue;
+    }
+    auto gateway = net_base::IPv4Address::CreateFromString(route.gateway);
+    if (!gateway) {
+      LOG(WARNING) << logging_tag_ << ": Invalid route gateway "
+                   << route.gateway;
+      continue;
+    }
+    rfc3442_routes.emplace_back(*prefix, *gateway);
+  }
+  network_applier_->ApplyRoute(interface_index_, *family, gateway,
+                               fix_gateway_reachability, default_route,
+                               blackhole_ipv6, excluded_routes, included_routes,
+                               rfc3442_routes);
+}
+
+void Network::ApplyAddress(const IPConfig::Properties& properties) {
+  SLOG(2) << logging_tag_ << ": " << __func__ << " on "
+          << IPAddress::GetAddressFamilyName(properties.address_family);
+
+  // Skip address configuration if the address is from SLAAC. Note that IPv6
+  // VPN uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
+  const bool skip_ip_configuration = properties.method == kTypeIPv6;
+  if (fixed_ip_params_ || skip_ip_configuration) {
+    return;
+  }
+
+  auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
+      properties.address, properties.subnet_prefix);
+  if (!local) {
+    LOG(ERROR) << logging_tag_ << ":Local address " << properties.address
+               << " with prefix length " << properties.subnet_prefix
+               << " is invalid";
+    return;
+  }
+  auto broadcast =
+      net_base::IPv4Address::CreateFromString(properties.broadcast_address);
+  if (properties.broadcast_address != "" && !broadcast) {
+    LOG(WARNING) << logging_tag_ << ": Broadcast address "
+                 << properties.broadcast_address
+                 << " is invalid, will use default instead";
+  }
+  network_applier_->ApplyAddress(interface_index_, *local, broadcast);
+}
+
 void Network::ApplyMTU() {
+  SLOG(2) << logging_tag_ << ": " << __func__;
   int mtu = INT32_MAX;
   if (ipconfig_ && ipconfig_->properties().mtu > 0 &&
       ipconfig_->properties().mtu < mtu) {
