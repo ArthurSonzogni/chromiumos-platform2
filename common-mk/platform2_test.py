@@ -27,6 +27,7 @@ import psutil  # pylint: disable=import-error
 
 from chromite.lib import build_target_lib
 from chromite.lib import commandline
+from chromite.lib import constants
 from chromite.lib import namespaces
 from chromite.lib import osutils
 from chromite.lib import process_util
@@ -134,6 +135,7 @@ class Platform2Test:
         user,
         gtest_filter,
         user_gtest_filter,
+        jobs,
         sysroot,
         bind_mount_dev,
         env_vars,
@@ -147,6 +149,7 @@ class Platform2Test:
         self.host = host
         self.user = user
         self.bind_mount_dev = bind_mount_dev
+        self.jobs = jobs
         (self.gtest_filter, self.user_gtest_filter) = self.generateGtestFilter(
             gtest_filter, user_gtest_filter
         )
@@ -594,6 +597,25 @@ class Platform2Test:
         # and dropping them into / would make them fail.
         cwd = self.removeSysrootPrefix(os.getcwd())
 
+        # Default for jobs is 1 right now in which case we run the test runner
+        # directly since running it as gtest_parallel carries a non-trivial
+        # overhead.
+        if self.jobs != 1:
+            # Switch to using gtest-parallel instead to run tests parallelly.
+            # Introduces a dependency on python while running tests, which
+            # means that for some cross compilations this maybe slower.
+            cmd = os.path.join(
+                constants.CHROOT_SOURCE_ROOT,
+                "src/third_party/gtest-parallel/gtest-parallel",
+            )
+            argv.insert(0, cmd)
+            # Special value 0 is used to indicate “use all available CPU cores".
+            # If the invocation specifies any number other than zero or one, use
+            # that. The default for gtest-parallel is to use all available
+            # workers.
+            if self.jobs:
+                argv.append(f"--workers={self.jobs}")
+
         # Make orphaned child processes reparent to this process
         # instead of the init process.  This allows us to kill them if
         # they do not terminate after the test has finished running.
@@ -823,6 +845,13 @@ def GetParser():
         help="should the test be run as root",
     )
     parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help="amount of parallel test jobs (default: %(default)s), "
+        "specify 0 to use all available CPU cores, supported for gtests only",
+    )
+    parser.add_argument(
         "--user_gtest_filter", default="", help=argparse.SUPPRESS
     )
     parser.add_argument(
@@ -854,6 +883,9 @@ def main(argv):
         if not os.path.isdir(options.sysroot):
             parser.error(message="Sysroot does not exist: %s" % options.sysroot)
 
+    if options.jobs < 0:
+        parser.error("You must specify jobs greater than or equal to 0")
+
     # Once we've finished sanity checking args, make sure we're root.
     _ReExecuteIfNeeded(
         [sys.argv[0]] + argv, ns_net=options.ns_net, ns_pid=options.ns_pid
@@ -876,6 +908,7 @@ def main(argv):
         options.user,
         options.gtest_filter,
         options.user_gtest_filter,
+        options.jobs,
         options.sysroot,
         options.bind_mount_dev,
         env_vars,
