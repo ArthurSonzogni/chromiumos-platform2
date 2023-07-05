@@ -2513,6 +2513,7 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   apn_list.push_back(apn_modem);
   device_->SetApnList(apn_list);
 
+  ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
   std::deque<Stringmap> default_apn_try_list =
       device_->BuildDefaultApnTryList();
   std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
@@ -2533,6 +2534,7 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   custom_apn[kApnSourceProperty] = kApnSourceUi;
   custom_apn[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
   service->set_apn_info_for_testing(custom_apn);
+  ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
   ASSERT_EQ(attach_apn_try_list.size(), 3);
@@ -2655,6 +2657,7 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   std::deque<Stringmap> default_apn_try_list =
       device_->BuildDefaultApnTryList();
   std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
+  ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
   ASSERT_EQ(attach_apn_try_list.size(), 3);
   EXPECT_EQ(attach_apn_try_list[0], apn_modem);
   EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
@@ -2768,6 +2771,65 @@ TEST_F(CellularTest, BuildApnTryListWithInvalid) {
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
   EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
+}
+
+TEST_F(CellularTest, BuildTetheringApnTryList) {
+  ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
+  Stringmaps apn_list;
+  Stringmap apn_modb, apn_modem;
+  apn_modb[kApnProperty] = "apn_modb";
+  apn_modb[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn_modb[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_modb[kApnIsRequiredByCarrierSpecProperty] =
+      kApnIsRequiredByCarrierSpecFalse;
+  apn_modem[kApnProperty] = "apn_modem";
+  apn_modem[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA, kApnTypeDun});
+  apn_modem[kApnSourceProperty] = cellular::kApnSourceModem;
+  apn_list.push_back(apn_modb);
+  apn_list.push_back(apn_modem);
+  device_->SetApnList(apn_list);
+
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apn_modem);
+  EXPECT_EQ(dun_apn_try_list[1], apn_modb);
+
+  // Set CustomApnList
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty,
+                   ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty,
+                   ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmap apnR({{kApnProperty, "apnR"},
+                  {kApnTypesProperty,
+                   ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnP, apnQ, apnR};
+  CellularService* service = SetService();
+  service->set_custom_apn_list_for_testing(custom_list);
+
+  // When using a custom DUN APN, modb and modem apns are not included.
+  dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apnQ);
+  EXPECT_EQ(dun_apn_try_list[1], apnR);
+
+  // Set the modb apn as required.
+  apn_modb[kApnIsRequiredByCarrierSpecProperty] =
+      kApnIsRequiredByCarrierSpecTrue;
+  apn_list.clear();
+  apn_list.push_back(apn_modb);
+  apn_list.push_back(apn_modem);
+  device_->SetApnList(apn_list);
+
+  dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 1);
+  EXPECT_EQ(dun_apn_try_list[0], apn_modb);
 }
 
 TEST_F(CellularTest, CompareApns) {
