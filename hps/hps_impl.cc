@@ -219,6 +219,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         hps_metrics_->SendHpsTurnOnResult(
             HpsTurnOnResult::kMcuUpdatedThenFailed,
             base::TimeTicks::Now() - this->boot_start_time_);
+        LogStateOnError();
         exit(kNoRespawnExit);
       }
       mcu_update_sent_ = true;
@@ -243,6 +244,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         hps_metrics_->SendHpsTurnOnResult(
             HpsTurnOnResult::kMcuUpdatedThenFailed,
             base::TimeTicks::Now() - this->boot_start_time_);
+        LogStateOnError();
         exit(kNoRespawnExit);
       }
       mcu_update_sent_ = true;
@@ -271,6 +273,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         hps_metrics_->SendHpsTurnOnResult(
             HpsTurnOnResult::kSpiUpdatedThenFailed,
             base::TimeTicks::Now() - this->boot_start_time_);
+        LogStateOnError();
         exit(kNoRespawnExit);
       }
       spi_update_sent_ = true;
