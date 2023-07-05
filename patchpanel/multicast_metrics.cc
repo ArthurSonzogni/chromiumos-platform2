@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
@@ -27,13 +28,10 @@ namespace patchpanel {
 
 namespace {
 
-// Poll delay to fetch multicast packet count and report to UMA.
-constexpr base::TimeDelta kPollDelay = base::Minutes(2);
-
-// If interval between two records spend more than kPollDelay +
-// kPollDelayJitter, it means there is a suspend and we should discard the
-// data.
-constexpr base::TimeDelta kPollDelayJitter = base::Seconds(10);
+// Maximum recorded packet count for the multicast metrics, equivalent to 20
+// packets per second.
+constexpr int kPacketCountMax = 20 * kMulticastPollDelay.InSeconds();
+constexpr int kPacketCountBuckets = 100;
 
 std::optional<MulticastMetrics::Type> ShillDeviceTypeToMulticastMetricsType(
     ShillClient::Device::Type type) {
@@ -58,6 +56,83 @@ std::string MulticastMetricsTypeToString(MulticastMetrics::Type type) {
       return "WiFi";
     case MulticastMetrics::Type::kARC:
       return "ARC";
+  }
+}
+
+// Map of multicast protocol to Ethernet metrics name.
+static constexpr auto kEthernetMetricNames = base::MakeFixedFlatMap<
+    std::optional<MulticastCountersService::MulticastProtocolType>,
+    base::StringPiece>({
+    {std::nullopt, kMulticastEthernetConnectedCountMetrics},
+    {MulticastCountersService::MulticastProtocolType::kMdns,
+     kMulticastEthernetMDNSConnectedCountMetrics},
+    {MulticastCountersService::MulticastProtocolType::kSsdp,
+     kMulticastEthernetSSDPConnectedCountMetrics},
+});
+
+// Map of multicast protocol to WiFi metrics name.
+static constexpr auto kWiFiMetricNames = base::MakeFixedFlatMap<
+    std::optional<MulticastCountersService::MulticastProtocolType>,
+    base::StringPiece>({
+    {std::nullopt, kMulticastWiFiConnectedCountMetrics},
+    {MulticastCountersService::MulticastProtocolType::kMdns,
+     kMulticastWiFiMDNSConnectedCountMetrics},
+    {MulticastCountersService::MulticastProtocolType::kSsdp,
+     kMulticastWiFiSSDPConnectedCountMetrics},
+});
+
+// Map of pair of ARC multicast forwarder status and multicast protocol to
+// metrics name.
+static constexpr auto kARCMetricNames = base::MakeFixedFlatMap<
+    std::pair<bool, MulticastCountersService::MulticastProtocolType>,
+    base::StringPiece>({
+    {{/*arc_fwd_enabled=*/true,
+      MulticastCountersService::MulticastProtocolType::kMdns},
+     kMulticastARCWiFiMDNSActiveCountMetrics},
+    {{/*arc_fwd_enabled=*/true,
+      MulticastCountersService::MulticastProtocolType::kSsdp},
+     kMulticastARCWiFiSSDPActiveCountMetrics},
+    {{/*arc_fwd_enabled=*/false,
+      MulticastCountersService::MulticastProtocolType::kMdns},
+     kMulticastARCWiFiMDNSInactiveCountMetrics},
+    {{/*arc_fwd_enabled=*/false,
+      MulticastCountersService::MulticastProtocolType::kSsdp},
+     kMulticastARCWiFiSSDPInactiveCountMetrics},
+});
+
+// Get metrics name for UMA.
+std::optional<base::StringPiece> GetMetricsName(
+    MulticastMetrics::Type type,
+    std::optional<MulticastCountersService::MulticastProtocolType> protocol,
+    std::optional<bool> arc_fwd_enabled) {
+  switch (type) {
+    case MulticastMetrics::Type::kTotal:
+      if (protocol) {
+        // No need to report specific multicast protocol metrics for total.
+        return std::nullopt;
+      }
+      return kMulticastTotalCountMetrics;
+    case MulticastMetrics::Type::kEthernet:
+      if (!kEthernetMetricNames.contains(protocol)) {
+        return std::nullopt;
+      }
+      return kEthernetMetricNames.at(protocol);
+    case MulticastMetrics::Type::kWiFi:
+      if (!kWiFiMetricNames.contains(protocol)) {
+        return std::nullopt;
+      }
+      return kWiFiMetricNames.at(protocol);
+    case MulticastMetrics::Type::kARC:
+      if (!arc_fwd_enabled || !protocol) {
+        // Only report specific multicast protocol metrics for ARC.
+        return std::nullopt;
+      }
+      std::pair<bool, MulticastCountersService::MulticastProtocolType> key = {
+          *arc_fwd_enabled, *protocol};
+      if (!kARCMetricNames.contains(key)) {
+        return std::nullopt;
+      }
+      return kARCMetricNames.at(key);
   }
 }
 
@@ -203,6 +278,30 @@ MulticastMetrics::GetCounters(Type type) {
   return ret;
 }
 
+void MulticastMetrics::SendPacketCountMetrics(
+    Type type,
+    uint64_t packet_count,
+    std::optional<MulticastCountersService::MulticastProtocolType> protocol,
+    std::optional<bool> arc_fwd_enabled) {
+  if (!metrics_lib_) {
+    LOG(ERROR) << "Metrics client is not valid";
+    return;
+  }
+
+  auto metrics_name = GetMetricsName(type, protocol, arc_fwd_enabled);
+  if (!metrics_name) {
+    LOG(ERROR) << "Trying to send invalid metrics";
+    return;
+  }
+
+  if (packet_count > kPacketCountMax) {
+    packet_count = kPacketCountMax;
+  }
+  metrics_lib_->SendToUMA(std::string(*metrics_name),
+                          static_cast<int>(packet_count),
+                          /*min=*/0, kPacketCountMax, kPacketCountBuckets);
+}
+
 void MulticastMetrics::SendARCActiveTimeMetrics(
     base::TimeDelta multicast_enabled_duration,
     base::TimeDelta wifi_enabled_duration) {
@@ -313,7 +412,8 @@ void MulticastMetrics::Poller::StartTimer() {
   }
   packet_counts_ = *packet_counts;
   last_record_timepoint_ = base::Time::Now();
-  timer_.Start(FROM_HERE, kPollDelay, this, &MulticastMetrics::Poller::Record);
+  timer_.Start(FROM_HERE, kMulticastPollDelay, this,
+               &MulticastMetrics::Poller::Record);
 }
 
 void MulticastMetrics::Poller::StopTimer() {
@@ -332,29 +432,29 @@ void MulticastMetrics::Poller::Record() {
     return;
   }
 
-  // Get the multicast packet count between the polls.
-  std::map<MulticastCountersService::MulticastProtocolType, uint64_t> diff;
+  // Send specific multicast protocol packet count metrics.
+  uint64_t total_packet_count = 0;
   for (const auto& packet_count : *packet_counts) {
-    diff.emplace(packet_count.first,
-                 packet_count.second - packet_counts_[packet_count.first]);
+    uint64_t count = packet_count.second - packet_counts_[packet_count.first];
+    total_packet_count += count;
+
+    if (type_ == Type::kTotal) {
+      // No need to report specific multicast protocol metrics for total.
+      continue;
+    }
+    metrics_->SendPacketCountMetrics(type_, count, packet_count.first,
+                                     arc_fwd_enabled_);
   }
   packet_counts_ = *packet_counts;
 
-  // TODO(jasongustaman): Record packet count diff to UMA.
-
-  // Update active time duration based on ARC forwarder state.
-  UpdateARCActiveTimeDuration(IsARCForwardingEnabled());
-  switch (type_) {
-    case MulticastMetrics::Type::kTotal:
-    case MulticastMetrics::Type::kEthernet:
-    case MulticastMetrics::Type::kWiFi:
-    case MulticastMetrics::Type::kARC:
-      return;
-    default:
-      LOG(ERROR) << "Unexpected MulticastMetrics::Type: "
-                 << static_cast<int>(type_);
-      return;
+  if (type_ == Type::kARC) {
+    // Update active time duration based on ARC forwarder state.
+    UpdateARCActiveTimeDuration(IsARCForwardingEnabled());
+    return;
   }
+
+  // Send total packet count metrics. This is not sent for |type_| == kARC.
+  metrics_->SendPacketCountMetrics(type_, total_packet_count);
 }
 
 base::flat_set<std::string> MulticastMetrics::Poller::ifnames() {
@@ -376,7 +476,7 @@ void MulticastMetrics::Poller::UpdateARCActiveTimeDuration(
 
   // When system is suspended the time elapsed from last checkpoint
   // will be longer than usual and we should discard the data.
-  if (duration > (kPollDelay + kPollDelayJitter)) {
+  if (duration > (kMulticastPollDelay + kMulticastPollDelayJitter)) {
     return;
   }
   total_arc_wifi_connection_duration_ += duration;

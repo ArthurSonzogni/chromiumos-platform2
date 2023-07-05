@@ -26,6 +26,14 @@ namespace patchpanel {
 // to track active interface.
 constexpr base::StringPiece kPlaceholderIfname = "placeholder0";
 
+// Poll delay to fetch multicast packet count and report to UMA.
+constexpr base::TimeDelta kMulticastPollDelay = base::Minutes(2);
+
+// If interval between two records spend more than kMulticastPollDelay +
+// kMulticastPollDelayJitter, it means there is a suspend and we should discard
+// the data.
+constexpr base::TimeDelta kMulticastPollDelayJitter = base::Seconds(10);
+
 // Class to fetch and report multicast packet counts to UMA.
 // This class reports 3 types of multicast metrics:
 // - Device's total packet count.
@@ -78,6 +86,16 @@ class MulticastMetrics {
   std::optional<
       std::map<MulticastCountersService::MulticastProtocolType, uint64_t>>
   GetCounters(Type type);
+
+  // Send UMA metrics related to packet count. Specifying empty |protocol| means
+  // reporting the total of all available multicast protocols. |arc_fwd_enabled|
+  // is ignored for |type| other than kARC.
+  void SendPacketCountMetrics(
+      Type type,
+      uint64_t packet_count,
+      std::optional<MulticastCountersService::MulticastProtocolType> protocol =
+          std::nullopt,
+      std::optional<bool> arc_fwd_enabled = std::nullopt);
 
   // Send active time UMA metrics.
   void SendARCActiveTimeMetrics(base::TimeDelta multicast_enabled_duration,
@@ -177,6 +195,9 @@ class MulticastMetrics {
   FRIEND_TEST(MulticastMetricsTest, ARC_SendActiveTimeMetrics);
   FRIEND_TEST(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsNoStop);
   FRIEND_TEST(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsARCNotRunning);
+  FRIEND_TEST(MulticastMetricsTest, Total_RecordPacketCount);
+  FRIEND_TEST(MulticastMetricsTest, NetworkTechnology_RecordPacketCount);
+  FRIEND_TEST(MulticastMetricsTest, ARC_RecordPacketCount);
 
   MulticastCountersService* counters_service_;
 

@@ -18,6 +18,28 @@ constexpr char kTetheringDHCPServerUmaEventMetrics[] =
 // UMA metrics name for ARC WiFi multicast active time.
 constexpr char kMulticastActiveTimeMetrics[] =
     "Network.Multicast.ARC.ActiveTime";
+// UMA metrics names for multicast packet count.
+constexpr char kMulticastTotalCountMetrics[] = "Network.Multicast.TotalCount";
+constexpr char kMulticastEthernetConnectedCountMetrics[] =
+    "Network.Multicast.Ethernet.ConnectedCount";
+constexpr char kMulticastEthernetMDNSConnectedCountMetrics[] =
+    "Network.Multicast.Ethernet.MDNS.ConnectedCount";
+constexpr char kMulticastEthernetSSDPConnectedCountMetrics[] =
+    "Network.Multicast.Ethernet.SSDP.ConnectedCount";
+constexpr char kMulticastWiFiConnectedCountMetrics[] =
+    "Network.Multicast.WiFi.ConnectedCount";
+constexpr char kMulticastWiFiMDNSConnectedCountMetrics[] =
+    "Network.Multicast.WiFi.MDNS.ConnectedCount";
+constexpr char kMulticastWiFiSSDPConnectedCountMetrics[] =
+    "Network.Multicast.WiFi.SSDP.ConnectedCount";
+constexpr char kMulticastARCWiFiMDNSActiveCountMetrics[] =
+    "Network.Multicast.ARC.WiFi.MDNS.ActiveCount";
+constexpr char kMulticastARCWiFiSSDPActiveCountMetrics[] =
+    "Network.Multicast.ARC.WiFi.SSDP.ActiveCount";
+constexpr char kMulticastARCWiFiMDNSInactiveCountMetrics[] =
+    "Network.Multicast.ARC.WiFi.MDNS.InactiveCount";
+constexpr char kMulticastARCWiFiSSDPInactiveCountMetrics[] =
+    "Network.Multicast.ARC.WiFi.SSDP.InactiveCount";
 
 // UMA metrics events for |kDbusUmaEventMetrics|;
 enum class DbusUmaEvent {
