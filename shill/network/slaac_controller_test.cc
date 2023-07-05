@@ -4,6 +4,10 @@
 
 #include "shill/network/slaac_controller.h"
 
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_proc_fs_stub.h"
@@ -21,12 +25,17 @@ constexpr int kTestIfindex = 123;
 constexpr char kTestIfname[] = "eth_test";
 constexpr auto kTestTechnology = Technology::kUnknown;
 
-constexpr char kTestIPAddress0[] = "192.168.1.1";
-constexpr char kTestIPAddress1[] = "fe80::1aa9:5ff:abcd:1234";
-constexpr char kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
-constexpr char kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
-constexpr char kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
-constexpr char kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
+constexpr net_base::IPv4Address kTestIPAddress0(192, 168, 1, 1);
+const net_base::IPv6Address kTestIPAddress1 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
+const net_base::IPv6Address kTestIPAddress2 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1235");
+const net_base::IPv6Address kTestIPAddress3 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1236");
+const net_base::IPv6Address kTestIPAddress4 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1237");
+const net_base::IPv6Address kTestIPAddress7 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1238");
 }  // namespace
 
 class SLAACControllerTest : public testing::Test {
@@ -48,10 +57,11 @@ class SLAACControllerTest : public testing::Test {
       RTNLMessage::Mode mode,
       uint32_t lifetime,
       const std::vector<net_base::IPv6Address>& dns_servers);
-  std::unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
-                                                   const IPAddress& address,
-                                                   unsigned char flags,
-                                                   unsigned char scope);
+  std::unique_ptr<RTNLMessage> BuildAddressMessage(
+      RTNLMessage::Mode mode,
+      const net_base::IPCIDR& address,
+      unsigned char flags,
+      unsigned char scope);
 
   MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
@@ -76,23 +86,24 @@ std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildRdnssMessage(
     RTNLMessage::Mode mode,
     uint32_t lifetime,
     const std::vector<net_base::IPv6Address>& dns_servers) {
-  auto message =
-      std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0, 0, 0,
-                                    kTestIfindex, IPAddress::kFamilyIPv6);
+  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0,
+                                               0, 0, kTestIfindex, AF_INET6);
   message->set_rdnss_option(RTNLMessage::RdnssOption(lifetime, dns_servers));
   return message;
 }
 
 std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
     RTNLMessage::Mode mode,
-    const IPAddress& address,
+    const net_base::IPCIDR& cidr,
     unsigned char flags,
     unsigned char scope) {
   auto message = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex, address.family());
-  message->SetAttribute(IFA_ADDRESS, address.address());
+      RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex,
+      net_base::ToSAFamily(cidr.GetFamily()));
+  message->SetAttribute(IFA_ADDRESS,
+                        ByteString(cidr.address().ToByteString(), false));
   message->set_address_status(
-      RTNLMessage::AddressStatus(address.prefix(), flags, scope));
+      RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
   return message;
 }
 
@@ -105,8 +116,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
   // Setup IPv6 dns server addresses.
   std::vector<net_base::IPv6Address> dns_server_addresses_in = {
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress1),
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress2),
+      kTestIPAddress1,
+      kTestIPAddress2,
   };
 
   // Infinite lifetime
@@ -119,9 +130,7 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   SendRTNLMessage(*message);
   dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
   // Verify addresses.
-  EXPECT_EQ(2, dns_server_addresses_out.size());
-  EXPECT_EQ(kTestIPAddress1, dns_server_addresses_out.at(0).ToString());
-  EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
+  EXPECT_EQ(dns_server_addresses_in, dns_server_addresses_out);
 
   // Lifetime of 120
   const uint32_t kLifetime120 = 120;
@@ -134,9 +143,7 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
   dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
   // Verify addresses.
-  EXPECT_EQ(2, dns_server_addresses_out.size());
-  EXPECT_EQ(kTestIPAddress1, dns_server_addresses_out.at(0).ToString());
-  EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
+  EXPECT_EQ(dns_server_addresses_in, dns_server_addresses_out);
 
   // Lifetime of 0
   const uint32_t kLifetime0 = 0;
@@ -155,8 +162,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   // Contains no addresses.
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
-  const auto ipv4_address = *IPAddress::CreateFromString(kTestIPAddress0);
-  auto message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
+  auto message = BuildAddressMessage(RTNLMessage::kModeAdd,
+                                     net_base::IPCIDR(kTestIPAddress0), 0, 0);
 
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
       .Times(0);
@@ -165,17 +172,16 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
-  const auto ipv6_address1 = *IPAddress::CreateFromString(kTestIPAddress1);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address1, 0,
-                                RT_SCOPE_LINK);
+  message =
+      BuildAddressMessage(RTNLMessage::kModeAdd,
+                          net_base::IPCIDR(kTestIPAddress1), 0, RT_SCOPE_LINK);
 
   // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
   SendRTNLMessage(*message);
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
-  const auto ipv6_address2 =
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress2);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, IPAddress(ipv6_address2),
+  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+                                net_base::IPCIDR(kTestIPAddress2),
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Add a temporary address.
@@ -184,12 +190,11 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(
       slaac_controller_.GetAddresses(),
-      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(ipv6_address2)}));
+      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(kTestIPAddress2)}));
 
-  const auto ipv6_address3 =
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress3);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, IPAddress(ipv6_address3),
-                                0, RT_SCOPE_UNIVERSE);
+  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+                                net_base::IPCIDR(kTestIPAddress3), 0,
+                                RT_SCOPE_UNIVERSE);
 
   // Adding a non-temporary address alerts the Device, but does not override
   // the primary address since the previous one was temporary.
@@ -198,14 +203,12 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(
       slaac_controller_.GetAddresses(),
-      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(ipv6_address2),
-                                       net_base::IPv6CIDR(ipv6_address3)}));
+      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(kTestIPAddress2),
+                                       net_base::IPv6CIDR(kTestIPAddress3)}));
 
-  const auto ipv6_address4 =
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress4);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, IPAddress(ipv6_address4),
-                                IFA_F_TEMPORARY | IFA_F_DEPRECATED,
-                                RT_SCOPE_UNIVERSE);
+  message = BuildAddressMessage(
+      RTNLMessage::kModeAdd, net_base::IPCIDR(kTestIPAddress4),
+      IFA_F_TEMPORARY | IFA_F_DEPRECATED, RT_SCOPE_UNIVERSE);
 
   // Adding a temporary deprecated address alerts the Device, but does not
   // override the primary address since the previous one was non-deprecated.
@@ -214,13 +217,12 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(
       slaac_controller_.GetAddresses(),
-      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(ipv6_address2),
-                                       net_base::IPv6CIDR(ipv6_address3),
-                                       net_base::IPv6CIDR(ipv6_address4)}));
+      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(kTestIPAddress2),
+                                       net_base::IPv6CIDR(kTestIPAddress3),
+                                       net_base::IPv6CIDR(kTestIPAddress4)}));
 
-  const auto ipv6_address7 =
-      *net_base::IPv6Address::CreateFromString(kTestIPAddress7);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, IPAddress(ipv6_address7),
+  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+                                net_base::IPCIDR(kTestIPAddress7),
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Another temporary (non-deprecated) address alerts the Device, and will
@@ -230,22 +232,22 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(
       slaac_controller_.GetAddresses(),
-      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(ipv6_address7),
-                                       net_base::IPv6CIDR(ipv6_address2),
-                                       net_base::IPv6CIDR(ipv6_address3),
-                                       net_base::IPv6CIDR(ipv6_address4)}));
+      std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(kTestIPAddress7),
+                                       net_base::IPv6CIDR(kTestIPAddress2),
+                                       net_base::IPv6CIDR(kTestIPAddress3),
+                                       net_base::IPv6CIDR(kTestIPAddress4)}));
 }
 
 TEST_F(SLAACControllerTest, StartIPv6Flags) {
-  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "1"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "disable_ipv6", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "accept_dad", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "accept_ra", "2"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "use_tempaddr", "2"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "use_tempaddr", "2"))
       .WillOnce(Return(true));
 
   slaac_controller_.Start();
