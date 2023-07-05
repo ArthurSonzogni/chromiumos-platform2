@@ -2282,7 +2282,7 @@ StartVmResponse Service::StartVmInternal(
   response.set_success(true);
   response.set_status(request.start_termina() ? VM_STATUS_STARTING
                                               : VM_STATUS_RUNNING);
-  vm_info->set_ipv4_address(vm->IPv4Address());
+  vm_info->set_ipv4_address(vm->IPv4Address().ToInAddr().s_addr);
   vm_info->set_pid(vm->pid());
   vm_info->set_permission_token(vm->PermissionToken());
   vm_info->set_storage_ballooning(storage_ballooning);
@@ -2748,15 +2748,9 @@ bool Service::StartTermina(TerminaVm* vm,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(result);
 
-  const std::optional<net_base::IPv4CIDR> container_subnet =
-      vm->ContainerSubnet();
-  if (!container_subnet) {
-    return false;
-  }
-
   string error;
   vm_tools::StartTerminaResponse response;
-  if (!vm->StartTermina(container_subnet->ToString(),
+  if (!vm->StartTermina(vm->ContainerCIDRAddress().ToString(),
                         allow_privileged_containers, features, &error,
                         &response)) {
     failure_reason->assign(error);

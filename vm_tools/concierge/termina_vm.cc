@@ -68,12 +68,6 @@ constexpr int64_t kDefaultTimeoutSeconds = 10;
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
-// By convention, the IPv4 address of the gateway is always the first unicast
-// address in the IPv4 subnet, and VM guest is always the second unicast
-// address in the IPv4 subnet assigned to the guest.
-constexpr size_t kHostAddressOffset = 1;
-constexpr size_t kGuestAddressOffset = 2;
-
 // The maximum GPU shader cache disk usage, interpreted by Mesa. For details
 // see MESA_GLSL_CACHE_MAX_SIZE at https://docs.mesa3d.org/envvars.html.
 constexpr char kGpuCacheSizeString[] = "50M";
@@ -142,13 +136,14 @@ std::string TerminaVm::GetCrosVmSerial(std::string hardware,
 }
 
 bool TerminaVm::Start(VmBuilder vm_builder) {
-  // Get the network interface.
-  net_base::IPv4CIDR container_subnet;
-  if (!network_client_->NotifyTerminaVmStartup(vsock_cid_, &network_device_,
-                                               &container_subnet)) {
-    LOG(ERROR) << "No network devices available";
+  // Get the network IPv4 subnet and tap device allocation from patchpanel.
+  const auto network_alloc =
+      network_client_->NotifyTerminaVmStartup(vsock_cid_);
+  if (!network_alloc) {
+    LOG(ERROR) << "No network allocation available from patchpanel";
     return false;
   }
+  network_alloc_ = *network_alloc;
 
   // Sommelier relies on implicit modifier, which does not pass host modifier to
   // zwp_linux_buffer_params_v1_add. Graphics will be broken if modifiers are
@@ -175,21 +170,13 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableWorkingSetReporting(true);
   }
 
-  if (!network_device_.ipv4_subnet) {
-    LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
-    return false;
-  }
-  subnet_ = std::make_unique<patchpanel::Subnet>(*network_device_.ipv4_subnet,
-                                                 base::DoNothing());
-  container_subnet_ =
-      std::make_unique<patchpanel::Subnet>(container_subnet, base::DoNothing());
-
   // Open the tap device.
-  base::ScopedFD tap_fd = OpenTapDevice(
-      network_device_.ifname, true /*vnet_hdr*/, nullptr /*ifname_out*/);
+  base::ScopedFD tap_fd =
+      OpenTapDevice(network_alloc_.tap_device_ifname, true /*vnet_hdr*/,
+                    nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_device_.ifname;
+               << network_alloc_.tap_device_ifname;
     return false;
   }
 
@@ -423,9 +410,9 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
   vm_tools::EmptyMessage response;
 
   vm_tools::IPv4Config* config = request.mutable_ipv4_config();
-  config->set_address(IPv4Address());
-  config->set_gateway(GatewayAddress());
-  config->set_netmask(Netmask());
+  config->set_address(IPv4Address().ToInAddr().s_addr);
+  config->set_gateway(GatewayAddress().ToInAddr().s_addr);
+  config->set_netmask(Netmask().ToInAddr().s_addr);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
@@ -517,7 +504,7 @@ bool TerminaVm::StartTermina(
 
   vm_tools::StartTerminaRequest request;
 
-  request.set_tremplin_ipv4_address(GatewayAddress());
+  request.set_tremplin_ipv4_address(GatewayAddress().ToInAddr().s_addr);
   request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
   request.set_stateful_device(StatefulDevice());
   request.set_allow_privileged_containers(allow_privileged_containers);
@@ -1012,26 +999,22 @@ void TerminaVm::HandleStatefulUpdate(
   return;
 }
 
-uint32_t TerminaVm::GatewayAddress() const {
-  const auto gateway_cidr = subnet_->CIDRAtOffset(kHostAddressOffset);
-  return gateway_cidr ? gateway_cidr->address().ToInAddr().s_addr : INADDR_ANY;
+net_base::IPv4Address TerminaVm::GatewayAddress() const {
+  return network_alloc_.gateway_ipv4_address;
 }
 
-uint32_t TerminaVm::IPv4Address() const {
-  const auto guest_cidr = subnet_->CIDRAtOffset(kGuestAddressOffset);
-  return guest_cidr ? guest_cidr->address().ToInAddr().s_addr : INADDR_ANY;
+net_base::IPv4Address TerminaVm::IPv4Address() const {
+  return network_alloc_.termina_ipv4_address;
 }
 
-uint32_t TerminaVm::Netmask() const {
-  return subnet_->base_cidr().ToNetmask().ToInAddr().s_addr;
+net_base::IPv4Address TerminaVm::Netmask() const {
+  return network_alloc_.termina_ipv4_subnet.ToNetmask();
 }
 
-std::optional<net_base::IPv4CIDR> TerminaVm::ContainerSubnet() const {
-  if (container_subnet_) {
-    return container_subnet_->CIDRAtOffset(kHostAddressOffset);
-  }
-
-  return std::nullopt;
+net_base::IPv4CIDR TerminaVm::ContainerCIDRAddress() const {
+  return *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      network_alloc_.container_ipv4_address,
+      network_alloc_.container_ipv4_subnet.prefix_length());
 }
 
 std::string TerminaVm::PermissionToken() const {
@@ -1040,7 +1023,7 @@ std::string TerminaVm::PermissionToken() const {
 
 VmBaseImpl::Info TerminaVm::GetInfo() const {
   VmBaseImpl::Info info = {
-      .ipv4_address = IPv4Address(),
+      .ipv4_address = IPv4Address().ToInAddr().s_addr,
       .pid = pid(),
       .cid = cid(),
       .seneschal_server_handle = seneschal_server_handle(),
@@ -1064,7 +1047,7 @@ void TerminaVm::set_stub_for_testing(
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
-    std::unique_ptr<patchpanel::Subnet> subnet,
+    const patchpanel::Client::TerminaAllocation& network_allocation,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     base::FilePath log_path,
@@ -1092,7 +1075,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
                         .classification = VmId::Type::UNKNOWN}));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
-  vm->subnet_ = std::move(subnet);
+  vm->network_alloc_ = network_allocation;
   return vm;
 }
 

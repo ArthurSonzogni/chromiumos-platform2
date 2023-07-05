@@ -63,9 +63,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     device.ipv4_subnet = ConsumeIPv4CIDR(provider);
     device.dns_proxy_ipv4_addr = ConsumeIPv4Address(provider);
     device.dns_proxy_ipv6_addr = ConsumeIPv6Address(provider);
-    net_base::IPv4CIDR subnet;
-    client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>(),
-                                   &device, &subnet);
+    client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>());
     client->NotifyTerminaVmShutdown(provider.ConsumeIntegral<uint32_t>());
     client->NotifyParallelsVmStartup(provider.ConsumeIntegral<uint64_t>(),
                                      provider.ConsumeIntegral<int>(), &device);

@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -165,11 +166,9 @@ class MockPatchpanelClient : public patchpanel::Client {
               (uint32_t),
               (override));
   MOCK_METHOD(bool, NotifyArcVmShutdown, (uint32_t), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<patchpanel::Client::TerminaAllocation>,
               NotifyTerminaVmStartup,
-              (uint32_t,
-               patchpanel::Client::VirtualDevice*,
-               net_base::IPv4CIDR*),
+              (uint32_t),
               (override));
   MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
   MOCK_METHOD(bool,

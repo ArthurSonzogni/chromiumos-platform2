@@ -217,6 +217,54 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
   return out;
 }
 
+std::optional<Client::TerminaAllocation> ConvertTerminaAllocation(
+    const TerminaVmStartupResponse& in) {
+  if (!in.has_ipv4_subnet()) {
+    LOG(ERROR) << __func__ << ": No Termina IPv4 subnet found";
+    return std::nullopt;
+  }
+  if (!in.has_container_ipv4_subnet()) {
+    LOG(ERROR) << __func__ << ": No Termina container IPv4 subnet found";
+    return std::nullopt;
+  }
+  const auto termina_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  const auto termina_address =
+      net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
+  const auto gateway_address =
+      net_base::IPv4Address::CreateFromBytes(in.gateway_ipv4_address());
+  const auto container_subnet = ConvertIPv4Subnet(in.container_ipv4_subnet());
+  const auto container_address =
+      net_base::IPv4Address::CreateFromBytes(in.container_ipv4_address());
+  if (!termina_subnet) {
+    LOG(ERROR) << __func__ << ": Invalid Termina IPv4 subnet";
+    return std::nullopt;
+  }
+  if (!termina_address) {
+    LOG(ERROR) << __func__ << ": Invalid Termina IPv4 address";
+    return std::nullopt;
+  }
+  if (!gateway_address) {
+    LOG(ERROR) << __func__ << ": Invalid Termina gateway IPv4 address";
+    return std::nullopt;
+  }
+  if (!container_subnet) {
+    LOG(ERROR) << __func__ << ": Invalid Termina container IPv4 subnet";
+    return std::nullopt;
+  }
+  if (!container_address) {
+    LOG(ERROR) << __func__ << ": Invalid Termina container IPv4 address";
+    return std::nullopt;
+  }
+  Client::TerminaAllocation termina_alloc;
+  termina_alloc.tap_device_ifname = in.tap_device_ifname();
+  termina_alloc.termina_ipv4_subnet = *termina_subnet;
+  termina_alloc.termina_ipv4_address = *termina_address;
+  termina_alloc.gateway_ipv4_address = *gateway_address;
+  termina_alloc.container_ipv4_subnet = *container_subnet;
+  termina_alloc.container_ipv4_address = *container_address;
+  return termina_alloc;
+}
+
 std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
   auto out = std::make_optional<Client::NetworkClientInfo>();
@@ -541,9 +589,8 @@ class ClientImpl : public Client {
   std::vector<Client::VirtualDevice> NotifyArcVmStartup(uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
 
-  bool NotifyTerminaVmStartup(uint32_t cid,
-                              Client::VirtualDevice* device,
-                              net_base::IPv4CIDR* container_subnet) override;
+  std::optional<Client::TerminaAllocation> NotifyTerminaVmStartup(
+      uint32_t cid) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
   bool NotifyParallelsVmStartup(uint64_t vm_id,
@@ -784,9 +831,8 @@ bool ClientImpl::NotifyArcVmShutdown(uint32_t cid) {
   return result;
 }
 
-bool ClientImpl::NotifyTerminaVmStartup(uint32_t cid,
-                                        Client::VirtualDevice* device,
-                                        net_base::IPv4CIDR* container_subnet) {
+std::optional<Client::TerminaAllocation> ClientImpl::NotifyTerminaVmStartup(
+    uint32_t cid) {
   TerminaVmStartupRequest request;
   request.set_cid(cid);
 
@@ -799,33 +845,20 @@ bool ClientImpl::NotifyTerminaVmStartup(uint32_t cid,
         return proxy->TerminaVmStartup(request, response, error);
       },
       proxy_.get(), request, &response, &error));
+
   if (!result) {
-    LOG(ERROR) << "TerminaVM network startup failed: " << error->GetMessage();
-    return false;
+    LOG(ERROR) << __func__ << "(cid: " << cid
+               << "): TerminaVM network startup failed: "
+               << error->GetMessage();
+    return std::nullopt;
   }
 
-  if (!response.has_device()) {
-    LOG(ERROR) << "No virtual device found";
-    return false;
+  const auto termina_alloc = ConvertTerminaAllocation(response);
+  if (!termina_alloc) {
+    LOG(ERROR) << __func__ << "(cid: " << cid
+               << "): Failed to convert network allocation";
   }
-
-  const auto response_device = ConvertVirtualDevice(response.device());
-  if (!response_device) {
-    LOG(ERROR) << "Invalid virtual device response";
-    return false;
-  }
-  *device = *response_device;
-
-  const auto subnet = response.has_container_subnet()
-                          ? ConvertIPv4Subnet(response.container_subnet())
-                          : std::nullopt;
-  if (subnet) {
-    *container_subnet = *subnet;
-  } else {
-    LOG(WARNING) << "No container subnet found";
-  }
-
-  return true;
+  return termina_alloc;
 }
 
 bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {

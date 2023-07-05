@@ -20,10 +20,9 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
-#include <chromeos/patchpanel/mac_address_generator.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <chromeos/patchpanel/subnet.h>
 #include <spaced/proto_bindings/spaced.pb.h>
+#include <net-base/ipv4_address.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -179,18 +178,17 @@ class TerminaVm final : public VmBaseImpl {
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
 
-  // The IPv4 address of the VM's gateway in network byte order.
-  uint32_t GatewayAddress() const;
+  // The IPv4 address of the VM's gateway.
+  net_base::IPv4Address GatewayAddress() const;
 
-  // The IPv4 address of the VM in network byte order.
-  uint32_t IPv4Address() const;
+  // The IPv4 address of the VM.
+  net_base::IPv4Address IPv4Address() const;
 
-  // The netmask of the VM's subnet in network byte order.
-  uint32_t Netmask() const;
+  // The IPv4 netmask of the VM's subnet.
+  net_base::IPv4Address Netmask() const;
 
-  // The CIDR with the first address in the VM's container subnet.
-  // Returns std::nullopt if there is no container subnet.
-  std::optional<net_base::IPv4CIDR> ContainerSubnet() const;
+  // The IPv4 CIDR address with the first address in the VM's container subnet.
+  net_base::IPv4CIDR ContainerCIDRAddress() const;
 
   // Token assigned to the VM by the permission service. Used for communicating
   // with the permission service.
@@ -241,7 +239,7 @@ class TerminaVm final : public VmBaseImpl {
       const spaced::StatefulDiskSpaceUpdate update) override;
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
-      std::unique_ptr<patchpanel::Subnet> subnet,
+      const patchpanel::Client::TerminaAllocation& network_allocation,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
       base::FilePath log_path,
@@ -282,14 +280,8 @@ class TerminaVm final : public VmBaseImpl {
   void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
-  // The /30 subnet assigned to the VM.
-  std::unique_ptr<patchpanel::Subnet> subnet_;
-
-  // An optional /28 container subnet.
-  std::unique_ptr<patchpanel::Subnet> container_subnet_;
-
-  // Termina virtual network device created by patchpanel.
-  patchpanel::Client::VirtualDevice network_device_;
+  // Network IPv4 subnet and tap device allocation from patchpanel.
+  patchpanel::Client::TerminaAllocation network_alloc_;
 
   // Flags passed to vmc start.
   VmFeatures features_;

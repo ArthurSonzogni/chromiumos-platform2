@@ -8,6 +8,8 @@
 #include <map>
 #include <string>
 
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/datapath.h"
@@ -16,12 +18,16 @@
 
 namespace patchpanel {
 
+// Fills a protobuf TerminaVmStartupResponse object with the given
+// |termina_device| Device.
+void FillTerminaAllocationProto(const Device& termina_device,
+                                TerminaVmStartupResponse* output);
+
 // Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);
 
 // Fills a protobuf IPv4Subnet object with the IPv4CIDR.
-void FillSubnetProto(const net_base::IPv4CIDR& cidr,
-                     patchpanel::IPv4Subnet* output);
+void FillSubnetProto(const net_base::IPv4CIDR& cidr, IPv4Subnet* output);
 void FillSubnetProto(const Subnet& virtual_subnet, IPv4Subnet* output);
 
 void FillDeviceDnsProxyProto(

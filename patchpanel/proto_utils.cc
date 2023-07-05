@@ -4,12 +4,36 @@
 
 #include "patchpanel/proto_utils.h"
 
+#include <memory>
+
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
 #include "patchpanel/arc_service.h"
+#include "patchpanel/crostini_service.h"
 
 namespace patchpanel {
+
+void FillTerminaAllocationProto(const Device& termina_device,
+                                TerminaVmStartupResponse* output) {
+  DCHECK(termina_device.config().ipv4_subnet());
+  DCHECK(termina_device.config().lxd_ipv4_subnet());
+  output->set_tap_device_ifname(termina_device.host_ifname());
+  FillSubnetProto(termina_device.config().ipv4_subnet()->base_cidr(),
+                  output->mutable_ipv4_subnet());
+  output->set_ipv4_address(
+      termina_device.config().guest_ipv4_addr().ToByteString());
+  output->set_gateway_ipv4_address(
+      termina_device.config().host_ipv4_addr().ToByteString());
+  FillSubnetProto(termina_device.config().lxd_ipv4_subnet()->base_cidr(),
+                  output->mutable_container_ipv4_subnet());
+  output->set_container_ipv4_address(
+      termina_device.config()
+          .lxd_ipv4_subnet()
+          ->CIDRAtOffset(CrostiniService::kTerminaContainerAddressOffset)
+          ->address()
+          .ToByteString());
+}
 
 void FillDeviceProto(const Device& virtual_device,
                      patchpanel::NetworkDevice* output) {

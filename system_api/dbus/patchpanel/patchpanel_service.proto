@@ -153,10 +153,24 @@ message TerminaVmStartupRequest {
 // Information required by Concierge to continue the Termina VM startup.
 message TerminaVmStartupResponse {
   // The TAP device to be used for the VM.
-  NetworkDevice device = 1;
+  string tap_device_ifname = 1;
 
-  // The container subnet to be used for the lxd bridge.
-  IPv4Subnet container_subnet = 2;
+  // The IPv4 subnet assigned to the VM.
+  IPv4Subnet ipv4_subnet = 2;
+
+  // The IPv4 address assigned to the VM, represented as 4 bytes in network
+  // order, contained inside |ipv4_subnet|.
+  bytes ipv4_address = 3;
+
+  // The IPv4 next hop gateway address for the VM, represented as 4 bytes in
+  // network order, contained inside |ipv4_subnet|.
+  bytes gateway_ipv4_address = 4;
+
+  // The container IPv4 subnet to be used for the LXD bridge.
+  IPv4Subnet container_ipv4_subnet = 5;
+
+  // The container IPv4 address, contained inside |container_ipv4_subnet|.
+  bytes container_ipv4_address = 6;
 };
 
 // Notification that the Termina VM is shutting down.

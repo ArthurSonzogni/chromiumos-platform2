@@ -26,9 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
-#include <chromeos/patchpanel/address_manager.h>
-#include <chromeos/patchpanel/mac_address_generator.h>
-#include <chromeos/patchpanel/subnet.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -122,8 +120,6 @@ class TerminaVmTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
 
   // Resource allocators for the VM.
-  std::unique_ptr<patchpanel::AddressManager> network_address_manager_;
-  patchpanel::MacAddressGenerator mac_address_generator_;
   VsockCidPool vsock_cid_pool_;
 
   // Addresses assigned to the VM.
@@ -355,18 +351,22 @@ void TerminaVmTest::SetUp() {
   ASSERT_TRUE(stub);
 
   // Allocate resources for the VM.
-  network_address_manager_.reset(new patchpanel::AddressManager());
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  std::unique_ptr<patchpanel::Subnet> subnet =
-      network_address_manager_->AllocateIPv4Subnet(
-          patchpanel::AddressManager::GuestType::kTerminaVM);
-
-  ASSERT_TRUE(subnet);
-
-  address_ = subnet->CIDRAtOffset(2)->address().ToString();
-  netmask_ = subnet->base_cidr().ToNetmask().ToString();
-  gateway_ = subnet->CIDRAtOffset(1)->address().ToString();
-
+  address_ = "100.115.92.26";
+  netmask_ = "255.255.255.252";
+  gateway_ = "100.115.92.25";
+  patchpanel::Client::TerminaAllocation network_alloc;
+  network_alloc.tap_device_ifname = "vmtap1";
+  network_alloc.termina_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
+  network_alloc.termina_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.26");
+  network_alloc.gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.25");
+  network_alloc.container_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28");
+  network_alloc.container_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.193");
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;
 
@@ -374,7 +374,7 @@ void TerminaVmTest::SetUp() {
   VmBuilder vm_builder;
   vm_builder.SetRootfs({.device = "/dev/vda", .path = base::FilePath("dummy")});
   vm_ = TerminaVm::CreateForTesting(
-      std::move(subnet), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
+      network_alloc, vsock_cid, temp_dir_.GetPath(), base::FilePath(),
       std::move(stateful_device), stateful_size, kKernelVersion,
       std::move(stub), std::move(vm_builder));
   ASSERT_TRUE(vm_);

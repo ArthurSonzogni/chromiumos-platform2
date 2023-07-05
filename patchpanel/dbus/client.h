@@ -192,6 +192,25 @@ class BRILLO_EXPORT Client {
     bool is_android_metered = false;
   };
 
+  // Contains the network IPv4 subnets assigned to a Termina VM and to its inner
+  // LXD container, and the name of the tap device created by patchpanel for the
+  // VM. See TerminaVmStartupResponse in patchpanel_service.proto.
+  struct TerminaAllocation {
+    // Tap device interface name created for the VM.
+    std::string tap_device_ifname;
+    // The /30 IPv4 subnet assigned to the VM.
+    net_base::IPv4CIDR termina_ipv4_subnet;
+    // The IPv4 address assigned to the VM, contained inside |ipv4_subnet|.
+    net_base::IPv4Address termina_ipv4_address;
+    // The next hop IPv4 address for the VM, contained inside |ipv4_subnet|.
+    net_base::IPv4Address gateway_ipv4_address;
+    // The /28 container IPv4 subnet assigned to the inner LXD container.
+    net_base::IPv4CIDR container_ipv4_subnet;
+    // The IPv4 address the inner LXD container, contained inside
+    // |container_ipv4_subnet|.
+    net_base::IPv4Address container_ipv4_address;
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
@@ -242,9 +261,8 @@ class BRILLO_EXPORT Client {
   virtual std::vector<VirtualDevice> NotifyArcVmStartup(uint32_t cid) = 0;
   virtual bool NotifyArcVmShutdown(uint32_t cid) = 0;
 
-  virtual bool NotifyTerminaVmStartup(uint32_t cid,
-                                      VirtualDevice* device,
-                                      net_base::IPv4CIDR* container_subnet) = 0;
+  virtual std::optional<TerminaAllocation> NotifyTerminaVmStartup(
+      uint32_t cid) = 0;
   virtual bool NotifyTerminaVmShutdown(uint32_t cid) = 0;
 
   virtual bool NotifyParallelsVmStartup(uint64_t vm_id,

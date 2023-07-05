@@ -85,53 +85,47 @@ TEST_F(ClientTest, NotifyArcVmShutdown) {
 
 TEST_F(ClientTest, NotifyTerminaVmStartup) {
   const uint32_t cid = 5;
+  const auto termina_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
+  const auto termina_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.26");
+  const auto gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.25");
+  const auto container_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28");
+  const auto container_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.193");
 
   TerminaVmStartupResponse response_proto;
-  auto* response_device = response_proto.mutable_device();
-  response_device->set_ifname("vmtap1");
-  response_device->set_phys_ifname("wlan0");
-  response_device->set_guest_ifname("not_defined");
-  response_device->set_ipv4_addr(
-      net_base::IPv4Address(100, 115, 92, 18).ToInAddr().s_addr);
-  response_device->set_host_ipv4_addr(
-      net_base::IPv4Address(100, 115, 92, 17).ToInAddr().s_addr);
-  auto* response_device_subnet = response_device->mutable_ipv4_subnet();
-  response_device_subnet->set_addr(
-      std::vector<uint8_t>{100, 115, 92, 16}.data(), 4);
-  response_device_subnet->set_prefix_len(30);
-  response_device->set_guest_type(NetworkDevice::TERMINA_VM);
-  response_device->set_dns_proxy_ipv4_addr(
-      std::vector<uint8_t>{100, 115, 93, 1}.data(), 4);
-  response_device->set_dns_proxy_ipv6_addr(
-      std::vector<uint8_t>{0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0x12,
-                           0x34, 0xab, 0xcd}
-          .data(),
-      16);
-  auto* response_subnet = response_proto.mutable_container_subnet();
-  response_subnet->set_addr(std::vector<uint8_t>{100, 115, 92, 128}.data(), 4);
-  response_subnet->set_prefix_len(24);
+  response_proto.set_tap_device_ifname("vmtap1");
+  auto* response_subnet = response_proto.mutable_ipv4_subnet();
+  response_subnet->set_addr(termina_ipv4_subnet.address().ToByteString());
+  response_subnet->set_prefix_len(
+      static_cast<uint32_t>(termina_ipv4_subnet.prefix_length()));
+  response_proto.set_ipv4_address(termina_ipv4_address.ToByteString());
+  response_proto.set_gateway_ipv4_address(gateway_ipv4_address.ToByteString());
+  auto* response_container_subnet =
+      response_proto.mutable_container_ipv4_subnet();
+  response_container_subnet->set_addr(
+      container_ipv4_subnet.address().ToByteString());
+  response_container_subnet->set_prefix_len(
+      static_cast<uint32_t>(container_ipv4_subnet.prefix_length()));
+  response_proto.set_container_ipv4_address(
+      container_ipv4_address.ToByteString());
 
   EXPECT_CALL(
       *proxy_,
       TerminaVmStartup(Property(&TerminaVmStartupRequest::cid, cid), _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
-  Client::VirtualDevice device;
-  net_base::IPv4CIDR container_subnet;
-  const bool result =
-      client_->NotifyTerminaVmStartup(cid, &device, &container_subnet);
-
-  EXPECT_TRUE(result);
-  EXPECT_EQ("vmtap1", device.ifname);
-  EXPECT_EQ("wlan0", device.phys_ifname);
-  EXPECT_EQ("not_defined", device.guest_ifname);
-  EXPECT_EQ("100.115.92.18", device.ipv4_addr.ToString());
-  EXPECT_EQ("100.115.92.17", device.host_ipv4_addr.ToString());
-  EXPECT_EQ("100.115.92.16/30", device.ipv4_subnet->ToString());
-  EXPECT_EQ(Client::GuestType::kTerminaVm, device.guest_type);
-  EXPECT_EQ("100.115.93.1", device.dns_proxy_ipv4_addr->ToString());
-  EXPECT_EQ("2001:db8::1234:abcd", device.dns_proxy_ipv6_addr->ToString());
-  EXPECT_EQ("100.115.92.128/24", container_subnet.ToString());
+  const auto result = client_->NotifyTerminaVmStartup(cid);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ("vmtap1", result->tap_device_ifname);
+  EXPECT_EQ(termina_ipv4_subnet, result->termina_ipv4_subnet);
+  EXPECT_EQ(termina_ipv4_address, result->termina_ipv4_address);
+  EXPECT_EQ(gateway_ipv4_address, result->gateway_ipv4_address);
+  EXPECT_EQ(container_ipv4_subnet, result->container_ipv4_subnet);
+  EXPECT_EQ(container_ipv4_address, result->container_ipv4_address);
 }
 
 TEST_F(ClientTest, NotifyTerminaVmShutdown) {

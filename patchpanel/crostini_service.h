@@ -28,6 +28,10 @@ namespace patchpanel {
 // VMs). CrostiniService currently only supports one TAP device per VM instance.
 class CrostiniService {
  public:
+  // Offset for allocating the LXD container address in the LXD subnet assigned
+  // to a Termina VM.
+  static constexpr uint32_t kTerminaContainerAddressOffset = 1;
+
   // All types of VM supported by CrostiniService.
   enum class VMType {
     // Crostini Linux VM with a user LXD container.

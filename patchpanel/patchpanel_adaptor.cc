@@ -303,32 +303,27 @@ TerminaVmShutdownResponse PatchpanelAdaptor::TerminaVmShutdown(
 
 TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
     const TerminaVmStartupRequest& request) {
-  LOG(INFO) << "Termina VM starting up";
-  RecordDbusEvent(DbusUmaEvent::kTerminaVmStartup);
-
   const uint32_t cid = request.cid();
-  const auto* const guest_device = manager_->TerminaVmStartup(cid);
-
-  if (!guest_device) {
+  LOG(INFO) << __func__ << "(cid: " << cid << ")";
+  RecordDbusEvent(DbusUmaEvent::kTerminaVmStartup);
+  const auto* termina_device = manager_->TerminaVmStartup(cid);
+  if (!termina_device) {
+    LOG(ERROR) << __func__ << "(cid: " << cid << ")"
+               << ": Failed to create virtual Device";
     return {};
   }
-  if (!guest_device->config().ipv4_subnet()) {
-    LOG(DFATAL) << "Missing required Termina IPv4 subnet for {cid: " << cid
-                << "}";
+  if (!termina_device->config().ipv4_subnet()) {
+    LOG(ERROR) << __func__ << "(cid: " << cid << ")"
+               << ": Missing Termina IPv4 subnet";
     return {};
   }
-  const auto* lxd_subnet = guest_device->config().lxd_ipv4_subnet();
-  if (!lxd_subnet) {
-    LOG(DFATAL) << "Missing required lxd container IPv4 subnet for {cid: "
-                << cid << "}";
+  if (!termina_device->config().lxd_ipv4_subnet()) {
+    LOG(ERROR) << __func__ << "(cid: " << cid << ")"
+               << ": Missing LXD container IPv4 subnet";
     return {};
   }
-
   TerminaVmStartupResponse response;
-  auto* dev = response.mutable_device();
-  FillDeviceProto(*guest_device, dev);
-  FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
-
+  FillTerminaAllocationProto(*termina_device, &response);
   RecordDbusEvent(DbusUmaEvent::kTerminaVmStartupSuccess);
   return response;
 }

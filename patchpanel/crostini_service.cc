@@ -206,7 +206,8 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
   if (lxd_subnet) {
     // Setup lxd route for the container using the VM as a gateway.
     const auto gateway_cidr = ipv4_subnet->CIDRAtOffset(2);
-    const auto lxd_subnet_cidr = lxd_subnet->CIDRAtOffset(1);
+    const auto lxd_subnet_cidr =
+        lxd_subnet->CIDRAtOffset(kTerminaContainerAddressOffset);
     if (!gateway_cidr || !lxd_subnet_cidr) {
       LOG(ERROR) << "Failed to get CIDR from Subnet, ipv4_subnet="
                  << ipv4_subnet->base_cidr()

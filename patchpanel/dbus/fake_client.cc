@@ -4,6 +4,8 @@
 
 #include "patchpanel/dbus/fake_client.h"
 
+#include <optional>
+
 namespace patchpanel {
 
 void FakeClient::RegisterOnAvailableCallback(
@@ -29,10 +31,9 @@ bool FakeClient::NotifyArcVmShutdown(uint32_t cid) {
   return true;
 }
 
-bool FakeClient::NotifyTerminaVmStartup(uint32_t cid,
-                                        Client::VirtualDevice* device,
-                                        net_base::IPv4CIDR* container_subnet) {
-  return true;
+std::optional<Client::TerminaAllocation> FakeClient::NotifyTerminaVmStartup(
+    uint32_t cid) {
+  return std::nullopt;
 }
 
 bool FakeClient::NotifyTerminaVmShutdown(uint32_t cid) {

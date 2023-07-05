@@ -27,6 +27,53 @@ class ProtoUtilsTest : public testing::Test {
   std::unique_ptr<AddressManager> addr_mgr_;
 };
 
+TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
+  const auto termina_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
+  const auto termina_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.26");
+  const auto gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.25");
+  const auto container_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28");
+  const auto container_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.92.193");
+
+  const uint32_t subnet_index = 0;
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kTerminaVM, subnet_index);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto lxd_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
+
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr), std::move(lxd_subnet));
+  auto termina_device = std::make_unique<Device>(
+      Device::Type::kTerminaVM, std::nullopt, "vmtap0", "", std::move(config));
+
+  TerminaVmStartupResponse proto;
+  FillTerminaAllocationProto(*termina_device, &proto);
+  ASSERT_EQ("vmtap0", proto.tap_device_ifname());
+  EXPECT_EQ(termina_ipv4_address,
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
+  EXPECT_EQ(gateway_ipv4_address, net_base::IPv4Address::CreateFromBytes(
+                                      proto.gateway_ipv4_address()));
+  EXPECT_EQ(termina_ipv4_subnet.address(),
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
+  EXPECT_EQ(termina_ipv4_subnet.prefix_length(),
+            proto.ipv4_subnet().prefix_len());
+  EXPECT_EQ(container_ipv4_address, net_base::IPv4Address::CreateFromBytes(
+                                        proto.container_ipv4_address()));
+  EXPECT_EQ(container_ipv4_subnet.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto.container_ipv4_subnet().addr()));
+  EXPECT_EQ(container_ipv4_subnet.prefix_length(),
+            proto.container_ipv4_subnet().prefix_len());
+}
+
 TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   const uint32_t subnet_index = 0;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
