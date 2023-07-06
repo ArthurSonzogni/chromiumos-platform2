@@ -70,6 +70,7 @@ void QueryImpl::GetAllDeviceIdsCallback(
   if (iio_device_ids_types.empty()) {
     LOGF(WARNING) << "No device found";
     Reset();
+    return;
   }
 
   for (const auto& [id, types] : iio_device_ids_types) {
@@ -91,6 +92,7 @@ void QueryImpl::GetDeviceIdsCallback(
   if (iio_device_ids.empty()) {
     LOGF(WARNING) << "No device found for type: " << device_type_;
     Reset();
+    return;
   }
 
   for (const int32_t& id : iio_device_ids) {

@@ -69,6 +69,7 @@ void Observer::GetDeviceIdsCallback(
   if (iio_device_ids.empty()) {
     LOGF(ERROR) << "No device found give device type: " << device_type_;
     Reset();
+    return;
   }
 
   // Take the first id.
