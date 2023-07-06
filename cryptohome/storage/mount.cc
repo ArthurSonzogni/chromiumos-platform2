@@ -132,6 +132,8 @@ StorageStatus Mount::MountCryptohome(
   username_ = username;
   ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
 
+  ReportTimerStart(kVaultSetupTimer);
+
   ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
                    homedirs_->PickVaultType(obfuscated_username, vault_options),
                    (_.LogError() << "Could't pick vault type"));
@@ -158,6 +160,8 @@ StorageStatus Mount::MountCryptohome(
   RETURN_IF_ERROR(user_cryptohome_vault_->Setup(file_system_keyset.Key()))
           .LogError()
       << "Failed to setup persisten vault";
+
+  ReportTimerStop(kVaultSetupTimer);
 
   std::string key_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);
@@ -189,6 +193,8 @@ StorageStatus Mount::MountCryptohome(
 
   user_cryptohome_vault_->ReportVaultEncryptionType();
 
+  ReportTimerStart(kSELinuxRelabelTimer);
+
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
   // Report the success rate of the restore SELinux context operation for user
@@ -215,6 +221,7 @@ StorageStatus Mount::MountCryptohome(
     LOG(ERROR) << "RestoreSELinuxContexts(" << UserPath(obfuscated_username)
                << ") failed.";
   }
+  ReportTimerStop(kSELinuxRelabelTimer);
 
   ReportRestoreSELinuxContextResultForHomeDir(result);
 

@@ -209,7 +209,12 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // or update is completed.
     {kUSSMigrationTimer, "Cryptohome.TimeToMigrateVaultKeysetToUss", 0, 6000,
      60},
-};
+    // The time take to set up the cryptohome vault for mounting.
+    {kVaultSetupTimer, "Cryptohome.TimeToSetUpVault", 0, 10 * 1000, 50},
+    // The time taken to relabel the SELinux context of all files inside the
+    // user cryptohome.
+    {kSELinuxRelabelTimer, "Cryptohome.TimeToRelabelSELinuxContexts", 0,
+     60 * 1000, 60}};
 
 static_assert(std::size(kTimerHistogramParams) == kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");

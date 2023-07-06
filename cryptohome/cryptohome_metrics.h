@@ -112,6 +112,8 @@ enum TimerType {
   kUSSPersistTimer = 19,
   kUSSLoadPersistedTimer = 20,
   kUSSMigrationTimer = 21,
+  kVaultSetupTimer = 22,
+  kSELinuxRelabelTimer = 23,
   kNumTimerTypes  // For the number of timer types.
 };
 
