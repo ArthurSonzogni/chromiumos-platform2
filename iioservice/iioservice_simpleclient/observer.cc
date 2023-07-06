@@ -67,7 +67,9 @@ void Observer::GetDeviceIdsCallback(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (iio_device_ids.empty()) {
-    LOGF(ERROR) << "No device found give device type: " << device_type_;
+    // Don't Change: Used as a check sentence in the tast test
+    // hardware.SensorProximity.
+    LOGF(ERROR) << "No device found given DeviceType: " << device_type_;
     Reset();
     return;
   }

@@ -68,7 +68,7 @@ void QueryImpl::GetAllDeviceIdsCallback(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (iio_device_ids_types.empty()) {
-    LOGF(WARNING) << "No device found";
+    LOGF(ERROR) << "No device found";
     Reset();
     return;
   }
@@ -90,7 +90,7 @@ void QueryImpl::GetDeviceIdsCallback(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (iio_device_ids.empty()) {
-    LOGF(WARNING) << "No device found for type: " << device_type_;
+    LOGF(ERROR) << "No device found given DeviceType: " << device_type_;
     Reset();
     return;
   }
