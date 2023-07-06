@@ -134,7 +134,7 @@ void NetworkApplier::ApplyRoutingPolicy(
     const std::string& interface_name,
     Technology technology,
     NetworkPriority priority,
-    const std::vector<IPAddress>& all_addresses,
+    const std::vector<net_base::IPCIDR>& all_addresses,
     const std::vector<net_base::IPv4CIDR>& rfc3442_dsts) {
   uint32_t rule_priority =
       kDefaultPriority + priority.ranking_order * kPriorityStep;
@@ -243,10 +243,10 @@ void NetworkApplier::ApplyRoutingPolicy(
     // Select the per-device table if the outgoing packet's src address matches
     // the interface's addresses or the input interface is this interface.
     for (const auto& address : all_addresses) {
-      auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(address)
+      auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(IPAddress(address))
                               .SetTable(table_id)
                               .SetPriority(rule_priority);
-      if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
+      if (address.GetFamily() == net_base::IPFamily::kIPv6 && no_ipv6) {
         if_addr_rule.SetUid(shill_uid);
       }
       rule_table_->AddRule(interface_index, if_addr_rule);

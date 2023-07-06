@@ -184,9 +184,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
   priority.is_primary_logical = true;
   priority.ranking_order = 0;
 
-  auto all_addresses = std::vector<IPAddress>{
-      *IPAddress::CreateFromStringAndPrefix("198.51.100.101", 24),
-      *IPAddress::CreateFromStringAndPrefix("2001:db8:0:1000::abcd", 64)};
+  auto all_addresses = std::vector<net_base::IPCIDR>{
+      *net_base::IPCIDR::CreateFromStringAndPrefix("198.51.100.101", 24),
+      *net_base::IPCIDR::CreateFromStringAndPrefix("2001:db8:0:1000::abcd",
+                                                   64)};
 
   RoutingPolicyEntry::FwMark routing_fwmark;
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
@@ -214,10 +215,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
                                                   "eth0", kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from 198.51.100.101/24 lookup 1003
-  EXPECT_CALL(rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(IPAddress::kFamilyIPv4, 1010u,
-                                     all_addresses[0], kExpectedTable)))
+  EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
+                                   IsValidSrcRule(IPAddress::kFamilyIPv4, 1010u,
+                                                  IPAddress(all_addresses[0]),
+                                                  kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from all iif eth0 lookup 1003
   EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
@@ -248,10 +249,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
                                                   "eth0", kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from 2001:db8:0:1000::abcd/64 lookup 1003
-  EXPECT_CALL(rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(IPAddress::kFamilyIPv6, 1010u,
-                                     all_addresses[1], kExpectedTable)))
+  EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
+                                   IsValidSrcRule(IPAddress::kFamilyIPv6, 1010u,
+                                                  IPAddress(all_addresses[1]),
+                                                  kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from all iif eth0 lookup 1003
   EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
@@ -278,9 +279,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
   priority.is_primary_logical = true;
   priority.ranking_order = 0;
 
-  auto all_addresses = std::vector<IPAddress>{
-      *IPAddress::CreateFromStringAndPrefix("198.51.100.101", 24),
-      *IPAddress::CreateFromStringAndPrefix("2001:db8:0:1000::abcd", 64)};
+  auto all_addresses = std::vector<net_base::IPCIDR>{
+      *net_base::IPCIDR::CreateFromStringAndPrefix("198.51.100.101", 24),
+      *net_base::IPCIDR::CreateFromStringAndPrefix("2001:db8:0:1000::abcd",
+                                                   64)};
 
   RoutingPolicyEntry::FwMark routing_fwmark;
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
@@ -345,9 +347,10 @@ TEST_F(NetworkApplierTest,
   NetworkPriority priority;
   priority.ranking_order = 1;
 
-  auto all_addresses = std::vector<IPAddress>{
-      *IPAddress::CreateFromStringAndPrefix("198.51.100.101", 24),
-      *IPAddress::CreateFromStringAndPrefix("2001:db8:0:1000::abcd", 64)};
+  auto all_addresses = std::vector<net_base::IPCIDR>{
+      *net_base::IPCIDR::CreateFromStringAndPrefix("198.51.100.101", 24),
+      *net_base::IPCIDR::CreateFromStringAndPrefix("2001:db8:0:1000::abcd",
+                                                   64)};
   auto rfc3442_dsts = std::vector<net_base::IPv4CIDR>{
       *net_base::IPv4CIDR::CreateFromStringAndPrefix("203.0.113.0", 26),
       *net_base::IPv4CIDR::CreateFromStringAndPrefix("203.0.113.128", 26),
@@ -375,10 +378,10 @@ TEST_F(NetworkApplierTest,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from 198.51.100.101/24 lookup 1004
-  EXPECT_CALL(rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(IPAddress::kFamilyIPv4, 1020u,
-                                     all_addresses[0], kExpectedTable)))
+  EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
+                                   IsValidSrcRule(IPAddress::kFamilyIPv4, 1020u,
+                                                  IPAddress(all_addresses[0]),
+                                                  kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from all iif wlan0 lookup 1004
   EXPECT_CALL(
@@ -415,10 +418,10 @@ TEST_F(NetworkApplierTest,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from 198.51.100.101/24 lookup 1004
-  EXPECT_CALL(rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(IPAddress::kFamilyIPv6, 1020u,
-                                     all_addresses[1], kExpectedTable)))
+  EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
+                                   IsValidSrcRule(IPAddress::kFamilyIPv6, 1020u,
+                                                  IPAddress(all_addresses[1]),
+                                                  kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from all iif wlan0 lookup 1004
   EXPECT_CALL(
@@ -440,9 +443,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
   NetworkPriority priority;
   priority.ranking_order = 2;
 
-  auto all_addresses = std::vector<IPAddress>{
-      *IPAddress::CreateFromStringAndPrefix("198.51.100.101", 24),
-      *IPAddress::CreateFromStringAndPrefix("2001:db8:0:1000::abcd", 64)};
+  auto all_addresses = std::vector<net_base::IPCIDR>{
+      *net_base::IPCIDR::CreateFromStringAndPrefix("198.51.100.101", 24),
+      *net_base::IPCIDR::CreateFromStringAndPrefix("2001:db8:0:1000::abcd",
+                                                   64)};
 
   RoutingPolicyEntry::FwMark routing_fwmark;
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
@@ -468,10 +472,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from 198.51.100.101/24 lookup 1005
-  EXPECT_CALL(rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(IPAddress::kFamilyIPv4, 1030u,
-                                     all_addresses[0], kExpectedTable)))
+  EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
+                                   IsValidSrcRule(IPAddress::kFamilyIPv4, 1030u,
+                                                  IPAddress(all_addresses[0]),
+                                                  kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all iif wwan0 lookup 1005
   EXPECT_CALL(
@@ -499,8 +503,8 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
   EXPECT_CALL(rule_table_,
               AddRule(kInterfaceIndex,
                       IsValidSrcRuleWithUid(IPAddress::kFamilyIPv6, 1030u,
-                                            all_addresses[1], shill_uid,
-                                            kExpectedTable)))
+                                            IPAddress(all_addresses[1]),
+                                            shill_uid, kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all iif wwan0 lookup 1005
   EXPECT_CALL(

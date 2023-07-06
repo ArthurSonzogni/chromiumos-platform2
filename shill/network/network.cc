@@ -1175,14 +1175,8 @@ void Network::ApplyRoutingPolicy() {
     }
   }
 
-  // Convert from std::vector<net_base::IPCIDR> to std::vector<IPAddress>.
-  std::vector<IPAddress> addrs;
-  for (const auto& addr : GetAddresses()) {
-    addrs.push_back(IPAddress(addr));
-  }
-
   network_applier_->ApplyRoutingPolicy(interface_index_, interface_name_,
-                                       technology_, priority_, addrs,
+                                       technology_, priority_, GetAddresses(),
                                        rfc3442_dsts);
 }
 
