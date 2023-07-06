@@ -29,6 +29,8 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/ipconfig.h"
@@ -69,6 +71,28 @@ using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
+namespace {
+
+constexpr net_base::IPv4Address kTestIPAddress0(192, 168, 1, 1);
+const net_base::IPv6Address kTestIPAddress1 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
+const net_base::IPv6Address kTestIPAddress2 =
+    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1235");
+constexpr int kTestDeviceIndex = 123456;
+constexpr char kTestDeviceName[] = "test-device";
+constexpr uint8_t kTestMacAddress[] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
+constexpr int kReceiveByteCount = 1234;
+constexpr int kTransmitByteCount = 5678;
+constexpr char kVendorIdString[] = "0x0123";
+constexpr char kProductIdString[] = "0x4567";
+constexpr char kSubsystemIdString[] = "0x89ab";
+constexpr char kInvalidIdString[] = "invalid";
+constexpr int kVendorId = 0x0123;
+constexpr int kProductId = 0x4567;
+constexpr int kSubsystemId = 0x89ab;
+constexpr int kDefaultTestHardwareId = -42;
+
+}  // namespace
 
 class DeviceInfoTest : public Test {
  public:
@@ -139,30 +163,6 @@ class DeviceInfoTest : public Test {
   }
 
  protected:
-  static const int kTestDeviceIndex;
-  static const char kTestDeviceName[];
-  static const uint8_t kTestMacAddress[];
-  static const char kTestIPAddress0[];
-  static const int kTestIPAddressPrefix0;
-  static const char kTestIPAddress1[];
-  static const int kTestIPAddressPrefix1;
-  static const char kTestIPAddress2[];
-  static const char kTestIPAddress3[];
-  static const char kTestIPAddress4[];
-  static const char kTestIPAddress5[];
-  static const char kTestIPAddress6[];
-  static const char kTestIPAddress7[];
-  static const int kReceiveByteCount;
-  static const int kTransmitByteCount;
-  static const char kVendorIdString[];
-  static const char kProductIdString[];
-  static const char kSubsystemIdString[];
-  static const char kInvalidIdString[];
-  static const int kVendorId;
-  static const int kProductId;
-  static const int kSubsystemId;
-  static const int kDefaultTestHardwareId;
-
   std::unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
   std::unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
       RTNLMessage::Mode mode,
@@ -193,31 +193,6 @@ class DeviceInfoTest : public Test {
   base::FilePath device_info_root_;
   std::string test_device_name_;
 };
-
-const int DeviceInfoTest::kTestDeviceIndex = 123456;
-const char DeviceInfoTest::kTestDeviceName[] = "test-device";
-const uint8_t DeviceInfoTest::kTestMacAddress[] = {0xaa, 0xbb, 0xcc,
-                                                   0xdd, 0xee, 0xff};
-const char DeviceInfoTest::kTestIPAddress0[] = "192.168.1.1";
-const int DeviceInfoTest::kTestIPAddressPrefix0 = 24;
-const char DeviceInfoTest::kTestIPAddress1[] = "fe80::1aa9:5ff:abcd:1234";
-const int DeviceInfoTest::kTestIPAddressPrefix1 = 64;
-const char DeviceInfoTest::kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
-const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
-const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
-const char DeviceInfoTest::kTestIPAddress5[] = "192.168.1.2";
-const char DeviceInfoTest::kTestIPAddress6[] = "192.168.2.2";
-const char DeviceInfoTest::kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
-const int DeviceInfoTest::kReceiveByteCount = 1234;
-const int DeviceInfoTest::kTransmitByteCount = 5678;
-const char DeviceInfoTest::kVendorIdString[] = "0x0123";
-const char DeviceInfoTest::kProductIdString[] = "0x4567";
-const char DeviceInfoTest::kSubsystemIdString[] = "0x89ab";
-const char DeviceInfoTest::kInvalidIdString[] = "invalid";
-const int DeviceInfoTest::kVendorId = 0x0123;
-const int DeviceInfoTest::kProductId = 0x4567;
-const int DeviceInfoTest::kSubsystemId = 0x89ab;
-const int DeviceInfoTest::kDefaultTestHardwareId = -42;
 
 std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     RTNLMessage::Mode mode,
@@ -798,7 +773,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       Network::State::kConnected);
   device0->GetPrimaryNetwork()->RegisterEventHandler(&event_handler0);
   IPConfig::Properties props0 = {};
-  props0.gateway = kTestIPAddress0;
+  props0.gateway = kTestIPAddress0.ToString();
   device0->GetPrimaryNetwork()->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, "null0"));
   device0->GetPrimaryNetwork()->ipconfig()->UpdateProperties(props0);
@@ -818,7 +793,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       Network::State::kConnected);
   device1->GetPrimaryNetwork()->RegisterEventHandler(&event_handler1);
   IPConfig::Properties props1 = {};
-  props1.gateway = kTestIPAddress2;
+  props1.gateway = kTestIPAddress2.ToString();
   device1->GetPrimaryNetwork()->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, "null1"));
   device1->GetPrimaryNetwork()->ip6config()->UpdateProperties(props1);
@@ -828,40 +803,39 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
 
   patchpanel::Client::NeighborReachabilityEvent event0;
   event0.ifindex = kTestDeviceIndex;
-  event0.ip_addr = kTestIPAddress0;
+  event0.ip_addr = kTestIPAddress0.ToString();
   event0.role = Role::kGateway;
   event0.status = Status::kFailed;
   EXPECT_CALL(event_handler0,
               OnNeighborReachabilityEvent(
                   device0->GetPrimaryNetwork()->interface_index(),
-                  *IPAddress::CreateFromString(kTestIPAddress0), Role::kGateway,
-                  Status::kFailed));
+                  IPAddress(kTestIPAddress0), Role::kGateway, Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event0);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
   patchpanel::Client::NeighborReachabilityEvent event1;
   event1.ifindex = kTestDeviceIndex;
-  event1.ip_addr = kTestIPAddress1;
+  event1.ip_addr = kTestIPAddress1.ToString();
   event1.role = Role::kDnsServer;
   event1.status = Status::kFailed;
-  EXPECT_CALL(event_handler0,
-              OnNeighborReachabilityEvent(
-                  device0->GetPrimaryNetwork()->interface_index(),
-                  *IPAddress::CreateFromString(kTestIPAddress1),
-                  Role::kDnsServer, Status::kFailed));
+  EXPECT_CALL(
+      event_handler0,
+      OnNeighborReachabilityEvent(
+          device0->GetPrimaryNetwork()->interface_index(),
+          IPAddress(kTestIPAddress1), Role::kDnsServer, Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event1);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
   patchpanel::Client::NeighborReachabilityEvent event2;
   event2.ifindex = kTestDeviceIndex + 1;
-  event2.ip_addr = kTestIPAddress2;
+  event2.ip_addr = kTestIPAddress2.ToString();
   event2.role = Role::kGatewayAndDnsServer;
   event2.status = Status::kReachable;
   EXPECT_CALL(event_handler1,
               OnNeighborReachabilityEvent(
                   device1->GetPrimaryNetwork()->interface_index(),
-                  *IPAddress::CreateFromString(kTestIPAddress2),
-                  Role::kGatewayAndDnsServer, Status::kReachable));
+                  IPAddress(kTestIPAddress2), Role::kGatewayAndDnsServer,
+                  Status::kReachable));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event2);
 
   Mock::VerifyAndClearExpectations(&event_handler1);
