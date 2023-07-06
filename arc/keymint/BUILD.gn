@@ -20,10 +20,10 @@ libcutils_src = "../../../aosp/system/core/libcutils"
 # ARC T+, stop building arc-keymintd for ARC P/R.
 
 group("all") {
-  deps = [ ":arc-keymintd" ]
+  deps = [ ":arc_keymint_feature_query" ]
   if (use.keymint) {
     deps += [
-      ":arc_keymint_feature_query",
+      ":arc-keymintd",
       ":install_arc_keymintd_policy",
       ":install_dbus_config",
       ":install_init",
