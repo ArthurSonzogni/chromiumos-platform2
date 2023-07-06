@@ -73,34 +73,3 @@ add `--run_delay=<secs>` to simulate audio server behavior.**
 | lstm        |                <= 1 | `--run_delay=0.01` | 381506dd6209615e57285531d5e97c159ff41605341d184c7fd869eb8e364cfe |
 | seanet_wave |                <= 2 | `--run_delay=0.02` | 78c23dbb0e82d3cd59d0027fbf5b4351c4125494d7bccb52eb6b509c5e72fca8 |
 | seanet_stft |                <= 2 | `--run_delay=0.02` | a46d719aa611ceddc41f6a9437946f8ebb06cd774fc6db01b766110113f9be1b |
-
-# ML accelerator requirements
-
-The API for running ML workloads on ChromeOS is
-[Tensorflow Lite](https://www.tensorflow.org/lite).
-A discrete ML accelerator such as a TPU/NPU or a GPU can be made accessible
-through TFLite to improve the performance of ML workloads.
-
-The following requirements apply to such accelerators:
-
-## Functional requirements
-
-1. Any device kernel driver must be open source and integrated with upstream
-   Linux or implemented in userspace through VFIO.
-1. Direct dmabuf data sharing must be supported between the accelerator and
-   other relevant IP blocks (e.g., GPU, ISP). Both buffer-user and exporter
-   roles must be supported.
-
-## Security requirements
-
-1. Sandboxing must be supported for isolating untrusted workloads and any binary-only driver
-   components.
-1. Only signed and verified firmware must be allowed to be loaded onto the accelerator. See
-   [Peripheral Firmware Security](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/firmware_updating.md).
-1. An IOMMU must control access to system memory from the accelerator.
-
-## Miscellaneous requirements
-
-1. The driver's binary size (including dependent libraries and middleware) must be below 64 MB.
-1. Tools should be provided for ChromeOS developers to analyze the performance of inference
-   workloads (e.g. Perfetto and/or ftrace instrumentation).
