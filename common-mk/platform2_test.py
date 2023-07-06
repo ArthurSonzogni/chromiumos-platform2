@@ -128,7 +128,6 @@ class Platform2Test(object):
 
     def __init__(
         self,
-        test_bin,
         board,
         host,
         framework,
@@ -140,11 +139,8 @@ class Platform2Test(object):
         env_vars,
         test_bin_args,
     ):
-        if not test_bin_args:
-            test_bin_args = [test_bin]
-        if not test_bin:
-            test_bin = test_bin_args[0]
-        self.bin = test_bin
+        # Defaults to argv[0] to find the test binary to run.
+        self.bin = test_bin_args[0]
         self.env_vars = env_vars
         self.args = test_bin_args
         self.board = board
@@ -793,7 +789,6 @@ def GetParser():
     parser.add_argument(
         "--action", default="run", choices=actions, help="action to perform"
     )
-    parser.add_argument("--bin", help="test binary to run")
     parser.add_argument("--board", default=None, help="board to build for")
     parser.add_argument(
         "--sysroot", default=None, help="sysroot to run tests inside"
@@ -845,9 +840,7 @@ def main(argv):
     parser = GetParser()
     options = parser.parse_args(argv)
 
-    if options.action == "run" and (
-        (not options.bin or len(options.bin) == 0) and not options.cmdline
-    ):
+    if options.action == "run" and not options.cmdline:
         parser.error(message='You must specify a binary for the "run" action')
 
     if options.host and options.board:
@@ -877,7 +870,6 @@ def main(argv):
             )
 
     p2test = Platform2Test(
-        options.bin,
         options.board,
         options.host,
         options.framework,
