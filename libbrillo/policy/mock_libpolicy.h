@@ -27,6 +27,7 @@ class MockPolicyProvider : public PolicyProvider {
   MOCK_METHOD(bool, device_policy_is_loaded, (), (const, override));
   MOCK_METHOD(const DevicePolicy&, GetDevicePolicy, (), (const, override));
   MOCK_METHOD(bool, IsConsumerDevice, (), (const, override));
+  MOCK_METHOD(bool, IsEnterpriseEnrolledDevice, (), (const, override));
 };
 
 }  // namespace policy
