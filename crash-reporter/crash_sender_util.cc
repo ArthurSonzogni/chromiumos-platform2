@@ -907,8 +907,6 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
     return CrashRemoveReason::kFinishedUploading;
   }
 
-  std::string report_id;
-
   auto stream_data = form_data->ExtractDataStream();
   uint64_t uncompressed_size = stream_data->GetSize();
   // Compress the data before sending it to the server. We compress the entire
@@ -936,6 +934,8 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
       }
 
       LOG(INFO) << "Mocking successful send";
+      WriteUploadLog(details, /*report_id=*/"mockreport",
+                     std::move(product_name));
       return CrashRemoveReason::kFinishedUploading;
     }
   } else {
@@ -993,7 +993,7 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
     return CrashRemoveReason::kRetryUploading;
   }
 
-  report_id = response->ExtractDataAsString();
+  std::string report_id = response->ExtractDataAsString();
 
   return WriteUploadLog(details, report_id, std::move(product_name));
 }
