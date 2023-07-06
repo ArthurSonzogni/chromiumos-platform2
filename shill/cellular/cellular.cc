@@ -3250,16 +3250,15 @@ void Cellular::NetworkInfo::Start() {
 
 void Cellular::NetworkInfo::DestroySockets() {
   for (const auto& address : network_->GetAddresses()) {
-    const IPAddress shill_address(address);
     SLOG(2) << LoggingTag() << ": Destroy all sockets of address: " << address;
     cellular_->rtnl_handler()->RemoveInterfaceAddress(
-        network_->interface_index(), shill_address);
+        network_->interface_index(), IPAddress(address));
     if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP,
-                                                      shill_address))
+                                                      address.address()))
       SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
     // Chrome sometimes binds to UDP sockets, so lets destroy them.
     if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_UDP,
-                                                      shill_address))
+                                                      address.address()))
       SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
   }
   SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";

@@ -5,20 +5,19 @@
 #ifndef SHILL_NET_NETLINK_SOCK_DIAG_H_
 #define SHILL_NET_NETLINK_SOCK_DIAG_H_
 
+#include <linux/inet_diag.h>
 #include <stdint.h>
 
 #include <memory>
 #include <vector>
 
-#include "shill/net/ip_address.h"
+#include <net-base/ip_address.h>
+
 #include "shill/net/netlink_fd.h"
 #include "shill/net/shill_export.h"
-
-struct inet_diag_sockid;
+#include "shill/net/sockets.h"
 
 namespace shill {
-
-class Sockets;
 
 // NetlinkSockDiag allows for the destruction of sockets on the system.
 // Destruction of both UDP and TCP sockets is supported. Note, however, that TCP
@@ -37,7 +36,7 @@ class SHILL_EXPORT NetlinkSockDiag {
   // given. This interrupts all blocking socket operations on those sockets
   // with ECONNABORTED so that the application can discard the socket and
   // make another connection.
-  bool DestroySockets(uint8_t protocol, const IPAddress& saddr);
+  bool DestroySockets(uint8_t protocol, const net_base::IPAddress& saddr);
 
  private:
   // Hidden; use the static Create function above.

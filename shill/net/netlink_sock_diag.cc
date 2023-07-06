@@ -4,7 +4,6 @@
 
 #include "shill/net/netlink_sock_diag.h"
 
-#include <linux/inet_diag.h>
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
 #include <sys/socket.h>
@@ -18,7 +17,6 @@
 #include <base/numerics/safe_conversions.h>
 
 #include "shill/net/netlink_fd.h"
-#include "shill/net/sockets.h"
 
 namespace {
 
@@ -82,25 +80,24 @@ NetlinkSockDiag::~NetlinkSockDiag() {
   sockets_->Close(file_descriptor_);
 }
 
-bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
-  uint8_t family;
-  if (saddr.family() == IPAddress::kFamilyIPv4) {
-    family = AF_INET;
-  } else if (saddr.family() == IPAddress::kFamilyIPv6) {
-    family = AF_INET6;
-  } else {
-    LOG(ERROR) << "Tried to destroy sockets for unsupported family";
-    return false;
-  }
+bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
+                                     const net_base::IPAddress& saddr) {
+  const uint8_t family =
+      static_cast<uint8_t>(net_base::ToSAFamily(saddr.GetFamily()));
 
   std::vector<struct inet_diag_sockid> socks;
   if (!GetSockets(family, protocol, &socks))
     return false;
 
+  const auto addr_bytes = saddr.ToByteString();
   SockDiagRequest request = CreateDestroyRequest(family, protocol);
   for (const auto& sockid : socks) {
-    if (memcmp(sockid.idiag_src, saddr.GetConstData(), saddr.GetLength()) != 0)
+    const auto sock_src = net_base::IPAddress::CreateFromBytes(
+        {reinterpret_cast<const uint8_t*>(sockid.idiag_src),
+         saddr.GetAddressLength()});
+    if (sock_src != saddr) {
       continue;
+    }
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";
     request.header.nlmsg_seq = ++sequence_number_;
     request.req_opts.id = sockid;
