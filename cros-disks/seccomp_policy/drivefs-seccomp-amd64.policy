@@ -33,6 +33,8 @@ faccessat2: 1
 fallocate: 1
 fcntl: 1
 fdatasync: 1
+fremovexattr: 1
+fsetxattr: 1
 fstat: 1
 fstatfs: 1
 fsync: 1
@@ -56,12 +58,14 @@ getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: arg1 == TCGETS
+getxattr: 1
+inotify_init1: 1
+ioctl: 1
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lgetxattr: 1
 lseek: 1
 lstat: 1
-madvise: arg2 == MADV_DONTNEED
+madvise: 1
 memfd_create: 1
 mkdir: 1
 mkdirat: 1
@@ -79,7 +83,7 @@ pipe: 1
 pipe2: 1
 poll: 1
 pread64: 1
-prctl: arg0 == PR_SET_NAME
+prctl: 1
 prlimit64: 1
 process_vm_readv: 1
 pwrite64: 1
@@ -91,10 +95,16 @@ rename: 1
 restart_syscall: 1
 rmdir: 1
 rt_sigaction: 1
+rt_sigpending: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 rt_sigsuspend: 1
 sched_getaffinity: 1
+sched_getattr: 1
+sched_getparam: 1
+sched_getscheduler: 1
+sched_setattr: 1
+sched_yield: 1
 sendmsg: 1
 sendmmsg: 1
 sendto: 1
@@ -103,22 +113,27 @@ set_tid_address: 1
 setfsgid: 1
 setfsuid: 1
 setgroups: 1
+setitimer: 1
 setpgid: 1
 setpriority: 1
 setresgid: 1
 setresuid: 1
 setsid: 1
 setsockopt: 1
+shutdown: 1
+sigaltstack: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6
 socketpair: 1
 stat: 1
 statfs: 1
 syncfs: 1
-tgkill: arg2 == SIGABRT
+sysinfo: 1
+tgkill: 1
 umask: 1
 uname: 1
 unlink: 1
+utimensat: 1
 wait4: 1
 write: 1
 writev: 1
