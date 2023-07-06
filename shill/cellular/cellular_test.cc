@@ -367,17 +367,16 @@ class CellularTest : public testing::Test {
     }
   }
 
-  void CallStartModemCallback(const Error& error) {
-    device_->StartModemCallback(
-        base::BindOnce(&CellularTest::TestCallback, base::Unretained(this)),
-        error);
-    dispatcher_.DispatchPendingEvents();
+  void CallStartModemCallback(const Error& error, const Error& expected_error) {
+    base::test::TestFuture<const Error&> future;
+    device_->StartModemCallback(future.GetCallback(), error);
+    EXPECT_EQ(future.Get<Error>().type(), expected_error.type());
   }
 
   void CallStopModemCallback(const Error& error) {
-    device_->StopModemCallback(
-        base::BindOnce(&CellularTest::TestCallback, base::Unretained(this)),
-        error);
+    base::test::TestFuture<const Error&> future;
+    device_->StopModemCallback(future.GetCallback(), error);
+    EXPECT_EQ(future.Get<Error>().type(), error.type());
   }
 
   void CallSetPrimarySimProperties(const Cellular::SimProperties& properties) {
@@ -412,8 +411,6 @@ class CellularTest : public testing::Test {
           state == Cellular::State::kConnected);
     device_->set_state_for_testing(state);
   }
-
-  MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
   class TestControl : public MockControl {
@@ -1071,21 +1068,26 @@ TEST_F(CellularTest, ModemStateChangeLostRegistration) {
 }
 
 TEST_F(CellularTest, StartModemCallback) {
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   device_->set_state_for_testing(Cellular::State::kEnabled);
-  CallStartModemCallback(Error(Error::kSuccess));
+  CallStartModemCallback(Error(Error::kSuccess), Error(Error::kSuccess));
   EXPECT_EQ(device_->state(), Cellular::State::kModemStarted);
 }
 
 TEST_F(CellularTest, StartModemCallbackFail) {
-  EXPECT_CALL(*this, TestCallback(IsFailure()));
   device_->set_state_for_testing(Cellular::State::kEnabled);
-  CallStartModemCallback(Error(Error::kOperationFailed));
+  CallStartModemCallback(Error(Error::kOperationFailed),
+                         Error(Error::kOperationFailed));
+  EXPECT_EQ(device_->state(), Cellular::State::kEnabled);
+}
+
+TEST_F(CellularTest, StartModemCallbackFailWrongState) {
+  device_->set_state_for_testing(Cellular::State::kEnabled);
+  // Wrong state error gets ignored.
+  CallStartModemCallback(Error(Error::kWrongState), Error(Error::kSuccess));
   EXPECT_EQ(device_->state(), Cellular::State::kEnabled);
 }
 
 TEST_F(CellularTest, StopModemCallback) {
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetMockService();
   CallStopModemCallback(Error(Error::kSuccess));
   EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
@@ -1093,7 +1095,6 @@ TEST_F(CellularTest, StopModemCallback) {
 }
 
 TEST_F(CellularTest, StopModemCallbackFail) {
-  EXPECT_CALL(*this, TestCallback(IsFailure()));
   SetMockService();
   CallStopModemCallback(Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
@@ -1116,8 +1117,7 @@ TEST_F(CellularTest, SetInhibited) {
 
   // Invoke Cellular::StartModemCallback() to simulate the modem starting, which
   // is required before SetInhibit can succeed.
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  CallStartModemCallback(Error(Error::kSuccess));
+  CallStartModemCallback(Error(Error::kSuccess), Error(Error::kSuccess));
 
   EXPECT_FALSE(device_->inhibited());
   SetInhibited(true);
