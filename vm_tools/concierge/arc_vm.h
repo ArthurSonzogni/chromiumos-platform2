@@ -23,7 +23,6 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <chromeos/patchpanel/mac_address_generator.h>
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/concierge_service.pb.h>
 

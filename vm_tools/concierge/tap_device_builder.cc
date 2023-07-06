@@ -27,91 +27,10 @@ namespace {
 // Path to the tun device.
 constexpr char kTunDev[] = "/dev/net/tun";
 
-// Format for the interface name.
-constexpr char kInterfaceNameFormat[] = "vmtap%d";
-
 // Size of the vnet header.
 constexpr int32_t kVnetHeaderSize = 12;
 
 }  // namespace
-
-base::ScopedFD BuildTapDevice(const patchpanel::MacAddress& mac_addr,
-                              uint32_t ipv4_addr,
-                              uint32_t ipv4_netmask,
-                              bool vnet_hdr) {
-  std::string ifname;
-  base::ScopedFD dev = OpenTapDevice(kInterfaceNameFormat, vnet_hdr, &ifname);
-  if (!dev.is_valid())
-    return dev;
-
-  // Create the socket for configuring the interface.
-  base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
-  if (!sock.is_valid()) {
-    PLOG(ERROR)
-        << "Unable to create datagram socket for configuring the interface "
-        << ifname;
-    return base::ScopedFD();
-  }
-
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
-
-  // Set the ip address.
-  struct sockaddr_in* addr =
-      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
-  addr->sin_family = AF_INET;
-  addr->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr);
-  if (ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set ip address for vmtap interface "
-                << ifr.ifr_name;
-    return base::ScopedFD();
-  }
-
-  // Set the netmask.
-  struct sockaddr_in* netmask =
-      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
-  netmask->sin_family = AF_INET;
-  netmask->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_netmask);
-  if (ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifr.ifr_name;
-    return base::ScopedFD();
-  }
-
-  // Set the mac address.
-  struct sockaddr* hwaddr = &ifr.ifr_hwaddr;
-  hwaddr->sa_family = ARPHRD_ETHER;
-  memcpy(&hwaddr->sa_data, &mac_addr, sizeof(mac_addr));
-  if (ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set mac address for vmtap interface "
-                << ifr.ifr_name;
-    return base::ScopedFD();
-  }
-
-  // Set crosvm as interface owner.
-  uid_t owner_uid = -1;
-  if (!brillo::userdb::GetUserInfo(kCrosVmUser, &owner_uid, nullptr)) {
-    PLOG(ERROR) << "Unable to look up UID for " << kCrosVmUser;
-  } else {
-    if (ioctl(dev.get(), TUNSETOWNER, owner_uid) != 0) {
-      PLOG(ERROR) << "Failed to set owner for vmtap interface " << ifr.ifr_name;
-    }
-  }
-
-  // Finally, enable the device.
-  if (ioctl(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to get flags for vmtap interface " << ifr.ifr_name;
-    return base::ScopedFD();
-  }
-
-  ifr.ifr_flags = IFF_UP | IFF_RUNNING;
-  if (ioctl(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to enable vmtap interface " << ifr.ifr_name;
-    return base::ScopedFD();
-  }
-
-  return dev;
-}
 
 base::ScopedFD OpenTapDevice(const std::string& ifname_in,
                              bool vnet_hdr,

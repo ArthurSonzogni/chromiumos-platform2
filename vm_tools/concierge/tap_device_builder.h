@@ -10,17 +10,9 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <chromeos/patchpanel/mac_address_generator.h>
 
 namespace vm_tools {
 namespace concierge {
-
-// Builds and configures a tap device.  If the returned ScopedFD is valid then
-// the device has been properly configured.
-base::ScopedFD BuildTapDevice(const patchpanel::MacAddress& mac_addr,
-                              uint32_t ipv4_addr,
-                              uint32_t ipv4_netmask,
-                              bool vnet_hdr);
 
 // Opens and configures a tap device.  If the returned ScopedFD is valid then
 // the device has been properly configured.
