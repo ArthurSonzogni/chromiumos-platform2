@@ -10,7 +10,7 @@
 
 namespace screenshot {
 
-uint32_t getVncWidth(uint32_t crtc_width) {
+uint32_t GetVncWidth(uint32_t crtc_width) {
   const uint32_t vnc_width = (crtc_width + 3) / 4 * 4;
   CHECK_LT(vnc_width - crtc_width, 4);
   CHECK_GE(vnc_width, crtc_width);
@@ -18,14 +18,14 @@ uint32_t getVncWidth(uint32_t crtc_width) {
 }
 
 void ConvertBuffer(const DisplayBuffer::Result& from,
-                   char* to,
+                   uint32_t* to,
                    uint32_t vnc_width) {
   // For cases where vnc width != display width(vnc needs to be a multiple of 4)
   // then vnc width will always be greater than display width.
   // In that case, we are copying only the available pixels from the display
   // buffer, and leaving the remainder as-is (zero valued)
   for (int i = 0; i < from.height; i++) {
-    memcpy(to + vnc_width * kBytesPerPixel * i,
+    memcpy(to + vnc_width * i,
            static_cast<char*>(from.buffer) + from.stride * i,
            from.width * kBytesPerPixel);
   }

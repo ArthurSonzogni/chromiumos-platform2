@@ -11,50 +11,49 @@
 namespace screenshot {
 
 namespace {
-void runConvertBuffer(uint32_t crtc_width, uint32_t crtc_height) {
+bool RunConvertBuffer(uint32_t crtc_width, uint32_t crtc_height) {
   uint32_t stride = crtc_width * kBytesPerPixel;
 
-  uint32_t vnc_width = getVncWidth(crtc_width);
+  uint32_t vnc_width = GetVncWidth(crtc_width);
   uint32_t vnc_height = crtc_height;
 
-  // Display buffer initialized with dummy val of 'A'
-  char dummyDisplayValue = 'A';
+  // Display buffer initialized with dummy val of 0xAABBCCDD;
+  uint32_t dummy_value = 0xAABBCCDD;
 
-  std::vector<char> displayBuffer(crtc_width * crtc_height * kBytesPerPixel,
-                                  dummyDisplayValue);
-  std::vector<char> vncBuffer(vnc_width * vnc_height * kBytesPerPixel);
+  std::vector<uint32_t> display_buffer(crtc_width * crtc_height, dummy_value);
+  std::vector<uint32_t> vnc_buffer(vnc_width * vnc_height);
 
-  DisplayBuffer::Result display{crtc_width, crtc_height, stride};
-  display.buffer = displayBuffer.data();
+  DisplayBuffer::Result display{crtc_width, crtc_height, stride,
+                                reinterpret_cast<char*>(display_buffer.data())};
 
-  ConvertBuffer(display, vncBuffer.data(), vnc_width);
+  ConvertBuffer(display, vnc_buffer.data(), vnc_width);
 
   int index = 0;
-  bool bufferMatched = true;
-  int padIdx = crtc_width * kBytesPerPixel;
+  bool buffer_matched = true;
+  int pad_index = crtc_width;
 
-  for (char c : vncBuffer) {
-    int displayIdx = index % (vnc_width * kBytesPerPixel);
-    if (displayIdx < padIdx) {
-      if (c != dummyDisplayValue) {
-        bufferMatched = false;
+  for (uint32_t v : vnc_buffer) {
+    int display_index = index % vnc_width;
+    if (display_index < pad_index) {
+      if (v != dummy_value) {
+        buffer_matched = false;
         break;
       }
     } else {
-      if (c != 0) {
-        bufferMatched = false;
+      if (v != 0) {
+        buffer_matched = false;
         break;
       }
     }
     index++;
   }
-  EXPECT_EQ(bufferMatched, true);
+  return buffer_matched;
 }
 }  // namespace
 
 TEST(VncServerTest, HandlesPadding) {
-  EXPECT_EQ(getVncWidth(5), 8);
-  EXPECT_EQ(getVncWidth(12), 12);
+  EXPECT_EQ(GetVncWidth(5), 8);
+  EXPECT_EQ(GetVncWidth(12), 12);
 }
 
 TEST(VncServerTest, ConvertBuffer) {
@@ -62,9 +61,8 @@ TEST(VncServerTest, ConvertBuffer) {
   // When: Convert display buffer to VNC Buffer where width is a mult of 4
   // Then: VNC Buffer contains display buffer data, but right padded with 0
   //       if display width is not a multiple of 4
-
-  runConvertBuffer(40, 2);
-  runConvertBuffer(1366, 768);  // width not a mult of 4
+  EXPECT_TRUE(RunConvertBuffer(40, 2));
+  EXPECT_TRUE(RunConvertBuffer(1366, 768));  // width not a mult of 4
 }
 
 }  // namespace screenshot

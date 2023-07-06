@@ -170,7 +170,7 @@ int VncMain() {
 
   // vncViewer requires a width (but not height) with multiple of 4
   // Pad the width. Swap width and height if rotatation is requested.
-  uint32_t vnc_width = getVncWidth(rotate ? crtc_height : crtc_width);
+  uint32_t vnc_width = GetVncWidth(rotate ? crtc_height : crtc_width);
   uint32_t vnc_height = rotate ? crtc_width : crtc_height;
 
   LOG(INFO) << "Starting with CRTC size of: " << crtc_width << " "
@@ -201,8 +201,7 @@ int VncMain() {
   // This is ARGB buffer.
   {
     auto capture_result = display_buffer->Capture(rotate);
-    ConvertBuffer(capture_result, reinterpret_cast<char*>(buffer.data()),
-                  vnc_width);
+    ConvertBuffer(capture_result, buffer.data(), vnc_width);
     server->frameBuffer = reinterpret_cast<char*>(buffer.data());
   }
   // http://libvncserver.sourceforge.net/doc/html/rfbproto_8h_source.html#l00150
@@ -232,8 +231,7 @@ int VncMain() {
     // Keep the previous framebuffer around for comparison.
     prev.swap(buffer);
     // Copy the current data to the buffer.
-    ConvertBuffer(capture_result, reinterpret_cast<char*>(buffer.data()),
-                  vnc_width);
+    ConvertBuffer(capture_result, buffer.data(), vnc_width);
     // Update VNC server's view to the swapped current buffer.
     server->frameBuffer = reinterpret_cast<char*>(buffer.data());
 
