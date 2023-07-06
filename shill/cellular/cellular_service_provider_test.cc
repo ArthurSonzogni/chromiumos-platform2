@@ -140,6 +140,10 @@ class CellularServiceProviderTest : public testing::Test {
     fake_cros_config_->SetString("/modem", "firmware-variant", "crota_fm101");
   }
 
+  void SetVariantThatDoesNotSupportTethering() {
+    fake_cros_config_->SetString("/modem", "firmware-variant", "limozeen");
+  }
+
   const std::vector<CellularServiceRefPtr>& GetProviderServices() const {
     return provider_->services_;
   }
@@ -597,9 +601,7 @@ TEST_F(CellularServiceProviderTest,
   StrictMock<base::MockRepeatingCallback<void(
       TetheringManager::CellularUpstreamEvent)>>
       upstream_event_cb;
-  // Skip setting the firmware-variant value. If the value doesn't exist,
-  // tethering is not allowed.
-
+  SetVariantThatDoesNotSupportTethering();
   // No Device registered.
   EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kNotAllowed, nullptr,
                       ServiceRefPtr()));
@@ -610,13 +612,15 @@ TEST_F(CellularServiceProviderTest,
   Mock::VerifyAndClearExpectations(&cb);
 }
 
-TEST_F(CellularServiceProviderTest, HardwareSupportsTethering) {
-  // If the firmware-variant value doesn't exist, tethering is not allowed.
-  EXPECT_FALSE(
-      provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
-
+TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringReturnsTrue) {
   SetVariantThatSupportsTethering();
   EXPECT_TRUE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+}
+
+TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringReturnsFalse) {
+  SetVariantThatDoesNotSupportTethering();
+  EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
 }
 
@@ -656,9 +660,7 @@ TEST_F(CellularServiceProviderTest,
        TetheringEntitlementCheck_VariantNotAllowed) {
   StrictMock<base::MockOnceCallback<void(TetheringManager::EntitlementStatus)>>
       cb;
-  // Skip setting the firmware-variant value. If the value doesn't exist,
-  // tethering is not allowed.
-
+  SetVariantThatDoesNotSupportTethering();
   EXPECT_CALL(cb,
               Run(TetheringManager::EntitlementStatus::kNotAllowedOnVariant));
   provider()->TetheringEntitlementCheck(cb.Get(),
@@ -671,9 +673,7 @@ TEST_F(CellularServiceProviderTest,
        TetheringEntitlementCheck_OverrideVariantNotAllowed) {
   StrictMock<base::MockOnceCallback<void(TetheringManager::EntitlementStatus)>>
       cb;
-  // Skip setting the firmware-variant value. If the value doesn't exist,
-  // tethering is not allowed.
-
+  SetVariantThatDoesNotSupportTethering();
   // Set up a Cellular Service with a Device
   scoped_refptr<MockCellular> device =
       new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,

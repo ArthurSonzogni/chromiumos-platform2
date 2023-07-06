@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_service_provider.h"
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -14,6 +15,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 
+#include "base/containers/fixed_flat_set.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -372,7 +374,16 @@ bool CellularServiceProvider::HardwareSupportsTethering(
     }
     variant_ = std::move(temp_variant);
   }
-  // TODO(b/282816692): block/allow variants when the list is known.
+  static constexpr auto blocklist = base::MakeFixedFlatSet<std::string_view>(
+      {// trogdor variants
+       "kingoftown", "lazor", "limozeen", "pazquel", "pazquel360",
+       // strongbad variants
+       "coachz", "quackingstick"});
+
+  if (blocklist.contains(variant_.value())) {
+    LOG(INFO) << "Cellular hardware does not support tethering";
+    return false;
+  }
   return true;
 }
 
