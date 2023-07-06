@@ -290,7 +290,10 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
                 if sig_in_customization_id:
                     for wl_config in self._configs:
-                        if wl_config.GetName() == name:
+                        wl_firmware_name = wl_config.GetFirmwareConfig().get(
+                            "image-name", wl_config.GetName()
+                        )
+                        if wl_firmware_name == firmware_name:
                             wl_brand_code = wl_config.GetProperty(
                                 "/", "brand-code"
                             )
@@ -313,7 +316,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                             # be kept with have_image=True so following
                             # process will generate one firmware entry for
                             # this model.
-                            if wl_sig_id == name:
+                            if wl_sig_id == firmware_name:
                                 wl_config.firmware_info[
                                     wl_sig_id
                                 ] = wl_fw_info._replace(

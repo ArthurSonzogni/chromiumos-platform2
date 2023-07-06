@@ -2035,6 +2035,606 @@
             "position": "0.3"
           }
         }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL1",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi-whitelabel1"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel1",
+          "frid": "Google_Multi",
+          "platform-name": "Multi",
+          "sku-id": 14
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL1",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi-whitelabel1"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel1",
+          "frid": "Google_Multi_other",
+          "platform-name": "Multi",
+          "sku-id": 14
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi_other"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL1",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi_other-whitelabel1"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel1",
+          "frid": "Google_Multi",
+          "platform-name": "Multi",
+          "sku-id": 15
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi_other"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL1",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi_other-whitelabel1"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel1",
+          "frid": "Google_Multi_other",
+          "platform-name": "Multi",
+          "sku-id": 15
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL2",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi-whitelabel2"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel2",
+          "frid": "Google_Multi",
+          "platform-name": "Multi",
+          "sku-id": 14
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL2",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi-whitelabel2"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel2",
+          "frid": "Google_Multi_other",
+          "platform-name": "Multi",
+          "sku-id": 14
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi_other"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL2",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi_other-whitelabel2"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel2",
+          "frid": "Google_Multi",
+          "platform-name": "Multi",
+          "sku-id": 15
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "multi_cheets",
+            "metrics-tag": "abc123",
+            "product": "multi"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "build-path": "some/media_codecs_c2.xml",
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "build-path": "some/media_codecs_performance_c2.xml",
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "image-name": "multi_other"
+        },
+        "firmware-signing": {
+          "key-id": "WHITELABEL2",
+          "sig-id-in-customization-id": true,
+          "signature-id": "multi_other-whitelabel2"
+        },
+        "hardware-properties": {
+          "form-factor": "CHROMEBOX",
+          "is-lid-convertible": false
+        },
+        "identity": {
+          "custom-label-tag": "whitelabel2",
+          "frid": "Google_Multi_other",
+          "platform-name": "Multi",
+          "sku-id": 15
+        },
+        "name": "multi",
+        "oem-id": "1",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "multi"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        }
       }
     ]
   }

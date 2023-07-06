@@ -139,6 +139,26 @@ some_whitelabel_config: &some_whitelabel_config
     is-lid-convertible: false
   $oem-id: "1"
 
+multi_whitelabel_config: &multi_whitelabel_config
+  <<: *some_base_config
+  brand-code: "{{$brand-code}}"
+  identity:
+    platform-name: "Multi"
+    frid: "Google_Multi{{$firmware-suffix}}"
+    sku-id: "{{$sku-id}}"
+    whitelabel-tag: "{{$whitelabel-tag}}"
+  firmware-signing:
+    key-id: "{{$key-id}}"
+    signature-id: "{{$name}}{{$firmware-suffix}}-{{$whitelabel-tag}}"
+    sig-id-in-customization-id: True
+  hardware-properties:
+    form-factor: CHROMEBOX
+    is-lid-convertible: false
+  firmware:
+    image-name: "multi{{$firmware-suffix}}"
+  $oem-id: "1"
+  $firmware-suffix: ""
+
 some_touch_config: &some_touch_config
   <<: *touch
   $some_stylus: "some_stylus_vendor/some-version.hex"
@@ -420,3 +440,21 @@ chromeos:
                 u-boot: "badrecovery2"
             hardware-properties:
               form-factor: CHROMEBOX
+    - $name: "multi"
+      products:
+        - $brand-code: "WLBA"
+          $key-id: "WHITELABEL1"
+          $wallpaper: "wallpaper-wl1"
+          $whitelabel-tag: "whitelabel1"
+        - $brand-code: "WLBB"
+          $key-id: "WHITELABEL2"
+          $wallpaper: "wallpaper-wl2"
+          $whitelabel-tag: "whitelabel2"
+      skus:
+        - $sku-id: 14
+          config:
+            <<: *multi_whitelabel_config
+        - $sku-id: 15
+          config:
+            <<: *multi_whitelabel_config
+            $firmware-suffix: "_other"

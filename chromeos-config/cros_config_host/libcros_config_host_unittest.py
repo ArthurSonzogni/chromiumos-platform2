@@ -300,6 +300,7 @@ class CrosConfigHostTest(unittest.TestCase):
             "whitelabel": "bloonchipper",
             "badrecovery1": "bloonchipper",
             "badrecovery2": "bloonchipper",
+            "multi": "bloonchipper",
         }
         result = config.GetKeyValuePairs("/", "name", "/fingerprint", "board")
         self.assertEqual(expected, result)
@@ -546,6 +547,114 @@ class CrosConfigHostTest(unittest.TestCase):
                     ),
                 ),
                 (
+                    "multi",
+                    FirmwareInfo(
+                        model="multi",
+                        shared_model="multi",
+                        key_id="WHITELABEL1",
+                        have_image=True,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="sig-id-in-customization-id",
+                        brand_code="",
+                    ),
+                ),
+                (
+                    "multi-whitelabel1",
+                    FirmwareInfo(
+                        model="multi-whitelabel1",
+                        shared_model="multi",
+                        key_id="WHITELABEL1",
+                        have_image=False,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="multi-whitelabel1",
+                        brand_code="WLBA",
+                    ),
+                ),
+                (
+                    "multi_other",
+                    FirmwareInfo(
+                        model="multi_other",
+                        shared_model="multi_other",
+                        key_id="WHITELABEL1",
+                        have_image=True,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="sig-id-in-customization-id",
+                        brand_code="",
+                    ),
+                ),
+                (
+                    "multi_other-whitelabel1",
+                    FirmwareInfo(
+                        model="multi_other-whitelabel1",
+                        shared_model="multi_other",
+                        key_id="WHITELABEL1",
+                        have_image=False,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="multi_other-whitelabel1",
+                        brand_code="WLBA",
+                    ),
+                ),
+                (
+                    "multi-whitelabel2",
+                    FirmwareInfo(
+                        model="multi-whitelabel2",
+                        shared_model="multi",
+                        key_id="WHITELABEL2",
+                        have_image=False,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="multi-whitelabel2",
+                        brand_code="WLBB",
+                    ),
+                ),
+                (
+                    "multi_other-whitelabel2",
+                    FirmwareInfo(
+                        model="multi_other-whitelabel2",
+                        shared_model="multi_other",
+                        key_id="WHITELABEL2",
+                        have_image=False,
+                        bios_build_target=None,
+                        ec_build_target=None,
+                        main_image_uri="",
+                        main_rw_image_uri="",
+                        ec_image_uri="",
+                        ec_rw_image_uri="",
+                        pd_image_uri="",
+                        sig_id="multi_other-whitelabel2",
+                        brand_code="WLBB",
+                    ),
+                ),
+                (
                     "some",
                     FirmwareInfo(
                         model="some",
@@ -704,6 +813,8 @@ class CrosConfigHostTest(unittest.TestCase):
             ],
             "some2": [],
             "some2_custom": [],
+            "multi": [],
+            "multi_other": [],
         }
 
         result = CrosConfig(self.filepath).GetFirmwareConfigs()
@@ -721,6 +832,12 @@ class CrosConfigHostTest(unittest.TestCase):
             "whitelabel-whitelabel2": "some",
             "badrecovery1": "badrecovery1",
             "badrecovery2": "badrecovery2",
+            "multi": "multi",
+            "multi-whitelabel1": "multi",
+            "multi-whitelabel2": "multi",
+            "multi_other": "multi_other",
+            "multi_other-whitelabel1": "multi_other",
+            "multi_other-whitelabel2": "multi_other",
         }
 
         result = CrosConfig(self.filepath).GetFirmwareConfigsByDevice()
@@ -742,6 +859,24 @@ class CrosConfigHostTest(unittest.TestCase):
                 key_id="WHITELABEL1", sig_id="sig-id-in-customization-id"
             ),
             "another": DeviceSignerInfo(key_id="ANOTHER", sig_id="another"),
+            "multi": DeviceSignerInfo(
+                key_id="WHITELABEL1", sig_id="sig-id-in-customization-id"
+            ),
+            "multi_other": DeviceSignerInfo(
+                key_id="WHITELABEL1", sig_id="sig-id-in-customization-id"
+            ),
+            "multi-whitelabel1": DeviceSignerInfo(
+                key_id="WHITELABEL1", sig_id="multi-whitelabel1"
+            ),
+            "multi_other-whitelabel1": DeviceSignerInfo(
+                key_id="WHITELABEL1", sig_id="multi_other-whitelabel1"
+            ),
+            "multi-whitelabel2": DeviceSignerInfo(
+                key_id="WHITELABEL2", sig_id="multi-whitelabel2"
+            ),
+            "multi_other-whitelabel2": DeviceSignerInfo(
+                key_id="WHITELABEL2", sig_id="multi_other-whitelabel2"
+            ),
         }
 
         result = CrosConfig(self.filepath).GetDeviceSignerInfo()
