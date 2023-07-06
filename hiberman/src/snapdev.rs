@@ -131,7 +131,7 @@ const RELEASE_BLOCK_DEVICE: u64 = SNAPSHOT_RELEASE_BLOCK_DEVICE();
 /// The SnapshotDevice is mostly a group of method functions that send ioctls to
 /// an open snapshot device file descriptor.
 pub struct SnapshotDevice {
-    pub file: File,
+    file: File,
 }
 
 /// Define the possible modes in which to open the snapshot device.
