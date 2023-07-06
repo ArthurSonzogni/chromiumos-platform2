@@ -83,9 +83,7 @@ FUSESandboxedProcessFactory::FUSESandboxedProcessFactory(
       supplementary_groups_(std::move(supplementary_groups)),
       mount_namespace_(std::move(mount_namespace)) {
   CHECK(executable_.IsAbsolute());
-  if (seccomp_policy_) {
-    CHECK(seccomp_policy_.value().IsAbsolute());
-  }
+  CHECK(seccomp_policy_.empty() || seccomp_policy_.IsAbsolute());
   if (mount_namespace_) {
     CHECK(mount_namespace_.value().IsAbsolute());
   }
@@ -178,13 +176,12 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
     return false;
   }
 
-  if (seccomp_policy_) {
-    if (!platform_->PathExists(seccomp_policy_.value().value())) {
-      LOG(ERROR) << "Seccomp policy " << quote(seccomp_policy_.value())
-                 << " is missing";
+  if (!seccomp_policy_.empty()) {
+    if (!platform_->PathExists(seccomp_policy_.value())) {
+      LOG(ERROR) << "Cannot find SECCOMP policy " << quote(seccomp_policy_);
       return false;
     }
-    sandbox->LoadSeccompFilterPolicy(seccomp_policy_.value().value());
+    sandbox->SetSeccompPolicy(seccomp_policy_);
   }
 
   sandbox->SetUserId(run_as_.uid);

@@ -30,15 +30,7 @@
 namespace cros_disks {
 namespace {
 
-const char kDataDirOptionPrefix[] = "datadir";
-const char kIdentityOptionPrefix[] = "identity";
-const char kMyFilesOptionPrefix[] = "myfiles";
-const char kPathPrefixOptionPrefix[] = "prefix";
-
-const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
 const char kType[] = "drivefs";
-const char kDbusSocketPath[] = "/run/dbus";
-const char kHomeBaseDir[] = "/home";
 
 // UID of fuse-drivefs user.
 constexpr uid_t kOldDriveUID = 304;
@@ -202,7 +194,8 @@ DrivefsHelper::DrivefsHelper(const Platform* platform,
                         /* nosymfollow= */ false,
                         &sandbox_factory_),
       sandbox_factory_(platform,
-                       SandboxedExecutable{base::FilePath(kHelperTool)},
+                       SandboxedExecutable{base::FilePath(
+                           "/opt/google/drive-file-stream/drivefs")},
                        OwnerUser{kChronosUID, kChronosGID},
                        /* has_network_access= */ true) {}
 
@@ -236,6 +229,10 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
     return MountError::kInvalidDevicePath;
   }
 
+  const char kDataDirOptionPrefix[] = "datadir";
+  const char kIdentityOptionPrefix[] = "identity";
+  const char kMyFilesOptionPrefix[] = "myfiles";
+  const char kPathPrefixOptionPrefix[] = "prefix";
   base::FilePath data_dir;
   if (!FindPathOption(params, kDataDirOptionPrefix, &data_dir)) {
     LOG(ERROR) << "No data directory provided";
@@ -245,7 +242,7 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
     return MountError::kInsufficientPermissions;
   }
 
-  const base::FilePath homedir(kHomeBaseDir);
+  const base::FilePath homedir("/home");
   if (!homedir.IsParent(data_dir)) {
     LOG(ERROR) << "Unexpected location of " << quote(data_dir);
     return MountError::kInsufficientPermissions;
@@ -272,6 +269,8 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
     LOG(ERROR) << "Cannot bind " << quote(data_dir);
     return MountError::kInternalError;
   }
+
+  const char kDbusSocketPath[] = "/run/dbus";
   if (!sandbox->BindMount(kDbusSocketPath, kDbusSocketPath, true, false)) {
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
     return MountError::kInternalError;

@@ -63,7 +63,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
   const base::FilePath executable_;
 
   // Path to the seccomp policy configuration.
-  const std::optional<base::FilePath> seccomp_policy_;
+  const base::FilePath seccomp_policy_;
 
   // UID/GID to run the FUSE daemon as.
   const OwnerUser run_as_;

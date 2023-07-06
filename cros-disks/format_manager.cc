@@ -7,17 +7,18 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file.h>
-#include <base/files/file_util.h>
-#include <base/logging.h>
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <chromeos/libminijail.h>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
-#include "base/strings/string_piece.h"
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"
 #include "cros-disks/platform.h"
@@ -25,16 +26,11 @@
 #include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
-
 namespace {
 
 struct FormatOptions {
   std::string label;
 };
-
-const char kFormatUserAndGroupName[] = "mkfs";
-
-const char kFormatSeccompPolicy[] = "/usr/share/policy/mkfs-seccomp.policy";
 
 // Expected locations of an external format program
 const char* const kFormatProgramPaths[] = {
@@ -148,10 +144,12 @@ FormatError StartFormatProcess(const std::string& device_file,
     return FormatError::kFormatProgramFailed;
   }
 
-  process->LoadSeccompFilterPolicy(kFormatSeccompPolicy);
+  process->SetSeccompPolicy(
+      base::FilePath("/usr/share/policy/mkfs-seccomp.policy"));
 
   uid_t user_id;
   gid_t group_id;
+  const char kFormatUserAndGroupName[] = "mkfs";
   if (!platform_->GetUserAndGroupId(kFormatUserAndGroupName, &user_id,
                                     &group_id)) {
     LOG(ERROR) << "Cannot find user ID and group ID of "

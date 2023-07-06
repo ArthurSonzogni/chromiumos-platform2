@@ -14,6 +14,7 @@
 
 #include <base/containers/span.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
 
 #include "cros-disks/process.h"
@@ -33,9 +34,9 @@ class SandboxedProcess : public Process {
 
   bool KillPidNamespace() override;
 
-  // Loads the seccomp filters from |policy_file|. The calling process will be
-  // aborted if |policy_file| does not exist, cannot be read or is malformed.
-  void LoadSeccompFilterPolicy(const std::string& policy_file);
+  // Loads the seccomp filters from the given |file|. The calling process will
+  // be aborted if |file| does not exist, cannot be read or is malformed.
+  void SetSeccompPolicy(const base::FilePath& file);
 
   // Puts the process to be sandboxed in a new cgroup namespace.
   void NewCgroupNamespace();
@@ -150,7 +151,7 @@ class SandboxedProcessFactory {
 // Ties executable with the corresponding seccomp policy configuration.
 struct SandboxedExecutable {
   base::FilePath executable;
-  std::optional<base::FilePath> seccomp_policy = {};
+  base::FilePath seccomp_policy;
 };
 
 // Fake SandboxedProcess for testing. Doesn't launch any actual process.
