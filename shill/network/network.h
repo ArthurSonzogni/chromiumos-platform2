@@ -15,6 +15,7 @@
 #include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/ip_address.h>
 
 #include "shill/connection.h"
 #include "shill/connection_diagnostics.h"
@@ -254,7 +255,7 @@ class Network {
   mockable std::vector<IPAddress> GetAddresses() const;
 
   // Return all (both IPv4 and IPv6) DNS servers configured for the Network.
-  mockable std::vector<IPAddress> GetDNSServers() const;
+  mockable std::vector<net_base::IPAddress> GetDNSServers() const;
 
   // Responds to a neighbor reachability event from patchpanel.
   mockable void OnNeighborReachabilityEvent(

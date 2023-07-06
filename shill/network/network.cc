@@ -784,12 +784,12 @@ std::vector<IPAddress> Network::GetAddresses() const {
   return result;
 }
 
-std::vector<IPAddress> Network::GetDNSServers() const {
-  std::vector<IPAddress> result;
+std::vector<net_base::IPAddress> Network::GetDNSServers() const {
+  std::vector<net_base::IPAddress> result;
   if (ipconfig_) {
     for (const auto& dns4 : ipconfig_->properties().dns_servers) {
-      auto addr = IPAddress::CreateFromString(dns4);
-      if (!addr.has_value()) {
+      auto addr = net_base::IPAddress::CreateFromString(dns4);
+      if (!addr) {
         LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns4;
         continue;
       }
@@ -798,8 +798,8 @@ std::vector<IPAddress> Network::GetDNSServers() const {
   }
   if (ip6config_) {
     for (const auto& dns6 : ip6config_->properties().dns_servers) {
-      auto addr = IPAddress::CreateFromString(dns6);
-      if (!addr.has_value()) {
+      auto addr = net_base::IPAddress::CreateFromString(dns6);
+      if (!addr) {
         LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns6;
         continue;
       }

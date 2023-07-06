@@ -478,7 +478,7 @@ class ManagerTest : public PropertyStoreTest {
     EXPECT_CALL(*mock_network, GetAddresses())
         .WillRepeatedly(Return(std::vector<IPAddress>{ip_addr}));
     EXPECT_CALL(*mock_network, GetDNSServers())
-        .WillRepeatedly(Return(std::vector<IPAddress>{}));
+        .WillRepeatedly(Return(std::vector<net_base::IPAddress>{}));
     mock_device->set_network_for_testing(std::move(mock_network));
     return mock_network_ptr;
   }
@@ -2201,8 +2201,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Add an entry to the GetDNSServers() list to test the logic in
   // SortServicesTask() which figures out which connection owns the system
   // DNS configuration.
-  std::vector<IPAddress> dns_servers;
-  dns_servers.push_back(*IPAddress::CreateFromString("8.8.8.8"));
+  std::vector<net_base::IPAddress> dns_servers;
+  dns_servers.push_back(*net_base::IPAddress::CreateFromString("8.8.8.8"));
 
   EXPECT_CALL(*mock_network0, GetDNSServers())
       .WillRepeatedly(Return(dns_servers));

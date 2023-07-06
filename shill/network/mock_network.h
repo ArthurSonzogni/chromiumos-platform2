@@ -56,7 +56,10 @@ class MockNetwork : public Network {
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const, override));
-  MOCK_METHOD(std::vector<IPAddress>, GetDNSServers, (), (const, override));
+  MOCK_METHOD(std::vector<net_base::IPAddress>,
+              GetDNSServers,
+              (),
+              (const, override));
 
   MOCK_METHOD(bool, RenewDHCPLease, (), (override));
   MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
