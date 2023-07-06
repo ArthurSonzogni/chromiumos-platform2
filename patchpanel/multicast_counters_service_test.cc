@@ -85,9 +85,11 @@ Chain rx_eth0 (2 references)
 
 Chain rx_ethernet_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+    8867     805299            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_ethernet_ssdp (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+      0          0            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
@@ -101,9 +103,11 @@ Chain rx_ssdp (1 references)
 
 Chain rx_wifi_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+      0          0            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_wifi_ssdp (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+      0          0            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_wlan0 (2 references)
     pkts      bytes target     prot opt in     out     source               destination         
@@ -202,9 +206,11 @@ Chain rx_eth0 (2 references)
 
 Chain rx_ethernet_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+    1000       2000            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_ethernet_ssdp (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+    150         300            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
@@ -218,9 +224,11 @@ Chain rx_ssdp (1 references)
 
 Chain rx_wifi_mdns (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+    500       1000            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_wifi_ssdp (1 references)
     pkts      bytes target     prot opt in     out     source               destination         
+     50        100            all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 Chain rx_wlan0 (2 references)
     pkts      bytes target     prot opt in     out     source               destination         
@@ -385,24 +393,33 @@ TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
   static const struct {
     IpFamily ip_family;
     Iptables::Command command;
+    std::string chain;
     std::vector<std::string> argv;
   } expected_rule_creations[] = {
       {IpFamily::kIPv4,
        Iptables::Command::kA,
+       "INPUT",
        {"-d", kMdnsMcastAddress.ToString(), "-p", "udp", "--dport", "5353",
         "-j", "rx_mdns"}},
       {IpFamily::kIPv4,
        Iptables::Command::kA,
+       "INPUT",
        {"-d", kSsdpMcastAddress.ToString(), "-p", "udp", "--dport", "1900",
         "-j", "rx_ssdp"}},
       {IpFamily::kIPv6,
        Iptables::Command::kA,
+       "INPUT",
        {"-d", kMdnsMcastAddress6.ToString(), "-p", "udp", "--dport", "5353",
         "-j", "rx_mdns"}},
       {IpFamily::kIPv6,
        Iptables::Command::kA,
+       "INPUT",
        {"-d", kSsdpMcastAddress6.ToString(), "-p", "udp", "--dport", "1900",
         "-j", "rx_ssdp"}},
+      {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_mdns", {}},
+      {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_ssdp", {}},
+      {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_mdns", {}},
+      {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_ssdp", {}},
   };
 
   for (const auto& rule : expected_chain_creations) {
@@ -413,7 +430,7 @@ TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
-                       StrEq("INPUT"), ElementsAreArray(rule.argv), _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   multicast_counters_svc_->Start();
@@ -448,6 +465,10 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
   } expected_chain_flushes[] = {
       {IpFamily::kDual, "rx_mdns"},
       {IpFamily::kDual, "rx_ssdp"},
+      {IpFamily::kDual, "rx_ethernet_mdns"},
+      {IpFamily::kDual, "rx_ethernet_ssdp"},
+      {IpFamily::kDual, "rx_wifi_mdns"},
+      {IpFamily::kDual, "rx_wifi_ssdp"},
   };
   static const struct {
     IpFamily ip_family;
@@ -481,67 +502,39 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
   // The following commands are expected when an ethernet device comes up.
-  // Jump rules are added if they did not exist before.
   ShillClient::Device eth0_device =
       MakeShillDevice(ShillClient::Device::Type::kEthernet, "eth0", 1);
   std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kC, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*datapath_,
-              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
-      .WillOnce(Return(true));
+      .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kC, StrEq("rx_ssdp"),
+                             Iptables::Command::kA, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
-      .WillOnce(Return(true));
+      .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceAdded(eth0_device);
 }
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
   // The following commands are expected when a wifi device comes up.
-  // Jump rules are added if they did not exist before.
   ShillClient::Device wlan0_device =
       MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kC, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*datapath_,
-              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
-      .WillOnce(Return(true));
+      .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
-      .WillOnce(Return(true));
-  multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device);
-}
-
-TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAlreadyAdded) {
-  // If jump rule for a specific interface is already added, skip adding jump
-  // rule.
-  ShillClient::Device wlan0_device =
-      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
-  std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns"};
-  EXPECT_CALL(*datapath_,
-              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kC, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_,
-              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kA, StrEq("rx_mdns"),
-                             ElementsAreArray(mdns_args), _))
-      .Times(0);
+      .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device);
 }
 
@@ -551,13 +544,59 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
       MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
-              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                             Iptables::Command::kC, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*datapath_,
               ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
       .Times(0);
   multicast_counters_svc_->OnPhysicalDeviceAdded(cell_device);
+}
+
+TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceRemoved) {
+  // The following commands are expected when an ethernet device is removed.
+  ShillClient::Device eth0_device =
+      MakeShillDevice(ShillClient::Device::Type::kEthernet, "eth0", 1);
+  std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns"};
+
+  EXPECT_CALL(*datapath_,
+              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                             Iptables::Command::kD, StrEq("rx_mdns"),
+                             ElementsAreArray(mdns_args), _))
+      .Times(1);
+  std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp"};
+  EXPECT_CALL(*datapath_,
+              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                             Iptables::Command::kD, StrEq("rx_ssdp"),
+                             ElementsAreArray(ssdp_args), _))
+      .Times(1);
+  multicast_counters_svc_->OnPhysicalDeviceRemoved(eth0_device);
+}
+
+TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceRemoved) {
+  // The following commands are expected when a wifi device is removed.
+  ShillClient::Device wlan0_device =
+      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
+  std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns"};
+  EXPECT_CALL(*datapath_,
+              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                             Iptables::Command::kD, StrEq("rx_mdns"),
+                             ElementsAreArray(mdns_args), _))
+      .Times(1);
+  std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp"};
+  EXPECT_CALL(*datapath_,
+              ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                             Iptables::Command::kD, StrEq("rx_ssdp"),
+                             ElementsAreArray(ssdp_args), _))
+      .Times(1);
+  multicast_counters_svc_->OnPhysicalDeviceRemoved(wlan0_device);
+}
+
+TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceRemoved) {
+  // Modification to iptables are not expected when a cell device is removed.
+  ShillClient::Device cell_device =
+      MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
+  cell_device.primary_multiplexed_interface = "wwan0";
+  EXPECT_CALL(*datapath_,
+              ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
+      .Times(0);
+  multicast_counters_svc_->OnPhysicalDeviceRemoved(cell_device);
 }
 
 TEST_F(MulticastCountersServiceTest, GetCounters) {

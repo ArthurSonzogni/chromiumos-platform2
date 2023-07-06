@@ -26,8 +26,8 @@ namespace patchpanel {
 // queries iptables to get the counters when a request comes. This class will
 // set up several iptable rules to track the counters for each possible
 // combination of (mDNS, SSDP) x (ethernet, WiFi) x (shill device) x {IPv4,
-// IPv6}. These counters will be set up when s/service/patchpanel/ starts and
-// deleted when s/service/patchpanel/ stops.
+// IPv6}. These counters will be set up when patchpanel starts and
+// deleted when patchpanel stops.
 // These counters only count ingress traffic for the reason that ingress is the
 // dominant direction for multicast packets and receiving inbound traffic and
 // processing the packets is the main source of power consumption.
@@ -35,7 +35,7 @@ namespace patchpanel {
 // Implementation details:
 //
 // For iptables rules, we add rx_(ethernet|wifi)_(mdns|ssdp) and rx_(mdns|ssdp)
-// chains to the mangle table when s/service/patchpanel/ starts, and add/delete
+// chains to the mangle table when patchpanel starts, and add/delete
 // jumping rules for interfaces individually when devices are added or removed.
 // When queried, two commands (iptables and ip6tables) will be executed to get
 // mangle tables output and to get the counters, and the packet number will be
@@ -67,6 +67,8 @@ class MulticastCountersService {
   // Adds jump rules for a new physical device if this is the first time this
   // device is seen.
   virtual void OnPhysicalDeviceAdded(const ShillClient::Device& device);
+  // Deletes jump rules for a removed physical device.
+  virtual void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
   // Collects and returns packet counters from all the existing iptables rules
   // for multicast, divided by technology (ethernet, wifi) and protocol (ssdp,
   // mdns) in CounterKey, and recorded by packet number.
@@ -94,7 +96,6 @@ class MulticastCountersService {
                                   std::map<CounterKey, uint64_t>* counter);
 
   Datapath* datapath_;
-  std::vector<std::pair<std::string, std::string>> interfaces_;
 };
 
 }  // namespace patchpanel

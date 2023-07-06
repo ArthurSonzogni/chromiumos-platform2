@@ -28,6 +28,10 @@ class MockMulticastCountersService : public MulticastCountersService {
               OnPhysicalDeviceAdded,
               (const ShillClient::Device& device),
               (override));
+  MOCK_METHOD(void,
+              OnPhysicalDeviceRemoved,
+              (const ShillClient::Device& device),
+              (override));
   MOCK_METHOD((std::optional<std::map<CounterKey, uint64_t>>),
               GetCounters,
               (),

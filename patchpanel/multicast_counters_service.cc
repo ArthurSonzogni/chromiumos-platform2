@@ -27,18 +27,14 @@ constexpr char kMdns[] = "mdns";
 constexpr char kSsdp[] = "ssdp";
 
 // Chain line is in the format of Chain rx_<protocol>
-// For example: Chain rx_mdns
-constexpr LazyRE2 kChainLine = {R"(Chain rx_(mdns|ssdp).*)"};
-// Target name is in the format of rx_<technology>_<protocol>
-// The target name for a defined source looks like: rx_ethernet_mdns,
-// ex_wifi_ssdp
-constexpr LazyRE2 kTargetName = {R"(rx_(ethernet|wifi)_(mdns|ssdp))"};
+// For example: Chain rx_ethernet_mdns
+constexpr LazyRE2 kChainLine = {R"(Chain rx_(ethernet|wifi)_(mdns|ssdp).*)"};
 // Counter line is in the format of <packet> <byte> <target> <prot> <opt>
 // <in> <out> <source> <destination> <option>
 // The counter line for a defined source looks like:
 // pkts   bytes  target    prot opt   in   out   source   destination
-//   0      0 rx_wifi_mdns  all  --  wlan0  *  0.0.0.0/0   0.0.0.0/0
-constexpr LazyRE2 kCounterLine = {R"( *(\d+) +\d+ +(\w+).*)"};
+//   0      0              all  --  wlan0  *  0.0.0.0/0   0.0.0.0/0
+constexpr LazyRE2 kCounterLine = {R"( *(\d+).*)"};
 
 std::optional<MulticastCountersService::MulticastProtocolType>
 StringToMulticastProtocolType(base::StringPiece protocol) {
@@ -62,18 +58,8 @@ StringToMulticastTechnologyType(base::StringPiece technology) {
   return std::nullopt;
 }
 
-std::optional<MulticastCountersService::CounterKey> GetCounterKeyFromTargetName(
-    base::StringPiece target) {
-  // Target is a part of counter line in iptables, and here the target names
-  // are expected to be in the format of rx_<technology>_<protocol>. This
-  // method will extract technology and protocol from target name.
-  std::string technology;
-  std::string protocol;
-  if (!RE2::FullMatch(target.cbegin(), *kTargetName, &technology, &protocol)) {
-    LOG(ERROR) << "Invalid target name: " << target;
-    return std::nullopt;
-  }
-
+std::optional<MulticastCountersService::CounterKey> GetCounterKey(
+    base::StringPiece technology, base::StringPiece protocol) {
   MulticastCountersService::CounterKey key;
   if (!StringToMulticastProtocolType(protocol).has_value()) {
     LOG(ERROR) << "Unknown multicast protocol type: " << protocol;
@@ -101,8 +87,12 @@ void MulticastCountersService::Start() {
                         "rx_ethernet_" + protocol);
     datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle,
                         "rx_wifi_" + protocol);
+    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                              Iptables::Command::kI, "rx_ethernet_" + protocol,
+                              {});
+    datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                              Iptables::Command::kI, "rx_wifi_" + protocol, {});
   }
-
   std::vector<std::string> args;
   args = {"-d",      kMdnsMcastAddress.ToString(),
           "-p",      "udp",
@@ -160,12 +150,16 @@ void MulticastCountersService::Stop() {
   for (std::string const& protocol : protocols) {
     datapath_->FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
                           "rx_" + protocol);
+    datapath_->FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
+                          "rx_ethernet_" + protocol);
+    datapath_->FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
+                          "rx_wifi_" + protocol);
+    datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
+                           "rx_" + protocol);
     datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
                            "rx_ethernet_" + protocol);
     datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
                            "rx_wifi_" + protocol);
-    datapath_->RemoveChain(IpFamily::kDual, Iptables::Table::kMangle,
-                           "rx_" + protocol);
   }
 }
 
@@ -181,7 +175,20 @@ void MulticastCountersService::OnPhysicalDeviceAdded(
   }
 
   SetupJumpRules(Iptables::Command::kA, device.ifname, technology);
-  interfaces_.push_back({device.ifname, technology});
+}
+
+void MulticastCountersService::OnPhysicalDeviceRemoved(
+    const ShillClient::Device& device) {
+  std::string technology;
+  if (device.type == ShillClient::Device::Type::kWifi) {
+    technology = kTechnologyWifi;
+  } else if (device.type == ShillClient::Device::Type::kEthernet) {
+    technology = kTechnologyEthernet;
+  } else {
+    return;
+  }
+
+  SetupJumpRules(Iptables::Command::kD, device.ifname, technology);
 }
 
 void MulticastCountersService::SetupJumpRules(Iptables::Command command,
@@ -192,24 +199,6 @@ void MulticastCountersService::SetupJumpRules(Iptables::Command command,
     std::string chain = "rx_" + protocol;
     args = {"-i", ifname.data(), "-j",
             base::JoinString({"rx_", technology, "_", protocol}, "")};
-    // Skip adding jump rules when already exist.
-    if (command == Iptables::Command::kA &&
-        datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                  Iptables::Command::kC, chain, args,
-                                  /*log_failures=*/false)) {
-      continue;
-    }
-
-    // Skip deleting jump rules when not exist.
-    if (command == Iptables::Command::kD &&
-        !datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                                   Iptables::Command::kC, chain, args,
-                                   /*log_failures=*/false)) {
-      LOG(WARNING) << "Jump rules does not exist, skip deleting jump rules for "
-                   << ifname;
-      continue;
-    }
-
     if (!datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                    command, chain, args)) {
       LOG(ERROR) << "Failed to add multicast iptables counter rules for "
@@ -270,46 +259,36 @@ bool MulticastCountersService::ParseIptableOutput(
   for (auto it = lines.cbegin(); it != lines.cend(); it++) {
     // Check if a line is chain name line, if not, go to next line.
     std::string protocol;
-    while (it != lines.cend() && !RE2::FullMatch(*it, *kChainLine, &protocol)) {
+    std::string technology;
+    while (it != lines.cend() &&
+           !RE2::FullMatch(*it, *kChainLine, &technology, &protocol)) {
       it++;
     }
     if (it == lines.cend()) {
       break;
     }
-    // If this is the chain we are looking for, parse counter line.
-    if (protocol.empty() || (protocol == "mdns" || protocol == "ssdp")) {
-      if (lines.cend() - it <= 2) {
-        LOG(ERROR) << "Invalid iptables output for " << protocol;
-        return false;
-      }
-      it += 2;
+    if (lines.cend() - it <= 2) {
+      LOG(ERROR) << "Invalid iptables output for " << technology << " : "
+                 << protocol;
+      return false;
+    }
+    it += 2;
 
-      // Checks that there are some counter rules defined.
-      if (it == lines.cend() || it->empty()) {
-        continue;
-      }
+    // Checks that there is counting rule under this chain.
+    if (it == lines.cend() || it->empty()) {
+      LOG(ERROR) << "No counting rule for " << technology << " : " << protocol;
+      return false;
+    }
 
-      // The next block of lines are the counters lines for different
-      // technologies.
-      for (; it != lines.cend() && !it->empty(); it++) {
-        const std::vector<std::string> components = base::SplitString(
-            *it, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    uint64_t packet_count;
+    if (!RE2::FullMatch(*it, *kCounterLine, &packet_count)) {
+      LOG(ERROR) << "Parse counter line failed, counter line is: " << *it;
+      return false;
+    }
 
-        uint64_t packet_count;
-        std::string target;
-        if (!RE2::FullMatch(*it, *kCounterLine, &packet_count, &target)) {
-          LOG(ERROR) << "Parse counter line failed, counter line is: " << *it;
-          return false;
-        }
-
-        auto key = GetCounterKeyFromTargetName(target);
-        if (key) {
-          (*counter)[*key] += packet_count;
-        }
-      }
-      if (it == lines.cend()) {
-        break;
-      }
+    auto key = GetCounterKey(technology, protocol);
+    if (key) {
+      (*counter)[*key] += packet_count;
     }
   }
   return true;
