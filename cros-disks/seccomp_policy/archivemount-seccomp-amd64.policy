@@ -37,7 +37,7 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 ioctl: arg1 == TCGETS
-kill: arg1 == SIGTERM
+kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
 lstat: 1
 madvise: arg2 == MADV_DONTNEED

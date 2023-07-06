@@ -28,8 +28,8 @@ fallocate: 1
 fcntl64: 1
 fstat64: 1
 fstatat64: 1
-fstatfs64: 1
 fstatfs: 1
+fstatfs64: 1
 futex: 1
 futex_time64: 1
 getcwd: 1
@@ -43,7 +43,7 @@ gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == TCGETS
-kill: arg1 == SIGTERM
+kill: arg1 == SIGKILL || arg1 == SIGTERM
 lstat64: 1
 madvise: arg2 == MADV_DONTNEED
 mkdirat: 1
