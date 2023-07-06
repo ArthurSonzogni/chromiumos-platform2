@@ -161,13 +161,13 @@ impl SnapshotDevice {
             .context("Failed to open snapshot device");
         }
 
-        let mut file = OpenOptions::new();
-        let file = match mode {
-            SnapshotMode::Read => file.read(true).write(false),
-            SnapshotMode::Write => file.read(false).write(true),
+        let mut options = OpenOptions::new();
+        let options = match mode {
+            SnapshotMode::Read => options.read(true).write(false),
+            SnapshotMode::Write => options.read(false).write(true),
         };
 
-        let file = file
+        let file = options
             .open(SNAPSHOT_PATH)
             .context("Failed to open snapshot device")?;
 
