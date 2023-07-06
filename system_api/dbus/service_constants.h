@@ -471,6 +471,7 @@ const char kBootstrapCdmFactoryDaemonMojoConnection[] =
 const char kGetFactoryTransportKeyMaterial[] = "GetFactoryTransportKeyMaterial";
 const char kWrapFactoryKeybox[] = "WrapFactoryKeybox";
 const char kGetClientInformation[] = "GetClientInformation";
+const char kGetBootCertificateChain[] = "GetBootCertificateChain";
 }  // namespace cdm_oemcrypto
 
 namespace midis {
