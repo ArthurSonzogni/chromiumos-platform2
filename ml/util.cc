@@ -34,7 +34,7 @@ bool GetValueFromProcStatusValueStr(const std::string& value_str,
   if (split_value_str.size() != 2 || split_value_str[1] != "kB")
     return false;
 
-  return StringToSizeT(split_value_str[0], value);
+  return base::StringToSizeT(split_value_str[0], value);
 }
 
 }  // namespace
