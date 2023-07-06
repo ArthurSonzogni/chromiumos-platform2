@@ -44,3 +44,4 @@ send: 1
 close: 1
 socket: arg0 == AF_UNIX
 connect: 1
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
