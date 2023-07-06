@@ -252,7 +252,7 @@ class Network {
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
   // configuration; and IPv6 address from SLAAC and/or from link protocol.
-  mockable std::vector<IPAddress> GetAddresses() const;
+  mockable std::vector<net_base::IPCIDR> GetAddresses() const;
 
   // Return all (both IPv4 and IPv6) DNS servers configured for the Network.
   mockable std::vector<net_base::IPAddress> GetDNSServers() const;

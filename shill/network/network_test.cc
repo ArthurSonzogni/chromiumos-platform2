@@ -1226,22 +1226,19 @@ class NetworkStartTest : public NetworkTest {
   // Verifies that GetAddresses() returns all configured addresses, in the order
   // of IPv4->IPv6.
   void VerifyGetAddresses(IPConfigType ipv4_type, IPConfigType ipv6_type) {
-    std::vector<IPAddress> expected_result;
+    std::vector<net_base::IPCIDR> expected_result;
     if (ipv4_type != IPConfigType::kNone) {
-      expected_result.push_back(*IPAddress::CreateFromStringAndPrefix(
+      expected_result.push_back(*net_base::IPCIDR::CreateFromStringAndPrefix(
           GetIPPropertiesFromType(ipv4_type).address,
           GetIPPropertiesFromType(ipv4_type).subnet_prefix));
     }
     if (ipv6_type != IPConfigType::kNone) {
-      expected_result.push_back(*IPAddress::CreateFromStringAndPrefix(
+      expected_result.push_back(*net_base::IPCIDR::CreateFromStringAndPrefix(
           GetIPPropertiesFromType(ipv6_type).address,
           GetIPPropertiesFromType(ipv6_type).subnet_prefix));
     }
-    std::vector<IPAddress> result = network_->GetAddresses();
-    ASSERT_EQ(result.size(), expected_result.size());
-    for (size_t i = 0; i < result.size(); i++) {
-      EXPECT_EQ(result[i], expected_result[i]);
-    }
+
+    EXPECT_EQ(network_->GetAddresses(), expected_result);
   }
 
   void VerifyIPTypeReportScheduled(Metrics::IPType type) {

@@ -469,14 +469,15 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   NiceMock<MockNetwork>* CreateMockNetwork(MockDevice* mock_device) {
-    static const IPAddress ip_addr = *IPAddress::CreateFromString("1.2.3.4");
+    static const net_base::IPCIDR ip_addr =
+        *net_base::IPCIDR::CreateFromCIDRString("1.2.3.4/0");
     auto mock_network = std::make_unique<NiceMock<MockNetwork>>(
         mock_device->interface_index(), mock_device->link_name(),
         mock_device->technology());
     auto* mock_network_ptr = mock_network.get();
     EXPECT_CALL(*mock_network, IsConnected()).WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_network, GetAddresses())
-        .WillRepeatedly(Return(std::vector<IPAddress>{ip_addr}));
+        .WillRepeatedly(Return(std::vector<net_base::IPCIDR>{ip_addr}));
     EXPECT_CALL(*mock_network, GetDNSServers())
         .WillRepeatedly(Return(std::vector<net_base::IPAddress>{}));
     mock_device->set_network_for_testing(std::move(mock_network));

@@ -750,11 +750,11 @@ NetworkPriority Network::GetPriority() {
   return priority_;
 }
 
-std::vector<IPAddress> Network::GetAddresses() const {
-  std::vector<IPAddress> result;
+std::vector<net_base::IPCIDR> Network::GetAddresses() const {
+  std::vector<net_base::IPCIDR> result;
   if (slaac_controller_) {
     for (const auto& slaac_addr : slaac_controller_->GetAddresses()) {
-      result.push_back(IPAddress(slaac_addr));
+      result.push_back(net_base::IPCIDR(slaac_addr));
     }
   }
 
@@ -762,8 +762,8 @@ std::vector<IPAddress> Network::GetAddresses() const {
   // backward-compatibility that callers can use result[0] to match legacy
   // local() result.
   const auto insert_addr = [&result](const std::string& addr_str, int prefix) {
-    auto addr = IPAddress::CreateFromStringAndPrefix(addr_str, prefix);
-    if (!addr.has_value()) {
+    auto addr = net_base::IPCIDR::CreateFromStringAndPrefix(addr_str, prefix);
+    if (!addr) {
       LOG(ERROR) << "Invalid IP address: " << addr_str << "/" << prefix;
       return;
     }
@@ -1174,8 +1174,15 @@ void Network::ApplyRoutingPolicy() {
       rfc3442_dsts.push_back(*dst);
     }
   }
+
+  // Convert from std::vector<net_base::IPCIDR> to std::vector<IPAddress>.
+  std::vector<IPAddress> addrs;
+  for (const auto& addr : GetAddresses()) {
+    addrs.push_back(IPAddress(addr));
+  }
+
   network_applier_->ApplyRoutingPolicy(interface_index_, interface_name_,
-                                       technology_, priority_, GetAddresses(),
+                                       technology_, priority_, addrs,
                                        rfc3442_dsts);
 }
 

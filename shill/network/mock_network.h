@@ -55,7 +55,10 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
-  MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const, override));
+  MOCK_METHOD(std::vector<net_base::IPCIDR>,
+              GetAddresses,
+              (),
+              (const, override));
   MOCK_METHOD(std::vector<net_base::IPAddress>,
               GetDNSServers,
               (),

@@ -3079,7 +3079,7 @@ void Cellular::EntitlementCheck(
   }
 
   auto network_addresses = GetPrimaryNetwork()->GetAddresses();
-  if (network_addresses.empty() || !network_addresses[0].ToIPAddress()) {
+  if (network_addresses.empty()) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNoIp);
@@ -3092,7 +3092,7 @@ void Cellular::EntitlementCheck(
 
   entitlement_check_callback_ = std::move(callback);
   // TODO(b/285242955): Use all available addresses instead of only primary one.
-  carrier_entitlement_->Check(*network_addresses[0].ToIPAddress(),
+  carrier_entitlement_->Check(network_addresses[0].address(),
                               GetPrimaryNetwork()->GetDNSServers(),
                               GetPrimaryNetwork()->interface_name(),
                               mobile_operator_info_->entitlement_config());
@@ -3250,13 +3250,16 @@ void Cellular::NetworkInfo::Start() {
 
 void Cellular::NetworkInfo::DestroySockets() {
   for (const auto& address : network_->GetAddresses()) {
+    const IPAddress shill_address(address);
     SLOG(2) << LoggingTag() << ": Destroy all sockets of address: " << address;
     cellular_->rtnl_handler()->RemoveInterfaceAddress(
-        network_->interface_index(), address);
-    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP, address))
+        network_->interface_index(), shill_address);
+    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP,
+                                                      shill_address))
       SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
     // Chrome sometimes binds to UDP sockets, so lets destroy them.
-    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_UDP, address))
+    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_UDP,
+                                                      shill_address))
       SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
   }
   SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
