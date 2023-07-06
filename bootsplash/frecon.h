@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <brillo/files/safe_fd.h>
+
 namespace bootsplash {
 
 class Frecon {
@@ -30,6 +32,7 @@ class Frecon {
 
  private:
   base::FilePath boot_splash_assets_dir_;
+  brillo::SafeFD frecon_vt_;
 };
 
 }  // namespace bootsplash

@@ -4,6 +4,7 @@
 
 #include "bootsplash/paths.h"
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/strings/string_utils.h>
@@ -33,6 +34,11 @@ base::FilePath Get(base::StringPiece file_path) {
     if (base::StartsWith(file_path, "/"))
       file_path.remove_prefix(1);
     return g_test_prefix->Append(file_path);
+  }
+
+  if (base::IsLink(base::FilePath(file_path))) {
+    // Expand symlinks
+    return base::MakeAbsoluteFilePath(base::FilePath(file_path));
   }
   return base::FilePath(file_path);
 }

@@ -51,13 +51,17 @@ TEST_F(FreconTest, Write) {
   std::unique_ptr<bootsplash::Frecon> frecon_ =
       bootsplash::Frecon::Create(false);
 
+  // Record the previous file contents, which will be appended to.
+  std::string prev_file_contents;
+  ASSERT_TRUE(ReadFileToString(frecon_vt_path(), &prev_file_contents));
+
   // Write some new data to the file.
   frecon_->Write("some text");
 
   // Validate the new data was written.
-  std::string freconFileContents;
-  ASSERT_TRUE(ReadFileToString(frecon_vt_path(), &freconFileContents));
-  EXPECT_EQ(freconFileContents, "some text");
+  std::string curr_file_contents;
+  ASSERT_TRUE(ReadFileToString(frecon_vt_path(), &curr_file_contents));
+  EXPECT_EQ(curr_file_contents, prev_file_contents + "some text");
 }
 
 }  // namespace
