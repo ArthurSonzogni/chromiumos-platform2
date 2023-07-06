@@ -212,7 +212,9 @@ class CustomParametersForDev {
   void Apply(base::StringPairs* args);
 
   std::optional<const std::string> ObtainSpecialParameter(
-      const std::string& key);
+      const std::string& key) const;
+  std::vector<const std::string> ObtainSpecialParameters(
+      const std::string& key) const;
 
   // Parameters before crosvm command itself. Useful for adding things like
   // strace.
@@ -234,7 +236,7 @@ class CustomParametersForDev {
   // Command line parameters to 'crosvm run' to add.
   base::StringPairs run_params_to_add_{};
   // Other special handling.
-  std::map<std::string, std::string> special_parameters_{};
+  std::map<std::string, std::vector<const std::string>> special_parameters_{};
   bool initialized_{false};
 };
 

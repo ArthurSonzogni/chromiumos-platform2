@@ -564,7 +564,7 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
         break;
       default:
         // KEY=VALUE pair.
-        special_parameters_.emplace(std::move(key), std::move(value));
+        special_parameters_[std::string(key)].emplace_back(std::move(value));
         break;
     }
   }
@@ -588,13 +588,28 @@ void CustomParametersForDev::Apply(base::StringPairs* args) {
 }
 
 std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
-    const std::string& key) {
+    const std::string& key) const {
   if (!initialized_)
     return std::nullopt;
-  if (special_parameters_.find(key) != special_parameters_.end()) {
-    return special_parameters_[key];
+  if (auto it = special_parameters_.find(key);
+      it != special_parameters_.end()) {
+    DCHECK(it->second.size());
+    return it->second[it->second.size() - 1];
   } else {
     return std::nullopt;
+  }
+}
+
+std::vector<const std::string> CustomParametersForDev::ObtainSpecialParameters(
+    const std::string& key) const {
+  if (!initialized_)
+    return {};
+  if (auto it = special_parameters_.find(key);
+      it != special_parameters_.end()) {
+    DCHECK(it->second.size());
+    return it->second;
+  } else {
+    return {};
   }
 }
 

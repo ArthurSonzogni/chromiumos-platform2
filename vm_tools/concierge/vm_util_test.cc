@@ -153,6 +153,28 @@ KERNEL_PATH=/a/b/c
   EXPECT_THAT(resolved_kernel_path, "/a/b/c");
 }
 
+TEST(CustomParametersForDevTest, KernelWithMultipleCustomLastTakesEffect) {
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  CustomParametersForDev custom(R"(--Key2=Value2
+KERNEL_PATH=/a/b/c
+KERNEL_PATH=/d/e/f
+--Key3=Value3)");
+  custom.Apply(&args);
+  const std::string resolved_kernel_path =
+      custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
+
+  // Just check what order they were parsed
+  const auto kernel_paths = custom.ObtainSpecialParameters("KERNEL_PATH");
+  EXPECT_EQ(kernel_paths[0], "/a/b/c");
+  EXPECT_EQ(kernel_paths[1], "/d/e/f");
+  EXPECT_EQ(kernel_paths.size(), 2);
+
+  base::StringPairs expected{
+      {"--Key1", "Value1"}, {"--Key2", "Value2"}, {"--Key3", "Value3"}};
+  EXPECT_THAT(args, testing::ContainerEq(expected));
+  EXPECT_THAT(resolved_kernel_path, "/d/e/f");
+}
+
 TEST(CustomParametersForDevTest, KernelWithDefault) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(--Key2=Value2
