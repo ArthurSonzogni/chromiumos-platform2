@@ -39,7 +39,6 @@
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
-#include "shill/routing_table.h"
 #include "shill/store/fake_store.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
@@ -135,10 +134,7 @@ class DeviceTest : public testing::Test {
   }
   ~DeviceTest() override = default;
 
-  void SetUp() override {
-    device_->rtnl_handler_ = &rtnl_handler_;
-    RoutingTable::GetInstance()->Start();
-  }
+  void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
   static const char kDeviceName[];

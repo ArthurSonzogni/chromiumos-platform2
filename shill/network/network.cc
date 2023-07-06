@@ -108,6 +108,7 @@ void Network::Start(const Network::StartOptions& opts) {
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
 
+  routing_table_->RegisterDevice(interface_index_, interface_name_);
   EnableARPFiltering();
 
   // If the execution of this function fails, StopInternal() will be called and
@@ -304,6 +305,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       current_ipconfig_change_handler_.Run();
     }
   }
+  routing_table_->DeregisterDevice(interface_index_, interface_name_);
   state_ = State::kIdle;
   connection_ = nullptr;
   network_applier_->Clear(interface_index_);

@@ -21,7 +21,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
@@ -295,7 +294,6 @@ class DeviceInfo {
   std::map<std::string, LinkReadyCallback> pending_links_;
 
   // Cache copy of singleton pointers.
-  RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
   NetlinkManager* netlink_manager_;
 

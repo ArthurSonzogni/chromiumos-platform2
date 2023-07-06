@@ -48,7 +48,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network.h"
 #include "shill/refptr_types.h"
-#include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"

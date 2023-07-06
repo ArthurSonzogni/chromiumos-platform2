@@ -60,7 +60,6 @@
 #include "shill/net/shill_time.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
-#include "shill/routing_table.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
@@ -225,7 +224,6 @@ class DeviceStub : public Device {
 DeviceInfo::DeviceInfo(Manager* manager)
     : manager_(manager),
       device_info_root_(kDeviceInfoRoot),
-      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       netlink_manager_(NetlinkManager::GetInstance()),
       sockets_(new Sockets()),
@@ -317,11 +315,6 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
     metrics_->NotifyDeviceInitialized(device->interface_index());
   } else {
     metrics_->RegisterDevice(device->interface_index(), device->technology());
-  }
-  if (device->technology() != Technology::kBlocked &&
-      device->technology() != Technology::kUnknown) {
-    routing_table_->RegisterDevice(device->interface_index(),
-                                   device->link_name());
   }
   if (IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
@@ -628,7 +621,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
-  bool flush = true;
 
   switch (technology) {
     case Technology::kCellular:
@@ -655,7 +647,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       break;
     case Technology::kArcBridge:
       // Shill doesn't touch the IP configuration for the ARC bridge.
-      flush = false;
       break;
     case Technology::kPPP:
     case Technology::kTunnel:
@@ -710,11 +701,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       // which is useful for testing.
       return new DeviceStub(manager_, link_name, address, interface_index,
                             technology);
-  }
-
-  if (flush) {
-    // Reset the routing table and addresses.
-    routing_table_->FlushRoutes(interface_index);
   }
 
   manager_->UpdateUninitializedTechnologies();
@@ -1146,8 +1132,6 @@ void DeviceInfo::DeregisterDevice(int interface_index) {
   if (iter->second.device.get()) {
     manager_->DeregisterDevice(iter->second.device);
     metrics_->DeregisterDevice(interface_index);
-    routing_table_->DeregisterDevice(iter->second.device->interface_index(),
-                                     iter->second.device->link_name());
   }
   indices_.erase(iter->second.name);
   infos_.erase(iter);

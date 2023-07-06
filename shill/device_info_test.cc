@@ -41,7 +41,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_routing_table.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -104,7 +103,6 @@ class DeviceInfoTest : public Test {
 
   void SetUp() override {
     device_info_.rtnl_handler_ = &rtnl_handler_;
-    device_info_.routing_table_ = &routing_table_;
     device_info_.netlink_manager_ = &netlink_manager_;
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
@@ -181,7 +179,6 @@ class DeviceInfoTest : public Test {
   StrictMock<MockManager> manager_;
   DeviceInfo device_info_;
   EventDispatcherForTest dispatcher_;
-  MockRoutingTable routing_table_;
   MockNetlinkManager netlink_manager_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   MockSockets* mock_sockets_;  // Owned by DeviceInfo.
@@ -418,18 +415,14 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   StrictMock<MockModemInfo> modem_info(nullptr, nullptr);
   EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
   EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kCellular));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
-  // An Ethernet device should cause routes and addresses to be flushed.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   DeviceRefPtr device = CreateDevice(kTestDeviceName, "address",
                                      kTestDeviceIndex, Technology::kEthernet);
   EXPECT_NE(nullptr, device);
-  Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
   // The Ethernet device destructor should not call DeregisterService()
@@ -441,12 +434,10 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
 
 TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   // VirtioEthernet is identical to Ethernet from the perspective of this test.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   DeviceRefPtr device =
       CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                    Technology::kVirtioEthernet);
   EXPECT_NE(nullptr, device);
-  Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 }
 
@@ -470,9 +461,6 @@ MATCHER_P(IsGetInterfaceMessage, index, "") {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
-  // WiFi looks a lot like Ethernet too.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex));
-
   // Set the nl80211 message type to some non-default value.
   Nl80211Message::SetMessageType(1234);
 
@@ -497,7 +485,6 @@ class MockLinkReadyListener {
 };
 
 TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   // Since the device was not expected, DeviceInfo will remove the interface.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(kTestDeviceIndex)).Times(1);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
@@ -508,14 +495,12 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
                                       listener.GetOnceCallback());
   EXPECT_CALL(listener, LinkReadyCallback(kTestDeviceName, kTestDeviceIndex))
       .Times(1);
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kTunnel));
 }
 
 TEST_F(DeviceInfoTest, CreateDevicePPP) {
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   // We do not remove PPP interfaces even if the provider does not accept it.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
@@ -524,7 +509,6 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
 
 TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
   // A loopback device should be brought up, and nothing else done to it.
-  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_CALL(rtnl_handler_,
               SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP))
@@ -536,7 +520,6 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
 TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   // A cdc_ether / cdc_ncm device should be postponed to a task.
   EXPECT_CALL(manager_, modem_info()).Times(0);
-  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_TRUE(GetDelayedDevices().empty());
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
@@ -550,7 +533,6 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
 TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
   // An unknown (blocked, unhandled, etc) device won't be flushed or
   // registered.
-  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_TRUE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                            Technology::kUnknown)
