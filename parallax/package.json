@@ -8,9 +8,7 @@
     "directory": "parallax"
   },
   "scripts": {
-    "build_all": "webpack",
-    "build": "webpack --config-name",
-    "compile": "tsc",
+    "build": "node --trace-warnings ./frontend/build.js",
     "format": "find frontend -iname *.ts | xargs clang-format -i",
     "lint": "eslint frontend"
   },
@@ -29,7 +27,12 @@
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "max-len": ["error", { "ignorePattern": "^import"}],
+      "max-len": [
+        "error",
+        {
+          "ignorePattern": "import"
+        }
+      ],
       "no-unused-vars": "off",
       "prefer-const": "off",
       "valid-jsdoc": [
@@ -43,20 +46,27 @@
     }
   },
   "devDependencies": {
-    "@types/google.visualization": "0.0.68",
-    "@types/jasmine": "4.0.3",
-    "@typescript-eslint/eslint-plugin": "^5.29.0",
-    "@typescript-eslint/parser": "^5.29.0",
-    "css-minimizer-webpack-plugin": "^4.0.0",
-    "eslint": "^8.18.0",
+    "@types/google.visualization": "^0.0.69",
+    "@types/jasmine": "^4.3.1",
+    "@types/uuid": "^9.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.59.6",
+    "@typescript-eslint/parser": "^5.59.6",
+    "argparse": "^2.0.1",
+    "eslint": "^8.40.0",
     "eslint-config-google": "^0.14.0",
-    "html-to-image": "^1.9.0",
-    "html-webpack-plugin": "^5.5.0",
-    "jasmine-core": "^4.1.1",
-    "ts-loader": "^9.3.1",
-    "typescript": "^4.7.4",
-    "webpack": "^5.72.1",
-    "webpack-cli": "^4.9.2"
+    "html-to-image": "^1.11.11",
+    "html2canvas": "^1.4.1",
+    "jasmine": "^4.6.0",
+    "license-checker": "^25.0.1",
+    "node-watch": "^0.7.3",
+    "pug": "^3.0.2",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.4",
+    "uuid": "^9.0.0",
+    "webpack": "^5.83.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "default-passive-events": "^2.0.0",
+    "protobufjs": "^7.2.3"
+  }
 }
