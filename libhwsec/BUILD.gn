@@ -253,6 +253,8 @@ proto_library("oobe_config_encrypted_data_proto") {
 source_set("hardware_abstraction_internal_library") {
   sources = [
     "backend/digest_algorithms.cc",
+    "backend/pinweaver_manager/persistent_lookup_table.cc",
+    "backend/pinweaver_manager/sign_in_hash_tree.cc",
     "error/tpm_retry_handler.cc",
     "frontend/arc_attestation/frontend_impl.cc",
     "frontend/attestation/frontend_impl.cc",
@@ -340,7 +342,10 @@ source_set("hardware_abstraction_internal_library") {
   }
 
   public_deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
-  deps = [ ":oobe_config_encrypted_data_proto" ]
+  deps = [
+    ":oobe_config_encrypted_data_proto",
+    ":pinweaver_manager_proto",
+  ]
 }
 
 shared_library("libhwsec") {
@@ -501,6 +506,8 @@ if (use.test) {
     }
     if (use.tpm2 || use.test) {
       sources += [
+        "backend/pinweaver_manager/persistent_lookup_table_test.cc",
+        "backend/pinweaver_manager/sign_in_hash_tree_test.cc",
         "backend/tpm2/attestation_test.cc",
         "backend/tpm2/backend_test_base.cc",
         "backend/tpm2/config_test.cc",
@@ -526,4 +533,10 @@ if (use.test) {
       libs = [ "trunks_test" ]
     }
   }
+}
+
+proto_library("pinweaver_manager_proto") {
+  proto_in_dir = "backend/pinweaver_manager"
+  proto_out_dir = "include/libhwsec"
+  sources = [ "${proto_in_dir}/hash_tree_leaf_data.proto" ]
 }
