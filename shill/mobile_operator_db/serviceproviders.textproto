@@ -9537,6 +9537,7 @@ mno {
       name : "NL KPN"
     }
     mccmnc : "20408"
+    tethering_allowed: true
     mobile_apn {
       apn : "internet"
       ip_type: IPV4V6
