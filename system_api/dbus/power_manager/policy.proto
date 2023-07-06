@@ -306,7 +306,10 @@ message PowerManagementPolicy {
   // supported if Adaptive Charging is supported.
   optional bool charge_limit_enabled = 31;
 
-  // Next value to use: 32
+  // The minimum duration in system sleep before transitioning to hibernate.
+  optional uint32 hibernate_delay_sec = 32;
+
+  // Next value to use: 33
 }
 
 // Message included in IdleActionImminent signals.
