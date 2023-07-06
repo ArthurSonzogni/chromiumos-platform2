@@ -120,6 +120,11 @@ TEST(IPAddressTest, OperatorCmp) {
   }
 }
 
+TEST(IPAddressTest, GetAddressLength) {
+  EXPECT_EQ(IPAddress(IPFamily::kIPv4).GetAddressLength(), 4);
+  EXPECT_EQ(IPAddress(IPFamily::kIPv6).GetAddressLength(), 16);
+}
+
 TEST(IPCIDR, CreateFromCIDRString) {
   const auto cidr1 = IPCIDR::CreateFromCIDRString("192.168.10.1/25");
   ASSERT_TRUE(cidr1);

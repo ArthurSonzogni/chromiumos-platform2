@@ -72,6 +72,9 @@ class NET_BASE_EXPORT IPAddress {
   // Returns the family of the IP address.
   IPFamily GetFamily() const;
 
+  // Returns the length in bytes of the address.
+  size_t GetAddressLength() const;
+
   // Converts to the family-specific classes. Returns std::nullopt if the IP
   // family is not the same.
   std::optional<IPv4Address> ToIPv4Address() const;
