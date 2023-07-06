@@ -116,6 +116,13 @@ enum RealtekVndcmdSARBand {
   REALTEK_VNDCMD_ATTR_SAR_BAND_5g_4 = 4,
 };
 
+enum Rtw88SARBand {
+  kRtw88SarBand2g = 0,
+  kRtw88SarBand5g1 = 1,
+  kRtw88SarBand5g3 = 2,
+  kRtw88SarBand5g4 = 3,
+};
+
 enum Rtw89SARBand {
   kRtw89SarBand2g = 0,
   kRtw89SarBand5g1 = 1,
@@ -231,8 +238,9 @@ std::vector<std::string> GetWirelessDeviceNames() {
 // Returns a vector of tx power limits for mode |tablet|.
 // If the board does not store power limits for rtw88 driver in chromeos-config,
 // the function will fail.
-std::map<enum RealtekVndcmdSARBand, uint8_t> GetRtw88ChromeosConfigPowerTable(
-    bool tablet, power_manager::WifiRegDomain domain) {
+std::map<enum RealtekVndcmdSARBand, uint8_t>
+GetRtw88VndChromeosConfigPowerTable(bool tablet,
+                                    power_manager::WifiRegDomain domain) {
   std::map<enum RealtekVndcmdSARBand, uint8_t> power_table = {};
   auto config = std::make_unique<brillo::CrosConfig>();
   std::string wifi_power_table_path =
@@ -296,6 +304,85 @@ std::map<enum RealtekVndcmdSARBand, uint8_t> GetRtw88ChromeosConfigPowerTable(
   CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
                                      "value cannot exceed 255.";
   power_table[REALTEK_VNDCMD_ATTR_SAR_BAND_5g_4] = power_limit;
+
+  return power_table;
+}
+
+// Returns a vector of tx power limits for mode |tablet|.
+// If the board does not store power limits for rtw88 driver in chromeos-config,
+// the function will fail.
+std::map<enum Rtw88SARBand, uint8_t> GetRtw88ChromeosConfigPowerTable(
+    bool tablet, power_manager::WifiRegDomain domain) {
+  std::map<enum Rtw88SARBand, uint8_t> power_table = {};
+  auto config = std::make_unique<brillo::CrosConfig>();
+  std::string wifi_power_table_path =
+      tablet ? "/wifi/tablet-mode-power-table-rtw"
+             : "/wifi/non-tablet-mode-power-table-rtw";
+  std::string wifi_geo_offsets_path;
+  switch (domain) {
+    case power_manager::WifiRegDomain::FCC:
+      wifi_geo_offsets_path = "/wifi/geo-offsets-fcc";
+      break;
+    case power_manager::WifiRegDomain::EU:
+      wifi_geo_offsets_path = "/wifi/geo-offsets-eu";
+      break;
+    case power_manager::WifiRegDomain::REST_OF_WORLD:
+      wifi_geo_offsets_path = "/wifi/geo-offsets-rest-of-world";
+      break;
+    case power_manager::WifiRegDomain::NONE:
+      break;
+  }
+
+  int offset_2g = 0, offset_5g = 0;
+  if (domain != power_manager::WifiRegDomain::NONE) {
+    std::string offset_string;
+    if (config->GetString(wifi_geo_offsets_path, "offset-2g", &offset_string)) {
+      offset_2g = std::stoi(offset_string);
+    }
+    if (config->GetString(wifi_geo_offsets_path, "offset-5g", &offset_string)) {
+      offset_5g = std::stoi(offset_string);
+    }
+  }
+
+  std::string value;
+  int power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-2g", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_2g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw88SarBand2g] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-1", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw88SarBand5g1] = power_limit;
+
+  // Rtw88 driver does not support 5g band 2, so skip it.
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-3", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw88SarBand5g3] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-4", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw88SarBand5g4] = power_limit;
+
+  // The table values are based on units for the vendor command, which is
+  // 0.125 dBm, while the common SAR API expects 0.25 dBm. Since the tables
+  // likely won't be updated and need to continue to work, we have to scale
+  // the values here.
+  for (auto& [_, value] : power_table)
+    value /= 2;
 
   return power_table;
 }
@@ -489,12 +576,12 @@ void FillMessageIwl(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_nest_end(msg, limits)) << "Failed in nla_nest_end";
 }
 
-// Fill in nl80211 message for the rtw88 driver.
-// TODO(b/211772409): Support common SAR API for rtw88. Note that rtw89 already
-// does (see below).
-void FillMessageRtw88(struct nl_msg* msg,
-                      bool tablet,
-                      power_manager::WifiRegDomain domain) {
+// Fill in nl80211 vendor command message for the rtw88 driver.
+// This supports the legacy vendor command method.
+// This is kept around to work with older kernels.
+void FillMessageRtw88Vnd(struct nl_msg* msg,
+                         bool tablet,
+                         power_manager::WifiRegDomain domain) {
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, REALTEK_OUI))
       << "Failed to put NL80211_ATTR_VENDOR_ID";
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
@@ -505,7 +592,8 @@ void FillMessageRtw88(struct nl_msg* msg,
       nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA | NLA_F_NESTED);
   struct nlattr* rules =
       nla_nest_start(msg, REALTEK_VNDCMD_ATTR_SAR_RULES | NLA_F_NESTED);
-  for (const auto& limit : GetRtw88ChromeosConfigPowerTable(tablet, domain)) {
+  for (const auto& limit :
+       GetRtw88VndChromeosConfigPowerTable(tablet, domain)) {
     struct nlattr* rule = nla_nest_start(msg, 1 | NLA_F_NESTED);
     CHECK(rule) << "Failed in nla_nest_start";
     CHECK(!nla_put_u32(msg, REALTEK_VNDCMD_ATTR_SAR_BAND, limit.first))
@@ -516,6 +604,31 @@ void FillMessageRtw88(struct nl_msg* msg,
   }
   CHECK(!nla_nest_end(msg, rules)) << "Failed in nla_nest_end";
   CHECK(!nla_nest_end(msg, vendor_cmd)) << "Failed in nla_nest_end";
+}
+
+// Fill in nl80211 message for the rtw88 driver.
+void FillMessageRtw88(struct nl_msg* msg,
+                      bool tablet,
+                      power_manager::WifiRegDomain domain) {
+  struct nlattr* sar_capa =
+      nla_nest_start(msg, NL80211_ATTR_SAR_SPEC | NLA_F_NESTED);
+  nla_put_u32(msg, NL80211_SAR_ATTR_TYPE, NL80211_SAR_TYPE_POWER);
+  struct nlattr* specs =
+      nla_nest_start(msg, NL80211_SAR_ATTR_SPECS | NLA_F_NESTED);
+  int i = 0;
+
+  for (const auto& limit : GetRtw88ChromeosConfigPowerTable(tablet, domain)) {
+    struct nlattr* sub_freq_range = nla_nest_start(msg, ++i | NLA_F_NESTED);
+    CHECK(sub_freq_range) << "Failed to execute nla_nest_start";
+    CHECK(!nla_put_u32(msg, NL80211_SAR_ATTR_SPECS_RANGE_INDEX, limit.first))
+        << "Failed to put frequency index";
+    CHECK(!nla_put_s32(msg, NL80211_SAR_ATTR_SPECS_POWER, limit.second))
+        << "Failed to put band power";
+    CHECK(!nla_nest_end(msg, sub_freq_range)) << "Failed in nla_nest_end";
+  }
+
+  CHECK(!nla_nest_end(msg, specs)) << "Failed in nla_nest_end";
+  CHECK(!nla_nest_end(msg, sar_capa)) << "Failed in nla_nest_end";
 }
 
 // Fill in nl80211 message for the rtw89 driver.
@@ -773,7 +886,8 @@ class PowerSetter {
                       bool tablet,
                       power_manager::WifiRegDomain domain,
                       power_manager::TriggerSource tr_source,
-                      int attempt = 0) {
+                      int attempt = 0,
+                      bool rtw88_use_vendor_cmd = false) {
     const uint32_t index = if_nametoindex(dev_name.c_str());
     if (!index) {
       LOG(ERROR) << "Failed to find wireless device index for " << dev_name;
@@ -795,6 +909,7 @@ class PowerSetter {
     // TODO(b/172377638): Use common API for all platforms and fallback to
     // vendor API if common API is not supported.
     if (driver == WirelessDriver::ATH10K || driver == WirelessDriver::MTK ||
+        (driver == WirelessDriver::RTW88 && !rtw88_use_vendor_cmd) ||
         driver == WirelessDriver::RTW89)
       genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id_, 0, 0,
                   NL80211_CMD_SET_SAR_SPECS, 0);
@@ -823,7 +938,10 @@ class PowerSetter {
         FillMessageIwl(msg, tablet);
         break;
       case WirelessDriver::RTW88:
-        FillMessageRtw88(msg, tablet, domain);
+        if (rtw88_use_vendor_cmd)
+          FillMessageRtw88Vnd(msg, tablet, domain);
+        else
+          FillMessageRtw88(msg, tablet, domain);
         break;
       case WirelessDriver::RTW89:
         FillMessageRtw89(msg, tablet, domain);
@@ -843,6 +961,15 @@ class PowerSetter {
     err_ = 1;
     while (err_ > 0)
       nl_recvmsgs(nl_sock_, cb_);
+
+    // rtw88 driver on older kernels only support a vendor command, while
+    // on newer kernels support the common SAR API. Fall back to the vendor
+    // command if the common SAR API method failed.
+    if (driver == WirelessDriver::RTW88 && err_ == -EOPNOTSUPP &&
+        !rtw88_use_vendor_cmd) {
+      return SendModeSwitch(dev_name, tablet, domain, tr_source, ++attempt,
+                            /* rtw88_use_vendor_cmd= */ true);
+    }
 
     // Mediatek chips have a command queue. It's possible that this is full
     // when the request to change modes was sent. This should not be a fatal
