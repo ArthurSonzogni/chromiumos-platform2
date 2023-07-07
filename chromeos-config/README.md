@@ -1027,17 +1027,47 @@ In the tables below,
 ### ac
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| vm-boot-power-preferences | [vm-boot-power-preferences](#vm_boot_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| vm-boot-power-preferences | [vm-boot-power-preferences](#vm_boot_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 
 ### arcvm-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1078,7 +1108,37 @@ In the tables below,
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1119,7 +1179,37 @@ In the tables below,
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1160,7 +1250,37 @@ In the tables below,
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1201,7 +1321,37 @@ In the tables below,
 ### vm-boot-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1242,7 +1392,37 @@ In the tables below,
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1283,17 +1463,47 @@ In the tables below,
 ### dc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| vm-boot-power-preferences | [vm-boot-power-preferences](#vm_boot_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| vm-boot-power-preferences | [vm-boot-power-preferences](#vm_boot_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 
 ### arcvm-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1334,7 +1544,37 @@ In the tables below,
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1375,7 +1615,37 @@ In the tables below,
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1416,7 +1686,37 @@ In the tables below,
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1457,7 +1757,37 @@ In the tables below,
 ### vm-boot-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1498,7 +1828,37 @@ In the tables below,
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

@@ -344,7 +344,8 @@ typeDefs:
     additionalProperties: false
   resourced_power_preferences: &resourced_power_preferences
     type: object
-    description: For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md
+    description: For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md;
+      For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html
     properties:
       governor:
         type: object
@@ -366,6 +367,20 @@ typeDefs:
               schedutil:
                 type: object
               userspace:
+                type: object
+      epp:
+        type: object
+        oneOf:
+          - properties:
+              default:
+                type: object
+              performance:
+                type: object
+              balance-performance:
+                type: object
+              balance-power:
+                type: object
+              power:
                 type: object
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
