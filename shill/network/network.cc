@@ -1098,8 +1098,8 @@ std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
     const net_base::IPAddress& gateway,
     const std::vector<std::string>& dns_list) {
   return std::make_unique<ConnectionDiagnostics>(
-      interface_name(), interface_index(), IPAddress(ip_address),
-      IPAddress(gateway), dns_list, dispatcher_, metrics_, base::DoNothing());
+      interface_name(), interface_index(), ip_address, gateway, dns_list,
+      dispatcher_, metrics_, base::DoNothing());
 }
 
 void Network::StartConnectivityTest(

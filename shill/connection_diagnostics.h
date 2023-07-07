@@ -15,9 +15,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
+#include <net-base/ip_address.h>
 
 #include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 
 namespace shill {
 
@@ -125,8 +125,8 @@ class ConnectionDiagnostics {
 
   ConnectionDiagnostics(std::string iface_name,
                         int iface_index,
-                        const IPAddress& ip_address,
-                        const IPAddress& gateway,
+                        const net_base::IPAddress& ip_address,
+                        const net_base::IPAddress& gateway,
                         const std::vector<std::string>& dns_list,
                         EventDispatcher* dispatcher,
                         Metrics* metrics,
@@ -175,7 +175,7 @@ class ConnectionDiagnostics {
 
   // Starts an IcmpSession with |address|. Called when we want to ping the
   // target web server or local gateway.
-  void PingHost(const IPAddress& address);
+  void PingHost(const net_base::IPAddress& address);
 
   // Called after each IcmpSession started in
   // ConnectionDiagnostics::PingDNSServers finishes or times out. The DNS server
@@ -196,7 +196,7 @@ class ConnectionDiagnostics {
   // type of ping that was started (gateway or target web server), and |result|
   // is the result of the IcmpSession.
   void OnPingHostComplete(Type ping_event_type,
-                          const IPAddress& address_pinged,
+                          const net_base::IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
   // Utility function that returns true iff the event in |diagnostic_events_|
@@ -215,9 +215,9 @@ class ConnectionDiagnostics {
   // The index of the network interface associated with the connection.
   int iface_index_;
   // The IP address of the network interface to use for the diagnostic.
-  IPAddress ip_address_;
+  net_base::IPAddress ip_address_;
   // The IP address of the gateway.
-  IPAddress gateway_;
+  net_base::IPAddress gateway_;
   std::vector<std::string> dns_list_;
 
   std::unique_ptr<DnsClient> dns_client_;

@@ -116,14 +116,15 @@ IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
 class MockConnectionDiagnostics : public ConnectionDiagnostics {
  public:
   MockConnectionDiagnostics()
-      : ConnectionDiagnostics(kTestIfname,
-                              kTestIfindex,
-                              *IPAddress::CreateFromString(kIPv4DHCPAddress),
-                              *IPAddress::CreateFromString(kIPv4DHCPGateway),
-                              {kIPv4DHCPNameServer},
-                              nullptr,
-                              nullptr,
-                              base::DoNothing()) {}
+      : ConnectionDiagnostics(
+            kTestIfname,
+            kTestIfindex,
+            *net_base::IPAddress::CreateFromString(kIPv4DHCPAddress),
+            *net_base::IPAddress::CreateFromString(kIPv4DHCPGateway),
+            {kIPv4DHCPNameServer},
+            nullptr,
+            nullptr,
+            base::DoNothing()) {}
   MockConnectionDiagnostics(const MockConnectionDiagnostics&) = delete;
   MockConnectionDiagnostics& operator=(const MockConnectionDiagnostics&) =
       delete;

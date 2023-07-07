@@ -100,8 +100,8 @@ const int ConnectionDiagnostics::kMaxDNSRetries = 2;
 ConnectionDiagnostics::ConnectionDiagnostics(
     std::string iface_name,
     int iface_index,
-    const IPAddress& ip_address,
-    const IPAddress& gateway,
+    const net_base::IPAddress& ip_address,
+    const net_base::IPAddress& gateway,
     const std::vector<std::string>& dns_list,
     EventDispatcher* dispatcher,
     Metrics* metrics,
@@ -119,8 +119,8 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       result_callback_(std::move(result_callback)),
       weak_ptr_factory_(this) {
   dns_client_.reset(new DnsClient(
-      ip_address.family(), iface_name, DnsClient::kDnsTimeoutMilliseconds,
-      dispatcher_,
+      net_base::ToSAFamily(ip_address_.GetFamily()), iface_name,
+      DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
       base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
                           weak_ptr_factory_.GetWeakPtr())));
   for (size_t i = 0; i < dns_list_.size(); i++) {
@@ -239,8 +239,9 @@ void ConnectionDiagnostics::PingDNSServers() {
     // attempting to ping the other DNS servers rather than failing. We only
     // need to successfully ping a single DNS server to decide whether or not
     // DNS servers can be reached.
-    const auto dns_server_ip_addr = IPAddress::CreateFromString(dns_list_[i]);
-    if (!dns_server_ip_addr.has_value()) {
+    const auto dns_server_ip_addr =
+        net_base::IPAddress::CreateFromString(dns_list_[i]);
+    if (!dns_server_ip_addr) {
       LOG(ERROR) << iface_name_
                  << ": could not parse DNS server IP address from string";
       ++num_invalid_dns_server_addr;
@@ -253,7 +254,7 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
 
     if (!session_iter->second->Start(
-            *dns_server_ip_addr, iface_index_,
+            IPAddress(*dns_server_ip_addr), iface_index_,
             base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
                            weak_ptr_factory_.GetWeakPtr(), i))) {
       LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
@@ -281,13 +282,13 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 }
 
-void ConnectionDiagnostics::PingHost(const IPAddress& address) {
+void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
   SLOG(2) << __func__;
 
-  Type event_type =
-      address.Equals(gateway_) ? kTypePingGateway : kTypePingTargetServer;
+  const Type event_type =
+      (address == gateway_) ? kTypePingGateway : kTypePingTargetServer;
   if (!icmp_session_->Start(
-          address, iface_index_,
+          IPAddress(address), iface_index_,
           base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
                          weak_ptr_factory_.GetWeakPtr(), event_type,
                          address))) {
@@ -368,9 +369,8 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
                         "Target address is " + address->ToString());
     dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ConnectionDiagnostics::PingHost,
-                       weak_ptr_factory_.GetWeakPtr(), IPAddress(*address)));
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                  weak_ptr_factory_.GetWeakPtr(), *address));
   } else if (address.error().type() == Error::kOperationTimeout) {
     AddEventWithMessage(
         kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
@@ -387,7 +387,7 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
 
 void ConnectionDiagnostics::OnPingHostComplete(
     Type ping_event_type,
-    const IPAddress& address_pinged,
+    const net_base::IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
   SLOG(2) << __func__;
 

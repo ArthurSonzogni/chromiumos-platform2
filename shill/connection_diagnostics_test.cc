@@ -12,6 +12,7 @@
 
 #include <base/time/time.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
 
 #include "shill/icmp_session.h"
 #include "shill/manager.h"
@@ -44,16 +45,18 @@ const std::vector<std::string> kIPv6DnsList{
     "2001:4860:4860::8844",
 };
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
-const auto kIPv4DeviceAddress = *IPAddress::CreateFromString("100.200.43.22");
+const auto kIPv4DeviceAddress =
+    *net_base::IPAddress::CreateFromString("100.200.43.22");
 const auto kIPv6DeviceAddress =
-    *IPAddress::CreateFromString("2001:db8::3333:4444:5555");
-const auto kIPv4ServerAddress = *IPAddress::CreateFromString("8.8.8.8");
+    *net_base::IPAddress::CreateFromString("2001:db8::3333:4444:5555");
+const auto kIPv4ServerAddress =
+    *net_base::IPAddress::CreateFromString("8.8.8.8");
 const auto kIPv6ServerAddress =
-    *IPAddress::CreateFromString("fe80::1aa9:5ff:7ebf:14c5");
-const auto kIPv4GatewayAddress = *IPAddress::CreateFromString("192.168.1.1");
+    *net_base::IPAddress::CreateFromString("fe80::1aa9:5ff:7ebf:14c5");
+const auto kIPv4GatewayAddress =
+    *net_base::IPAddress::CreateFromString("192.168.1.1");
 const auto kIPv6GatewayAddress =
-    *IPAddress::CreateFromString("fee2::11b2:53f:13be:125e");
-const auto kIPv4ZeroAddress = *IPAddress::CreateFromString("0.0.0.0");
+    *net_base::IPAddress::CreateFromString("fee2::11b2:53f:13be:125e");
 const std::vector<base::TimeDelta> kEmptyResult;
 const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
 }  // namespace
@@ -125,8 +128,7 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
 class ConnectionDiagnosticsTest : public Test {
  public:
   ConnectionDiagnosticsTest()
-      : ip_address_(kIPv4DeviceAddress),
-        gateway_(kIPv4GatewayAddress),
+      : gateway_(kIPv4GatewayAddress),
         dns_list_(kIPv4DnsList),
         connection_diagnostics_(kInterfaceName,
                                 kInterfaceIndex,
@@ -140,11 +142,11 @@ class ConnectionDiagnosticsTest : public Test {
   ~ConnectionDiagnosticsTest() override = default;
 
   void SetUp() override {
-    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4DeviceAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4ServerAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4GatewayAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6ServerAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6GatewayAddress.family());
+    ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4DeviceAddress.GetFamily());
+    ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4ServerAddress.GetFamily());
+    ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4GatewayAddress.GetFamily());
+    ASSERT_EQ(net_base::IPFamily::kIPv6, kIPv6ServerAddress.GetFamily());
+    ASSERT_EQ(net_base::IPFamily::kIPv6, kIPv6GatewayAddress.GetFamily());
 
     dns_client_ = new NiceMock<MockDnsClient>();
     icmp_session_ = new NiceMock<MockIcmpSession>(&dispatcher_);
@@ -174,10 +176,9 @@ class ConnectionDiagnosticsTest : public Test {
   };
 
   CallbackTarget& callback_target() { return callback_target_; }
-  const IPAddress& gateway() { return gateway_; }
+  net_base::IPAddress gateway() { return gateway_; }
 
   void UseIPv6() {
-    ip_address_ = kIPv6DeviceAddress;
     gateway_ = kIPv6GatewayAddress;
     dns_list_ = kIPv6DnsList;
     connection_diagnostics_.ip_address_ = kIPv6DeviceAddress;
@@ -263,12 +264,10 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(1, kEmptyResult);
   }
 
-  void ExpectResolveTargetServerIPAddressStartSuccess(
-      IPAddress::Family family) {
+  void ExpectResolveTargetServerIPAddressStartSuccess() {
     AddExpectedEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    ASSERT_FALSE(family == IPAddress::kFamilyUnknown);
     EXPECT_CALL(
         *dns_client_,
         Start(dns_list_, connection_diagnostics_.target_url_->host(), _))
@@ -277,7 +276,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
-      const IPAddress& resolved_address) {
+      const net_base::IPAddress& resolved_address) {
     ExpectResolveTargetServerIPAddressEnd(ConnectionDiagnostics::kResultSuccess,
                                           resolved_address);
   }
@@ -285,28 +284,30 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectResolveTargetServerIPAddressEndTimeout() {
     ExpectResolveTargetServerIPAddressEnd(
         ConnectionDiagnostics::kResultTimeout,
-        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4));
+        net_base::IPAddress(net_base::IPFamily::kIPv4));
   }
 
   void ExpectResolveTargetServerIPAddressEndFailure() {
     ExpectResolveTargetServerIPAddressEnd(
         ConnectionDiagnostics::kResultFailure,
-        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4));
+        net_base::IPAddress(net_base::IPFamily::kIPv4));
   }
 
   void ExpectPingHostStartSuccess(ConnectionDiagnostics::Type ping_event_type,
-                                  const IPAddress& address) {
+                                  const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(*icmp_session_, Start(IPAddress(address), _, _))
+        .WillOnce(Return(true));
     connection_diagnostics_.PingHost(address);
   }
 
   void ExpectPingHostStartFailure(ConnectionDiagnostics::Type ping_event_type,
-                                  const IPAddress& address) {
+                                  const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(false));
+    EXPECT_CALL(*icmp_session_, Start(IPAddress(address), _, _))
+        .WillOnce(Return(false));
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueInternalError));
     EXPECT_CALL(callback_target(),
@@ -316,7 +317,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectPingHostEndSuccess(ConnectionDiagnostics::Type ping_event_type,
-                                const IPAddress& address) {
+                                const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultSuccess);
     const auto& issue =
@@ -331,7 +332,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectPingHostEndFailure(ConnectionDiagnostics::Type ping_event_type,
-                                const IPAddress& address) {
+                                const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
     // If the ping destination was not the gateway, the next action is to try
@@ -402,7 +403,8 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectResolveTargetServerIPAddressEnd(
-      ConnectionDiagnostics::Result result, const IPAddress& resolved_address) {
+      ConnectionDiagnostics::Result result,
+      const net_base::IPAddress& resolved_address) {
     AddExpectedEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                      ConnectionDiagnostics::kPhaseEnd, result);
     Error error;
@@ -422,10 +424,8 @@ class ConnectionDiagnosticsTest : public Test {
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
                          IsEventList(expected_events_)));
     }
-
     if (error.IsSuccess()) {
-      connection_diagnostics_.OnDNSResolutionComplete(
-          *resolved_address.ToIPAddress());
+      connection_diagnostics_.OnDNSResolutionComplete(resolved_address);
     } else {
       connection_diagnostics_.OnDNSResolutionComplete(base::unexpected(error));
     }
@@ -462,8 +462,7 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
   }
 
-  IPAddress ip_address_;
-  IPAddress gateway_;
+  net_base::IPAddress gateway_;
   std::vector<std::string> dns_list_;
   CallbackTarget callback_target_;
   NiceMock<MockMetrics> metrics_;
@@ -530,7 +529,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   // DNS resolution succeeds, and we attempt to ping the target web server but
   // fail because of an internal error.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartFailure(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -540,7 +539,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
 TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure) {
   // DNS resolution fails (not timeout), so we end diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndFailure();
   VerifyStopped();
 }
@@ -569,11 +568,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_1) {
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessNoRetriesLeft();
@@ -585,11 +584,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_2) {
   // times out again, pinging DNS servers succeeds. End diagnostics because we
   // have no more DNS retries left.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessNoRetriesLeft();
@@ -600,7 +599,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
   // DNS resolution succeeds, and pinging the resolved IP address succeeds, so
   // we end diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -615,7 +614,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -629,11 +628,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   // succeeds, and pinging the resolved IP address succeeds, so we end
   // diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -647,7 +646,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   // successfully get route for the IP address. This address is remote, so ping
   // the local gateway and succeed, so we end diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -665,7 +664,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   UseIPv6();
 
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv6ServerAddress);
@@ -685,7 +684,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectSuccessfulStart();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
                            kIPv4ServerAddress);
@@ -701,11 +700,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
   // route for the IP address. This address is remote, so ping the local
   // gateway. The ping succeeds, so we end diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndTimeout();
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
@@ -721,7 +720,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
   // DNS resolution succeeds, pinging the resolved IP address fails. Pinging
   // the gateway also fails, so we end diagnostics.
   ExpectSuccessfulStart();
-  ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
+  ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
                              kIPv4ServerAddress);
