@@ -1032,7 +1032,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
 }
 
-TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabaseNotAdded) {
+// TODO(b/290389988): Flaky test
+TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
   // Create files to request sources by inodes.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
