@@ -464,7 +464,7 @@ void DelegateImpl::MonitorPowerButton(
       std::make_unique<EvdevPowerButtonObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevUtil(std::move(delegate));
+  new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
 }
 
 void DelegateImpl::RunPrimeSearch(uint32_t duration_sec,
