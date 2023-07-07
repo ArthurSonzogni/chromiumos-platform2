@@ -146,7 +146,7 @@ class PortalDetectorTest : public Test {
   }
 
   bool StartPortalRequest(base::TimeDelta delay = base::TimeDelta()) {
-    if (!portal_detector_->Start(kInterfaceName, IPAddress::kFamilyIPv4,
+    if (!portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
                                  {kDNSServer0, kDNSServer1}, "tag", delay)) {
       return false;
     }
@@ -155,7 +155,7 @@ class PortalDetectorTest : public Test {
   }
 
   bool RestartPortalRequest() {
-    if (!portal_detector_->Restart(kInterfaceName, IPAddress::kFamilyIPv4,
+    if (!portal_detector_->Restart(kInterfaceName, net_base::IPFamily::kIPv4,
                                    {kDNSServer0, kDNSServer1}, "tag")) {
       return false;
     }

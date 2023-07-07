@@ -948,8 +948,7 @@ bool Network::StartPortalDetection(bool reset) {
   }
 
   portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(interface_name_,
-                               net_base::ToSAFamily(local_address->GetFamily()),
+  if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
                                dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
     portal_detector_.reset();
@@ -977,9 +976,8 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  if (!portal_detector_->Restart(
-          interface_name_, net_base::ToSAFamily(local_address->GetFamily()),
-          dns_servers(), logging_tag_)) {
+  if (!portal_detector_->Restart(interface_name_, local_address->GetFamily(),
+                                 dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;
@@ -1115,9 +1113,9 @@ void Network::StartConnectivityTest(
     LOG(DFATAL) << logging_tag_ << ": Does not have a valid address";
     return;
   }
-  if (connectivity_test_portal_detector_->Start(
-          interface_name_, net_base::ToSAFamily(local_address->GetFamily()),
-          dns_servers(), logging_tag_)) {
+  if (connectivity_test_portal_detector_->Start(interface_name_,
+                                                local_address->GetFamily(),
+                                                dns_servers(), logging_tag_)) {
     LOG(WARNING) << logging_tag_ << ": Failed to start connectivity test";
   } else {
     LOG(INFO) << logging_tag_ << ": Started connectivity test";

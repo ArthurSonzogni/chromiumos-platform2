@@ -74,7 +74,7 @@ const std::string& PortalDetector::PickProbeUrl(
 }
 
 bool PortalDetector::Restart(const std::string& ifname,
-                             const IPAddress::Family ip_family,
+                             net_base::IPFamily ip_family,
                              const std::vector<std::string>& dns_list,
                              const std::string& logging_tag) {
   auto next_delay = GetNextAttemptDelay();
@@ -87,11 +87,11 @@ bool PortalDetector::Restart(const std::string& ifname,
 }
 
 bool PortalDetector::Start(const std::string& ifname,
-                           const IPAddress::Family ip_family,
+                           net_base::IPFamily ip_family,
                            const std::vector<std::string>& dns_list,
                            const std::string& logging_tag,
                            base::TimeDelta delay) {
-  logging_tag_ = logging_tag + " " + IPAddress::GetAddressFamilyName(ip_family);
+  logging_tag_ = logging_tag + " " + net_base::ToString(ip_family);
 
   SLOG(this, 3) << "In " << __func__;
 
@@ -119,13 +119,14 @@ bool PortalDetector::Start(const std::string& ifname,
   attempt_count_++;
   // TODO(hugobenichi) Network properties like src address and DNS should be
   // obtained exactly at the time that the trial starts if |delay| > 0.
-  http_request_ =
-      std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list);
+  http_request_ = std::make_unique<HttpRequest>(
+      dispatcher_, ifname, net_base::ToSAFamily(ip_family), dns_list);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
   bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
   https_request_ = std::make_unique<HttpRequest>(
-      dispatcher_, ifname, ip_family, dns_list, allow_non_google_https);
+      dispatcher_, ifname, net_base::ToSAFamily(ip_family), dns_list,
+      allow_non_google_https);
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
                               weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
