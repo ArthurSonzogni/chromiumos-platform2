@@ -11,23 +11,38 @@
 
 #include <libsegmentation/feature_management.h>
 
+#include "rmad/system/tpm_manager_client.h"
+#include "rmad/utils/gsc_utils.h"
+
 namespace rmad {
 
 class SegmentationUtilsImpl : public SegmentationUtils {
  public:
-  SegmentationUtilsImpl() = default;
-  // Used to inject FeatureManagementInterface for testing.
+  SegmentationUtilsImpl();
+  // Used to inject |FeatureManagementInterface|, |TpmManagerClient| and
+  // |GscUtils| for testing.
   explicit SegmentationUtilsImpl(
       std::unique_ptr<segmentation::FeatureManagementInterface>
-          feature_management_interface);
+          feature_management_interface,
+      std::unique_ptr<TpmManagerClient> tpm_manager_client,
+      std::unique_ptr<GscUtils> gsc_utils);
   ~SegmentationUtilsImpl() override = default;
 
   bool IsFeatureEnabled() const override;
   bool IsFeatureMutable() const override;
   int GetFeatureLevel() const override;
+  bool GetFeatureFlags(bool* is_chassis_branded,
+                       int* hw_compliance_version) const override;
+  bool SetFeatureFlags(bool is_chassis_branded,
+                       int hw_compliance_version) override;
 
  private:
+  bool IsBoardIdTypeEmpty() const;
+  bool IsInitialFactoryMode() const;
+
   segmentation::FeatureManagement feature_management_;
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
+  std::unique_ptr<GscUtils> gsc_utils_;
 };
 
 }  // namespace rmad

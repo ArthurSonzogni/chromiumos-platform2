@@ -20,6 +20,14 @@ class SegmentationUtils {
 
   // Returns the feature level according to the provisioned values.
   virtual int GetFeatureLevel() const = 0;
+
+  // Get feature flags from GSC.
+  virtual bool GetFeatureFlags(bool* is_chassis_branded,
+                               int* hw_compliance_version) const = 0;
+
+  // Set feature flags to GSC.
+  virtual bool SetFeatureFlags(bool is_chassis_branded,
+                               int hw_compliance_version) = 0;
 };
 
 }  // namespace rmad
