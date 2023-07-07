@@ -26,6 +26,7 @@
 #include <brillo/flag_helper.h>
 #include <chromeos/constants/imageloader.h>
 #include <dbus/bus.h>
+#include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
 #include <libminijail.h>
@@ -81,6 +82,24 @@ class DlcServiceUtil : public brillo::Daemon {
 
  private:
   int OnEventLoopStarted() override {
+    int error = EX_OK;
+    if (!Init(&error)) {
+      LOG(ERROR) << "Failed to initialize client.";
+      return error;
+    }
+    dlc_service_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+        base::BindOnce(&DlcServiceUtil::Process,
+                       weak_ptr_factory_.GetWeakPtr()));
+    return EX_OK;
+  }
+
+  void Process(bool is_available) {
+    if (!is_available) {
+      LOG(ERROR) << "dlcservice is not available.";
+      QuitWithExitCode(EX_SOFTWARE);
+      return;
+    }
+
     // "--install" related flags.
     DEFINE_bool(install, false, "Install a single DLC.");
     DEFINE_string(omaha_url, "",
@@ -117,39 +136,38 @@ class DlcServiceUtil : public brillo::Daemon {
     if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
       LOG(ERROR) << "Only one of --install, --uninstall, --purge, --list, "
                     "--get_existing, --dlc_state must be set.";
-      return EX_SOFTWARE;
-    }
-
-    int error = EX_OK;
-    if (!Init(&error)) {
-      LOG(ERROR) << "Failed to initialize client.";
-      return error;
+      QuitWithExitCode(EX_SOFTWARE);
+      return;
     }
 
     // Called with "--list".
     if (FLAGS_list) {
       vector<DlcState> installed_dlcs;
-      if (!GetInstalled(&installed_dlcs))
-        return EX_SOFTWARE;
+      if (!GetInstalled(&installed_dlcs)) {
+        QuitWithExitCode(EX_SOFTWARE);
+        return;
+      }
       PrintInstalled(FLAGS_dump, installed_dlcs);
       Quit();
-      return EX_OK;
+      return;
     }
 
     // Called with "--get_existing".
     if (FLAGS_get_existing) {
       DlcsWithContent dlcs_with_content;
-      if (!GetExisting(&dlcs_with_content))
-        return EX_SOFTWARE;
+      if (!GetExisting(&dlcs_with_content)) {
+        QuitWithExitCode(EX_SOFTWARE);
+        return;
+      }
       PrintDlcsWithContent(FLAGS_dump, dlcs_with_content);
       Quit();
-      return EX_OK;
+      return;
     }
 
     if (FLAGS_id.empty()) {
       LOG(ERROR) << "Please specify a single DLC ID.";
-      Quit();
-      return EX_SOFTWARE;
+      QuitWithExitCode(EX_SOFTWARE);
+      return;
     }
 
     dlc_id_ = FLAGS_id;
@@ -164,17 +182,14 @@ class DlcServiceUtil : public brillo::Daemon {
                               weak_ptr_factory_.GetWeakPtr()),
           base::BindOnce(&DlcServiceUtil::OnDlcStateChangedConnect,
                          weak_ptr_factory_.GetWeakPtr()));
-      if (Install()) {
-        // Don't |Quit()| as we will need to wait for signal of install.
-        return EX_OK;
-      }
+      return;
     }
 
     // Called with "--uninstall".
     if (FLAGS_uninstall) {
       if (Uninstall(false)) {
         Quit();
-        return EX_OK;
+        return;
       }
     }
 
@@ -182,22 +197,23 @@ class DlcServiceUtil : public brillo::Daemon {
     if (FLAGS_purge) {
       if (Uninstall(true)) {
         Quit();
-        return EX_OK;
+        return;
       }
     }
 
     // Called with "--dlc_state".
     if (FLAGS_dlc_state) {
       DlcState state;
-      if (!GetDlcState(dlc_id_, &state))
-        return EX_SOFTWARE;
+      if (!GetDlcState(dlc_id_, &state)) {
+        QuitWithExitCode(EX_SOFTWARE);
+        return;
+      }
       PrintDlcState(FLAGS_dump, state);
       Quit();
-      return EX_OK;
+      return;
     }
 
-    Quit();
-    return EX_SOFTWARE;
+    QuitWithExitCode(EX_SOFTWARE);
   }
 
   // Initialize the dlcservice proxy. Returns true on success, false otherwise.
@@ -231,6 +247,11 @@ class DlcServiceUtil : public brillo::Daemon {
                   << "% installed DLC: " << dlc_id_;
         break;
       case DlcState::NOT_INSTALLED:
+        if (dlc_state.last_error_code() == dlcservice::kErrorBusy) {
+          LOG(INFO) << "Busy error code, posting another installation.";
+          PostInstall();
+          return;
+        }
         LOG(ERROR) << "Failed to install DLC: " << dlc_id_
                    << " with error code: " << dlc_state.last_error_code();
         QuitWithExitCode(EX_SOFTWARE);
@@ -247,12 +268,40 @@ class DlcServiceUtil : public brillo::Daemon {
     if (!success) {
       LOG(ERROR) << "Error connecting " << interface_name << "." << signal_name;
       QuitWithExitCode(EX_SOFTWARE);
+      return;
     }
+    InstallWrapper();
+  }
+
+  void PostInstall() {
+    if (delayed_install_id_ != brillo::MessageLoop::kTaskIdNull) {
+      LOG(INFO) << "Another delayed installation already posted.";
+      return;
+    }
+    delayed_install_id_ = brillo::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&DlcServiceUtil::InstallWrapper,
+                       weak_ptr_factory_.GetWeakPtr()),
+        base::Seconds(1));
+  }
+
+  void InstallWrapper() {
+    delayed_install_id_ = brillo::MessageLoop::kTaskIdNull;
+    bool retry = false;
+    if (Install(retry)) {
+      // Don't |Quit()| as we will need to wait for signal of install.
+      return;
+    }
+    if (retry) {
+      PostInstall();
+    }
+    QuitWithExitCode(EX_SOFTWARE);
+    return;
   }
 
   // Install current DLC module. Returns true if current module can be
   // installed. False otherwise.
-  bool Install() {
+  bool Install(bool& retry) {
     brillo::ErrorPtr err;
     LOG(INFO) << "Attempting to install DLC modules: " << dlc_id_;
     // TODO(b/177932564): Temporary increase in timeout to unblock CQ cases that
@@ -261,8 +310,15 @@ class DlcServiceUtil : public brillo::Daemon {
         dlcservice::CreateInstallRequest(dlc_id_, omaha_url_, reserve_);
     if (!dlc_service_proxy_->Install(install_request, &err,
                                      /*timeout_ms=*/5 * 60 * 1000)) {
-      LOG(ERROR) << "Failed to install: " << dlc_id_ << ", "
-                 << ErrorPtrStr(err);
+      retry = err->GetCode() == dlcservice::kErrorBusy;
+      if (retry) {
+        LOG(WARNING) << "Failed to install due to busy status, indicating "
+                        "retry to caller: "
+                     << ErrorPtrStr(err);
+      } else {
+        LOG(ERROR) << "Failed to install: " << dlc_id_ << ", "
+                   << ErrorPtrStr(err);
+      }
       return false;
     }
     return true;
@@ -440,6 +496,10 @@ class DlcServiceUtil : public brillo::Daemon {
   string omaha_url_;
   // Reserve the DLC on install success/failure.
   bool reserve_ = false;
+
+  // Delayed install task ID, to not dupe installation calls.
+  brillo::MessageLoop::TaskId delayed_install_id_ =
+      brillo::MessageLoop::kTaskIdNull;
 
   base::WeakPtrFactory<DlcServiceUtil> weak_ptr_factory_;
 
