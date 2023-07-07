@@ -134,6 +134,10 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   friend class WiFiServiceTest;   // for MakeOpenEndpoint
   // For DeterminePhyModeFromFrequency
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
+  FRIEND_TEST(WiFiEndpointTest, ParseIEs);
+  FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
+  FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
+  FRIEND_TEST(WiFiEndpointTest, ParseCountryCode);
   // These test cases need access to the KeyManagement enum.
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsOWE);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
@@ -197,11 +201,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // Parse information elements to determine the physical mode and other
   // information associated with the AP.  Returns true if a physical mode was
   // determined from the IE elements, false otherwise.
-  static bool ParseIEs(const KeyValueStore& properties,
-                       Metrics::WiFiNetworkPhyMode* phy_mode,
-                       VendorInformation* vendor_information,
-                       std::string* country_code,
-                       SupportedFeatures* supported_features);
+  bool ParseIEs(const KeyValueStore& properties,
+                Metrics::WiFiNetworkPhyMode* phy_mode);
   // Parse MDE information element and set *|otds_ft_supported| to true if
   // Over-the-DS Fast BSS Transition is supported by this AP.
   static void ParseMobilityDomainElement(
@@ -227,10 +228,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
                                    std::vector<uint8_t>::const_iterator end,
                                    bool* found_ft_cipher);
   // Parse a single vendor information element.
-  static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
-                            std::vector<uint8_t>::const_iterator end,
-                            VendorInformation* vendor_information,
-                            SupportedFeatures* supported_features);
+  void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
+                     std::vector<uint8_t>::const_iterator end);
 
   // Assigns a value to |has_tethering_signature_|.
   void CheckForTetheringSignature();

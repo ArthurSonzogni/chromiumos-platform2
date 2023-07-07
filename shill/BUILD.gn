@@ -616,9 +616,22 @@ if (use.fuzzer) {
     deps = [ ":libshill" ]
   }
   executable("wifi_ies_fuzzer") {
-    sources = [ "wifi/wifi_ies_fuzzer.cc" ]
+    sources = [
+      "bluetooth/mock_bluetooth_manager_proxy.cc",
+      "ethernet/mock_ethernet_provider.cc",
+      "mock_adaptors.cc",
+      "mock_control.cc",
+      "mock_device_info.cc",
+      "mock_event_dispatcher.cc",
+      "mock_manager.cc",
+      "mock_metrics.cc",
+      "supplicant/mock_supplicant_process_proxy.cc",
+      "wifi/mock_wifi.cc",
+      "wifi/wifi_ies_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
+      "//common-mk:test",
       ":target_defaults",
       ":shill_config",
     ]
@@ -626,6 +639,7 @@ if (use.fuzzer) {
   }
   executable("wifi_service_fuzzer") {
     sources = [
+      "bluetooth/mock_bluetooth_manager_proxy.cc",
       "ethernet/mock_ethernet_provider.cc",
       "mock_adaptors.cc",
       "mock_control.cc",

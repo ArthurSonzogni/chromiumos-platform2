@@ -4,15 +4,23 @@
 
 #include <vector>
 
+#include "base/at_exit.h"
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
 #include "shill/metrics.h"
+#include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 
 namespace shill {
+
+using ::testing::NiceMock;
 
 class WiFiIEsFuzz {
  public:
@@ -21,22 +29,28 @@ class WiFiIEsFuzz {
     KeyValueStore properties;
     properties.Set(WPASupplicant::kBSSPropertyIEs, ies);
 
-    Metrics::WiFiNetworkPhyMode phy_mode;
-    WiFiEndpoint::VendorInformation vendor_information;
-    std::string country_code;
-    WiFiEndpoint::SupportedFeatures supported_features;
+    MockControl ctrl_iface;
+    MockEventDispatcher dispatcher;
+    MockMetrics metrics;
+    NiceMock<MockManager> manager(&ctrl_iface, &dispatcher, &metrics);
+    WiFiRefPtr wifi = base::MakeRefCounted<MockWiFi>(
+        &manager, "wlan0", "0123456789AB", 1, 2, nullptr);
 
-    WiFiEndpoint::ParseIEs(properties, &phy_mode, &vendor_information,
-                           &country_code, &supported_features);
+    Metrics::WiFiNetworkPhyMode phy_mode;
+
+    auto endpoint = WiFiEndpoint::MakeOpenEndpoint(
+        nullptr, wifi, "ssid", "00:00:00:00:00:01", kModeManaged, 2412, 0);
+    endpoint->ParseIEs(properties, &phy_mode);
 
     // D-Bus wants our strings UTF-8, and ISO 3166 says they should be ASCII.
-    CHECK(base::IsStringASCII(country_code));
+    CHECK(base::IsStringASCII(endpoint->country_code()));
   }
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Turn off logging.
   logging::SetMinLogLevel(logging::LOGGING_FATAL);
+  base::AtExitManager at_exit;
 
   WiFiIEsFuzz::Run(data, size);
   return 0;
