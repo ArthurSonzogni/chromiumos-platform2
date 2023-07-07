@@ -5,6 +5,7 @@
 #include "dlp/fanotify_reader_thread.h"
 
 #include <fcntl.h>
+#include <memory>
 #include <sys/fanotify.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -20,6 +21,10 @@
 #include "dlp/dlp_metrics.h"
 
 namespace {
+
+// Kill the daemon if not responding in 1 second.
+constexpr base::TimeDelta kWatchdogTimeout = base::Milliseconds(1000);
+constexpr char kWatchdogName[] = "DLP daemon";
 
 // TODO(b/259688785): Update fanofity headers to include the struct.
 /* Variable length info record following event metadata */
@@ -50,6 +55,23 @@ struct fanotify_event_info_fid {
 }  // namespace
 
 namespace dlp {
+
+FanotifyReaderThread::FanotifyReplyWatchdog::FanotifyReplyWatchdog()
+    : watchdog_(kWatchdogTimeout, kWatchdogName, /*enabled=*/true, this) {}
+FanotifyReaderThread::FanotifyReplyWatchdog::~FanotifyReplyWatchdog() = default;
+
+void FanotifyReaderThread::FanotifyReplyWatchdog::Arm() {
+  watchdog_.Arm();
+}
+
+void FanotifyReaderThread::FanotifyReplyWatchdog::Disarm() {
+  watchdog_.Disarm();
+}
+
+void FanotifyReaderThread::FanotifyReplyWatchdog::Alarm() {
+  LOG(ERROR) << "DLP thread hang, watchdog triggered, exiting abnormally";
+  _exit(2);
+}
 
 FanotifyReaderThread::FanotifyReaderThread(
     scoped_refptr<base::SequencedTaskRunner> parent_task_runner,
@@ -138,11 +160,16 @@ void FanotifyReaderThread::RunLoop() {
           ForwardUMAErrorToParentThread(FanotifyError::kFstatError);
           continue;
         }
-
+        // If the request is not replied on time, the watchdog will restart
+        // the daemon.
+        std::unique_ptr<FanotifyReplyWatchdog> watchdog =
+            std::make_unique<FanotifyReplyWatchdog>();
+        watchdog->Arm();
         parent_task_runner_->PostTask(
-            FROM_HERE, base::BindOnce(&Delegate::OnFileOpenRequested,
-                                      base::Unretained(delegate_), st.st_ino,
-                                      metadata->pid, std::move(fd)));
+            FROM_HERE,
+            base::BindOnce(&Delegate::OnFileOpenRequested,
+                           base::Unretained(delegate_), st.st_ino,
+                           metadata->pid, std::move(fd), std::move(watchdog)));
       } else if (metadata->mask & FAN_DELETE_SELF) {
         struct file_handle* file_handle;
         struct fanotify_event_info_fid* fid;

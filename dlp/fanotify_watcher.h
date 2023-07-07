@@ -13,7 +13,6 @@
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
-#include <base/threading/watchdog.h>
 #include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_reader_thread.h"
 
@@ -50,30 +49,20 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   bool IsActive() const;
 
  private:
-  // Watchdog waiting for timely (1sec) reply to fanotify file access.
-  // Crashes the daemon if it hangs.
-  class FanotifyReplyWatchdog : public base::Watchdog::Delegate {
-   public:
-    FanotifyReplyWatchdog();
-    FanotifyReplyWatchdog(const FanotifyReplyWatchdog&) = delete;
-    FanotifyReplyWatchdog& operator=(const FanotifyReplyWatchdog&) = delete;
-    ~FanotifyReplyWatchdog() override;
-
-    void Arm();
-    void Disarm();
-
-   private:
-    void Alarm() override;
-
-    base::Watchdog watchdog_;
-  };
-
   // FanotifyReaderThread::Delegate overrides:
-  void OnFileOpenRequested(ino_t inode, int pid, base::ScopedFD fd) override;
+  void OnFileOpenRequested(
+      ino_t inode,
+      int pid,
+      base::ScopedFD fd,
+      std::unique_ptr<FanotifyReaderThread::FanotifyReplyWatchdog> watchdog)
+      override;
   void OnFileDeleted(ino_t inode) override;
   void OnFanotifyError(FanotifyError error) override;
 
-  void OnRequestProcessed(base::ScopedFD fd, int watchdog_id, bool allowed);
+  void OnRequestProcessed(
+      base::ScopedFD fd,
+      std::unique_ptr<FanotifyReaderThread::FanotifyReplyWatchdog> watchdog,
+      bool allowed);
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
@@ -91,12 +80,6 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   base::ScopedFD fanotify_fh_events_fd_;
 
   Delegate* delegate_;
-
-  // Watchdogs for active file access requests. Ensure that the reply comes on
-  // time and DLP daemon doesn't hang.
-  size_t last_watchdog_id_ = 0;
-  std::map<int, std::unique_ptr<FanotifyReplyWatchdog>>
-      fanotify_request_watchdogs_;
 };
 
 }  // namespace dlp

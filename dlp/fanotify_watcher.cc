@@ -64,43 +64,23 @@ bool FanotifyWatcher::IsActive() const {
   return active_;
 }
 
-FanotifyWatcher::FanotifyReplyWatchdog::FanotifyReplyWatchdog()
-    : watchdog_(
-          base::Milliseconds(1000), "DLP daemon", /*enabled=*/true, this) {}
-FanotifyWatcher::FanotifyReplyWatchdog::~FanotifyReplyWatchdog() = default;
-
-void FanotifyWatcher::FanotifyReplyWatchdog::Arm() {
-  watchdog_.Arm();
-}
-
-void FanotifyWatcher::FanotifyReplyWatchdog::Disarm() {
-  watchdog_.Disarm();
-}
-
-void FanotifyWatcher::FanotifyReplyWatchdog::Alarm() {
-  LOG(ERROR) << "DLP thread hang, watchdog triggered, exiting abnormally";
-  _exit(2);
-}
-
-void FanotifyWatcher::OnFileOpenRequested(ino_t inode,
-                                          int pid,
-                                          base::ScopedFD fd) {
+void FanotifyWatcher::OnFileOpenRequested(
+    ino_t inode,
+    int pid,
+    base::ScopedFD fd,
+    std::unique_ptr<FanotifyReaderThread::FanotifyReplyWatchdog> watchdog) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
-  std::unique_ptr<FanotifyReplyWatchdog> watchdog =
-      std::make_unique<FanotifyReplyWatchdog>();
-  watchdog->Arm();
-  fanotify_request_watchdogs_[++last_watchdog_id_] = std::move(watchdog);
-  CHECK(fanotify_fd_events_fd_.is_valid());
 
   if (!active_) {
-    OnRequestProcessed(std::move(fd), last_watchdog_id_, /*allowed=*/true);
+    OnRequestProcessed(std::move(fd), std::move(watchdog), /*allowed=*/true);
     return;
   }
 
   delegate_->ProcessFileOpenRequest(
       inode, pid,
       base::BindOnce(&FanotifyWatcher::OnRequestProcessed,
-                     base::Unretained(this), std::move(fd), last_watchdog_id_));
+                     base::Unretained(this), std::move(fd),
+                     std::move(watchdog)));
 }
 
 void FanotifyWatcher::OnFileDeleted(ino_t inode) {
@@ -115,9 +95,10 @@ void FanotifyWatcher::OnFanotifyError(FanotifyError error) {
   delegate_->OnFanotifyError(error);
 }
 
-void FanotifyWatcher::OnRequestProcessed(base::ScopedFD fd,
-                                         int watchdog_id,
-                                         bool allowed) {
+void FanotifyWatcher::OnRequestProcessed(
+    base::ScopedFD fd,
+    std::unique_ptr<FanotifyReaderThread::FanotifyReplyWatchdog> watchdog,
+    bool allowed) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
   struct fanotify_response response = {};
@@ -125,9 +106,7 @@ void FanotifyWatcher::OnRequestProcessed(base::ScopedFD fd,
   response.response = allowed ? FAN_ALLOW : FAN_DENY;
   HANDLE_EINTR(
       write(fanotify_fd_events_fd_.get(), &response, sizeof(response)));
-
-  fanotify_request_watchdogs_[watchdog_id]->Disarm();
-  fanotify_request_watchdogs_.erase(watchdog_id);
+  watchdog->Disarm();
 }
 
 }  // namespace dlp
