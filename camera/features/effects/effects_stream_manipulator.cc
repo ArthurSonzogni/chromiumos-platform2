@@ -31,6 +31,7 @@
 #include <base/location.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_util.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/thread_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -278,12 +279,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     std::optional<CameraBufferPool::Buffer> rgba_buffer;
     SharedImage rgba_image;
     base::TimeTicks processing_time_start;
-  };
-
-  struct PipelineResult {
-    GLuint texture;
-    int width;
-    int height;
   };
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
@@ -883,11 +878,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
     auto [it, inserted] =
         process_contexts.emplace(size, std::make_unique<ProcessContext>());
-    it->second->result_callback = callbacks_.result_callback,
-    it->second->frame_number = result.frame_number(),
-    it->second->result_buffer_appended = yuv_stream_appended,
-    it->second->result_buffer = std::move(result_buffer),
-    it->second->processing_time_start = processing_time_start,
+    it->second->result_callback = callbacks_.result_callback;
+    it->second->frame_number = result.frame_number();
+    it->second->result_buffer_appended = yuv_stream_appended;
+    it->second->result_buffer = std::move(result_buffer);
+    it->second->processing_time_start = processing_time_start;
     ++num_processed_streams;
 
     OnFrameStarted(*stream_context, processing_time_start);
@@ -895,6 +890,13 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
   if (last_set_effect_config_.HasEnabledEffects()) {
     for (auto& [size, process_context] : process_contexts) {
+      // To make sure the user sees frames with effects applied, we fail the
+      // buffers unless it successfully goes through the whole pipeline.
+      process_context->result_buffer.mutable_raw_buffer().status =
+          CAMERA3_BUFFER_STATUS_ERROR;
+      for (auto& b : process_context->copy_buffers) {
+        b.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
+      }
       RenderEffect(std::move(process_context), *timestamp);
     }
   }
@@ -1048,14 +1050,13 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
                                    process_context->yuv_image.y_texture(),
                                    process_context->yuv_image.uv_texture())) {
     glFinish();
+    result_buffer.status = CAMERA3_BUFFER_STATUS_OK;
   } else {
     LOGF(ERROR) << "Failed to convert from RGB to YUV";
     metrics_.RecordError(CameraEffectError::kYUVConversionFailed);
-    result_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
   }
   texture_2d.Release();
   texture = 0;
-
   if (result_buffer.status != CAMERA3_BUFFER_STATUS_OK) {
     return;
   }
@@ -1064,7 +1065,6 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
     camera3_stream_buffer_t& raw_copy_buffer = copy_buffer.mutable_raw_buffer();
     if (!copy_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
       metrics_.RecordError(CameraEffectError::kSyncWaitTimeout);
-      raw_copy_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
       continue;
     }
     auto copy_image = SharedImage::CreateFromBuffer(
@@ -1072,7 +1072,6 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
         /*separate_yuv_textures=*/true);
     if (!copy_image.IsValid()) {
       metrics_.RecordError(CameraEffectError::kGPUImageInitializationFailed);
-      raw_copy_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
       continue;
     }
     if (!image_processor_->YUVToYUV(process_context->yuv_image.y_texture(),
@@ -1080,7 +1079,6 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
                                     copy_image.y_texture(),
                                     copy_image.uv_texture())) {
       metrics_.RecordError(CameraEffectError::kYUVConversionFailed);
-      raw_copy_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
       continue;
     }
     raw_copy_buffer.release_fence = EglFence().GetNativeFd().release();
