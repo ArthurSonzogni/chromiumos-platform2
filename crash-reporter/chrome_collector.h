@@ -10,6 +10,7 @@
 #ifndef CRASH_REPORTER_CHROME_COLLECTOR_H_
 #define CRASH_REPORTER_CHROME_COLLECTOR_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <string>
@@ -73,8 +74,16 @@ class ChromeCollector : public CrashCollector {
     max_upload_bytes_ = max_upload_bytes;
   }
 
+ protected:
+  // Returns the severity level and product group of the crash. The logic for
+  // computing crash severity is the same for both UI and Lacros crashes.
+  // Note: The parameter `exec_name` is not used to compute severity.
+  CrashCollector::ComputedCrashSeverity ComputeSeverity(
+      const std::string& exec_name) override;
+
  private:
   friend class ChromeCollectorTest;
+  friend class ComputeChromeCollectorCrashSeverityParameterizedTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
   FRIEND_TEST(ChromeCollectorTest, GoodLacros);
   FRIEND_TEST(ChromeCollectorTest, GoodShutdown);
@@ -95,6 +104,11 @@ class ChromeCollector : public CrashCollector {
   FRIEND_TEST(ChromeCollectorTest,
               HandleCrashWithDumpData_NotShutdownHang_WrongShutdownBrowserPid);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_Signal_Fatal);
+  FRIEND_TEST(ChromeCollectorTest, ComputedSeverity_JavaScriptError);
+  FRIEND_TEST(ChromeCollectorTest, ComputedSeverity_NonFatalSignal);
+  FRIEND_TEST(ChromeCollectorTest, ComputedSeverity_HasProcessTypeRenderer);
+  FRIEND_TEST(ComputeChromeCollectorCrashSeverityParameterizedTest,
+              ComputeCrashSeverity_ChromeCollector);
 
   enum CrashType {
     // An executable received a signal like SIGSEGV or SIGILL; the sort of thing
@@ -211,10 +225,6 @@ class ChromeCollector : public CrashCollector {
   // Returns true if constants::kShutdownTypeKey is in the crash log. Used for
   // computing crash severity.
   bool is_shutdown_crash() const { return is_shutdown_crash_; }
-
-  // Getter to determine whether `process_type_` has a value when parsing
-  // through the crash log.
-  bool CrashHasProcessType() const;
 
   // Getter to determine whether `crash_type_` is `kJavaScriptError`.
   bool IsJavaScriptError() const;

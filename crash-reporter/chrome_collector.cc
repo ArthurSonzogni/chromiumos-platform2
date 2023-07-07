@@ -32,6 +32,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -144,8 +145,6 @@ bool ChromeCollector::HandleCrashWithDumpData(
     return false;
   }
 
-  // TODO(b/269159625): Use signal_, crash_type_, is_lacros_crash_, and
-  // shutdown-type to determine crash severity.
   signal_ = signal;
   is_lacros_crash_ = is_lacros_crash;
   crash_type_ = crash_type;
@@ -438,10 +437,6 @@ bool ChromeCollector::IsJavaScriptError() const {
   return crash_type_ == kJavaScriptError;
 }
 
-bool ChromeCollector::CrashHasProcessType() const {
-  return !process_type_.empty();
-}
-
 void ChromeCollector::AddLogIfNotTooBig(
     const char* log_map_key,
     const base::FilePath& complete_file_name,
@@ -457,6 +452,47 @@ void ChromeCollector::AddLogIfNotTooBig(
     if (!RemoveNewFile(complete_file_name)) {
       LOG(WARNING) << "Could not remove " << complete_file_name.value();
     }
+  }
+}
+
+CrashCollector::ComputedCrashSeverity ChromeCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      ComputedCrashSeverity{
+          .crash_severity = CrashSeverity::kError,
+          .product_group = is_lacros_crash_ ? Product::kLacros : Product::kUi,
+      };
+
+  if (IsJavaScriptError()) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+    return computed_severity;
+  }
+
+  if (!is_signal_fatal()) {
+    computed_severity.crash_severity = CrashSeverity::kInfo;
+    return computed_severity;
+  }
+
+  if ((process_type_ == "renderer") || (process_type_ == "extension") ||
+      (process_type_ == "utility") || (process_type_ == "gpu-process")) {
+    computed_severity.crash_severity = CrashSeverity::kError;
+    return computed_severity;
+  } else if (process_type_ != "browser") {
+    computed_severity.crash_severity = CrashSeverity::kInfo;
+    return computed_severity;
+  }
+
+  // When `process_type_` is equal to "browser".
+  if (is_browser_shutdown_hang()) {
+    computed_severity.crash_severity = CrashSeverity::kWarning;
+    return computed_severity;
+  } else if (is_shutdown_crash()) {
+    computed_severity.crash_severity = CrashSeverity::kError;
+    return computed_severity;
+  } else {
+    // If there was an in-session crash or hang.
+    computed_severity.crash_severity = CrashSeverity::kFatal;
+    return computed_severity;
   }
 }
 

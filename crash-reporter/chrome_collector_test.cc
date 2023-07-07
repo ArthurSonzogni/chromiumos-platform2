@@ -11,6 +11,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/auto_reset.h>
@@ -30,6 +31,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collector.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -40,6 +42,7 @@ using ::testing::Invoke;
 using ::testing::Not;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::TestWithParam;
 using ::testing::WithArgs;
 
 namespace {
@@ -56,9 +59,27 @@ const char kCrashFormatGoodShutdown[] =
     "upload_file_minidump\"; filename=\"dump\":3:abc"
     "shutdown-type:5:close";
 const char kCrashFormatNoDump[] = "value1:10:abcdefghijvalue2:5:12345";
-const char kCrashFormatProcessType[] =
+const char kCrashFormatProcessTypeBrowser[] =
     "upload_file_minidump\"; filename=\"dump\":3:abc"
     "ptype:7:browser";
+const char kCrashFormatProcessTypeRenderer[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:8:renderer";
+const char kCrashFormatProcessTypeTestString[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:8:test_str";
+const char kCrashFormatProcessTypeBrowserShutdownClose[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:7:browsershutdown-type:5:close";
+const char kCrashFormatProcessTypeBrowserShutdownExit[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:7:browsershutdown-type:4:exit";
+const char kCrashFormatProcessTypeBrowserShutdownExitLacros[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:7:browsershutdown-type:4:exitprod:13:Chrome_Lacros";
+const char kCrashFormatProcessTypeBrowserLacros[] =
+    "upload_file_minidump\"; filename=\"dump\":3:abc"
+    "ptype:7:browserprod:13:Chrome_Lacros";
 const char kCrashFormatEmbeddedNewline[] =
     "value1:10:abcd\r\nghijvalue2:5:12\n34"
     "upload_file_minidump\"; filename=\"dump\":3:a\nc";
@@ -411,7 +432,6 @@ TEST_F(ChromeCollectorTest, GoodValues) {
                                        &payload, &is_lacros_crash));
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
-  EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -432,7 +452,6 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
                                        &payload, &is_lacros_crash));
   EXPECT_TRUE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
-  EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -452,7 +471,6 @@ TEST_F(ChromeCollectorTest, GoodShutdown) {
                                        &payload, &is_lacros_crash));
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_TRUE(collector_.is_shutdown_crash());
-  EXPECT_FALSE(collector_.CrashHasProcessType());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -467,14 +485,12 @@ TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatProcessType, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+
+  EXPECT_TRUE(collector_.ParseCrashLog(
+      kCrashFormatProcessTypeBrowser, dir, "base",
+      ChromeCollector::kExecutableCrash, &payload, &is_lacros_crash));
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
-  EXPECT_TRUE(collector_.CrashHasProcessType());
-  EXPECT_EQ(payload, dir.Append("base.dmp"));
-  ExpectFileEquals("abc", payload);
 
   // Check to see if the values made it in properly.
   std::string meta = collector_.extra_metadata_;
@@ -482,8 +498,8 @@ TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError) {
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
-      "", 1, 1, "", "--error_key=sample", "", "", "", 1));
+  EXPECT_TRUE(collector_.HandleCrashWithDumpData("", 1, 1, "", "test_key", "",
+                                                 "", "", 1));
   EXPECT_TRUE(collector_.IsJavaScriptError());
 }
 
@@ -1394,3 +1410,120 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScriptLacros) {
       base::ReadFileToString(output_log_uncompressed, &output_log_contents));
   EXPECT_EQ(output_log_contents, "welcome to lacros\n");
 }
+
+struct ChromeCollectorComputeCrashSeverityTestCase {
+  std::string test_name;
+  std::string data;
+  pid_t pid;
+  uid_t uid;
+  std::string exec_name;
+  std::string non_exe_error_key;
+  bool uses_shutdown_browser_pid_path;
+  int signal;
+  CrashCollector::CrashSeverity expected_severity;
+  CrashCollector::Product expected_product;
+};
+
+class ComputeChromeCollectorCrashSeverityParameterizedTest
+    : public ::ChromeCollectorTest,
+      public ::testing::WithParamInterface<
+          ChromeCollectorComputeCrashSeverityTestCase> {};
+
+TEST_P(ComputeChromeCollectorCrashSeverityParameterizedTest,
+       ComputeCrashSeverity_ChromeCollector) {
+  const ChromeCollectorComputeCrashSeverityTestCase& test_case = GetParam();
+
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
+
+  if (test_case.uses_shutdown_browser_pid_path) {
+    ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "123"));
+  }
+
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+
+  collector_.HandleCrashWithDumpData(
+      test_case.data, test_case.pid, test_case.uid, test_case.exec_name,
+      test_case.non_exe_error_key,
+      /* dump_dir= */ "", /* aborted_browser_pid_path= */ "",
+      (test_case.uses_shutdown_browser_pid_path)
+          ? shutdown_browser_pid_file.value()
+          : "",
+      test_case.signal);
+
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("test_exec_name");
+
+  EXPECT_EQ(computed_severity.crash_severity, test_case.expected_severity);
+  EXPECT_EQ(computed_severity.product_group, test_case.expected_product);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ComputeChromeCollectorCrashSeverityParameterizedTest,
+    ComputeChromeCollectorCrashSeverityParameterizedTest,
+    testing::ValuesIn<ChromeCollectorComputeCrashSeverityTestCase>(
+        {{/* test_name= */ "JavascriptError_UI", /* data= */ "",
+          /* pid= */ 1, /* uid= */ 1, /* exec_name= */ "",
+          /* non_exe_error_key= */ "test_key",
+          /* uses_shutdown_browser_pid_path= */ false, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kWarning,
+          CrashCollector::Product::kUi},
+         {/* test_name= */ "NonFatalSignal_UI",
+          /* data= */ kCrashFormatProcessTypeBrowser,
+          /* pid= */ 1, /* uid= */ 1, /* exec_name= */ "test_exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ false, /* signal= */ -1,
+          CrashCollector::CrashSeverity::kInfo, CrashCollector::Product::kUi},
+         {/* test_name= */ "ProcessTypeRenderer_UI",
+          /* data= */ kCrashFormatProcessTypeRenderer, /* pid= */ 77,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kError, CrashCollector::Product::kUi},
+         {/* test_name= */ "ProcessTypeTestString_UI",
+          /* data= */ kCrashFormatProcessTypeTestString, /* pid= */ 77,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kInfo, CrashCollector::Product::kUi},
+         {/* test_name= */ "ProcessTypeBrowser_UI",
+          /* data= */ kCrashFormatProcessTypeBrowser, /* pid= */ 77,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kFatal, CrashCollector::Product::kUi},
+         {/* test_name= */ "BrowserShutdownHang_UI",
+          /* data= */ kCrashFormatProcessTypeBrowserShutdownExit,
+          /* pid= */ 123,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kWarning,
+          CrashCollector::Product::kUi},
+         {/* test_name= */ "BrowserShutdownHang_Lacros",
+          /* data= */ kCrashFormatProcessTypeBrowserShutdownExitLacros,
+          /* pid= */ 123,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kWarning,
+          CrashCollector::Product::kLacros},
+         {/* test_name= */ "ShutdownCrash_UI",
+          /* data= */ kCrashFormatProcessTypeBrowserShutdownClose,
+          /* pid= */ 77,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kError, CrashCollector::Product::kUi},
+         {/* test_name= */ "InSessionHangOrCrash_Lacros",
+          /* data= */ kCrashFormatProcessTypeBrowserLacros, /* pid= */ 77,
+          /* uid= */ 1, /* exec_name= */ "exec_name",
+          /* non_exe_error_key= */ "",
+          /* uses_shutdown_browser_pid_path= */ true, /* signal= */ 1,
+          CrashCollector::CrashSeverity::kFatal,
+          CrashCollector::Product::kLacros}}),
+    [](const testing::TestParamInfo<
+        ComputeChromeCollectorCrashSeverityParameterizedTest::ParamType>&
+           info) { return info.param.test_name; });
