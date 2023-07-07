@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
@@ -28,9 +28,8 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::_;
-using ::testing::Invoke;
-using ::testing::WithArg;
 
 // Test values for fan speed.
 constexpr uint32_t kFirstFanSpeedRpm = 2255;
@@ -65,16 +64,12 @@ class FanUtilsTest : public ::testing::Test {
 // Test that fan information can be fetched successfully.
 TEST_F(FanUtilsTest, FetchFanInfo) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out = base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %u\n",
+                                  kFirstFanSpeedRpm, kSecondFanSpeedRpm);
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out =
-                base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %u\n",
-                                   kFirstFanSpeedRpm, kSecondFanSpeedRpm);
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -88,14 +83,11 @@ TEST_F(FanUtilsTest, FetchFanInfo) {
 // Test that no fan information is returned for a device that has no fan.
 TEST_F(FanUtilsTest, NoFan) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out = "";
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = "";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -107,14 +99,11 @@ TEST_F(FanUtilsTest, NoFan) {
 // returns a ProbeError.
 TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_FAILURE;
+  result.err = "Some error happened!";
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_FAILURE;
-            result.err = "Some error happened!";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -126,16 +115,12 @@ TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
 // Test that fan speed is set to 0 RPM when a fan stalls.
 TEST_F(FanUtilsTest, FanStalled) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out = base::StringPrintf("Fan 0 stalled (RPM: 65534)\nFan 1 RPM: %u\n",
+                                  kSecondFanSpeedRpm);
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf(
-                "Fan 0 stalled (RPM: 65534)\nFan 1 RPM: %u\n",
-                kSecondFanSpeedRpm);
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -150,15 +135,12 @@ TEST_F(FanUtilsTest, FanStalled) {
 // gracefully and returns a ProbeError.
 TEST_F(FanUtilsTest, BadLine) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out =
+      base::StringPrintf("Fan 0 RPM: bad\nFan 1 RPM: %u\n", kSecondFanSpeedRpm);
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("Fan 0 RPM: bad\nFan 1 RPM: %u\n",
-                                            kSecondFanSpeedRpm);
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -170,15 +152,12 @@ TEST_F(FanUtilsTest, BadLine) {
 // gracefully and returns a ProbeError.
 TEST_F(FanUtilsTest, BadValue) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out = base::StringPrintf("Fan 0 RPM: -115\nFan 1 RPM: %u\n",
+                                  kSecondFanSpeedRpm);
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("Fan 0 RPM: -115\nFan 1 RPM: %u\n",
-                                            kSecondFanSpeedRpm);
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
@@ -201,16 +180,12 @@ TEST_F(FanUtilsTest, NoGoogleEc) {
 // gracefully.
 TEST_F(FanUtilsTest, OverflowingFanSpeedValue) {
   // Set the mock executor response.
+  mojom::ExecutedProcessResult result;
+  result.return_code = EXIT_SUCCESS;
+  result.out = base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %" PRId64 "\n",
+                                  kFirstFanSpeedRpm, kOverflowingValue);
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(
-          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out =
-                base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %" PRId64 "\n",
-                                   kFirstFanSpeedRpm, kOverflowingValue);
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(result.Clone()));
 
   auto fan_result = FetchFanInfo();
 
