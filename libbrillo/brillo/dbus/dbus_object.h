@@ -65,6 +65,7 @@ class MyDbusObject {
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -243,14 +244,20 @@ class BRILLO_EXPORT DBusInterface final {
                std::unique_ptr<DBusMethodResponseBase> response,
                dbus::Message* message, Args... args) {
               ErrorPtr error;
-              if (handler.Run(&error, message, args...)) {
-                auto custom_response = response->CreateCustomResponse();
-                dbus::MessageWriter writer(custom_response.get());
-                DBusParamWriter::AppendDBusOutParams(&writer, args...);
-                response->SendRawResponse(std::move(custom_response));
-              } else {
+              if (!handler.Run(&error, message, args...)) {
                 response->ReplyWithError(error.get());
+                return;
               }
+
+              auto custom_response = response->CreateCustomResponse();
+              dbus::MessageWriter writer(custom_response.get());
+              std::apply(
+                  [&writer](auto*... args) {
+                    WriteDBusArgs(&writer, *args...);
+                  },
+                  internal::FilterTuple<std::is_pointer_v<Args>...>(
+                      std::forward_as_tuple(args...)));
+              response->SendRawResponse(std::move(custom_response));
             },
             handler));
   }
@@ -363,21 +370,32 @@ class BRILLO_EXPORT DBusInterface final {
         base::BindRepeating(
             [](decltype(handler) handler, dbus::MethodCall* method_call,
                ResponseSender sender) {
-              ErrorPtr param_reader_error;
               ::dbus::MessageReader reader(method_call);
-              // TODO(b/289932268): More code reduction when DBusParamReader is
-              // simplified.
-              if (!DBusParamReader<true, Args...>::Invoke(
-                      [method_call, &handler, &sender](const Args&... args) {
-                        handler.Run(std::make_unique<Response>(
-                                        method_call, std::move(sender)),
-                                    method_call, args...);
+              auto response =
+                  std::make_unique<Response>(method_call, std::move(sender));
+
+              std::tuple<StorageType<Args>...> args;
+              if (!std::apply(
+                      [&reader](auto&&... in_args) {
+                        return ReadDBusArgs(&reader, &in_args...);
                       },
-                      &reader, &param_reader_error)) {
+                      internal::FilterTuple<!std::is_pointer_v<Args>...>(
+                          args))) {
                 // Error parsing method arguments.
-                DBusMethodResponseBase response(method_call, std::move(sender));
-                response.ReplyWithError(param_reader_error.get());
+                response->ReplyWithError(
+                    Error::Create(FROM_HERE, errors::dbus::kDomain,
+                                  DBUS_ERROR_INVALID_ARGS,
+                                  "failed to read arguments")
+                        .get());
+                return;
               }
+
+              std::apply(
+                  [&handler, &response, method_call](auto&&... args) {
+                    handler.Run(std::move(response), method_call,
+                                std::forward<decltype(args)>(args)...);
+                  },
+                  internal::MapArgTypes<Args...>(args));
             },
             handler));
   }

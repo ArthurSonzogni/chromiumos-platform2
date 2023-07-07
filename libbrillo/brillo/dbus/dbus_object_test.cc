@@ -159,6 +159,22 @@ class DBusObjectTest : public ::testing::Test {
   Calc calc_;
 };
 
+TEST(DBusObjectInternalTest, FilterTuple) {
+  EXPECT_EQ(
+      (internal::FilterTuple<true, true, false>(std::tuple(1, false, 0.0))),
+      std::tuple(1, false));
+}
+
+TEST(DBusObjectInternalText, MapArgTypes) {
+  std::tuple<std::uint8_t, bool, double> storage;
+  auto args = internal::MapArgTypes<uint8_t, bool, double*>(storage);
+  // Make sure the returned references are actually pointing to the
+  // original tuple's element.
+  EXPECT_EQ(&std::get<0>(storage), &std::get<0>(args));
+  EXPECT_EQ(&std::get<1>(storage), &std::get<1>(args));
+  EXPECT_EQ(&std::get<2>(storage), std::get<2>(args));
+}
+
 TEST_F(DBusObjectTest, Add) {
   dbus::MethodCall method_call(kTestInterface1, kTestMethod_Add);
   method_call.SetSerial(123);
@@ -285,7 +301,7 @@ TEST_F(DBusObjectTest, CheckNonEmpty_MissingParams) {
   std::string message;
   ASSERT_TRUE(reader.PopString(&message));
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, response->GetErrorName());
-  EXPECT_EQ("Too few parameters in a method call", message);
+  EXPECT_EQ("failed to read arguments", message);
   EXPECT_FALSE(reader.HasMoreData());
 }
 

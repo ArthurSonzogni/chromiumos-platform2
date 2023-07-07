@@ -735,6 +735,26 @@ inline bool PopVariantValueFromReader(::dbus::MessageReader* reader,
   return PopValueFromReader(reader, value);
 }
 
+// Returns the type to store the D-Bus argument value.
+// In-arg type is const T&, while out-arg type is T*.
+// They will be converted into T.
+template <typename T>
+using StorageType = std::decay_t<std::remove_pointer_t<T>>;
+
+// Reads the D-Bus arguments from |reader| to each |args| in order.
+// Returns true on success, including there's no arguments remaining.
+template <typename... Args>
+bool ReadDBusArgs(dbus::MessageReader* reader, Args*... args) {
+  return (DBusType<std::decay_t<Args>>::Read(reader, args) && ...) &&
+         !reader->HasMoreData();
+}
+
+// Writes the D-Bus arguments to |writer| in order.
+template <typename... Args>
+void WriteDBusArgs(dbus::MessageWriter* writer, const Args&... args) {
+  (DBusType<std::decay_t<Args>>::Write(writer, args), ...);
+}
+
 }  // namespace dbus_utils
 }  // namespace brillo
 

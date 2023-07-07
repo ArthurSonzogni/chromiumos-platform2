@@ -33,6 +33,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -44,8 +45,69 @@
 #include <brillo/errors/error.h>
 #include <dbus/message.h>
 
-namespace brillo {
-namespace dbus_utils {
+namespace brillo::dbus_utils {
+namespace internal {
+
+template <bool... conds, std::size_t... Is, typename Tuple>
+auto FilterTupleImpl(Tuple&& tuple, std::index_sequence<Is...>) {
+  auto filter = [](auto cond, auto&& elem) constexpr {
+    if constexpr (cond) {
+      return std::forward_as_tuple(elem);
+    } else {
+      return std::tuple<>();
+    }
+  };
+  return std::tuple_cat(filter(std::bool_constant<conds>(),
+                               std::get<Is>(std::forward<Tuple>(tuple)))...);
+}
+
+// Taking a tuple and as many condition booleans as the size of tuple,
+// returns a tuple containing only references of the elements
+// where the condition of the same position is true.
+// E.g.
+//     std::tuple<int, bool, double> t(...);
+//     FilterTuple<true, false, true>(std::move(t));
+//   should return
+//     std::tuple<int&&, double&&>.
+template <bool... conds, typename Tuple>
+auto FilterTuple(Tuple&& tuple) {
+  return FilterTupleImpl<conds...>(
+      std::forward<Tuple>(tuple),
+      std::make_index_sequence<std::tuple_size_v<std::decay_t<Tuple>>>());
+}
+
+template <typename... Args, std::size_t... Is, typename Tuple>
+auto MapArgTypesImpl(Tuple&& tuple, std::index_sequence<Is...>) {
+  auto map = [](auto is_output, auto&& elem) constexpr {
+    if constexpr (is_output) {
+      return std::tuple(&elem);
+    } else {
+      return std::tuple<const std::decay_t<decltype(elem)>&>(elem);
+    }
+  };
+  return std::tuple_cat(map(std::is_pointer<Args>(),
+                            std::get<Is>(std::forward<Tuple>(tuple)))...);
+}
+
+// Taking a tuple of argument storages, returns the tuple of D-Bus callback
+// parameters as tuple. I.e. each element is typed const T& for input
+// parameters, or T* for output parameters. Args should be the parameters of the
+// callback.
+// E.g.
+//     std::tuple<int, bool, double> t(...);
+//     MapArgTypes<const int&, bool*, const double&>(t);
+//   should return a tuple of
+//     - std::get<0>(t): const int&.
+//     - &std::get<1>(t): bool*
+//     - std::get<2>(t): const double&.
+template <typename... Args, typename Tuple>
+auto MapArgTypes(Tuple&& tuple) {
+  return MapArgTypesImpl<Args...>(
+      std::forward<Tuple>(tuple),
+      std::make_index_sequence<std::tuple_size_v<std::decay_t<Tuple>>>());
+}
+
+}  // namespace internal
 
 // This is an abstract base class to allow dispatching a native C++ callback
 // method when a corresponding D-Bus method is called.
@@ -89,7 +151,6 @@ class RawDBusInterfaceMethodHandler
   base::RepeatingCallback<void(::dbus::MethodCall*, ResponseSender)> handler_;
 };
 
-}  // namespace dbus_utils
-}  // namespace brillo
+}  // namespace brillo::dbus_utils
 
 #endif  // LIBBRILLO_BRILLO_DBUS_DBUS_OBJECT_INTERNAL_IMPL_H_
