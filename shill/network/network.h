@@ -385,8 +385,8 @@ class Network {
   // this function only for unit tests, so that we can inject a mock
   // ConnectionDiagnostics object easily.
   mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics(
-      const IPAddress& ip_address,
-      const IPAddress& gateway,
+      const net_base::IPAddress& ip_address,
+      const net_base::IPAddress& gateway,
       const std::vector<std::string>& dns_list);
 
   // Shuts down and clears all the running state of this network. If

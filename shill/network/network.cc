@@ -814,8 +814,8 @@ void Network::OnNeighborReachabilityEvent(
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
 
-  const auto ip_address = IPAddress::CreateFromString(event.ip_addr);
-  if (!ip_address.has_value()) {
+  const auto ip_address = net_base::IPAddress::CreateFromString(event.ip_addr);
+  if (!ip_address) {
     LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid IP address "
                << event.ip_addr;
     return;
@@ -833,7 +833,7 @@ void Network::OnNeighborReachabilityEvent(
 
   if (event.status == Status::kFailed) {
     metrics_->NotifyNeighborLinkMonitorFailure(
-        technology_, ip_address->family(), event.role);
+        technology_, net_base::ToSAFamily(ip_address->GetFamily()), event.role);
   }
 
   if (state_ == State::kIdle) {
@@ -852,22 +852,22 @@ void Network::OnNeighborReachabilityEvent(
       event.role == Role::kGatewayAndDnsServer) {
     IPConfig* ipconfig;
     bool* gateway_found;
-    if (ip_address->family() == IPAddress::kFamilyIPv4) {
-      ipconfig = ipconfig_.get();
-      gateway_found = &ipv4_gateway_found_;
-    } else if (ip_address->family() == IPAddress::kFamilyIPv6) {
-      ipconfig = ip6config_.get();
-      gateway_found = &ipv6_gateway_found_;
-    } else {
-      NOTREACHED();
-      return;
+    switch (ip_address->GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ipconfig = ipconfig_.get();
+        gateway_found = &ipv4_gateway_found_;
+        break;
+      case net_base::IPFamily::kIPv6:
+        ipconfig = ip6config_.get();
+        gateway_found = &ipv6_gateway_found_;
+        break;
     }
     // It is impossible to observe a reachability event for the current gateway
     // before Network knows the IPConfig for the current connection: patchpanel
     // would not emit reachability event for the correct connection yet.
     if (!ipconfig) {
       LOG(INFO) << logging_tag_ << ": " << __func__ << ": "
-                << IPAddress::GetAddressFamilyName(ip_address->family())
+                << ip_address->GetFamily()
                 << " not configured, ignoring neighbor reachability event "
                 << event;
       return;
@@ -884,8 +884,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
-                                    event.status);
+    ev->OnNeighborReachabilityEvent(interface_index_, IPAddress(*ip_address),
+                                    event.role, event.status);
   }
 }
 
@@ -1079,7 +1079,7 @@ void Network::StartConnectionDiagnostics() {
   }
 
   connection_diagnostics_ = CreateConnectionDiagnostics(
-      IPAddress(*local_address), IPAddress(*gateway_address), dns_servers());
+      *local_address, *gateway_address, dns_servers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
@@ -1094,12 +1094,12 @@ void Network::StopConnectionDiagnostics() {
 }
 
 std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
-    const IPAddress& ip_address,
-    const IPAddress& gateway,
+    const net_base::IPAddress& ip_address,
+    const net_base::IPAddress& gateway,
     const std::vector<std::string>& dns_list) {
   return std::make_unique<ConnectionDiagnostics>(
-      interface_name(), interface_index(), ip_address, gateway, dns_list,
-      dispatcher_, metrics_, base::DoNothing());
+      interface_name(), interface_index(), IPAddress(ip_address),
+      IPAddress(gateway), dns_list, dispatcher_, metrics_, base::DoNothing());
 }
 
 void Network::StartConnectivityTest(
