@@ -889,7 +889,7 @@ void ArcSetup::UnmountSdcard() {
   for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
-    IGNORE_ERRORS(arc_mounter_->Umount(kDestDirectory));
+    IGNORE_ERRORS(arc_mounter_->UmountIfExists(kDestDirectory));
   }
 
   LOG(INFO) << "Unmount sdcard complete.";
@@ -2413,6 +2413,9 @@ void ArcSetup::OnBootContinue() {
 void ArcSetup::OnStop() {
   StopNetworking();
   CleanUpBinFmtMiscSetUp();
+  // Call UnmountSdcard() before UnmountOnStop() to ensure that the esdfs mount
+  // points are unmounted before unmounting `sdcard_mount_directory`.
+  UnmountSdcard();
   UnmountOnStop();
   RemoveAndroidKmsgFifo();
 }
