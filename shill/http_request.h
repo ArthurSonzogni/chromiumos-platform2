@@ -13,16 +13,17 @@
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/types/expected.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
 #include <net-base/ip_address.h>
 
+#include "shill/dns_client.h"
 #include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
-class DnsClient;
 class Error;
 class EventDispatcher;
 
@@ -84,7 +85,7 @@ class HttpRequest {
   // Time to wait for HTTP request.
   static constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
 
-  void GetDNSResult(const Error& error, const IPAddress& address);
+  void GetDNSResult(const base::expected<net_base::IPAddress, Error>& address);
   void StartRequest();
   void SuccessCallback(brillo::http::RequestID request_id,
                        std::unique_ptr<brillo::http::Response> response);
@@ -98,8 +99,7 @@ class HttpRequest {
   std::vector<std::string> dns_list_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
-  base::RepeatingCallback<void(const Error&, const IPAddress&)>
-      dns_client_callback_;
+  DnsClient::ClientCallback dns_client_callback_;
   base::OnceCallback<void(Result)> request_error_callback_;
   base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;

@@ -12,6 +12,8 @@
 #include <base/cancelable_callback.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/types/expected.h>
+#include <net-base/ip_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/error.h"
@@ -31,8 +33,8 @@ struct DnsClientState;
 // Implements a DNS resolution client that can run asynchronously.
 class DnsClient {
  public:
-  using ClientCallback =
-      base::RepeatingCallback<void(const Error&, const IPAddress&)>;
+  using ClientCallback = base::RepeatingCallback<void(
+      const base::expected<net_base::IPAddress, Error>&)>;
 
   static const char kErrorNoData[];
   static const char kErrorFormErr[];

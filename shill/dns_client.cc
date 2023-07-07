@@ -201,7 +201,16 @@ void DnsClient::HandleCompletion() {
     error_.Reset();
     address_.SetAddressToDefault();
   }
-  callback_.Run(error, address);
+
+  if (!error.IsSuccess()) {
+    callback_.Run(base::unexpected(error));
+  } else if (const auto addr = address.ToIPAddress(); addr) {
+    callback_.Run(*addr);
+  } else {
+    LOG(ERROR) << "Failed to convert to net_base::IPAddress" << address;
+    error.Populate(Error::kOperationFailed, kErrorUnknown);
+    callback_.Run(base::unexpected(error));
+  }
 }
 
 void DnsClient::HandleDnsRead(int fd) {

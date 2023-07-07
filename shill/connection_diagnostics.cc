@@ -360,25 +360,27 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 }
 
-void ConnectionDiagnostics::OnDNSResolutionComplete(const Error& error,
-                                                    const IPAddress& address) {
+void ConnectionDiagnostics::OnDNSResolutionComplete(
+    const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(2) << __func__;
 
-  if (error.IsSuccess()) {
+  if (address.has_value()) {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
-                        "Target address is " + address.ToString());
+                        "Target address is " + address->ToString());
     dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
-                                  weak_ptr_factory_.GetWeakPtr(), address));
-  } else if (error.type() == Error::kOperationTimeout) {
-    AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
-                        "DNS resolution timed out: " + error.message());
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::PingHost,
+                       weak_ptr_factory_.GetWeakPtr(), IPAddress(*address)));
+  } else if (address.error().type() == Error::kOperationTimeout) {
+    AddEventWithMessage(
+        kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
+        "DNS resolution timed out: " + address.error().message());
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                          weak_ptr_factory_.GetWeakPtr()));
   } else {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultFailure,
-                        "DNS resolution failed: " + error.message());
+                        "DNS resolution failed: " + address.error().message());
     ReportResultAndStop(kIssueDNSServerMisconfig);
   }
 }

@@ -217,12 +217,13 @@ void HttpRequest::Stop() {
 }
 
 // DnsClient callback that fires when the DNS request completes.
-void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
+void HttpRequest::GetDNSResult(
+    const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(this, 3) << "In " << __func__;
-  if (!error.IsSuccess()) {
+  if (!address.has_value()) {
     LOG(ERROR) << logging_tag_ << ": Could not resolve " << server_hostname_
-               << ": " << error.message();
-    if (error.message() == DnsClient::kErrorTimedOut) {
+               << ": " << address.error().message();
+    if (address.error().message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {
       SendStatus(kResultDNSFailure);
@@ -230,18 +231,13 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
     return;
   }
 
-  std::string addr_string;
-  if (!address.IntoString(&addr_string)) {
-    SendStatus(kResultDNSFailure);
-    return;
-  }
-
   // Add the host/port to IP mapping to the DNS cache to force curl to resolve
   // the URL to the given IP. Otherwise, will do its own DNS resolution and not
   // use the IP we provide to it.
-  transport_->ResolveHostToIp(server_hostname_, server_port_, addr_string);
+  transport_->ResolveHostToIp(server_hostname_, server_port_,
+                              address->ToString());
   LOG(INFO) << logging_tag_ << ": Resolved " << server_hostname_ << " to "
-            << addr_string;
+            << *address;
   StartRequest();
 }
 

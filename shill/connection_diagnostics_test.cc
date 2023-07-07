@@ -422,7 +422,13 @@ class ConnectionDiagnosticsTest : public Test {
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
                          IsEventList(expected_events_)));
     }
-    connection_diagnostics_.OnDNSResolutionComplete(error, resolved_address);
+
+    if (error.IsSuccess()) {
+      connection_diagnostics_.OnDNSResolutionComplete(
+          *resolved_address.ToIPAddress());
+    } else {
+      connection_diagnostics_.OnDNSResolutionComplete(base::unexpected(error));
+    }
   }
 
   void ExpectPingDNSServersEndSuccess(bool retries_left) {

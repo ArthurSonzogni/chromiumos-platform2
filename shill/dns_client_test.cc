@@ -54,6 +54,20 @@ const base::TimeDelta kAresTimeout =
     base::Seconds(2);  // ARES transaction timeout
 const base::TimeDelta kAresWait =
     base::Seconds(1);  // Time period ARES asks caller to wait
+
+// Matches the base::expected<net_base::IPAddress, Error> argument that has
+// value.
+MATCHER(HasValue, "") {
+  return arg.has_value();
+}
+
+// Matches the base::expected<net_base::IPAddress, Error> argument that has
+// error.
+MATCHER_P2(IsError, error_type, error_message, "") {
+  return !arg.has_value() && error_type == arg.error().type() &&
+         error_message == arg.error().message();
+}
+
 }  // namespace
 
 class DnsClientTest : public Test {
@@ -167,7 +181,7 @@ class DnsClientTest : public Test {
 
     // Make sure the callback gets called with a success result, and save
     // the callback address argument in |address_result_|.
-    EXPECT_CALL(callback_target_, CallTarget(IsSuccess(), _))
+    EXPECT_CALL(callback_target_, CallTarget(HasValue()))
         .WillOnce(Invoke(this, &DnsClientTest::SaveCallbackArgs));
     CallCompletion();
 
@@ -176,9 +190,13 @@ class DnsClientTest : public Test {
     EXPECT_TRUE(dns_client_->address_.IsDefault());
   }
 
-  void SaveCallbackArgs(const Error& error, const IPAddress& address) {
-    error_result_ = error;
-    address_result_ = address;
+  void SaveCallbackArgs(
+      const base::expected<net_base::IPAddress, Error>& address) {
+    if (address.has_value()) {
+      address_result_ = IPAddress(*address);
+    } else {
+      error_result_ = address.error();
+    }
   }
 
   void ExpectPostCompletionTask() {
@@ -198,7 +216,9 @@ class DnsClientTest : public Test {
         : callback_(base::BindRepeating(&DnsCallbackTarget::CallTarget,
                                         base::Unretained(this))) {}
 
-    MOCK_METHOD(void, CallTarget, (const Error&, const IPAddress&));
+    MOCK_METHOD(void,
+                CallTarget,
+                ((const base::expected<net_base::IPAddress, Error>&)));
 
     const DnsClient::ClientCallback& callback() const { return callback_; }
 
@@ -344,7 +364,7 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgPointee<0>(init_time_val), Return(0)))
       .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
-  EXPECT_CALL(callback_target_, CallTarget(Not(IsSuccess()), _)).Times(0);
+  EXPECT_CALL(callback_target_, CallTarget(Not(HasValue()))).Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   Error error;
   // Expect the DnsClient to post a completion task.  However this task will
@@ -365,9 +385,8 @@ TEST_F(DnsClientTest, TimeoutDispatcherEvent) {
   AdvanceTime(kAresTimeout);
   ExpectPostCompletionTask();
   CallTimeout();
-  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationTimeout,
-                                                   DnsClient::kErrorTimedOut),
-                                           _));
+  EXPECT_CALL(callback_target_, CallTarget(IsError(Error::kOperationTimeout,
+                                                   DnsClient::kErrorTimedOut)));
   CallCompletion();
 }
 
@@ -380,9 +399,8 @@ TEST_F(DnsClientTest, TimeoutFromARES) {
       .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
   ExpectPostCompletionTask();
   CallTimeout();
-  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationTimeout,
-                                                   DnsClient::kErrorTimedOut),
-                                           _));
+  EXPECT_CALL(callback_target_, CallTarget(IsError(Error::kOperationTimeout,
+                                                   DnsClient::kErrorTimedOut)));
   CallCompletion();
 }
 
@@ -395,9 +413,8 @@ TEST_F(DnsClientTest, HostNotFound) {
       .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
   ExpectPostCompletionTask();
   CallDnsRead();
-  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationFailed,
-                                                   DnsClient::kErrorNotFound),
-                                           _));
+  EXPECT_CALL(callback_target_, CallTarget(IsError(Error::kOperationFailed,
+                                                   DnsClient::kErrorNotFound)));
   CallCompletion();
 }
 

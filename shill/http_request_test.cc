@@ -167,12 +167,10 @@ class HttpRequestTest : public Test {
   }
   void GetDNSResultFailure(const std::string& error_msg) {
     Error error(Error::kOperationFailed, error_msg);
-    IPAddress address = IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown);
-    request_->GetDNSResult(error, address);
+    request_->GetDNSResult(base::unexpected(error));
   }
-  void GetDNSResultSuccess(const IPAddress& address) {
-    Error error;
-    request_->GetDNSResult(error, address);
+  void GetDNSResultSuccess(const net_base::IPAddress& address) {
+    request_->GetDNSResult(address);
   }
   HttpRequest::Result StartRequest(const std::string& url) {
     return request_->Start(kLoggingTag, url, {},
@@ -290,9 +288,8 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 
   ExpectStop();
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
-  const auto addr = IPAddress::CreateFromString(kServerAddress);
-  CHECK(addr.has_value());
-  GetDNSResultSuccess(*addr);
+  const auto addr = *net_base::IPAddress::CreateFromString(kServerAddress);
+  GetDNSResultSuccess(addr);
   ExpectReset();
 }
 

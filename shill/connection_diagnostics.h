@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
@@ -187,7 +188,8 @@ class ConnectionDiagnostics {
 
   // Called after the DNS IP address resolution on started in
   // ConnectionDiagnostics::ResolveTargetServerIPAddress completes.
-  void OnDNSResolutionComplete(const Error& error, const IPAddress& address);
+  void OnDNSResolutionComplete(
+      const base::expected<net_base::IPAddress, Error>& address);
 
   // Called after the IcmpSession started in ConnectionDiagnostics::PingHost on
   // |address_pinged| finishes or times out. |ping_event_type| indicates the
