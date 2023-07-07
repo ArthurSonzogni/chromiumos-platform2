@@ -904,22 +904,26 @@ std::vector<std::string> Network::dns_servers() const {
   return {};
 }
 
-std::optional<IPAddress> Network::local() const {
+std::optional<net_base::IPAddress> Network::local() const {
   if (ipconfig() && !ipconfig()->properties().address.empty()) {
-    return IPAddress::CreateFromString((ipconfig()->properties().address));
+    return net_base::IPAddress::CreateFromString(
+        (ipconfig()->properties().address));
   }
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    return IPAddress::CreateFromString((ip6config()->properties().address));
+    return net_base::IPAddress::CreateFromString(
+        (ip6config()->properties().address));
   }
   return std::nullopt;
 }
 
-std::optional<IPAddress> Network::gateway() const {
+std::optional<net_base::IPAddress> Network::gateway() const {
   if (ipconfig() && !ipconfig()->properties().address.empty()) {
-    return IPAddress::CreateFromString(ipconfig()->properties().gateway);
+    return net_base::IPAddress::CreateFromString(
+        ipconfig()->properties().gateway);
   }
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    return IPAddress::CreateFromString(ip6config()->properties().gateway);
+    return net_base::IPAddress::CreateFromString(
+        ip6config()->properties().gateway);
   }
   return std::nullopt;
 }
@@ -936,14 +940,16 @@ bool Network::StartPortalDetection(bool reset) {
     return true;
   }
 
-  if (!local()) {
+  const auto local_address = local();
+  if (!local_address) {
     LOG(ERROR) << logging_tag_
                << ": Cannot start portal detection: No valid IP address";
     return false;
   }
 
   portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(interface_name_, local()->family(),
+  if (!portal_detector_->Start(interface_name_,
+                               net_base::ToSAFamily(local_address->GetFamily()),
                                dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
     portal_detector_.reset();
@@ -964,14 +970,16 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  if (!local()) {
+  const auto local_address = local();
+  if (!local_address) {
     LOG(ERROR) << logging_tag_
                << ": Cannot restart portal detection: No valid IP address";
     return false;
   }
 
-  if (!portal_detector_->Restart(interface_name_, local()->family(),
-                                 dns_servers(), logging_tag_)) {
+  if (!portal_detector_->Restart(
+          interface_name_, net_base::ToSAFamily(local_address->GetFamily()),
+          dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;
@@ -1073,7 +1081,7 @@ void Network::StartConnectionDiagnostics() {
   }
 
   connection_diagnostics_ = CreateConnectionDiagnostics(
-      *local_address, *gateway_address, dns_servers());
+      IPAddress(*local_address), IPAddress(*gateway_address), dns_servers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
@@ -1102,13 +1110,14 @@ void Network::StartConnectivityTest(
       dispatcher_, probe_config,
       base::BindRepeating(&Network::ConnectivityTestCallback,
                           weak_factory_.GetWeakPtr(), logging_tag_));
-  auto local_addr = local();
-  if (!local_addr) {
+  const auto local_address = local();
+  if (!local_address) {
     LOG(DFATAL) << logging_tag_ << ": Does not have a valid address";
     return;
   }
   if (connectivity_test_portal_detector_->Start(
-          interface_name_, local_addr->family(), dns_servers(), logging_tag_)) {
+          interface_name_, net_base::ToSAFamily(local_address->GetFamily()),
+          dns_servers(), logging_tag_)) {
     LOG(WARNING) << logging_tag_ << ": Failed to start connectivity test";
   } else {
     LOG(INFO) << logging_tag_ << ": Started connectivity test";

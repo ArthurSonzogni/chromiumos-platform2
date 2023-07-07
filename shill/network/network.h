@@ -435,8 +435,8 @@ class Network {
   // should use getters like GetAddresses() to get properties of all IP families
   // at the same time.
   std::vector<std::string> dns_servers() const;
-  std::optional<IPAddress> local() const;
-  std::optional<IPAddress> gateway() const;
+  std::optional<net_base::IPAddress> local() const;
+  std::optional<net_base::IPAddress> gateway() const;
 
   const int interface_index_;
   const std::string interface_name_;
