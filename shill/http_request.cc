@@ -41,7 +41,7 @@ static std::string ObjectID(const HttpRequest* r) {
 
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
-                         const IPAddress::Family ip_family,
+                         net_base::IPFamily ip_family,
                          const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
     : interface_name_(interface_name),
@@ -50,7 +50,7 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
       weak_ptr_factory_(this),
       dns_client_callback_(base::BindRepeating(&HttpRequest::GetDNSResult,
                                                weak_ptr_factory_.GetWeakPtr())),
-      dns_client_(new DnsClient(ip_family_,
+      dns_client_(new DnsClient(net_base::ToSAFamily(ip_family_),
                                 interface_name_,
                                 DnsClient::kDnsTimeoutMilliseconds,
                                 dispatcher,
@@ -103,7 +103,16 @@ HttpRequest::Result HttpRequest::Start(
   request_success_callback_ = std::move(request_success_callback);
   request_error_callback_ = std::move(request_error_callback);
 
-  if (IPAddress::CreateFromString(server_hostname_, ip_family_).has_value()) {
+  const auto server_addr =
+      net_base::IPAddress::CreateFromString(server_hostname_);
+  if (server_addr && server_addr->GetFamily() != ip_family_) {
+    LOG(ERROR) << logging_tag_ << ": Server hostname " << server_hostname_
+               << " doesn't match the IP family " << ip_family_;
+    Stop();
+    return kResultDNSFailure;
+  }
+
+  if (server_addr) {
     StartRequest();
   } else {
     SLOG(this, 3) << "Looking up host: " << server_hostname_;

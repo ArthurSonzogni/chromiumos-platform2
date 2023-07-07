@@ -53,7 +53,7 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest()
       : HttpRequest(nullptr,
                     kInterfaceName,
-                    IPAddress::kFamilyIPv4,
+                    net_base::IPFamily::kIPv4,
                     {kDNSServer0, kDNSServer1},
                     true) {}
   MockHttpRequest(const MockHttpRequest&) = delete;

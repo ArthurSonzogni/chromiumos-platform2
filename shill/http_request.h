@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
+#include <net-base/ip_address.h>
 
 #include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
@@ -48,7 +49,7 @@ class HttpRequest {
   // will not change any behavior for HTTP communication.
   HttpRequest(EventDispatcher* dispatcher,
               const std::string& interface_name,
-              const IPAddress::Family ip_family,
+              net_base::IPFamily ip_family,
               const std::vector<std::string>& dns_list,
               bool allow_non_google_https = false);
   HttpRequest(const HttpRequest&) = delete;
@@ -93,7 +94,7 @@ class HttpRequest {
 
   std::string logging_tag_;
   std::string interface_name_;
-  IPAddress::Family ip_family_;
+  net_base::IPFamily ip_family_;
   std::vector<std::string> dns_list_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
