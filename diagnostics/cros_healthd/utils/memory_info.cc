@@ -46,21 +46,20 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
   // claiming to be in kB.
   std::map<std::string, uint32_t> memory_map_kib;
   uint32_t out_memory_kib;
-  for (int i = 0; i < pairs.size(); i++) {
-    if (pairs[i].first == kMemTotalName || pairs[i].first == kMemFreeName ||
-        pairs[i].first == kMemAvailableName) {
-      if (!ParseRow(pairs[i].second, &out_memory_kib)) {
-        LOG(ERROR) << "Incorrectly formatted: " << pairs[i].first;
+  for (const auto& [field_name, value] : pairs) {
+    if (field_name == kMemTotalName || field_name == kMemFreeName ||
+        field_name == kMemAvailableName) {
+      if (!ParseRow(value, &out_memory_kib)) {
+        LOG(ERROR) << "Incorrectly formatted: " << field_name;
         return std::nullopt;
       }
-      memory_map_kib[pairs[i].first] = out_memory_kib;
+      memory_map_kib[field_name] = out_memory_kib;
     }
   }
 
   for (const auto& memory_name :
        {kMemTotalName, kMemFreeName, kMemAvailableName}) {
-    auto itr = memory_map_kib.find(memory_name);
-    if (itr == memory_map_kib.end()) {
+    if (!memory_map_kib.count(memory_name)) {
       LOG(ERROR) << memory_name << " not found in /proc/meminfo";
       return std::nullopt;
     }
