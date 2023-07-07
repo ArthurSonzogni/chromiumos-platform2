@@ -25,6 +25,7 @@ using testing::Eq;
 using testing::InSequence;
 using testing::Return;
 using testing::ReturnNew;
+using testing::StrEq;
 
 namespace shill {
 
@@ -279,7 +280,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     ExpectOTPStaticChallengeResponse();
     ExpectPinResponse();
     EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
-                                     Service::kErrorDetailsNone));
+                                     StrEq(Service::kErrorDetailsNone)));
     EXPECT_CALL(driver_, OnReconnecting(_));
     EXPECT_FALSE(GetHoldWaiting());
     OnInput(&data);
@@ -294,8 +295,8 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   InputData data = CreateInputDataFromString(s);
   SetSockets();
   // Stops the server after the first message is processed.
-  EXPECT_CALL(driver_,
-              FailService(Service::kFailureConnect, Service::kErrorDetailsNone))
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
+                                   StrEq(Service::kErrorDetailsNone)))
       .WillOnce(Assign(&server_.sockets_, nullptr));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
@@ -415,7 +416,7 @@ TEST_F(OpenVPNManagementServerTest, ParsePasswordFailedReason) {
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone))
+                                   StrEq(Service::kErrorDetailsNone)))
       .Times(4);
   server_.PerformStaticChallenge("Auth");
   driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
@@ -441,7 +442,7 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeToken) {
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone))
+                                   StrEq(Service::kErrorDetailsNone)))
       .Times(2);
   server_.PerformAuthentication("Auth");
   driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
@@ -473,7 +474,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
 
 TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPin) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone));
+                                   StrEq(Service::kErrorDetailsNone)));
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
@@ -523,8 +524,8 @@ TEST_F(OpenVPNManagementServerTest, SendPasswordWithSpecialCharacters) {
 
 TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_FALSE(server_.ProcessFailedPasswordMessage("foo"));
-  EXPECT_CALL(driver_,
-              FailService(Service::kFailureConnect, Service::kErrorDetailsNone))
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
+                                   StrEq(Service::kErrorDetailsNone)))
       .Times(3);
   EXPECT_CALL(driver_, FailService(Service::kFailureConnect, Eq("Revoked.")));
   EXPECT_TRUE(
