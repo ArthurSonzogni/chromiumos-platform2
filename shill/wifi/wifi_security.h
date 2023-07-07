@@ -18,6 +18,7 @@ class WiFiSecurity {
  public:
   enum Mode {
     kNone,
+    kTransOwe,
     kOwe,
     kWep,
     kWpa,

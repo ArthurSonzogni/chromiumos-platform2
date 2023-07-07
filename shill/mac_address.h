@@ -32,6 +32,8 @@ class MACAddress {
 
   bool is_set() const { return is_set_; }
 
+  const std::array<uint8_t, ETH_ALEN>& address() const { return address_; }
+
   // Returns is true if address has expired.
   bool IsExpired(base::Time now) const;
 

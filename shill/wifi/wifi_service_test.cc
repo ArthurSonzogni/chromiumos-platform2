@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
-
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -145,6 +144,13 @@ class WiFiServiceTest : public PropertyStoreTest {
     const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
     return new WiFiService(manager(), &provider_, ssid_bytes, kModeManaged,
                            security_class, WiFiSecurity(), false);
+  }
+
+  WiFiServiceRefPtr MakeServiceSSID(const std::string& ssid,
+                                    const WiFiSecurity& security) {
+    return new WiFiService(manager(), &provider_, {ssid.begin(), ssid.end()},
+                           kModeManaged, security.SecurityClass(), security,
+                           false);
   }
 
   WiFiServiceRefPtr MakeSimpleService(const std::string& security_class) {
@@ -938,6 +944,110 @@ TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
   SetWiFiProperties(&store, storage_id1, simple_ssid(), kSecurityClassNone);
   EXPECT_TRUE(service->Load(&store));
   EXPECT_EQ(service->GetStorageIdentifier(), storage_id0);
+}
+
+static WiFiEndpoint::SecurityFlags SecurityModeToFlags(
+    WiFiSecurity::Mode mode) {
+  WiFiEndpoint::SecurityFlags flags;
+  switch (mode) {
+    case WiFiSecurity::kTransOwe:
+      flags.trans_owe = true;
+      break;
+    case WiFiSecurity::kOwe:
+      flags.rsn_owe = true;
+      break;
+    case WiFiSecurity::kWep:
+      flags.privacy = true;
+      break;
+    case WiFiSecurity::kWpa:
+      flags.wpa_psk = true;
+      break;
+    case WiFiSecurity::kWpa2:
+      flags.rsn_psk = true;
+      break;
+    case WiFiSecurity::kWpa3:
+      flags.rsn_sae = true;
+      break;
+    case WiFiSecurity::kWpaEnterprise:
+      flags.wpa_8021x = true;
+      break;
+    case WiFiSecurity::kWpa2Enterprise:
+      flags.rsn_8021x = true;
+      break;
+    case WiFiSecurity::kWpa3Enterprise:
+      flags.rsn_8021x_wpa3 = true;
+      break;
+    default:
+      EXPECT_EQ(mode, WiFiSecurity::kNone)
+          << "Unhandled security mode: " << mode;
+  }
+  return flags;
+}
+
+TEST_F(WiFiServiceTest, EndpointMatch) {
+  std::vector<WiFiSecurity> securities = {
+      WiFiSecurity::kNone,
+      WiFiSecurity::kOwe,
+      WiFiSecurity::kWep,
+      WiFiSecurity::kWpa,
+      WiFiSecurity::kWpa2,
+      WiFiSecurity::kWpa3,
+      WiFiSecurity::kWpaEnterprise,
+      WiFiSecurity::kWpa2Enterprise,
+      WiFiSecurity::kWpa3Enterprise,
+  };
+  const std::string ssid = "test_service";
+  const std::string ssid2 = "test_service2";
+  for (auto& sec : securities) {
+    auto service = MakeServiceSSID(ssid, sec);
+    EXPECT_NE(service, nullptr);
+    for (auto& e_sec : securities) {
+      auto flags = SecurityModeToFlags(e_sec.mode());
+      auto endpoint = MakeEndpoint(ssid, "00:01:02:03:04:05", 2412, 0, flags);
+      auto endpoint2 = MakeEndpoint(ssid2, "01:02:03:04:05:06", 2412, 0, flags);
+      EXPECT_NE(endpoint, nullptr);
+      EXPECT_NE(endpoint2, nullptr);
+
+      // Since we are always using managed mode the endpoint with correct SSID
+      // should always match when security matches ...
+      EXPECT_EQ(service->IsMatch(endpoint),
+                service->IsSecurityMatch(endpoint->security_mode()));
+      // ... and the endpoint with wrong SSID should never match.
+      EXPECT_FALSE(service->IsMatch(endpoint2));
+    }
+  }
+}
+
+TEST_F(WiFiServiceTest, EndpointMatchTransOwe) {
+  const std::string ssid = "test_service";
+  const std::string ssid2 = "test_service2";
+
+  auto service = MakeServiceSSID(ssid, WiFiSecurity::kTransOwe);
+  EXPECT_NE(service, nullptr);
+  // First match public endpoints.
+  auto flags = SecurityModeToFlags(WiFiSecurity::kTransOwe);
+  auto endpoint = MakeEndpoint(ssid, "00:01:02:03:04:05", 2412, 0, flags);
+  auto endpoint2 = MakeEndpoint(ssid2, "01:02:03:04:05:06", 2412, 0, flags);
+  EXPECT_NE(endpoint, nullptr);
+  EXPECT_NE(endpoint2, nullptr);
+
+  EXPECT_TRUE(service->IsMatch(endpoint));
+  EXPECT_FALSE(service->IsMatch(endpoint2));
+
+  // In addition to matching of the public endpoint, check also matching of the
+  // hidden OWE endpoint.
+  flags.rsn_owe = true;
+  // "_hidden" suffix and XOR the last byte of BSSID (see the
+  // implementation of WiFiEndpoint::MakeEndpoint()).
+  auto hidden =
+      MakeEndpoint(ssid + "_hidden", "00:01:02:03:04:FA", 2412, 0, flags);
+  EXPECT_NE(hidden, nullptr);
+  EXPECT_TRUE(service->IsMatch(hidden));
+
+  auto hidden2 =
+      MakeEndpoint(ssid2 + "_hidden", "01:02:03:04:05:F9", 2412, 0, flags);
+  EXPECT_NE(hidden2, nullptr);
+  EXPECT_FALSE(service->IsMatch(hidden2));
 }
 
 TEST_F(WiFiServiceSecurityTest, WPAMapping) {

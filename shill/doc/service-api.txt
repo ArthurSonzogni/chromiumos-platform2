@@ -1757,7 +1757,8 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			Possible values are listed below.
 
 			"none" - no privacy
-                        "owe"  - open network using OWE encryption
+			"trans-owe" - open network using transitional mode OWE
+			"owe"  - open network using OWE encryption
 			"wep"  - fixed key WEP
 			"wpa"  - WPA-PSK
 			"wpa2" - IEEE 802.11i-PSK

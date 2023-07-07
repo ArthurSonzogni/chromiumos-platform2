@@ -478,16 +478,20 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
     return false;
   }
 
-  auto security_class = WiFiSecurity::SecurityClass(endpoint->security_mode());
+  auto ssid = endpoint->ssid();
+  auto security = endpoint->security_mode();
+  const auto mode = endpoint->network_mode();
 
-  WiFiServiceRefPtr service =
-      FindService(endpoint->ssid(), endpoint->network_mode(), security_class,
-                  endpoint->security_mode());
+  WiFiServiceRefPtr service = FindService(endpoint);
   if (!service) {
     const bool hidden_ssid = false;
-    service =
-        AddService(endpoint->ssid(), endpoint->network_mode(), security_class,
-                   endpoint->security_mode(), hidden_ssid);
+    if (security == WiFiSecurity::kOwe && !endpoint->owe_ssid().empty()) {
+      LOG(WARNING) << "Found a hidden OWE BSS w/o public counterpart";
+      ssid = endpoint->owe_ssid();
+      security = WiFiSecurity::kTransOwe;
+    }
+    service = AddService(ssid, mode, WiFiSecurity::SecurityClass(security),
+                         security, hidden_ssid);
   }
 
   std::string asgn_endpoint_log = base::StringPrintf(
@@ -556,9 +560,7 @@ void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint) {
 
   // If the service still matches the endpoint in its new configuration,
   // we need only to update the service.
-  if (service->ssid() == endpoint->ssid() &&
-      service->mode() == endpoint->network_mode() &&
-      service->IsSecurityMatch(endpoint->security_mode())) {
+  if (service->IsMatch(endpoint)) {
     service->NotifyEndpointUpdated(endpoint);
     return;
   }
@@ -625,19 +627,19 @@ WiFiServiceRefPtr WiFiProvider::FindService(
     const std::string& mode,
     const std::string& security_class,
     const WiFiSecurity& security) const {
-  if (security.IsValid()) {
-    for (const auto& service : services_) {
-      if (service->ssid() == ssid && service->mode() == mode &&
-          service->IsSecurityMatch(security.mode())) {
-        return service;
-      }
+  for (const auto& service : services_) {
+    if (service->IsMatch(ssid, mode, security_class, security)) {
+      return service;
     }
-  } else {
-    for (const auto& service : services_) {
-      if (service->ssid() == ssid && service->mode() == mode &&
-          service->IsSecurityMatch(security_class)) {
-        return service;
-      }
+  }
+  return nullptr;
+}
+
+WiFiServiceRefPtr WiFiProvider::FindService(
+    const WiFiEndpointConstRefPtr& endpoint) const {
+  for (const auto& service : services_) {
+    if (service->IsMatch(endpoint)) {
+      return service;
     }
   }
   return nullptr;

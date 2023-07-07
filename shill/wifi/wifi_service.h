@@ -172,6 +172,12 @@ class WiFiService : public Service {
   mockable int GetBSSIDConnectableEndpointCount() const;
   bool IsBSSIDConnectable(const WiFiEndpointConstRefPtr& endpoint) const;
   bool IsVisible() const override;
+
+  bool IsMatch(const std::vector<uint8_t>& ssid,
+               const std::string& mode,
+               const std::string& security_class,
+               const WiFiSecurity& security) const;
+  bool IsMatch(const WiFiEndpointConstRefPtr& endpoint) const;
   bool IsSecurityMatch(WiFiSecurity::Mode mode) const;
   bool IsSecurityMatch(const std::string& security_class) const;
 

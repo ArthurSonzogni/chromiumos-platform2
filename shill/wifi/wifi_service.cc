@@ -375,7 +375,8 @@ void WiFiService::SetSecurityProperties() {
         base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
                            WPASupplicant::kKeyManagementWPAPSKSHA256));
 #endif  // DISABLE_WPA3_SAE
-  } else if (security_ == WiFiSecurity::kOwe) {
+  } else if (security_ == WiFiSecurity::kOwe ||
+             security_ == WiFiSecurity::kTransOwe) {
     SetEAPKeyManagement(WPASupplicant::kKeyManagementOWE);
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
@@ -386,7 +387,8 @@ void WiFiService::SetSecurityProperties() {
 }
 
 void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
-  DCHECK(endpoint->ssid() == ssid());
+  DCHECK(endpoint->ssid() == ssid() || (security() == WiFiSecurity::kTransOwe &&
+                                        endpoint->owe_ssid() == ssid()));
   DCHECK(IsSecurityMatch(endpoint->security_mode()));
 
   endpoints_.insert(endpoint);
@@ -842,6 +844,27 @@ void WiFiService::SetState(ConnectState state) {
   }
   SetRoamState(Service::kRoamStateIdle);
   NotifyIfVisibilityChanged();
+}
+
+bool WiFiService::IsMatch(const std::vector<uint8_t>& ssid,
+                          const std::string& mode,
+                          const std::string& security_class,
+                          const WiFiSecurity& security) const {
+  return this->ssid() == ssid && this->mode() == mode &&
+         (security.IsValid() ? IsSecurityMatch(security.mode())
+                             : IsSecurityMatch(security_class));
+}
+
+bool WiFiService::IsMatch(const WiFiEndpointConstRefPtr& endpoint) const {
+  if (ssid() != endpoint->ssid()) {
+    if (security() != WiFiSecurity::kTransOwe ||
+        endpoint->security_mode() != WiFiSecurity::kOwe ||
+        ssid() != endpoint->owe_ssid()) {
+      return false;
+    }
+  }
+  return mode() == endpoint->network_mode() &&
+         IsSecurityMatch(endpoint->security_mode());
 }
 
 bool WiFiService::IsSecurityMatch(WiFiSecurity::Mode mode) const {

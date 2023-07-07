@@ -34,6 +34,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     bool rsn_owe = false;
     bool rsn_psk = false;
     bool rsn_sae = false;
+    bool trans_owe = false;
     bool wpa_8021x = false;
     bool wpa_psk = false;
     bool privacy = false;
@@ -124,6 +125,12 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const HS20Information& hs20_information() const;
   bool mbo_support() const;
   const QosSupport& qos_support() const;
+  // Transitional mode OWE AP consists of two BSSes pointing to each other via
+  // IEs in the beacon. The SSID and BSSID is included in these IEs for
+  // identification and these two functions return them. For endpoints not
+  // belonging to the transitional mode OWE AP returned values are empty.
+  const std::vector<uint8_t>& owe_ssid() const;
+  const std::vector<uint8_t>& owe_bssid() const;
 
  private:
   friend class ManagerTest;  // for MakeOpenEndpoint
@@ -239,6 +246,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
 
   const std::vector<uint8_t> ssid_;
   const std::vector<uint8_t> bssid_;
+  std::vector<uint8_t> owe_ssid_;
+  std::vector<uint8_t> owe_bssid_;
   std::string ssid_string_;
   const std::string ssid_hex_;
   const std::string bssid_string_;

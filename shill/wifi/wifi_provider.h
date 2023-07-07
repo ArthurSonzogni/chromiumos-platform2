@@ -321,6 +321,9 @@ class WiFiProvider : public ProviderInterface {
                                 const std::string& security_class,
                                 const WiFiSecurity& security) const;
 
+  // Find a service matching given endpoint.
+  WiFiServiceRefPtr FindService(const WiFiEndpointConstRefPtr& endpoint) const;
+
   // Returns a WiFiServiceRefPtr for unit tests and for down-casting to a
   // ServiceRefPtr in GetService().
   WiFiServiceRefPtr GetWiFiService(const KeyValueStore& args, Error* error);

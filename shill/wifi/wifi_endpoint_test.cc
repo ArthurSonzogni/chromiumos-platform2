@@ -18,6 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mac_address.h"
 #include "shill/metrics.h"
 #include "shill/mock_log.h"
 #include "shill/net/ieee80211.h"
@@ -743,6 +744,29 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
     EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
     EXPECT_TRUE(ep->supported_features_.mbo_support);
+  }
+  {
+    std::vector<uint8_t> data;
+    MACAddress bss;
+    bss.Randomize();
+    data.insert(data.end(), bss.address().begin(), bss.address().end());
+    std::string ssid{"SSID_OWE_"};
+    ssid += bss.ToString();
+    data.push_back(ssid.size());
+    data.insert(data.end(), ssid.begin(), ssid.end());
+    EXPECT_EQ(data.size(), 33);
+
+    std::vector<uint8_t> ies;
+    AddVendorIE(IEEE_80211::kOUIVendorWiFiAlliance,
+                IEEE_80211::kOUITypeWiFiAllianceTransOWE, data, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->security_flags_.trans_owe);
+    EXPECT_EQ(ep->owe_bssid().size(), bss.address().size());
+    EXPECT_EQ(0, std::memcmp(ep->owe_bssid().data(), bss.address().data(),
+                             bss.address().size()));
+    EXPECT_EQ(ep->owe_ssid().size(), ssid.size());
+    EXPECT_EQ(0, std::memcmp(ep->owe_ssid().data(), ssid.data(), ssid.size()));
   }
   {
     std::vector<uint8_t> ies;

@@ -68,6 +68,7 @@ const uint16_t kWPSElementDeviceName = 0x1011;
 const uint32_t kOUIVendorWiFiAlliance = 0x506f9a;
 const uint32_t kOUITypeWiFiAllianceHS20Indicator = 0x10;
 const uint32_t kOUITypeWiFiAllianceMBO = 0x16;
+const uint32_t kOUITypeWiFiAllianceTransOWE = 0x1c;
 
 const uint32_t kOUIVendorCiscoAironet = 0x004096;
 const uint32_t kOUITypeCiscoExtendedCapabilitiesIE = 0x0b;

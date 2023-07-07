@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_endpoint.h"
 
 #include <algorithm>
+#include <linux/if_ether.h>
 
 #include <base/containers/contains.h>
 #include <base/logging.h>
@@ -47,6 +48,9 @@ void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
   if (flags.rsn_psk) {
     rsn.push_back(std::string("wpa2") +
                   WPASupplicant::kKeyManagementMethodSuffixPSK);
+  }
+  if (flags.rsn_owe) {
+    rsn.push_back(WPASupplicant::kKeyManagementMethodOWE);
   }
   if (flags.wpa_8021x)
     wpa.push_back(std::string("wpa") +
@@ -112,6 +116,8 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
 
   network_mode_ =
       ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
+  // Result of ParseSecurity() depends on the contents of the information
+  // elements so don't move this call prior to ParseIEs() call above.
   security_mode_ = ParseSecurity(properties, &security_flags_);
   has_rsn_property_ =
       properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN);
@@ -151,9 +157,9 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     auto new_mode =
         ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
     if (!new_mode.empty() && new_mode != network_mode_) {
+      SLOG(2) << "WiFiEndpoint " << bssid_string_
+              << " mode change: " << network_mode_ << " -> " << new_mode;
       network_mode_ = new_mode;
-      SLOG(2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
-              << network_mode_;
       should_notify = true;
     }
   }
@@ -166,10 +172,27 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
         metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
       }
       if (device_->GetCurrentEndpoint().get() == this) {
-        SLOG(2) << "Current WiFiEndpoint " << bssid_string_ << " frequency "
-                << frequency_ << " -> " << new_frequency;
+        SLOG(2) << "Current WiFiEndpoint " << bssid_string_
+                << " frequency change: " << frequency_ << " -> "
+                << new_frequency;
       }
       frequency_ = new_frequency;
+      should_notify = true;
+    }
+  }
+
+  if (properties.Contains<std::vector<uint8_t>>(
+          WPASupplicant::kBSSPropertyIEs)) {
+    Metrics::WiFiNetworkPhyMode new_phy_mode =
+        Metrics::kWiFiNetworkPhyModeUndef;
+    if (!ParseIEs(properties, &new_phy_mode)) {
+      new_phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
+    }
+    if (new_phy_mode != physical_mode_) {
+      SLOG(2) << "WiFiEndpoint " << bssid_string_
+              << " phy mode change: " << physical_mode_ << " -> "
+              << new_phy_mode;
+      physical_mode_ = new_phy_mode;
       should_notify = true;
     }
   }
@@ -177,9 +200,10 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
   WiFiSecurity::Mode new_security_mode =
       ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
+    SLOG(2) << "WiFiEndpoint " << bssid_string_
+            << " security change: " << security_mode() << " -> "
+            << new_security_mode;
     security_mode_ = new_security_mode;
-    SLOG(2) << "WiFiEndpoint " << bssid_string_ << " security is now "
-            << security_mode();
     should_notify = true;
   }
 
@@ -261,6 +285,14 @@ const std::string& WiFiEndpoint::bssid_string() const {
 
 const std::string& WiFiEndpoint::bssid_hex() const {
   return bssid_hex_;
+}
+
+const std::vector<uint8_t>& WiFiEndpoint::owe_ssid() const {
+  return owe_ssid_;
+}
+
+const std::vector<uint8_t>& WiFiEndpoint::owe_bssid() const {
+  return owe_bssid_;
 }
 
 const std::string& WiFiEndpoint::country_code() const {
@@ -353,9 +385,8 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
     const SecurityFlags& security_flags) {
   KeyValueStore args;
 
-  args.Set<std::vector<uint8_t>>(
-      WPASupplicant::kBSSPropertySSID,
-      std::vector<uint8_t>(ssid.begin(), ssid.end()));
+  auto ssid_bytes = std::vector<uint8_t>(ssid.begin(), ssid.end());
+  args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertySSID, ssid_bytes);
 
   auto bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
   args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID, bssid_bytes);
@@ -363,6 +394,57 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
   args.Set<int16_t>(WPASupplicant::kBSSPropertySignal, signal_dbm);
   args.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency, frequency);
   args.Set<std::string>(WPASupplicant::kBSSPropertyMode, network_mode);
+
+  if (security_flags.trans_owe) {
+    // The format of the Transitional OWE IE is:
+    // - VendorElemID (1B) + len (1B)
+    // - WiFiAliance OUIVendor (3B) + TransOWE OUIType (1B)
+    // - BSSID (6B) + SSID len (1B) + SSID (SSID len)
+    // For testing purposes the convention for SSID of the hidden BSS is that it
+    // equals to the SSID of the public with "_hidden" suffix appended.  So when
+    // configuring public just pass the SSID (and the suffix will be appended)
+    // and when configuring hidden make sure the SSID ends with the suffix since
+    // it will be stripped.
+    // The convention for the value of BBSID is that the BSSID of the other BSS
+    // in the pair can be obtained by flippipng bits (xor 0xFF) of the last
+    // byte.
+    constexpr std::string_view suffix{"_hidden"};
+    std::vector<uint8_t> ie;
+    // First let's handle SSID part (so the size of the IE is known).
+    constexpr auto ssid_offset = 12;
+    if (security_flags.rsn_owe) {  // hidden BSS (trans + using encryption)
+      if (!base::EndsWith(ssid, suffix)) {
+        LOG(ERROR) << "Make sure the SSID of the hidden OWE BSS ends "
+                      "with \"_hidden\"";
+        return nullptr;
+      }
+      ie.resize(ssid_offset + 1 + ssid_bytes.size() - suffix.size());
+      auto ssid_it = ie.begin() + ssid_offset;
+      // We strip suffix so encoded SSID length = SSID - suffix
+      *ssid_it = ssid_bytes.size() - suffix.size();
+      std::copy_n(ssid_bytes.begin(), *ssid_it, ssid_it + 1);
+    } else {  // public BSS (trans + no encryption)
+      ie.resize(ssid_offset + 1 + ssid_bytes.size() + suffix.size());
+      auto ssid_it = ie.begin() + ssid_offset;
+      // We add suffix so encoded SSID length = SSID + suffix
+      *ssid_it = ssid_bytes.size() + suffix.size();
+      ssid_it += 1;
+      std::copy_n(ssid_bytes.begin(), ssid_bytes.size(), ssid_it);
+      ssid_it += ssid_bytes.size();
+      std::copy_n(suffix.begin(), suffix.size(), ssid_it);
+    }
+    ie[0] = IEEE_80211::kElemIdVendor;
+    ie[1] = ie.size() - 2;
+    // Big-endian packing of OUI
+    ie[2] = IEEE_80211::kOUIVendorWiFiAlliance >> 16;
+    ie[3] = IEEE_80211::kOUIVendorWiFiAlliance >> 8 & 0xFF;
+    ie[4] = IEEE_80211::kOUIVendorWiFiAlliance & 0xFF;
+    ie[5] = IEEE_80211::kOUITypeWiFiAllianceTransOWE;
+    std::copy_n(ie.begin() + 6, bssid_bytes.size(), bssid_bytes.begin());
+    ie[11] ^= 0xFF;
+
+    args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ie);
+  }
 
   PackSecurity(security_flags, &args);
 
@@ -434,6 +516,8 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
     return WiFiSecurity::kWpa;
   } else if (flags->rsn_owe) {
     return WiFiSecurity::kOwe;
+  } else if (flags->trans_owe) {
+    return WiFiSecurity::kTransOwe;
   } else if (flags->privacy) {
     return WiFiSecurity::kWep;
   } else {
@@ -863,6 +947,25 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
   } else if (oui == IEEE_80211::kOUIVendorWiFiAlliance &&
              oui_type == IEEE_80211::kOUITypeWiFiAllianceMBO) {
     supported_features_.mbo_support = true;
+  } else if (oui == IEEE_80211::kOUIVendorWiFiAlliance &&
+             oui_type == IEEE_80211::kOUITypeWiFiAllianceTransOWE) {
+    if (std::distance(ie, end) < ETH_ALEN + 1) {
+      LOG(WARNING) << __func__ << ": not enough data in OWE element";
+      return;
+    }
+    security_flags_.trans_owe = true;
+    owe_bssid_.resize(ETH_ALEN);
+    std::copy_n(ie, ETH_ALEN, owe_bssid_.begin());
+    ie += ETH_ALEN;
+    uint8_t ssid_len = *ie++;
+    if (std::distance(ie, end) < ssid_len) {
+      LOG(WARNING) << __func__ << ": data for SSID too short";
+      ssid_len = std::distance(ie, end);
+    }
+    if (ssid_len != 0) {
+      owe_ssid_.resize(ssid_len);
+      std::copy_n(ie, ssid_len, owe_ssid_.begin());
+    }
   } else if (oui == IEEE_80211::kOUIVendorCiscoAironet &&
              oui_type == IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE) {
     if (std::distance(ie, end) < 1) {

@@ -20,6 +20,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 
 static const std::pair<const char*, WiFiSecurity::Mode> modes_map[] = {
     {kSecurityNone, WiFiSecurity::kNone},
+    {kSecurityTransOwe, WiFiSecurity::kTransOwe},
     {kSecurityOwe, WiFiSecurity::kOwe},
     {kSecurityWep, WiFiSecurity::kWep},
     {kSecurityWpa, WiFiSecurity::kWpa},
@@ -65,6 +66,7 @@ WiFiSecurity& WiFiSecurity::operator=(const WiFiSecurity& security) {
 std::string WiFiSecurity::SecurityClass(WiFiSecurity::Mode mode) {
   switch (mode) {
     case kNone:
+    case kTransOwe:
     case kOwe:
       return kSecurityClassNone;
     case kWep:
@@ -96,6 +98,7 @@ bool WiFiSecurity::IsWpa() const {
 
   switch (mode_) {
     case kNone:
+    case kTransOwe:
     case kOwe:
     case kWep:
       return false;
@@ -114,6 +117,7 @@ bool WiFiSecurity::IsEnterprise() const {
 
   switch (mode_) {
     case kNone:
+    case kTransOwe:
     case kOwe:
     case kWep:
     case kWpa:
@@ -139,6 +143,7 @@ bool WiFiSecurity::IsSubsetOf(const WiFiSecurity& sec) const {
 
   switch (sec.mode_) {
     case kNone:
+    case kTransOwe:
     case kOwe:
     case kWep:
     case kWpa:
@@ -174,6 +179,7 @@ bool WiFiSecurity::HasCommonMode(const WiFiSecurity& sec) const {
 
   switch (sec.mode_) {
     case kNone:
+    case kTransOwe:
     case kOwe:
     case kWep:
       return mode_ == sec.mode_;
@@ -236,17 +242,18 @@ WiFiSecurity WiFiSecurity::Combine(WiFiSecurity::Mode mode) const {
     return {};
   }
 
-  // Take care of simple cases: the same modes ...
+  // Take care of simple cases: the same modes.
   if (mode_ == mode) {
     return *this;
   }
-  // ... kNone combines only with itself (handled above) ...
-  if (mode == kNone || mode_ == kNone) {
-    return {};
-  }
-  // ... and so does kOwe.
-  if (mode == kOwe || mode_ == kOwe) {
-    return {};
+
+  if (SecurityClass() == kSecurityClassNone) {
+    // kNone combines only with itself (handled above).
+    if (mode == kNone || mode_ == kNone) {
+      return {};
+    }
+    // Here only kTransOwe + kOwe is possible and they combine to kTransOwe.
+    return kTransOwe;
   }
 
   // Now we should be handling only WPA* subclass so let's check it
@@ -358,6 +365,8 @@ Metrics::WirelessSecurity WiFiSecurity::ToMetricEnum(
   switch (security.mode()) {
     case WiFiSecurity::kNone:
       return Metrics::kWirelessSecurityNone;
+    case WiFiSecurity::kTransOwe:
+      return Metrics::kWirelessSecurityTransOwe;
     case WiFiSecurity::kOwe:
       return Metrics::kWirelessSecurityOwe;
     case WiFiSecurity::kWep:
