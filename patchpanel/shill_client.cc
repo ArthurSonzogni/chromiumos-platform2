@@ -68,6 +68,12 @@ void RunDefaultNetworkListeners(
     }
   }
 }
+
+bool IsActiveDevice(const ShillClient::Device& device) {
+  // TODO(b/273741099): For Cellular Device, check if the primary multiplexed
+  // interface is known.
+  return true;
+}
 }  // namespace
 
 bool ShillClient::Device::IsConnected() const {
@@ -309,10 +315,11 @@ void ShillClient::RegisterIPv6NetworkChangedHandler(
 
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   // All current shill Devices advertised by shill. This set is used
-  // for finding Devices removed by shill.
+  // for finding Devices removed by shill and contains both active and inactive
+  // Devices.
   std::set<dbus::ObjectPath> current;
 
-  // Find all new shill Devices not yet tracked by patchpanel.
+  // Find all new active shill Devices not yet tracked by patchpanel.
   std::vector<Device> added_devices;
   for (const auto& device_path :
        property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
@@ -328,7 +335,7 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
                          weak_factory_.GetWeakPtr()));
     }
 
-    // Populate ShillClient::Device properties for any new shill Device.
+    // Populate ShillClient::Device properties for any new active shill Device.
     if (!base::Contains(devices_, device_path)) {
       ShillClient::Device new_device;
       if (!GetDeviceProperties(device_path, &new_device)) {
@@ -337,16 +344,21 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
         devices_.erase(device_path);
         continue;
       }
+      if (!IsActiveDevice(new_device)) {
+        LOG(INFO) << "Ignoring inactive shill Device " << new_device;
+        continue;
+      }
       LOG(INFO) << "New shill Device " << new_device;
       added_devices.push_back(new_device);
       devices_[device_path] = new_device;
     }
   }
 
-  // Find all shill Devices removed by shill.
+  // Find all shill Devices removed by shill or shill Devices that became
+  // inactive and remove them from |devices_|,
   std::vector<Device> removed_devices;
   for (auto it = devices_.begin(); it != devices_.end();) {
-    if (!base::Contains(current, it->first)) {
+    if (!base::Contains(current, it->first) || !IsActiveDevice(it->second)) {
       LOG(INFO) << "Removed shill Device " << it->second;
       removed_devices.push_back(it->second);
       it = devices_.erase(it);
@@ -355,7 +367,12 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
   }
 
-  // This can happen if the default network switched from one device to another.
+  // This can happen if:
+  //   - The default network switched from one device to another.
+  //   - An inactive Device is removed by shill and it was already ignored by
+  //   ShillClient.
+  //   - A Device is added by shill but not yet considered active, and should be
+  //   ignored by ShillClient.
   if (added_devices.empty() && removed_devices.empty()) {
     return;
   }
@@ -599,14 +616,12 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
 
   const auto& device_it = devices_.find(device_path);
   if (device_it == devices_.end()) {
-    LOG(WARNING) << "Cannot update " << property_name
-                 << " property for unknown Device " << device_path.value();
+    // If the Device is not found in |devices_| it is not active. If a property
+    // update is received for an inactive Device, that Device may now be active
+    // and needs to be advertised as a new Device.
+    ScanDevices();
     return;
   }
-
-  // TODO(b/273741099): If kPrimaryMultiplexedInterfaceProperty has changed for
-  // a Cellular Device using multiplexing, ShillClient must reevaluate all shill
-  // Devices and ensure this Cellular Device is advertised as added or removed.
 
   IPConfig old_ip_config = device_it->second.ipconfig;
 
@@ -614,6 +629,13 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   if (!GetDeviceProperties(device_path, &device_it->second)) {
     LOG(ERROR) << "Failed to update properties of Device "
                << device_path.value();
+    return;
+  }
+
+  // If the Device is not active anymore, it needs to be advertised as a removed
+  // Device and removed from |deviecs_|.
+  if (!IsActiveDevice(device_it->second)) {
+    ScanDevices();
     return;
   }
 

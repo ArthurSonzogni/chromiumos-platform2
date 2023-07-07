@@ -250,8 +250,8 @@ class ShillClient {
   // to the physical or VPN shill Device associated with the default logical
   // network service.
   std::optional<Device> default_logical_device_;
-  // Maps of all current shill physical Devices, indexed by shill Device
-  // identifier. VPN Devices are ignored.
+  // Maps of all current shill physical Devices that are active, indexed by
+  // shill Device identifier. VPN Devices and inactive Devices are ignored.
   std::map<dbus::ObjectPath, Device> devices_;
   // Sets of shill Device Dbus object path for all the shill physical Devices
   // seen so far. Unlike |devices_|, entries in this set will never be
