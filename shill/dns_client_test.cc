@@ -72,16 +72,13 @@ MATCHER_P2(IsError, error_type, error_message, "") {
 
 class DnsClientTest : public Test {
  public:
-  DnsClientTest()
-      : ares_result_(ARES_SUCCESS),
-        address_result_(
-            IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)) {
+  DnsClientTest() : ares_result_(ARES_SUCCESS), address_result_(std::nullopt) {
     time_val_.tv_sec = 0;
     time_val_.tv_usec = 0;
     ares_timeout_.tv_sec = kAresWait.InSeconds();
     ares_timeout_.tv_usec =
         kAresWait.InMicroseconds() % base::Time::kMicrosecondsPerSecond;
-    hostent_.h_addrtype = IPAddress::kFamilyIPv4;
+    hostent_.h_addrtype = net_base::ToSAFamily(net_base::IPFamily::kIPv4);
     hostent_.h_length = sizeof(kReturnAddressList0);
     hostent_.h_addr_list = kReturnAddressList;
   }
@@ -124,9 +121,9 @@ class DnsClientTest : public Test {
   void CallCompletion() { dns_client_->HandleCompletion(); }
 
   void CreateClient(base::TimeDelta timeout) {
-    dns_client_.reset(new DnsClient(IPAddress::kFamilyIPv4, kNetworkInterface,
-                                    timeout.InMilliseconds(), &dispatcher_,
-                                    callback_target_.callback()));
+    dns_client_.reset(new DnsClient(net_base::IPFamily::kIPv4,
+                                    kNetworkInterface, timeout.InMilliseconds(),
+                                    &dispatcher_, callback_target_.callback()));
     dns_client_->ares_ = &ares_;
     dns_client_->time_ = &time_;
     dns_client_->io_handler_factory_ = &io_handler_factory_;
@@ -174,10 +171,8 @@ class DnsClientTest : public Test {
     CallDnsRead();
 
     // Make sure that the address value is correct as held in the DnsClient.
-    ASSERT_TRUE(dns_client_->address_.IsValid());
-    const auto ipaddr = IPAddress::CreateFromString(kResult);
-    CHECK(ipaddr.has_value());
-    EXPECT_TRUE(ipaddr->Equals(dns_client_->address_));
+    const auto ipaddr = *net_base::IPAddress::CreateFromString(kResult);
+    EXPECT_EQ(ipaddr, dns_client_->address_);
 
     // Make sure the callback gets called with a success result, and save
     // the callback address argument in |address_result_|.
@@ -186,14 +181,14 @@ class DnsClientTest : public Test {
     CallCompletion();
 
     // Make sure the address was successfully passed to the callback.
-    EXPECT_TRUE(ipaddr->Equals(address_result_));
-    EXPECT_TRUE(dns_client_->address_.IsDefault());
+    EXPECT_EQ(ipaddr, address_result_);
+    EXPECT_TRUE(dns_client_->address_.IsZero());
   }
 
   void SaveCallbackArgs(
       const base::expected<net_base::IPAddress, Error>& address) {
     if (address.has_value()) {
-      address_result_ = IPAddress(*address);
+      address_result_ = *address;
     } else {
       error_result_ = address.error();
     }
@@ -204,8 +199,8 @@ class DnsClientTest : public Test {
   }
 
   void ExpectReset() {
-    EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
-    EXPECT_TRUE(dns_client_->address_.IsDefault());
+    EXPECT_TRUE(dns_client_->address_.GetFamily() == net_base::IPFamily::kIPv4);
+    EXPECT_TRUE(dns_client_->address_.IsZero());
     EXPECT_EQ(nullptr, dns_client_->resolver_state_);
   }
 
@@ -238,7 +233,7 @@ class DnsClientTest : public Test {
   struct hostent hostent_;
   int ares_result_;
   Error error_result_;
-  IPAddress address_result_;
+  std::optional<net_base::IPAddress> address_result_;
 };
 
 class SentinelIOHandler : public IOHandler {

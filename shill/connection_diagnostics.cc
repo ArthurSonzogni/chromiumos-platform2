@@ -119,8 +119,8 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       result_callback_(std::move(result_callback)),
       weak_ptr_factory_(this) {
   dns_client_.reset(new DnsClient(
-      net_base::ToSAFamily(ip_address_.GetFamily()), iface_name,
-      DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
+      ip_address_.GetFamily(), iface_name, DnsClient::kDnsTimeoutMilliseconds,
+      dispatcher_,
       base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
                           weak_ptr_factory_.GetWeakPtr())));
   for (size_t i = 0; i < dns_list_.size(); i++) {

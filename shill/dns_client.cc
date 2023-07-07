@@ -74,12 +74,12 @@ struct DnsClientState {
   struct timeval start_time;
 };
 
-DnsClient::DnsClient(IPAddress::Family family,
+DnsClient::DnsClient(net_base::IPFamily family,
                      const std::string& interface_name,
                      int timeout_ms,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)
-    : address_(IPAddress::CreateFromFamily(family)),
+    : address_(family),
       interface_name_(interface_name),
       dispatcher_(dispatcher),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
@@ -150,7 +150,8 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
   running_ = true;
   time_->GetTimeMonotonic(&resolver_state_->start_time);
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
-                       address_.family(), ReceiveDnsReplyCB, this);
+                       net_base::ToSAFamily(address_.GetFamily()),
+                       ReceiveDnsReplyCB, this);
 
   if (!RefreshHandles()) {
     LOG(ERROR) << interface_name_ << ": Impossibly short timeout.";
@@ -174,7 +175,7 @@ void DnsClient::Stop() {
   StopWriteHandlers();
   weak_ptr_factory_.InvalidateWeakPtrs();
   error_.Reset();
-  address_.SetAddressToDefault();
+  address_ = net_base::IPAddress(address_.GetFamily());
   ares_->Destroy(resolver_state_->channel);
   resolver_state_ = nullptr;
 }
@@ -189,8 +190,9 @@ bool DnsClient::IsActive() const {
 // call our destructor safely).
 void DnsClient::HandleCompletion() {
   SLOG(this, 3) << "In " << __func__;
-  Error error(error_);
-  IPAddress address(address_);
+
+  const Error error(error_);
+  const net_base::IPAddress address(address_);
   if (!error.IsSuccess()) {
     // If the DNS request did not succeed, do not trust it for future
     // attempts.
@@ -199,17 +201,13 @@ void DnsClient::HandleCompletion() {
     // Prepare our state for the next request without destroying the
     // current ARES state.
     error_.Reset();
-    address_.SetAddressToDefault();
+    address_ = net_base::IPAddress(address_.GetFamily());
   }
 
   if (!error.IsSuccess()) {
     callback_.Run(base::unexpected(error));
-  } else if (const auto addr = address.ToIPAddress(); addr) {
-    callback_.Run(*addr);
   } else {
-    LOG(ERROR) << "Failed to convert to net_base::IPAddress" << address;
-    error.Populate(Error::kOperationFailed, kErrorUnknown);
-    callback_.Run(base::unexpected(error));
+    callback_.Run(address);
   }
 }
 
@@ -245,17 +243,12 @@ void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
                                        weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS && hostent != nullptr &&
-      hostent->h_addrtype == address_.family() &&
-      static_cast<size_t>(hostent->h_length) ==
-          IPAddress::GetAddressLength(address_.family()) &&
+      hostent->h_addrtype == net_base::ToSAFamily(address_.GetFamily()) &&
+      static_cast<size_t>(hostent->h_length) == address_.GetAddressLength() &&
       hostent->h_addr_list != nullptr && hostent->h_addr_list[0] != nullptr) {
-    auto tmp_addr = IPAddress::CreateFromByteString(
-        address_.family(),
-        ByteString(reinterpret_cast<unsigned char*>(hostent->h_addr_list[0]),
-                   hostent->h_length));
-    // Validity has been checked in the if-condition above.
-    DCHECK(tmp_addr.has_value());
-    address_ = std::move(*tmp_addr);
+    address_ = *net_base::IPAddress::CreateFromBytes(
+        {reinterpret_cast<unsigned char*>(hostent->h_addr_list[0]),
+         address_.GetAddressLength()});
   } else {
     switch (status) {
       case ARES_ENODATA:

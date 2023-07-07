@@ -9,7 +9,7 @@
 namespace shill {
 
 MockDnsClient::MockDnsClient()
-    : DnsClient(IPAddress::kFamilyIPv4, "", 0, nullptr, ClientCallback()) {}
+    : DnsClient(net_base::IPFamily::kIPv4, "", 0, nullptr, ClientCallback()) {}
 
 MockDnsClient::~MockDnsClient() = default;
 

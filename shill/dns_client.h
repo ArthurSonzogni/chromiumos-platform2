@@ -18,7 +18,6 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 
 struct hostent;
@@ -49,7 +48,7 @@ class DnsClient {
 
   static const int kDnsTimeoutMilliseconds = 8000;
 
-  DnsClient(IPAddress::Family family,
+  DnsClient(net_base::IPFamily family,
             const std::string& interface_name,
             int timeout_ms,
             EventDispatcher* dispatcher,
@@ -94,7 +93,7 @@ class DnsClient {
   void StopWriteHandlers();
 
   Error error_;
-  IPAddress address_;
+  net_base::IPAddress address_;
   std::string interface_name_;
   EventDispatcher* dispatcher_;
   IOHandlerFactory* io_handler_factory_;
