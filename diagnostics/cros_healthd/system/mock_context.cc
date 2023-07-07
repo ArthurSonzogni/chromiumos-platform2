@@ -59,7 +59,7 @@ MockContext::MockContext() {
 }
 
 std::unique_ptr<PciUtil> MockContext::CreatePciUtil() {
-  return std::unique_ptr<PciUtil>(new FakePciUtil(fake_pci_util_));
+  return std::make_unique<FakePciUtil>(fake_pci_util_);
 }
 
 org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()

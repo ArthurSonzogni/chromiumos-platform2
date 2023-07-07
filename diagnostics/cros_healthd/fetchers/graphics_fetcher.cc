@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/functional/bind.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"
@@ -34,7 +35,7 @@ mojom::GraphicsResultPtr GraphicsFetcher::FetchGraphicsInfo(
 }
 
 std::unique_ptr<EglManager> EglManager::Create() {
-  std::unique_ptr<EglManager> egl_manager(new EglManager());
+  auto egl_manager = base::WrapUnique(new EglManager());
   // CloudReady(CR) uses mesa-reven package for graphics driver, and the
   // graphics stack in CR is more complicated than usual ChromeOS devices. So in
   // CR, we need to use EGL v1.5 API to fetch the graphics info. However, not

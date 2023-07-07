@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -33,10 +34,10 @@ mojom::ProbeErrorPtr DiskFetcher::InitManager() {
   if (auto resolver_result = StorageDeviceResolver::Create(
           context_->root_dir(), platform->GetRootDeviceName());
       resolver_result.has_value()) {
-    manager_.reset(
-        new StorageDeviceManager(std::make_unique<StorageDeviceLister>(),
-                                 std::move(resolver_result.value()),
-                                 std::move(udev), std::move(platform)));
+    manager_ = std::make_unique<StorageDeviceManager>(
+        std::make_unique<StorageDeviceLister>(),
+        std::move(resolver_result.value()), std::move(udev),
+        std::move(platform));
     return nullptr;
   } else {
     return std::move(resolver_result.error());

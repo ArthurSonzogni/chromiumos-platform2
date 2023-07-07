@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/memory/ptr_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>
@@ -44,7 +45,7 @@ std::unique_ptr<MojoServiceImpl> MojoServiceImpl::Create(
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
   CHECK(pending_remote) << "Failed to connect to mojo service manager.";
 
-  auto impl = std::unique_ptr<MojoServiceImpl>(
+  auto impl = base::WrapUnique(
       new MojoServiceImpl(network_health_adapter, network_diagnostics_adapter));
   impl->service_manager_.Bind(std::move(pending_remote));
   impl->service_manager_.set_disconnect_with_reason_handler(

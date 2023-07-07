@@ -159,7 +159,7 @@ void Context::UpdateBluezProxy() {
 }
 
 std::unique_ptr<PciUtil> Context::CreatePciUtil() {
-  return std::unique_ptr<PciUtil>(new PciUtilImpl());
+  return std::make_unique<PciUtilImpl>();
 }
 
 const base::Time Context::time() const {

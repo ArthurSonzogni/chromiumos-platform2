@@ -16,6 +16,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/types/expected.h>
@@ -340,7 +341,7 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
       dev_sys_path, dev_node_path, subsystem, purpose, platform);
   if (!immutable_block_device_info)
     return nullptr;
-  return std::unique_ptr<StorageDeviceInfo>(
+  return base::WrapUnique(
       new StorageDeviceInfo(dev_sys_path, dev_node_path,
                             std::move(immutable_block_device_info), platform));
 }

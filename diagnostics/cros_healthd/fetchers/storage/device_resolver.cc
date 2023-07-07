@@ -10,6 +10,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <re2/re2.h>
 
 #include <libmount/libmount.h>
@@ -41,7 +42,7 @@ base::expected<std::unique_ptr<StorageDeviceResolver>, mojom::ProbeErrorPtr>
 StorageDeviceResolver::Create(const base::FilePath& rootfs,
                               const std::string& root_device) {
   if (auto devs_result = GetSwapDevices(rootfs); devs_result.has_value()) {
-    return std::unique_ptr<StorageDeviceResolver>(
+    return base::WrapUnique(
         new StorageDeviceResolver(devs_result.value(), root_device));
   } else {
     return base::unexpected(devs_result.error()->Clone());
