@@ -45,6 +45,14 @@ class GscUtils {
 
   // Do a GSC reboot.
   virtual bool Reboot() const = 0;
+
+  // Get factory config.
+  virtual bool GetFactoryConfig(bool* is_chassis_branded,
+                                int* hw_compliance_version) const = 0;
+
+  // Set factory config.
+  virtual bool SetFactoryConfig(bool is_chassis_branded,
+                                int hw_compliance_version) const = 0;
 };
 
 }  // namespace rmad

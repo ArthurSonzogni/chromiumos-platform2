@@ -27,6 +27,14 @@ class MockGscUtils : public GscUtils {
   MOCK_METHOD(bool, GetBoardIdFlags, (std::string*), (const, override));
   MOCK_METHOD(bool, SetBoardId, (bool), (const, override));
   MOCK_METHOD(bool, Reboot, (), (const, override));
+  MOCK_METHOD(bool,
+              GetFactoryConfig,
+              (bool* is_chassis_branded, int* hw_compliance_version),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetFactoryConfig,
+              (bool is_chassis_branded, int hw_compliance_version),
+              (const, override));
 };
 
 }  // namespace rmad

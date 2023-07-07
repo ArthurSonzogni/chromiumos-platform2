@@ -27,10 +27,16 @@ using testing::StrictMock;
 
 namespace {
 
-constexpr char kChallengeCodeResponse[] =
+// Constants for RSU
+constexpr char kGetChallengeCodeResponse[] =
     "CHALLENGE="
     "AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH"
     "1111122222333334444455555666667777788888\n";
+constexpr char kExpectedChallengeCode[] =
+    "AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH"
+    "1111122222333334444455555666667777788888";
+
+// Constants for CCD info.
 constexpr char kFactoryModeEnabledResponse[] = R"(
 State: Locked
 ---
@@ -43,6 +49,8 @@ State: Locked
 ---
 Capabilities are default.
 )";
+
+// Constants for board ID.
 constexpr char kGetBoardIdResponse[] = R"(
 BID_TYPE=5a5a4352
 BID_TYPE_INV=a5a5bcad
@@ -51,6 +59,18 @@ BID_RLZ=ZZCR
 )";
 constexpr char kExpectedBoardIdType[] = "5a5a4352";
 constexpr char kExpectedBoardIdFlags[] = "00007f80";
+
+// Constants for factory config.
+constexpr char kGetFactoryConfigResponse[] = R"(
+raw value: 0000000000000012
+other fields: don't care
+)";
+constexpr char kGetFactoryConfigErrorResponse[] = R"(
+raw value: 000000000000001
+other fields: don't care
+)";
+constexpr bool kExpectedIsChassisBranded = true;
+constexpr int kExpectedHwComplianceVersion = 2;
 
 }  // namespace
 
@@ -65,14 +85,13 @@ class GscUtilsTest : public testing::Test {
 TEST_F(GscUtilsTest, GetRsuChallengeCode_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kChallengeCodeResponse), Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kGetChallengeCodeResponse), Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
   std::string challenge_code;
   EXPECT_TRUE(gsc_utils->GetRsuChallengeCode(&challenge_code));
-  EXPECT_EQ(challenge_code,
-            "AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH"
-            "1111122222333334444455555666667777788888");
+  EXPECT_EQ(challenge_code, kExpectedChallengeCode);
 }
 
 TEST_F(GscUtilsTest, GetRsuChallengeCode_Fail) {
@@ -267,4 +286,60 @@ TEST_F(GscUtilsTest, Reboot_Success) {
 
   EXPECT_TRUE(gsc_utils->Reboot());
 }
+
+TEST_F(GscUtilsTest, GetFactoryConfig_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kGetFactoryConfigResponse), Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_TRUE(
+      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
+  EXPECT_EQ(is_chassis_branded, kExpectedIsChassisBranded);
+  EXPECT_EQ(hw_compliance_version, kExpectedHwComplianceVersion);
+}
+
+TEST_F(GscUtilsTest, GetFactoryConfig_CommandFailed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_FALSE(
+      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
+}
+
+TEST_F(GscUtilsTest, GetFactoryConfig_ParseFailed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetFactoryConfigErrorResponse),
+                      Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_FALSE(
+      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
+}
+
+TEST_F(GscUtilsTest, SetFactoryConfig_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(gsc_utils->SetFactoryConfig(true, 1));
+}
+
+TEST_F(GscUtilsTest, SetFactoryConfig_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(gsc_utils->SetFactoryConfig(true, 1));
+}
+
 }  // namespace rmad

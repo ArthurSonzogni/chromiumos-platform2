@@ -4,12 +4,15 @@
 
 #include <rmad/utils/gsc_utils_impl.h>
 
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
@@ -41,6 +44,43 @@ constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
 
 // Constants for reboot.
 const std::vector<std::string> kRebootArgv{kGsctoolCmd, "-a", "--reboot"};
+
+// Constants for factory config.
+const std::vector<std::string> kGetFactoryConfigArgv{kGsctoolCmd, "-a",
+                                                     "--factory_config"};
+const std::vector<std::string> kSetFactoryConfigArgv{kGsctoolCmd, "-a",
+                                                     "--factory_config"};
+constexpr char kFactoryConfigRegexp[] = R"(raw value: ([[:xdigit:]]{16}))";
+
+// Factory config encoding/decoding functions.
+// According to b/275356839, factory config is stored in GSC INFO page with 64
+// bit length. The lower 5 bits are now allocated to the feature management
+// flags.
+std::string Uint64ToHexString(uint64_t value) {
+  std::ostringstream ss;
+  ss << std::hex << std::setfill('0') << std::setw(16) << value;
+  return ss.str();
+}
+
+std::string EncodeFactoryConfig(bool is_chassis_branded,
+                                int hw_compliance_version) {
+  uint64_t factory_config =
+      ((is_chassis_branded & 0x1) << 4) | (hw_compliance_version & 0xF);
+  return Uint64ToHexString(factory_config);
+}
+
+bool DecodeFactoryConfig(const std::string& factory_config_hexstr,
+                         bool* is_chassis_branded,
+                         int* hw_compliance_version) {
+  uint64_t factory_config;
+  if (!base::HexStringToUInt64(factory_config_hexstr, &factory_config)) {
+    LOG(ERROR) << "Failed to decode hex string " << factory_config_hexstr;
+    return false;
+  }
+  *is_chassis_branded = ((factory_config >> 4) & 0x1);
+  *hw_compliance_version = (factory_config & 0xF);
+  return true;
+}
 
 }  // namespace
 
@@ -159,6 +199,46 @@ bool GscUtilsImpl::SetBoardId(bool is_custom_label) const {
 bool GscUtilsImpl::Reboot() const {
   std::string unused_output;
   return cmd_utils_->GetOutput(kRebootArgv, &unused_output);
+}
+
+bool GscUtilsImpl::GetFactoryConfig(bool* is_chassis_branded,
+                                    int* hw_compliance_version) const {
+  std::string output;
+  if (!cmd_utils_->GetOutput(kGetFactoryConfigArgv, &output)) {
+    LOG(ERROR) << "Failed to get factory config";
+    LOG(ERROR) << output;
+    return false;
+  }
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kFactoryConfigRegexp);
+  std::string factory_config_hexstr;
+  if (!RE2::PartialMatch(string_piece, regexp, &factory_config_hexstr)) {
+    LOG(ERROR) << "Failed to parse factory config";
+    LOG(ERROR) << output;
+    return false;
+  }
+  if (!DecodeFactoryConfig(factory_config_hexstr, is_chassis_branded,
+                           hw_compliance_version)) {
+    LOG(ERROR) << "Failed to parse factory config hex string: "
+               << factory_config_hexstr;
+    return false;
+  }
+  return true;
+}
+
+bool GscUtilsImpl::SetFactoryConfig(bool is_chassis_branded,
+                                    int hw_compliance_version) const {
+  std::string factory_config_hexstr =
+      EncodeFactoryConfig(is_chassis_branded, hw_compliance_version);
+  std::string output;
+  std::vector<std::string> argv(kSetFactoryConfigArgv);
+  argv.push_back(factory_config_hexstr);
+  if (!cmd_utils_->GetOutput(argv, &output)) {
+    LOG(ERROR) << "Failed to set factory config";
+    LOG(ERROR) << output;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace rmad

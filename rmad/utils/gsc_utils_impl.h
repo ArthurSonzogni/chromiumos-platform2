@@ -29,6 +29,10 @@ class GscUtilsImpl : public GscUtils {
   bool GetBoardIdFlags(std::string* board_id_flags) const override;
   bool SetBoardId(bool is_custom_label) const override;
   bool Reboot() const override;
+  bool GetFactoryConfig(bool* is_chassis_branded,
+                        int* hw_compliance_version) const override;
+  bool SetFactoryConfig(bool is_chassis_branded,
+                        int hw_compliance_version) const override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;
