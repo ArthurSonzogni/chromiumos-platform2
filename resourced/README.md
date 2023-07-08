@@ -15,14 +15,26 @@ The following chromeos-config values are supported:
 
  * resource/
     * {ac,dc}
-      * web-rtc-power-preferences/governor/
-        * ondemand/
-          * powersave-bias
-      * fullscreen-power-preferences/governor/..
-      * vm-boot-power-preferences/governor/..
-      * borealis-gaming-power-preferences/governor/..
-      * arcvm-gaming-power-preferences/governor/..
-      * default-power-preferences/governor/..
+      * web-rtc-power-preferences/
+        * governor/
+          * ondemand/
+            * powersave-bias
+        * epp/..
+      * fullscreen-power-preferences/
+        * governor/..
+        * epp/..
+      * vm-boot-power-preferences/
+        * governor/..
+        * epp/..
+      * borealis-gaming-power-preferences/
+        * governor/..
+        * epp/..
+      * arcvm-gaming-power-preferences/
+        * governor/..
+        * epp/..
+      * default-power-preferences/
+        * governor/..
+        * epp/..
 
 ## Debugging
 

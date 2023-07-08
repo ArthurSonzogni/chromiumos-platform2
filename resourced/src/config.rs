@@ -99,10 +99,10 @@ impl FromDir for EnergyPerformancePreference {
         match dir.file_name().to_str() {
             Some("default") => Ok(Some(EnergyPerformancePreference::Default)),
             Some("performance") => Ok(Some(EnergyPerformancePreference::Performance)),
-            Some("balance_performance") => {
+            Some("balance-performance") => {
                 Ok(Some(EnergyPerformancePreference::BalancePerformance))
             }
-            Some("balance_power") => Ok(Some(EnergyPerformancePreference::BalancePower)),
+            Some("balance-power") => Ok(Some(EnergyPerformancePreference::BalancePower)),
             Some("power") => Ok(Some(EnergyPerformancePreference::Power)),
             _ => bail!("Unknown epp {:?}!", dir.file_name()),
         }
@@ -325,7 +325,7 @@ mod tests {
             .join(power_source.1)
             .join(preference.1)
             .join("epp")
-            .join("balance_performance");
+            .join("balance-performance");
         fs::create_dir_all(ondemand_path)?;
 
         let provider = DirectoryConfigProvider {
