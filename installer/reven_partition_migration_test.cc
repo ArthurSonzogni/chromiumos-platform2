@@ -24,6 +24,7 @@ using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::StrEq;
 using ::testing::StrictMock;
 
 namespace {
@@ -118,7 +119,7 @@ class PartitionMigrationTest : public ::testing::Test {
   }
 
   void SetIsInstall(bool is_install) {
-    EXPECT_CALL(env_, HasVar(base::StringPiece(kEnvIsInstall)))
+    EXPECT_CALL(env_, HasVar(StrEq(kEnvIsInstall)))
         .WillOnce(Return(is_install));
   }
 
