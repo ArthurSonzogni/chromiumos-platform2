@@ -344,7 +344,25 @@ void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
 
 void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
                               UpdateAadCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request = MakeUpdateOperationRequest(
+      request, backend_.keymint()->message_version());
+
+  auto task_lambda = base::BindOnce(
+      [](UpdateAadCallback callback,
+         std::unique_ptr<::keymaster::UpdateOperationResponse> km_response) {
+        // Prepare mojo response.
+        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
+        auto response = MakeUpdateResult(*km_response, error);
+
+        std::move(callback).Run(error);
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::UpdateOperation,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::Update(arc::mojom::keymint::UpdateRequestPtr request,
