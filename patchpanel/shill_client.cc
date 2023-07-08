@@ -520,6 +520,8 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
       interface_it->second.TryGet<std::string>();
   output->ifname = interface_it->second.TryGet<std::string>();
 
+  // Ensure that |primary_multiplexed_interface| is nullopt when not defined.
+  output->primary_multiplexed_interface = std::nullopt;
   if (output->type == Device::Type::kCellular) {
     const auto& it = props.find(shill::kPrimaryMultiplexedInterfaceProperty);
     if (it == props.end()) {
@@ -527,7 +529,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
                    << shill::kPrimaryMultiplexedInterfaceProperty << " for "
                    << device_path.value();
     } else {
-      const auto primary_multiplexed_interface =
+      const auto& primary_multiplexed_interface =
           it->second.TryGet<std::string>();
       if (!primary_multiplexed_interface.empty()) {
         output->primary_multiplexed_interface = primary_multiplexed_interface;
