@@ -132,6 +132,35 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
   return result;
 }
 
+::testing::AssertionResult VerifyVerificationToken(
+    ::keymaster::VerificationToken& km,
+    const arc::mojom::keymint::TimeStampTokenPtr& mojo) {
+  if (mojo.is_null()) {
+    return ::testing::AssertionFailure()
+           << "Verification Token failed as mojo is null";
+  }
+  if (mojo->timestamp.is_null()) {
+    return ::testing::AssertionFailure()
+           << "Verification Token failed as mojo timestamp is null";
+  }
+  if (km.challenge != mojo->challenge) {
+    return ::testing::AssertionFailure()
+           << "Verification Token challenge mismatch: km=" << km.challenge
+           << " mojo=" << mojo->challenge;
+  }
+  if (km.timestamp != mojo->timestamp->milli_seconds) {
+    return ::testing::AssertionFailure()
+           << "Verification Token timestamp mismatch: km=" << km.timestamp
+           << " mojo=" << mojo->timestamp->milli_seconds;
+  }
+  if (auto vectorMatch =
+          VerifyVectorUint8(km.mac.data, km.mac.size(), mojo->mac);
+      !vectorMatch) {
+    return vectorMatch;
+  }
+  return ::testing::AssertionSuccess();
+}
+
 }  // namespace
 
 TEST(ConvertFromKeymasterMessage, Uint8Vector) {
@@ -486,6 +515,22 @@ TEST(ConvertToMessage, UpdateOperationRequest) {
                                 output->input.available_read(), input->input));
   EXPECT_TRUE(
       VerifyHardwareAuthToken(output->additional_params, *input->auto_token));
+}
+
+TEST(ConvertToMessage, DeviceLockedRequest) {
+  // Prepare.
+  bool password_only = true;
+  ::arc::mojom::keymint::TimeStampTokenPtr time_token_ptr =
+      CreateTimeStampToken();
+
+  // Convert.
+  auto output = MakeDeviceLockedRequest(password_only, time_token_ptr,
+                                        kKeyMintMessageVersion);
+
+  // Verify.
+  ASSERT_TRUE(output);
+  EXPECT_EQ(output->passwordOnly, password_only);
+  EXPECT_TRUE(VerifyVerificationToken(output->token, time_token_ptr));
 }
 
 }  // namespace arc::keymint

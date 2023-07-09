@@ -339,6 +339,27 @@ std::unique_ptr<::keymaster::BeginOperationRequest> MakeBeginOperationRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::DeviceLockedRequest> MakeDeviceLockedRequest(
+    bool password_only,
+    const arc::mojom::keymint::TimeStampTokenPtr& timestamp_token,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::DeviceLockedRequest>(
+      keymint_message_version);
+
+  out->passwordOnly = password_only;
+  if (timestamp_token) {
+    out->token.challenge = timestamp_token->challenge;
+    out->token.mac = {timestamp_token->mac.data(), timestamp_token->mac.size()};
+
+    if (!timestamp_token->timestamp) {
+      LOG(ERROR) << "Timestamp token should have a valid timestamp.";
+      return out;
+    }
+    out->token.timestamp = timestamp_token->timestamp->milli_seconds;
+  }
+  return out;
+}
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(

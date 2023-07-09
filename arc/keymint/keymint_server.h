@@ -131,6 +131,15 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
       std::unique_ptr<KmRequest> request,
       base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
 
+  // TODO(b/292142659): Cleanup multiple template functions for
+  // |RunKeyMintRequest|.
+  template <typename KmMember, typename KmRequest, typename KmResponse>
+  void RunKeyMintRequest_DeviceLocked(
+      const base::Location& location,
+      KmMember member,
+      std::unique_ptr<KmRequest> request,
+      base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
+
   // Encapsulates all fields that should only be accessed from the background
   // |backend_thread_|.
   //

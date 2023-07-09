@@ -76,6 +76,11 @@ std::unique_ptr<::keymaster::BeginOperationRequest> MakeBeginOperationRequest(
     const arc::mojom::keymint::BeginRequestPtr& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::DeviceLockedRequest> MakeDeviceLockedRequest(
+    bool password_only,
+    const arc::mojom::keymint::TimeStampTokenPtr& timestamp_token,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
