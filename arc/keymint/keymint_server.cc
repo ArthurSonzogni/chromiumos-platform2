@@ -128,6 +128,36 @@ void KeyMintServer::RunKeyMintRequest(
                      std::move(callback)));
 }
 
+template <typename KmMember, typename KmResponse>
+void KeyMintServer::RunKeyMintRequest_EarlyBootEnded(
+    const base::Location& location,
+    KmMember member,
+    base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
+  auto task_lambda =
+      [](const base::Location& location,
+         scoped_refptr<base::TaskRunner> original_task_runner,
+         ::keymaster::AndroidKeymaster* keymaster, KmMember member,
+         base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
+        // Prepare a KeyMint response data structure.
+        auto response =
+            std::make_unique<KmResponse>(keymaster->message_version());
+        // Execute the operation.
+        auto result = (*keymaster.*member)();
+
+        response->error = result.error;
+        // Post |callback| to the |original_task_runner| given |response|.
+        original_task_runner->PostTask(
+            location, base::BindOnce(std::move(callback), std::move(response)));
+      };
+  // Post the KeyMint operation to a background thread while capturing the
+  // current task runner.
+  backend_thread_.task_runner()->PostTask(
+      location,
+      base::BindOnce(task_lambda, location,
+                     base::SingleThreadTaskRunner::GetCurrentDefault(),
+                     backend_.keymint(), member, std::move(callback)));
+}
+
 template <typename KmMember, typename KmRequest, typename KmResponse>
 void KeyMintServer::RunKeyMintRequest_DeviceLocked(
     const base::Location& location,
@@ -391,7 +421,18 @@ void KeyMintServer::DeviceLocked(
 }
 
 void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
-  // TODO(b/274723521): Finish this.
+  auto task_lambda = base::BindOnce(
+      [](EarlyBootEndedCallback callback,
+         std::unique_ptr<::keymaster::EarlyBootEndedResponse> km_response) {
+        // Run callback.
+        std::move(callback).Run(km_response->error);
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest_EarlyBootEnded(
+      FROM_HERE, &::keymaster::AndroidKeymaster::EarlyBootEnded,
+      std::move(task_lambda));
 }
 
 void KeyMintServer::ConvertStorageKeyToEphemeral(

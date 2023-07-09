@@ -140,6 +140,12 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
       std::unique_ptr<KmRequest> request,
       base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
 
+  template <typename KmMember, typename KmResponse>
+  void RunKeyMintRequest_EarlyBootEnded(
+      const base::Location& location,
+      KmMember member,
+      base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
+
   // Encapsulates all fields that should only be accessed from the background
   // |backend_thread_|.
   //
