@@ -148,17 +148,22 @@ void ShillClient::UpdateDefaultDevices() {
     SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  auto first_device = GetDeviceFromServicePath(services[0]);
-  if (!first_device) {
+  auto default_logical_device = GetDeviceFromServicePath(services[0]);
+  if (!default_logical_device) {
     SetDefaultLogicalDevice(std::nullopt);
     SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  SetDefaultLogicalDevice(first_device);
+  if (!IsActiveDevice(*default_logical_device)) {
+    SetDefaultLogicalDevice(std::nullopt);
+    SetDefaultPhysicalDevice(std::nullopt);
+    return;
+  }
+  SetDefaultLogicalDevice(default_logical_device);
 
   // No VPN connection, the logical and physical Devices are the same.
-  if (first_device->type != ShillClient::Device::Type::kVPN) {
-    SetDefaultPhysicalDevice(first_device);
+  if (default_logical_device->type != ShillClient::Device::Type::kVPN) {
+    SetDefaultPhysicalDevice(default_logical_device);
     return;
   }
 
@@ -168,13 +173,20 @@ void ShillClient::UpdateDefaultDevices() {
     SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  auto second_device = GetDeviceFromServicePath(services[1]);
-  if (!second_device) {
+  auto default_physical_device = GetDeviceFromServicePath(services[1]);
+  if (!default_physical_device) {
     LOG(ERROR) << "Could not update the default physical Device";
     SetDefaultPhysicalDevice(std::nullopt);
     return;
   }
-  SetDefaultPhysicalDevice(second_device);
+  if (!IsActiveDevice(*default_physical_device)) {
+    LOG(ERROR) << default_physical_device << " found for Service "
+               << services[1].value()
+               << " is not active, but a VPN was a connected";
+    SetDefaultPhysicalDevice(std::nullopt);
+    return;
+  }
+  SetDefaultPhysicalDevice(default_physical_device);
 }
 
 std::vector<dbus::ObjectPath> ShillClient::GetServices() {
@@ -620,6 +632,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
     // update is received for an inactive Device, that Device may now be active
     // and needs to be advertised as a new Device.
     ScanDevices();
+    UpdateDefaultDevices();
     return;
   }
 
@@ -636,6 +649,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   // Device and removed from |deviecs_|.
   if (!IsActiveDevice(device_it->second)) {
     ScanDevices();
+    UpdateDefaultDevices();
     return;
   }
 
