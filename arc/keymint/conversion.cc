@@ -380,6 +380,42 @@ std::unique_ptr<::keymaster::DeviceLockedRequest> MakeDeviceLockedRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::FinishOperationRequest> MakeFinishOperationRequest(
+    const arc::mojom::keymint::FinishRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::FinishOperationRequest>(
+      keymint_message_version);
+
+  if (request.is_null()) {
+    LOG(ERROR) << "KeyMint Error : Finish Operation Request is null";
+    return out;
+  }
+
+  out->op_handle = request->op_handle;
+  if (request->input.has_value()) {
+    ConvertToKeymasterMessage(request->input.value(), &out->input);
+  }
+  if (request->signature.has_value()) {
+    ConvertToKeymasterMessage(request->signature.value(), &out->signature);
+  }
+  std::vector<arc::mojom::keymint::KeyParameterPtr> key_param_array;
+  if (request->auto_token) {
+    auto tokenAsVec(authToken2AidlVec(*request->auto_token));
+
+    auto key_param_ptr = arc::mojom::keymint::KeyParameter::New(
+        static_cast<arc::mojom::keymint::Tag>(KM_TAG_AUTH_TOKEN),
+        arc::mojom::keymint::KeyParameterValue::NewBlob(std::move(tokenAsVec)));
+
+    key_param_array.push_back(std::move(key_param_ptr));
+  }
+  // TimeStamp Token and Confirmation Token are not used
+  // here since they are not passed from the AIDL.
+  // If they are added in future, they will be converted here.
+  ConvertToKeymasterMessage(std::move(key_param_array),
+                            &out->additional_params);
+  return out;
+}
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -556,6 +592,16 @@ std::optional<arc::mojom::keymint::BeginResultPtr> MakeBeginResult(
       std::move(challenge),
       ConvertFromKeymasterMessage(km_response.output_params),
       std::move(op_handle));
+}
+
+std::vector<uint8_t> MakeFinishResult(
+    const ::keymaster::FinishOperationResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::vector<uint8_t>();
+  }
+  return ConvertFromKeymasterMessage(km_response.output.begin(),
+                                     km_response.output.available_read());
 }
 
 }  // namespace arc::keymint

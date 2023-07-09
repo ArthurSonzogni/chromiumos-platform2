@@ -563,4 +563,35 @@ TEST(ConvertToMessage, DeviceLockedRequest) {
   EXPECT_TRUE(VerifyVerificationToken(output->token, time_token_ptr));
 }
 
+TEST(ConvertToMessage, FinishOperationRequest) {
+  // Prepare.
+  ::arc::mojom::keymint::HardwareAuthTokenPtr auth_token_ptr =
+      CreateHardwareAuthToken();
+
+  ::arc::mojom::keymint::TimeStampTokenPtr time_token_ptr =
+      CreateTimeStampToken();
+
+  auto input = arc::mojom::keymint::FinishRequest::New(
+      65537, std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end()),
+      std::move(auth_token_ptr), std::move(time_token_ptr),
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end()));
+
+  // Convert.
+  auto output = MakeFinishOperationRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  ASSERT_TRUE(input);
+  ASSERT_TRUE(output);
+  EXPECT_EQ(output->op_handle, input->op_handle);
+  EXPECT_TRUE(VerifyVectorUint8(output->input.begin(),
+                                output->input.available_read(),
+                                input->input.value()));
+  EXPECT_TRUE(VerifyVectorUint8(output->signature.begin(),
+                                output->signature.available_read(),
+                                input->signature.value()));
+  EXPECT_TRUE(
+      VerifyHardwareAuthToken(output->additional_params, *input->auto_token));
+}
+
 }  // namespace arc::keymint
