@@ -276,6 +276,25 @@ TEST(ConvertFromKeymasterMessage, EnumConversionTag) {
             ConvertEnum(arc::mojom::keymint::Tag::MAX_BOOT_LEVEL));
 }
 
+TEST(ConvertFromKeymasterMessage, EnumConversionKeyPurpose) {
+  // Verify.
+  EXPECT_EQ(KM_PURPOSE_ENCRYPT,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::ENCRYPT));
+  EXPECT_EQ(KM_PURPOSE_DECRYPT,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::DECRYPT));
+  EXPECT_EQ(KM_PURPOSE_SIGN,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::SIGN));
+  EXPECT_EQ(KM_PURPOSE_VERIFY,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::VERIFY));
+  // TODO(b/274723521): Find why KM_PURPOSE_DERIVE_KEY doesn't exist in AIDL.
+  EXPECT_EQ(KM_PURPOSE_WRAP,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::WRAP_KEY));
+  EXPECT_EQ(KM_PURPOSE_AGREE_KEY,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::AGREE_KEY));
+  EXPECT_EQ(KM_PURPOSE_ATTEST_KEY,
+            ConvertEnum(arc::mojom::keymint::KeyPurpose::ATTEST_KEY));
+}
+
 TEST(ConvertFromKeymasterMessage, KeyParameterVector) {
   // Prepare.
   ::keymaster::AuthorizationSet input;

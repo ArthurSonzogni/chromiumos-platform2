@@ -144,6 +144,10 @@ keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format) {
   return static_cast<keymaster_key_format_t>(key_format);
 }
 
+keymaster_purpose_t ConvertEnum(arc::mojom::keymint::KeyPurpose key_purpose) {
+  return static_cast<keymaster_purpose_t>(key_purpose);
+}
+
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
                                                  const size_t size) {
   return std::vector<uint8_t>(data, data + size);

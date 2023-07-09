@@ -19,6 +19,8 @@ keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format);
 
 keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag);
 
+keymaster_purpose_t ConvertEnum(arc::mojom::keymint::KeyPurpose key_purpose);
+
 template <typename T, typename OutIter>
 inline OutIter copy_bytes_to_iterator(const T& value, OutIter dest) {
   const uint8_t* value_ptr = reinterpret_cast<const uint8_t*>(&value);
