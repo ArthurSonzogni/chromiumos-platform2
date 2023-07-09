@@ -307,7 +307,30 @@ void KeyMintServer::DestroyAttestationIds(
 
 void KeyMintServer::Begin(arc::mojom::keymint::BeginRequestPtr request,
                           BeginCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request =
+      MakeBeginOperationRequest(request, backend_.keymint()->message_version());
+
+  auto task_lambda = base::BindOnce(
+      [](BeginCallback callback,
+         std::unique_ptr<::keymaster::BeginOperationResponse> km_response) {
+        // Prepare mojo response.
+        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
+        auto response = MakeBeginResult(*km_response, error);
+
+        // Run callback.
+        if (response.has_value()) {
+          std::move(callback).Run(error, std::move(response.value()));
+        } else {
+          std::move(callback).Run(error, arc::mojom::keymint::BeginResultPtr());
+        }
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::BeginOperation,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::DeviceLocked(

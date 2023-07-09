@@ -320,6 +320,25 @@ std::unique_ptr<::keymaster::UpdateOperationRequest> MakeUpdateOperationRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::BeginOperationRequest> MakeBeginOperationRequest(
+    const arc::mojom::keymint::BeginRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::BeginOperationRequest>(
+      keymint_message_version);
+  out->purpose = ConvertEnum(request->key_purpose);
+  out->SetKeyMaterial(request->key_blob.data(), request->key_blob.size());
+
+  if (request->auth_token) {
+    auto tokenAsVec(authToken2AidlVec(*request->auth_token));
+    auto key_param_ptr = arc::mojom::keymint::KeyParameter::New(
+        static_cast<arc::mojom::keymint::Tag>(KM_TAG_AUTH_TOKEN),
+        arc::mojom::keymint::KeyParameterValue::NewBlob(std::move(tokenAsVec)));
+    request->params.push_back(std::move(key_param_ptr));
+  }
+  ConvertToKeymasterMessage(request->params, &out->additional_params);
+  return out;
+}
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -443,6 +462,22 @@ std::vector<uint8_t> MakeUpdateResult(
   // part of |output| returned from here.
   return ConvertFromKeymasterMessage(km_response.output.begin(),
                                      km_response.output.available_read());
+}
+
+std::optional<arc::mojom::keymint::BeginResultPtr> MakeBeginResult(
+    const ::keymaster::BeginOperationResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::nullopt;
+  }
+
+  uint64_t challenge = km_response.op_handle;
+  uint64_t op_handle = km_response.op_handle;
+
+  return arc::mojom::keymint::BeginResult::New(
+      std::move(challenge),
+      ConvertFromKeymasterMessage(km_response.output_params),
+      std::move(op_handle));
 }
 
 }  // namespace arc::keymint

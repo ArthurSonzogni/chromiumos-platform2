@@ -438,6 +438,31 @@ TEST(ConvertToMessage, UpgradeKeyRequest) {
                                                   input->upgrade_params));
 }
 
+TEST(ConvertToKeymasterMessage, BeginOperationRequest) {
+  // Prepare.
+  ::arc::mojom::keymint::HardwareAuthTokenPtr auth_token_ptr =
+      CreateHardwareAuthToken();
+  auto input = arc::mojom::keymint::BeginRequest::New(
+      arc::mojom::keymint::KeyPurpose::AGREE_KEY,
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()), KeyParameterVector(),
+      std::move(auth_token_ptr));
+
+  // Convert.
+  auto output =
+      MakeBeginOperationRequest(std::move(input), kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_EQ(output->purpose,
+            static_cast<keymaster_purpose_t>(input->key_purpose));
+  EXPECT_TRUE(VerifyVectorUint8(output->key_blob.key_material,
+                                output->key_blob.key_material_size,
+                                input->key_blob));
+  EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->additional_params,
+                                                  input->params));
+  EXPECT_TRUE(
+      VerifyHardwareAuthToken(output->additional_params, *input->auth_token));
+}
+
 TEST(ConvertToMessage, UpdateOperationRequest) {
   // Prepare.
   ::arc::mojom::keymint::HardwareAuthTokenPtr auth_token_ptr =
