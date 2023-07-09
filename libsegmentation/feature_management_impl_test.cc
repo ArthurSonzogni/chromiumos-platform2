@@ -22,21 +22,26 @@
 namespace segmentation {
 
 using chromiumos::feature_management::api::software::Feature;
+using libsegmentation::DeviceInfo_ScopeLevel;
+
 using ::testing::Return;
 
 // Use made up feature file:
 const char test_proto[] =
-    "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAAEqAQAKHAoBRRIPCg1nZ0Bnb29nbG"
-    "UuY29tGAIiAQEqAQEKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQEqAwABAgodCgFDEg8KDWdn"
-    "QGdvb2dsZS5jb20YASIBASoCAQAKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQEqAQEKGwoBQR"
-    "IPCg1nZ0Bnb29nbGUuY29tIgIAASoBAg==";
+    "CiQKBUJhc2ljEhQKEmd3ZW5kYWxAZ29vZ2xlLmNvbSICAQIqAQEKHAoBRRIPCg1nZ0Bnb29nbG"
+    "Uu"
+    "Y29tGAIiAQIqAQIKHgoBRBIPCg1nZ0Bnb29nbGUuY29tGAIiAQIqAwECAwodCgFDEg8KDWdnQG"
+    "dv"
+    "b2dsZS5jb20YASIBAioCAgEKHAoBQhIPCg1nZ0Bnb29nbGUuY29tGAEiAQIqAQIKGwoBQRIPCg"
+    "1n"
+    "Z0Bnb29nbGUuY29tIgIBAioBAw==";
 
 /*
   It produce the following bundle.
   Command line:
      echo "..." base64 -d | protoc -I "src/platform/feature-management/proto" \
             --decode=chromiumos.feature_management.api.software.FeatureBundle \
-            src/platform/feature-management/proto/feature-management.proto
+            src/platform/feature-management/proto/feature_management.proto
 features {
   name: "Basic"
   contacts {
@@ -90,7 +95,6 @@ features {
   contacts {
     email: "gg@google.com"
   }
-  feature_level: 0
   scopes: SCOPE_DEVICES_0
   scopes: SCOPE_DEVICES_1
   usages: USAGE_ANDROID
@@ -143,6 +147,17 @@ TEST_F(FeatureManagementImplTest, GetBasicFeature) {
 }
 
 #if USE_FEATURE_MANAGEMENT
+
+// Basic interface check: make sure both definition of Scope matches.
+TEST_F(FeatureManagementImplTest, BasicInterfaceTest) {
+  EXPECT_EQ(DeviceInfo_ScopeLevel::DeviceInfo_ScopeLevel_SCOPE_LEVEL_UNKNOWN,
+            Feature::SCOPE_UNSPECIFIED);
+  EXPECT_EQ(DeviceInfo_ScopeLevel::DeviceInfo_ScopeLevel_SCOPE_LEVEL_0,
+            Feature::SCOPE_DEVICES_0);
+  EXPECT_EQ(DeviceInfo_ScopeLevel::DeviceInfo_ScopeLevel_SCOPE_LEVEL_1,
+            Feature::SCOPE_DEVICES_1);
+}
+
 // Use database produced by chromeos-base/feature-management-data.
 TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
   libsegmentation::DeviceInfo device_info;

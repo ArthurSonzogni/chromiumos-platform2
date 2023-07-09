@@ -108,7 +108,7 @@ bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
   for (const auto& feature : bundle_.features()) {
     if (!feature.name().compare(in_feature)) {
       auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
-                          scope_level - SCOPE_LEVEL_VALID_OFFSET);
+                          scope_level);
 
       return feature_level - FEATURE_LEVEL_VALID_OFFSET >=
                  feature.feature_level() &&
@@ -136,7 +136,7 @@ const std::set<std::string> FeatureManagementImpl::ListFeatures(
   std::set<std::string> features;
   for (const auto& feature : bundle_.features()) {
     auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
-                        scope_level - SCOPE_LEVEL_VALID_OFFSET);
+                        scope_level);
 
     if (std::find(feature.usages().begin(), feature.usages().end(), usage) !=
             feature.usages().end() &&

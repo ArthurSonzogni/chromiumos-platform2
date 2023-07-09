@@ -13,9 +13,10 @@ namespace segmentation {
 // Copy of protobuf usage interface to avoid including the autogenerate
 // protobuf
 enum FeatureUsage {
-  USAGE_LOCAL = 0,
-  USAGE_CHROME = 1,
-  USAGE_ANDROID = 2,
+  USAGE_UNSPECIFIED = 0,
+  USAGE_LOCAL = 1,
+  USAGE_CHROME = 2,
+  USAGE_ANDROID = 3,
 };
 
 class FeatureManagementInterface {
