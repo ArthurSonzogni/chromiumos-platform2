@@ -14073,6 +14073,7 @@ mno {
     mccmnc : "310995"
     mccmnc : "311270"
     mccmnc : "311480"
+    tethering_allowed: true
     mobile_apn {
       apn : "vzwinternet"
       localized_name {
@@ -14080,6 +14081,12 @@ mno {
       }
       ip_type: IPV4V6
       type : DEFAULT
+    }
+    mobile_apn {
+      apn: "vzwtether"
+      is_required_by_carrier_spec: true
+      ip_type: IPV4V6
+      type: DUN
     }
   }
   mvno {
