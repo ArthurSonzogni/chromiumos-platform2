@@ -13138,6 +13138,7 @@ mno {
     mccmnc : "313130"
     mccmnc : "313140"
     mccmnc : "313790"
+    tethering_allowed : true
     mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
     mhs_entitlement_method : GET
     mobile_apn {
@@ -13172,6 +13173,7 @@ mno {
       mccmnc : "310280"
       mccmnc : "311180"
       mccmnc : "310950"
+      tethering_allowed : true
       mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method : GET
       mobile_apn {
@@ -13216,6 +13218,7 @@ mno {
       mccmnc : "310280"
       mccmnc : "311180"
       mccmnc : "310950"
+      tethering_allowed : true
       mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method : GET
       mobile_apn {
