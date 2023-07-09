@@ -13659,6 +13659,7 @@ mno {
     mccmnc : "310800"
     mccmnc : "311882"
     mccmnc : "312250"
+    tethering_allowed : true
     mobile_apn {
       apn : "fast.t-mobile.com"
       localized_name {
@@ -13666,6 +13667,17 @@ mno {
       }
       ip_type: IPV4V6
       type: DEFAULT
+    }
+    mobile_apn {
+      # Tmobile requires a specific DUN APN for GID1==544D
+      apn_filter {
+        type : GID1
+        regex : "544D"
+      }
+      apn : "pcweb.tmobile.com"
+      is_required_by_carrier_spec : true
+      ip_type : IPV6
+      type : DUN
     }
   }
   mvno {
@@ -13765,6 +13777,7 @@ mno {
       }
       mccmnc : "311882"
       mccmnc : "310240"
+      tethering_allowed : true
       mobile_apn {
         apn : "iot.tmowholesale"
         localized_name {
@@ -13875,6 +13888,12 @@ mno {
         ip_type: IPV4V6
         apn : "fast.metropcs.com"
         type : DEFAULT
+      }
+      mobile_apn {
+        is_required_by_carrier_spec : true
+        ip_type: IPV6
+        apn : "pcweb.metropcs.com"
+        type : DUN
       }
     }
   }
