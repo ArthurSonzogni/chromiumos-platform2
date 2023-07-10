@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
 #include <brillo/strings/string_utils.h>
@@ -146,6 +147,9 @@ bool UncleanShutdownCollector::Collect() {
   // EC reboots also cause AP reboots, so log the EC uptime to help correlate
   // them.
   LogEcUptime();
+  // GSC reboots also cause AP reboots, so log the GSC uptime to help correlate
+  // them.
+  LogGscUptime();
   DeleteUncleanShutdownFiles();
 
   return true;
@@ -219,4 +223,57 @@ void UncleanShutdownCollector::LogEcUptime() {
   for (const std::string& uptimeinfo_line : uptimeinfo_strings) {
     LOG(INFO) << "[ectool uptimeinfo] " << uptimeinfo_line;
   }
+}
+
+void UncleanShutdownCollector::LogGscUptime() {
+  const char kGscToolPath[] = "/usr/sbin/gsctool";
+  const char kGscFirmwarePath[] = "/opt/google/ti50/firmware";
+
+  if (!base::PathExists(base::FilePath(kGscToolPath))) {
+    LOG(INFO) << "gsctool unavailable: '" << kGscToolPath << "'";
+    return;
+  }
+  if (!base::PathExists(base::FilePath(kGscFirmwarePath))) {
+    LOG(INFO)
+        << "Unsupported GSC present on board. Unable to query GSC uptime.";
+    return;
+  }
+
+  brillo::ProcessImpl gsctool;
+  gsctool.AddArg(kGscToolPath);
+  gsctool.AddArg("-a");           // spi/i2c AP-to-GSC interface
+  gsctool.AddArg("--dauntless");  // Communicate with Dauntless chip.
+  gsctool.AddArg("--get_time");   // Get the GSC uptime, in milliseconds
+  // Combine stdout and stderr.
+  gsctool.RedirectOutputToMemory(true);
+
+  const int result = gsctool.Run();
+  std::string get_time_output = gsctool.GetOutputString(STDOUT_FILENO);
+  if (result != 0) {
+    LOG(ERROR) << "Failed to run gsctool. Error: '" << result << "'";
+    return;
+  }
+
+  std::vector<std::string> get_time_strings =
+      brillo::string_utils::Split(get_time_output, "\n", true, true);
+  if (get_time_strings.size() != 1) {
+    LOG(ERROR) << "Unexpected 'gsctool --gettime' output:";
+    // LOG() converts newlines to "#012", logging all the output to a single
+    // line. This is difficult to read, so instead log each line of the gsctool
+    // output separately to keep things human-readable.
+    for (const std::string& get_time_line : get_time_strings) {
+      LOG(INFO) << "[gsctool get_time] " << get_time_line;
+    }
+    return;
+  }
+  double gsc_uptime_msec = -1;
+  if (!base::StringToDouble(get_time_strings[0], &gsc_uptime_msec)) {
+    LOG(ERROR) << "Failed to convert uptime string to double: '"
+               << get_time_strings[0] << "'";
+  }
+  // gsctool --get_time outputs the GSC uptime in milliseconds. Convert to
+  // seconds, so it's more human-readable.
+  double gsc_uptime_sec =
+      gsc_uptime_msec / static_cast<double>(base::Time::kMillisecondsPerSecond);
+  LOG(INFO) << "GSC uptime: " << gsc_uptime_sec << " seconds";
 }

@@ -59,6 +59,7 @@ class UncleanShutdownCollector : public CrashCollector {
   bool DeadBatteryCausedUncleanShutdown();
   // Check for unclean shutdown
   void LogEcUptime();
+  void LogGscUptime();
 
   const char* unclean_shutdown_file_;
   base::FilePath powerd_trace_path_;
