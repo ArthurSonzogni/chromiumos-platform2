@@ -9,8 +9,6 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/net/ip_address.h"
-
 namespace shill {
 
 class MockIcmpSession : public IcmpSession {
@@ -23,7 +21,9 @@ class MockIcmpSession : public IcmpSession {
 
   MOCK_METHOD(bool,
               Start,
-              (const IPAddress&, int, IcmpSession::IcmpSessionResultCallback),
+              (const net_base::IPAddress&,
+               int,
+               IcmpSession::IcmpSessionResultCallback),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
 };

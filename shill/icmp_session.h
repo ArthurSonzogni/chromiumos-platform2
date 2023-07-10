@@ -21,6 +21,7 @@
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 
 #include "shill/icmp.h"
 #include "shill/net/io_handler.h"
@@ -29,7 +30,6 @@ namespace shill {
 
 class EventDispatcher;
 class IOHandlerFactory;
-class IPAddress;
 
 // The IcmpSession class encapsulates the task of performing a stateful exchange
 // of echo requests and echo replies between this host and another (i.e. ping).
@@ -63,7 +63,7 @@ class IcmpSession {
   // |interface_index| is the IPv6 scope ID, which can be 0 for a global
   // |destination| but must be a positive integer if |destination| is a
   // link-local address. It is unused on IPv4.
-  virtual bool Start(const IPAddress& destination,
+  virtual bool Start(const net_base::IPAddress& destination,
                      int interface_index,
                      IcmpSessionResultCallback result_callback);
 

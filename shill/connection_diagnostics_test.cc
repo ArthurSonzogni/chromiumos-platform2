@@ -297,8 +297,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*icmp_session_, Start(IPAddress(address), _, _))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(true));
     connection_diagnostics_.PingHost(address);
   }
 
@@ -306,8 +305,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const net_base::IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(*icmp_session_, Start(IPAddress(address), _, _))
-        .WillOnce(Return(false));
+    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(false));
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueInternalError));
     EXPECT_CALL(callback_target(),
@@ -369,11 +367,13 @@ class ConnectionDiagnosticsTest : public Test {
       auto dns_server_icmp_session_1 =
           std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
 
-      EXPECT_CALL(*dns_server_icmp_session_0,
-                  Start(*IPAddress::CreateFromString(kDNSServer0), _, _))
+      EXPECT_CALL(
+          *dns_server_icmp_session_0,
+          Start(*net_base::IPAddress::CreateFromString(kDNSServer0), _, _))
           .WillOnce(Return(is_success));
-      EXPECT_CALL(*dns_server_icmp_session_1,
-                  Start(*IPAddress::CreateFromString(kDNSServer1), _, _))
+      EXPECT_CALL(
+          *dns_server_icmp_session_1,
+          Start(*net_base::IPAddress::CreateFromString(kDNSServer1), _, _))
           .WillOnce(Return(is_success));
 
       connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();

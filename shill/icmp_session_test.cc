@@ -49,6 +49,12 @@ const uint8_t kIcmpV6EchoReply1[] = {0x81, 0x00, 0x76, 0xff,
 const uint8_t kIcmpEchoReplyDifferentEchoID[] = {0x00, 0x00, 0xea, 0xff,
                                                  0x0e, 0x00, 0x0b, 0x00};
 
+const net_base::IPAddress kIPAddress =
+    *net_base::IPAddress::CreateFromString("10.0.1.1");
+const net_base::IPAddress kIP6Address =
+    *net_base::IPAddress::CreateFromString("2001:db8::1234:5678");
+const int kInterfaceIndex = 3;
+
 }  // namespace
 
 class IcmpSessionTest : public Test {
@@ -73,15 +79,12 @@ class IcmpSessionTest : public Test {
   MOCK_METHOD(void, ResultCallback, (const IcmpSession::IcmpSessionResult&));
 
  protected:
-  static const char kIPAddress[];
-  static const char kIP6Address[];
-  static const int kInterfaceIndex;
-
-  void StartAndVerify(const IPAddress& destination, int interface_index) {
+  void StartAndVerify(const net_base::IPAddress& destination,
+                      int interface_index) {
     EXPECT_CALL(*icmp_, IsStarted());
-    EXPECT_CALL(*icmp_, Start(destination, interface_index))
+    EXPECT_CALL(*icmp_, Start(IPAddress(destination), interface_index))
         .WillOnce(Return(true));
-    icmp_->destination_ = destination;
+    icmp_->destination_ = IPAddress(destination);
     EXPECT_CALL(io_handler_factory_,
                 CreateIOInputHandler(icmp_->socket(), _, _));
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeout()));
@@ -92,7 +95,7 @@ class IcmpSessionTest : public Test {
     EXPECT_CALL(*icmp_, IsStarted()).WillRepeatedly(Return(true));
   }
 
-  bool Start(const IPAddress& destination, int interface_index) {
+  bool Start(const net_base::IPAddress& destination, int interface_index) {
     return icmp_session_.Start(destination, interface_index,
                                base::BindOnce(&IcmpSessionTest::ResultCallback,
                                               base::Unretained(this)));
@@ -164,10 +167,6 @@ class IcmpSessionTest : public Test {
   base::SimpleTestTickClock testing_clock_;
 };
 
-const char IcmpSessionTest::kIPAddress[] = "10.0.1.1";
-const char IcmpSessionTest::kIP6Address[] = "2001:db8::1234:5678";
-const int IcmpSessionTest::kInterfaceIndex = 3;
-
 TEST_F(IcmpSessionTest, Constructor) {
   // |icmp_session_| should have been assigned the value of |kNextUniqueEchoId|
   // on construction, and caused the value of this static variable to be
@@ -183,16 +182,14 @@ TEST_F(IcmpSessionTest, Constructor) {
 }
 
 TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-  StartAndVerify(*ipv4_destination, kInterfaceIndex);
+  StartAndVerify(kIPAddress, kInterfaceIndex);
 
   // Since an ICMP session is already started, we should fail to start it again.
-  EXPECT_CALL(*icmp_, Start(*ipv4_destination, kInterfaceIndex)).Times(0);
+  EXPECT_CALL(*icmp_, Start(IPAddress(kIPAddress), kInterfaceIndex)).Times(0);
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
-  EXPECT_FALSE(Start(*ipv4_destination, kInterfaceIndex));
+  EXPECT_FALSE(Start(kIPAddress, kInterfaceIndex));
 }
 
 TEST_F(IcmpSessionTest, StopWhileNotStarted) {
@@ -225,9 +222,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   };
 
   // Initiate session.
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-  StartAndVerify(*ipv4_destination, kInterfaceIndex);
+  StartAndVerify(kIPAddress, kInterfaceIndex);
 
   // Send the first echo request.
   testing_clock_.Advance(kSentTime1 - now);
@@ -331,9 +326,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
 
 TEST_F(IcmpSessionTest, ICMPv6) {
   // Initiate session.
-  const auto ipv6_destination = IPAddress::CreateFromString(kIP6Address);
-  CHECK(ipv6_destination.has_value());
-  StartAndVerify(*ipv6_destination, kInterfaceIndex);
+  StartAndVerify(kIP6Address, kInterfaceIndex);
 
   // Send an echo request.
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
@@ -377,9 +370,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   };
 
   // Initiate session.
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-  StartAndVerify(*ipv4_destination, kInterfaceIndex);
+  StartAndVerify(kIPAddress, kInterfaceIndex);
 
   // Send the first echo request successfully.
   testing_clock_.Advance(kSentTime1 - now);
@@ -441,9 +432,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
 
 TEST_F(IcmpSessionTest, DoNotReportResultsOnStop) {
   // Initiate session.
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-  StartAndVerify(*ipv4_destination, kInterfaceIndex);
+  StartAndVerify(kIPAddress, kInterfaceIndex);
 
   // Session interrupted manually by calling Stop(), so do not report results.
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);

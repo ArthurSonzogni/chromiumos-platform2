@@ -254,7 +254,7 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
 
     if (!session_iter->second->Start(
-            IPAddress(*dns_server_ip_addr), iface_index_,
+            *dns_server_ip_addr, iface_index_,
             base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
                            weak_ptr_factory_.GetWeakPtr(), i))) {
       LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
@@ -288,7 +288,7 @@ void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
   const Type event_type =
       (address == gateway_) ? kTypePingGateway : kTypePingTargetServer;
   if (!icmp_session_->Start(
-          IPAddress(address), iface_index_,
+          address, iface_index_,
           base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
                          weak_ptr_factory_.GetWeakPtr(), event_type,
                          address))) {

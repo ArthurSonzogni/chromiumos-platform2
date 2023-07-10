@@ -52,7 +52,7 @@ IcmpSession::~IcmpSession() {
   Stop();
 }
 
-bool IcmpSession::Start(const IPAddress& destination,
+bool IcmpSession::Start(const net_base::IPAddress& destination,
                         int interface_index,
                         IcmpSessionResultCallback result_callback) {
   if (!dispatcher_) {
@@ -63,7 +63,7 @@ bool IcmpSession::Start(const IPAddress& destination,
     LOG(WARNING) << "ICMP session already started";
     return false;
   }
-  if (!icmp_->Start(destination, interface_index)) {
+  if (!icmp_->Start(IPAddress(destination), interface_index)) {
     return false;
   }
   echo_reply_handler_.reset(io_handler_factory_->CreateIOInputHandler(
