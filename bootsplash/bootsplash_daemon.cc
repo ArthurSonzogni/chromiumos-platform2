@@ -117,27 +117,16 @@ void BootSplashDaemon::StartBootLogoAnimationAlarm() {
 }
 
 void BootSplashDaemon::OnBootLogoAnimationAlarmFired() {
-  static bool ascending = true;
-  static int currentFrame = 0;
+  static int current_frame = 0;
 
-  frecon->UpdateBootLogoDisplay(currentFrame);
+  frecon->UpdateBootLogoDisplay(current_frame);
 
-  if (ascending) {
-    if (currentFrame == num_frames_) {
-      ascending = false;
-      --currentFrame;
-    } else {
-      ++currentFrame;
-    }
-  } else {
-    if (currentFrame == 0) {
-      ascending = true;
-      ++currentFrame;
-    } else {
-      --currentFrame;
-    }
+  /* Display all of the images once, and then stop animating. */
+  if (current_frame >= num_frames_) {
+    return;
   }
 
+  ++current_frame;
   boot_logo_animation_alarm_->Reset();
 }
 
