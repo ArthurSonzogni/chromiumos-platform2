@@ -279,15 +279,22 @@ class Cellular : public Device,
   // Public to ease testing tethering acquisition logic.
   enum class TetheringOperationType {
     // The currently connected default network will be reused for tethering.
-    kReuseDefault,
-    // TODO(aleksandermj): Remove kReuseDefaultFallback once all the tethering
-    // acquisition approaches are implemented.
-    kReuseDefaultFallback,
+    kReuseDefaultPdn,
+    // TODO(aleksandermj): Remove kReuseDefaultPdnFallback once all the
+    // tethering acquisition approaches are implemented.
+    kReuseDefaultPdnFallback,
     // Used to report errors in GetTetheringOperationType()
     kFailed,
   };
   TetheringOperationType GetTetheringOperationType(Error* error);
-  void ReuseDefaultForTethering(AcquireTetheringNetworkResultCallback callback);
+
+  // Takes the currently connected default PDN and reuses it for tethering
+  // purposes, without bringing up any other PDN connection.
+  // This is the operation run in AcquireTetheringNetwork() when the
+  // GetTetheringOperationType() selection method returns kReuseDefaultPdn or
+  // kReuseDefaultPdnFallback.
+  void ReuseDefaultPdnForTethering(
+      AcquireTetheringNetworkResultCallback callback);
 
   // Called when an OTA profile update arrives from the network.
   void OnProfilesChanged();

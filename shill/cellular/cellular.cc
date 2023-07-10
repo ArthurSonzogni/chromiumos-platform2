@@ -1526,7 +1526,7 @@ void Cellular::OnDisconnectFailed() {
   // down the modem and restart it here.
 }
 
-void Cellular::ReuseDefaultForTethering(
+void Cellular::ReuseDefaultPdnForTethering(
     AcquireTetheringNetworkResultCallback callback) {
   CHECK(!callback.is_null());
   dispatcher()->PostTask(
@@ -1575,7 +1575,7 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
         << LoggingTag()
         << ": Tethering network selection: reusing default APN for tethering "
            "as there is no DUN specific APN";
-    return TetheringOperationType::kReuseDefault;
+    return TetheringOperationType::kReuseDefaultPdn;
   }
 
   // The currently connected APN is also flagged as DUN. If this APN is also in
@@ -1589,12 +1589,12 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     LOG(INFO)
         << LoggingTag()
         << ": Tethering network selection: reusing default APN for tethering.";
-    return TetheringOperationType::kReuseDefault;
+    return TetheringOperationType::kReuseDefaultPdn;
   }
 
   // TODO(b/283396208): use DUN APN as DEFAULT
   // TODO(b/283402454): connect DUN APN as additional multiplexed network
-  return TetheringOperationType::kReuseDefaultFallback;
+  return TetheringOperationType::kReuseDefaultPdnFallback;
 }
 
 void Cellular::AcquireTetheringNetwork(
@@ -1604,9 +1604,9 @@ void Cellular::AcquireTetheringNetwork(
 
   Error error;
   switch (GetTetheringOperationType(&error)) {
-    case TetheringOperationType::kReuseDefault:
-    case TetheringOperationType::kReuseDefaultFallback:
-      ReuseDefaultForTethering(std::move(callback));
+    case TetheringOperationType::kReuseDefaultPdn:
+    case TetheringOperationType::kReuseDefaultPdnFallback:
+      ReuseDefaultPdnForTethering(std::move(callback));
       return;
     case TetheringOperationType::kFailed:
       dispatcher()->PostTask(

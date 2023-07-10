@@ -3015,7 +3015,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefault) {
                                    Cellular::LinkState::kUp);
 
   base::test::TestFuture<Network*, const Error&> future;
-  device_->ReuseDefaultForTethering(future.GetCallback());
+  device_->ReuseDefaultPdnForTethering(future.GetCallback());
   EXPECT_EQ(future.Get<Network*>(), default_pdn_);
   EXPECT_TRUE(future.Get<Error>().IsSuccess());
 }
@@ -3043,7 +3043,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultNoDun) {
 
   // Test only the operation type selection
   EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
-            Cellular::TetheringOperationType::kReuseDefault);
+            Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
 TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDun) {
@@ -3069,7 +3069,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDun) {
 
   // Test only the operation type selection
   EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
-            Cellular::TetheringOperationType::kReuseDefault);
+            Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
 TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDunRequired) {
@@ -3096,7 +3096,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDunRequired) {
 
   // Test only the operation type selection
   EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
-            Cellular::TetheringOperationType::kReuseDefault);
+            Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
 TEST_F(CellularTest, AcquireTetheringNetwork_NoReuseDefaultIsAlsoDun) {
@@ -3127,9 +3127,9 @@ TEST_F(CellularTest, AcquireTetheringNetwork_NoReuseDefaultIsAlsoDun) {
   apn_list.push_back(apn2);
   device_->SetApnList(apn_list);
 
-  // Test only the operation type selection. It MUST NOT BE kReuseDefault.
+  // Test only the operation type selection. It MUST NOT BE kReuseDefaultPdn.
   EXPECT_NE(device_->GetTetheringOperationType(nullptr),
-            Cellular::TetheringOperationType::kReuseDefault);
+            Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
