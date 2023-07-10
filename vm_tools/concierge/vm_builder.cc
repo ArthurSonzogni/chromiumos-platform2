@@ -395,12 +395,12 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   if (post_run_args.empty())
     return std::nullopt;
 
-  base::StringPairs pre_run_args;
+  base::StringPairs pre_run_args = BuildPreRunParams();
   std::vector<std::string> pre_crosvm_args;
 
   if (devparams) {
-    devparams->Apply(&post_run_args);
-    pre_run_args = devparams->ObtainPrerunParams();
+    devparams->Apply(post_run_args);
+    devparams->AppendPrerunParams(pre_run_args);
     pre_crosvm_args = devparams->ObtainPrecrosvmParams();
   }
 
@@ -418,6 +418,13 @@ std::optional<base::StringPairs> VmBuilder::BuildVmArgs(
   if (!kernel_.empty())
     args.emplace_back(kernel_.value(), "");
 
+  return args;
+}
+
+base::StringPairs VmBuilder::BuildPreRunParams() const {
+  base::StringPairs args;
+  if (!syslog_tag_.empty())
+    args.emplace_back("--syslog-tag", syslog_tag_);
   return args;
 }
 
@@ -447,9 +454,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   for (const auto& s : serial_devices_)
     args.emplace_back("--serial", s);
-
-  if (!syslog_tag_.empty())
-    args.emplace_back("--syslog-tag", syslog_tag_);
 
   if (enable_smt_.has_value()) {
     if (!enable_smt_.value())

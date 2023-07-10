@@ -126,6 +126,8 @@ class VmBuilder {
   // Builds the parameters for `crosvm run` to start a VM based on this
   // VmBuilder's settings.
   base::StringPairs BuildRunParams() const;
+  // Builds the parameters between `crosvm` and `run`.
+  base::StringPairs BuildPreRunParams() const;
   bool ProcessCustomParameters(const CustomParametersForDev& devparams);
 
   base::FilePath kernel_;

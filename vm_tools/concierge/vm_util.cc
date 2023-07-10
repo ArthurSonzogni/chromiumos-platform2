@@ -571,19 +571,26 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
   initialized_ = true;
 }
 
-void CustomParametersForDev::Apply(base::StringPairs* args) {
+void CustomParametersForDev::Apply(base::StringPairs& args) {
   if (!initialized_)
     return;
   for (const auto& prefix : run_prefix_to_remove_) {
-    base::EraseIf(*args, [&prefix](const auto& pair) {
+    base::EraseIf(args, [&prefix](const auto& pair) {
       return base::StartsWith(pair.first, prefix);
     });
   }
   for (const auto& param : run_params_to_prepend_) {
-    args->emplace(args->begin(), param.first, param.second);
+    args.emplace(args.begin(), param.first, param.second);
   }
   for (const auto& param : run_params_to_add_) {
-    args->emplace_back(param.first, param.second);
+    args.emplace_back(param.first, param.second);
+  }
+}
+
+void CustomParametersForDev::AppendPrerunParams(
+    base::StringPairs& pre_run_args) const {
+  for (const auto& param : prerun_params_) {
+    pre_run_args.emplace_back(param.first, param.second);
   }
 }
 

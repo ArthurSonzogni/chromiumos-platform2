@@ -20,12 +20,27 @@ TEST(VmBuilderTest, CustomParametersWithCrosvmFlags) {
   CustomParametersForDev dev{R"(prerun:--log-level=debug)"};
 
   VmBuilder builder;
-  auto result = std::move(builder).BuildVmArgs(&dev).value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
   EXPECT_EQ(result[0].first, "/usr/bin/crosvm");
   EXPECT_EQ(result[1].first, "--log-level");
   EXPECT_EQ(result[1].second, "debug");
   EXPECT_EQ(result[2].first, "run");
+}
+
+TEST(VmBuilderTest, CustomParametersWithSyslogTag) {
+  CustomParametersForDev dev{R"(prerun:--log-level=debug)"};
+
+  VmBuilder builder;
+  builder.SetSyslogTag("TEST");
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
+
+  EXPECT_EQ(result[0].first, "/usr/bin/crosvm");
+  EXPECT_EQ(result[1].first, "--syslog-tag");
+  EXPECT_EQ(result[1].second, "TEST");
+  EXPECT_EQ(result[2].first, "--log-level");
+  EXPECT_EQ(result[2].second, "debug");
+  EXPECT_EQ(result[3].first, "run");
 }
 
 TEST(VmBuilderTest, CustomParametersWithStrace) {
@@ -35,7 +50,7 @@ precrosvm:-f
 precrosvm:-o=/run/vm/crosvm_strace)"};
 
   VmBuilder builder;
-  auto result = std::move(builder).BuildVmArgs(&dev).value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
   EXPECT_EQ(result[0].first, "/usr/local/bin/strace");
   EXPECT_EQ(result[1].first, "-f");
   EXPECT_EQ(result[1].second, "");
@@ -62,7 +77,7 @@ TEST(VmBuilderTest, ODirectN) {
           .path = base::FilePath("/dev/zero"),
       },
   });
-  auto result = std::move(builder).BuildVmArgs(&dev).value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {
@@ -92,7 +107,7 @@ O_DIRECT_N=2)"};
           .path = base::FilePath("/dev/zero"),
       },
   });
-  auto result = std::move(builder).BuildVmArgs(&dev).value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {
@@ -109,14 +124,17 @@ O_DIRECT_N=2)"};
 TEST(VmBuilderTest, ODirectTooLargeNDeath) {
   CustomParametersForDev dev{R"(O_DIRECT_N=15)"};
   VmBuilder builder;
-  ASSERT_DEATH({ auto result = std::move(builder).BuildVmArgs(&dev); },
-               "out_of_range");
+  ASSERT_DEATH(
+      {
+        base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
+      },
+      "out_of_range");
 }
 
 TEST(VmBuilderTest, DefaultKernel) {
   VmBuilder builder;
   builder.SetKernel(base::FilePath("/dev/null"));
-  auto result = std::move(builder).BuildVmArgs().value();
+  base::StringPairs result = std::move(builder).BuildVmArgs().value();
 
   EXPECT_EQ(result[result.size() - 1].first, "/dev/null");
 }
@@ -126,7 +144,7 @@ TEST(VmBuilderTest, CustomKernel) {
 
   VmBuilder builder;
   builder.SetKernel(base::FilePath("/dev/null"));
-  auto result = std::move(builder).BuildVmArgs(&dev).value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
   EXPECT_EQ(result[result.size() - 1].first, "/dev/zero");
 }

@@ -21,7 +21,7 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
+void LoadCustomParameters(const std::string& data, base::StringPairs& args) {
   CustomParametersForDev custom(data);
   custom.Apply(args);
 }
@@ -37,7 +37,7 @@ std::string JoinStringPairs(const base::StringPairs& pairs) {
 
 TEST(VMUtilTest, LoadCustomParametersSupportsEmptyInput) {
   base::StringPairs args;
-  LoadCustomParameters("", &args);
+  LoadCustomParameters("", args);
   base::StringPairs expected;
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
@@ -47,7 +47,7 @@ TEST(VMUtilTest, LoadCustomParametersParsesManyPairs) {
   LoadCustomParameters(R"(--Key1=Value1
 --Key2=Value2
 --Key3=Value3)",
-                       &args);
+                       args);
   base::StringPairs expected = {
       {"--Key1", "Value1"}, {"--Key2", "Value2"}, {"--Key3", "Value3"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
@@ -58,7 +58,7 @@ TEST(VMUtilTest, LoadCustomParametersSkipsComments) {
   LoadCustomParameters(R"(--Key1=Value1
 #--Key2=Value2
 --Key3=Value3)",
-                       &args);
+                       args);
   base::StringPairs expected{{"--Key1", "Value1"}, {"--Key3", "Value3"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
@@ -75,7 +75,7 @@ TEST(VMUtilTest, LoadCustomParametersSkipsEmptyLines) {
 
 
 )",
-                       &args);
+                       args);
   base::StringPairs expected{{"--Key1", "Value1"}, {"--Key2", "Value2"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
@@ -88,7 +88,7 @@ TEST(VMUtilTest, LoadCustomParametersSupportsKeyWithoutValue) {
 
 
 --Key3)",
-                       &args);
+                       args);
   base::StringPairs expected{
       {"--Key1", "Value1"}, {"--Key2", ""}, {"--Key3", ""}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
@@ -101,7 +101,7 @@ TEST(VMUtilTest, LoadCustomParametersSupportsPrepend) {
       R"(--AppendKey=Value3
 ^--PrependKey=Value0
 )",
-      &args);
+      args);
   base::StringPairs expected{{"--PrependKey", "Value0"},
                              {"--KeyToBeSecond", "Value1"},
                              {"--KeyToBeThird", "Value2"},
@@ -118,7 +118,7 @@ TEST(VMUtilTest, LoadCustomParametersSupportsRemoving) {
 !--KeyToBeReplaced
 --KeyToBeReplaced=NewValue1
 ^--KeyToBeReplaced=NewValue2)",
-      &args);
+      args);
   base::StringPairs expected{{"--KeyToBeReplaced", "NewValue2"},
                              {"--KeyToBeKept", "ValueToBeKept"},
                              {"--Key1", "Value1"},
@@ -133,7 +133,7 @@ TEST(VMUtilTest, LoadCustomParametersSupportsRemovingByPrefix) {
                             {"foobar", ""},
                             {"foobar", "baz"},
                             {"barfoo", ""}};
-  LoadCustomParameters("!foo", &args);
+  LoadCustomParameters("!foo", args);
   base::StringPairs expected{{"barfoo", ""}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
@@ -143,7 +143,7 @@ TEST(CustomParametersForDevTest, KernelWithCustom) {
   CustomParametersForDev custom(R"(--Key2=Value2
 KERNEL_PATH=/a/b/c
 --Key3=Value3)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string resolved_kernel_path =
       custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
 
@@ -159,7 +159,7 @@ TEST(CustomParametersForDevTest, KernelWithMultipleCustomLastTakesEffect) {
 KERNEL_PATH=/a/b/c
 KERNEL_PATH=/d/e/f
 --Key3=Value3)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string resolved_kernel_path =
       custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
 
@@ -180,7 +180,7 @@ TEST(CustomParametersForDevTest, KernelWithDefault) {
   CustomParametersForDev custom(R"(--Key2=Value2
 --Key3=Value3
 SOME_OTHER_PATH=/a/b/c)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string resolved_kernel_path =
       custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
 
@@ -196,7 +196,7 @@ SOME_OTHER_PATH=/a/b/c)");
 TEST(CustomParametersForDevTest, ODirect) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(O_DIRECT=true)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string o_direct =
       custom.ObtainSpecialParameter("O_DIRECT").value_or("false");
 
@@ -210,7 +210,7 @@ TEST(CustomParametersForDevTest, ODirect) {
 TEST(CustomParametersForDevTest, BlockMultipleWorkers) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(BLOCK_MULTIPLE_WORKERS=true)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string multiple_workers =
       custom.ObtainSpecialParameter("BLOCK_MULTIPLE_WORKERS").value_or("false");
 
@@ -224,7 +224,7 @@ TEST(CustomParametersForDevTest, BlockMultipleWorkers) {
 TEST(CustomParametersForDevTest, BlockAsyncExecutor) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(BLOCK_ASYNC_EXECUTOR=uring)");
-  custom.Apply(&args);
+  custom.Apply(args);
   const std::string block_async_executor =
       custom.ObtainSpecialParameter("BLOCK_ASYNC_EXECUTOR").value_or("epoll");
 

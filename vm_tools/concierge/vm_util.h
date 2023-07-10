@@ -209,7 +209,7 @@ class CustomParametersForDev {
 
   // Apply the parsed result of configuration files to |args| as a vector of
   // string pairs.
-  void Apply(base::StringPairs* args);
+  void Apply(base::StringPairs& args);
 
   std::optional<const std::string> ObtainSpecialParameter(
       const std::string& key) const;
@@ -221,8 +221,8 @@ class CustomParametersForDev {
   std::vector<std::string> ObtainPrecrosvmParams() const {
     return precrosvm_params_;
   }
-  // Parameters before crosvm's `run` command.
-  base::StringPairs ObtainPrerunParams() const { return prerun_params_; }
+  // Append to parameters between crosvm's `crosvm` and `run` command.
+  void AppendPrerunParams(base::StringPairs& pre_run_args) const;
 
  private:
   // Command line parameters before `run` option.
