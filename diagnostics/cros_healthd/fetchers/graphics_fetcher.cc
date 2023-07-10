@@ -98,17 +98,12 @@ mojom::GLESInfoPtr EglManager::FetchGLESInfo() {
 
 mojom::EGLInfoPtr EglManager::FetchEGLInfo() {
   auto egl_info = mojom::EGLInfo::New();
-  egl_info->version =
-      reinterpret_cast<const char*>(eglQueryString(egl_display_, EGL_VERSION));
-  egl_info->vendor =
-      reinterpret_cast<const char*>(eglQueryString(egl_display_, EGL_VENDOR));
-  egl_info->client_api = reinterpret_cast<const char*>(
-      eglQueryString(egl_display_, EGL_CLIENT_APIS));
-  std::string egl_extensions(reinterpret_cast<const char*>(
-      eglQueryString(egl_display_, EGL_EXTENSIONS)));
-  egl_info->extensions = base::SplitString(
-      egl_extensions, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
+  egl_info->version = eglQueryString(egl_display_, EGL_VERSION);
+  egl_info->vendor = eglQueryString(egl_display_, EGL_VENDOR);
+  egl_info->client_api = eglQueryString(egl_display_, EGL_CLIENT_APIS);
+  egl_info->extensions =
+      base::SplitString(eglQueryString(egl_display_, EGL_EXTENSIONS), " ",
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   return egl_info;
 }
 
