@@ -119,7 +119,6 @@ LEGACYLIST = {
     "usb_bouncer",
     "verity",
     "virtual_file_provider",
-    "wifi-testbed",
 }
 
 # Mapping between tracker & component key name.

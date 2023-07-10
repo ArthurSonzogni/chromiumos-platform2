@@ -184,7 +184,6 @@ copies.
 | [virtual_file_provider](./virtual_file_provider/) ||
 | [vm_tools](./vm_tools/) | Utilities for Virtual Machine (VM) orchestration |
 | [vtpm](./vtpm/) | ChromeOS virtual TPM Daemon |
-| [wifi-testbed](./wifi-testbed/) | Tools for creating a WiFi testbed image |
 
 # AOSP Project Directory
 
