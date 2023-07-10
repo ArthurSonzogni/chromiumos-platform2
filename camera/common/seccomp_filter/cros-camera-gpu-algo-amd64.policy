@@ -74,6 +74,10 @@ getuid: 1
 #   0xc028645e == DRM_IOCTL_I915_GEM_MMAP
 #   0xc0406400 == DRM_IOCTL_VERSION
 #   0xc0406469 == DRM_IOCTL_I915_GEM_EXECBUFFER2_WR
+#   0xc010647a == DRM_IOCTL_I915_GEM_VM_CREATE
+#   0x4010647b == DRM_IOCTL_I915_GEM_VM_DESTROY
+#   0xc018647c == DRM_IOCTL_I915_GEM_CREATE_EXT
+#   0x4008646e == DRM_IOCTL_I915_GEM_CONTEXT_DESTROY
 ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 || \
        arg1 == 0x40086409 || arg1 == 0x40086478 || arg1 == 0x400c645f || \
        arg1 == 0x4020645d || arg1 == 0x40406469 || arg1 == 0x80106463 || \
@@ -84,7 +88,8 @@ ioctl: arg1 == 0x5401 || arg1 == 0x6458 || arg1 == 0x40046460 || \
        arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || \
        arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc0206464 || \
        arg1 == 0xc02064c3 || arg1 == 0xc028645e || arg1 == 0xc0406400 || \
-       arg1 == 0xc0406469
+       arg1 == 0xc0406469 || arg1 == 0x4010647b || arg1 == 0xc018647c || \
+       arg1 == 0x4008646e || arg1 == 0xc010647a
 kill: 1
 listen: 1
 lseek: 1
