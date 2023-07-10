@@ -114,8 +114,21 @@ int RunChildMain(int argc, const char* argv[]) {
   util::ParseCommandLine(argc, argv, &flags);
 
   if (util::DoesPauseFileExist() && !flags.ignore_pause_file) {
-    LOG(INFO) << "Exiting early due to " << paths::kPauseCrashSending;
-    return EXIT_FAILURE;
+    // Ignore pause file in dry_run mode. This is a bit of a workaround for
+    // health.MonitorUnuploadedCrashEvent. We do it because:
+    // 1. The point of having the pause file is to avoid having crash_sender
+    //    interfere with running tests (e.g. by removing crashes that a test
+    //    expects to see). Having `crash_sender --dry_run` run to completion
+    //    will not interfere with non-cros_healthd tests.
+    // 2. The call to `crash_sender --dry_run` during the health tast tests
+    //    happens through enough layers that it's difficult to pipe a "this is
+    //    the call from a test" flag all the way through. And since it shouldn't
+    //    make a difference (point 1), we just allow all the calls from
+    //    cros_healthd to run even with the pause file.
+    if (!flags.dry_run) {
+      LOG(INFO) << "Exiting early due to " << paths::kPauseCrashSending;
+      return EXIT_FAILURE;
+    }
   }
 
   auto clock = std::make_unique<base::DefaultClock>();
