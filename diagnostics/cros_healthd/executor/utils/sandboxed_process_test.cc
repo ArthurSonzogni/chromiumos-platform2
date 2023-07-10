@@ -158,7 +158,7 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
           .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
                                     base::FilePath{kTestReadOnlyFileNotExist}},
           .writable_mount_points = {base::FilePath{kTestWritableFile}},
-          .sandbox_option = NO_ENTER_NETWORK_NAMESPACE,
+          .enter_network_namespace = false,
       }};
 
   SetUpExpectCallForMinijailParsing(process);
@@ -180,7 +180,7 @@ TEST_F(SandboxedProcessTest, MOUNT_DLC) {
           .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
                                     base::FilePath{kTestReadOnlyFileNotExist}},
           .writable_mount_points = {base::FilePath{kTestWritableFile}},
-          .sandbox_option = MOUNT_DLC,
+          .mount_dlc = true,
       }};
 
   SetUpExpectCallForMinijailParsing(process);

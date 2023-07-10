@@ -136,11 +136,11 @@ SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
     sandbox_arguments_.push_back(seccomp_file.value());
   }
 
-  if ((options.sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
+  if (options.enter_network_namespace) {
     // Enter a new network namespace.
     sandbox_arguments_.push_back("-e");
   }
-  if (options.sandbox_option & MOUNT_DLC) {
+  if (options.mount_dlc) {
     // The arguments "-v -Kslave" could allow propagation of mounted DLC image.
     // Recursively bind mount "/run/imageloader" to access DLC.
     sandbox_arguments_.push_back("-k");

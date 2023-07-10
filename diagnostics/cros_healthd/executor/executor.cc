@@ -354,11 +354,11 @@ void Executor::RunIw(IwCommand cmd,
       break;
   }
 
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kIw,
-      SandboxedProcess::Options{
-          .sandbox_option = NO_ENTER_NETWORK_NAMESPACE,
-      });
+  auto process =
+      std::make_unique<SandboxedProcess>(command, seccomp_file::kIw,
+                                         SandboxedProcess::Options{
+                                             .enter_network_namespace = false,
+                                         });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -571,11 +571,11 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
 
 void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
   std::vector<std::string> command = {path::kHciconfigBinary, "hci0"};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kHciconfig,
-      SandboxedProcess::Options{
-          .sandbox_option = NO_ENTER_NETWORK_NAMESPACE,
-      });
+  auto process =
+      std::make_unique<SandboxedProcess>(command, seccomp_file::kHciconfig,
+                                         SandboxedProcess::Options{
+                                             .enter_network_namespace = false,
+                                         });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -772,7 +772,7 @@ void Executor::RunFioWithDlcRoot(
       SandboxedProcess::Options{
           .readonly_mount_points = readonly_mount_points,
           .writable_mount_points = writable_mount_points,
-          .sandbox_option = MOUNT_DLC,
+          .mount_dlc = true,
       });
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);

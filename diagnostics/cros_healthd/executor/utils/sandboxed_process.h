@@ -19,16 +19,6 @@ inline constexpr char kCrosHealthdSandboxUser[] = "cros_healthd";
 inline constexpr char kMinijailBinary[] = "/sbin/minijail0";
 inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 
-// SandboxOption is used to customized minijail configuration. Default to
-// passing without option for highest security.
-// TODO(b/287409040): put options into |SandboxedProcess::Options|.
-enum SandboxOption {
-  // Do not enter a new network namespace for minijail.
-  NO_ENTER_NETWORK_NAMESPACE = 1 << 0,
-  // Mount /run/imageloader for accessing DLC.
-  MOUNT_DLC = 1 << 1,
-};
-
 // Runs a command under minijail.
 //
 // The arguments:
@@ -41,21 +31,26 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // The options
   // * |user|: The user to run the command. Default to
   //     |kCrosHealthdSandboxUser|.
+  //
+  // The following are used to customized minijail configuration. Use their
+  // default values for highest security.
   // * |capabilities_mask|: The capabilities mask. See linux headers
   //     "uapi/linux/capability.h". Default to |0| (no capability).
   // * |readonly_mount_points|: The paths to be mounted readonly. If a path
   //     doesn't exist it is ignored. Default to |{}|.
   // * |writable_mount_points|: The paths to be mounted writable. All the paths
   //     must exist, otherwise the process will fail to be run. Default to |{}|.
-  // * |sandbox_option|: Open sandbox without certain flags, use bit-wise
-  //     options from SandboxOption to customize. Default to 0 for maximum
-  //     security.
+  // * |enter_network_namespace|: Whether to enter a new network namespace for
+  //     minijail. Default to |true|.
+  // * |mount_dlc|: Mount /run/imageloader for accessing DLC. Default to
+  //     |false|.
   struct Options {
     std::string user = kCrosHealthdSandboxUser;
     uint64_t capabilities_mask = 0;
     std::vector<base::FilePath> readonly_mount_points;
     std::vector<base::FilePath> writable_mount_points;
-    uint32_t sandbox_option = 0;
+    bool enter_network_namespace = true;
+    bool mount_dlc = false;
   };
 
   SandboxedProcess(const std::vector<std::string>& command,
