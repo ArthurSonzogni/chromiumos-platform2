@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_OUTPUT_UTIL_H_
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -62,7 +63,7 @@ std::string EnumToString(ash::cros_healthd::mojom::MemtesterTestItemEnum test);
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
-void SetJsonDictValue(const std::string& key,
+void SetJsonDictValue(std::string_view key,
                       const T& value,
                       base::Value::Dict* output) {
   if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, int64_t> ||
