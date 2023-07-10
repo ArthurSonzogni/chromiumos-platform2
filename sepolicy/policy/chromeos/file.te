@@ -402,6 +402,7 @@ type cros_var_cache_modem_utilities, file_type, cros_file_type, cros_var_file_ty
 type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_cups, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_diagnostics, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache_tsum_scaler_updater, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_fwupd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_dlcservice, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_dlcservice_images, file_type, cros_file_type, cros_var_file_type;
@@ -547,6 +548,7 @@ type cros_run_ippusb, file_type, cros_file_type, cros_run_file_type;
 type cros_run_ipsec, file_type, cros_file_type, cros_run_file_type;
 type cros_run_l2tpipsec_vpn, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock, file_type, cros_file_type, cros_run_file_type;
+type cros_run_lock_firmware_utility_lock, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock_power_override, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lockbox, file_type, cros_file_type, cros_run_file_type;
 type cros_run_log, file_type, cros_file_type, cros_run_file_type;

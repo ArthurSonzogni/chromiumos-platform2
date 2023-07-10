@@ -290,6 +290,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/cache/dlc(/.*)?            u:object_r:cros_var_cache_dlcservice:s0
 /var/cache/dlc-images(/.*)?     u:object_r:cros_var_cache_dlcservice_images:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
+/var/cache/tsum-scaler-updater(/.*)?  u:object_r:cros_var_cache_tsum_scaler_updater:s0
 # The following directory is deprecated but still must be kept for backward
 # compatibility purposes. See comments titled {{{ Notes on /var/cache/reporting
 # }}} in platform2/missived/tmpfiles.d/missived.conf for details.
@@ -472,6 +473,7 @@ has_arc(`
 /run/ipsec                      u:object_r:cros_run_ipsec:s0
 /run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0
 /run/lock                       u:object_r:cros_run_lock:s0
+/run/lock/firmware_utility_lock u:object_r:cros_run_lock_firmware_utility_lock:s0
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
 /run/lockbox(/.*)?              u:object_r:cros_run_lockbox:s0
 /run/log                        u:object_r:cros_run_log:s0
@@ -509,6 +511,7 @@ has_arc(`
 
 /dev                            u:object_r:device:s0
 /dev/console                    u:object_r:console_device:s0
+/dev/i2c-7                      u:object_r:i2c_device:s0
 /dev/iio:device[0-9]+           u:object_r:cros_iio_device:s0
 /dev/input(/.*)?                u:object_r:input_device:s0
 /dev/kmsg                       u:object_r:kmsg_device:s0

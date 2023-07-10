@@ -12,6 +12,7 @@ allow cros_init unlabeled:dir search;
 
 #allow cros_init device:chr_file r_file_perms;
 allow cros_init console_device:chr_file rw_file_perms;
+allow cros_init i2c_device:chr_file rw_file_perms;
 allow cros_init device:dir search;
 
 allow cros_init self:capability { sys_boot sys_resource };
