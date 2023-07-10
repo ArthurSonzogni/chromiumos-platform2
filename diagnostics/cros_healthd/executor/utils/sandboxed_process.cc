@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -73,7 +74,7 @@ SandboxedProcess::~SandboxedProcess() {
 }
 
 SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
-                                   const std::string& seccomp_filename,
+                                   std::string_view seccomp_filename,
                                    const Options& options)
     : command_(command), readonly_mount_points_(options.readonly_mount_points) {
   // Per our security requirement, it is not allowed to invoke a sandboxed

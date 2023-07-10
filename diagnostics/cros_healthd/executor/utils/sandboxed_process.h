@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_SANDBOXED_PROCESS_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -58,7 +59,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   };
 
   SandboxedProcess(const std::vector<std::string>& command,
-                   const std::string& seccomp_filename,
+                   std::string_view seccomp_filename,
                    const Options& options);
   SandboxedProcess(const SandboxedProcess&) = delete;
   SandboxedProcess& operator=(const SandboxedProcess&) = delete;

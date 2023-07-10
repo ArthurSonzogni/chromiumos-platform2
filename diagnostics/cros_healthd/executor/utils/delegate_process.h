@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_DELEGATE_PROCESS_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -32,7 +33,7 @@ namespace diagnostics {
 // destroyed, the mojo connection to the delegate will disconnect.
 class DelegateProcess : public SandboxedProcess {
  public:
-  DelegateProcess(const std::string& seccomp_filename,
+  DelegateProcess(std::string_view seccomp_filename,
                   const SandboxedProcess::Options& options);
   ~DelegateProcess() override;
 

@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -30,7 +31,7 @@ DelegateProcess::DelegateProcess() = default;
 
 DelegateProcess::~DelegateProcess() = default;
 
-DelegateProcess::DelegateProcess(const std::string& seccomp_filename,
+DelegateProcess::DelegateProcess(std::string_view seccomp_filename,
                                  const SandboxedProcess::Options& options)
     : SandboxedProcess({kDelegateBinary}, seccomp_filename, options) {
   mojo::ScopedMessagePipeHandle pipe = invitation_.AttachMessagePipe(0);
