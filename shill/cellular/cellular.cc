@@ -1819,7 +1819,9 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
   }
 
   // TODO(b/283402454): connect DUN APN as additional multiplexed network
-  return TetheringOperationType::kReuseDefaultPdnFallback;
+  // While multiplexing support is not available, assume we always need to
+  // reconnect the DUN APN as DEFAULT.
+  return TetheringOperationType::kConnectDunAsDefaultPdn;
 }
 
 void Cellular::AcquireTetheringNetwork(
@@ -1833,7 +1835,6 @@ void Cellular::AcquireTetheringNetwork(
       ConnectTetheringAsDefaultPdn(std::move(callback));
       return;
     case TetheringOperationType::kReuseDefaultPdn:
-    case TetheringOperationType::kReuseDefaultPdnFallback:
       ReuseDefaultPdnForTethering(std::move(callback));
       return;
     case TetheringOperationType::kFailed:
