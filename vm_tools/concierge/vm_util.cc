@@ -42,6 +42,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -618,6 +619,38 @@ std::vector<const std::string> CustomParametersForDev::ObtainSpecialParameters(
   } else {
     return {};
   }
+}
+
+namespace internal {
+std::string GetDevConfPath(apps::VmType type) {
+  return base::StrCat({
+      "/usr/local/vms/etc/",
+      base::ToLowerASCII(apps::VmType_Name(type)),
+      "_dev.conf",
+  });
+}
+}  // namespace internal
+
+std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
+    apps::VmType type, bool use_dev_conf) {
+  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
+  // Load any custom parameters from the development configuration file if the
+  // feature is turned on (default) and path exists (dev mode only).
+  if (!is_dev_mode || !use_dev_conf) {
+    return nullptr;
+  }
+  // Path to the development configuration file (only visible in dev mode).
+  const base::FilePath dev_conf(internal::GetDevConfPath(type));
+  if (!base::PathExists(dev_conf)) {
+    return nullptr;
+  }
+
+  std::string data;
+  if (!base::ReadFileToString(dev_conf, &data)) {
+    PLOG(ERROR) << "Failed to read file " << dev_conf.value();
+    return nullptr;
+  }
+  return std::make_unique<CustomParametersForDev>(data);
 }
 
 std::string SharedDataParam::to_string() const {

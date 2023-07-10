@@ -294,7 +294,11 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
-  auto args = std::move(vm_builder).BuildVmArgs();
+  std::unique_ptr<CustomParametersForDev> custom_parameters =
+      MaybeLoadCustomParametersForDev(classification_);
+
+  std::optional<base::StringPairs> args =
+      std::move(vm_builder).BuildVmArgs(custom_parameters.get());
   if (!args) {
     LOG(ERROR) << "Failed to build VM arguments";
     return false;

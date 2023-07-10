@@ -116,7 +116,7 @@ class VmBuilder {
   // dev_params to modify the configuration. Consumes this (the builder).
   // Returns std::nullopt on failure.
   std::optional<base::StringPairs> BuildVmArgs(
-      CustomParametersForDev* dev_params = nullptr) &&;
+      CustomParametersForDev* dev_params) &&;
 
   static void SetValidWaylandRegexForTesting(char* regex);
 

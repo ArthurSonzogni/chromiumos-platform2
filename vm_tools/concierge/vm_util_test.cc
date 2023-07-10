@@ -669,5 +669,20 @@ TEST(VMUtilTest, GetBalloonWorkingSet) {
   CrosvmControl::Reset();
 }
 
+TEST(VMUtilTest, GetDevConfPath) {
+  // It was "/usr/local/vms/etc/arcvm_dev.conf" before, and should stay that
+  // way.
+  EXPECT_EQ(internal::GetDevConfPath(apps::VmType::ARCVM),
+            "/usr/local/vms/etc/arcvm_dev.conf");
+
+  // Others look like this:
+  EXPECT_EQ(internal::GetDevConfPath(apps::VmType::TERMINA),
+            "/usr/local/vms/etc/termina_dev.conf");
+  EXPECT_EQ(internal::GetDevConfPath(apps::VmType::BOREALIS),
+            "/usr/local/vms/etc/borealis_dev.conf");
+  EXPECT_EQ(internal::GetDevConfPath(apps::VmType::BRUSCHETTA),
+            "/usr/local/vms/etc/bruschetta_dev.conf");
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

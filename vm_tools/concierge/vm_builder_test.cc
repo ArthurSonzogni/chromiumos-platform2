@@ -13,7 +13,7 @@ namespace vm_tools::concierge {
 
 TEST(VmBuilderTest, DefaultValuesSucceeds) {
   VmBuilder builder;
-  EXPECT_FALSE(std::move(builder).BuildVmArgs()->empty());
+  EXPECT_FALSE(std::move(builder).BuildVmArgs(nullptr)->empty());
 }
 
 TEST(VmBuilderTest, CustomParametersWithCrosvmFlags) {
@@ -134,7 +134,7 @@ TEST(VmBuilderTest, ODirectTooLargeNDeath) {
 TEST(VmBuilderTest, DefaultKernel) {
   VmBuilder builder;
   builder.SetKernel(base::FilePath("/dev/null"));
-  base::StringPairs result = std::move(builder).BuildVmArgs().value();
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
   EXPECT_EQ(result[result.size() - 1].first, "/dev/null");
 }

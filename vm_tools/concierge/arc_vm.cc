@@ -71,9 +71,6 @@ constexpr base::TimeDelta kArcPowerctlConnectTimeout = base::Seconds(5);
 // Port for arc-powerctl running on the guest side.
 constexpr unsigned int kVSockPort = 4242;
 
-// Path to the development configuration file (only visible in dev mode).
-constexpr char kDevConfFilePath[] = "/usr/local/vms/etc/arcvm_dev.conf";
-
 // Custom parameter key to skip total bytes written management for ARCVM swap.
 // TODO(b/284408104): Rename this to skip whole vmm-swap policies to unblock
 // integration tests
@@ -451,22 +448,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableCrossDomainContext(true);
   }
 
-  CustomParametersForDev custom_parameters;
-
-  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
-  // Load any custom parameters from the development configuration file if the
-  // feature is turned on (default) and path exists (dev mode only).
-  if (is_dev_mode && use_dev_conf()) {
-    const base::FilePath dev_conf(kDevConfFilePath);
-    if (base::PathExists(dev_conf)) {
-      std::string data;
-      if (!base::ReadFileToString(dev_conf, &data)) {
-        PLOG(ERROR) << "Failed to read file " << dev_conf.value();
-        return false;
-      }
-      custom_parameters = CustomParametersForDev(data);
-    }
-  }
+  std::unique_ptr<CustomParametersForDev> custom_parameters =
+      MaybeLoadCustomParametersForDev(apps::ARCVM, use_dev_conf());
 
   // Add /usr/local/bin as a shared directory which is located in a dev
   // partition.
@@ -501,15 +484,17 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     }
   }
 
-  if (custom_parameters.ObtainSpecialParameter(kKeyToSkipVmmTbwManagement)
-          .value_or("false") == "true") {
+  if (custom_parameters &&
+      custom_parameters->ObtainSpecialParameter(kKeyToSkipVmmTbwManagement)
+              .value_or("false") == "true") {
     skip_tbw_management_ = true;
   }
 
   // Finally set the path to the kernel.
   vm_builder.SetKernel(std::move(kernel));
 
-  auto args = std::move(vm_builder).BuildVmArgs(&custom_parameters);
+  std::optional<base::StringPairs> args =
+      std::move(vm_builder).BuildVmArgs(custom_parameters.get());
   if (!args) {
     LOG(ERROR) << "Failed to build VM arguments";
     return false;

@@ -24,6 +24,7 @@
 #include <base/values.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
+#include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
 
@@ -38,6 +39,10 @@ enum VmType : int;
 }
 
 namespace concierge {
+
+namespace internal {
+std::string GetDevConfPath(apps::VmType type);
+}  // namespace internal
 
 enum VmInfo_VmType : int;
 
@@ -239,6 +244,13 @@ class CustomParametersForDev {
   std::map<std::string, std::vector<const std::string>> special_parameters_{};
   bool initialized_{false};
 };
+
+// Load file for custom parameters for dev systems. Or return nullptr when not
+// available.
+// |type| Vm type used to specify what file name to use.
+// |use_dev_conf| Whether to allow use of dev_conf, sent via request.
+std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
+    apps::VmType type, bool use_dev_conf = true);
 
 // Uid and gid mappings for the android data directory. This is a
 // comma-separated list of 3 values: <start of range inside the user namespace>
