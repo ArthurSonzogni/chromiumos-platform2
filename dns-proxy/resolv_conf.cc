@@ -12,9 +12,9 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <net-base/ip_address.h>
 
 #include "dns-proxy/dns_util.h"
-#include "shill/net/ip_address.h"
 
 namespace dns_proxy {
 
@@ -62,8 +62,8 @@ bool ResolvConf::Emit() {
 
   std::vector<std::string> lines;
   for (const auto& server : name_servers) {
-    const auto addr = shill::IPAddress::CreateFromString(server);
-    if (!addr.has_value()) {
+    const auto addr = net_base::IPAddress::CreateFromString(server);
+    if (!addr) {
       LOG(WARNING) << "Malformed nameserver IP: " << server;
       continue;
     }
