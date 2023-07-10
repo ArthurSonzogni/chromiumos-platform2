@@ -5,36 +5,31 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_REPLIERS_LED_LIT_UP_ROUTINE_REPLIER_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_REPLIERS_LED_LIT_UP_ROUTINE_REPLIER_H_
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
-
-#include <optional>
-
-#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
 class LedLitUpRoutineReplier
-    : public ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier {
+    : public ash::cros_healthd::mojom::LedLitUpRoutineReplier {
  public:
-  explicit LedLitUpRoutineReplier(
-      mojo::PendingReceiver<
-          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
-          receiver);
+  LedLitUpRoutineReplier() = default;
   LedLitUpRoutineReplier(const LedLitUpRoutineReplier&) = delete;
   LedLitUpRoutineReplier& operator=(const LedLitUpRoutineReplier&) = delete;
+  ~LedLitUpRoutineReplier() = default;
 
   // ash::cros_healthd::mojom::LedLitUpRoutineReplier overrides:
   void GetColorMatched(GetColorMatchedCallback callback);
 
-  void SetGetColorMatchedHandler(
-      const base::RepeatingCallback<void(GetColorMatchedCallback)>& handler);
+  mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+  BindNewPipdAndPassRemote() {
+    return receiver_.BindNewPipeAndPassRemote();
+  }
 
  private:
-  mojo::Receiver<ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
-      receiver_;
-  base::RepeatingCallback<void(GetColorMatchedCallback)>
-      get_color_matched_handler_;
+  mojo::Receiver<ash::cros_healthd::mojom::LedLitUpRoutineReplier> receiver_{
+      this};
 };
 
 }  // namespace diagnostics

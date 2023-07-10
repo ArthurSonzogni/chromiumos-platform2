@@ -23,6 +23,7 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
+#include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 #include "diagnostics/cros_health_tool/diag/routine_v2_client.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
@@ -38,40 +39,37 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 const struct {
   const char* readable_name;
-  mojom::DEPRECATED_LedName name;
-} kLedNameSwitches[] = {{"battery", mojom::DEPRECATED_LedName::kBattery},
-                        {"power", mojom::DEPRECATED_LedName::kPower},
-                        {"adapter", mojom::DEPRECATED_LedName::kAdapter},
-                        {"left", mojom::DEPRECATED_LedName::kLeft},
-                        {"right", mojom::DEPRECATED_LedName::kRight}};
+  mojom::LedName name;
+} kLedNameSwitches[] = {{"battery", mojom::LedName::kBattery},
+                        {"power", mojom::LedName::kPower},
+                        {"adapter", mojom::LedName::kAdapter},
+                        {"left", mojom::LedName::kLeft},
+                        {"right", mojom::LedName::kRight}};
 
 const struct {
   const char* readable_color;
-  mojom::DEPRECATED_LedColor color;
-} kLedColorSwitches[] = {{"red", mojom::DEPRECATED_LedColor::kRed},
-                         {"green", mojom::DEPRECATED_LedColor::kGreen},
-                         {"blue", mojom::DEPRECATED_LedColor::kBlue},
-                         {"yellow", mojom::DEPRECATED_LedColor::kYellow},
-                         {"white", mojom::DEPRECATED_LedColor::kWhite},
-                         {"amber", mojom::DEPRECATED_LedColor::kAmber}};
+  mojom::LedColor color;
+} kLedColorSwitches[] = {
+    {"red", mojom::LedColor::kRed},     {"green", mojom::LedColor::kGreen},
+    {"blue", mojom::LedColor::kBlue},   {"yellow", mojom::LedColor::kYellow},
+    {"white", mojom::LedColor::kWhite}, {"amber", mojom::LedColor::kAmber}};
 
-mojom::DEPRECATED_LedName DEPRECATED_LedNameFromString(const std::string& str) {
+mojom::LedName LedNameFromString(const std::string& str) {
   for (const auto& item : kLedNameSwitches) {
     if (str == item.readable_name) {
       return item.name;
     }
   }
-  return mojom::DEPRECATED_LedName::kUnmappedEnumField;
+  return mojom::LedName::kUnmappedEnumField;
 }
 
-mojom::DEPRECATED_LedColor DEPRECATED_LedColorFromString(
-    const std::string& str) {
+mojom::LedColor LedColorFromString(const std::string& str) {
   for (const auto& item : kLedColorSwitches) {
     if (str == item.readable_color) {
       return item.color;
     }
   }
-  return mojom::DEPRECATED_LedColor::kUnmappedEnumField;
+  return mojom::LedColor::kUnmappedEnumField;
 }
 
 int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
@@ -245,6 +243,35 @@ int VolumeButtonMain(int argc, char** argv) {
   argument->timeout = base::Seconds(FLAGS_length_seconds);
 
   COMMON_V2_ROUTINE_MAIN(VolumeButton);
+}
+
+int LedLitUpMain(int argc, char** argv) {
+  DEFINE_string(led_name, "",
+                "The target LED name. Options are:"
+                "\n\tbattery, power, adapter, left, right.");
+  DEFINE_string(led_color, "",
+                "The target color. Options are:"
+                "\n\tred, green, blue, yellow, white, amber.");
+  COMMON_V2_ROUTINE_FLAGS("Led lit up routine");
+
+  auto argument = mojom::LedLitUpRoutineArgument::New();
+
+  argument->name = LedNameFromString(FLAGS_led_name);
+  if (argument->name == mojom::LedName::kUnmappedEnumField) {
+    std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  argument->color = LedColorFromString(FLAGS_led_color);
+  if (argument->color == mojom::LedColor::kUnmappedEnumField) {
+    std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  LedLitUpRoutineReplier replier;
+  argument->replier = replier.BindNewPipdAndPassRemote();
+
+  COMMON_V2_ROUTINE_MAIN(LedLitUp);
 }
 
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
@@ -639,38 +666,6 @@ int PrivacyScreenMain(int argc, char** argv) {
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-int LedLitUpMain(int argc, char** argv) {
-  COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_string(led_name, "",
-                "The target LED name. Options are:"
-                "\n\tbattery, power, adapter, left, right.");
-  DEFINE_string(led_color, "",
-                "The target color. Options are:"
-                "\n\tred, green, blue, yellow, white, amber.");
-  brillo::FlagHelper::Init(argc, argv, "Led lit up routine");
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-
-  DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
-    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
-
-  mojom::DEPRECATED_LedName name = DEPRECATED_LedNameFromString(FLAGS_led_name);
-  if (name == mojom::DEPRECATED_LedName::kUnmappedEnumField) {
-    std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
-    return EXIT_FAILURE;
-  }
-  mojom::DEPRECATED_LedColor color =
-      DEPRECATED_LedColorFromString(FLAGS_led_color);
-  if (color == mojom::DEPRECATED_LedColor::kUnmappedEnumField) {
-    std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  auto result = actions.ActionRunLedRoutine(name, color);
-
-  return result ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
 int EmmcLifetimeMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(EmmcLifetimeRoutine)
 }
@@ -789,6 +784,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"disk_read_v2", DiskReadV2Main},
     {"prime_search_v2", PrimeSearchV2Main},
     {"volume_button", VolumeButtonMain},
+    {"led_lit_up", LedLitUpMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},
@@ -825,7 +821,6 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"fingerprint", FingerprintMain},
     {"fingerprint_alive", FingerprintAliveMain},
     {"privacy_screen", PrivacyScreenMain},
-    {"led_lit_up", LedLitUpMain},
     {"emmc_lifetime", EmmcLifetimeMain},
     {"audio_set_volume", AudioSetVolumeMain},
     {"audio_set_gain", AudioSetGainMain},

@@ -15,7 +15,6 @@
 #include <base/time/tick_clock.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -158,9 +157,6 @@ class DiagActions final {
   // Unowned pointer which should outlive this instance. Allows the default tick
   // clock to be overridden for testing.
   const base::TickClock* tick_clock_;
-
-  // Used in the LED lit up routine.
-  std::unique_ptr<LedLitUpRoutineReplier> led_lit_up_routine_replier_;
 };
 
 }  // namespace diagnostics

@@ -4,30 +4,36 @@
 
 #include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 
+#include <iostream>
+#include <optional>
+#include <string>
 #include <utility>
 
-#include <base/functional/bind.h>
+#include <base/check.h>
 
 namespace diagnostics {
 
-LedLitUpRoutineReplier::LedLitUpRoutineReplier(
-    mojo::PendingReceiver<
-        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> receiver)
-    : receiver_{this /* impl */, std::move(receiver)},
-      get_color_matched_handler_(
-          base::BindRepeating([](GetColorMatchedCallback callback) {
-            LOG(WARNING) << "GetColorMatchedHandler not set";
-          })) {
-  DCHECK(receiver_.is_bound());
-}
-
 void LedLitUpRoutineReplier::GetColorMatched(GetColorMatchedCallback callback) {
-  get_color_matched_handler_.Run(std::move(callback));
-}
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
 
-void LedLitUpRoutineReplier::SetGetColorMatchedHandler(
-    const base::RepeatingCallback<void(GetColorMatchedCallback)>& handler) {
-  get_color_matched_handler_ = std::move(handler);
+  std::optional<bool> answer;
+  do {
+    std::cout << "Is the LED lit up in the specified color? "
+                 "Input y/n then press ENTER to continue."
+              << std::endl;
+    std::string input;
+    std::getline(std::cin, input);
+
+    if (!input.empty() && input[0] == 'y') {
+      answer = true;
+    } else if (!input.empty() && input[0] == 'n') {
+      answer = false;
+    }
+  } while (!answer.has_value());
+
+  CHECK(answer.has_value());
+  std::move(callback).Run(answer.value());
 }
 
 }  // namespace diagnostics

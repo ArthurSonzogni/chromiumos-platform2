@@ -81,31 +81,6 @@ void WaitUntilEnterPressed() {
   std::getline(std::cin, dummy);
 }
 
-void HandleGetLedColorMatchedInvocation(
-    mojom::DEPRECATED_LedLitUpRoutineReplier::GetColorMatchedCallback
-        callback) {
-  // Print a newline so we don't overwrite the progress percent.
-  std::cout << '\n';
-
-  std::optional<bool> answer;
-  do {
-    std::cout << "Is the LED lit up in the specified color? "
-                 "Input y/n then press ENTER to continue."
-              << std::endl;
-    std::string input;
-    std::getline(std::cin, input);
-
-    if (!input.empty() && input[0] == 'y') {
-      answer = true;
-    } else if (!input.empty() && input[0] == 'n') {
-      answer = false;
-    }
-  } while (!answer.has_value());
-
-  DCHECK(answer.has_value());
-  std::move(callback).Run(answer.value());
-}
-
 // Saves |response| to |response_destination|.
 // TODO(b/262814572): Migrate this to MojoResponseWaiter.
 template <class T>
@@ -464,22 +439,6 @@ bool DiagActions::ActionRunPrivacyScreenRoutine(bool target_state) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunPrivacyScreenRoutine(
       target_state, waiter.CreateCallback());
-  return ProcessRoutineResponse(waiter.WaitForResponse());
-}
-
-bool DiagActions::ActionRunLedRoutine(mojom::DEPRECATED_LedName name,
-                                      mojom::DEPRECATED_LedColor color) {
-  mojo::PendingReceiver<mojom::DEPRECATED_LedLitUpRoutineReplier>
-      replier_receiver;
-  mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier_remote(
-      replier_receiver.InitWithNewPipeAndPassRemote());
-  led_lit_up_routine_replier_ =
-      std::make_unique<LedLitUpRoutineReplier>(std::move(replier_receiver));
-  led_lit_up_routine_replier_->SetGetColorMatchedHandler(
-      base::BindRepeating(&HandleGetLedColorMatchedInvocation));
-  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  cros_healthd_diagnostics_service_->DEPRECATED_RunLedLitUpRoutine(
-      name, color, std::move(replier_remote), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
