@@ -387,7 +387,7 @@ bool UserProximityWatcherUdev::OnSensorDetected(const SensorType type,
     return false;
   }
 
-  info.event_fd = event_fd;
+  info.event_fd.reset(event_fd);
   info.controller = base::FileDescriptorWatcher::WatchReadable(
       event_fd, base::BindRepeating(
                     &UserProximityWatcherUdev::OnFileCanReadWithoutBlocking,

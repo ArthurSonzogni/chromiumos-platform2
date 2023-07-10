@@ -117,13 +117,13 @@ class UserProximityWatcherUdevTest : public TestEnvironment {
     const std::string path(file.value());
     auto iter = fds_.find(path);
     if (iter != fds_.end())
-      return iter->second.first;
+      return dup(iter->second.first);
     int fd[2];
     if (pipe2(fd, O_DIRECT | O_NONBLOCK) == -1)
       return -1;
     ++open_sensor_count_;
     fds_.emplace(path, std::make_pair(fd[0], fd[1]));
-    return fd[0];
+    return dup(fd[0]);
   }
 
   // Returns the "write" file descriptor.

@@ -11,6 +11,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/observer_list.h>
 
@@ -80,11 +81,11 @@ class UserProximityWatcherUdev : public UserProximityWatcherInterface,
     SensorType type;
     std::string syspath;
     std::string devlink;
-    int event_fd;
     // Bitwise combination of UserProximityObserver::SensorRole values
     uint32_t role;
     std::string channel;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
+    base::ScopedFD event_fd;
   };
 
   // Returns which subsystems the sensor at |path| should provide proximity
