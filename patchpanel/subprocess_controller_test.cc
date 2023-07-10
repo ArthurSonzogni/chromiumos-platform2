@@ -15,7 +15,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
-#include <shill/net/ip_address.h>
 #include <shill/net/mock_process_manager.h>
 
 #include "patchpanel/fake_system.h"
