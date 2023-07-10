@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_headers",
+    ":install_hwsec_shutdown_signal",
     ":libhwsec-foundation",
     ":libhwsec-profiling",
     ":tpm_version_client",
@@ -118,6 +119,11 @@ install_config("install_tpm_version") {
 
 install_config("install_no_tpm_checker") {
   sources = [ "init/no-tpm-checker.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_hwsec_shutdown_signal") {
+  sources = [ "init/hwsec-shutdown-signals.conf" ]
   install_path = "/etc/init"
 }
 
