@@ -343,11 +343,8 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   bool user_exists = persistent_user_exists || user_is_active;
 
   // Determine if migration is enabled.
-  bool migrate_to_user_secret_stash = false;
-  if (backing_apis.features) {
-    migrate_to_user_secret_stash =
-        backing_apis.features->IsFeatureEnabled(Features::kUSSMigration);
-  }
+  bool migrate_to_user_secret_stash =
+      backing_apis.features->IsFeatureEnabled(Features::kUSSMigration);
 
   // If we have an existing persistent user, load all of their auth factors.
   AuthFactorMap auth_factor_map;

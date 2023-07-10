@@ -150,8 +150,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         &auth_block_utility_, &auth_factor_driver_manager_,
         &auth_factor_manager_, &user_secret_stash_storage_,
-        &user_metadata_reader_);
-    auth_session_manager_->set_features(&features_.async);
+        &user_metadata_reader_, &features_.async);
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -1212,8 +1211,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
       &mock_auth_block_utility_, &auth_factor_driver_manager_,
       &auth_factor_manager_, &user_secret_stash_storage_,
-      &user_metadata_reader_);
-  auth_session_manager_mock->set_features(&features_.async);
+      &user_metadata_reader_, &features_.async);
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
                                                    AuthIntent::kDecrypt);

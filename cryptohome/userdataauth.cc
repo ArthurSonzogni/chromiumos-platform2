@@ -529,7 +529,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
         crypto_, platform_, sessions_, keyset_management_, auth_block_utility_,
         auth_factor_driver_manager_, auth_factor_manager_,
-        user_secret_stash_storage_, user_metadata_reader_.get());
+        user_secret_stash_storage_, user_metadata_reader_.get(),
+        &async_init_features_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -722,7 +723,6 @@ void UserDataAuth::InitializeFeatureLibrary() {
       return;
     }
   }
-  auth_session_manager_->set_features(&async_init_features_);
 }
 
 Features* UserDataAuth::GetFeatures() {

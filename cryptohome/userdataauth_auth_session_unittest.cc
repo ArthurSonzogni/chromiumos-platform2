@@ -259,8 +259,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         auth_block_utility, &auth_factor_driver_manager_, &auth_factor_manager_,
-        &user_secret_stash_storage_, &user_metadata_reader_);
-    auth_session_manager_->set_features(&features_.async);
+        &user_secret_stash_storage_, &user_metadata_reader_, &features_.async);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 

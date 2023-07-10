@@ -37,15 +37,6 @@ using ::testing::UnorderedElementsAre;
 namespace cryptohome {
 
 class AuthSessionManagerTest : public ::testing::Test {
- public:
-  AuthSessionManagerTest() = default;
-  ~AuthSessionManagerTest() override = default;
-  AuthSessionManagerTest(const AuthSessionManagerTest&) = delete;
-  AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
-  void SetUp() override {
-    auth_session_manager_.set_features(&features_.async);
-  }
-
  protected:
   const Username kUsername{"foo@example.com"};
 
@@ -93,7 +84,8 @@ class AuthSessionManagerTest : public ::testing::Test {
                                            &auth_factor_driver_manager_,
                                            &auth_factor_manager_,
                                            &user_secret_stash_storage_,
-                                           &user_metadata_reader_};
+                                           &user_metadata_reader_,
+                                           &features_.async};
 };
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {

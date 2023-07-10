@@ -43,7 +43,8 @@ class AuthSessionManager {
       AuthFactorDriverManager* auth_factor_driver_manager,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage,
-      UserMetadataReader* user_metadata_reader);
+      UserMetadataReader* user_metadata_reader,
+      AsyncInitFeatures* features);
 
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
@@ -77,8 +78,6 @@ class AuthSessionManager {
   // Overload for find to avoid deserialization client side.
   InUseAuthSession FindAuthSession(const std::string& serialized_token);
 
-  void set_features(AsyncInitFeatures* features) { features_ = features; }
-
   // Used to set the auth factor status update callback inside class so it could
   // be passed to each auth session.
   void SetAuthFactorStatusUpdateCallback(
@@ -96,8 +95,7 @@ class AuthSessionManager {
   AuthFactorManager* const auth_factor_manager_;
   UserSecretStashStorage* const user_secret_stash_storage_;
   UserMetadataReader* const user_metadata_reader_;
-  // This holds the object that checks for feature enabled.
-  AsyncInitFeatures* features_;
+  AsyncInitFeatures* const features_;
 
   // Callback for session timeout. Currently just disambiguates
   // RemoveAuthSession overload for the callback.
