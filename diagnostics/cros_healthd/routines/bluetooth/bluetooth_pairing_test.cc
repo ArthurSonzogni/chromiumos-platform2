@@ -10,6 +10,7 @@
 #include <base/hash/hash.h>
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -74,12 +75,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(current_powered));
     if (!current_powered) {
-      EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
-          .WillOnce(Invoke(
-              [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                EXPECT_TRUE(powered);
-                std::move(on_finish).Run(is_success);
-              }));
+      EXPECT_CALL(mock_adapter_proxy_, set_powered(true, _))
+          .WillOnce(base::test::RunOnceCallback<1>(is_success));
     }
   }
 
@@ -88,42 +85,34 @@ class BluetoothPairingRoutineTest : public testing::Test {
   void SetStartDiscoveryCall(
       bool is_success,
       const std::vector<org::bluez::Device1ProxyInterface*>& added_devices) {
-    EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-        .WillOnce(WithArgs<0, 1>(
-            Invoke([=](base::OnceCallback<void()> on_success,
-                       base::OnceCallback<void(brillo::Error*)> on_error) {
-              if (is_success) {
-                std::move(on_success).Run();
-                // Send out peripheral in |added_devices|.
-                for (const auto& device : added_devices)
-                  fake_bluetooth_event_hub()->SendDeviceAdded(device);
-              } else {
-                std::move(on_error).Run(nullptr);
-              }
-            })));
+    if (is_success) {
+      EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
+          .WillOnce(WithArg<0>([=](base::OnceCallback<void()> on_success) {
+            std::move(on_success).Run();
+            // Send out peripheral in |added_devices|.
+            for (const auto& device : added_devices)
+              fake_bluetooth_event_hub()->SendDeviceAdded(device);
+          }));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(nullptr));
+    }
   }
 
   // The adapter stops discovery.
   void SetStopDiscoveryCall(bool is_success) {
-    EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-        .WillOnce(WithArgs<0, 1>(
-            Invoke([=](base::OnceCallback<void()> on_success,
-                       base::OnceCallback<void(brillo::Error*)> on_error) {
-              if (is_success) {
-                std::move(on_success).Run();
-              } else {
-                std::move(on_error).Run(nullptr);
-              }
-            })));
+    if (is_success) {
+      EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>());
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(nullptr));
+    }
   }
 
   void SetChangeAliasCall(bool is_success, const std::string& expected_alias) {
-    EXPECT_CALL(mock_target_device_, set_alias(_, _))
-        .WillOnce(Invoke([=](const std::string& alias,
-                             base::OnceCallback<void(bool)> callback) {
-          EXPECT_EQ(alias, expected_alias);
-          std::move(callback).Run(is_success);
-        }));
+    EXPECT_CALL(mock_target_device_, set_alias(expected_alias, _))
+        .WillOnce(base::test::RunOnceCallback<1>(is_success));
   }
 
   // The |mock_target_device_| with the address |target_address_| is expected to

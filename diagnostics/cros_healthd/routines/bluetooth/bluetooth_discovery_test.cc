@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/json/json_reader.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -70,10 +71,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
-          .WillOnce(Invoke(
-              [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                std::move(on_finish).Run(is_success);
-              }));
+          .WillOnce(base::test::RunOnceCallback<1>(is_success));
     }
   }
 
@@ -104,17 +102,15 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
   }
 
   void SetGetHciDeviceConfigCall(bool hci_result_discovering) {
+    auto result = mojom::ExecutedProcessResult::New();
+    result->return_code = EXIT_SUCCESS;
+    if (hci_result_discovering) {
+      result->out = "\tUP RUNNING PSCAN ISCAN INQUIRY \n";
+    } else {
+      result->out = "\tUP RUNNING PSCAN ISCAN \n";
+    }
     EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-        .WillOnce(WithArg<0>(
-            Invoke([=](mojom::Executor::GetHciDeviceConfigCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = EXIT_SUCCESS;
-              if (hci_result_discovering)
-                result.out = "\tUP RUNNING PSCAN ISCAN INQUIRY \n";
-              else
-                result.out = "\tUP RUNNING PSCAN ISCAN \n";
-              std::move(callback).Run(result.Clone());
-            })));
+        .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   }
 
   void CheckRoutineUpdate(uint32_t progress_percent,
@@ -364,14 +360,11 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   // Set error return code.
+  auto result = mojom::ExecutedProcessResult::New();
+  result->return_code = EXIT_FAILURE;
+  result->err = "Failed to run hciconfig";
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(WithArg<0>(
-          Invoke([=](mojom::Executor::GetHciDeviceConfigCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_FAILURE;
-            result.err = "Failed to run hciconfig";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.
@@ -394,14 +387,11 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
   // Start discovery.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
   // Set error return code.
+  auto result = mojom::ExecutedProcessResult::New();
+  result->return_code = EXIT_SUCCESS;
+  result->out = "DOWN";
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(WithArg<0>(
-          Invoke([=](mojom::Executor::GetHciDeviceConfigCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = "DOWN";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.

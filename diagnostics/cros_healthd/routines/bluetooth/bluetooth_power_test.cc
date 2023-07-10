@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/json/json_reader.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -79,17 +80,15 @@ class BluetoothPowerRoutineTest : public testing::Test {
 
   // Setup the powered status after changing in HCI level and D-Bus level.
   void SetVerifyPoweredCall(bool hci_result_powered, bool dbus_result_powered) {
+    auto result = mojom::ExecutedProcessResult::New();
+    result->return_code = EXIT_SUCCESS;
+    if (hci_result_powered) {
+      result->out = "UP RUNNING\n";
+    } else {
+      result->out = "DOWN\n";
+    }
     EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-        .WillOnce(WithArg<0>(
-            Invoke([=](mojom::Executor::GetHciDeviceConfigCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = EXIT_SUCCESS;
-              if (hci_result_powered)
-                result.out = "UP RUNNING\n";
-              else
-                result.out = "DOWN\n";
-              std::move(callback).Run(result.Clone());
-            })));
+        .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(dbus_result_powered));
   }
@@ -286,14 +285,11 @@ TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   // Set error return code.
+  auto result = mojom::ExecutedProcessResult::New();
+  result->return_code = EXIT_FAILURE;
+  result->err = "Failed to run hciconfig";
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](mojom::Executor::GetHciDeviceConfigCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_FAILURE;
-            result.err = "Failed to run hciconfig";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
@@ -314,14 +310,11 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
   // Set error return code.
+  auto result = mojom::ExecutedProcessResult::New();
+  result->return_code = EXIT_SUCCESS;
+  result->out = "DOWN UP RUNNING";
   EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](mojom::Executor::GetHciDeviceConfigCallback callback) {
-            mojom::ExecutedProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = "DOWN UP RUNNING";
-            std::move(callback).Run(result.Clone());
-          })));
+      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 

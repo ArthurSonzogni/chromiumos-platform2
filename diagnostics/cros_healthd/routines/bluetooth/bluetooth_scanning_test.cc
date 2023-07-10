@@ -11,6 +11,7 @@
 #include <base/hash/hash.h>
 #include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -76,10 +77,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
-          .WillOnce(Invoke(
-              [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                std::move(on_finish).Run(is_success);
-              }));
+          .WillOnce(base::test::RunOnceCallback<1>(is_success));
     }
   }
 
