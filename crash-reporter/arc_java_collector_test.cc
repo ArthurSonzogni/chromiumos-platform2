@@ -41,6 +41,14 @@ constexpr char kLsbContents[] =
     "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
 const base::Time kFakeOsTime = base::Time::UnixEpoch() + base::Days(1234);
 
+#if USE_ARCPP
+constexpr char kARCStatus[] = "Built with ARC++";
+#elif USE_ARCVM
+constexpr char kARCStatus[] = "Built with ARCVM";
+#else
+constexpr char kARCStatus[] = "Not built with ARC";
+#endif
+
 }  // namespace
 
 class TestArcJavaCollector : public ArcJavaCollector {
@@ -189,6 +197,7 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
       "upload_var_channel=beta\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Arc\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=com.android.settings\n"
@@ -201,8 +210,8 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      uptime_formatted.c_str(), info_path.BaseName().value().c_str(), kFakeNow,
-      product_version.c_str(),
+      uptime_formatted.c_str(), info_path.BaseName().value().c_str(),
+      kARCStatus, kFakeNow, product_version.c_str(),
       (kFakeOsTime - base::Time::UnixEpoch()).InMilliseconds(), kKernelName,
       kKernelVersion, log_path.BaseName().value().c_str());
   base::FilePath meta_path;

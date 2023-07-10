@@ -139,6 +139,14 @@ constexpr size_t kMaxParentProcessLogs = 8;
 
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 
+#if USE_ARCPP
+constexpr char kARCStatus[] = "Built with ARC++";
+#elif USE_ARCVM
+constexpr char kARCStatus[] = "Built with ARCVM";
+#else
+constexpr char kARCStatus[] = "Not built with ARC";
+#endif
+
 #define NCG(x) "(?:" x ")"
 #define OPT_NCG(x) NCG(x) "?"
 #define DEC_OCTET NCG("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
@@ -1629,6 +1637,8 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
                              &in_progress_test)) {
     AddCrashMetaUploadData("in_progress_integration_test", in_progress_test);
   }
+
+  AddCrashMetaUploadData("arc_status", kARCStatus);
 
   std::string exec_name_line;
   if (!exec_name.empty()) {

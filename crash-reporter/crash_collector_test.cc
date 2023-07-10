@@ -73,6 +73,14 @@ namespace {
 // Sept 1, 2020, but basically arbitrary.
 constexpr int64_t kFakeNow = 1598929274543LL;
 
+#if USE_ARCPP
+constexpr char kARCStatus[] = "Built with ARC++";
+#elif USE_ARCVM
+constexpr char kARCStatus[] = "Built with ARCVM";
+#else
+constexpr char kARCStatus[] = "Not built with ARC";
+#endif
+
 }  // namespace
 
 CrashCollectorMock::CrashCollectorMock()
@@ -1698,6 +1706,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1710,7 +1719,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1726,6 +1736,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1738,7 +1749,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1757,6 +1769,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_client_computed_severity=FATAL\n"
       "upload_var_client_computed_product=Platform\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1769,7 +1782,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1786,6 +1800,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
       "upload_var_in_progress_integration_test=some.Test\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1798,7 +1813,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1816,6 +1832,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1829,7 +1846,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "payload=%s\n"
       "done=1\n",
       CrashCollectorParameterizedTest::kVariations,
-      CrashCollectorParameterizedTest::kNumExperiments, kFakeNow,
+      CrashCollectorParameterizedTest::kNumExperiments, kARCStatus, kFakeNow,
       (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
@@ -1846,6 +1863,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=false\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "ver=6727.0.2015_01_26_0853\n"
@@ -1857,7 +1875,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1873,6 +1892,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_is-enterprise-enrolled=true\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1885,7 +1905,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1900,6 +1921,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_channel=test\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=kernel\n"
@@ -1912,7 +1934,8 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      kARCStatus, kFakeNow,
+      (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
       CrashCollectorParameterizedTest::kKernelName,
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
@@ -1986,6 +2009,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "upload_var_channel=beta\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"
       "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "exec_name=crash_reporter_failure\n"
@@ -1998,7 +2022,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "upload_var_osVersion=%s\n"
       "payload=%s\n"
       "done=1\n",
-      pslog_name.value().c_str(), kFakeNow,
+      pslog_name.value().c_str(), kARCStatus, kFakeNow,
       (os_time - base::Time::UnixEpoch()).InMilliseconds(), kKernelName,
       kKernelVersion, log_name.value().c_str());
   EXPECT_EQ(expected_meta, contents);
