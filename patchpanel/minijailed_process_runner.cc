@@ -172,9 +172,16 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
                                       std::string* output) {
-  std::vector<std::string> args = {
-      kIptablesPath, "-t", Iptables::TableName(table),
-      Iptables::CommandName(command), std::string(chain)};
+  std::vector<std::string> args = {kIptablesPath, "-t",
+                                   Iptables::TableName(table),
+                                   Iptables::CommandName(command)};
+  // TODO(b/278486416): Datapath::DumpIptables() needs support for passing an
+  // empty chain. However, we cannot pass an empty argument to iptables
+  // directly, so |chain| must be skipped in that case. Remove this temporary
+  // work-around once chains are passed with an enum or a better data type.
+  if (!chain.empty()) {
+    args.push_back(std::string(chain));
+  }
   args.insert(args.end(), argv.begin(), argv.end());
   return RunSync(args, log_failures, output);
 }
@@ -185,9 +192,16 @@ int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
                                        std::string* output) {
-  std::vector<std::string> args = {
-      kIp6tablesPath, "-t", Iptables::TableName(table),
-      Iptables::CommandName(command), std::string(chain)};
+  std::vector<std::string> args = {kIp6tablesPath, "-t",
+                                   Iptables::TableName(table),
+                                   Iptables::CommandName(command)};
+  // TODO(b/278486416): Datapath::DumpIptables() needs support for passing an
+  // empty chain. However, we cannot pass an empty argument to ip6tables
+  // directly, so |chain| must be skipped in that case. Remove this temporary
+  // work-around once chains are passed with an enum or a better data type.
+  if (!chain.empty()) {
+    args.push_back(std::string(chain));
+  }
   args.insert(args.end(), argv.begin(), argv.end());
   return RunSync(args, log_failures, output);
 }
