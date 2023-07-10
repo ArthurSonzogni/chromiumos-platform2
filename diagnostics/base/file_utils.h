@@ -7,11 +7,11 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/string_piece.h>
 #include <brillo/brillo_export.h>
 
 namespace diagnostics {
@@ -64,7 +64,7 @@ BRILLO_EXPORT bool ReadAndTrimString<std::string>(
 // to be read.
 template <typename StringType>
 bool ReadAndTrimString(const base::FilePath& directory,
-                       const std::string& filename,
+                       std::string_view filename,
                        StringType* out) {
   return ReadAndTrimString(directory.Append(filename), out);
 }
@@ -89,7 +89,7 @@ bool ReadInteger(const base::FilePath& file_path,
 // read.
 template <typename T>
 bool ReadInteger(const base::FilePath& directory,
-                 const std::string& filename,
+                 std::string_view filename,
                  bool (*StringToInteger)(base::StringPiece, T*),
                  T* out) {
   return ReadInteger(directory.AppendASCII(filename), StringToInteger, out);
