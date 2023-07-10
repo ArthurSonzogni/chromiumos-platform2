@@ -281,6 +281,26 @@ std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::ImportWrappedKeyRequest>
+MakeImportWrappedKeyRequest(
+    const arc::mojom::keymint::ImportWrappedKeyRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::ImportWrappedKeyRequest>(
+      keymint_message_version);
+
+  out->SetWrappedMaterial(request->wrapped_key_data.data(),
+                          request->wrapped_key_data.size());
+  out->SetWrappingMaterial(request->wrapping_key_blob.data(),
+                           request->wrapping_key_blob.size());
+  out->SetMaskingKeyMaterial(request->masking_key.data(),
+                             request->masking_key.size());
+  ConvertToKeymasterMessage(request->unwrapping_params,
+                            &out->additional_params);
+  out->password_sid = request->password_sid;
+  out->biometric_sid = request->biometric_sid;
+  return out;
+}
+
 std::unique_ptr<::keymaster::UpgradeKeyRequest> MakeUpgradeKeyRequest(
     const arc::mojom::keymint::UpgradeKeyRequestPtr& request,
     const int32_t keymint_message_version) {
@@ -424,6 +444,43 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
 
 std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
     const ::keymaster::ImportKeyResponse& km_response, uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error != KM_ERROR_OK) {
+    return std::nullopt;
+  }
+
+  // Create the Key Blob.
+  auto key_blob =
+      ConvertFromKeymasterMessage(km_response.key_blob.key_material,
+                                  km_response.key_blob.key_material_size);
+
+  // Create the Key Characteristics Array.
+  // Enforced response corresponds to Trusted Execution
+  // Environment(TEE) security level.
+  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
+      ConvertFromKeymasterMessage(km_response.enforced));
+  // Unenforced response corresponds to Software security level.
+  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::SOFTWARE,
+      ConvertFromKeymasterMessage(km_response.unenforced));
+  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
+  key_chars_array.push_back(std::move(teeChars));
+  key_chars_array.push_back(std::move(softwareChars));
+
+  // Create the Certificate Array.
+  // TODO(b/286944450): Add certificates for Attestation.
+  auto cert = arc::mojom::keymint::Certificate::New();
+  std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
+  cert_array.push_back(std::move(cert));
+
+  return arc::mojom::keymint::KeyCreationResult::New(
+      std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+}
+
+std::optional<arc::mojom::keymint::KeyCreationResultPtr>
+MakeImportWrappedKeyResult(
+    const ::keymaster::ImportWrappedKeyResponse& km_response, uint32_t& error) {
   error = km_response.error;
   if (km_response.error != KM_ERROR_OK) {
     return std::nullopt;

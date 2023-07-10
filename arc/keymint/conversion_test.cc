@@ -451,6 +451,36 @@ TEST(ConvertToMessage, ImportKeyRequest) {
                                 input->key_data));
 }
 
+TEST(ConvertToMessage, ImportWrappedKeyRequest) {
+  // Prepare.
+  uint64_t password_sid = 703710923123;
+  uint64_t biometric_sid = 2702433194597;
+  auto input = arc::mojom::keymint::ImportWrappedKeyRequest::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end()),
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end()), KeyParameterVector(),
+      password_sid, biometric_sid);
+
+  // Convert.
+  auto output = MakeImportWrappedKeyRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  ASSERT_TRUE(output);
+  EXPECT_TRUE(VerifyVectorUint8(output->wrapped_key.key_material,
+                                output->wrapped_key.key_material_size,
+                                input->wrapped_key_data));
+  EXPECT_TRUE(VerifyVectorUint8(output->wrapping_key.key_material,
+                                output->wrapping_key.key_material_size,
+                                input->wrapping_key_blob));
+  EXPECT_TRUE(VerifyVectorUint8(output->masking_key.key_material,
+                                output->masking_key.key_material_size,
+                                input->masking_key));
+  EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->additional_params,
+                                                  input->unwrapping_params));
+  EXPECT_EQ(output->password_sid, input->password_sid);
+  EXPECT_EQ(output->biometric_sid, input->biometric_sid);
+}
+
 TEST(ConvertToMessage, UpgradeKeyRequest) {
   // Prepare.
   auto input = arc::mojom::keymint::UpgradeKeyRequest::New(
