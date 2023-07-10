@@ -46,6 +46,21 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
   return RMAD_RO_VERIFICATION_UNSUPPORTED;
 }
 
+GscVersion TpmManagerGscVersionToRmadGscVersion(
+    tpm_manager::GscVersion version) {
+  switch (version) {
+    case tpm_manager::GSC_VERSION_NOT_GSC:
+      return GscVersion::GSC_VERSION_NOT_GSC;
+    case tpm_manager::GSC_VERSION_CR50:
+      return GscVersion::GSC_VERSION_CR50;
+    case tpm_manager::GSC_VERSION_TI50:
+      return GscVersion::GSC_VERSION_TI50;
+    default:
+      break;
+  }
+  NOTREACHED_NORETURN();
+}
+
 }  // namespace
 
 TpmManagerClientImpl::TpmManagerClientImpl(
@@ -82,6 +97,27 @@ bool TpmManagerClientImpl::GetRoVerificationStatus(
   if (ro_verification_status) {
     *ro_verification_status =
         TpmManagerRoStatusToRmadRoStatus(reply.ro_verification_status());
+  }
+  return true;
+}
+
+bool TpmManagerClientImpl::GetGscVersion(GscVersion* gsc_version) {
+  tpm_manager::GetVersionInfoRequest request;
+  tpm_manager::GetVersionInfoReply reply;
+
+  brillo::ErrorPtr error;
+  if (!tpm_manager_proxy_->GetVersionInfo(request, &reply, &error) || error) {
+    LOG(ERROR) << "Failed to call GetVersionInfo from tpm_manager proxy";
+    return false;
+  }
+
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << "Failed to get version info. Error code " << reply.status();
+    return false;
+  }
+
+  if (gsc_version) {
+    *gsc_version = TpmManagerGscVersionToRmadGscVersion(reply.gsc_version());
   }
   return true;
 }

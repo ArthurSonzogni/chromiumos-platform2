@@ -35,6 +35,7 @@ class TpmManagerClientImpl : public TpmManagerClient {
 
   bool GetRoVerificationStatus(
       RoVerificationStatus* ro_verification_status) override;
+  bool GetGscVersion(GscVersion* gsc_version) override;
 
  private:
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

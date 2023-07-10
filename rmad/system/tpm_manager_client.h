@@ -9,6 +9,12 @@
 
 namespace rmad {
 
+enum class GscVersion {
+  GSC_VERSION_NOT_GSC = 0,
+  GSC_VERSION_CR50 = 1,
+  GSC_VERSION_TI50 = 2,
+};
+
 class TpmManagerClient {
  public:
   TpmManagerClient() = default;
@@ -16,6 +22,7 @@ class TpmManagerClient {
 
   virtual bool GetRoVerificationStatus(
       RoVerificationStatus* ro_verification_status) = 0;
+  virtual bool GetGscVersion(GscVersion* gsc_version) = 0;
 };
 
 }  // namespace rmad

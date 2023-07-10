@@ -22,6 +22,7 @@ class MockTpmManagerClient : public TpmManagerClient {
               GetRoVerificationStatus,
               (RoVerificationStatus*),
               (override));
+  MOCK_METHOD(bool, GetGscVersion, (GscVersion*), (override));
 };
 
 }  // namespace rmad
