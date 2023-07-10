@@ -1126,20 +1126,7 @@ bool TetheringManager::SetAllowed(const bool& value, Error* error) {
 
   LOG(INFO) << __func__ << " Allowed set to " << std::boolalpha << value;
   allowed_ = value;
-  manager_->dispatcher()->PostTask(
-      FROM_HERE, base::BindRepeating(&TetheringManager::TetheringAllowedUpdated,
-                                     weak_ptr_factory_.GetWeakPtr(), allowed_));
-
   return true;
-}
-
-void TetheringManager::TetheringAllowedUpdated(bool allowed) {
-  const auto cellular_devices =
-      manager_->FilterByTechnology(Technology::kCellular);
-  for (auto device : cellular_devices) {
-    Cellular* cellular_device = static_cast<Cellular*>(device.get());
-    cellular_device->TetheringAllowedUpdated(allowed);
-  }
 }
 
 void TetheringManager::OnNetworkValidationResult(

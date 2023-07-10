@@ -243,10 +243,6 @@ class TetheringManager : public Network::EventHandler {
   // Convert stop reason enum to string.
   static const char* StopReasonToString(StopReason reason);
 
-  // TODO(b/267804414): Remove it after fishfood.
-  // Asynchronous function triggered when the Allowed property changes.
-  void TetheringAllowedUpdated(bool allowed);
-
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
   // Tethering feature flag.

@@ -4017,6 +4017,8 @@ mno {
     }
     mccmnc : "21405"
     mccmnc : "21407"
+    # TODO(b/291318221): disable before feature release
+    tethering_allowed : true
     mobile_apn {
       apn : "telefonica.es"
       localized_name {
@@ -4546,6 +4548,8 @@ mno {
       name : "Free Mobile"
     }
     mccmnc : "20815"
+    # TODO(b/291318221): disable before feature release
+    tethering_allowed : true
     mobile_apn {
       apn : "free"
       localized_name {
@@ -10568,6 +10572,8 @@ mno {
       name : "Orange"
     }
     mccmnc : "26003"
+    # TODO(b/291318221): disable before feature release
+    tethering_allowed : true
     mobile_apn {
       apn : "internet"
       localized_name {
@@ -14556,6 +14562,7 @@ mno {
       name : "Test Network"
     }
     mccmnc : "00101"
+    tethering_allowed: true
     mobile_apn {
       apn : "internet"
       ip_type: IPV4V6
@@ -14573,6 +14580,11 @@ mno {
       ip_type: IPV4
       type : DEFAULT
       type : IA
+    }
+    mobile_apn {
+      apn: "callbox-dun-ipv4v6"
+      ip_type: IPV4V6
+      type: DUN
     }
   }
   mvno {

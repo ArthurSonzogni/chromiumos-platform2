@@ -136,10 +136,7 @@ protoc_text_to_bin("mobile_operator_db-db") {
   protoc_text_dir = "mobile_operator_db"
   protoc_proto_dir = "mobile_operator_db"
   protoc_bin_dir = "${root_out_dir}"
-  sources = [
-    "${protoc_text_dir}/serviceproviders.textproto",
-    "${protoc_text_dir}/tethering_experimental.textproto",
-  ]
+  sources = [ "${protoc_text_dir}/serviceproviders.textproto" ]
 }
 
 protoc_text_to_bin("mobile_operator_db-test-db") {
