@@ -1314,6 +1314,30 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
 }
 
+TEST_F(WiFiServiceTest, IsInAutoConnect) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  service->AddEndpoint(endpoint);
+  EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
+
+  // The initiation of an auto-connection attempt succeeds.
+  EXPECT_CALL(*wifi(), ConnectTo(_, _));
+  service->AutoConnect();
+  EXPECT_TRUE(service->is_in_auto_connect());
+  dispatcher()->DispatchPendingEvents();
+
+  // The initiation of an auto-connection attempt fails.
+  // Write a failure type into |error| to mimic the initiation failure of
+  // an auto-connection attempt.
+  EXPECT_CALL(*wifi(), ConnectTo(_, _)).WillOnce([](auto service, auto error) {
+    error->Populate(Error::kOperationFailed);
+  });
+  service->AutoConnect();
+  EXPECT_FALSE(service->is_in_auto_connect());
+  dispatcher()->DispatchPendingEvents();
+}
+
 TEST_F(WiFiServiceTest, PreferWPA2OverWPA) {
   std::string ssid0 = "a", ssid1 = "b";
   WiFiServiceRefPtr service0 = MakeServiceSSID(kSecurityClassPsk, ssid0);
@@ -2921,6 +2945,33 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
     EXPECT_EQ(WiFiSecurity::ToMetricEnum(WiFiSecurity::kWpa2), info.security);
   }
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoAutoConnection) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  service->AddEndpoint(endpoint);
+  // Make sure the WiFi medium will always be available for connection.
+  EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
+  service->AutoConnect();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
+  EXPECT_EQ(info.type, Metrics::kAttemptTypeAuto);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoUserInitiatedConnection) {
+  Error error;
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  service->AddEndpoint(endpoint);
+  // Make sure the WiFi medium will always be available for connection.
+  EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), ConnectTo(_, _));
+  service->UserInitiatedConnect("", &error);
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
+  EXPECT_EQ(info.type, Metrics::kAttemptTypeUserInitiated);
 }
 
 TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {

@@ -184,6 +184,7 @@ Service::Service(Manager* manager, Technology technology)
       previous_error_serial_number_(0),
       explicitly_disconnected_(false),
       is_in_user_connect_(false),
+      is_in_auto_connect_(false),
       priority_(kPriorityNone),
       crypto_algorithm_(kCryptoNone),
       key_rotation_(false),
@@ -347,7 +348,13 @@ void Service::AutoConnect() {
   Error error;
   LOG(INFO) << "Auto-connecting to " << log_name();
   ThrottleFutureAutoConnects();
+  is_in_auto_connect_ = true;
   Connect(&error, __func__);
+  // If Service::Connect returns with error, roll-back the flag that marks
+  // auto-connection is ongoing so that next sessions are not affected.
+  if (error.IsFailure() || IsInFailState()) {
+    is_in_auto_connect_ = false;
+  }
 }
 
 void Service::Connect(Error* error, const char* reason) {
@@ -438,6 +445,14 @@ void Service::DisconnectWithFailure(ConnectFailure failure,
 void Service::UserInitiatedConnect(const char* reason, Error* error) {
   SLOG(this, 3) << __func__;
   SetLastManualConnectAttemptProperty(base::Time::Now());
+  // |is_in_user_connect_| should only be set when Service::Connect returns with
+  // no error, i.e. the connection attempt is successfully initiated. However,
+  // when the call stack of Service::Connect gets far enough and no error is
+  // expected, it is useful to distinguish whether the connection is initiated
+  // by the user. Here, optimistically set this field in advance (assume the
+  // initiation of a connection attempt will succeed) and roll-back when
+  // Service::Connect returns with error.
+  is_in_user_connect_ = true;
   Connect(error, reason);
 
   // Since Service::Connect will clear a failure state when it gets far enough,
@@ -452,14 +467,13 @@ void Service::UserInitiatedConnect(const char* reason, Error* error) {
         error->type() != Error::kInProgress) {
       ReportUserInitiatedConnectionResult(state());
     }
-    // If we've already failed, SetState will not be able to catch this failure
-    // before |is_in_user_connect_| is set (in fact the state may not even
-    // change by the time the failure occurs). Setting |is_in_user_connect_| in
-    // this case will act as setting either the next or already-ongoing Connect
-    // as being user-initiated, even if it isn't.
-    return;
+    // The initiation of the connection attempt failed, we're not even going to
+    // ask lower layers (e.g. wpa_supplicant for WiFi) to connect, so the flag
+    // won't be cleared in Service::SetState when the connection attempt would
+    // succeed/fail. Reset the flag so it doesn't interfere with the next
+    // connection attempt.
+    is_in_user_connect_ = false;
   }
-  is_in_user_connect_ = true;
 }
 
 void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
@@ -559,11 +573,16 @@ void Service::SetState(ConnectState state) {
   }
 
   // Metric reporting for result of user-initiated connection attempt.
-  if (is_in_user_connect_ &&
+  if ((is_in_user_connect_ || is_in_auto_connect_) &&
       ((state == kStateConnected) || (state == kStateFailure) ||
        (state == kStateIdle))) {
-    ReportUserInitiatedConnectionResult(state);
-    is_in_user_connect_ = false;
+    if (is_in_user_connect_) {
+      ReportUserInitiatedConnectionResult(state);
+      is_in_user_connect_ = false;
+    }
+    if (is_in_auto_connect_) {
+      is_in_auto_connect_ = false;
+    }
   }
 
   if (state == kStateFailure) {

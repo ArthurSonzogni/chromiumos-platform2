@@ -902,6 +902,26 @@ TEST_F(ServiceTest, StateResetAfterFailure) {
   EXPECT_EQ(Service::kStateConnected, service_->state());
 }
 
+TEST_F(ServiceTest, UserInitiatedConnectionAttempt) {
+  {
+    // The initiation of connection attempt by user is successful.
+    Error error;
+    service_->SetState(Service::kStateIdle);
+    service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
+    EXPECT_TRUE(service_->is_in_user_connect());
+  }
+  {
+    // The initiation of connection attempt by user fails, i.e. not attempted.
+    // |Service::UserInitiatedConnect| checks if |error| is set during the call
+    // stack through |Service::Connect| to know if the attempt is initiated
+    // successfully. Here write a failure type in |error| to mimic this case.
+    Error error(Error::kOperationFailed);
+    service_->SetState(Service::kStateIdle);
+    service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
+    EXPECT_FALSE(service_->is_in_user_connect());
+  }
+}
+
 TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->technology_ = Technology::kWiFi;
   Error error;

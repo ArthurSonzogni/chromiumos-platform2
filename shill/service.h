@@ -484,6 +484,8 @@ class Service : public base::RefCounted<Service> {
 
   bool is_in_user_connect() const { return is_in_user_connect_; }
 
+  bool is_in_auto_connect() const { return is_in_auto_connect_; }
+
   int32_t priority() const { return priority_; }
   bool SetPriority(const int32_t& priority, Error* error);
 
@@ -1027,6 +1029,7 @@ class Service : public base::RefCounted<Service> {
   int32_t previous_error_serial_number_;
   bool explicitly_disconnected_;
   bool is_in_user_connect_;
+  bool is_in_auto_connect_;
   int32_t priority_;
   int32_t ephemeral_priority_ = 0;
   uint8_t crypto_algorithm_;

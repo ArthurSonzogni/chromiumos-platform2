@@ -1061,7 +1061,12 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   }
 
   Metrics::WiFiConnectionAttemptInfo info;
-  info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
+  info.type = Metrics::kAttemptTypeUnknown;
+  if (is_in_user_connect()) {
+    info.type = Metrics::kAttemptTypeUserInitiated;
+  } else if (is_in_auto_connect()) {
+    info.type = Metrics::kAttemptTypeAuto;
+  }
   info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(ap_physical_mode());
   info.security = WiFiSecurity::ToMetricEnum(security());
   info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
