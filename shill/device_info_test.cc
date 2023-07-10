@@ -34,7 +34,6 @@
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/ipconfig.h"
-#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -53,7 +52,6 @@
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/vpn/mock_vpn_provider.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -72,11 +70,12 @@ using testing::Test;
 namespace shill {
 namespace {
 
-constexpr net_base::IPv4Address kTestIPAddress0(192, 168, 1, 1);
-const net_base::IPv6Address kTestIPAddress1 =
-    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
-const net_base::IPv6Address kTestIPAddress2 =
-    *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1235");
+const net_base::IPAddress kTestIPAddress0 =
+    *net_base::IPAddress::CreateFromString("192.168.1.1");
+const net_base::IPAddress kTestIPAddress1 =
+    *net_base::IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
+const net_base::IPAddress kTestIPAddress2 =
+    *net_base::IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1235");
 constexpr int kTestDeviceIndex = 123456;
 constexpr char kTestDeviceName[] = "test-device";
 constexpr uint8_t kTestMacAddress[] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
@@ -791,7 +790,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   EXPECT_CALL(event_handler0,
               OnNeighborReachabilityEvent(
                   device0->GetPrimaryNetwork()->interface_index(),
-                  IPAddress(kTestIPAddress0), Role::kGateway, Status::kFailed));
+                  kTestIPAddress0, Role::kGateway, Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event0);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
@@ -800,11 +799,10 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   event1.ip_addr = kTestIPAddress1.ToString();
   event1.role = Role::kDnsServer;
   event1.status = Status::kFailed;
-  EXPECT_CALL(
-      event_handler0,
-      OnNeighborReachabilityEvent(
-          device0->GetPrimaryNetwork()->interface_index(),
-          IPAddress(kTestIPAddress1), Role::kDnsServer, Status::kFailed));
+  EXPECT_CALL(event_handler0,
+              OnNeighborReachabilityEvent(
+                  device0->GetPrimaryNetwork()->interface_index(),
+                  kTestIPAddress1, Role::kDnsServer, Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event1);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
@@ -813,11 +811,11 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   event2.ip_addr = kTestIPAddress2.ToString();
   event2.role = Role::kGatewayAndDnsServer;
   event2.status = Status::kReachable;
-  EXPECT_CALL(event_handler1,
-              OnNeighborReachabilityEvent(
-                  device1->GetPrimaryNetwork()->interface_index(),
-                  IPAddress(kTestIPAddress2), Role::kGatewayAndDnsServer,
-                  Status::kReachable));
+  EXPECT_CALL(
+      event_handler1,
+      OnNeighborReachabilityEvent(
+          device1->GetPrimaryNetwork()->interface_index(), kTestIPAddress2,
+          Role::kGatewayAndDnsServer, Status::kReachable));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event2);
 
   Mock::VerifyAndClearExpectations(&event_handler1);

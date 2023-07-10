@@ -1180,7 +1180,7 @@ void TetheringManager::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
 void TetheringManager::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
 void TetheringManager::OnNeighborReachabilityEvent(
     int interface_index,
-    const IPAddress& ip_address,
+    const net_base::IPAddress& ip_address,
     patchpanel::Client::NeighborRole role,
     patchpanel::Client::NeighborStatus status) {}
 

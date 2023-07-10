@@ -15,11 +15,10 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/ip_address.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
-#include "shill/event_dispatcher.h"
-#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
@@ -90,7 +89,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // reachable + kStateNoConnectivity).
   void OnNeighborReachabilityEvent(
       int interface_index,
-      const IPAddress& ip_address,
+      const net_base::IPAddress& ip_address,
       patchpanel::Client::NeighborRole role,
       patchpanel::Client::NeighborStatus status) override;
 

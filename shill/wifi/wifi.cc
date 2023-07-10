@@ -2666,7 +2666,7 @@ void WiFi::OnReliableLink() {
   selected_service()->set_unreliable(false);
 }
 
-void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
+void WiFi::OnLinkMonitorFailure(net_base::IPFamily family) {
   SLOG(this, 2) << "Device " << link_name()
                 << ": Link Monitor indicates failure.";
 
@@ -2682,9 +2682,9 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
-  if ((family == IPAddress::kFamilyIPv4 &&
+  if ((family == net_base::IPFamily::kIPv4 &&
        !GetPrimaryNetwork()->ipv4_gateway_found()) ||
-      (family == IPAddress::kFamilyIPv6 &&
+      (family == net_base::IPFamily::kIPv6 &&
        !GetPrimaryNetwork()->ipv6_gateway_found())) {
     LOG(INFO) << "In " << __func__ << "(): "
               << "Skipping reassociate since gateway was never found.";
@@ -4069,7 +4069,7 @@ void WiFi::GetDeviceHardwareIds(int* vendor,
 
 void WiFi::OnNeighborReachabilityEvent(
     int net_interface_index,
-    const IPAddress& ip_address,
+    const net_base::IPAddress& ip_address,
     patchpanel::Client::NeighborRole role,
     patchpanel::Client::NeighborStatus status) {
   using Role = patchpanel::Client::NeighborRole;
@@ -4086,7 +4086,7 @@ void WiFi::OnNeighborReachabilityEvent(
     case Status::kReachable:
       return;
     case Status::kFailed:
-      OnLinkMonitorFailure(ip_address.family());
+      OnLinkMonitorFailure(ip_address.GetFamily());
       return;
     default:
       // Already filtered in Network::OnNeighborReachabilityEvent().

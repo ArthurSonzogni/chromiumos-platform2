@@ -31,13 +31,10 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/geolocation_info.h"
-#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
@@ -46,15 +43,12 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
-#include "shill/mock_profile.h"
 #include "shill/net/ieee80211.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
@@ -73,7 +67,6 @@
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi_link_statistics.h"
-#include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/passpoint_credentials.h"
@@ -1123,7 +1116,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->OnSupplicantPresence(false);
     EXPECT_FALSE(wifi_->supplicant_present_);
   }
-  void OnLinkMonitorFailure(IPAddress::Family family) {
+  void OnLinkMonitorFailure(net_base::IPFamily family) {
     wifi_->OnLinkMonitorFailure(family);
   }
   bool GetSupplicantPresent() { return wifi_->supplicant_present_; }
@@ -1165,7 +1158,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->SuspectCredentials(service, failure);
   }
 
-  void OnNeighborReachabilityEvent(const IPAddress& ip_address,
+  void OnNeighborReachabilityEvent(const net_base::IPAddress& ip_address,
                                    patchpanel::Client::NeighborRole role,
                                    patchpanel::Client::NeighborStatus status) {
     wifi_->OnNeighborReachabilityEvent(wifi_->interface_index(), ip_address,
@@ -1189,7 +1182,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
     // We use ReturnRef() below for this object so use `static` here.
     static IPConfig::Properties ip_props;
-    ip_props.address_family = IPAddress::kFamilyIPv4;
+    ip_props.address_family = net_base::ToSAFamily(net_base::IPFamily::kIPv4);
     ip_props.gateway = ipv4_gateway_address;
     EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
     network_->set_ipconfig(std::move(ipconfig));
@@ -3318,7 +3311,7 @@ TEST_F(WiFiMainTest,
   const std::string kGatewayIPAddressString = "192.168.1.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress =
-      *IPAddress::CreateFromString(kGatewayIPAddressString);
+      *net_base::IPAddress::CreateFromString(kGatewayIPAddressString);
 
   // Sets up Service.
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
@@ -3331,7 +3324,7 @@ TEST_F(WiFiMainTest,
   // If gateway is found, service is unreliable, and supplicant is active,
   // OnLinkMonitorFailure should invoke NotifyWiFiConnectionUnreliable.
   EXPECT_CALL(*metrics(), NotifyWiFiConnectionUnreliable());
-  OnLinkMonitorFailure(kGatewayIPAddress.family());
+  OnLinkMonitorFailure(kGatewayIPAddress.GetFamily());
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
@@ -3949,8 +3942,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   const std::string kGatewayIPAddressString = "192.168.1.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress =
-      *IPAddress::CreateFromString(kGatewayIPAddressString);
-  const auto kAnotherIPAddress = *IPAddress::CreateFromString("1.2.3.4");
+      *net_base::IPAddress::CreateFromString(kGatewayIPAddressString);
 
   // Sets up Service.
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
@@ -4010,7 +4002,8 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   // Make the object ready to respond to link monitor failures.
   constexpr auto kGatewayIPAddressString = "192.168.0.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
-  const auto kGatewayIPAddress = *IPAddress::CreateFromString("192.168.0.1");
+  const auto kGatewayIPAddress =
+      *net_base::IPAddress::CreateFromString("192.168.0.1");
   OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
                               Status::kReachable);
 

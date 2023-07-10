@@ -923,7 +923,7 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
 
 void Ethernet::OnNeighborReachabilityEvent(
     int net_interface_index,
-    const IPAddress& ip_address,
+    const net_base::IPAddress& ip_address,
     patchpanel::Client::NeighborRole role,
     patchpanel::Client::NeighborStatus status) {
   DCHECK(net_interface_index == interface_index());

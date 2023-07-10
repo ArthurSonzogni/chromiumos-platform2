@@ -110,7 +110,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (int,
-               const IPAddress&,
+               const net_base::IPAddress&,
                patchpanel::Client::NeighborRole,
                patchpanel::Client::NeighborStatus));
   MOCK_METHOD(void, OnNetworkValidationStart, (int), (override));

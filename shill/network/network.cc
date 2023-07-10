@@ -886,8 +886,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(interface_index_, IPAddress(*ip_address),
-                                    event.role, event.status);
+    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
+                                    event.status);
   }
 }
 

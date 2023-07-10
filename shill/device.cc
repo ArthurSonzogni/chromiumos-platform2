@@ -414,7 +414,7 @@ void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
 
 void Device::OnNeighborReachabilityEvent(
     int interface_index,
-    const IPAddress& ip_address,
+    const net_base::IPAddress& ip_address,
     patchpanel::Client::NeighborRole role,
     patchpanel::Client::NeighborStatus status) {
   // Does nothing in the general case.

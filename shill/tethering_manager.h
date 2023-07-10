@@ -173,7 +173,7 @@ class TetheringManager : public Network::EventHandler {
   void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
   void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
   void OnNeighborReachabilityEvent(int interface_index,
-                                   const IPAddress& ip_address,
+                                   const net_base::IPAddress& ip_address,
                                    patchpanel::Client::NeighborRole,
                                    patchpanel::Client::NeighborStatus) override;
 

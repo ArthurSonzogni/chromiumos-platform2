@@ -19,6 +19,7 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -26,7 +27,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
-#include "shill/net/ip_address.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -256,7 +256,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // does nothing here so the derived class doesn't need to call this.
   void OnNeighborReachabilityEvent(
       int interface_index,
-      const IPAddress& ip_address,
+      const net_base::IPAddress& ip_address,
       patchpanel::Client::NeighborRole role,
       patchpanel::Client::NeighborStatus status) override;
 

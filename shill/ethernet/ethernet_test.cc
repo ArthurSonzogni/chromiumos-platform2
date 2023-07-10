@@ -47,7 +47,6 @@
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"
-#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
@@ -743,25 +742,24 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   // Service state is 'online', REACHABLE neighbor events are ignored.
   EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kGateway,
+                                         kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
-  ethernet_->OnNeighborReachabilityEvent(
-      ethernet_->interface_index(), IPAddress(kIPv6Addr),
-      Role::kGatewayAndDnsServer, Status::kReachable);
+  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
+                                         kIPv6Addr, Role::kGatewayAndDnsServer,
+                                         Status::kReachable);
   Mock::VerifyAndClearExpectations(network_p);
 
   // Service state is 'online', FAILED gateway neighbor events triggers network
   // validation.
   EXPECT_CALL(*network_p, StartPortalDetection(false)).WillOnce(Return(true));
-  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kGateway,
-                                         Status::kFailed);
+  ethernet_->OnNeighborReachabilityEvent(
+      ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
   Mock::VerifyAndClearExpectations(network_p);
 
   EXPECT_CALL(*network_p, StartPortalDetection(false));
-  ethernet_->OnNeighborReachabilityEvent(
-      ethernet_->interface_index(), IPAddress(kIPv6Addr),
-      Role::kGatewayAndDnsServer, Status::kFailed);
+  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
+                                         kIPv6Addr, Role::kGatewayAndDnsServer,
+                                         Status::kFailed);
   Mock::VerifyAndClearExpectations(network_p);
 }
 
@@ -789,26 +787,25 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
-  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kGateway,
-                                         Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(
-      ethernet_->interface_index(), IPAddress(kIPv6Addr),
-      Role::kGatewayAndDnsServer, Status::kFailed);
+      ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
+  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
+                                         kIPv6Addr, Role::kGatewayAndDnsServer,
+                                         Status::kFailed);
   Mock::VerifyAndClearExpectations(network_p);
 
   // Service state is connected but not 'online', REACHABLE neighbor events
   // triggers network validation.
   EXPECT_CALL(*network_p, StartPortalDetection(true));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kGateway,
+                                         kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
   Mock::VerifyAndClearExpectations(network_p);
 
   EXPECT_CALL(*network_p, StartPortalDetection(true));
-  ethernet_->OnNeighborReachabilityEvent(
-      ethernet_->interface_index(), IPAddress(kIPv6Addr),
-      Role::kGatewayAndDnsServer, Status::kReachable);
+  ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
+                                         kIPv6Addr, Role::kGatewayAndDnsServer,
+                                         Status::kReachable);
   Mock::VerifyAndClearExpectations(network_p);
 }
 
@@ -836,30 +833,30 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateConnected));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kDnsServer,
+                                         kIPv4Addr, Role::kDnsServer,
                                          Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv6Addr), Role::kDnsServer,
+                                         kIPv6Addr, Role::kDnsServer,
                                          Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kDnsServer,
+                                         kIPv4Addr, Role::kDnsServer,
                                          Status::kReachable);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv6Addr), Role::kDnsServer,
+                                         kIPv6Addr, Role::kDnsServer,
                                          Status::kReachable);
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateConnected));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kDnsServer,
+                                         kIPv4Addr, Role::kDnsServer,
                                          Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv6Addr), Role::kDnsServer,
+                                         kIPv6Addr, Role::kDnsServer,
                                          Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv4Addr), Role::kDnsServer,
+                                         kIPv4Addr, Role::kDnsServer,
                                          Status::kReachable);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
-                                         IPAddress(kIPv6Addr), Role::kDnsServer,
+                                         kIPv6Addr, Role::kDnsServer,
                                          Status::kReachable);
   Mock::VerifyAndClearExpectations(network_p);
 }

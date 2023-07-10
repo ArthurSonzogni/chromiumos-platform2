@@ -21,7 +21,6 @@
 #include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
@@ -99,7 +98,7 @@ class Network {
     // patchpanel's link monitor for the network interface of this Network.
     virtual void OnNeighborReachabilityEvent(
         int interface_index,
-        const IPAddress& ip_address,
+        const net_base::IPAddress& ip_address,
         patchpanel::Client::NeighborRole role,
         patchpanel::Client::NeighborStatus status) = 0;
 

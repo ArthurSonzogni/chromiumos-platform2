@@ -92,11 +92,11 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 
 #include "shill/device.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/shill_time.h"
@@ -247,7 +247,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Inherited from Device.
   void OnNeighborReachabilityEvent(
       int interface_index,
-      const IPAddress& ip_address,
+      const net_base::IPAddress& ip_address,
       patchpanel::Client::NeighborRole role,
       patchpanel::Client::NeighborStatus status) override;
 
@@ -786,7 +786,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // of time).
   void OnReliableLink();
   // Respond to a LinkMonitor failure. Called in OnNeighborReachabilityEvent().
-  void OnLinkMonitorFailure(IPAddress::Family family);
+  void OnLinkMonitorFailure(net_base::IPFamily family);
 
   // Get total received byte counters for the underlying network interface.
   uint64_t GetReceiveByteCount();

@@ -462,8 +462,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   const std::string ipv4_addr_str = "192.168.1.1";
   const std::string ipv6_addr_str = "fe80::1aa9:5ff:abcd:1234";
-  const IPAddress ipv4_addr = *IPAddress::CreateFromString(ipv4_addr_str);
-  const IPAddress ipv6_addr = *IPAddress::CreateFromString(ipv6_addr_str);
+  const auto ipv4_addr = *net_base::IPAddress::CreateFromString(ipv4_addr_str);
+  const auto ipv6_addr = *net_base::IPAddress::CreateFromString(ipv6_addr_str);
   SetNetworkStateToConnected();
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));

@@ -55,7 +55,7 @@ class MockDevice : public Device {
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (int,
-               const IPAddress&,
+               const net_base::IPAddress&,
                patchpanel::Client::NeighborRole,
                patchpanel::Client::NeighborStatus),
               (override));
