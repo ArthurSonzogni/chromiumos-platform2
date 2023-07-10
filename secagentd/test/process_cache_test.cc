@@ -15,10 +15,8 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/strings/strcat.h"
-#include "base/strings/string_util.h"
 #include "brillo/files/file_util.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/proto/security_xdr_events.pb.h"

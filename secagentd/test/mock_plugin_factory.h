@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/plugins.h"

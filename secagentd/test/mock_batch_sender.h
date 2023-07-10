@@ -7,10 +7,8 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"  // IWYU pragma: keep
-#include "missive/proto/record_constants.pb.h"
+#include "gmock/gmock.h"
 #include "secagentd/batch_sender.h"
-#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd::testing {
 

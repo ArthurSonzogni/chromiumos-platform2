@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "google/protobuf/message_lite.h"
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/message_sender.h"

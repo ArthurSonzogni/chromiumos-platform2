@@ -15,22 +15,17 @@
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/task_environment.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "metrics/metrics_library.h"
 #include "secagentd/common.h"
-#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_plugin_factory.h"
 #include "secagentd/test/mock_policies_features_broker.h"
 #include "secagentd/test/mock_process_cache.h"
-#include "session_manager/dbus-proxies.h"
-#include "session_manager/dbus-proxy-mocks.h"
 
 namespace secagentd::testing {
 

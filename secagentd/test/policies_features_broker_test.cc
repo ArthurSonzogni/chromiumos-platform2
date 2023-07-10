@@ -9,13 +9,12 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "dbus/mock_bus.h"
 #include "featured/fake_platform_features.h"
-#include "gmock/gmock.h"  // IWYU pragma:keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "policy/mock_device_policy.h"
 #include "policy/mock_libpolicy.h"

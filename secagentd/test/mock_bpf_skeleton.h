@@ -8,7 +8,7 @@
 #include <memory>
 #include <utility>
 
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 
 namespace secagentd {
