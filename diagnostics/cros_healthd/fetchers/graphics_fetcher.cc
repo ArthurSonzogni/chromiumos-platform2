@@ -91,7 +91,7 @@ mojom::EGLInfoPtr EglManager::FetchEGLInfo() {
   return egl_info;
 }
 
-mojom::GraphicsResultPtr GraphicsFetcher::FetchGraphicsInfo(
+mojom::GraphicsResultPtr FetchGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager) {
   if (!egl_manager) {
     egl_manager = EglManager::Create();

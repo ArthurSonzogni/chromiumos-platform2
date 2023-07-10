@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -31,17 +30,10 @@ class EglManager {
   EGLContext egl_context_;
 };
 
-// The GraphicsFetcher class is responsible for gathering graphics info reported
-// by cros_healthd.
-class GraphicsFetcher final : public BaseFetcher {
- public:
-  using BaseFetcher::BaseFetcher;
-
-  // Returns a structure with either the device's graphics data or the error
-  // that occurred fetching the information.
-  ash::cros_healthd::mojom::GraphicsResultPtr FetchGraphicsInfo(
-      std::unique_ptr<EglManager> egl_manager = nullptr);
-};
+// Returns a structure with either the device's graphics data or the error
+// that occurred fetching the information.
+ash::cros_healthd::mojom::GraphicsResultPtr FetchGraphicsInfo(
+    std::unique_ptr<EglManager> egl_manager = nullptr);
 
 }  // namespace diagnostics
 

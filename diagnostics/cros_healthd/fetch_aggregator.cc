@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
@@ -66,7 +67,6 @@ FetchAggregator::FetchAggregator(Context* context)
       battery_fetcher_(context),
       disk_fetcher_(context),
       fan_fetcher_(context),
-      graphics_fetcher_(context),
       input_fetcher_(context),
       memory_fetcher_(context),
       network_fetcher_(context),
@@ -177,7 +177,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kGraphics: {
-        info->graphics_result = graphics_fetcher_.FetchGraphicsInfo();
+        info->graphics_result = FetchGraphicsInfo();
         break;
       }
       case mojom::ProbeCategoryEnum::kDisplay: {

@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
-#include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -45,23 +44,7 @@ class MockEglManager final : public EglManager {
   MOCK_METHOD(mojom::EGLInfoPtr, FetchEGLInfo, (), ());
 };
 
-class GraphicsFetcherTest : public ::testing::Test {
- protected:
-  GraphicsFetcherTest() = default;
-  GraphicsFetcherTest(const GraphicsFetcherTest&) = delete;
-  GraphicsFetcherTest& operator=(const GraphicsFetcherTest&) = delete;
-
-  mojom::GraphicsResultPtr FetchGraphicsInfo(
-      std::unique_ptr<EglManager> mock_egl_manager) {
-    return graphics_fetcher_.FetchGraphicsInfo(std::move(mock_egl_manager));
-  }
-
- private:
-  MockContext mock_context_;
-  GraphicsFetcher graphics_fetcher_{&mock_context_};
-};
-
-TEST_F(GraphicsFetcherTest, FetchGraphicsInfo) {
+TEST(GraphicsFetcherTest, FetchGraphicsInfo) {
   auto gles_info = mojom::GLESInfo::New();
   gles_info->version = kFakeOpenGLESVersion;
   gles_info->shading_version = kFakeOpenGLESShadingVersion;
