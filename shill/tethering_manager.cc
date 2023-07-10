@@ -541,7 +541,11 @@ void TetheringManager::OnStartingTetheringTimeout() {
 }
 
 void TetheringManager::FreeUpstreamNetwork() {
-  DCHECK(upstream_network_);
+  // OnNetworkDestroyed() may have been called during a ReleaseTetheringNetwork
+  // call (e.g. if connecting DUN as DEFAULT or a multiplexed DUN).
+  if (!upstream_network_) {
+    return;
+  }
   upstream_network_->UnregisterEventHandler(this);
   upstream_network_ = nullptr;
   upstream_service_ = nullptr;
