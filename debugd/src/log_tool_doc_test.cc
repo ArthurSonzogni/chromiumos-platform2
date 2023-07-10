@@ -27,7 +27,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "amdgpu_gtt_mm",
     "amdgpu_vram_mm",
     "android_app_storage",
-    "arcvm_console_output",
     "atmel_tp_deltas",
     "atmel_tp_refs",
     "atmel_ts_deltas",

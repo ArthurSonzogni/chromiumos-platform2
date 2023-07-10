@@ -40,6 +40,12 @@ decode.
 
 ## arcvm_console_output
 
+Dumps kernel logs using [`vm_pstore_dump`](/vm_tools#vm_pstore_dump)
+tool. The log is stored in pstore in the guest which is a file on the host side,
+similar to [console-ramoops](#console_ramoops). Should show kernel logs when all
+else fails inside the guest OS. Timestamp is in seconds from guest Linux kernel
+boot.
+
 ## atmel_tp_deltas
 
 ## atmel_tp_refs
