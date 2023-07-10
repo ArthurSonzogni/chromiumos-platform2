@@ -9,7 +9,6 @@
 
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_icmp.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_io_handler_factory.h"
 
 using testing::_;
@@ -82,9 +81,9 @@ class IcmpSessionTest : public Test {
   void StartAndVerify(const net_base::IPAddress& destination,
                       int interface_index) {
     EXPECT_CALL(*icmp_, IsStarted());
-    EXPECT_CALL(*icmp_, Start(IPAddress(destination), interface_index))
+    EXPECT_CALL(*icmp_, Start(destination, interface_index))
         .WillOnce(Return(true));
-    icmp_->destination_ = IPAddress(destination);
+    icmp_->destination_ = destination;
     EXPECT_CALL(io_handler_factory_,
                 CreateIOInputHandler(icmp_->socket(), _, _));
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeout()));
@@ -185,7 +184,7 @@ TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
   StartAndVerify(kIPAddress, kInterfaceIndex);
 
   // Since an ICMP session is already started, we should fail to start it again.
-  EXPECT_CALL(*icmp_, Start(IPAddress(kIPAddress), kInterfaceIndex)).Times(0);
+  EXPECT_CALL(*icmp_, Start(kIPAddress, kInterfaceIndex)).Times(0);
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);

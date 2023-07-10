@@ -20,7 +20,6 @@
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/sockets.h"
 
 namespace {
@@ -63,7 +62,7 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
     LOG(WARNING) << "ICMP session already started";
     return false;
   }
-  if (!icmp_->Start(IPAddress(destination), interface_index)) {
+  if (!icmp_->Start(destination, interface_index)) {
     return false;
   }
   echo_reply_handler_.reset(io_handler_factory_->CreateIOInputHandler(
@@ -230,13 +229,20 @@ int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
 void IcmpSession::OnEchoReplyReceived(InputData* data) {
   DCHECK_GE(data->len, 0);
 
+  const auto& destination = icmp_->destination();
+  if (!destination) {
+    LOG(WARNING) << "Failed to get ICMP destination";
+    return;
+  }
+
   int received_seq_num = -1;
-  if (icmp_->destination().family() == IPAddress::kFamilyIPv4) {
-    received_seq_num = OnV4EchoReplyReceived(data);
-  } else if (icmp_->destination().family() == IPAddress::kFamilyIPv6) {
-    received_seq_num = OnV6EchoReplyReceived(data);
-  } else {
-    NOTREACHED();
+  switch (destination->GetFamily()) {
+    case net_base::IPFamily::kIPv4:
+      received_seq_num = OnV4EchoReplyReceived(data);
+      break;
+    case net_base::IPFamily::kIPv6:
+      received_seq_num = OnV6EchoReplyReceived(data);
+      break;
   }
 
   if (received_seq_num < 0) {

@@ -11,35 +11,26 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "shill/logging.h"
 #include "shill/net/sockets.h"
 
 namespace shill {
 
 const int Icmp::kIcmpEchoCode = 0;  // value specified in RFC 792.
 
-Icmp::Icmp()
-    : sockets_(new Sockets()),
-      socket_(-1),
-      destination_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
-      interface_index_(-1) {}
+Icmp::Icmp() : sockets_(new Sockets()), socket_(-1), interface_index_(-1) {}
 
 Icmp::~Icmp() = default;
 
-bool Icmp::Start(const IPAddress& destination, int interface_index) {
-  if (!destination.IsValid()) {
-    LOG(ERROR) << "Destination address is not valid.";
-    return false;
-  }
-
+bool Icmp::Start(const net_base::IPAddress& destination, int interface_index) {
   int socket = -1;
-  if (destination.family() == IPAddress::kFamilyIPv4) {
-    socket = sockets_->Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
-  } else if (destination.family() == IPAddress::kFamilyIPv6) {
-    socket =
-        sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
-  } else {
-    NOTREACHED();
+  switch (destination.GetFamily()) {
+    case net_base::IPFamily::kIPv4:
+      socket = sockets_->Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
+      break;
+    case net_base::IPFamily::kIPv6:
+      socket =
+          sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+      break;
   }
 
   if (socket == -1) {
@@ -71,6 +62,9 @@ bool Icmp::IsStarted() const {
 }
 
 bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
+  DCHECK(destination_ &&
+         destination_->GetFamily() == net_base::IPFamily::kIPv4);
+
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
@@ -81,11 +75,7 @@ bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
 
   struct sockaddr_in destination_address;
   destination_address.sin_family = AF_INET;
-  CHECK_EQ(sizeof(destination_address.sin_addr.s_addr),
-           destination_.GetLength());
-  memcpy(&destination_address.sin_addr.s_addr,
-         destination_.address().GetConstData(),
-         sizeof(destination_address.sin_addr.s_addr));
+  destination_address.sin_addr = destination_->ToIPv4Address()->ToInAddr();
 
   int result =
       sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
@@ -107,6 +97,9 @@ bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
 }
 
 bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
+  DCHECK(destination_ &&
+         destination_->GetFamily() == net_base::IPFamily::kIPv6);
+
   struct icmp6_hdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.icmp6_type = ICMP6_ECHO_REQUEST;
@@ -120,11 +113,7 @@ bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
   memset(&destination_address, 0, sizeof(destination_address));
   destination_address.sin6_family = AF_INET6;
   destination_address.sin6_scope_id = interface_index_;
-  CHECK_EQ(sizeof(destination_address.sin6_addr.s6_addr),
-           destination_.GetLength());
-  memcpy(&destination_address.sin6_addr.s6_addr,
-         destination_.address().GetConstData(),
-         sizeof(destination_address.sin6_addr.s6_addr));
+  destination_address.sin6_addr = destination_->ToIPv6Address()->ToIn6Addr();
 
   int result =
       sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
@@ -150,10 +139,12 @@ bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
     return false;
   }
 
-  if (destination_.family() == IPAddress::kFamilyIPv4) {
-    return TransmitV4EchoRequest(id, seq_num);
-  } else {
-    return TransmitV6EchoRequest(id, seq_num);
+  DCHECK(destination_);
+  switch (destination_->GetFamily()) {
+    case net_base::IPFamily::kIPv4:
+      return TransmitV4EchoRequest(id, seq_num);
+    case net_base::IPFamily::kIPv6:
+      return TransmitV6EchoRequest(id, seq_num);
   }
 }
 

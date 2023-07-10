@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_log.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_sockets.h"
 
 using testing::_;
@@ -37,6 +36,8 @@ alignas(struct icmphdr) const uint8_t kIcmpEchoRequestOddLen[] = {
     0x08, 0x00, 0x00, 0x00, 0xac, 0x51, 0x00, 0x00, 0x00, 0x00, 0x01};
 const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
 
+const net_base::IPAddress kIPAddress =
+    *net_base::IPAddress::CreateFromString("10.0.1.1");
 }  // namespace
 
 class IcmpTest : public Test {
@@ -60,7 +61,6 @@ class IcmpTest : public Test {
 
  protected:
   static const int kSocketFD;
-  static const char kIPAddress[];
   static const int kInterfaceIndex;
 
   int GetSocket() { return icmp_.socket_; }
@@ -71,10 +71,7 @@ class IcmpTest : public Test {
         .WillOnce(Return(fd));
     EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
 
-    const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-    CHECK(ipv4_destination.has_value());
-
-    bool start_status = icmp_.Start(*ipv4_destination, kInterfaceIndex);
+    bool start_status = icmp_.Start(kIPAddress, kInterfaceIndex);
     EXPECT_TRUE(start_status);
     EXPECT_EQ(fd, icmp_.socket_);
     EXPECT_TRUE(icmp_.IsStarted());
@@ -91,7 +88,6 @@ class IcmpTest : public Test {
 };
 
 const int IcmpTest::kSocketFD = 456;
-const char IcmpTest::kIPAddress[] = "10.0.1.1";
 const int IcmpTest::kInterfaceIndex = 3;
 
 TEST_F(IcmpTest, Constructor) {
@@ -108,10 +104,7 @@ TEST_F(IcmpTest, SocketOpenFail) {
   EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce(Return(-1));
 
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-
-  EXPECT_FALSE(icmp_.Start(*ipv4_destination, kInterfaceIndex));
+  EXPECT_FALSE(icmp_.Start(kIPAddress, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -125,9 +118,7 @@ TEST_F(IcmpTest, SocketNonBlockingFail) {
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
   EXPECT_CALL(*sockets_, Close(kSocketFD));
 
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
-  EXPECT_FALSE(icmp_.Start(*ipv4_destination, kInterfaceIndex));
+  EXPECT_FALSE(icmp_.Start(kIPAddress, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -145,18 +136,16 @@ MATCHER_P(IsIcmpHeader, header, "") {
 MATCHER_P(IsSocketAddress, address, "") {
   const struct sockaddr_in* sock_addr =
       reinterpret_cast<const struct sockaddr_in*>(arg);
-  return sock_addr->sin_family == address.family() &&
-         memcmp(&sock_addr->sin_addr.s_addr, address.GetConstData(),
-                address.GetLength()) == 0;
+  const auto addr_bytes = address.ToByteString();
+  return sock_addr->sin_family == net_base::ToSAFamily(address.GetFamily()) &&
+         memcmp(&sock_addr->sin_addr.s_addr, addr_bytes.data(),
+                addr_bytes.size()) == 0;
 }
 
 TEST_F(IcmpTest, TransmitEchoRequest) {
   // Address isn't valid.
   EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
   StartIcmp();
-
-  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
-  CHECK(ipv4_destination.has_value());
 
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
@@ -166,10 +155,9 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   icmp_header.un.echo.sequence = 1;
   icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
 
-  EXPECT_CALL(
-      *sockets_,
-      SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header), 0,
-             IsSocketAddress(*ipv4_destination), sizeof(sockaddr_in)))
+  EXPECT_CALL(*sockets_,
+              SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header),
+                     0, IsSocketAddress(kIPAddress), sizeof(sockaddr_in)))
       .WillOnce(Return(-1))
       .WillOnce(Return(0))
       .WillOnce(Return(sizeof(icmp_header) - 1))

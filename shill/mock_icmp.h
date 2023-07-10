@@ -9,8 +9,6 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/net/ip_address.h"
-
 namespace shill {
 
 class MockIcmp : public Icmp {
@@ -21,7 +19,7 @@ class MockIcmp : public Icmp {
 
   ~MockIcmp() override;
 
-  MOCK_METHOD(bool, Start, (const IPAddress&, int), (override));
+  MOCK_METHOD(bool, Start, (const net_base::IPAddress&, int), (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsStarted, (), (const, override));
   MOCK_METHOD(bool, TransmitEchoRequest, (uint16_t, uint16_t), (override));
