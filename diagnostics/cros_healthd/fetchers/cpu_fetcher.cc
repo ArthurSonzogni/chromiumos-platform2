@@ -37,7 +37,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-using PhysicalCpuMap = std::map<int, mojom::PhysicalCpuInfoPtr>;
 using VulnerabilityInfoMap =
     base::flat_map<std::string, mojom::VulnerabilityInfoPtr>;
 
@@ -117,7 +116,7 @@ bool ReadTemperatureSensorInfo(
       continue;
     }
     base::ReplaceSubstringsAfterOffset(&label_path, 0, "input", "label");
-    base::FilePath name_path = sensor_dir.Append("name");
+    const base::FilePath& name_path = sensor_dir.Append("name");
 
     // Get the label describing this temperature. Use temp*_label
     // if present, fall back on name file.
@@ -135,11 +134,11 @@ bool ReadTemperatureSensorInfo(
       // Convert from millidegree Celsius to Celsius.
       temperature /= 1000;
 
-      mojom::CpuTemperatureChannel channel;
+      auto channel = mojom::CpuTemperatureChannel::New();
       if (!label.empty())
-        channel.label = label;
-      channel.temperature_celsius = temperature;
-      out_contents->push_back(channel.Clone());
+        channel->label = label;
+      channel->temperature_celsius = temperature;
+      out_contents->push_back(std::move(channel));
     } else {
       LOG(WARNING) << "Unable to read CPU temp from "
                    << temperature_path.MaybeAsASCII();
@@ -161,13 +160,13 @@ std::optional<std::vector<mojom::CpuCStateInfoPtr>> GetCStates(
       kCStateDirectoryMatcher);
   for (base::FilePath c_state_dir = c_state_it.Next(); !c_state_dir.empty();
        c_state_dir = c_state_it.Next()) {
-    mojom::CpuCStateInfo c_state;
-    if (!ReadAndTrimString(c_state_dir, kCStateNameFileName, &c_state.name) ||
+    auto c_state = mojom::CpuCStateInfo::New();
+    if (!ReadAndTrimString(c_state_dir, kCStateNameFileName, &c_state->name) ||
         !ReadInteger(c_state_dir, kCStateTimeFileName, &base::StringToUint64,
-                     &c_state.time_in_state_since_last_boot_us)) {
+                     &c_state->time_in_state_since_last_boot_us)) {
       return std::nullopt;
     }
-    c_states.push_back(c_state.Clone());
+    c_states.push_back(std::move(c_state));
   }
 
   return c_states;
@@ -213,7 +212,7 @@ std::optional<std::map<int, ParsedStatContents>> ParseStatContents(
 std::optional<std::map<int, ParsedStatContents>> GetParsedStatContents(
     const base::FilePath& root_dir) {
   std::string stat_contents;
-  auto stat_file = GetProcStatPath(root_dir);
+  const auto& stat_file = GetProcStatPath(root_dir);
   if (!ReadFileToString(stat_file, &stat_contents)) {
     LOG(ERROR) << "Unable to read stat file: " << stat_file.value();
     return std::nullopt;
@@ -231,7 +230,7 @@ std::optional<std::map<int, ParsedStatContents>> GetParsedStatContents(
 std::optional<std::vector<std::string>> GetProcCpuInfoContent(
     const base::FilePath& root_dir) {
   std::string cpu_info_contents;
-  auto cpu_info_file = GetProcCpuInfoPath(root_dir);
+  const auto& cpu_info_file = GetProcCpuInfoPath(root_dir);
   if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
     return std::nullopt;
   }
@@ -247,12 +246,8 @@ bool IsProcessorBlock(const std::string& block) {
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(block, ':', '\n', &pairs);
 
-  if (pairs.size() &&
-      pairs[0].first.find(kProcessorIdKey) != std::string::npos) {
-    return true;
-  }
-
-  return false;
+  return pairs.size() &&
+         pairs[0].first.find(kProcessorIdKey) != std::string::npos;
 }
 
 // Parses |processor| to obtain |processor_id|, |physical_id|, |model_name| and
@@ -317,19 +312,19 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
     // We can use XXYY to distinguish vendor.
     //
     // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-soc
-    const std::string kSoCIDPrefix = "jep106:";
+    const std::string& kSoCIDPrefix = "jep106:";
     if (content.find(kSoCIDPrefix) != 0) {
       continue;
     }
     content.erase(0, kSoCIDPrefix.length());
 
-    std::string vendor_id = content.substr(0, 4);
-    std::string soc_id = content.substr(5, 4);
+    const std::string& vendor_id = content.substr(0, 4);
+    const std::string& soc_id = content.substr(5, 4);
     // pair.first: Vendor ID.
     // pair.second: The string that we return from our API.
-    const std::map<std::string, std::string> vendors{{"0426", "MediaTek"},
-                                                     {"0070", "Qualcomm"}};
-    auto vendor = vendors.find(vendor_id);
+    const std::map<std::string, std::string>& vendors{{"0426", "MediaTek"},
+                                                      {"0070", "Qualcomm"}};
+    const auto& vendor = vendors.find(vendor_id);
     if (vendor != vendors.end()) {
       *model_name = vendor->second + " " + soc_id;
     }
@@ -346,13 +341,13 @@ void ParseCompatibleString(const base::FilePath& root_dir,
 
   // pair.first: Vendor string in compatible string.
   // pair.second: The string that we return from our API.
-  const std::map<std::string, std::string> vendors{{"mediatek", "MediaTek"},
-                                                   {"qualcomm", "Qualcomm"},
-                                                   {"rockchip", "Rockchip"}};
+  const std::map<std::string, std::string>& vendors{{"mediatek", "MediaTek"},
+                                                    {"qualcomm", "Qualcomm"},
+                                                    {"rockchip", "Rockchip"}};
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(content, ',', '\0', &pairs);
   for (const auto& key_value : pairs) {
-    auto vendor = vendors.find(key_value.first);
+    const auto& vendor = vendors.find(key_value.first);
     if (vendor != vendors.end()) {
       *model_name = vendor->second + " " + key_value.second;
       return;
@@ -448,10 +443,10 @@ State::State(Context* context)
 State::~State() = default;
 
 bool State::FetchNumTotalThreads() {
-  base::FilePath root_dir = context_->root_dir();
+  const base::FilePath& root_dir = context_->root_dir();
 
   std::string cpu_present;
-  auto cpu_dir = root_dir.Append(kRelativeCpuDir);
+  const auto& cpu_dir = root_dir.Append(kRelativeCpuDir);
   if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
     LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read CPU present file: " +
@@ -466,11 +461,11 @@ bool State::FetchNumTotalThreads() {
   //
   // https://www.kernel.org/doc/html/v5.5/admin-guide/cputopology.html
 
-  std::vector<std::string> cpu_threads = base::SplitString(
+  const std::vector<std::string>& cpu_threads = base::SplitString(
       cpu_present, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   uint32_t total_thread_count = 0;
 
-  for (auto& thread : cpu_threads) {
+  for (const auto& thread : cpu_threads) {
     std::string low_thread_num;
     std::string high_thread_num;
     uint32_t low_thread_int;
@@ -507,7 +502,7 @@ bool State::FetchArchitecture() {
     return true;
   }
 
-  std::string machine(buf.machine);
+  const std::string& machine(buf.machine);
   if (machine == kUnameMachineX86_64) {
     cpu_info_->architecture = mojom::CpuArchitectureEnum::kX86_64;
     return true;
@@ -527,7 +522,7 @@ bool State::FetchArchitecture() {
 
 // Fetch Keylocker information.
 bool State::FetchKeylockerInfo() {
-  base::FilePath root_dir = context_->root_dir();
+  const base::FilePath& root_dir = context_->root_dir();
 
   std::string file_contents;
   // Crypto file is common for all CPU architects. However, crypto algorithms
@@ -554,7 +549,7 @@ bool State::FetchKeylockerInfo() {
 
 // Fetches and returns information about the device's CPU temperature channels.
 bool State::FetchCpuTemperatures() {
-  base::FilePath root_dir = context_->root_dir();
+  const base::FilePath& root_dir = context_->root_dir();
 
   std::vector<mojom::CpuTemperatureChannelPtr> temps;
   // Get directories |/sys/class/hwmon/hwmon*|
@@ -565,7 +560,7 @@ bool State::FetchCpuTemperatures() {
        hwmon_path = hwmon_enumerator.Next()) {
     // First try to get |temp*_input| files from |hwmon*/device/|. If the values
     // cannot be read, fallback to |hwmon*/| instead.
-    base::FilePath device_path = hwmon_path.Append(kDeviceDir);
+    const base::FilePath& device_path = hwmon_path.Append(kDeviceDir);
     if (base::PathExists(device_path) &&
         ReadTemperatureSensorInfo(device_path, &temps)) {
       continue;
@@ -579,9 +574,9 @@ bool State::FetchCpuTemperatures() {
 }
 
 bool State::FetchPhysicalCpus() {
-  base::FilePath root_dir = context_->root_dir();
+  const base::FilePath& root_dir = context_->root_dir();
 
-  std::optional<std::map<int, ParsedStatContents>> parsed_stat_contents =
+  const std::optional<std::map<int, ParsedStatContents>>& parsed_stat_contents =
       GetParsedStatContents(root_dir);
   if (parsed_stat_contents == std::nullopt) {
     LogAndSetError(
@@ -589,10 +584,10 @@ bool State::FetchPhysicalCpus() {
         "Unable to parse stat file: " + GetProcStatPath(root_dir).value());
     return false;
   }
-  std::map<int, ParsedStatContents> logical_ids_to_stat_contents =
+  const std::map<int, ParsedStatContents>& logical_ids_to_stat_contents =
       parsed_stat_contents.value();
 
-  std::optional<std::vector<std::string>> processor_info_opt =
+  const std::optional<std::vector<std::string>>& processor_info_opt =
       GetProcCpuInfoContent(root_dir);
   if (processor_info_opt == std::nullopt) {
     LogAndSetError(mojom::ErrorType::kFileReadError,
@@ -602,7 +597,7 @@ bool State::FetchPhysicalCpus() {
   }
   const std::vector<std::string>& processor_info = processor_info_opt.value();
 
-  PhysicalCpuMap physical_cpus;
+  std::map<int, mojom::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
     if (!IsProcessorBlock(processor))
       continue;
@@ -647,8 +642,8 @@ bool State::FetchPhysicalCpus() {
     }
 
     // Populate the logical CPU info values.
-    mojom::LogicalCpuInfo logical_cpu;
-    const auto parsed_stat_itr =
+    auto logical_cpu = mojom::LogicalCpuInfo::New();
+    const auto& parsed_stat_itr =
         logical_ids_to_stat_contents.find(processor_id);
     if (parsed_stat_itr == logical_ids_to_stat_contents.end()) {
       LogAndSetError(mojom::ErrorType::kParseError,
@@ -656,10 +651,10 @@ bool State::FetchPhysicalCpus() {
                          base::NumberToString(processor_id));
       return false;
     }
-    logical_cpu.user_time_user_hz = parsed_stat_itr->second.user_time_user_hz;
-    logical_cpu.system_time_user_hz =
+    logical_cpu->user_time_user_hz = parsed_stat_itr->second.user_time_user_hz;
+    logical_cpu->system_time_user_hz =
         parsed_stat_itr->second.system_time_user_hz;
-    logical_cpu.idle_time_user_hz = parsed_stat_itr->second.idle_time_user_hz;
+    logical_cpu->idle_time_user_hz = parsed_stat_itr->second.idle_time_user_hz;
 
     auto c_states = GetCStates(root_dir, processor_id);
     if (c_states == std::nullopt) {
@@ -667,18 +662,19 @@ bool State::FetchPhysicalCpus() {
                      "Unable to read C States.");
       return false;
     }
-    logical_cpu.c_states = std::move(c_states.value());
+    logical_cpu->c_states = std::move(c_states.value());
 
-    auto cpufreq_dir = GetCpuFreqDirectoryPath(root_dir, processor_id);
+    const auto& cpufreq_dir = GetCpuFreqDirectoryPath(root_dir, processor_id);
     // Not every CPU support CPU frequency scaling. Set the frequency to 0 if
     // the CPU doesn't support and relevant files does not exist.
     if (!base::PathExists(cpufreq_dir)) {
-      logical_cpu.max_clock_speed_khz = 0;
-      logical_cpu.scaling_max_frequency_khz = 0;
-      logical_cpu.scaling_current_frequency_khz = 0;
+      logical_cpu->max_clock_speed_khz = 0;
+      logical_cpu->scaling_max_frequency_khz = 0;
+      logical_cpu->scaling_current_frequency_khz = 0;
     } else {
       if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName,
-                       &base::StringToUint, &logical_cpu.max_clock_speed_khz)) {
+                       &base::StringToUint,
+                       &logical_cpu->max_clock_speed_khz)) {
         LogAndSetError(mojom::ErrorType::kFileReadError,
                        "Unable to read max CPU frequency file to integer: " +
                            cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value());
@@ -687,7 +683,7 @@ bool State::FetchPhysicalCpus() {
 
       if (!ReadInteger(cpufreq_dir, kScalingMaxFreqFileName,
                        &base::StringToUint,
-                       &logical_cpu.scaling_max_frequency_khz)) {
+                       &logical_cpu->scaling_max_frequency_khz)) {
         LogAndSetError(
             mojom::ErrorType::kFileReadError,
             "Unable to read scaling max frequency file to integer: " +
@@ -697,7 +693,7 @@ bool State::FetchPhysicalCpus() {
 
       if (!ReadInteger(cpufreq_dir, kScalingCurFreqFileName,
                        &base::StringToUint,
-                       &logical_cpu.scaling_current_frequency_khz)) {
+                       &logical_cpu->scaling_current_frequency_khz)) {
         LogAndSetError(
             mojom::ErrorType::kFileReadError,
             "Unable to read scaling current frequency file to integer: " +
@@ -707,7 +703,7 @@ bool State::FetchPhysicalCpus() {
     }
 
     if (!ReadInteger(GetCoreIdPath(root_dir, processor_id), &base::StringToUint,
-                     &logical_cpu.core_id)) {
+                     &logical_cpu->core_id)) {
       LogAndSetError(mojom::ErrorType::kParseError,
                      "Unable to parse core ID for cpu " +
                          base::NumberToString(processor_id));
@@ -715,7 +711,7 @@ bool State::FetchPhysicalCpus() {
     }
 
     // Add this logical CPU to the corresponding physical CPU.
-    itr->second->logical_cpus.push_back(logical_cpu.Clone());
+    itr->second->logical_cpus.push_back(std::move(logical_cpu));
   }
 
   for (auto& key_value : physical_cpus) {
@@ -726,13 +722,14 @@ bool State::FetchPhysicalCpus() {
 }
 
 bool State::FetchVirtualization() {
-  base::FilePath root_dir = context_->root_dir();
+  const base::FilePath& root_dir = context_->root_dir();
 
   cpu_info_->virtualization = mojom::VirtualizationInfo::New();
   cpu_info_->virtualization->has_kvm_device =
       base::PathExists(root_dir.Append(kRelativeKvmFilePath));
 
-  base::FilePath smt_dir = root_dir.Append(kRelativeCpuDir).Append(kSmtDirName);
+  const base::FilePath& smt_dir =
+      root_dir.Append(kRelativeCpuDir).Append(kSmtDirName);
   // If smt control directory does not exist, this means the linux kernel
   // version does not support smt and we mark it as kNotImplemented.
   if (!base::PathExists(smt_dir)) {
@@ -742,7 +739,7 @@ bool State::FetchVirtualization() {
     return true;
   }
 
-  base::FilePath smt_active_path = smt_dir.Append(kSmtActiveFileName);
+  const base::FilePath& smt_active_path = smt_dir.Append(kSmtActiveFileName);
 
   uint32_t active;
   if (!ReadInteger(smt_active_path, base::StringToUint, &active) ||
@@ -755,7 +752,7 @@ bool State::FetchVirtualization() {
   cpu_info_->virtualization->is_smt_active = active == 1;
 
   std::string control;
-  base::FilePath smt_control_path = smt_dir.Append(kSmtControlFileName);
+  const base::FilePath& smt_control_path = smt_dir.Append(kSmtControlFileName);
 
   if (!ReadAndTrimString(smt_control_path, &control)) {
     LogAndSetError(mojom::ErrorType::kFileReadError,
@@ -788,8 +785,8 @@ bool State::FetchVirtualization() {
 }
 
 bool State::FetchVulnerabilities() {
-  base::FilePath root_dir = context_->root_dir();
-  base::FilePath vulnerability_dir =
+  const base::FilePath& root_dir = context_->root_dir();
+  const base::FilePath& vulnerability_dir =
       root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
   // If vulnerabilities directory does not exist, this means the linux kernel
   // version does not support vulnerability detection yet and we will return
@@ -919,8 +916,8 @@ void State::Fetch(Context* context, FetchCpuInfoCallback callback) {
 
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
                                       int logical_id) {
-  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
-  std::string cpuidle_dirname = "cpuidle";
+  const std::string& logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
+  const std::string& cpuidle_dirname = "cpuidle";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(cpuidle_dirname);
@@ -930,17 +927,17 @@ base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
 // cpufreq directory for the given logical CPU.
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
                                        int logical_id) {
-  std::string cpufreq_policy_dir =
+  const std::string& cpufreq_policy_dir =
       "cpufreq/policy" + base::NumberToString(logical_id);
 
-  auto policy_path =
+  const auto& policy_path =
       root_dir.Append(kRelativeCpuDir).Append(cpufreq_policy_dir);
   if (base::PathExists(policy_path)) {
     return policy_path;
   }
 
-  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
-  std::string cpufreq_dirname = "cpufreq";
+  const std::string& logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
+  const std::string& cpufreq_dirname = "cpufreq";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(cpufreq_dirname);
@@ -948,16 +945,17 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 
 base::FilePath GetPhysicalPackageIdPath(const base::FilePath& root_dir,
                                         int logical_id) {
-  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
-  std::string physical_package_id_filename = "topology/physical_package_id";
+  const std::string& logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
+  const std::string& physical_package_id_filename =
+      "topology/physical_package_id";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(physical_package_id_filename);
 }
 
 base::FilePath GetCoreIdPath(const base::FilePath& root_dir, int logical_id) {
-  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
-  std::string core_id_filename = "topology/core_id";
+  const std::string& logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
+  const std::string& core_id_filename = "topology/core_id";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(core_id_filename);
