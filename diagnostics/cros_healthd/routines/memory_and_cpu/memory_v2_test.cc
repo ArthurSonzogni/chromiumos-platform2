@@ -99,7 +99,7 @@ class MemoryRoutineV2TestBase : public BaseFileTest {
         .WillRepeatedly(WithArgs<0, 1>(Invoke(
             [=](uint32_t testing_mem_kib,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) mutable {
+                    receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_testing_mem_kib_ = testing_mem_kib;
             })));

@@ -44,7 +44,7 @@ class PrimeSearchRoutineV2TestBase : public testing::Test {
             [=](uint32_t test_seconds, uint64_t max_num,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver,
-                Executor::RunPrimeSearchCallback callback) mutable {
+                Executor::RunPrimeSearchCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_test_seconds_ = test_seconds;
               received_max_num_ = max_num;

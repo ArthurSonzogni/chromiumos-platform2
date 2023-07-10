@@ -60,7 +60,7 @@ class CpuStressRoutineV2TestBase : public BaseFileTest {
         .WillRepeatedly(WithArgs<1, 3>(Invoke(
             [=](uint32_t test_seconds,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) mutable {
+                    receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_test_seconds_ = test_seconds;
             })));
