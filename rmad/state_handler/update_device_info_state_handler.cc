@@ -134,12 +134,13 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     LOG(WARNING) << "Failed to get original region from vpd.";
   }
   if (!cros_config_utils_->GetSkuId(&sku_id)) {
-    // If the device uses CBI, SKU might not be set on the board. If the device
-    // uses strapping pins but fails to get the SKU, we will set it to 0 as a
-    // placeholder.
+    // If the device uses CBI, SKU might not be set on the board.
     LOG(WARNING) << "Failed to get original sku from cros_config.";
     if (!rmad_config_.has_cbi) {
-      sku_id = 0;
+      // Set |sku_id| as -1 to represent we failed to get the SKU. This value
+      // must be overridden afterward and never left as -1 when communicate with
+      // Chrome.
+      sku_id = -1;
     }
   }
   // For backward compatibility, we should use cros_config to get the
@@ -166,10 +167,15 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
   if (!rmad_config_.has_cbi) {
-    if (sku_id == 0 && !sku_id_list.empty()) {
-      LOG(ERROR) << "The model has a list of SKUs but the strapping pins are "
-                    "not set properly.";
-      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    if (sku_id == -1) {
+      if (!sku_id_list.empty()) {
+        LOG(ERROR) << "The model has a list of SKUs but the strapping pins are "
+                      "not set properly.";
+        return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+      }
+      // If the device uses strapping pins but fails to get the SKU, we will set
+      // it to 0 as a placeholder.
+      sku_id = 0;
     }
     // If the device doesn't have CBI, make the current SKU ID the only option
     // so the user cannot change it.
