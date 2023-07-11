@@ -118,6 +118,8 @@ message VmKernelLogRequest {
     TERMINA = 1;
     ARC_VM = 2;
     PLUGIN_VM = 3;
+    BOREALIS = 4;
+    BRUSCHETTA = 5;
   };
 
   VmType vm_type = 1;
