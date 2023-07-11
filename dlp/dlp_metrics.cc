@@ -4,6 +4,8 @@
 
 #include "dlp/dlp_metrics.h"
 
+#include <utility>
+
 namespace dlp {
 
 DlpMetrics::DlpMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
@@ -28,6 +30,11 @@ void DlpMetrics::SendDatabaseError(DatabaseError error) const {
 
 void DlpMetrics::SendAdaptorError(AdaptorError error) const {
   metrics_lib_->SendEnumToUMA(kDlpAdaptorErrorHistogram, error);
+}
+
+void DlpMetrics::SetMetricsLibraryForTesting(
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
+  metrics_lib_ = std::move(metrics_lib);
 }
 
 };  // namespace dlp

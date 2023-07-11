@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <brillo/dbus/dbus_object.h>
@@ -69,6 +70,10 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
       std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
                                                        object_path),
       feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath());
+  std::unique_ptr<FakeMetricsLibrary> metrics_library =
+      std::make_unique<FakeMetricsLibrary>();
+  metrics_library_ = metrics_library.get();
+  adaptor_->SetMetricsLibraryForTesting(std::move(metrics_library));
 }
 
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;
@@ -89,6 +94,7 @@ ino_t DlpAdaptorTestHelper::GetInodeValue(const std::string& path) {
 void DlpAdaptorTestHelper::ReCreateAdaptor() {
   ASSERT_NE(adaptor_.get(), nullptr);
   adaptor_.reset();
+  metrics_library_ = nullptr;
 
   EXPECT_TRUE(home_dir_.Delete());
   EXPECT_TRUE(home_dir_.CreateUniqueTempDir());
@@ -100,6 +106,18 @@ void DlpAdaptorTestHelper::ReCreateAdaptor() {
       std::make_unique<brillo::dbus_utils::DBusObject>(
           nullptr, bus_, dbus::ObjectPath(kObjectPath)),
       feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath());
+  std::unique_ptr<FakeMetricsLibrary> metrics_library =
+      std::make_unique<FakeMetricsLibrary>();
+  metrics_library_ = metrics_library.get();
+  adaptor_->SetMetricsLibraryForTesting(std::move(metrics_library));
+}
+
+std::vector<int> DlpAdaptorTestHelper::GetMetrics(
+    const std::string& metrics_name) const {
+  if (metrics_library_) {
+    return metrics_library_->GetCalls(metrics_name);
+  }
+  return {};
 }
 
 }  // namespace dlp

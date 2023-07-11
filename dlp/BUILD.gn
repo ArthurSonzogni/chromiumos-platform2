@@ -147,6 +147,7 @@ if (use.test) {
       ":libdlp_static",
       "//common-mk/testrunner:testrunner",
       "//featured:libfake_platform_features",
+      "//metrics:metrics_test_support",
     ]
   }
 }
@@ -172,6 +173,7 @@ if (use.fuzzer) {
       ":dlp_adaptor_fuzzer_proto",
       ":libdlp_static",
       "//featured:libfake_platform_features",
+      "//metrics:metrics_test_support",
     ]
     pkg_deps = [ "libchrome-test" ]
   }

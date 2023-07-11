@@ -131,6 +131,11 @@ class DlpMetrics {
   // Records whether an error occurs while executing adaptor procedures.
   void SendAdaptorError(AdaptorError error) const;
 
+  // Replaces metrics library created by default with another instance and takes
+  // ownership.
+  void SetMetricsLibraryForTesting(
+      std::unique_ptr<MetricsLibraryInterface> metrics_lib);
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };

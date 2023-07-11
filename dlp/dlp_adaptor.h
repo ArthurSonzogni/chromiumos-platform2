@@ -18,6 +18,7 @@
 #include <base/functional/callback.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <featured/feature_library.h>
+#include <metrics/metrics_library.h>
 
 #include "dlp/dbus-proxies.h"
 #include "dlp/dlp_database.h"
@@ -79,6 +80,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   void SetFanotifyWatcherStartedForTesting(bool is_started);
   void CloseDatabaseForTesting();
+  void SetMetricsLibraryForTesting(
+      std::unique_ptr<MetricsLibraryInterface> metrics_lib);
 
  private:
   friend class DlpAdaptorTestHelper;

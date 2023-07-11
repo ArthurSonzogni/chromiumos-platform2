@@ -23,6 +23,7 @@
 #include "dlp/dlp_adaptor_test_helper.h"
 
 using testing::_;
+using testing::ElementsAre;
 using testing::Invoke;
 using testing::Return;
 
@@ -218,6 +219,17 @@ class DlpAdaptorTest : public ::testing::Test {
     std::move(*response_callback).Run(response.get());
   }
 
+  void StubReplyWithError(
+      dbus::MethodCall* method_call,
+      int /* timeout_ms */,
+      dbus::MockObjectProxy::ResponseCallback* response_callback,
+      dbus::MockObjectProxy::ErrorCallback* error_callback) {
+    method_call->SetSerial(kDBusSerial);
+    auto error_response = dbus::ErrorResponse::FromMethodCall(
+        method_call, "dlp.Error", "error message");
+    std::move(*error_callback).Run(error_response.get());
+  }
+
   void StubReplyBadProto(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
@@ -352,6 +364,9 @@ TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kDatabaseNotReadyError)));
 }
 
 TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
@@ -362,6 +377,7 @@ TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
@@ -383,9 +399,10 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
-TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatchedCallFailed) {
+TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatched_BadProto) {
   InitDatabase();
 
   base::FilePath file_path;
@@ -404,6 +421,33 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatchedCallFailed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
+}
+
+TEST_F(DlpAdaptorTest,
+       NotRestrictedFileAddedAndDlpPolicyMatched_ResponseError) {
+  InitDatabase();
+
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  ino_t inode = DlpAdaptorTestHelper::GetInodeValue(file_path.value());
+
+  is_file_policy_restricted_ = false;
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
+
+  FileOpenRequestResultWaiter waiter;
+  helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+
+  EXPECT_FALSE(waiter.GetResult());
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kRestrictionDetectionError)));
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
@@ -425,6 +469,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAllowedForItself) {
@@ -442,6 +487,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAllowedForItself) {
                                  waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 //
@@ -514,6 +560,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   helper_.ProcessFileOpenRequest(inode2, kPid, waiter3.GetCallback());
 
   EXPECT_TRUE(waiter3.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 // Cached allow response had no access grant attached to its ScopedFD.
@@ -589,6 +636,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
     helper_.ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
     EXPECT_TRUE(waiter2.GetResult());
   }
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
@@ -630,6 +678,52 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
 
   EXPECT_FALSE(allowed);
   EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
+}
+
+TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButErrorResponse) {
+  InitDatabase();
+
+  // Create file to request access by inodes.
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+
+  // Add the file to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
+
+  // Request access to the file.
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
+  bool allowed;
+  base::ScopedFD lifeline_fd;
+  base::RunLoop request_file_access_run_loop;
+  response->set_return_callback(base::BindOnce(
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
+        RequestFileAccessResponse response =
+            ParseResponse<RequestFileAccessResponse>(proto_blob);
+        *allowed = response.allowed();
+        lifeline_fd->reset(dup(fd.get()));
+        run_loop->Quit();
+      },
+      &allowed, &lifeline_fd, &request_file_access_run_loop));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, DlpComponent::USB));
+  request_file_access_run_loop.Run();
+
+  EXPECT_FALSE(allowed);
+  EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kRestrictionDetectionError)));
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
@@ -696,6 +790,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
     helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
     EXPECT_FALSE(waiter.GetResult());
   }
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
@@ -754,6 +849,7 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
   helper_.ProcessFileOpenRequest(inode2, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
@@ -802,8 +898,9 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
-//
+
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   InitDatabase();
 
@@ -861,6 +958,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
@@ -921,6 +1019,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   helper_.ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 // DlpAdaptor::RequestFileAccess crashes if file access is requested while the
@@ -951,6 +1050,7 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
   request_file_access_run_loop.Run();
 
   EXPECT_TRUE(allowed);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSources) {
@@ -987,6 +1087,7 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
@@ -1030,6 +1131,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kDatabaseNotReadyError),
+                  static_cast<int>(AdaptorError::kDatabaseNotReadyError)));
 }
 
 // TODO(b/290389988): Flaky test
@@ -1108,6 +1213,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   EXPECT_EQ(file_metadata1.inode(), inode1);
   EXPECT_EQ(file_metadata1.source_url(), source1);
   EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
@@ -1157,6 +1263,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.source_url(), source2);
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
@@ -1208,6 +1315,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   response = GetFilesSources({inode1, inode2});
 
   ASSERT_EQ(response.files_metadata_size(), 0u);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
@@ -1247,6 +1355,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
   FileMetadata file_metadata2 = response.files_metadata()[1];
   EXPECT_EQ(file_metadata2.inode(), inode2);
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EmptyProto) {
@@ -1263,6 +1372,7 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EmptyProto) {
 
   EXPECT_FALSE(response.has_error_message());
   EXPECT_FALSE(helper_.IsFanotifyWatcherActive());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_BadProto) {
@@ -1273,6 +1383,8 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_BadProto) {
       ParseResponse<SetDlpFilesPolicyResponse>(response_blob);
 
   EXPECT_TRUE(response.has_error_message());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
 }
 
 TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EnableDisable) {
@@ -1351,10 +1463,12 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy_EnableDisable) {
     EXPECT_FALSE(response.has_error_message());
     EXPECT_FALSE(helper_.IsFanotifyWatcherActive());
   }
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, AddZeroFilesToTheDaemon) {
   AddFilesAndCheck({}, /*expected_result=*/true);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, AddFiles_BadProto) {
@@ -1376,6 +1490,9 @@ TEST_F(DlpAdaptorTest, AddFiles_BadProto) {
   GetDlpAdaptor()->AddFiles(std::move(response), RandomProtoBlob());
   run_loop.Run();
   EXPECT_FALSE(success);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kAddFileError),
+                          static_cast<int>(AdaptorError::kInvalidProtoError)));
 }
 
 TEST_F(DlpAdaptorTest, AddFiles_NonExistentFile) {
@@ -1383,6 +1500,10 @@ TEST_F(DlpAdaptorTest, AddFiles_NonExistentFile) {
       {CreateAddFileRequest(base::FilePath("/tmp/non-existent-file"), "source",
                             "referrer")},
       /*expected_result=*/false);
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kAddFileError),
+                  static_cast<int>(AdaptorError::kInodeRetrievalError)));
 }
 
 TEST_F(DlpAdaptorTest, RequestFileAccess_BadProto) {
@@ -1406,6 +1527,8 @@ TEST_F(DlpAdaptorTest, RequestFileAccess_BadProto) {
   EXPECT_FALSE(request_file_response.allowed());
   EXPECT_FALSE(request_file_response.error_message().empty());
   EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
 }
 
 TEST_F(DlpAdaptorTest, RequestFileAccess_NonExistentFile) {
@@ -1434,6 +1557,7 @@ TEST_F(DlpAdaptorTest, RequestFileAccess_NonExistentFile) {
   EXPECT_TRUE(request_file_response.allowed());
   EXPECT_TRUE(request_file_response.error_message().empty());
   EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSources_BadProto) {
@@ -1456,6 +1580,8 @@ TEST_F(DlpAdaptorTest, GetFilesSources_BadProto) {
   run_loop.Run();
 
   EXPECT_FALSE(result.error_message().empty());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
 }
 
 TEST_F(DlpAdaptorTest, CheckFilesTransfer_BadProto) {
@@ -1479,6 +1605,8 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_BadProto) {
 
   EXPECT_FALSE(result.error_message().empty());
   EXPECT_TRUE(result.files_paths().empty());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
 }
 
 TEST_F(DlpAdaptorTest, CheckFilesTransfer_DbNotInitialized) {
@@ -1517,6 +1645,10 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_DbNotInitialized) {
 
   EXPECT_FALSE(result.error_message().empty());
   EXPECT_TRUE(result.files_paths().empty());
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kDatabaseNotReadyError),
+                  static_cast<int>(AdaptorError::kDatabaseNotReadyError)));
 }
 
 TEST_F(DlpAdaptorTest, CheckFilesTransfer_IsFilesTransferRestrictedBadProto) {
@@ -1557,6 +1689,52 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_IsFilesTransferRestrictedBadProto) {
 
   EXPECT_FALSE(result.error_message().empty());
   EXPECT_TRUE(result.files_paths().empty());
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kInvalidProtoError)));
+}
+
+TEST_F(DlpAdaptorTest,
+       CheckFilesTransfer_IsFilesTransferRestrictedResponseError) {
+  // Create database.
+  InitDatabase();
+
+  CheckFilesTransferResponse result;
+  base::RunLoop run_loop;
+
+  // Create file.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+
+  const std::string source1 = "source1";
+
+  // Add the file to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, "referrer1")},
+                   /*expected_result=*/true);
+
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubReplyWithError));
+
+  auto response = std::make_unique<
+      brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+      nullptr);
+  response->set_return_callback(base::BindOnce(
+      [](CheckFilesTransferResponse* result, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob) {
+        *result = ParseResponse<CheckFilesTransferResponse>(proto_blob);
+        run_loop->Quit();
+      },
+      &result, &run_loop));
+  GetDlpAdaptor()->CheckFilesTransfer(
+      std::move(response), CreateSerializedCheckFilesTransferRequest(
+                               {file_path1.value()}, DlpComponent::USB));
+  run_loop.Run();
+
+  EXPECT_FALSE(result.error_message().empty());
+  EXPECT_TRUE(result.files_paths().empty());
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kRestrictionDetectionError)));
 }
 
 class DlpAdaptorCheckFilesTransferTest
@@ -1661,6 +1839,7 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
       EXPECT_EQ(restricted_files_paths[0], file_path1.value());
     }
   }
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
 }  // namespace dlp

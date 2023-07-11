@@ -457,6 +457,11 @@ void DlpAdaptor::CloseDatabaseForTesting() {
   db_.reset();
 }
 
+void DlpAdaptor::SetMetricsLibraryForTesting(
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
+  dlp_metrics_->SetMetricsLibraryForTesting(std::move(metrics_lib));
+}
+
 void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
                               base::OnceClosure init_callback) {
   LOG(INFO) << "Opening database in: " << database_path.value();

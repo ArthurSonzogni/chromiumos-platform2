@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/task/single_thread_task_executor.h>
@@ -15,6 +16,7 @@
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <featured/fake_platform_features.h>
+#include <metrics/fake_metrics_library.h>
 
 #include "dlp/dlp_adaptor.h"
 
@@ -59,6 +61,8 @@ class DlpAdaptorTestHelper {
 
   void ReCreateAdaptor();
 
+  std::vector<int> GetMetrics(const std::string& metrics_name) const;
+
  private:
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
@@ -69,6 +73,8 @@ class DlpAdaptorTestHelper {
 
   base::ScopedTempDir home_dir_;
   std::unique_ptr<DlpAdaptor> adaptor_;
+  // Owned by DlpMetrics.
+  FakeMetricsLibrary* metrics_library_;
 
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
   brillo::BaseMessageLoop brillo_loop_{task_executor_.task_runner()};
