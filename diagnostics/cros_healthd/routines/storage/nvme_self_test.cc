@@ -110,12 +110,12 @@ void NvmeSelfTestRoutine::Start() {
                      weak_ptr_routine_.GetWeakPtr());
 
   switch (self_test_type_) {
-    case kRunShortSelfTest:
+    case SelfTestType::kRunShortSelfTest:
       debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption,
                                std::move(result_callback),
                                std::move(error_callback));
       break;
-    case kRunLongSelfTest:
+    case SelfTestType::kRunLongSelfTest:
       debugd_proxy_->NvmeAsync(kNvmeLongSelfTestOption,
                                std::move(result_callback),
                                std::move(error_callback));
@@ -234,7 +234,8 @@ bool NvmeSelfTestRoutine::CheckSelfTestCompleted(uint8_t progress,
   // |status|: Bits 7:4 indicates the type of operation: 0x1 for short-time
   // self-test, 0x2 for long-time self-test; Bits 3:0 indicates the result of
   // self-test.
-  return (progress & 0xf) == 0 && (status >> 4) == self_test_type_;
+  return (progress & 0xf) == 0 &&
+         (status >> 4) == static_cast<uint8_t>(self_test_type_);
 }
 
 void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
@@ -269,7 +270,7 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
                                          GetCompleteMessage(complete_status))) {
       return;
     }
-  } else if ((progress & 0xf) == self_test_type_) {
+  } else if ((progress & 0xf) == static_cast<uint8_t>(self_test_type_)) {
     if (!UpdateStatusWithProgressPercent(
             mojom::DiagnosticRoutineStatusEnum::kRunning, percent,
             kNvmeSelfTestRoutineRunning)) {

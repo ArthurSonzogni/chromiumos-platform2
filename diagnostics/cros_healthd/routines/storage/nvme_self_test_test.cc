@@ -72,7 +72,7 @@ class NvmeSelfTestRoutineTest : public testing::Test {
 // Test that the NvmeSelfTest routine for short-time passes if it starts without
 // an error and result from NVMe is passed.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -127,7 +127,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
 // Test that the NvmeSelfTest routine for short-time fails if it starts with
 // an error.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestStartError) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kNvmeError);
@@ -142,7 +142,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestStartError) {
 // Test that the NvmeSelfTest routine for short-time fails if result from NVMe
 // is failed.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -175,7 +175,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
 // Test that the NvmeSelfTest routinie for short-time fails if result from NVMe
 // is an invalid error.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -208,7 +208,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
 // Test that the NvmeSelfTest routinie for short-time fails if the index of
 // type is invalid in result of NVMe..
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -244,7 +244,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
   // Invalid base64 encoded data. Length of encoded data must divide by 4.
   const char kSelfTestInvalidProgress[] = "AAAAABMEAAAAAAAAAA";
 
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -267,7 +267,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
 // Test that the NvmeSelfTest routine for short-time fails if size of return
 // data is not equal to required length.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -302,7 +302,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
 // Test that the NvmeSelfTest routine for short-time passes if it is cancelled
 // successfully.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -325,7 +325,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
 // Test that the NvmeSelfTest routine for short-time fails if it is cancelled
 // with an error.
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -346,7 +346,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
 // Test that the NvmeSelfTest routine for long-time passes if it starts without
 // an error and result from NVMe is passed.
 TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -401,7 +401,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
 // Test that the NvmeSelfTest routine for long-time fails if result from NVMe
 // is failed.
 TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -436,7 +436,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdError) {
   const char kDebugdErrorMessage[] = "Debugd mock error for testing";
   const brillo::ErrorPtr kError =
       brillo::Error::Create(FROM_HERE, "", "", kDebugdErrorMessage);
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<2>([&](OnceErrorCallback callback) {
         std::move(callback).Run(kError.get());
@@ -450,7 +450,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdError) {
 // Tests that the NvmeSelfTest routine fails if debugd returns with an error
 // while cancelling.
 TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -476,7 +476,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
 // Tests that the NvmeSelfTest routine fails if debugd returns with an error
 // while getting progress.
 TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
-  CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
+  CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
         std::move(callback).Run(kStartSuccess);
@@ -532,7 +532,7 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
   };
 
   for (const auto& testcase : testcases) {
-    CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+    CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
     EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
         .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
           std::move(callback).Run(kStartSuccess);

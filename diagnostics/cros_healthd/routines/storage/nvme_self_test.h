@@ -49,7 +49,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutineWithStatus {
   static const uint32_t kNvmeLogDataLength;
   static const bool kNvmeLogRawBinary;
 
-  enum SelfTestType {
+  enum class SelfTestType : uint8_t {
     // In NVMe spec, the referred byte(Log Page 6, byte 4, Bit 7:4) indiecates
     // the self-test type. 0: reserved; 1: short self-test; 2: long self-test.
     kRunShortSelfTest = 1, /* Launch short-time self-test */

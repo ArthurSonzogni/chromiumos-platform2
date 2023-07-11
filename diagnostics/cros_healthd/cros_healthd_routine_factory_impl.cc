@@ -153,8 +153,8 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
   NvmeSelfTestRoutine::SelfTestType type =
       nvme_self_test_type ==
               ash::cros_healthd::mojom::NvmeSelfTestTypeEnum::kShortSelfTest
-          ? NvmeSelfTestRoutine::kRunShortSelfTest
-          : NvmeSelfTestRoutine::kRunLongSelfTest;
+          ? NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest
+          : NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest;
 
   return std::make_unique<NvmeSelfTestRoutine>(debugd_proxy, type);
 }
