@@ -104,7 +104,10 @@ message StartArcMiniInstanceRequest {
   // "ro.vendor.arc.sf.maxacquired" property setting.
   optional int32 force_max_acquired_buffers_experiment = 19 [default = -1];
 
-  // Next ID to use: 20
+  // Flag to use dev caches in arccachesetup service.
+  optional bool use_dev_caches = 20 [default = false];
+
+  // Next ID to use: 21
 }
 
 // ARC upgrade options sent from Chrome to session manager. This message is used
