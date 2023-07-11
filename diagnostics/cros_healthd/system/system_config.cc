@@ -79,20 +79,20 @@ void NvmeSelfTestSupportedByDebugd(
 
 std::string GetSensorPropertyName(SensorType sensor) {
   switch (sensor) {
-    case kBaseAccelerometer:
+    case SensorType::kBaseAccelerometer:
       return kHasBaseAccelerometer;
-    case kBaseGyroscope:
+    case SensorType::kBaseGyroscope:
       return kHasBaseGyroscope;
-    case kBaseMagnetometer:
+    case SensorType::kBaseMagnetometer:
       return kHasBaseMagnetometer;
-    case kLidAccelerometer:
+    case SensorType::kLidAccelerometer:
       return kHasLidAccelerometer;
-    case kLidGyroscope:
+    case SensorType::kLidGyroscope:
       return kHasLidGyroscope;
-    case kLidMagnetometer:
+    case SensorType::kLidMagnetometer:
       return kHasLidMagnetometer;
-    case kBaseGravitySensor:
-    case kLidGravitySensor:
+    case SensorType::kBaseGravitySensor:
+    case SensorType::kLidGravitySensor:
       // There are no |has-base-gravity-sensor| and |has-lid-gravity-sensor|
       // configurations.
       NOTREACHED_NORETURN();
@@ -270,12 +270,12 @@ std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
   // Gravity sensor is a virtual fusion sensor of accelerometer and gyroscope
   // instead of a hardware sensor. There is no static config for the gravity
   // sensor, but we can refer to the config of accelerometer and gyroscope.
-  if (sensor == kBaseGravitySensor) {
-    return HasGravitySensor(HasSensor(kBaseAccelerometer),
-                            HasSensor(kBaseGyroscope));
-  } else if (sensor == kLidGravitySensor) {
-    return HasGravitySensor(HasSensor(kLidAccelerometer),
-                            HasSensor(kLidGyroscope));
+  if (sensor == SensorType::kBaseGravitySensor) {
+    return HasGravitySensor(HasSensor(SensorType::kBaseAccelerometer),
+                            HasSensor(SensorType::kBaseGyroscope));
+  } else if (sensor == SensorType::kLidGravitySensor) {
+    return HasGravitySensor(HasSensor(SensorType::kLidAccelerometer),
+                            HasSensor(SensorType::kLidGyroscope));
   }
   std::string has_sensor;
   if (!cros_config_->GetString(kHardwarePropertiesPath,

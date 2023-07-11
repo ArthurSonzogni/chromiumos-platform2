@@ -260,7 +260,7 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithoutSensor) {
 TEST_F(SensitiveSensorRoutineTest, RoutineExistenceCheckError) {
   fake_sensor_service().SetIdsTypes({});
   // Setup wrong configuration.
-  fake_system_config()->SetSensor(kBaseAccelerometer, true);
+  fake_system_config()->SetSensor(SensorType::kBaseAccelerometer, true);
   StartRoutine();
 
   // Wait for the error to occur.

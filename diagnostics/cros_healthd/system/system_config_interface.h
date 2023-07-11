@@ -12,7 +12,7 @@
 
 namespace diagnostics {
 
-enum SensorType {
+enum class SensorType {
   kBaseAccelerometer,
   kBaseGyroscope,
   kBaseMagnetometer,

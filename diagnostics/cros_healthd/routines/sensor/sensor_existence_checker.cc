@@ -92,24 +92,24 @@ void SensorExistenceChecker::HandleSensorLocationResponse(
   for (const auto& type : sensor_types) {
     if (type == cros::mojom::DeviceType::ACCEL) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensor_ids_[kBaseAccelerometer].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kBaseAccelerometer].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensor_ids_[kLidAccelerometer].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kLidAccelerometer].push_back(sensor_id);
     } else if (type == cros::mojom::DeviceType::ANGLVEL) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensor_ids_[kBaseGyroscope].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kBaseGyroscope].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensor_ids_[kLidGyroscope].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kLidGyroscope].push_back(sensor_id);
     } else if (type == cros::mojom::DeviceType::MAGN) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensor_ids_[kBaseMagnetometer].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kBaseMagnetometer].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensor_ids_[kLidMagnetometer].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kLidMagnetometer].push_back(sensor_id);
     } else if (type == cros::mojom::DeviceType::GRAVITY) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensor_ids_[kBaseGravitySensor].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kBaseGravitySensor].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensor_ids_[kLidGravitySensor].push_back(sensor_id);
+        iio_sensor_ids_[SensorType::kLidGravitySensor].push_back(sensor_id);
     }
   }
 }
@@ -125,9 +125,10 @@ void SensorExistenceChecker::CheckSystemConfig(
 
   std::map<SensorType, Result> existence_check_result;
   for (const auto& sensor :
-       {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
-        kBaseGravitySensor, kBaseMagnetometer, kLidMagnetometer,
-        kLidGravitySensor}) {
+       {SensorType::kBaseAccelerometer, SensorType::kLidAccelerometer,
+        SensorType::kBaseGyroscope, SensorType::kLidGyroscope,
+        SensorType::kBaseGravitySensor, SensorType::kBaseMagnetometer,
+        SensorType::kLidMagnetometer, SensorType::kLidGravitySensor}) {
     existence_check_result[sensor] = {
         .state = GetExistenceCheckState(
             /*has_sensor=*/system_config_->HasSensor(sensor),
