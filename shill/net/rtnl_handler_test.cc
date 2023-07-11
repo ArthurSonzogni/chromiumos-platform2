@@ -361,14 +361,14 @@ TEST_F(RTNLHandlerTest, BasicStoreRequest) {
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
 
   const uint32_t kSequenceNumber1 = 123;
-  auto request = std::make_unique<RTNLMessage>();
+  auto request = CreateFakeMessage();
   request->set_seq(kSequenceNumber1);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber2 = 124;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber2);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -376,7 +376,7 @@ TEST_F(RTNLHandlerTest, BasicStoreRequest) {
 
   const uint32_t kSequenceNumber3 =
       kSequenceNumber1 + stored_request_window_size() - 1;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
@@ -402,14 +402,14 @@ TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
 
   const uint32_t kSequenceNumber1 = 123;
-  auto request = std::make_unique<RTNLMessage>();
+  auto request = CreateFakeMessage();
   request->set_seq(kSequenceNumber1);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber2 = 124;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber2);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -417,7 +417,7 @@ TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
 
   const uint32_t kSequenceNumber3 =
       kSequenceNumber1 + stored_request_window_size();
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
@@ -425,7 +425,7 @@ TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
 
   const uint32_t kSequenceNumber4 =
       kSequenceNumber2 + stored_request_window_size();
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber4);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -447,14 +447,14 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequest) {
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
 
   const uint32_t kSequenceNumber1 = std::numeric_limits<uint32_t>::max();
-  auto request = std::make_unique<RTNLMessage>();
+  auto request = CreateFakeMessage();
   request->set_seq(kSequenceNumber1);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber2 = kSequenceNumber1 + 1;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber2);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -462,7 +462,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequest) {
 
   const uint32_t kSequenceNumber3 =
       kSequenceNumber1 + stored_request_window_size() - 1;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
@@ -488,14 +488,14 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
 
   const uint32_t kSequenceNumber1 = std::numeric_limits<uint32_t>::max();
-  auto request = std::make_unique<RTNLMessage>();
+  auto request = CreateFakeMessage();
   request->set_seq(kSequenceNumber1);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber2 = kSequenceNumber1 + 1;
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber2);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -503,7 +503,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
 
   const uint32_t kSequenceNumber3 =
       kSequenceNumber1 + stored_request_window_size();
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
@@ -511,7 +511,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
 
   const uint32_t kSequenceNumber4 =
       kSequenceNumber2 + stored_request_window_size();
-  request = std::make_unique<RTNLMessage>();
+  request = CreateFakeMessage();
   request->set_seq(kSequenceNumber4);
   StoreRequest(std::move(request));
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
@@ -569,13 +569,13 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   RTNLHandler::GetInstance()->AddInterface(kIfName, kIfType, ByteString{},
                                            error_future.GetCallback());
 
-  RTNLMessage sent_msg;
-  sent_msg.Decode(msg_bytes.GetConstData(), msg_bytes.GetLength());
-  EXPECT_EQ(sent_msg.flags(),
+  const auto sent_msg =
+      RTNLMessage::Decode({msg_bytes.GetConstData(), msg_bytes.GetLength()});
+  EXPECT_EQ(sent_msg->flags(),
             NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK);
-  EXPECT_EQ(sent_msg.GetIflaIfname(), kIfName);
-  ASSERT_TRUE(sent_msg.link_status().kind.has_value());
-  EXPECT_EQ(sent_msg.link_status().kind.value(), kIfType);
+  EXPECT_EQ(sent_msg->GetIflaIfname(), kIfName);
+  ASSERT_TRUE(sent_msg->link_status().kind.has_value());
+  EXPECT_EQ(sent_msg->link_status().kind.value(), kIfType);
 
   ReturnError(kSequenceNumber, kErrorNumber);
 

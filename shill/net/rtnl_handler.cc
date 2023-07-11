@@ -285,8 +285,35 @@ void RTNLHandler::ParseRTNL(InputData* data) {
     // be destructed regardless of the control flow below.
     std::unique_ptr<RTNLMessage> request_msg = PopStoredRequest(hdr->nlmsg_seq);
 
-    RTNLMessage msg;
-    if (!msg.Decode(payload, hdr->nlmsg_len)) {
+    std::unique_ptr<RTNLMessage> msg =
+        RTNLMessage::Decode({payload, hdr->nlmsg_len});
+    if (msg) {
+      switch (msg->type()) {
+        case RTNLMessage::kTypeLink:
+          DispatchEvent(kRequestLink, *msg);
+          break;
+        case RTNLMessage::kTypeAddress:
+          DispatchEvent(kRequestAddr, *msg);
+          break;
+        case RTNLMessage::kTypeRoute:
+          DispatchEvent(kRequestRoute, *msg);
+          break;
+        case RTNLMessage::kTypeRule:
+          DispatchEvent(kRequestRule, *msg);
+          break;
+        case RTNLMessage::kTypeRdnss:
+          DispatchEvent(kRequestRdnss, *msg);
+          break;
+        case RTNLMessage::kTypeNeighbor:
+          DispatchEvent(kRequestNeighbor, *msg);
+          break;
+        case RTNLMessage::kTypeDnssl:
+          // DNSSL support is not implemented. Just ignore it.
+          break;
+        default:
+          LOG(ERROR) << "Unknown RTNL message type: " << msg->type();
+      }
+    } else {
       VLOG(5) << __func__ << ": rtnl packet type " << hdr->nlmsg_type
               << " length " << hdr->nlmsg_len << " sequence " << hdr->nlmsg_seq;
 
@@ -317,10 +344,11 @@ void RTNLHandler::ParseRTNL(InputData* data) {
                 reinterpret_cast<const uint8_t*>(&(hdrErr->msg));
             if (NLMSG_OK(&(hdrErr->msg),
                          static_cast<unsigned int>(end - error_payload))) {
-              RTNLMessage msgErr;
-              if (msgErr.Decode(error_payload, hdrErr->msg.nlmsg_len)) {
-                request_str = " (" + msgErr.ToString() + ")";
-                mode = msgErr.mode();
+              const auto msgErr =
+                  RTNLMessage::Decode({error_payload, hdrErr->msg.nlmsg_len});
+              if (msgErr) {
+                request_str = " (" + msgErr->ToString() + ")";
+                mode = msgErr->mode();
               }
             }
           }
@@ -369,32 +397,6 @@ void RTNLHandler::ParseRTNL(InputData* data) {
         }
         default:
           LOG(ERROR) << "Unknown NL message type: " << hdr->nlmsg_type;
-      }
-    } else {
-      switch (msg.type()) {
-        case RTNLMessage::kTypeLink:
-          DispatchEvent(kRequestLink, msg);
-          break;
-        case RTNLMessage::kTypeAddress:
-          DispatchEvent(kRequestAddr, msg);
-          break;
-        case RTNLMessage::kTypeRoute:
-          DispatchEvent(kRequestRoute, msg);
-          break;
-        case RTNLMessage::kTypeRule:
-          DispatchEvent(kRequestRule, msg);
-          break;
-        case RTNLMessage::kTypeRdnss:
-          DispatchEvent(kRequestRdnss, msg);
-          break;
-        case RTNLMessage::kTypeNeighbor:
-          DispatchEvent(kRequestNeighbor, msg);
-          break;
-        case RTNLMessage::kTypeDnssl:
-          // DNSSL support is not implemented. Just ignore it.
-          break;
-        default:
-          LOG(ERROR) << "Unknown RTNL message type: " << msg.type();
       }
     }
     buf += NLMSG_ALIGN(hdr->nlmsg_len);

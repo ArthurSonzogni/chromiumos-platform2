@@ -429,6 +429,14 @@ const unsigned char kRuleMessage4[] = {
     0x0,  0x1,  0x0, 0x0, 0x0,  0x0, 0x8, 0x0,  0xf,  0x0,  0xff,
     0x0,  0x0,  0x0, 0x8, 0x0,  0xe, 0x0, 0xff, 0xff, 0xff, 0xff};
 
+RTNLMessage CreateFakeMessage() {
+  return RTNLMessage(RTNLMessage::kTypeLink, RTNLMessage::kModeGet,
+                     /*flags=*/0,
+                     /*seq=*/0,
+                     /*pid=*/0,
+                     /*interface_index=*/0, IPAddress::kFamilyIPv4);
+}
+
 }  // namespace
 
 class RTNLMessageTest : public Test {
@@ -443,39 +451,40 @@ class RTNLMessageTest : public Test {
                      uint32_t mtu,
                      ByteString qdisc,
                      int oper_state) {
-    RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    EXPECT_TRUE(msg);
 
-    EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
-    EXPECT_EQ(mode, msg.mode());
-    EXPECT_EQ(interface_index, msg.interface_index());
+    EXPECT_EQ(RTNLMessage::kTypeLink, msg->type());
+    EXPECT_EQ(mode, msg->mode());
+    EXPECT_EQ(interface_index, msg->interface_index());
 
-    RTNLMessage::LinkStatus status = msg.link_status();
+    RTNLMessage::LinkStatus status = msg->link_status();
     EXPECT_EQ(flags, status.flags);
     EXPECT_EQ(change, status.change);
 
-    EXPECT_TRUE(msg.HasAttribute(IFLA_ADDRESS));
-    EXPECT_EQ(address.GetLength(), msg.GetAttribute(IFLA_ADDRESS).GetLength());
-    EXPECT_TRUE(msg.GetAttribute(IFLA_ADDRESS).Equals(address));
+    EXPECT_TRUE(msg->HasAttribute(IFLA_ADDRESS));
+    EXPECT_EQ(address.GetLength(), msg->GetAttribute(IFLA_ADDRESS).GetLength());
+    EXPECT_TRUE(msg->GetAttribute(IFLA_ADDRESS).Equals(address));
 
     ByteString bytestring_name(name, true);
-    EXPECT_TRUE(msg.HasAttribute(IFLA_IFNAME));
+    EXPECT_TRUE(msg->HasAttribute(IFLA_IFNAME));
     EXPECT_EQ(bytestring_name.GetLength(),
-              msg.GetAttribute(IFLA_IFNAME).GetLength());
-    EXPECT_TRUE(msg.GetAttribute(IFLA_IFNAME).Equals(bytestring_name));
-    EXPECT_EQ(name, msg.GetIflaIfname());
+              msg->GetAttribute(IFLA_IFNAME).GetLength());
+    EXPECT_TRUE(msg->GetAttribute(IFLA_IFNAME).Equals(bytestring_name));
+    EXPECT_EQ(name, msg->GetIflaIfname());
 
-    EXPECT_TRUE(msg.HasAttribute(IFLA_MTU));
+    EXPECT_TRUE(msg->HasAttribute(IFLA_MTU));
     uint32_t mtu_val;
-    EXPECT_TRUE(msg.GetAttribute(IFLA_MTU).ConvertToCPUUInt32(&mtu_val));
+    EXPECT_TRUE(msg->GetAttribute(IFLA_MTU).ConvertToCPUUInt32(&mtu_val));
     EXPECT_EQ(mtu, mtu_val);
 
-    EXPECT_TRUE(msg.HasAttribute(IFLA_QDISC));
-    EXPECT_EQ(qdisc.GetLength(), msg.GetAttribute(IFLA_QDISC).GetLength());
-    EXPECT_TRUE(msg.GetAttribute(IFLA_QDISC).Equals(qdisc));
+    EXPECT_TRUE(msg->HasAttribute(IFLA_QDISC));
+    EXPECT_EQ(qdisc.GetLength(), msg->GetAttribute(IFLA_QDISC).GetLength());
+    EXPECT_TRUE(msg->GetAttribute(IFLA_QDISC).Equals(qdisc));
 
-    EXPECT_TRUE(msg.HasAttribute(IFLA_OPERSTATE));
-    EXPECT_EQ(oper_state, msg.GetAttribute(IFLA_OPERSTATE).GetConstData()[0]);
+    EXPECT_TRUE(msg->HasAttribute(IFLA_OPERSTATE));
+    EXPECT_EQ(oper_state, msg->GetAttribute(IFLA_OPERSTATE).GetConstData()[0]);
   }
 
   void TestParseAddress(const ByteString& packet,
@@ -483,21 +492,22 @@ class RTNLMessageTest : public Test {
                         int interface_index,
                         const net_base::IPCIDR& address,
                         unsigned char scope) {
-    RTNLMessage msg;
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
 
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-    EXPECT_EQ(RTNLMessage::kTypeAddress, msg.type());
-    EXPECT_EQ(mode, msg.mode());
-    EXPECT_EQ(interface_index, msg.interface_index());
-    EXPECT_EQ(net_base::ToSAFamily(address.GetFamily()), msg.family());
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(RTNLMessage::kTypeAddress, msg->type());
+    EXPECT_EQ(mode, msg->mode());
+    EXPECT_EQ(interface_index, msg->interface_index());
+    EXPECT_EQ(net_base::ToSAFamily(address.GetFamily()), msg->family());
 
-    RTNLMessage::AddressStatus status = msg.address_status();
+    RTNLMessage::AddressStatus status = msg->address_status();
     EXPECT_EQ(scope, status.scope);
 
-    EXPECT_TRUE(msg.HasAttribute(IFA_ADDRESS));
+    EXPECT_TRUE(msg->HasAttribute(IFA_ADDRESS));
     EXPECT_EQ(ByteString(address.address().ToByteString(), false),
-              msg.GetAttribute(IFA_ADDRESS));
-    EXPECT_EQ(msg.GetIfaAddress(), address);
+              msg->GetAttribute(IFA_ADDRESS));
+    EXPECT_EQ(msg->GetIfaAddress(), address);
   }
 
   void TestParseRoute(const ByteString& packet,
@@ -512,59 +522,60 @@ class RTNLMessageTest : public Test {
                       unsigned char scope,
                       unsigned char type,
                       int metric) {
-    RTNLMessage msg;
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
 
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-    EXPECT_EQ(RTNLMessage::kTypeRoute, msg.type());
-    EXPECT_EQ(0, msg.interface_index());
-    EXPECT_EQ(family, msg.family());
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(RTNLMessage::kTypeRoute, msg->type());
+    EXPECT_EQ(0, msg->interface_index());
+    EXPECT_EQ(family, msg->family());
 
-    RTNLMessage::RouteStatus status = msg.route_status();
+    RTNLMessage::RouteStatus status = msg->route_status();
     EXPECT_EQ(table, status.table);
     EXPECT_EQ(protocol, status.protocol);
     EXPECT_EQ(scope, status.scope);
     EXPECT_EQ(type, status.type);
 
     if (dst) {
-      EXPECT_TRUE(msg.HasAttribute(RTA_DST));
+      EXPECT_TRUE(msg->HasAttribute(RTA_DST));
       EXPECT_EQ(status.dst_prefix, dst->prefix_length());
-      EXPECT_EQ(msg.GetAttribute(RTA_DST),
+      EXPECT_EQ(msg->GetAttribute(RTA_DST),
                 ByteString(dst->address().ToByteString(), false));
-      EXPECT_EQ(msg.GetRtaDst(), dst);
+      EXPECT_EQ(msg->GetRtaDst(), dst);
     }
 
     if (src) {
-      EXPECT_TRUE(msg.HasAttribute(RTA_SRC));
+      EXPECT_TRUE(msg->HasAttribute(RTA_SRC));
       EXPECT_EQ(status.src_prefix, src->prefix_length());
-      EXPECT_EQ(msg.GetAttribute(RTA_SRC),
+      EXPECT_EQ(msg->GetAttribute(RTA_SRC),
                 ByteString(src->address().ToByteString(), false));
-      EXPECT_EQ(msg.GetRtaSrc(), src);
+      EXPECT_EQ(msg->GetRtaSrc(), src);
     }
 
     if (gateway) {
-      EXPECT_TRUE(msg.HasAttribute(RTA_GATEWAY));
-      EXPECT_EQ(msg.GetAttribute(RTA_GATEWAY),
+      EXPECT_TRUE(msg->HasAttribute(RTA_GATEWAY));
+      EXPECT_EQ(msg->GetAttribute(RTA_GATEWAY),
                 ByteString(gateway->ToByteString(), false));
-      EXPECT_EQ(msg.GetRtaGateway(), gateway);
+      EXPECT_EQ(msg->GetRtaGateway(), gateway);
     }
 
     if (interface_index >= 0) {
-      EXPECT_TRUE(msg.HasAttribute(RTA_OIF));
+      EXPECT_TRUE(msg->HasAttribute(RTA_OIF));
       uint32_t int_val;
-      EXPECT_TRUE(msg.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&int_val));
+      EXPECT_TRUE(msg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&int_val));
       EXPECT_EQ(interface_index, int_val);
-      EXPECT_EQ(interface_index, msg.GetRtaOif());
+      EXPECT_EQ(interface_index, msg->GetRtaOif());
     } else {
-      EXPECT_FALSE(msg.HasAttribute(RTA_OIF));
+      EXPECT_FALSE(msg->HasAttribute(RTA_OIF));
     }
     if (metric >= 0) {
-      EXPECT_TRUE(msg.HasAttribute(RTA_PRIORITY));
+      EXPECT_TRUE(msg->HasAttribute(RTA_PRIORITY));
       uint32_t metric_val;
       EXPECT_TRUE(
-          msg.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric_val));
+          msg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric_val));
       EXPECT_EQ(metric, metric_val);
     } else {
-      EXPECT_FALSE(msg.HasAttribute(RTA_PRIORITY));
+      EXPECT_FALSE(msg->HasAttribute(RTA_PRIORITY));
     }
   }
 
@@ -583,71 +594,72 @@ class RTNLMessageTest : public Test {
                      uint32_t uidrange_start,
                      uint32_t uidrange_end,
                      const std::string& ifname) {
-    RTNLMessage msg;
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
 
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-    EXPECT_EQ(RTNLMessage::kTypeRule, msg.type());
-    EXPECT_EQ(0, msg.interface_index());
-    EXPECT_EQ(family, msg.family());
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(RTNLMessage::kTypeRule, msg->type());
+    EXPECT_EQ(0, msg->interface_index());
+    EXPECT_EQ(family, msg->family());
 
-    RTNLMessage::RouteStatus status = msg.route_status();
+    RTNLMessage::RouteStatus status = msg->route_status();
     EXPECT_EQ(table, status.table);
     EXPECT_EQ(protocol, status.protocol);
     EXPECT_EQ(scope, status.scope);
     EXPECT_EQ(type, status.type);
 
     if (dst) {
-      EXPECT_TRUE(msg.HasAttribute(FRA_DST));
-      EXPECT_EQ(msg.GetFraDst(), dst);
+      EXPECT_TRUE(msg->HasAttribute(FRA_DST));
+      EXPECT_EQ(msg->GetFraDst(), dst);
     }
 
     if (src) {
-      EXPECT_TRUE(msg.HasAttribute(FRA_SRC));
-      EXPECT_EQ(msg.GetFraSrc(), src);
+      EXPECT_TRUE(msg->HasAttribute(FRA_SRC));
+      EXPECT_EQ(msg->GetFraSrc(), src);
     }
 
-    EXPECT_TRUE(msg.HasAttribute(FRA_PRIORITY));
+    EXPECT_TRUE(msg->HasAttribute(FRA_PRIORITY));
     uint32_t decoded_priority;
     EXPECT_TRUE(
-        msg.GetAttribute(FRA_PRIORITY).ConvertToCPUUInt32(&decoded_priority));
+        msg->GetAttribute(FRA_PRIORITY).ConvertToCPUUInt32(&decoded_priority));
     EXPECT_EQ(priority, decoded_priority);
 
     if (fwmark || fwmask) {
-      EXPECT_TRUE(msg.HasAttribute(FRA_FWMARK));
-      EXPECT_TRUE(msg.HasAttribute(FRA_FWMASK));
+      EXPECT_TRUE(msg->HasAttribute(FRA_FWMARK));
+      EXPECT_TRUE(msg->HasAttribute(FRA_FWMASK));
 
       uint32_t decoded_fwmark, decoded_fwmask;
       EXPECT_TRUE(
-          msg.GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&decoded_fwmark));
+          msg->GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&decoded_fwmark));
       EXPECT_TRUE(
-          msg.GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&decoded_fwmask));
+          msg->GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&decoded_fwmask));
       EXPECT_EQ(fwmark, decoded_fwmark);
       EXPECT_EQ(fwmask, decoded_fwmask);
     } else {
-      EXPECT_FALSE(msg.HasAttribute(FRA_FWMARK));
-      EXPECT_FALSE(msg.HasAttribute(FRA_FWMASK));
+      EXPECT_FALSE(msg->HasAttribute(FRA_FWMARK));
+      EXPECT_FALSE(msg->HasAttribute(FRA_FWMASK));
     }
 
     if (uidrange_start || uidrange_end) {
-      EXPECT_TRUE(msg.HasAttribute(FRA_UID_RANGE));
+      EXPECT_TRUE(msg->HasAttribute(FRA_UID_RANGE));
 
       struct fib_rule_uid_range decoded_range;
-      EXPECT_TRUE(msg.GetAttribute(FRA_UID_RANGE)
+      EXPECT_TRUE(msg->GetAttribute(FRA_UID_RANGE)
                       .CopyData(sizeof(decoded_range), &decoded_range));
       EXPECT_EQ(uidrange_start, decoded_range.start);
       EXPECT_EQ(uidrange_end, decoded_range.end);
     } else {
-      EXPECT_FALSE(msg.HasAttribute(FRA_UID_RANGE));
+      EXPECT_FALSE(msg->HasAttribute(FRA_UID_RANGE));
     }
 
     if (!ifname.empty()) {
-      EXPECT_TRUE(msg.HasAttribute(FRA_IFNAME));
+      EXPECT_TRUE(msg->HasAttribute(FRA_IFNAME));
       std::string decoded_ifname;
       decoded_ifname = reinterpret_cast<const char*>(
-          msg.GetAttribute(FRA_IFNAME).GetConstData());
+          msg->GetAttribute(FRA_IFNAME).GetConstData());
       EXPECT_STREQ(ifname.c_str(), decoded_ifname.c_str());
     } else {
-      EXPECT_FALSE(msg.HasAttribute(FRA_IFNAME));
+      EXPECT_FALSE(msg->HasAttribute(FRA_IFNAME));
     }
   }
 
@@ -656,14 +668,15 @@ class RTNLMessageTest : public Test {
                       int interface_index,
                       uint32_t lifetime,
                       const std::string& dns_server_addresses) {
-    RTNLMessage msg;
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
 
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-    EXPECT_EQ(RTNLMessage::kTypeRdnss, msg.type());
-    EXPECT_EQ(mode, msg.mode());
-    EXPECT_EQ(interface_index, msg.interface_index());
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(RTNLMessage::kTypeRdnss, msg->type());
+    EXPECT_EQ(mode, msg->mode());
+    EXPECT_EQ(interface_index, msg->interface_index());
 
-    RTNLMessage::RdnssOption rdnss = msg.rdnss_option();
+    RTNLMessage::RdnssOption rdnss = msg->rdnss_option();
 
     // Format addresses string for verification.
     std::string addresses;
@@ -689,15 +702,16 @@ class RTNLMessageTest : public Test {
                          uint16_t state,
                          uint8_t flags,
                          uint8_t type) {
-    RTNLMessage msg;
+    const auto msg =
+        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
 
-    EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-    EXPECT_EQ(RTNLMessage::kTypeNeighbor, msg.type());
-    EXPECT_EQ(mode, msg.mode());
-    EXPECT_EQ(family, msg.family());
-    EXPECT_EQ(interface_index, msg.interface_index());
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(RTNLMessage::kTypeNeighbor, msg->type());
+    EXPECT_EQ(mode, msg->mode());
+    EXPECT_EQ(family, msg->family());
+    EXPECT_EQ(interface_index, msg->interface_index());
 
-    RTNLMessage::NeighborStatus neighbor = msg.neighbor_status();
+    RTNLMessage::NeighborStatus neighbor = msg->neighbor_status();
 
     EXPECT_EQ(neighbor.state, state);
     EXPECT_EQ(neighbor.flags, flags);
@@ -718,20 +732,20 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
 }
 
 TEST_F(RTNLMessageTest, NewLinkIfb1) {
-  RTNLMessage msg;
-  EXPECT_TRUE(msg.Decode(kNewLinkMessageIfb1, sizeof(kNewLinkMessageIfb1)));
-  EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
+  const auto msg = RTNLMessage::Decode(kNewLinkMessageIfb1);
+  EXPECT_TRUE(msg);
+  EXPECT_EQ(RTNLMessage::kTypeLink, msg->type());
 
-  EXPECT_EQ(RTNLMessage::kModeAdd, msg.mode());
-  EXPECT_EQ(kNewLinkMessageIbf1InterfaceIndex, msg.interface_index());
+  EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
+  EXPECT_EQ(kNewLinkMessageIbf1InterfaceIndex, msg->interface_index());
 
   ByteString name(std::string(kNewLinkMessageIbf1InterfaceName), true);
-  EXPECT_TRUE(msg.HasAttribute(IFLA_IFNAME));
-  EXPECT_EQ(name.GetLength(), msg.GetAttribute(IFLA_IFNAME).GetLength());
-  EXPECT_TRUE(msg.GetAttribute(IFLA_IFNAME).Equals(name));
+  EXPECT_TRUE(msg->HasAttribute(IFLA_IFNAME));
+  EXPECT_EQ(name.GetLength(), msg->GetAttribute(IFLA_IFNAME).GetLength());
+  EXPECT_TRUE(msg->GetAttribute(IFLA_IFNAME).Equals(name));
 
-  EXPECT_TRUE(msg.HasAttribute(IFLA_LINKINFO));
-  EXPECT_STREQ("ifb", msg.link_status().kind.value().c_str());
+  EXPECT_TRUE(msg->HasAttribute(IFLA_LINKINFO));
+  EXPECT_STREQ("ifb", msg->link_status().kind.value().c_str());
 }
 
 TEST_F(RTNLMessageTest, DelLinkEth0) {
@@ -821,23 +835,23 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
        0, 0, 255, 0},
   };
   for (const auto& tt : test_cases) {
-    RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(tt.payload, tt.length));
-    EXPECT_EQ(tt.iif, msg.GetFraIifname());
-    EXPECT_EQ(tt.oif, msg.GetFraOifname());
-    EXPECT_EQ(tt.src, msg.GetFraSrc());
-    EXPECT_EQ(tt.dst, msg.GetFraDst());
-    EXPECT_EQ(tt.fwmark, msg.GetFraFwmark());
-    EXPECT_EQ(tt.fwmask, msg.GetFraFwmask());
-    EXPECT_EQ(tt.table, msg.GetFraTable());
-    EXPECT_EQ(tt.priority, msg.GetFraPriority());
+    const auto msg = RTNLMessage::Decode({tt.payload, tt.length});
+    EXPECT_TRUE(msg);
+    EXPECT_EQ(tt.iif, msg->GetFraIifname());
+    EXPECT_EQ(tt.oif, msg->GetFraOifname());
+    EXPECT_EQ(tt.src, msg->GetFraSrc());
+    EXPECT_EQ(tt.dst, msg->GetFraDst());
+    EXPECT_EQ(tt.fwmark, msg->GetFraFwmark());
+    EXPECT_EQ(tt.fwmask, msg->GetFraFwmask());
+    EXPECT_EQ(tt.table, msg->GetFraTable());
+    EXPECT_EQ(tt.priority, msg->GetFraPriority());
   }
 }
 
 TEST_F(RTNLMessageTest, AddRouteBusted) {
   // RTNLMessage should list parse errors as kMessageUnknown
-  RTNLMessage msg;
-  EXPECT_FALSE(msg.Decode(kAddRouteBusted, sizeof(kAddRouteBusted)));
+  const auto msg = RTNLMessage::Decode(kAddRouteBusted);
+  EXPECT_FALSE(msg);
 }
 
 TEST_F(RTNLMessageTest, AddNeighbor) {
@@ -912,23 +926,24 @@ TEST_F(RTNLMessageTest, EncodeLinkDel) {
                    NLM_F_REQUEST, 0, 0, kInterfaceIndex,
                    IPAddress::kFamilyUnknown);
 
-  RTNLMessage msg;
   auto packet = pmsg.Encode();
-  EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
+  const auto msg =
+      RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+  EXPECT_TRUE(msg);
 
-  EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
-  EXPECT_EQ(RTNLMessage::kModeDelete, msg.mode());
-  EXPECT_EQ(kInterfaceIndex, msg.interface_index());
+  EXPECT_EQ(RTNLMessage::kTypeLink, msg->type());
+  EXPECT_EQ(RTNLMessage::kModeDelete, msg->mode());
+  EXPECT_EQ(kInterfaceIndex, msg->interface_index());
 
-  RTNLMessage::LinkStatus status = msg.link_status();
+  RTNLMessage::LinkStatus status = msg->link_status();
   EXPECT_EQ(0, status.flags);
   EXPECT_EQ(0, status.change);
 
-  EXPECT_FALSE(msg.HasAttribute(IFLA_ADDRESS));
-  EXPECT_FALSE(msg.HasAttribute(IFLA_IFNAME));
-  EXPECT_FALSE(msg.HasAttribute(IFLA_MTU));
-  EXPECT_FALSE(msg.HasAttribute(IFLA_QDISC));
-  EXPECT_FALSE(msg.HasAttribute(IFLA_OPERSTATE));
+  EXPECT_FALSE(msg->HasAttribute(IFLA_ADDRESS));
+  EXPECT_FALSE(msg->HasAttribute(IFLA_IFNAME));
+  EXPECT_FALSE(msg->HasAttribute(IFLA_MTU));
+  EXPECT_FALSE(msg->HasAttribute(IFLA_QDISC));
+  EXPECT_FALSE(msg->HasAttribute(IFLA_OPERSTATE));
 }
 
 TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
@@ -936,11 +951,12 @@ TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
                    0, 0, 0, IPAddress::kFamilyUnknown);
   pmsg.SetIflaInfoKind(kLinkKind, {});
-  RTNLMessage msg;
   auto packet = pmsg.Encode();
-  EXPECT_TRUE(msg.Decode(packet.GetConstData(), packet.GetLength()));
-  EXPECT_TRUE(msg.link_status().kind.has_value());
-  EXPECT_EQ(msg.link_status().kind.value(), kLinkKind);
+  const auto msg =
+      RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+  EXPECT_TRUE(msg);
+  EXPECT_TRUE(msg->link_status().kind.has_value());
+  EXPECT_EQ(msg->link_status().kind.value(), kLinkKind);
 }
 
 TEST_F(RTNLMessageTest, ToString) {
@@ -993,17 +1009,17 @@ TEST_F(RTNLMessageTest, ToString) {
        "Add IPv6 Rule: table 255 priority 0 action TO_TBL flags 0"},
   };
   for (const auto& tt : test_cases) {
-    RTNLMessage msg;
-    EXPECT_TRUE(msg.Decode(tt.payload, tt.length));
-    EXPECT_TRUE(RE2::FullMatch(msg.ToString(), tt.regexp))
-        << '"' << msg.ToString() << "\" did not match regex \"" << tt.regexp
+    const auto msg = RTNLMessage::Decode({tt.payload, tt.length});
+    EXPECT_TRUE(msg);
+    EXPECT_TRUE(RE2::FullMatch(msg->ToString(), tt.regexp))
+        << '"' << msg->ToString() << "\" did not match regex \"" << tt.regexp
         << '"';
   }
 }
 
 TEST_F(RTNLMessageTest, GetUint32Attribute) {
   // Attribute not found
-  RTNLMessage msg;
+  auto msg = CreateFakeMessage();
   EXPECT_EQ(0, msg.GetUint32Attribute(4));
 
   // Attribute found
@@ -1015,7 +1031,7 @@ TEST_F(RTNLMessageTest, GetStringAttribute) {
   const char* attr = "attribute";
 
   // Attribute not found
-  RTNLMessage msg;
+  auto msg = CreateFakeMessage();
   EXPECT_EQ("", msg.GetStringAttribute(4));
 
   // Valid c string attribute found

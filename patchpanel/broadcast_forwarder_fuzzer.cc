@@ -93,10 +93,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   bcast_forwarder.payload = provider.ConsumeRemainingBytes<uint8_t>();
   bcast_forwarder.OnFileCanReadWithoutBlocking(fd);
 
-  shill::RTNLMessage rtnl_msg;
-  rtnl_msg.Decode(bcast_forwarder.payload.data(),
-                  bcast_forwarder.payload.size());
-  bcast_forwarder.AddrMsgHandler(rtnl_msg);
+  const auto rtnl_msg = shill::RTNLMessage::Decode(
+      {bcast_forwarder.payload.data(), bcast_forwarder.payload.size()});
+  if (rtnl_msg) {
+    bcast_forwarder.AddrMsgHandler(*rtnl_msg);
+  }
 
   return 0;
 }

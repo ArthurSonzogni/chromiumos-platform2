@@ -15,6 +15,14 @@ namespace shill {
 
 namespace {
 
+RTNLMessage CreateFakeMessage() {
+  return RTNLMessage(RTNLMessage::kTypeLink, RTNLMessage::kModeGet,
+                     /*flags=*/0,
+                     /*seq=*/0,
+                     /*pid=*/0,
+                     /*interface_index=*/0, IPAddress::kFamilyIPv4);
+}
+
 class RtnlWatcher {
  public:
   MOCK_METHOD(void, ListenerCallback, (const RTNLMessage&));
@@ -41,8 +49,7 @@ TEST_F(RTNLListenerTest, NoRun) {
   RTNLListener listener(RTNLHandler::kRequestAddr,
                         base::BindRepeating(&RtnlWatcher::ListenerCallback,
                                             base::Unretained(&mock_listener)));
-  RTNLMessage message;
-  listener.NotifyEvent(RTNLHandler::kRequestLink, message);
+  listener.NotifyEvent(RTNLHandler::kRequestLink, CreateFakeMessage());
 }
 
 TEST_F(RTNLListenerTest, Run) {
@@ -50,10 +57,9 @@ TEST_F(RTNLListenerTest, Run) {
   RTNLListener listener(RTNLHandler::kRequestLink | RTNLHandler::kRequestAddr,
                         base::BindRepeating(&RtnlWatcher::ListenerCallback,
                                             base::Unretained(&mock_listener)));
-  RTNLMessage message;
   EXPECT_CALL(mock_listener,
               ListenerCallback(testing::A<const RTNLMessage&>()));
-  listener.NotifyEvent(RTNLHandler::kRequestLink, message);
+  listener.NotifyEvent(RTNLHandler::kRequestLink, CreateFakeMessage());
 }
 
 }  // namespace shill
