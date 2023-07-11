@@ -148,9 +148,6 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetTargetVersionPrefix(&string_value));
   EXPECT_EQ("42.0.", string_value);
 
-  ASSERT_TRUE(policy.GetTargetVersionSelector(&string_value));
-  EXPECT_EQ("0,1626155736-", string_value);
-
   int_value = -1;
   if (USE_ENTERPRISE_ROLLBACK_REVEN) {
     ASSERT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
@@ -310,7 +307,6 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetReleaseChannel(&string_value));
   EXPECT_FALSE(policy.GetUpdateDisabled(&bool_value));
   EXPECT_FALSE(policy.GetTargetVersionPrefix(&string_value));
-  EXPECT_FALSE(policy.GetTargetVersionSelector(&string_value));
   EXPECT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
   // RollbackAllowedMilestones has the default value of 4 for enterprise
   // devices.
