@@ -44,15 +44,15 @@ extern const uint32_t kSubprocRoutineFakeProgressPercentUnknown;
 class SubprocRoutine final : public DiagnosticRoutine {
  public:
   // The state of the SubprocRoutine is modeled in the SubprocStatus enum.
-  enum SubprocStatus {
-    kSubprocStatusCancelled,
-    kSubprocStatusCancelling,
-    kSubprocStatusCompleteFailure,
-    kSubprocStatusCompleteSuccess,
-    kSubprocStatusError,
-    kSubprocStatusLaunchFailed,
-    kSubprocStatusReady,
-    kSubprocStatusRunning,
+  enum class SubprocStatus {
+    kCancelled,
+    kCancelling,
+    kCompleteFailure,
+    kCompleteSuccess,
+    kError,
+    kLaunchFailed,
+    kReady,
+    kRunning,
   };
 
   // Constructor to run a single executable.
