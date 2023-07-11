@@ -95,6 +95,9 @@ using testing::WithArg;
 namespace shill {
 
 namespace {
+MATCHER_P(IsWeakPtrTo, address, "") {
+  return arg.get() == address;
+}
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
 constexpr char kTestInterfaceAddress[] = "00:01:02:03:04:05";
@@ -3155,6 +3158,300 @@ TEST_F(CellularTest, AcquireTetheringNetwork_NoReuseDefaultIsAlsoDun) {
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Will request stop of the current default network.
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Will request disconnection of all bearers via capability.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+
+  // Primary multiplexed interface name will be cleared up.
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
+
+  // Will request reconnection with the DUN APN.
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+      .WillOnce(Invoke([](const KeyValueStore& props,
+                          RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                  "apn-dun");
+        std::move(callback).Run(kTestBearerDBusPath, Error());
+      }));
+
+  SetCapability3gppModemSimpleProxy();
+
+  // 1st step: run ConnectTetheringAsDefaultPdn() until the new PDN
+  // connection is connected and we're requested to EstablishLink().
+  device_->set_skip_establish_link_for_testing(true);
+
+  // Metrics for the DUN APN should be reported.
+  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(Error::kSuccess,
+                                                       ApnList::ApnType::kDun));
+
+  // Service is connected and portal detection is supported.
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
+
+  // Last good APN should NOT be updated because we're connecting a DUN APN.
+  EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
+
+  // Service state should NOT be updated in any way because we're hiding the
+  // reconnection from it.
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ConnectTetheringAsDefaultPdn(future.GetCallback());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Operation doesn't finish yet.
+  EXPECT_FALSE(future.IsReady());
+
+  // Setup new bearer with the connected DUN APN.
+  auto bearer2 = std::make_unique<CellularBearer>(&control_interface_,
+                                                  kTestBearerDBusPath, "");
+  bearer2->set_apn_type_for_testing(ApnList::ApnType::kDun);
+  bearer2->set_data_interface_for_testing(kTestInterfaceName);
+  bearer2->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDun, std::move(bearer2));
+
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  // Setup new network with the connected DUN APN.
+  auto network2 = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network2.get();
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDun);
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network2),
+                                   Cellular::LinkState::kDown);
+  EXPECT_CALL(*default_pdn_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
+
+  // Onnce the new Network is started, portal detection should be explicitly
+  // requested.
+  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
+
+  // Service would get the attached network updated.
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+
+  // The multiplexed interface property name will be repopulated.
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName));
+
+  // 2nd step: simulate receiving a default link UP event via rtnl
+  device_->DefaultLinkUp();
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Operation doesn't finish yet.
+  EXPECT_FALSE(future.IsReady());
+
+  // 3rd step: Network reports connection updated
+  device_->OnConnectionUpdated(kTestInterfaceIndex);
+
+  // Operation should have finished already.
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_EQ(future.Get<Network*>(), default_pdn_);
+  EXPECT_TRUE(future.Get<Error>().IsSuccess());
+
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Will request stop of the current default network.
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Will request disconnection of all bearers via capability, TWICE because
+  // the new connection with DUN APN will also fail.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _))
+      .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnect));
+
+  // Primary multiplexed interface name will be cleared up.
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
+
+  // Will request reconnection with the DUN APN
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+      .WillOnce(Invoke([](const KeyValueStore& props,
+                          RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                  "apn-dun");
+        // Connect operation FAILS.
+        std::move(callback).Run(kTestBearerDBusPath,
+                                Error(Error::kOperationFailed));
+      }));
+
+  SetCapability3gppModemSimpleProxy();
+
+  // Metrics for the DUN APN should be reported.
+  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(Error::kOperationFailed,
+                                                       ApnList::ApnType::kDun));
+
+  // Service is connected.
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+
+  // Last good APN should NOT be updated because we're connecting a DUN APN,
+  // and it anyway failed.
+  EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
+
+  // Service state should be updated with an error.
+  EXPECT_CALL(*service, SetFailure(_));
+
+  // Operation finishes with an error.
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ConnectTetheringAsDefaultPdn(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultOperatorRequired) {
+  CellularService* service = SetRegisteredWithService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Device supports multiplexing more than one PDN.
+  device_->SetMaxActiveMultiplexedBearers(4);
+
+  // Operator requires DUN as DEFAULT
+  EXPECT_CALL(*mock_mobile_operator_info_, use_dun_apn_as_default())
+      .WillRepeatedly(Return(true));
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // DEFAULT is connected.
+  service->SetLastGoodApn(apn1);
+
+  // Test only the operation type selection.
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultNoMultiplex) {
+  CellularService* service = SetRegisteredWithService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Operator does not require DUN as DEFAULT.
+  EXPECT_CALL(*mock_mobile_operator_info_, use_dun_apn_as_default())
+      .WillRepeatedly(Return(false));
+
+  // Device doesn't support multiplexing more than one PDN.
+  device_->SetMaxActiveMultiplexedBearers(1);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // DEFAULT is connected.
+  service->SetLastGoodApn(apn1);
+
+  // Test only the operation type selection.
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
+}
+
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -3170,6 +3467,135 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   base::test::TestFuture<const Error&> future;
   device_->ReleaseTetheringNetwork(default_pdn_, future.GetCallback());
   EXPECT_TRUE(future.Get<Error>().IsSuccess());
+}
+
+TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  // Currently connected PDN is of type DUN.
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDun);
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Will request stop of the current DUN as DEFAULT network.
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Will request disconnection of all bearers via capability.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+
+  // Primary multiplexed interface name will be cleared up.
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
+
+  // Will request reconnection with the DEFAULT APN.
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+      .WillOnce(Invoke([](const KeyValueStore& props,
+                          RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                  "apn-default");
+        // When reconnecting back DEFAULT service should still be connected.
+        std::move(callback).Run(kTestBearerDBusPath, Error());
+      }));
+
+  SetCapability3gppModemSimpleProxy();
+
+  // 1st step: run ReleaseTetheringNetwork() until the new PDN connection is
+  // connected and we're requested to EstablishLink().
+  device_->set_skip_establish_link_for_testing(true);
+
+  // Metrics for the DEFAULT APN should be reported.
+  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(
+                            Error::kSuccess, ApnList::ApnType::kDefault));
+
+  // Service is connected and portal detection is supported.
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
+
+  // Last good APN should be updated because we're connecting a DEFAULT APN.
+  EXPECT_CALL(*service, SetLastGoodApn(_));
+
+  // Service state should NOT be updated in any way because we're hiding the
+  // reconnection from it.
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
+
+  base::test::TestFuture<const Error&> future;
+  device_->ReleaseTetheringNetwork(default_pdn_, future.GetCallback());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Setup new bearer with the connected default APN.
+  auto bearer2 = std::make_unique<CellularBearer>(&control_interface_,
+                                                  kTestBearerDBusPath, "");
+  bearer2->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer2->set_data_interface_for_testing(kTestInterfaceName);
+  bearer2->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer2));
+
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  // Setup new network with the connected default APN.
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network2 = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network2.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network2),
+                                   Cellular::LinkState::kDown);
+  EXPECT_CALL(*default_pdn_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
+
+  // Onnce the new Network is started, portal detection should be explicitly
+  // requested.
+  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
+
+  // Service would get the attached network updated.
+  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+
+  // The multiplexed interface property name will be repopulated.
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName));
+
+  // 2nd step: simulate receiving a default link UP event via rtnl
+  device_->DefaultLinkUp();
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  // Operation doesn't finish yet.
+  EXPECT_FALSE(future.IsReady());
+
+  // 3rd step: Network reports connection updated
+  device_->OnConnectionUpdated(kTestInterfaceIndex);
+
+  // Operation should have finished already.
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get<Error>().IsSuccess());
+
+  Mock::VerifyAndClearExpectations(service);
 }
 
 }  // namespace shill

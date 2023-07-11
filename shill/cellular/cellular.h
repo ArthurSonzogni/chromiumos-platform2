@@ -175,6 +175,9 @@ class Cellular : public Device,
   void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const override;
 
+  // Network event handler
+  void OnConnectionUpdated(int interface_index) override;
+
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
   void CompleteActivation(Error* error);
@@ -278,6 +281,13 @@ class Cellular : public Device,
 
   // Public to ease testing tethering acquisition logic.
   enum class TetheringOperationType {
+    // Connect/disconnect DUN as DEFAULT packet data network.
+    // The kDisconnectDunAsDefaultPdn type is not returned by
+    // GetTetheringOperationType(), it is only used to flag the ongoing
+    // operation when releasing a tethering network that was acquired with a
+    // previous kConnectDunAsDefaultPdn operation.
+    kConnectDunAsDefaultPdn,
+    kDisconnectDunAsDefaultPdn,
     // The currently connected default network will be reused for tethering.
     kReuseDefaultPdn,
     // TODO(aleksandermj): Remove kReuseDefaultPdnFallback once all the
@@ -294,6 +304,15 @@ class Cellular : public Device,
   // GetTetheringOperationType() selection method returns kReuseDefaultPdn or
   // kReuseDefaultPdnFallback.
   void ReuseDefaultPdnForTethering(
+      AcquireTetheringNetworkResultCallback callback);
+
+  // Brings down the currently connected default PDN and connects a new PDN
+  // using the DUN specific APN. The newly connected PDN is considered the
+  // default PDN, i.e. even for non-tethered data.
+  // This is the operation run in AcquireTetheringNetwork() when the
+  // GetTetheringOperationType() selection method returns
+  // kConnectDunAsDefaultPdn.
+  void ConnectTetheringAsDefaultPdn(
       AcquireTetheringNetworkResultCallback callback);
 
   // Called when an OTA profile update arrives from the network.
@@ -689,6 +708,29 @@ class Cellular : public Device,
   void ResetCarrierEntitlement();
   void OnEntitlementCheckUpdated(CarrierEntitlement::Result result);
 
+  // Single tethering operation context, whenever any connection setup is
+  // required (i.e. not used when reusing the default network for tethering).
+  struct TetheringOperationInfo {
+    TetheringOperationType type;
+    ResultCallback callback;
+    ApnList::ApnType apn_type;
+    std::deque<Stringmap> apn_try_list;
+  };
+  void CompleteTetheringOperation(const Error& error);
+  bool InitializeTetheringOperation(TetheringOperationType type,
+                                    ResultCallback callback);
+
+  // Management of the DUN as DEFAULT tethering operation
+  void DisconnectTetheringAsDefaultPdn(ResultCallback callback);
+  void RunTetheringOperationDunAsDefault();
+  void OnCapabilityDisconnectBeforeReconnectReply(const Error& error);
+  void OnConnectTetheringAsDefaultPdnReply(
+      AcquireTetheringNetworkResultCallback callback, const Error& error);
+
+  // Helper to check whether a DUN as DEFAULT tethering operation is ongoing
+  // (either connecting or disconnecting).
+  bool IsTetheringOperationDunAsDefaultOngoing();
+
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
 
@@ -760,6 +802,9 @@ class Cellular : public Device,
   // the network operator changes, or any other property of the operator
   // changes.
   std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
+
+  // Tethering operation
+  std::optional<TetheringOperationInfo> tethering_operation_;
 
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.

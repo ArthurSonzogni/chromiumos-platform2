@@ -112,7 +112,7 @@ class CellularService : public Service {
   }
 
   Stringmap* GetUserSpecifiedApn();
-  Stringmap* GetLastGoodApn();
+  virtual Stringmap* GetLastGoodApn();
   virtual void SetLastGoodApn(const Stringmap& apn_info);
   virtual void ClearLastGoodApn();
   Stringmap* GetLastAttachApn();

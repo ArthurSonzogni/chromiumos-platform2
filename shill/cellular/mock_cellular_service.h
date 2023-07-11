@@ -22,6 +22,7 @@ class MockCellularService : public CellularService {
   ~MockCellularService() override;
 
   MOCK_METHOD(void, AutoConnect, (), (override));
+  MOCK_METHOD(Stringmap*, GetLastGoodApn, (), (override));
   MOCK_METHOD(void, SetLastGoodApn, (const Stringmap&), (override));
   MOCK_METHOD(void, ClearLastGoodApn, (), (override));
   MOCK_METHOD(void, SetActivationState, (const std::string&), (override));
@@ -30,6 +31,8 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));
+  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(void, SetStrength, (uint8_t), (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));

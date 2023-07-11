@@ -554,11 +554,6 @@ void Device::SelectService(const ServiceRefPtr& service,
     return;
   }
 
-  // Selecting a service can only be done if the primary network has already
-  // been set initialized.
-  auto primary_network = GetPrimaryNetwork();
-  CHECK(!service || primary_network);
-
   ServiceRefPtr old_service;
   if (selected_service_) {
     old_service = selected_service_;
@@ -571,17 +566,21 @@ void Device::SelectService(const ServiceRefPtr& service,
 
   selected_service_ = service;
 
-  if (primary_network) {
-    primary_network->set_logging_tag(LoggingTag());
-  }
+  ResetServiceAttachedNetwork();
 
-  if (selected_service_) {
-    selected_service_->SetAttachedNetwork(primary_network->AsWeakPtr());
-  }
   OnSelectedServiceChanged(old_service);
   FetchTrafficCounters(old_service, selected_service_);
   adaptor_->EmitRpcIdentifierChanged(kSelectedServiceProperty,
                                      GetSelectedServiceRpcIdentifier(nullptr));
+}
+
+void Device::ResetServiceAttachedNetwork() {
+  if (selected_service_) {
+    auto primary_network = GetPrimaryNetwork();
+    CHECK(primary_network);
+    primary_network->set_logging_tag(LoggingTag());
+    selected_service_->SetAttachedNetwork(primary_network->AsWeakPtr());
+  }
 }
 
 void Device::SetServiceState(Service::ConnectState state) {

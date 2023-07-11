@@ -794,7 +794,11 @@ void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
 }
 
 void Cellular::OnConnected() {
-  if (StateIsConnected()) {
+  // If state is already connected and we have a default Network setup, do
+  // nothing. The missing Network while connected may happen during the
+  // reconnection performed by the tethering logic when using the tethering
+  // APN as default.
+  if (StateIsConnected() && default_pdn_) {
     SLOG(1) << LoggingTag() << ": " << __func__ << ": Already connected";
     return;
   }
@@ -859,6 +863,26 @@ void Cellular::UpdateGeolocationObjects(
   // or some unsupported location type, so don't return something incorrect.
   geolocation_infos->clear();
   geolocation_infos->push_back(geolocation_info);
+}
+
+void Cellular::OnConnectionUpdated(int interface_index) {
+  SLOG(1) << LoggingTag() << ": connection updated: " << interface_index;
+
+  // Event on the default network, propagate it to the parent.
+  if (default_pdn_ &&
+      interface_index == default_pdn_->network()->interface_index()) {
+    if (IsTetheringOperationDunAsDefaultOngoing()) {
+      CompleteTetheringOperation(Error(Error::kSuccess));
+    }
+    Device::OnConnectionUpdated(interface_index);
+    return;
+  }
+
+  // TODO(b/283402454): Once multiplexed DUN support is integrated, we will
+  // also expect events on the tethering-specific Network object.
+
+  LOG(WARNING) << LoggingTag()
+               << ": Unexpected network connection update: " << interface_index;
 }
 
 void Cellular::ConfigureAttachApn() {
@@ -1442,6 +1466,11 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
       else
         service_->SetFailure(Service::kFailureConnect);
     }
+    // If we are connecting or disconnecting DUN as DEFAULT and an error happens
+    // in the reconnection procedure, the operation must be aborted right away.
+    if (IsTetheringOperationDunAsDefaultOngoing()) {
+      CompleteTetheringOperation(error);
+    }
     return;
   }
 
@@ -1465,8 +1494,11 @@ void Cellular::OnEnabled() {
 }
 
 void Cellular::OnConnecting() {
-  if (service_)
+  // When reconnecting DUN as DEFAULT we don't do any service state update,
+  // to hide the PDN reconnection being done internally.
+  if (service_ && !IsTetheringOperationDunAsDefaultOngoing()) {
     service_->SetState(Service::kStateAssociating);
+  }
 }
 
 void Cellular::Disconnect(Error* error, const char* reason) {
@@ -1480,6 +1512,10 @@ void Cellular::Disconnect(Error* error, const char* reason) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Modem not available.");
     return;
+  }
+
+  if (IsTetheringOperationDunAsDefaultOngoing()) {
+    CompleteTetheringOperation(Error(Error::kOperationFailed, reason));
   }
   StopPPP();
   explicit_disconnect_ = true;
@@ -1499,6 +1535,17 @@ void Cellular::OnDisconnectReply(const Error& error) {
 
 void Cellular::OnDisconnected() {
   SLOG(1) << LoggingTag() << ": " << __func__;
+
+  // The logic to reconnect the tethering APN as default involves the
+  // disconnection of the currently connected default APN. We explicitly ignore
+  // any additional action on this case, we don't want to do a full cleanup and
+  // report the full device as disconnected.
+  if (IsTetheringOperationDunAsDefaultOngoing()) {
+    LOG(INFO) << LoggingTag()
+              << ": Disconnected during a DUN as DEFAULT tethering operation.";
+    return;
+  }
+
   if (!DisconnectCleanup()) {
     LOG(WARNING) << LoggingTag() << ": Disconnect occurred while in state "
                  << GetStateString(state_);
@@ -1530,6 +1577,159 @@ void Cellular::OnDisconnectFailed() {
   // actually be connected. In that case the UI would be reflecting an incorrect
   // state and a further connection request would fail. We should perhaps tear
   // down the modem and restart it here.
+}
+
+bool Cellular::IsTetheringOperationDunAsDefaultOngoing() {
+  // TODO(b/283402454): Please note that the operation type check seems
+  // redundant only because the multiplexed DUN support is not yet available.
+  // Once it is integrated, a new operation type value will exist, and the
+  // operation type check will no longer be redundant.
+  return (tethering_operation_ &&
+          ((tethering_operation_->type ==
+            TetheringOperationType::kConnectDunAsDefaultPdn) ||
+           (tethering_operation_->type ==
+            TetheringOperationType::kDisconnectDunAsDefaultPdn)));
+}
+
+void Cellular::CompleteTetheringOperation(const Error& error) {
+  CHECK(tethering_operation_);
+  CHECK(!tethering_operation_->callback.is_null());
+
+  // Reset operation info right away, as there are certain generic actions
+  // updated to ignore events if a tethering operation is ongoing.
+  ResultCallback callback = std::move(tethering_operation_->callback);
+  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
+  tethering_operation_ = std::nullopt;
+
+  // Report error.
+  if (!error.IsSuccess()) {
+    LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
+    if (dun_as_default_ongoing && StateIsConnected()) {
+      Disconnect(nullptr, "DUN as DEFAULT tethering operation failed");
+    }
+    std::move(callback).Run(error);
+    return;
+  }
+
+  // Report success.
+  LOG(INFO) << LoggingTag() << ": Tethering operation successful";
+  std::move(callback).Run(Error(Error::kSuccess));
+}
+
+bool Cellular::InitializeTetheringOperation(TetheringOperationType type,
+                                            ResultCallback callback) {
+  // If an attempt is already ongoing, for whatever reason, fail right away.
+  if (tethering_operation_) {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       Error(Error::kOperationFailed, "Already ongoing.")));
+    return false;
+  }
+
+  // A capability must always exist at this point both for connections and
+  // disconnections.
+  if (!capability_) {
+    dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback),
+                                  Error(Error::kWrongState, "No capability.")));
+    return false;
+  }
+
+  // Tethering connection attempt can go on.
+  LOG(INFO) << LoggingTag() << ": Tethering operation started";
+  tethering_operation_.emplace(type, std::move(callback));
+  return true;
+}
+
+void Cellular::ConnectTetheringAsDefaultPdn(
+    AcquireTetheringNetworkResultCallback callback) {
+  CHECK(!callback.is_null());
+
+  LOG(INFO) << LoggingTag() << ": Tethering operation requested: "
+            << "connect DUN as DEFAULT network.";
+  if (!InitializeTetheringOperation(
+          TetheringOperationType::kConnectDunAsDefaultPdn,
+          base::BindOnce(&Cellular::OnConnectTetheringAsDefaultPdnReply,
+                         weak_ptr_factory_.GetWeakPtr(),
+                         std::move(callback)))) {
+    return;
+  }
+
+  // Will disconnect DEFAULT and connect DUN as default.
+  tethering_operation_->apn_type = ApnList::ApnType::kDun;
+  tethering_operation_->apn_try_list = BuildTetheringApnTryList();
+  CHECK(!tethering_operation_->apn_try_list.empty());
+  RunTetheringOperationDunAsDefault();
+}
+
+void Cellular::DisconnectTetheringAsDefaultPdn(ResultCallback callback) {
+  CHECK(!callback.is_null());
+
+  LOG(INFO) << LoggingTag() << ": Tethering operation requested: "
+            << "disconnect DUN as DEFAULT network.";
+  if (!InitializeTetheringOperation(
+          TetheringOperationType::kDisconnectDunAsDefaultPdn,
+          std::move(callback))) {
+    return;
+  }
+
+  // Will disconnect DUN as default and connect back DEFAULT.
+  tethering_operation_->apn_type = ApnList::ApnType::kDefault;
+  tethering_operation_->apn_try_list = BuildDefaultApnTryList();
+  CHECK(!tethering_operation_->apn_try_list.empty());
+  RunTetheringOperationDunAsDefault();
+}
+
+// Both operations to connect or disconnect DUN as DEFAULT involve the same
+// steps: disconnect the current default and reconnect with a new APN try list.
+// This method runs the logic for both operations in the same way. The only
+// notable difference is that there is no ResultCallback in the disconnect
+// operation.
+void Cellular::RunTetheringOperationDunAsDefault() {
+  // Avoid going through the Disconnect() route because that involves a lot of
+  // cleanups that we shouldn't be doing while reconnecting with the tethering
+  // specific APNs. Instead, run our own disconnection logic, starting with
+  // the disconnection of all bearers (there should be one only either way).
+  explicit_disconnect_ = true;
+  capability_->DisconnectAll(
+      base::BindOnce(&Cellular::OnCapabilityDisconnectBeforeReconnectReply,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
+  explicit_disconnect_ = false;
+
+  // A failure in the disconnection is assumed fatal.
+  if (!error.IsSuccess()) {
+    CompleteTetheringOperation(error);
+    return;
+  }
+
+  // If service lost while attempt ongoing, abort right away.
+  if (!service()) {
+    CompleteTetheringOperation(
+        Error(Error::kWrongState, "Tethering operation failed: no service."));
+    return;
+  }
+
+  // Not a full cleanup, we try not to touch service state.
+  SetPrimaryMultiplexedInterface("");
+  default_pdn_apn_type_ = std::nullopt;
+  default_pdn_ = std::nullopt;
+
+  // We trigger a capability connect using a specific APN try list (which may
+  // e.g. be the DUN-specific try list). The generic OnConnectReply() is used so
+  // that it is treated as a standard connection attempt. From now on, the
+  // tethering operation will only be completed once the newly connected Network
+  // has been started.
+  capability_->Connect(
+      tethering_operation_->apn_type, tethering_operation_->apn_try_list,
+      base::BindOnce(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
+                     tethering_operation_->apn_type, service()->iccid(),
+                     false /* is_in_user_connect */));
+
+  metrics()->NotifyDeviceConnectStarted(interface_index());
 }
 
 void Cellular::ReuseDefaultPdnForTethering(
@@ -1598,7 +1798,26 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     return TetheringOperationType::kReuseDefaultPdn;
   }
 
-  // TODO(b/283396208): use DUN APN as DEFAULT
+  // A different APN is specified for tethering, and the operator requires the
+  // DUN APN to be used also as DEFAULT when tethering is enabled, so we must
+  // disconnect DEFAULT and reconnect DUN as DEFAULT.
+  if (mobile_operator_info_->use_dun_apn_as_default()) {
+    LOG(INFO) << LoggingTag()
+              << ": Tethering network selection: "
+                 "connecting DUN APN as default as required by operator.";
+    return TetheringOperationType::kConnectDunAsDefaultPdn;
+  }
+
+  // A different APN is specified for tethering, and the modem doesn't support
+  // multiplexing, so we must disconnect DEFAULT and reconnect DUN as DEFAULT.
+  if (!GetMultiplexSupport()) {
+    LOG(INFO)
+        << LoggingTag()
+        << ": Tethering network selection: "
+           "connecting DUN APN as default as multiplexing is unsupported.";
+    return TetheringOperationType::kConnectDunAsDefaultPdn;
+  }
+
   // TODO(b/283402454): connect DUN APN as additional multiplexed network
   return TetheringOperationType::kReuseDefaultPdnFallback;
 }
@@ -1610,6 +1829,9 @@ void Cellular::AcquireTetheringNetwork(
 
   Error error;
   switch (GetTetheringOperationType(&error)) {
+    case TetheringOperationType::kConnectDunAsDefaultPdn:
+      ConnectTetheringAsDefaultPdn(std::move(callback));
+      return;
     case TetheringOperationType::kReuseDefaultPdn:
     case TetheringOperationType::kReuseDefaultPdnFallback:
       ReuseDefaultPdnForTethering(std::move(callback));
@@ -1618,14 +1840,51 @@ void Cellular::AcquireTetheringNetwork(
       dispatcher()->PostTask(
           FROM_HERE, base::BindOnce(std::move(callback), nullptr, error));
       return;
+    case TetheringOperationType::kDisconnectDunAsDefaultPdn:
+      // Not a valid return of GetTetheringOperationType().
+      NOTREACHED();
   }
+}
+
+void Cellular::OnConnectTetheringAsDefaultPdnReply(
+    AcquireTetheringNetworkResultCallback callback, const Error& error) {
+  if (error.IsFailure()) {
+    LOG(WARNING) << LoggingTag()
+                 << ": Tethering network selection: failed to connect DUN APN "
+                    "as default: "
+                 << error;
+    std::move(callback).Run(nullptr, error);
+    return;
+  }
+
+  LOG(INFO) << LoggingTag()
+            << ": Tethering network selection: connected DUN APN as default.";
+  CHECK(default_pdn_);
+  std::move(callback).Run(default_pdn_->network(), Error(Error::kSuccess));
 }
 
 void Cellular::ReleaseTetheringNetwork(Network* network,
                                        ResultCallback callback) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
-  // For now assume that the default network is always used for tethering.
+
+  // If we connected the tethering APN as default, we need to disconnect it and
+  // reconnect with the default APN.
+  if (default_pdn_apn_type_ &&
+      *default_pdn_apn_type_ == ApnList::ApnType::kDun) {
+    // Validate that the network requested to disconnect is the one we expect.
+    if (!default_pdn_ || default_pdn_->network() != network) {
+      dispatcher()->PostTask(
+          FROM_HERE,
+          base::BindOnce(std::move(callback),
+                         Error(Error::kWrongState,
+                               "Unexpected default network to release")));
+      return;
+    }
+    DisconnectTetheringAsDefaultPdn(std::move(callback));
+    return;
+  }
+
   // TODO(b/249151422) If using an extra PDN connection for tethering,
   // disconnect it here, otherwise no-op
   dispatcher()->PostTask(
@@ -1712,8 +1971,17 @@ void Cellular::DefaultLinkUp() {
 
   SetPrimaryMultiplexedInterface(default_pdn_->network()->interface_name());
   SetState(State::kLinked);
-  SelectService(service_);
-  SetServiceState(Service::kStateConfiguring);
+
+  // The only change performed in the service when a tethering operation to
+  // connect or disconnect DUN as DEFAULT is ongoing is the update of the
+  // attached network. We want to hide the internal reconnection process to
+  // the already selected service as much as possible.
+  if (IsTetheringOperationDunAsDefaultOngoing()) {
+    ResetServiceAttachedNetwork();
+  } else {
+    SelectService(service_);
+    SetServiceState(Service::kStateConfiguring);
+  }
 
   default_pdn_->Start();
 }
@@ -1834,6 +2102,14 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       modem_state_ >= kModemStateEnabled) {
     // Just became enabled, update enabled state.
     OnEnabled();
+  }
+
+  // Ignore state change actions while we're reconnecting the tethering APN
+  // as default network.
+  if (IsTetheringOperationDunAsDefaultOngoing()) {
+    SLOG(1) << LoggingTag() << ": " << __func__
+            << ": ignoring actions upon new state: tethering attempt ongoing";
+    return;
   }
 
   switch (modem_state_) {

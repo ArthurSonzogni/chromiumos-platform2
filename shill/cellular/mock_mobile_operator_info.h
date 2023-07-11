@@ -44,6 +44,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(const std::string&, serving_uuid, (), (const, override));
   MOCK_METHOD(const std::string&, serving_mcc_alpha2, (), (const, override));
   MOCK_METHOD(bool, tethering_allowed, (), (const, override));
+  MOCK_METHOD(bool, use_dun_apn_as_default, (), (const, override));
 
   MOCK_METHOD(std::string, friendly_operator_name, (bool), (const, override));
   MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));

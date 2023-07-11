@@ -1740,8 +1740,8 @@ class Metrics : public DefaultServiceObserver {
                                 uint16_t signal_strength);
 
   // Notifies this object of the resulting status of a cellular connection
-  void NotifyCellularConnectionResult(Error::Type error,
-                                      ApnList::ApnType apn_type);
+  virtual void NotifyCellularConnectionResult(Error::Type error,
+                                              ApnList::ApnType apn_type);
 
   // Notifies this object of the entitlement check result
   virtual void NotifyCellularEntitlementCheckResult(

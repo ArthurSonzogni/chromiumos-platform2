@@ -397,6 +397,12 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   void SelectService(const ServiceRefPtr& service,
                      bool reset_old_service_state = true);
 
+  // Reset the Network currently used in the selected service by reloading the
+  // one considered primary. This will typically be run during SelectService()
+  // but may also happen if technologies silently change the Network used
+  // without performing service selection.
+  void ResetServiceAttachedNetwork();
+
   // Set the state of the |selected_service_|.
   virtual void SetServiceState(Service::ConnectState state);
 

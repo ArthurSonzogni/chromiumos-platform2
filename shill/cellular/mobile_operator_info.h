@@ -145,7 +145,7 @@ class MobileOperatorInfo {
   // If specified, the MTU value to be used on the network interface.
   // If the carrier requires all traffic to go through the DUN APN when
   // tethering.
-  bool use_dun_apn_as_default() const;
+  virtual bool use_dun_apn_as_default() const;
 
   // The entitlement check configuration.
   virtual const MobileOperatorMapper::EntitlementConfig& entitlement_config()
