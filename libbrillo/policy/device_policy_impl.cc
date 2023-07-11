@@ -516,23 +516,6 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
   return true;
 }
 
-bool DevicePolicyImpl::GetTargetVersionSelector(
-    std::string* target_version_selector) const {
-  if (!IsEnterpriseEnrolled())
-    return false;
-
-  if (!device_policy_.has_auto_update_settings())
-    return false;
-
-  const em::AutoUpdateSettingsProto& proto =
-      device_policy_.auto_update_settings();
-  if (!proto.has_target_version_selector())
-    return false;
-
-  *target_version_selector = proto.target_version_selector();
-  return true;
-}
-
 bool DevicePolicyImpl::GetRollbackToTargetVersion(
     int* rollback_to_target_version) const {
   if (!device_policy_.has_auto_update_settings())

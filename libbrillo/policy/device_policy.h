@@ -188,11 +188,6 @@ class DevicePolicy {
   virtual bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const = 0;
 
-  // Writes the value of the target_version_selector policy in
-  // |target_version_selector|. Returns true on success.
-  virtual bool GetTargetVersionSelector(
-      std::string* target_version_selector) const = 0;
-
   // Writes the value of the rollback_to_target_version policy in
   // |rollback_to_target_version|. |rollback_to_target_version| will be one of
   // the values in AutoUpdateSettingsProto's RollbackToTargetVersion enum.

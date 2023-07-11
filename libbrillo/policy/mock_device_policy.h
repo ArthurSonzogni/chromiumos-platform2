@@ -82,10 +82,6 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, GetReleaseLtsTag, (std::string*), (const, override));
   MOCK_METHOD(bool, GetUpdateDisabled, (bool*), (const, override));
   MOCK_METHOD(bool, GetTargetVersionPrefix, (std::string*), (const, override));
-  MOCK_METHOD(bool,
-              GetTargetVersionSelector,
-              (std::string*),
-              (const, override));
   MOCK_METHOD(bool, GetRollbackToTargetVersion, (int*), (const, override));
   MOCK_METHOD(bool, GetRollbackAllowedMilestones, (int*), (const, override));
   MOCK_METHOD(bool, GetScatterFactorInSeconds, (int64_t*), (const, override));

@@ -250,32 +250,6 @@ TEST_F(DevicePolicyImplTest, GetTargetVersionPrefix_SetConsumer) {
   ASSERT_FALSE(device_policy_.GetTargetVersionPrefix(&value));
 }
 
-// Updates should only be pinned on enterprise managed devices.
-TEST_F(DevicePolicyImplTest, GetTargetVersionSelector_SetConsumer) {
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto* auto_update_settings =
-      device_policy_proto.mutable_auto_update_settings();
-  auto_update_settings->set_target_version_selector("h,ello-v4");
-  InitializePolicy(/*device_mode=*/nullptr, device_policy_proto);
-
-  std::string value = "";
-  ASSERT_FALSE(device_policy_.GetTargetVersionSelector(&value));
-}
-
-TEST_F(DevicePolicyImplTest, GetTargetVersionSelector_Set) {
-  constexpr char kExpectedSelectorValue[] = "h,ello-v4";
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto* auto_update_settings =
-      device_policy_proto.mutable_auto_update_settings();
-  auto_update_settings->set_target_version_selector(kExpectedSelectorValue);
-  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
-                   device_policy_proto);
-
-  std::string selector_value = "";
-  EXPECT_TRUE(device_policy_.GetTargetVersionSelector(&selector_value));
-  EXPECT_EQ(selector_value, kExpectedSelectorValue);
-}
-
 // The allowed connection types should only be changed in enterprise devices.
 TEST_F(DevicePolicyImplTest, GetAllowedConnectionTypesForUpdate_SetConsumer) {
   em::ChromeDeviceSettingsProto device_policy_proto;

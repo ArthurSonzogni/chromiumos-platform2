@@ -82,8 +82,6 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetUpdateDisabled(bool* update_disabled) const override;
   bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const override;
-  bool GetTargetVersionSelector(
-      std::string* target_version_selector) const override;
   bool GetRollbackToTargetVersion(
       int* rollback_to_target_version) const override;
   bool GetRollbackAllowedMilestones(
