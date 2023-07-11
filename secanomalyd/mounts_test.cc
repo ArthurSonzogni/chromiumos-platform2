@@ -32,13 +32,12 @@ constexpr char kMounts[] =
 }  // namespace
 
 TEST(MountsTest, EmptyString) {
-  MaybeMountEntries entries = ReadMountsFromString("", MountFilter::kAll);
+  MaybeMountEntries entries = ReadMountsFromString("");
   ASSERT_EQ(entries, std::nullopt);
 }
 
 TEST(MountsTest, ActualMounts) {
-  MaybeMountEntries maybe_entries =
-      ReadMountsFromString(kMounts, MountFilter::kAll);
+  MaybeMountEntries maybe_entries = ReadMountsFromString(kMounts);
   ASSERT_TRUE(maybe_entries.has_value());
   MountEntries entries = maybe_entries.value();
   ASSERT_EQ(entries.size(), 4u);
@@ -49,10 +48,10 @@ TEST(MountsTest, ActualMounts) {
 }
 
 TEST(MountsTest, UploadableMounts) {
-  MaybeMountEntries maybe_entries =
-      ReadMountsFromString(kMounts, MountFilter::kUploadableOnly);
-  ASSERT_TRUE(maybe_entries.has_value());
-  MountEntries entries = maybe_entries.value();
+  MaybeMountEntries all_entries = ReadMountsFromString(kMounts);
+  MaybeMountEntries uploadable_entries = FilterPrivateMounts(all_entries);
+  ASSERT_TRUE(uploadable_entries.has_value());
+  MountEntries entries = uploadable_entries.value();
   ASSERT_EQ(entries.size(), 2u);
 
   ASSERT_EQ(entries[0].dest(), base::FilePath("/mnt/stateful_partition"));

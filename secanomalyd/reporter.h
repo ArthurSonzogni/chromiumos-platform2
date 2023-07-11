@@ -32,6 +32,8 @@ bool SendReport(base::StringPiece report,
                 bool report_in_dev_mode);
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           const MaybeMountEntries& all_mounts,
+                           const MaybeProcEntries& all_procs,
                            int weight,
                            bool report_in_dev_mode);
 

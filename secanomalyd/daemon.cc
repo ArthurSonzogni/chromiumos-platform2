@@ -164,8 +164,14 @@ int Daemon::OnEventLoopStarted() {
 void Daemon::ScanForAnomalies() {
   VLOG(1) << "Scanning for W+X mounts";
   DoWXMountScan();
+  VLOG(1) << "Scanning system processes";
+  DoProcScan();
   VLOG(1) << "Scanning for audit log anomalies";
   DoAuditLogScan();
+
+  if (generate_reports_) {
+    DoAnomalousSystemReporting();
+  }
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
@@ -189,8 +195,8 @@ void Daemon::ReportUmaMetrics() {
 }
 
 void Daemon::DoWXMountScan() {
-  MaybeMountEntries mount_entries = ReadMounts(MountFilter::kAll);
-  if (!mount_entries) {
+  all_mounts_ = ReadMounts();
+  if (!all_mounts_) {
     LOG(ERROR) << "Failed to read mounts";
     return;
   }
@@ -198,7 +204,7 @@ void Daemon::DoWXMountScan() {
   // Refreshed on every check to have the most up-to-date state.
   system_context_->Refresh();
 
-  for (const auto& e : mount_entries.value()) {
+  for (const auto& e : all_mounts_.value()) {
     if (e.IsWX()) {
       // Have we seen the mount yet?
       if (wx_mounts_.count(e.dest()) == 0) {
@@ -248,18 +254,24 @@ void Daemon::DoWXMountScan() {
       }
     }
   }
+}
 
-  // Report the system as anomalous if the daemon has never attempted to send a
-  // report and the W+X mount count is non-zero.
-  if (generate_reports_ && !has_attempted_wx_mount_report_ &&
-      wx_mounts_.size() > 0) {
-    // Stop subsequent reporting attempts for this execution.
-    has_attempted_wx_mount_report_ = true;
-    DoAnomalousSystemReporting();
-  }
+void Daemon::DoProcScan() {
+  all_procs_ = ReadProcesses(ProcessFilter::kInitPidNamespaceOnly);
+  // TODO(enlightened) Check for anomalies in the process list and save them for
+  // reporting.
 }
 
 void Daemon::DoAnomalousSystemReporting() {
+  // Skip reporting if the if the daemon has previously attempted to send a
+  // report or there is no anomalous condition.
+  if (has_attempted_anomaly_report_ || wx_mounts_.empty()) {
+    return;
+  }
+
+  // Stop subsequent reporting attempts for this execution.
+  has_attempted_anomaly_report_ = true;
+
   VLOG(1) << "Reporting anomalous system: W+X mount count";
   if (ShouldReport(dev_)) {
     // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
@@ -269,7 +281,8 @@ void Daemon::DoAnomalousSystemReporting() {
       return;
     }
 
-    bool success = ReportAnomalousSystem(wx_mounts_, range, dev_);
+    bool success =
+        ReportAnomalousSystem(wx_mounts_, all_mounts_, all_procs_, range, dev_);
     if (!success) {
       // Reporting is best-effort so on failure we just print a warning.
       LOG(WARNING) << "Failed to report anomalous system";

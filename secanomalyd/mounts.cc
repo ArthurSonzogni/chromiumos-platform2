@@ -19,7 +19,7 @@ namespace {
 constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 }
 
-MaybeMountEntries ReadMounts(MountFilter filter) {
+MaybeMountEntries ReadMounts() {
   std::string proc_mounts;
   if (!base::ReadFileToStringNonBlocking(base::FilePath(kProcSelfMountsPath),
                                          &proc_mounts)) {
@@ -27,11 +27,10 @@ MaybeMountEntries ReadMounts(MountFilter filter) {
     return std::nullopt;
   }
 
-  return ReadMountsFromString(proc_mounts, filter);
+  return ReadMountsFromString(proc_mounts);
 }
 
-MaybeMountEntries ReadMountsFromString(const std::string& mounts,
-                                       MountFilter filter) {
+MaybeMountEntries ReadMountsFromString(const std::string& mounts) {
   std::vector<base::StringPiece> pieces = base::SplitStringPiece(
       mounts, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -42,14 +41,20 @@ MaybeMountEntries ReadMountsFromString(const std::string& mounts,
   MountEntries res;
   for (const auto& piece : pieces) {
     MountEntry e = MountEntry(piece);
-    if (filter == MountFilter::kUploadableOnly && e.IsUsbDriveOrArchive()) {
-      // Don't upload USB drive or archive mounts.
-      continue;
-    }
     res.push_back(e);
   }
 
   return MaybeMountEntries(res);
+}
+
+MaybeMountEntries FilterPrivateMounts(const MaybeMountEntries& all_mounts) {
+  MountEntries uploadable_mounts;
+  if (all_mounts) {
+    std::copy_if(all_mounts->begin(), all_mounts->end(),
+                 std::back_inserter(uploadable_mounts),
+                 [](const MountEntry& e) { return !e.IsUsbDriveOrArchive(); });
+  }
+  return MaybeMountEntries(uploadable_mounts);
 }
 
 }  // namespace secanomalyd

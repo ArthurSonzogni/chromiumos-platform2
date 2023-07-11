@@ -18,6 +18,7 @@
 #include <crypto/sha2.h>
 #include <vboot/crossystem.h>
 
+#include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
 
@@ -174,14 +175,15 @@ bool SendReport(base::StringPiece report,
 }
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           const MaybeMountEntries& all_mounts,
+                           const MaybeProcEntries& all_procs,
                            int weight,
                            bool report_in_dev_mode) {
-  MaybeMountEntries maybe_mounts = ReadMounts(MountFilter::kUploadableOnly);
-  MaybeProcEntries maybe_procs =
-      ReadProcesses(ProcessFilter::kInitPidNamespaceOnly);
+  // Filter out private mounts before upload.
+  MaybeMountEntries uploadable_mounts = FilterPrivateMounts(all_mounts);
 
   MaybeReport anomaly_report =
-      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);
+      GenerateAnomalousSystemReport(wx_mounts, uploadable_mounts, all_procs);
 
   if (!anomaly_report) {
     LOG(ERROR) << "Failed to generate anomalous system report";

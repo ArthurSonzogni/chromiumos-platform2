@@ -16,6 +16,8 @@
 
 #include "secanomalyd/audit_log_reader.h"
 #include "secanomalyd/mount_entry.h"
+#include "secanomalyd/mounts.h"
+#include "secanomalyd/processes.h"
 #include "secanomalyd/system_context.h"
 
 namespace secanomalyd {
@@ -39,9 +41,13 @@ class Daemon : public brillo::DBusDaemon {
   void ScanForAnomalies();
 
   // Anomaly detection tasks below check for specific anomalous conditions and
-  // invoke the appropriate reporting function if an anomaly is detected.
+  // record any discovered anomalies.
   void DoWXMountScan();
+  void DoProcScan();
   void DoAuditLogScan();
+
+  // This function has built-in rate limiting criteria for uploading reports.
+  void DoAnomalousSystemReporting();
 
   // Discovered anomalies and other security related metrics are reported to UMA
   // at set intervals, dictated by |kUmaReportInterval|.
@@ -52,15 +58,11 @@ class Daemon : public brillo::DBusDaemon {
   void EmitMemfdExecProcCountUma();
   void EmitSandboxingUma();
 
-  // Reporting tasks have rate limiting criteria built into them for uploading
-  // crash reports.
-  void DoAnomalousSystemReporting();
-
   // Used to keep track of whether this daemon has attempted to send a crash
   // report for a W+X mount observation throughout its lifetime.
   // Only one crash report upload is attempted for an anomaly of type W+X mount
   // during the lifetime of the daemon.
-  bool has_attempted_wx_mount_report_ = false;
+  bool has_attempted_anomaly_report_ = false;
 
   // Used to track whether an UMA metric was emitted for the memfd execution
   // baseline metric, as we only need one emission of the metric.
@@ -84,6 +86,8 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<SystemContext> system_context_;
 
   MountEntryMap wx_mounts_;
+  MaybeMountEntries all_mounts_;
+  MaybeProcEntries all_procs_;
 
   std::set<base::FilePath> executables_attempting_memfd_exec_;
 

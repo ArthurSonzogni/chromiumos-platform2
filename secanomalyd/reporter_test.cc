@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
 
 using ::testing::MatchesRegex;
@@ -193,8 +194,8 @@ TEST(ReporterTest, FullReport) {
   MountEntryMap wx_mounts;
   wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
 
-  MaybeMountEntries maybe_mounts =
-      ReadMountsFromString(kMounts, MountFilter::kUploadableOnly);
+  MaybeMountEntries all_mounts = ReadMountsFromString(kMounts);
+  MaybeMountEntries uploadable_mounts = FilterPrivateMounts(all_mounts);
   MaybeProcEntries maybe_procs = MaybeProcEntries(
 
       {ProcEntry(1, 0, 4026531836, 4026531836, "init", "/sbin/init", 0b100000),
@@ -204,7 +205,7 @@ TEST(ReporterTest, FullReport) {
                  "/sbin/auditd -n -c /etc/audit", 0b000000)});
 
   MaybeReport report =
-      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);
+      GenerateAnomalousSystemReport(wx_mounts, uploadable_mounts, maybe_procs);
 
   ASSERT_TRUE(report.has_value());
 
