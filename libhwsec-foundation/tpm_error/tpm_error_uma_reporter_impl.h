@@ -12,6 +12,7 @@
 #include <metrics/metrics_library.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
+#include "libhwsec-foundation/tpm_error/command_and_response_data.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 
 namespace hwsec_foundation {
@@ -36,7 +37,7 @@ class HWSEC_FOUNDATION_EXPORT TpmErrorUmaReporterImpl
 
  private:
   bool ReportCommandAndResponse(const std::string& metrics_prefix,
-                                const TpmErrorData& data);
+                                const CommandAndResponseData& data);
 
   MetricsLibrary default_metrics_;
   MetricsLibraryInterface* metrics_ = &default_metrics_;

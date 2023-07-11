@@ -67,6 +67,7 @@ shared_library("libhwsec-foundation") {
     "syscaller/syscaller_impl.cc",
     "tpm/tpm_version.cc",
     "tpm_error/auth_failure_analysis.cc",
+    "tpm_error/command_and_response_data.cc",
     "tpm_error/handle_auth_failure.cc",
     "tpm_error/tpm_error_data.cc",
     "tpm_error/tpm_error_uma_report.cc",
@@ -174,6 +175,7 @@ install_config("install_syscaller_headers") {
 install_config("install_tpm_error_headers") {
   sources = [
     "tpm_error/auth_failure_analysis.h",
+    "tpm_error/command_and_response_data.h",
     "tpm_error/handle_auth_failure.h",
     "tpm_error/mock_tpm_error_uma_reporter.h",
     "tpm_error/tpm_error_constants.h",

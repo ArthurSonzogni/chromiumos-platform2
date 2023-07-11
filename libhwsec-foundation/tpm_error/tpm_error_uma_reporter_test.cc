@@ -139,4 +139,30 @@ TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseInvalidValue) {
   EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), false);
 }
 
+TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseVendor) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+  data.command = 0x20000000;
+  data.response = 0x506;
+  std::string metrics_name =
+      std::string(kTpm2CommandAndResponsePrefix) + ".Cryptohome";
+  uint32_t metrics_value = 0x2FFF0506;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), true);
+}
+
+TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseExtension) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+  data.command = 0xbaccd00a;
+  data.response = 0x506;
+  std::string metrics_name =
+      std::string(kTpm2CommandAndResponsePrefix) + ".Cryptohome";
+  uint32_t metrics_value = 0x1FFF0506;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), true);
+}
+
 }  // namespace hwsec_foundation
