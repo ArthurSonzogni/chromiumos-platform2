@@ -294,6 +294,7 @@ class DlcServiceUtil : public brillo::Daemon {
     }
     if (retry) {
       PostInstall();
+      return;
     }
     QuitWithExitCode(EX_SOFTWARE);
     return;
