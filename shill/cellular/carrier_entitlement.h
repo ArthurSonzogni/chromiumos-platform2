@@ -25,7 +25,7 @@
 
 namespace shill {
 
-class EventDispatcher;
+class Cellular;
 
 // The CarrierEntitlement class implements the carrier entitlement check
 // functionality in shill, which is responsible for connecting to a remote
@@ -45,7 +45,7 @@ class CarrierEntitlement {
     kGenericError
   };
 
-  explicit CarrierEntitlement(EventDispatcher* dispatcher,
+  explicit CarrierEntitlement(Cellular* cellular,
                               Metrics* metrics,
                               base::RepeatingCallback<void(Result)> check_cb);
   CarrierEntitlement(const CarrierEntitlement&) = delete;
@@ -59,11 +59,7 @@ class CarrierEntitlement {
   // set to |kAllowed|, otherwise it will run the entitlement check
   // corresponding to the carrier and return |kAllowed| in the callback if and
   // only if the device is allowed to tether.
-  // TODO(b/287083906): Evaluate passing the Network object to reduce the
-  // number of arguments.
-  void Check(const std::vector<net_base::IPAddress>& dns_list,
-             const std::string& interface_name,
-             const MobileOperatorMapper::EntitlementConfig& config);
+  void Check(const MobileOperatorMapper::EntitlementConfig& config);
 
   // Reset the cached entitlement check value.
   void Reset();
@@ -95,17 +91,15 @@ class CarrierEntitlement {
   void HttpRequestErrorCallback(brillo::http::RequestID request_id,
                                 const brillo::Error* error);
 
-  void CheckInternal(const std::vector<net_base::IPAddress>& dns_list,
-                     const std::string& interface_name,
-                     bool user_triggered);
-
+  void CheckInternal(bool user_triggered);
+  EventDispatcher* dispatcher();
   void PostBackgroundCheck();
   // Builds the request content
   std::unique_ptr<base::Value> BuildContentPayload(const Stringmap& params);
 
   void SendResult(Result result);
 
-  EventDispatcher* dispatcher_;
+  Cellular* cellular_;
   Metrics* metrics_;
   base::RepeatingCallback<void(Result)> check_cb_;
   MobileOperatorMapper::EntitlementConfig config_;
@@ -113,8 +107,6 @@ class CarrierEntitlement {
   brillo::http::RequestID request_id_;
   bool request_in_progress_;
   base::CancelableOnceClosure background_check_cancelable;
-  std::vector<net_base::IPAddress> last_dns_list_;
-  std::string last_interface_name_;
   Result last_result_ = Result::kGenericError;
   base::WeakPtrFactory<CarrierEntitlement> weak_ptr_factory_;
 };

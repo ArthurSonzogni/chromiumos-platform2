@@ -17,8 +17,11 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/http/http_request.h>
 
+#include "shill/cellular/cellular.h"
+#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/network/network.h"
 
 namespace shill {
 
@@ -27,10 +30,10 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
 CarrierEntitlement::CarrierEntitlement(
-    EventDispatcher* dispatcher,
+    Cellular* cellular,
     Metrics* metrics,
     base::RepeatingCallback<void(Result)> check_cb)
-    : dispatcher_(dispatcher),
+    : cellular_(cellular),
       metrics_(metrics),
       check_cb_(check_cb),
       transport_(brillo::http::Transport::CreateDefault()),
@@ -43,21 +46,18 @@ CarrierEntitlement::~CarrierEntitlement() {
   background_check_cancelable.Cancel();
 }
 
-void CarrierEntitlement::Check(
-    const std::vector<net_base::IPAddress>& dns_list,
-    const std::string& interface_name,
-    const MobileOperatorMapper::EntitlementConfig& config) {
-  last_dns_list_ = dns_list;
-  last_interface_name_ = interface_name;
-  config_ = config;
-  CheckInternal(dns_list, last_interface_name_,
-                /* user_triggered */ true);
+EventDispatcher* CarrierEntitlement::dispatcher() {
+  return cellular_->dispatcher();
 }
 
-void CarrierEntitlement::CheckInternal(
-    const std::vector<net_base::IPAddress>& dns_list,
-    const std::string& interface_name,
-    bool user_triggered) {
+void CarrierEntitlement::Check(
+    const MobileOperatorMapper::EntitlementConfig& config) {
+  config_ = config;
+
+  CheckInternal(/* user_triggered */ true);
+}
+
+void CarrierEntitlement::CheckInternal(bool user_triggered) {
   SLOG(3) << __func__;
   if (request_in_progress_) {
     LOG(WARNING)
@@ -90,13 +90,32 @@ void CarrierEntitlement::CheckInternal(
         Metrics::kCellularEntitlementCheckFailedToBuildPayload);
     return;
   }
+  auto network = cellular_->GetPrimaryNetwork();
+  if (!network) {
+    LOG(ERROR)
+        << "Cannot run entitlement check because Network object is missing";
+    SendResult(Result::kGenericError);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNoNetwork);
+    return;
+  }
+
+  if (!network->IsConnected()) {
+    LOG(ERROR)
+        << "Cannot run entitlement check because the network is not connected";
+    SendResult(Result::kGenericError);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNetworkNotConnected);
+    return;
+  }
+
   std::vector<std::string> dns_list_str;
-  for (auto& ip : dns_list) {
+  for (auto& ip : network->GetDNSServers()) {
     dns_list_str.push_back(ip.ToString());
   }
   transport_->SetDnsServers(dns_list_str);
-  transport_->SetDnsInterface(interface_name);
-  transport_->SetInterface(interface_name);
+  transport_->SetDnsInterface(network->interface_name());
+  transport_->SetInterface(network->interface_name());
   transport_->UseCustomCertificate(brillo::http::Transport::Certificate::kNss);
 
   transport_->SetDefaultTimeout(kHttpRequestTimeout);
@@ -122,11 +141,10 @@ void CarrierEntitlement::CheckInternal(
 void CarrierEntitlement::PostBackgroundCheck() {
   background_check_cancelable.Reset(base::BindOnce(
       &CarrierEntitlement::CheckInternal, weak_ptr_factory_.GetWeakPtr(),
-      last_dns_list_, last_interface_name_,
       /* user_triggered */ false));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               background_check_cancelable.callback(),
-                               kBackgroundCheckPeriod);
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                background_check_cancelable.callback(),
+                                kBackgroundCheckPeriod);
 }
 
 void CarrierEntitlement::Reset() {
@@ -149,7 +167,7 @@ std::unique_ptr<base::Value> CarrierEntitlement::BuildContentPayload(
 
 void CarrierEntitlement::SendResult(Result result) {
   request_in_progress_ = false;
-  dispatcher_->PostTask(FROM_HERE, base::BindOnce(check_cb_, result));
+  dispatcher()->PostTask(FROM_HERE, base::BindOnce(check_cb_, result));
 }
 
 void CarrierEntitlement::HttpRequestSuccessCallback(

@@ -323,7 +323,7 @@ Cellular::Cellular(Manager* manager,
   default_pdn_ = std::nullopt;
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
-      dispatcher(), metrics(),
+      this, metrics(),
       base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
                           weak_ptr_factory_.GetWeakPtr()));
   SLOG(1) << LoggingTag() << ": Cellular()";
@@ -3454,9 +3454,7 @@ void Cellular::EntitlementCheck(
   }
 
   entitlement_check_callback_ = std::move(callback);
-  carrier_entitlement_->Check(GetPrimaryNetwork()->GetDNSServers(),
-                              GetPrimaryNetwork()->interface_name(),
-                              mobile_operator_info_->entitlement_config());
+  carrier_entitlement_->Check(mobile_operator_info_->entitlement_config());
 }
 
 void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
