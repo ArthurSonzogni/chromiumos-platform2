@@ -52,7 +52,6 @@ def GetActiveProjects() -> Generator[Path, None, None]:
 # Someone should claim them :D.
 LEGACYLIST = {
     "avtest_label_detect",
-    "bootid-logger",
     "bootstat",
     "cecservice",
     "cfm-dfu-notification",
