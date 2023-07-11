@@ -1,0 +1,4 @@
+per-file *.mojom=set noparent
+per-file *.mojom=chrome-ipc-reviews@google.com
+per-file *_mojom_traits*.*=set noparent
+per-file *_mojom_traits*.*=chrome-ipc-reviews@google.com
