@@ -61,3 +61,13 @@ statx: 1
 umount2: 1
 wait4: 1
 write: 1
+
+# For emitting perfetto trace events.
+access: 1
+clone: arg0 & CLONE_THREAD
+fcntl64: 1
+ioctl: arg1 == TCGETS
+poll: 1
+ppoll: 1
+prctl: 1
+shutdown: 1

@@ -54,3 +54,12 @@ uname: 1
 # process but may not be evaluated until inside the worker process.
 socket: arg0 == AF_UNIX
 write: 1
+
+# For emitting perfetto trace events.
+clone: arg0 & CLONE_THREAD
+fcntl: 1
+ioctl: arg1 == TCGETS
+poll: 1
+ppoll: 1
+prctl: 1
+shutdown: 1
