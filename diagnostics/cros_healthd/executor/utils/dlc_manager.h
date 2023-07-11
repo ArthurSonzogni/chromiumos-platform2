@@ -48,7 +48,7 @@ class DlcManager {
                          DlcRootPathCallback root_path_cb);
 
  private:
-  enum InitializeState {
+  enum class InitializeState {
     kNotInitialized,
     kInitializing,
     kInitialized,
@@ -96,7 +96,7 @@ class DlcManager {
       pending_root_path_callbacks_;
 
   // Used to check the initialize state of the DLC manager.
-  InitializeState initialize_state_ = kNotInitialized;
+  InitializeState initialize_state_ = InitializeState::kNotInitialized;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<DlcManager> weak_factory_{this};

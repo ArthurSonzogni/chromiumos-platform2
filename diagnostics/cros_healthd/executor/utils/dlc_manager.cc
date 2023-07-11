@@ -24,12 +24,12 @@ DlcManager::DlcManager(
     : dlcservice_proxy_(dlcservice_proxy) {}
 
 void DlcManager::Initialize() {
-  if (initialize_state_ != kNotInitialized) {
+  if (initialize_state_ != InitializeState::kNotInitialized) {
     LOG(ERROR) << "DLC service is initializing or initialized";
     return;
   }
 
-  initialize_state_ = kInitializing;
+  initialize_state_ = InitializeState::kInitializing;
   dlcservice_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
       base::BindOnce(&DlcManager::RegisterDlcStateChangedEvents,
                      weak_factory_.GetWeakPtr()));
@@ -38,7 +38,7 @@ void DlcManager::Initialize() {
 void DlcManager::RegisterDlcStateChangedEvents(bool service_is_available) {
   if (!service_is_available) {
     LOG(ERROR) << "DLC service is not available";
-    initialize_state_ = kNotInitialized;
+    initialize_state_ = InitializeState::kNotInitialized;
     pending_initialized_callbacks_.clear();
     return;
   }
@@ -57,12 +57,12 @@ void DlcManager::HandleRegisterDlcStateChangedResponse(
   if (!success) {
     LOG(ERROR) << "Failed to register DLC state changed signal ("
                << interface << ":" << signal << ")";
-    initialize_state_ = kNotInitialized;
+    initialize_state_ = InitializeState::kNotInitialized;
     pending_initialized_callbacks_.clear();
     return;
   }
 
-  initialize_state_ = kInitialized;
+  initialize_state_ = InitializeState::kInitialized;
   for (auto& cb : pending_initialized_callbacks_) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(cb)));
@@ -84,21 +84,21 @@ void DlcManager::GetBinaryRootPath(const std::string& dlc_id,
 
 void DlcManager::WaitForInitialized(base::OnceClosure on_initialized) {
   switch (initialize_state_) {
-    case kNotInitialized:
+    case InitializeState::kNotInitialized:
       pending_initialized_callbacks_.push_back(std::move(on_initialized));
       Initialize();
       break;
-    case kInitializing:
+    case InitializeState::kInitializing:
       pending_initialized_callbacks_.push_back(std::move(on_initialized));
       break;
-    case kInitialized:
+    case InitializeState::kInitialized:
       std::move(on_initialized).Run();
       break;
   }
 }
 
 void DlcManager::InstallDlc(const std::string& dlc_id) {
-  if (initialize_state_ != kInitialized) {
+  if (initialize_state_ != InitializeState::kInitialized) {
     InvokeRootPathCallbacks(dlc_id, std::nullopt);
     return;
   }
