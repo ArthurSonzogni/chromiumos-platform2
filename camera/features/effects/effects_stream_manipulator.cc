@@ -1221,6 +1221,10 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
                        &segmentation_model_type)) {
     if (segmentation_model_type == "hd") {
       new_config.segmentation_model_type = SegmentationModelType::kHd;
+    } else if (segmentation_model_type == "effnet256") {
+      new_config.segmentation_model_type = SegmentationModelType::kEffnet256;
+    } else if (segmentation_model_type == "effnet384") {
+      new_config.segmentation_model_type = SegmentationModelType::kEffnet384;
     } else if (segmentation_model_type == "full") {
       new_config.segmentation_model_type = SegmentationModelType::kFull;
     } else {
