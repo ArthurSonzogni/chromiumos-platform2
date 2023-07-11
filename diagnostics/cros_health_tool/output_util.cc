@@ -460,12 +460,22 @@ std::string EnumToString(mojom::PsrEvent::EventType type) {
       return "LogStarted";
     case mojom::PsrEvent::EventType::kLogEnd:
       return "LogEnd";
+    case mojom::PsrEvent::EventType::kMissing:
+      return "Missing";
+    case mojom::PsrEvent::EventType::kInvalid:
+      return "Invalid";
     case mojom::PsrEvent::EventType::kPrtcFailure:
       return "PrtcFailure";
     case mojom::PsrEvent::EventType::kCsmeRecovery:
       return "CsmeRecovery";
+    case mojom::PsrEvent::EventType::kCsmeDamState:
+      return "CsmeDamState";
+    case mojom::PsrEvent::EventType::kCsmeUnlockState:
+      return "CsmeUnlockState";
     case mojom::PsrEvent::EventType::kSvnIncrease:
       return "SvnIncrease";
+    case mojom::PsrEvent::EventType::kFwVersionChanged:
+      return "FwVersionChanged";
   }
 }
 

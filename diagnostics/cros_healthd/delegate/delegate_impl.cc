@@ -395,14 +395,29 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
       case psr::EventType::kLogEnd:
         tmp_event->type = mojom::PsrEvent::EventType::kLogEnd;
         break;
+      case psr::EventType::kMissing:
+        tmp_event->type = mojom::PsrEvent::EventType::kMissing;
+        break;
+      case psr::EventType::kInvalid:
+        tmp_event->type = mojom::PsrEvent::EventType::kInvalid;
+        break;
       case psr::EventType::kPrtcFailure:
         tmp_event->type = mojom::PsrEvent::EventType::kPrtcFailure;
         break;
       case psr::EventType::kCsmeRecovery:
         tmp_event->type = mojom::PsrEvent::EventType::kCsmeRecovery;
         break;
+      case psr::EventType::kCsmeDamState:
+        tmp_event->type = mojom::PsrEvent::EventType::kCsmeDamState;
+        break;
+      case psr::EventType::kCsmeUnlockState:
+        tmp_event->type = mojom::PsrEvent::EventType::kCsmeUnlockState;
+        break;
       case psr::EventType::kSvnIncrease:
         tmp_event->type = mojom::PsrEvent::EventType::kSvnIncrease;
+        break;
+      case psr::EventType::kFwVersionChanged:
+        tmp_event->type = mojom::PsrEvent::EventType::kFwVersionChanged;
         break;
     }
 

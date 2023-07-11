@@ -68,9 +68,14 @@ enum LedgerCounterIndex {
 enum EventType : uint8_t {
   kLogStart = 8,
   kLogEnd = 9,
+  kMissing = 17,
+  kInvalid = 18,
   kPrtcFailure = 19,
   kCsmeRecovery = 20,
+  kCsmeDamState = 21,
+  kCsmeUnlockState = 22,
   kSvnIncrease = 23,
+  kFwVersionChanged = 24,
 };
 
 enum LogState {
