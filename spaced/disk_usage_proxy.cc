@@ -38,8 +38,6 @@ std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
     return nullptr;
   }
 
-  auto spaced_proxy = std::make_unique<org::chromium::SpacedProxy>(bus);
-
   return std::make_unique<DiskUsageProxy>(
       std::make_unique<org::chromium::SpacedProxy>(bus));
 }
