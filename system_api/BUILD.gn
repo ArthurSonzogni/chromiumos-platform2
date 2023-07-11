@@ -6,6 +6,8 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_headers",
+    ":install_pkg_config",
     ":libsystem_api",
     ":system_api-anomaly_detector-protos",
     ":system_api-arc-goprotos",
@@ -90,6 +92,22 @@ group("all") {
   ]
 }
 
+install_config("install_headers") {
+  sources = [
+    "constants",
+    "dbus",
+    "mojo",
+    "switches",
+  ]
+  install_path = "/usr/include/chromeos"
+  recursive = true
+}
+
+install_config("install_pkg_config") {
+  sources = [ "system_api.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
 shared_library("libsystem_api") {
   deps = [
     ":system_api-attestation-protos",
@@ -106,6 +124,7 @@ shared_library("libsystem_api") {
   } else {
     pkg_deps = [ "protobuf-lite" ]
   }
+  install_path = "lib"
 }
 
 proto_library("system_api-protos") {
