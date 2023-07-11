@@ -555,6 +555,11 @@ std::string GetGeneratePaiParam(bool arc_generate_pai) {
   return arc_generate_pai ? "androidboot.arc_generate_pai=1 " : std::string();
 }
 
+// Converts use dev caches bool to androidboot property if applicable.
+std::string GetUseDevCaches(bool use_dev_caches) {
+  return use_dev_caches ? "androidboot.use_dev_caches=true " : std::string();
+}
+
 std::string GetSELinuxContext(const base::FilePath& path) {
   char* con = nullptr;
   if (lgetfilecon(path.value().c_str(), &con) < 0) {
@@ -1311,14 +1316,19 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const int enable_tts_caching = config_.GetIntOrDie("ENABLE_TTS_CACHING");
   LOG(INFO) << "enable_tts_caching is " << enable_tts_caching;
 
-  const int host_ureadahead_generation =
-      config_.GetBoolOrDie("HOST_UREADAHEAD_GENERATION");
-  LOG(INFO) << "host_ureadahead_generation is " << host_ureadahead_generation;
-
   const int enable_consumer_auto_update_toggle =
       config_.GetIntOrDie("ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE");
   LOG(INFO) << "consumer_auto_update_toggle is "
             << enable_consumer_auto_update_toggle;
+
+  const int host_ureadahead_generation =
+      config_.GetBoolOrDie("HOST_UREADAHEAD_GENERATION");
+  if (host_ureadahead_generation)
+    LOG(INFO) << "host_ureadahead_generation is enabled";
+
+  const bool use_dev_caches = config_.GetBoolOrDie("USE_DEV_CACHES");
+  if (use_dev_caches)
+    LOG(INFO) << "use_dev_caches is set";
 
   const int enable_privacy_hub_for_chrome =
       config_.GetIntOrDie("ENABLE_PRIVACY_HUB_FOR_CHROME");
@@ -1384,6 +1394,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.arc.tts.caching=%d "
       "androidboot.enable_consumer_auto_update_toggle=%d "
       "androidboot.arc.ureadahead_generation=%d "
+      "%s" /* Use dev caches */
       "androidboot.enable_privacy_hub_for_chrome=%d\n",
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
@@ -1396,7 +1407,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
       enable_notifications_refresh, enable_tts_caching,
       enable_consumer_auto_update_toggle, host_ureadahead_generation,
-      enable_privacy_hub_for_chrome);
+      GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }

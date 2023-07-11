@@ -1457,6 +1457,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("ENABLE_TTS_CACHING=%d", request.enable_tts_caching()),
       base::StringPrintf("HOST_UREADAHEAD_GENERATION=%d",
                          request.host_ureadahead_generation()),
+      base::StringPrintf("USE_DEV_CACHES=%d", request.use_dev_caches()),
   };
 
   if (request.arc_generate_pai())

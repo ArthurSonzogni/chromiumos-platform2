@@ -581,6 +581,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    StartArcInstanceExpectationsBuilder& SetUseDevCaches(bool v) {
+      use_dev_caches_ = v;
+      return *this;
+    }
+
     std::vector<std::string> Build() const {
       std::vector<std::string> result({
           "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
@@ -605,6 +610,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "ENABLE_TTS_CACHING=" + std::to_string(enable_tts_caching_),
           "HOST_UREADAHEAD_GENERATION=" +
               std::to_string(host_ureadahead_generation_),
+          "USE_DEV_CACHES=" + std::to_string(use_dev_caches_),
       });
 
       if (arc_generate_pai_)
@@ -661,6 +667,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool enable_privacy_hub_for_chrome_ = false;
     bool enable_tts_caching_ = false;
     bool host_ureadahead_generation_ = false;
+    bool use_dev_caches_ = false;
     bool arc_generate_pai_ = false;
     arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate
         play_store_auto_update_ = arc::
@@ -2820,6 +2827,25 @@ TEST_F(SessionManagerImplTest, HostUreadaheadGeneration) {
                                  .SetHostUreadaheadGeneration(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
+}
+
+TEST_F(SessionManagerImplTest, UseDevCaches) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  arc::StartArcMiniInstanceRequest request;
+  request.set_use_dev_caches(true);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(
+          SessionManagerImpl::kStartArcInstanceImpulse,
+          StartArcInstanceExpectationsBuilder().SetUseDevCaches(true).Build(),
+          InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
