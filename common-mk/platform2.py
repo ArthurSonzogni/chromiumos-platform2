@@ -719,8 +719,27 @@ class Platform2(object):
 
     def install(self, _args):
         """Outputs the installation commands of ebuild as a standard output."""
+        # Some commands modify ambient state and don't need to be rerun when
+        # they use the same arguments.  This can save a little bit of time with
+        # packages that install many files to diff dirs (e.g. system_api).
+        cmd_cache = {
+            "exeinto": None,
+            "exeopts": None,
+            "insinto": None,
+            "insopts": None,
+            "into": None,
+        }
+
         install_cmd_list = self.configure_install()
         for install_cmd in install_cmd_list:
+            cmd = install_cmd[0]
+            if cmd in cmd_cache:
+                new_args = install_cmd[1:]
+                old_args = cmd_cache[cmd]
+                if new_args == old_args:
+                    continue
+                cmd_cache[cmd] = new_args
+
             print(" ".join(shlex.quote(x) for x in install_cmd))
 
 
