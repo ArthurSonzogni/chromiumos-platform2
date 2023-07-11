@@ -210,7 +210,7 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     {kUSSMigrationTimer, "Cryptohome.TimeToMigrateVaultKeysetToUss", 0, 6000,
      60},
     // The time take to set up the cryptohome vault for mounting.
-    {kVaultSetupTimer, "Cryptohome.TimeToSetUpVault", 0, 10 * 1000, 50},
+    {kVaultSetupTimer, "Cryptohome.TimeToSetupVault", 0, 10 * 1000, 50},
     // The time taken to relabel the SELinux context of all files inside the
     // user cryptohome.
     {kSELinuxRelabelTimer, "Cryptohome.TimeToRelabelSELinuxContexts", 0,
