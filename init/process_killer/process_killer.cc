@@ -28,8 +28,7 @@ constexpr char const* kSessionMountRegexes[] = {
     "/home/chronos/user",
     "/home/root/[a-fA-F0-9]{40}",
     "/home/user/[a-fA-F0-9]{40}",
-    "/run/daemon-store/[a-fA-F0-9]{40}",
-    "/run/daemon-store-cache/[a-fA-F0-9]{40}",
+    "/run/daemon-store",
 };
 
 constexpr char const* kSystemMountRegexes[] = {"/var", "/home",
