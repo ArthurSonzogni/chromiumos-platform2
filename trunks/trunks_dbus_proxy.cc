@@ -199,9 +199,6 @@ void TrunksDBusProxy::ReportMetrics(const std::string& command,
                << GetErrorString(parse_rc);
     return;
   }
-  if (!IsGenericTpmCommand(cc)) {
-    return;
-  }
   TPM_RC rc;
   parse_rc = GetResponseCode(response, rc);
   if (parse_rc != TPM_RC_SUCCESS) {

@@ -312,6 +312,9 @@ TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureWrongThread) {
 TEST_F(TrunksDBusProxyTest, SendCommandNotGeneric) {
   std::string command = CreateCommand(TPM_CC_LAST + 1);
   std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  TpmErrorData error_data{TPM_CC_LAST + 1, TPM_RC_SUCCESS};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(proxy_.Init());
   set_next_response(tpm_response);
@@ -326,6 +329,9 @@ TEST_F(TrunksDBusProxyTest, SendCommandNotGeneric) {
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitNotGeneric) {
   std::string command = CreateCommand(TPM_CC_LAST + 1);
   std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  TpmErrorData error_data{TPM_CC_LAST + 1, TPM_RC_SUCCESS};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(proxy_.Init());
   set_next_response(tpm_response);
