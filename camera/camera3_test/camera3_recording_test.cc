@@ -24,6 +24,14 @@ void Camera3RecordingFixture::ProcessRecordingResult(
                                              ANDROID_SENSOR_TIMESTAMP, &entry))
       << "Failed to get sensor timestamp in recording result";
   sensor_timestamp_map_[cam_id].push_back(entry.data.i64[0]);
+
+  // b/259631409: Camera clients (e.g. CCA, Meet)
+  // need reliable timestamp for video use case.
+  auto last_idx = sensor_timestamp_map_[cam_id].size() - 1;
+  if (last_idx > 0) {
+    ASSERT_GT(sensor_timestamp_map_[cam_id][last_idx],
+              sensor_timestamp_map_[cam_id][last_idx - 1]);
+  }
 }
 
 // Test parameters:
