@@ -317,6 +317,7 @@ Cellular::Cellular(Manager* manager,
   CreateCapability();
 
   // Reset networks
+  default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
@@ -736,6 +737,7 @@ void Cellular::Reset(ResultCallback callback) {
 
 void Cellular::DropConnectionDefault() {
   SetPrimaryMultiplexedInterface("");
+  default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
   SelectService(nullptr);
 }
@@ -1418,18 +1420,20 @@ void Cellular::Connect(CellularService* service, Error* error) {
   capability_->Connect(
       apn_type, apn_try_list,
       base::BindOnce(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
-                     service->iccid(), service->is_in_user_connect()));
+                     apn_type, service->iccid(),
+                     service->is_in_user_connect()));
 
   metrics()->NotifyDeviceConnectStarted(interface_index());
 }
 
 // Note that there's no ResultCallback argument to this since Connect() isn't
 // yet passed one.
-void Cellular::OnConnectReply(std::string iccid,
+void Cellular::OnConnectReply(ApnList::ApnType apn_type,
+                              std::string iccid,
                               bool is_user_triggered,
                               const Error& error) {
-  NotifyCellularConnectionResult(error, iccid, is_user_triggered,
-                                 ApnList::ApnType::kDefault);
+  NotifyCellularConnectionResult(error, iccid, is_user_triggered, apn_type);
+
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Failed: " << error;
     if (service_ && service_->iccid() == iccid) {
@@ -1440,6 +1444,10 @@ void Cellular::OnConnectReply(std::string iccid,
     }
     return;
   }
+
+  // Successful bearer connection, so store the APN type.
+  default_pdn_apn_type_ = apn_type;
+
   metrics()->NotifyDeviceConnectFinished(interface_index());
   OnConnected();
 }
@@ -1633,8 +1641,13 @@ void Cellular::EstablishLink() {
   CHECK_EQ(State::kConnected, state_);
   CHECK(capability_);
 
-  CellularBearer* bearer =
-      capability_->GetActiveBearer(ApnList::ApnType::kDefault);
+  if (!default_pdn_apn_type_) {
+    LOG(WARNING) << LoggingTag() << ": Disconnecting due to missing APN type.";
+    Disconnect(nullptr, "missing APN type");
+    return;
+  }
+
+  CellularBearer* bearer = capability_->GetActiveBearer(*default_pdn_apn_type_);
   if (!bearer) {
     LOG(WARNING) << LoggingTag()
                  << ": Disconnecting due to missing active bearer.";
@@ -1644,7 +1657,7 @@ void Cellular::EstablishLink() {
 
   // The APN type is ensured to be one by GetActiveBearer()
   CHECK_EQ(bearer->apn_types().size(), 1UL);
-  CHECK_EQ(bearer->apn_types()[0], ApnList::ApnType::kDefault);
+  CHECK_EQ(bearer->apn_types()[0], *default_pdn_apn_type_);
 
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
     LOG(INFO) << LoggingTag() << ": Start PPP connection on "
@@ -1683,8 +1696,15 @@ void Cellular::DefaultLinkUp() {
   LOG(INFO) << LoggingTag() << ": Default link is up: configuring network";
 
   CHECK(capability_);
+
+  if (!default_pdn_apn_type_) {
+    LOG(INFO) << LoggingTag() << ": Default link APN type unknown";
+    Disconnect(nullptr, "missing default link APN type.");
+    return;
+  }
+
   if (!default_pdn_->Configure(
-          capability_->GetActiveBearer(ApnList::ApnType::kDefault))) {
+          capability_->GetActiveBearer(*default_pdn_apn_type_))) {
     LOG(INFO) << LoggingTag() << ": Default link network configuration failed";
     Disconnect(nullptr, "link configuration failed.");
     return;
@@ -1954,6 +1974,7 @@ bool Cellular::DisconnectCleanup() {
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
   SetPrimaryMultiplexedInterface("");
+  default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
   ResetCarrierEntitlement();
   return true;

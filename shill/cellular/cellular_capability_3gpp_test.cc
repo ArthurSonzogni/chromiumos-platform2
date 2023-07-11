@@ -421,6 +421,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     CHECK(state == Cellular::State::kLinked ||
           state == Cellular::State::kConnected);
     auto network = std::make_unique<MockNetwork>(0, "", Technology::kCellular);
+    cellular_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
     cellular_->SetDefaultPdnForTesting(RpcIdentifier(""), std::move(network),
                                        Cellular::LinkState::kUp);
     cellular_->set_state_for_testing(state);

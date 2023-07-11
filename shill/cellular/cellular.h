@@ -426,6 +426,9 @@ class Cellular : public Device,
   void set_skip_establish_link_for_testing(bool on) {
     skip_establish_link_for_testing_ = on;
   }
+  void set_default_pdn_apn_type_for_testing(ApnList::ApnType apn_type) {
+    default_pdn_apn_type_ = apn_type;
+  }
 
   enum class LinkState { kUnknown, kDown, kUp };
   void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
@@ -608,7 +611,8 @@ class Cellular : public Device,
   void HelpRegisterConstDerivedString(
       base::StringPiece name, std::string (Cellular::*get)(Error* error));
 
-  void OnConnectReply(std::string iccid,
+  void OnConnectReply(ApnList::ApnType apn_type,
+                      std::string iccid,
                       bool is_user_triggered,
                       const Error& error);
   void OnDisconnectReply(const Error& error);
@@ -731,6 +735,16 @@ class Cellular : public Device,
   // devices this will always be treated as primary network (e.g. when
   // returning a Network in GetPrimaryNetwork()).
   std::optional<NetworkInfo> default_pdn_;
+
+  // The APN type of the default PDN will always be kDefault, unless we've
+  // connected DUN as DEFAULT, in which case it will be kDun. It is required
+  // to keep this value cached because we need to compare it with the connected
+  // bearer reported by ModemManager. This variable cannot be part of the
+  // |default_pdn_| struct, because it must outlive the creation and destruction
+  // of the corresponding Network (e.g. when modem goes unregistered). It should
+  // be considered a prerequisite to be be able to create the NetworkInfo, never
+  // part of it.
+  std::optional<ApnList::ApnType> default_pdn_apn_type_;
 
   struct LocationInfo {
     std::string mcc;

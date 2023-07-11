@@ -922,6 +922,7 @@ TEST_F(CellularTest, Disconnect) {
   EXPECT_EQ(Error::kNotConnected, error.type());
   error.Reset();
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -945,6 +946,7 @@ TEST_F(CellularTest, Disconnect) {
 TEST_F(CellularTest, DisconnectFailure) {
   // Test the case where the underlying modem state is set
   // to disconnecting, but shill thinks it's still connected
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1149,6 +1151,7 @@ TEST_F(CellularTest, StartPPPAlreadyStarted) {
 }
 
 TEST_F(CellularTest, StartPPPAfterEthernetUp) {
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1397,6 +1400,7 @@ TEST_F(CellularTest, OnPPPDiedCleanupDevice) {
 }
 
 TEST_F(CellularTest, DropConnection) {
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1427,6 +1431,7 @@ TEST_F(CellularTest, ChangeServiceState) {
   EXPECT_CALL(*service, SetFailureSilent(_));
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1748,6 +1753,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
       CellularBearer::IPConfigMethod::kPPP);
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   const int kPID = 123;
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
@@ -1774,6 +1780,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
       CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
@@ -1806,6 +1813,7 @@ TEST_F(CellularTest, EstablishLinkMultiplexDHCP) {
       CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
@@ -1841,6 +1849,7 @@ TEST_F(CellularTest, DefaultLinkUpDHCP) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1876,6 +1885,7 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring)).Times(0);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1921,6 +1931,7 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexDHCP) {
   EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
                                           kTestMultiplexedInterfaceName));
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
                                                kTestMultiplexedInterfaceName,
                                                Technology::kCellular);
@@ -1948,6 +1959,7 @@ TEST_F(CellularTest, DefaultLinkUpConfigureFailure) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring)).Times(0);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -1984,6 +1996,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
       CellularBearer::IPConfigMethod::kStatic);
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
@@ -2014,6 +2027,7 @@ TEST_F(CellularTest, EstablishLinkMultiplexStatic) {
       CellularBearer::IPConfigMethod::kStatic);
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
@@ -2072,6 +2086,7 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
@@ -2118,6 +2133,7 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
                                           kTestMultiplexedInterfaceName));
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
                                                kTestMultiplexedInterfaceName,
                                                Technology::kCellular);
@@ -2147,6 +2163,7 @@ TEST_F(CellularTest, DefaultLinkAlreadyUp) {
   MockCellularService* service = SetMockService();
   EXPECT_CALL(*service, SetState(_)).Times(0);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -2165,6 +2182,7 @@ TEST_F(CellularTest, DefaultLinkAlreadyUp) {
 TEST_F(CellularTest, DefaultLinkInitiallyDown) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
 
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
@@ -2185,6 +2203,7 @@ TEST_F(CellularTest, DefaultLinkUpToDown) {
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->set_state_for_testing(Cellular::State::kLinked);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -2214,6 +2233,7 @@ TEST_F(CellularTest, DefaultLinkUpToDownAlreadyDisconnecting) {
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->set_state_for_testing(Cellular::State::kLinked);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -2256,6 +2276,7 @@ TEST_F(CellularTest, DefaultLinkAlreadyDown) {
 }
 
 TEST_F(CellularTest, DefaultLinkDeleted) {
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -2990,6 +3011,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DisallowedByOperator) {
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -3008,6 +3030,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DisallowedByOperator) {
 }
 
 TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefault) {
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
@@ -3137,6 +3160,7 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
 
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
