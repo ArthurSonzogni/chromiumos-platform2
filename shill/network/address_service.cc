@@ -24,7 +24,7 @@ void AddressService::FlushAddress(int interface_index) {
     return;
   }
   for (const auto& item : interface_addresses->second) {
-    rtnl_handler_->RemoveInterfaceAddress(interface_index, IPAddress(item));
+    rtnl_handler_->RemoveInterfaceAddress(interface_index, item);
   }
   added_addresses_.erase(interface_addresses);
 }
@@ -41,7 +41,7 @@ bool AddressService::RemoveAddressOtherThan(int interface_index,
        /*no-op*/) {
     if (iter->GetFamily() == local.GetFamily() && *iter != local) {
       removed = true;
-      rtnl_handler_->RemoveInterfaceAddress(interface_index, IPAddress(*iter));
+      rtnl_handler_->RemoveInterfaceAddress(interface_index, *iter);
       iter = interface_addresses->second.erase(iter);
     } else {
       ++iter;
@@ -61,10 +61,7 @@ void AddressService::AddAddress(
     has_broadcast = false;
   }
   if (!rtnl_handler_->AddInterfaceAddress(
-          interface_index, IPAddress(local),
-          has_broadcast ? IPAddress(*broadcast)
-                        : IPAddress::CreateFromFamily(
-                              net_base::ToSAFamily(local.GetFamily())))) {
+          interface_index, local, has_broadcast ? broadcast : std::nullopt)) {
     LOG(ERROR) << __func__ << ": fail to add " << local.ToString()
                << ", broadcast: "
                << (has_broadcast ? broadcast->ToString() : "default");

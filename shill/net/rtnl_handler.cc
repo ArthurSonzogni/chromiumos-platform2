@@ -28,8 +28,8 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/io_handler.h"
+#include "shill/net/io_handler_factory_container.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/sockets.h"
 
@@ -403,36 +403,41 @@ void RTNLHandler::ParseRTNL(InputData* data) {
   }
 }
 
-bool RTNLHandler::AddressRequest(int interface_index,
-                                 RTNLMessage::Mode mode,
-                                 int flags,
-                                 const IPAddress& local,
-                                 const std::optional<IPAddress>& broadcast) {
-  auto msg = std::make_unique<RTNLMessage>(RTNLMessage::kTypeAddress, mode,
-                                           NLM_F_REQUEST | flags, 0, 0,
-                                           interface_index, local.family());
+bool RTNLHandler::AddressRequest(
+    int interface_index,
+    RTNLMessage::Mode mode,
+    int flags,
+    const net_base::IPCIDR& local,
+    const std::optional<net_base::IPv4Address>& broadcast) {
+  auto msg = std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeAddress, mode, NLM_F_REQUEST | flags, 0, 0,
+      interface_index, net_base::ToSAFamily(local.GetFamily()));
 
-  msg->set_address_status(RTNLMessage::AddressStatus(local.prefix(), 0, 0));
+  msg->set_address_status(
+      RTNLMessage::AddressStatus(local.prefix_length(), 0, 0));
 
-  msg->SetAttribute(IFA_LOCAL, local.address());
-  if (broadcast && !broadcast->IsDefault()) {
-    CHECK_EQ(broadcast->family(), local.family());
-    msg->SetAttribute(IFA_BROADCAST, broadcast->address());
+  msg->SetAttribute(IFA_LOCAL,
+                    ByteString(local.address().ToByteString(), false));
+  if (broadcast) {
+    CHECK_EQ(local.GetFamily(), net_base::IPFamily::kIPv4);
+    msg->SetAttribute(IFA_BROADCAST,
+                      ByteString(broadcast->ToByteString(), false));
   }
 
   return SendMessage(std::move(msg), nullptr);
 }
 
-bool RTNLHandler::AddInterfaceAddress(int interface_index,
-                                      const IPAddress& local,
-                                      const IPAddress& broadcast) {
+bool RTNLHandler::AddInterfaceAddress(
+    int interface_index,
+    const net_base::IPCIDR& local,
+    const std::optional<net_base::IPv4Address>& broadcast) {
   return AddressRequest(interface_index, RTNLMessage::kModeAdd,
                         NLM_F_CREATE | NLM_F_EXCL | NLM_F_ECHO, local,
                         broadcast);
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
-                                         const IPAddress& local) {
+                                         const net_base::IPCIDR& local) {
   return AddressRequest(interface_index, RTNLMessage::kModeDelete, NLM_F_ECHO,
                         local, std::nullopt);
 }

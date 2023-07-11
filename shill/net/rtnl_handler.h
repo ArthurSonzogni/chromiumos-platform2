@@ -18,8 +18,9 @@
 #include <base/memory/ref_counted.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 
-#include "shill/net/io_handler_factory_container.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/shill_export.h"
@@ -97,14 +98,15 @@ class SHILL_EXPORT RTNLHandler {
 
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
-  virtual bool AddInterfaceAddress(int interface_index,
-                                   const IPAddress& local,
-                                   const IPAddress& broadcast);
+  virtual bool AddInterfaceAddress(
+      int interface_index,
+      const net_base::IPCIDR& local,
+      const std::optional<net_base::IPv4Address>& broadcast);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool RemoveInterfaceAddress(int interface_index,
-                                      const IPAddress& local);
+                                      const net_base::IPCIDR& local);
 
   // Remove a network interface from the kernel.
   virtual bool RemoveInterface(int interface_index);
@@ -178,8 +180,8 @@ class SHILL_EXPORT RTNLHandler {
   bool AddressRequest(int interface_index,
                       RTNLMessage::Mode mode,
                       int flags,
-                      const IPAddress& local,
-                      const std::optional<IPAddress>& broadcast);
+                      const net_base::IPCIDR& local,
+                      const std::optional<net_base::IPv4Address>& broadcast);
 
   // Send a formatted RTNL message.  Associates an error mask -- a list
   // of errors that are expected and should not trigger log messages by

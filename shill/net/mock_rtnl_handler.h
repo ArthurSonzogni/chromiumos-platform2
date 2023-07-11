@@ -36,11 +36,13 @@ class MockRTNLHandler : public RTNLHandler {
               (override));
   MOCK_METHOD(bool,
               AddInterfaceAddress,
-              (int, const IPAddress&, const IPAddress&),
+              (int,
+               const net_base::IPCIDR&,
+               const std::optional<net_base::IPv4Address>&),
               (override));
   MOCK_METHOD(bool,
               RemoveInterfaceAddress,
-              (int, const IPAddress&),
+              (int, const net_base::IPCIDR&),
               (override));
   MOCK_METHOD(bool, RemoveInterface, (int), (override));
   MOCK_METHOD(void, RequestDump, (uint32_t), (override));

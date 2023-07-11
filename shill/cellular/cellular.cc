@@ -40,7 +40,6 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_consts.h"
-#include "shill/cellular/cellular_error.h"
 #include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
@@ -49,7 +48,6 @@
 #include "shill/control_interface.h"
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
-#include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
@@ -3348,7 +3346,7 @@ void Cellular::NetworkInfo::DestroySockets() {
   for (const auto& address : network_->GetAddresses()) {
     SLOG(2) << LoggingTag() << ": Destroy all sockets of address: " << address;
     cellular_->rtnl_handler()->RemoveInterfaceAddress(
-        network_->interface_index(), IPAddress(address));
+        network_->interface_index(), address);
     if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP,
                                                       address.address()))
       SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;

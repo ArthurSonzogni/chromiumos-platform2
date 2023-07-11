@@ -545,8 +545,8 @@ void Network::ConfigureStaticIPv6Address() {
     return;
   }
   LOG(INFO) << logging_tag_ << ": configuring static IPv6 address " << *local;
-  rtnl_handler_->AddInterfaceAddress(interface_index_, IPAddress(*local),
-                                     IPAddress(local->GetBroadcast()));
+  rtnl_handler_->AddInterfaceAddress(interface_index_, net_base::IPCIDR(*local),
+                                     std::nullopt);
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
