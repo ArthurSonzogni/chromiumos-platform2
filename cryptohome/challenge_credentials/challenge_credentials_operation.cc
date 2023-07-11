@@ -50,7 +50,7 @@ void OnKeySignatureChallengeResponse(
   }
   std::unique_ptr<KeyChallengeResponse> response =
       std::move(response_status).value();
-  DCHECK(response);
+  CHECK(response);
   if (!response->has_signature_response_data() ||
       !response->signature_response_data().has_signature()) {
     LOG(ERROR) << "Signature challenge response is invalid";

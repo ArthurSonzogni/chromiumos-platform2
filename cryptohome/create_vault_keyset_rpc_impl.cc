@@ -174,8 +174,8 @@ CryptohomeStatus CreateVaultKeysetRpcImpl::AddVaultKeyset(
     VaultKeysetIntent vk_backup_intent,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
-  DCHECK(key_blobs);
-  DCHECK(auth_state);
+  CHECK(key_blobs);
+  CHECK(auth_state);
   if (is_initial_keyset) {
     // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =

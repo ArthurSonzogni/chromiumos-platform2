@@ -110,7 +110,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
           generate_new_result) {
-    DCHECK(challenge_service_);
+    CHECK(challenge_service_);
     const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
@@ -127,7 +127,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       const Blob& salt,
       std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
           decrypt_result) {
-    DCHECK(challenge_service_);
+    CHECK(challenge_service_);
     const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     const structure::SignatureChallengeInfo keyset_challenge_info =

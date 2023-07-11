@@ -93,7 +93,7 @@ bool FakePlatform::FakeExtendedAttributes::Exists(
 
 void FakePlatform::FakeExtendedAttributes::List(
     std::vector<std::string>* attr_list) const {
-  DCHECK(attr_list);
+  CHECK(attr_list);
   attr_list->clear();
   for (const auto& xattr : xattrs_) {
     attr_list->push_back(xattr.first);

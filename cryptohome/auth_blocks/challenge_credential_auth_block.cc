@@ -41,7 +41,7 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 CryptoStatus ChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
-  DCHECK(crypto.GetHwsec());
+  CHECK(crypto.GetHwsec());
   hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -179,7 +179,7 @@ void ChallengeCredentialAuthBlock::CreateContinue(
   std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info =
       result_val.info();
   std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
-  DCHECK(passkey);
+  CHECK(passkey);
 
   // We only need passkey for the AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};
@@ -339,7 +339,7 @@ void ChallengeCredentialAuthBlock::DeriveContinue(
   ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
       std::move(result).value();
   std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
-  DCHECK(passkey);
+  CHECK(passkey);
 
   // We only need passkey for the ScryptAuthBlock AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};

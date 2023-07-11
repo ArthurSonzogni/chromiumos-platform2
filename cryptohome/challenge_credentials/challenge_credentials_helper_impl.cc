@@ -64,7 +64,7 @@ bool IsOsTestImage() {
 ChallengeCredentialsHelperImpl::ChallengeCredentialsHelperImpl(
     const hwsec::CryptohomeFrontend* hwsec)
     : roca_vulnerable_(std::nullopt), hwsec_(hwsec) {
-  DCHECK(hwsec_);
+  CHECK(hwsec_);
 }
 
 ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {

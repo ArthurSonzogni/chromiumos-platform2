@@ -139,7 +139,7 @@ std::unique_ptr<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
 AuthFactorVaultKeysetConverter::AuthFactorVaultKeysetConverter(
     KeysetManagement* keyset_management)
     : keyset_management_(keyset_management) {
-  DCHECK(keyset_management_);
+  CHECK(keyset_management_);
 }
 AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 

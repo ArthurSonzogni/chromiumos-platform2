@@ -212,7 +212,7 @@ void ReplyWithAuthFactorStatus(
 
   // Select which AuthFactorWithStatus to build based on user type.
   if (auth_session->ephemeral_user()) {
-    DCHECK(user_session);
+    CHECK(user_session);
     auth_factor_with_status = GetAuthFactorWithStatus(
         auth_session->obfuscated_username(), auth_factor_driver_manager,
         user_session->FindCredentialVerifier(auth_factor.label()));
@@ -304,8 +304,8 @@ void ReplyWithAuthenticationResult(
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
     CryptohomeStatus status) {
-  DCHECK(auth_session);
-  DCHECK(!on_done.is_null());
+  CHECK(auth_session);
+  CHECK(!on_done.is_null());
   user_data_auth::AuthenticateAuthFactorReply reply;
   for (AuthIntent auth_intent : auth_session->authorized_intents()) {
     reply.add_authorized_for(AuthIntentToProto(auth_intent));
@@ -1220,7 +1220,7 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   AssertOnMountThread();
 
   // We should not pass nullptr to this method.
-  DCHECK(session);
+  CHECK(session);
 
   bool still_mounted = false;
 
@@ -3400,7 +3400,7 @@ void UserDataAuth::GetAuthSessionStatus(
 void UserDataAuth::GetAuthSessionStatusImpl(
     AuthSession* auth_session,
     user_data_auth::GetAuthSessionStatusReply& reply) {
-  DCHECK(auth_session);
+  CHECK(auth_session);
   // Default is invalid unless there is evidence otherwise.
   reply.set_status(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION);
 

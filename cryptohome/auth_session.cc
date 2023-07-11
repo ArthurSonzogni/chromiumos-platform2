@@ -413,18 +413,17 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       user_exists_(*params.user_exists),
       auth_factor_map_(std::move(params.auth_factor_map)),
       migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
-  // Preconditions.
-  DCHECK(!serialized_token_.empty());
-  DCHECK(timeout_timer_);
-  DCHECK(auth_factor_status_update_timer_);
-  DCHECK(crypto_);
-  DCHECK(platform_);
-  DCHECK(user_session_map_);
-  DCHECK(keyset_management_);
-  DCHECK(auth_block_utility_);
-  DCHECK(auth_factor_manager_);
-  DCHECK(user_secret_stash_storage_);
-  DCHECK(features_);
+  CHECK(!serialized_token_.empty());
+  CHECK(timeout_timer_);
+  CHECK(auth_factor_status_update_timer_);
+  CHECK(crypto_);
+  CHECK(platform_);
+  CHECK(user_session_map_);
+  CHECK(keyset_management_);
+  CHECK(auth_block_utility_);
+  CHECK(auth_factor_manager_);
+  CHECK(user_secret_stash_storage_);
+  CHECK(features_);
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
 }
@@ -579,9 +578,9 @@ CryptohomeStatus AuthSession::OnUserCreated() {
     }
     if (IsUserSecretStashExperimentEnabled(platform_)) {
       // Check invariants.
-      DCHECK(!user_secret_stash_);
-      DCHECK(!user_secret_stash_main_key_.has_value());
-      DCHECK(file_system_keyset_.has_value());
+      CHECK(!user_secret_stash_);
+      CHECK(!user_secret_stash_main_key_.has_value());
+      CHECK(file_system_keyset_.has_value());
       // The USS experiment is on, hence create the USS for the newly created
       // non-ephemeral user. Keep the USS in memory: it will be persisted after
       // the first auth factor gets added.
@@ -675,8 +674,8 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     VaultKeysetIntent vk_backup_intent,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
-  DCHECK(key_blobs);
-  DCHECK(auth_state);
+  CHECK(key_blobs);
+  CHECK(auth_state);
   if (is_initial_keyset) {
     if (!file_system_keyset_.has_value()) {
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
@@ -739,7 +738,7 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   // Update can happen only during an authenticated AuthSession.
-  DCHECK(file_system_keyset_.has_value());
+  CHECK(file_system_keyset_.has_value());
 
   if (!callback_error.ok() || key_blobs == nullptr ||
       auth_block_state == nullptr) {
@@ -903,7 +902,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     return;
   }
 
-  DCHECK(status.ok());
+  CHECK(status.ok());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
       keyset_management_->GetValidKeyset(
@@ -1072,12 +1071,12 @@ void AuthSession::OnMigrationUssCreated(
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
-  DCHECK(file_system_keyset_.has_value());
+  CHECK(file_system_keyset_.has_value());
   return file_system_keyset_.value();
 }
 
 bool AuthSession::PersistResetSecretToUss() {
-  DCHECK(user_secret_stash_main_key_.has_value());
+  CHECK(user_secret_stash_main_key_.has_value());
 
   // Update UserSecretStash in memory with reset_secret from not-migrated
   // keyset. If reset_secret isn't updated, no need to persist.
@@ -1108,7 +1107,7 @@ bool AuthSession::PersistResetSecretToUss() {
 }
 
 bool AuthSession::MigrateResetSecretToUss() {
-  DCHECK(user_secret_stash_);
+  CHECK(user_secret_stash_);
   if (!vault_keyset_->HasWrappedResetSeed()) {
     // Authenticated VaultKeyset doesn't include a reset seed if it is not a
     // password VaultKeyset";
@@ -1467,7 +1466,7 @@ void AuthSession::AuthenticateAuthFactor(
       // auth_block_type is guaranteed to be non-null because we've checked
       // auth_factor_labels's length above, and auth_block_type must be set in
       // the first iteration of the loop.
-      DCHECK(auth_block_type.has_value());
+      CHECK(auth_block_type.has_value());
 
       CryptohomeStatusOr<AuthInput> auth_input =
           CreateAuthInputForSelectFactor(*request_auth_factor_type);
@@ -1669,8 +1668,8 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
     const AuthFactor& auth_factor,
     StatusCallback on_done) {
   // Preconditions.
-  DCHECK(user_secret_stash_);
-  DCHECK(user_secret_stash_main_key_.has_value());
+  CHECK(user_secret_stash_);
+  CHECK(user_secret_stash_main_key_.has_value());
 
   auth_factor_manager_->RemoveAuthFactor(
       obfuscated_username_, auth_factor, auth_block_utility_,
@@ -3119,7 +3118,7 @@ void AuthSession::AddAuthFactorForEphemeral(
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
     StatusCallback on_done) {
-  DCHECK(is_ephemeral_user_);
+  CHECK(is_ephemeral_user_);
 
   if (!auth_input.user_input.has_value()) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(

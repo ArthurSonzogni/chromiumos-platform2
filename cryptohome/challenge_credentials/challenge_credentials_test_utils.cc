@@ -21,7 +21,7 @@ ChallengeCredentialsHelper::GenerateNewCallback
 MakeChallengeCredentialsGenerateNewResultWriter(
     std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
         result) {
-  DCHECK(!*result);
+  CHECK(!*result);
   return base::BindOnce(
       [](std::unique_ptr<
              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,
@@ -45,7 +45,7 @@ ChallengeCredentialsHelper::DecryptCallback
 MakeChallengeCredentialsDecryptResultWriter(
     std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
         result) {
-  DCHECK(!*result);
+  CHECK(!*result);
   return base::BindOnce(
       [](std::unique_ptr<
              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,

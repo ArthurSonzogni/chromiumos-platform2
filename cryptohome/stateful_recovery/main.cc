@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   // Setup libbrillo dbus.
   brillo::DBusConnection connection;
   scoped_refptr<dbus::Bus> bus = connection.Connect();
-  DCHECK(bus) << "Failed to connect to system bus through libbrillo";
+  CHECK(bus) << "Failed to connect to system bus through libbrillo";
   auto userdataauth_proxy =
       std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus);
   auto policy_provider = std::make_unique<policy::PolicyProvider>();

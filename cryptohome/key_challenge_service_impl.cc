@@ -47,7 +47,7 @@ class OnceCallbackHolder {
   explicit OnceCallbackHolder(T obj) : obj_(std::move(obj)) {}
 
   T get() {
-    DCHECK(obj_.has_value());
+    CHECK(obj_.has_value());
     std::optional<T> res;
     std::swap(res, obj_);
     return std::move(res.value());
@@ -211,8 +211,8 @@ KeyChallengeServiceImpl::KeyChallengeServiceImpl(
     const std::string& key_delegate_dbus_service_name)
     : key_delegate_dbus_service_name_(key_delegate_dbus_service_name),
       dbus_proxy_(dbus_bus, key_delegate_dbus_service_name_) {
-  DCHECK(dbus_bus);
-  DCHECK(!key_delegate_dbus_service_name_.empty());
+  CHECK(dbus_bus);
+  CHECK(!key_delegate_dbus_service_name_.empty());
 }
 
 KeyChallengeServiceImpl::~KeyChallengeServiceImpl() = default;

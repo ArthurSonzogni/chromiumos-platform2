@@ -654,7 +654,7 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   }
 
   void ChallengesWillRespond(ChallengeSignatureAlgorithm algorithm) {
-    DCHECK(key_challenge_service_);
+    CHECK(key_challenge_service_);
     EXPECT_CALL(*key_challenge_service_,
                 ChallengeKeyMovable(_, ChallengeAlgorithmIs(algorithm), _))
         .Times(AtLeast(1))
@@ -672,7 +672,7 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
       const AuthInput& auth_input,
       std::unique_ptr<KeyBlobs>& out_key_blobs,
       std::unique_ptr<AuthBlockState>& out_auth_block_state) {
-    DCHECK(auth_block_);
+    CHECK(auth_block_);
     base::RunLoop run_loop;
     CryptohomeStatus got_error;
     auth_block_->Create(
@@ -692,7 +692,7 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   CryptohomeStatus RunDerive(const AuthInput& auth_input,
                              const AuthBlockState& auth_block_state,
                              std::unique_ptr<KeyBlobs>& out_key_blobs) {
-    DCHECK(auth_block_);
+    CHECK(auth_block_);
     base::RunLoop run_loop;
     CryptohomeStatus got_error;
     auth_block_->Derive(

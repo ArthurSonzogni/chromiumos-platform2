@@ -136,7 +136,7 @@ bool Crypto::ResetLeCredential(const uint64_t le_label,
 }
 
 int Crypto::GetWrongAuthAttempts(uint64_t le_label) const {
-  DCHECK(le_manager_)
+  CHECK(le_manager_)
       << "le_manage_ doesn't exist when calling GetWrongAuthAttempts()";
   return le_manager_->GetWrongAuthAttempts(le_label);
 }

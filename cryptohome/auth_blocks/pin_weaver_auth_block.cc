@@ -115,7 +115,7 @@ const LECredentialManager::DelaySchedule& PinDelaySchedule() {
 }
 
 CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
-  DCHECK(crypto.GetHwsec());
+  CHECK(crypto.GetHwsec());
   hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(

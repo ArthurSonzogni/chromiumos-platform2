@@ -1035,7 +1035,7 @@ bool VaultKeyset::HasTpmPublicKeyHash() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetTpmPublicKeyHash() const {
-  DCHECK(tpm_public_key_hash_.has_value());
+  CHECK(tpm_public_key_hash_.has_value());
   return tpm_public_key_hash_.value();
 }
 
@@ -1048,7 +1048,7 @@ bool VaultKeyset::HasPasswordRounds() const {
 }
 
 int32_t VaultKeyset::GetPasswordRounds() const {
-  DCHECK(password_rounds_.has_value());
+  CHECK(password_rounds_.has_value());
   return password_rounds_.value();
 }
 
@@ -1059,7 +1059,7 @@ bool VaultKeyset::HasLastActivityTimestamp() const {
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 int64_t VaultKeyset::GetLastActivityTimestamp() const {
-  DCHECK(last_activity_timestamp_.has_value());
+  CHECK(last_activity_timestamp_.has_value());
   return last_activity_timestamp_.value();
 }
 
@@ -1076,7 +1076,7 @@ void VaultKeyset::ClearKeyData() {
 }
 
 const KeyData& VaultKeyset::GetKeyData() const {
-  DCHECK(key_data_.has_value());
+  CHECK(key_data_.has_value());
   return key_data_.value();
 }
 
@@ -1098,7 +1098,7 @@ bool VaultKeyset::HasVkkIv() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetVkkIv() const {
-  DCHECK(HasVkkIv());
+  CHECK(HasVkkIv());
   return vkk_iv_.value();
 }
 
@@ -1111,7 +1111,7 @@ bool VaultKeyset::HasResetIV() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetResetIV() const {
-  DCHECK(reset_iv_.has_value());
+  CHECK(reset_iv_.has_value());
   return reset_iv_.value();
 }
 
@@ -1138,7 +1138,7 @@ bool VaultKeyset::HasLELabel() const {
 }
 
 uint64_t VaultKeyset::GetLELabel() const {
-  DCHECK(le_label_.has_value());
+  CHECK(le_label_.has_value());
   return le_label_.value();
 }
 
@@ -1151,7 +1151,7 @@ bool VaultKeyset::HasLEFekIV() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetLEFekIV() const {
-  DCHECK(le_fek_iv_.has_value());
+  CHECK(le_fek_iv_.has_value());
   return le_fek_iv_.value();
 }
 
@@ -1164,7 +1164,7 @@ bool VaultKeyset::HasLEChapsIV() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetLEChapsIV() const {
-  DCHECK(le_chaps_iv_.has_value());
+  CHECK(le_chaps_iv_.has_value());
   return le_chaps_iv_.value();
 }
 
@@ -1177,7 +1177,7 @@ bool VaultKeyset::HasResetSalt() const {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetResetSalt() const {
-  DCHECK(reset_salt_.has_value());
+  CHECK(reset_salt_.has_value());
   return reset_salt_.value();
 }
 
@@ -1190,7 +1190,7 @@ bool VaultKeyset::HasFSCryptPolicyVersion() const {
 }
 
 int32_t VaultKeyset::GetFSCryptPolicyVersion() const {
-  DCHECK(fscrypt_policy_version_.has_value());
+  CHECK(fscrypt_policy_version_.has_value());
   return fscrypt_policy_version_.value();
 }
 
@@ -1212,7 +1212,7 @@ void VaultKeyset::SetWrappedChapsKey(
 }
 
 const brillo::SecureBlob& VaultKeyset::GetWrappedChapsKey() const {
-  DCHECK(wrapped_chaps_key_.has_value());
+  CHECK(wrapped_chaps_key_.has_value());
   return wrapped_chaps_key_.value();
 }
 
@@ -1229,7 +1229,7 @@ void VaultKeyset::SetTPMKey(const brillo::SecureBlob& tpm_key) {
 }
 
 const brillo::SecureBlob& VaultKeyset::GetTPMKey() const {
-  DCHECK(tpm_key_.has_value());
+  CHECK(tpm_key_.has_value());
   return tpm_key_.value();
 }
 
@@ -1243,7 +1243,7 @@ void VaultKeyset::SetExtendedTPMKey(
 }
 
 const brillo::SecureBlob& VaultKeyset::GetExtendedTPMKey() const {
-  DCHECK(extended_tpm_key_.has_value());
+  CHECK(extended_tpm_key_.has_value());
   return extended_tpm_key_.value();
 }
 
@@ -1257,7 +1257,7 @@ void VaultKeyset::SetWrappedResetSeed(
 }
 
 const brillo::SecureBlob& VaultKeyset::GetWrappedResetSeed() const {
-  DCHECK(wrapped_reset_seed_.has_value());
+  CHECK(wrapped_reset_seed_.has_value());
   return wrapped_reset_seed_.value();
 }
 
@@ -1267,7 +1267,7 @@ bool VaultKeyset::HasSignatureChallengeInfo() const {
 
 const SerializedVaultKeyset::SignatureChallengeInfo&
 VaultKeyset::GetSignatureChallengeInfo() const {
-  DCHECK(signature_challenge_info_.has_value());
+  CHECK(signature_challenge_info_.has_value());
   return signature_challenge_info_.value();
 }
 

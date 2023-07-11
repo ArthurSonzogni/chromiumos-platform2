@@ -101,7 +101,7 @@ bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec) {
 CryptoStatus Create(LECredentialManager* le_manager,
                     RevocationState* revocation_state,
                     KeyBlobs* key_blobs) {
-  DCHECK(le_manager);
+  CHECK(le_manager);
   if (!key_blobs->vkk_key.has_value() || key_blobs->vkk_key.value().empty()) {
     LOG(ERROR) << "Failed to create secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
@@ -183,7 +183,7 @@ CryptoStatus Create(LECredentialManager* le_manager,
 CryptoStatus Derive(LECredentialManager* le_manager,
                     const RevocationState& revocation_state,
                     KeyBlobs* key_blobs) {
-  DCHECK(le_manager);
+  CHECK(le_manager);
   if (!key_blobs->vkk_key.has_value() || key_blobs->vkk_key.value().empty()) {
     LOG(ERROR) << "Failed to derive secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
@@ -254,7 +254,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
 CryptoStatus Revoke(AuthBlockType auth_block_type,
                     LECredentialManager* le_manager,
                     const RevocationState& revocation_state) {
-  DCHECK(le_manager);
+  CHECK(le_manager);
   if (!revocation_state.le_label.has_value()) {
     LOG(ERROR)
         << "Failed to revoke secret: revocation_state.le_label is not set";

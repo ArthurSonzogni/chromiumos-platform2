@@ -118,7 +118,7 @@ void UserSessionMap::VerifierForwarder::Detach() {
 
 bool UserSessionMap::Add(const Username& account_id,
                          std::unique_ptr<UserSession> session) {
-  DCHECK(session);
+  CHECK(session);
   auto [storage_iter, was_inserted] =
       storage_.insert({account_id, std::move(session)});
   auto forwarder_iter = verifier_forwarders_.find(account_id);

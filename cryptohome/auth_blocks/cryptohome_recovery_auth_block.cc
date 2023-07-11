@@ -63,7 +63,7 @@ void LogDeriveFailure(CryptoError error) {
 }  // namespace
 
 CryptoStatus CryptohomeRecoveryAuthBlock::IsSupported(Crypto& crypto) {
-  DCHECK(crypto.GetHwsec());
+  CHECK(crypto.GetHwsec());
   hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -116,19 +116,19 @@ CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
       recovery_hwsec_(recovery_hwsec),
       le_manager_(le_manager),
       platform_(platform) {
-  DCHECK(hwsec_);
-  DCHECK(recovery_hwsec_);
-  DCHECK(platform_);
+  CHECK(hwsec_);
+  CHECK(recovery_hwsec_);
+  CHECK(platform_);
 }
 
 void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
                                          CreateCallback callback) {
-  DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
+  CHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
-  DCHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
-  DCHECK(!cryptohome_recovery_auth_input.user_gaia_id.empty());
-  DCHECK(!cryptohome_recovery_auth_input.device_user_id.empty());
+  CHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
+  CHECK(!cryptohome_recovery_auth_input.user_gaia_id.empty());
+  CHECK(!cryptohome_recovery_auth_input.device_user_id.empty());
 
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
@@ -240,7 +240,7 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
   auth_block_state->state = std::move(auth_state);
 
   if (revocation::IsRevocationSupported(hwsec_)) {
-    DCHECK(le_manager_);
+    CHECK(le_manager_);
     RevocationState revocation_state;
     CryptoStatus result =
         revocation::Create(le_manager_, &revocation_state, key_blobs.get());
@@ -457,8 +457,8 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->vkk_key = recovery_key;
 
   if (state.revocation_state.has_value()) {
-    DCHECK(revocation::IsRevocationSupported(hwsec_));
-    DCHECK(le_manager_);
+    CHECK(revocation::IsRevocationSupported(hwsec_));
+    CHECK(le_manager_);
     CryptoStatus result = revocation::Derive(
         le_manager_, state.revocation_state.value(), key_blobs.get());
     if (!result.ok()) {

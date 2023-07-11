@@ -181,7 +181,7 @@ bool FakeMountMapper::Unmount(const base::FilePath& target) {
 void FakeMountMapper::ListMountsBySourcePrefix(
     const std::string& source_prefix,
     std::multimap<const base::FilePath, const base::FilePath>* mounts) const {
-  DCHECK(mounts);
+  CHECK(mounts);
   mounts->clear();
   for (const auto& [unused, mapping] : target_to_mount_) {
     if (mapping.GetSource().value().rfind(source_prefix, 0) == 0) {
@@ -193,7 +193,7 @@ void FakeMountMapper::ListMountsBySourcePrefix(
 void FakeMountMapper::ListMountsBySourcePrefix(
     const base::FilePath& source_prefix,
     std::multimap<const base::FilePath, const base::FilePath>* mounts) const {
-  DCHECK(mounts);
+  CHECK(mounts);
   mounts->clear();
   for (const auto& [unused, mapping] : target_to_mount_) {
     const base::FilePath& source = mapping.GetSource();

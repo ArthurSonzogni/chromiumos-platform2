@@ -91,7 +91,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
 }  // namespace
 
 AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
-  DCHECK(platform_);
+  CHECK(platform_);
 }
 
 AuthFactorManager::~AuthFactorManager() = default;

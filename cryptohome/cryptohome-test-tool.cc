@@ -529,7 +529,7 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
                          Platform* platform) {
   brillo::DBusConnection connection;
   scoped_refptr<dbus::Bus> bus = connection.Connect();
-  DCHECK(bus) << "Failed to connect to system bus through libbrillo";
+  CHECK(bus) << "Failed to connect to system bus through libbrillo";
 
   auto cryptohome_proxy = org::chromium::UserDataAuthInterfaceProxy(bus);
 

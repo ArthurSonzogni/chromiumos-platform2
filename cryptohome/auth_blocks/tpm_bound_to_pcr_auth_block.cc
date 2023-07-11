@@ -56,7 +56,7 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
-  DCHECK(crypto.GetHwsec());
+  CHECK(crypto.GetHwsec());
   hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -81,7 +81,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
         ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
-  DCHECK(crypto.cryptohome_keys_manager());
+  CHECK(crypto.cryptohome_keys_manager());
   if (!crypto.cryptohome_keys_manager()->GetKeyLoader(
           CryptohomeKeyType::kRSA)) {
     return MakeStatus<CryptohomeCryptoError>(

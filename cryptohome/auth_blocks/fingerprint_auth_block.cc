@@ -107,7 +107,7 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
   }
 
   const hwsec::CryptohomeFrontend* frontend = crypto.GetHwsec();
-  DCHECK(frontend);
+  CHECK(frontend);
   hwsec::StatusOr<bool> is_ready = frontend->IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(

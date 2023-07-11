@@ -195,7 +195,7 @@ ErrorActionSet ErrorActionSetFromRecoveryResponseError(
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
     const hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform) {
-  DCHECK(hwsec_backend);
+  CHECK(hwsec_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -218,7 +218,7 @@ RecoveryCryptoImpl::RecoveryCryptoImpl(
     const hwsec::RecoveryCryptoFrontend* hwsec_backend,
     Platform* platform)
     : ec_(std::move(ec)), hwsec_backend_(hwsec_backend), platform_(platform) {
-  DCHECK(hwsec_backend_);
+  CHECK(hwsec_backend_);
 }
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;

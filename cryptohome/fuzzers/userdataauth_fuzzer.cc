@@ -217,7 +217,7 @@ std::unique_ptr<dbus::Response> RunBlockingDBusCall(
 void UpdateBreadcrumbs(const std::string& dbus_method_name,
                        std::unique_ptr<dbus::Response> dbus_response,
                        std::vector<Blob>& breadcrumbs) {
-  DCHECK(dbus_response);
+  CHECK(dbus_response);
   dbus::MessageReader reader(dbus_response.get());
   if (dbus_method_name == user_data_auth::kStartAuthSession) {
     user_data_auth::StartAuthSessionReply start_auth_session_reply;

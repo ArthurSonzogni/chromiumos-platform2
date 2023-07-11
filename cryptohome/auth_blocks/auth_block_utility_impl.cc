@@ -76,10 +76,10 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory),
       bio_service_(bio_service) {
-  DCHECK(keyset_management_);
-  DCHECK(crypto_);
-  DCHECK(platform_);
-  DCHECK(features_);
+  CHECK(keyset_management_);
+  CHECK(crypto_);
+  CHECK(platform_);
+  CHECK(features_);
 }
 
 bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
