@@ -76,8 +76,7 @@ void CameraHalServerImpl::Start() {
                             PrivacySwitchStateChangeCallback callback) {
                            for (const auto* hal : hals) {
                              if (hal->set_privacy_switch_callback != nullptr) {
-                               hal->set_privacy_switch_callback(
-                                   std::move(callback));
+                               hal->set_privacy_switch_callback(callback);
                              }
                            }
                          },
