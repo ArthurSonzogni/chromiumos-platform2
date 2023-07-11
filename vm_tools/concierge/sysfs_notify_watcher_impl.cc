@@ -10,10 +10,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
-// TODO(b:254164308) remove this once vm_sockets.h is updated to kernel >=5.6
-// version
-#define VMADDR_CID_LOCAL 1
-
 namespace vm_tools::concierge {
 
 SysfsNotifyWatcherImpl::SysfsNotifyWatcherImpl(
