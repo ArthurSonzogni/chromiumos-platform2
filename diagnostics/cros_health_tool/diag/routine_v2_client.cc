@@ -56,6 +56,9 @@ void RoutineV2Client::StartAndWaitUntilTerminated() {
 
 void RoutineV2Client::OnRoutineDisconnection(uint32_t error,
                                              const std::string& message) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
+
   std::cout << "Status: Error" << std::endl;
   base::Value::Dict output;
   SetJsonDictValue("error", error, &output);
