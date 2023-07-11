@@ -15,6 +15,12 @@ TEST(IPFamily, ToSAFamily) {
   EXPECT_EQ(ToSAFamily(IPFamily::kIPv6), AF_INET6);
 }
 
+TEST(IPFamily, FromSAFamily) {
+  EXPECT_EQ(FromSAFamily(AF_INET), IPFamily::kIPv4);
+  EXPECT_EQ(FromSAFamily(AF_INET6), IPFamily::kIPv6);
+  EXPECT_EQ(FromSAFamily(AF_UNSPEC), std::nullopt);
+}
+
 TEST(IPFamily, ToString) {
   EXPECT_EQ(ToString(IPFamily::kIPv4), "IPv4");
   EXPECT_EQ(ToString(IPFamily::kIPv6), "IPv6");

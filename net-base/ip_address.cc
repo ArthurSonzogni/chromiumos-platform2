@@ -17,6 +17,16 @@ sa_family_t ToSAFamily(IPFamily family) {
   }
 }
 
+std::optional<IPFamily> FromSAFamily(sa_family_t family) {
+  switch (family) {
+    case AF_INET:
+      return IPFamily::kIPv4;
+    case AF_INET6:
+      return IPFamily::kIPv6;
+    default:
+      return std::nullopt;
+  }
+}
 std::string ToString(IPFamily family) {
   switch (family) {
     case IPFamily::kIPv4:

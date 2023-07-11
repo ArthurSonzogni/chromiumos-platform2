@@ -28,6 +28,10 @@ enum class NET_BASE_EXPORT IPFamily {
 // Converts from IPFamily enum to sa_family_t.
 NET_BASE_EXPORT sa_family_t ToSAFamily(IPFamily family);
 
+// Converts from sa_family_t to IPFamily enum.
+// Returns std::nullopt if the value cannot be converted.
+NET_BASE_EXPORT std::optional<IPFamily> FromSAFamily(sa_family_t family);
+
 // Converts from IPFamily enum to std::String.
 NET_BASE_EXPORT std::string ToString(IPFamily family);
 
