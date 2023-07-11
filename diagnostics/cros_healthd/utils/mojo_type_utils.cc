@@ -227,6 +227,7 @@ std::string GetDiffString<mojom::PsrInfo>(const mojom::PsrInfo& a,
       .FIELD(s3_counter)
       .FIELD(warm_reset_counter)
       .FIELD(events)
+      .FIELD(is_supported)
       .GetResult();
 }
 

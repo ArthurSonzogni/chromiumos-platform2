@@ -332,18 +332,21 @@ void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
 }
 
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
-  auto mei_path = base::FilePath(psr::kCrosMeiPath);
-  auto fd = base::ScopedFD(
-      HANDLE_EINTR(open(mei_path.value().c_str(), O_RDWR, S_IRUSR | S_IWUSR)));
   auto result = mojom::PsrInfo::New();
 
-  if (!fd.is_valid()) {
-    std::move(callback).Run(std::move(result), "Failed to open /dev/mei0.");
+  if (!base::PathExists(base::FilePath(psr::kCrosMeiPath))) {
+    std::move(callback).Run(std::move(result), std::nullopt);
     return;
   }
 
-  auto psr_cmd = psr::PsrCmd(fd.get());
+  auto psr_cmd = psr::PsrCmd(psr::kCrosMeiPath);
+  if (!psr_cmd.CheckPlatformServiceRecord()) {
+    std::move(callback).Run(std::move(result), std::nullopt);
+    return;
+  }
+
   psr::PsrHeciResp psr_res;
+  result->is_supported = true;
   if (!psr_cmd.GetPlatformServiceRecord(psr_res)) {
     std::move(callback).Run(std::move(result), "Get PSR is not working.");
     return;

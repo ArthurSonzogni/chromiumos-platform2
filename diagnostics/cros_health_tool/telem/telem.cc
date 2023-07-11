@@ -825,30 +825,33 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
   const auto& psr_info = system_info->psr_info;
   if (psr_info) {
     base::Value::Dict out_psr_info;
-    SET_DICT(log_state, psr_info, &out_psr_info);
-    SET_DICT(uuid, psr_info, &out_psr_info);
-    SET_DICT(upid, psr_info, &out_psr_info);
-    SET_DICT(log_start_date, psr_info, &out_psr_info);
-    SET_DICT(oem_name, psr_info, &out_psr_info);
-    SET_DICT(oem_make, psr_info, &out_psr_info);
-    SET_DICT(oem_model, psr_info, &out_psr_info);
-    SET_DICT(manufacture_country, psr_info, &out_psr_info);
-    SET_DICT(oem_data, psr_info, &out_psr_info);
-    SET_DICT(uptime_seconds, psr_info, &out_psr_info);
-    SET_DICT(s5_counter, psr_info, &out_psr_info);
-    SET_DICT(s4_counter, psr_info, &out_psr_info);
-    SET_DICT(s3_counter, psr_info, &out_psr_info);
-    SET_DICT(warm_reset_counter, psr_info, &out_psr_info);
+    SET_DICT(is_supported, psr_info, &out_psr_info);
+    if (psr_info->is_supported) {
+      SET_DICT(log_state, psr_info, &out_psr_info);
+      SET_DICT(uuid, psr_info, &out_psr_info);
+      SET_DICT(upid, psr_info, &out_psr_info);
+      SET_DICT(log_start_date, psr_info, &out_psr_info);
+      SET_DICT(oem_name, psr_info, &out_psr_info);
+      SET_DICT(oem_make, psr_info, &out_psr_info);
+      SET_DICT(oem_model, psr_info, &out_psr_info);
+      SET_DICT(manufacture_country, psr_info, &out_psr_info);
+      SET_DICT(oem_data, psr_info, &out_psr_info);
+      SET_DICT(uptime_seconds, psr_info, &out_psr_info);
+      SET_DICT(s5_counter, psr_info, &out_psr_info);
+      SET_DICT(s4_counter, psr_info, &out_psr_info);
+      SET_DICT(s3_counter, psr_info, &out_psr_info);
+      SET_DICT(warm_reset_counter, psr_info, &out_psr_info);
 
-    base::Value::List out_events;
-    for (const auto& event : psr_info->events) {
-      base::Value::Dict out_event;
-      SET_DICT(type, event, &out_event);
-      SET_DICT(time, event, &out_event)
-      SET_DICT(data, event, &out_event)
-      out_events.Append(std::move(out_event));
+      base::Value::List out_events;
+      for (const auto& event : psr_info->events) {
+        base::Value::Dict out_event;
+        SET_DICT(type, event, &out_event);
+        SET_DICT(time, event, &out_event)
+        SET_DICT(data, event, &out_event)
+        out_events.Append(std::move(out_event));
+      }
+      out_psr_info.Set("events", std::move(out_events));
     }
-    out_psr_info.Set("events", std::move(out_events));
 
     output.Set("psr_info", std::move(out_psr_info));
   }

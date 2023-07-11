@@ -27,15 +27,10 @@
 namespace diagnostics {
 namespace psr {
 
-PsrCmd::PsrCmd(const int fd) {
-  mei_fd_ = fd;
-  mei_connect_data_ = new mei_connect_client_data;
-  mei_connect_data_->in_client_uuid = kGuid;
+PsrCmd::PsrCmd(const char* mei_fp) {
+  mei_fp_ = mei_fp;
 }
 
-PsrCmd::~PsrCmd() {
-  delete mei_connect_data_;
-}
 bool PsrCmd::MeiConnect() {
   if (ioctl(mei_fd_, IOCTL_MEI_CONNECT_CLIENT, mei_connect_data_) == -1) {
     int err = errno;
@@ -101,6 +96,71 @@ bool PsrCmd::MeiReceive(std::vector<uint8_t>& buffer, ssize_t& buff_len) {
   return true;
 }
 
+PsrCmd::CmdStatus PsrCmd::Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
+  if (!MeiConnect()) {
+    int err = errno;
+    LOG(ERROR) << __func__ << ": Unable to connect: " << strerror(err);
+    return kMeiOpenErr;
+  }
+
+  ssize_t buff_size = static_cast<ssize_t>(
+      mei_connect_data_->out_client_properties.max_msg_length);
+
+  ssize_t tx_len = sizeof(tx_buff);
+  if (tx_len > buff_size)
+    return kInsufficentBuffer;
+
+  if (!MeiSend(reinterpret_cast<void*>(&tx_buff), tx_len))
+    return kMeiSendErr;
+
+  std::vector<uint8_t> rcv_buff;
+  rcv_buff.reserve(buff_size);
+  memset(rcv_buff.data(), 0, buff_size);
+  if (!MeiReceive(rcv_buff, buff_size))
+    return kMeiRecErr;
+
+  ssize_t rx_len = sizeof(rx_buff);
+  if (buff_size > rx_len)
+    return kInsufficentBuffer;
+
+  std::memcpy(reinterpret_cast<void*>(&rx_buff),
+              static_cast<void*>(rcv_buff.data()), buff_size);
+
+  return kSuccess;
+}
+
+bool PsrCmd::CheckPlatformServiceRecord() {
+  FwCapsRequest request;
+  FwCapsResp response;
+
+  request.header.fields.group_id = kGetFwCapsIdx;
+  request.header.fields.command = kFwCapCmd;
+  request.rule_id.data = 0;
+
+  mei_connect_data_ = new mei_connect_client_data;
+  mei_connect_data_->in_client_uuid = kHciGuid;
+  mei_fd_ = open(mei_fp_, O_RDWR, S_IRUSR | S_IWUSR);
+  CmdStatus status = Check(request, response);
+  close(mei_fd_);
+  delete mei_connect_data_;
+
+  if (kInsufficentBuffer == status) {
+    int err = errno;
+    LOG(ERROR) << "Buffer is too small while invokes MEI request: "
+               << strerror(err);
+    return false;
+  } else if (status > kSuccess) {
+    LOG(ERROR) << "Check PSR status error: " << status;
+    return false;
+  }
+
+  // Check if PSR is supported.
+  if (static_cast<uint32_t>(response.rule_data[0]) & 32)
+    return true;
+
+  return false;
+}
+
 PsrCmd::CmdStatus PsrCmd::Transaction(HeciGetRequest& tx_buff,
                                       PsrHeciResp& rx_buff) {
   if (!MeiConnect()) {
@@ -147,7 +207,12 @@ bool PsrCmd::GetPlatformServiceRecord(PsrHeciResp& psr_blob) {
   request.header.command = kGetRecordCmdIdx;
   request.header.length = kPaddingSize;
 
+  mei_connect_data_ = new mei_connect_client_data;
+  mei_connect_data_->in_client_uuid = kGuid;
+  mei_fd_ = open(mei_fp_, O_RDWR, S_IRUSR | S_IWUSR);
   CmdStatus status = Transaction(request, psr_blob);
+  close(mei_fd_);
+  delete mei_connect_data_;
 
   if (kInsufficentBuffer == status) {
     int err = errno;

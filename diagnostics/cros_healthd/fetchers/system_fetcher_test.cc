@@ -107,6 +107,7 @@ class SystemUtilsTest : public BaseFileTest {
     psr_info->s4_counter = 2;
     psr_info->s3_counter = 1;
     psr_info->warm_reset_counter = 0;
+    psr_info->is_supported = true;
     auto event = mojom::PsrEvent::New();
     event->type = mojom::PsrEvent::EventType::kLogStart;
     event->time = 163987200;
@@ -248,6 +249,7 @@ class SystemUtilsTest : public BaseFileTest {
               event->time = 453987200;
               event->data = 643897977;
               result.events.push_back(event.Clone());
+              result.is_supported = true;
 
               std::move(callback).Run(result.Clone(), err);
             })));

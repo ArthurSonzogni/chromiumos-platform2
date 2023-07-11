@@ -43,6 +43,10 @@ static constexpr uint8_t kUpidLength = 64;
 static constexpr uint8_t kGenesisFieldInfoSize = 64;
 // Max number of events.
 static constexpr uint8_t kEventNumMax = 100;
+// Get FW Capability index.
+static constexpr uint8_t kGetFwCapsIdx = 3;
+// FW Capability rule command.
+static constexpr uint8_t kFwCapCmd = 2;
 // Max signing length.
 static constexpr uint16_t kMaxSignLen = 512;
 // Max certificate chain size.
@@ -53,6 +57,9 @@ static constexpr uint16_t kGenesisDataStoreInfoSize = 1024;
 // Unique ID for PSR MEI requests.
 const uuid_le kGuid = GUID_INIT(
     0xED6703FA, 0xD312, 0x4E8B, 0x9D, 0xDD, 0x21, 0x55, 0xBB, 0x2D, 0xEE, 0x65);
+
+const uuid_le kHciGuid = GUID_INIT(
+    0x8E6A6715, 0x9ABC, 0x4043, 0x88, 0xEF, 0x9E, 0x39, 0xC6, 0xF6, 0x3E, 0x0F);
 
 enum LedgerCounterIndex {
   // Counter index for total S0 time in seconds.
@@ -96,6 +103,38 @@ enum Status {
   kInvalidInputParameter = 4,
   kInternalError = 5,
   kNotAllowedAfterEop = 6,
+};
+
+union MkhiHeader {
+  struct {
+    uint32_t group_id : 8;
+    uint32_t command : 7;
+    uint32_t response : 1;
+    uint32_t reserved : 8;
+    uint32_t result : 8;
+  } fields;
+  uint32_t data;
+};
+
+union RuleId {
+  struct {
+    uint32_t rule_type : 16;
+    uint32_t feature_id : 8;
+    uint32_t reserved : 8;
+  } fields;
+  uint32_t data;
+};
+
+struct FwCapsRequest {
+  MkhiHeader header;
+  RuleId rule_id;
+};
+
+struct FwCapsResp {
+  MkhiHeader header;
+  RuleId rule_id;
+  uint8_t rule_data_len;
+  uint8_t rule_data[4];
 };
 
 struct PsrVersion {
@@ -190,18 +229,22 @@ class PsrCmdVirt {
   virtual CmdStatus Transaction(HeciGetRequest& tx_buff, PsrHeciResp& rx_buff) {
     return kInvalidState;
   }
+  virtual CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
+    return kInvalidState;
+  }
   virtual std::string IdToHexString(uint8_t id[], int id_len) { return ""; }
 };
 
 // PSR Command Class.
 class PsrCmd : public PsrCmdVirt {
  public:
-  explicit PsrCmd(const int fd);
+  explicit PsrCmd(const char* mei_fp);
   PsrCmd(const PsrCmd&) = delete;
   PsrCmd& operator=(const PsrCmd&) = delete;
-  ~PsrCmd();
+  virtual ~PsrCmd() = default;
 
   bool GetPlatformServiceRecord(PsrHeciResp& psr_blob);
+  bool CheckPlatformServiceRecord();
   std::string IdToHexString(uint8_t id[], int id_len) override;
 
  private:
@@ -209,7 +252,9 @@ class PsrCmd : public PsrCmdVirt {
   bool MeiSend(void* buffer, ssize_t buff_len) override;
   bool MeiReceive(std::vector<uint8_t>& buffer, ssize_t& buff_len) override;
   CmdStatus Transaction(HeciGetRequest& tx_buff, PsrHeciResp& rx_buff) override;
+  CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) override;
 
+  const char* mei_fp_;
   int mei_fd_;
   struct mei_connect_client_data* mei_connect_data_;
 };
