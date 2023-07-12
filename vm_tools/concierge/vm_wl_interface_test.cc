@@ -22,6 +22,7 @@ namespace vm_tools::concierge {
 namespace {
 
 using testing::_;
+using testing::A;
 
 dbus::Bus::Options GetDbusOptions() {
   dbus::Bus::Options opts;
@@ -51,7 +52,9 @@ class VmWlInterfaceTest : public testing::Test {
 }  // namespace
 
 TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
-  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(
+                                      A<dbus::MethodCall*>(), A<int>(),
+                                      A<dbus::ScopedDBusError*>()))
       .WillOnce(
           testing::Invoke([](dbus::MethodCall* method_call, int timeout_ms,
                              dbus::ScopedDBusError* error) {
@@ -69,7 +72,9 @@ TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
 }
 
 TEST_F(VmWlInterfaceTest, SuccessfulCreateAndDestroy) {
-  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(
+                                      A<dbus::MethodCall*>(), A<int>(),
+                                      A<dbus::ScopedDBusError*>()))
       .WillOnce(
           testing::Invoke([](dbus::MethodCall* method_call, int timeout_ms,
                              dbus::ScopedDBusError* error) {
@@ -84,7 +89,10 @@ TEST_F(VmWlInterfaceTest, SuccessfulCreateAndDestroy) {
       mock_bus_.get(), id, apps::VmType::UNKNOWN);
   EXPECT_TRUE(socket.has_value());
 
-  EXPECT_CALL(*mock_proxy_.get(), DoCallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_proxy_.get(), DoCallMethodWithErrorCallback(
+                                      A<dbus::MethodCall*>(), A<int>(),
+                                      A<dbus::ObjectProxy::ResponseCallback*>(),
+                                      A<dbus::ObjectProxy::ErrorCallback*>()))
       .WillOnce(testing::Invoke(
           [](dbus::MethodCall* method_call, int timeout_ms,
              base::OnceCallback<void(dbus::Response*)>* success_callback,
