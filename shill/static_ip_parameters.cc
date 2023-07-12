@@ -14,10 +14,9 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/error.h"
-#include "shill/logging.h"
-#include "shill/net/ip_address.h"
 #include "shill/network/network_config.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
@@ -90,11 +89,11 @@ KeyValueStore StaticIPParameters::NetworkConfigToKeyValues(
     const NetworkConfig& props) {
   KeyValueStore kvs;
   if (props.ipv4_address_cidr.has_value()) {
-    const auto addr = IPAddress::CreateFromPrefixString(
-        props.ipv4_address_cidr.value(), IPAddress::kFamilyIPv4);
-    if (addr.has_value()) {
-      kvs.Set<std::string>(kAddressProperty, addr->ToString());
-      kvs.Set<int32_t>(kPrefixlenProperty, addr->prefix());
+    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
+        props.ipv4_address_cidr.value());
+    if (cidr.has_value()) {
+      kvs.Set<std::string>(kAddressProperty, cidr->address().ToString());
+      kvs.Set<int32_t>(kPrefixlenProperty, cidr->prefix_length());
     } else {
       LOG(ERROR) << "props does not have a valid IPv4 address in CIDR "
                  << props.ipv4_address_cidr.value();
