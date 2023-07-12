@@ -2328,6 +2328,11 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   std::unique_ptr<VmBaseImpl>& vm = iter->second;
   VmBaseImpl::Info info = vm->GetInfo();
 
+  // Log how long it takes to stop the VM.
+  metrics::DurationRecorder duration_recorder(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()), info.type,
+      metrics::DurationRecorder::Event::kVmStop);
+
   // Notify that we are about to stop a VM.
   NotifyVmStopping(vm_id, info.cid);
 

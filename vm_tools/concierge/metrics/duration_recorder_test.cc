@@ -24,6 +24,10 @@ TEST(DurationRecorderTest, GetMetricsName) {
                   static_cast<apps::VmType>(vm_type),
                   DurationRecorder::Event::kVmStart),
               "Virtualization." + vm_name + ".Start.Duration");
+    EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                  static_cast<apps::VmType>(vm_type),
+                  DurationRecorder::Event::kVmStop),
+              "Virtualization." + vm_name + ".Stop.Duration");
   }
 }
 

@@ -21,6 +21,7 @@ class DurationRecorder {
   // Events that can be logged.
   enum Event {
     kVmStart = 1,
+    kVmStop,
   };
 
   DurationRecorder(const raw_ref<MetricsLibraryInterface> metrics,

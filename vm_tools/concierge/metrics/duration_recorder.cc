@@ -20,6 +20,7 @@ namespace {
 
 // Constants related to logging Vm Start and Vm Stop times.
 constexpr char kVmStartMetricsTag[] = "Start";
+constexpr char kVmStopMetricsTag[] = "Stop";
 constexpr char kDurationSuffix[] = "Duration";
 // Modify this as per the max timeout here -
 // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/vm_tools/init/vm_concierge.conf;l=46?q=file:vm_concierge.conf.
@@ -38,6 +39,9 @@ std::string GetVirtualizationMetricsName(apps::VmType vm_type,
   switch (event) {
     case DurationRecorder::Event::kVmStart:
       event_name = kVmStartMetricsTag;
+      break;
+    case DurationRecorder::Event::kVmStop:
+      event_name = kVmStopMetricsTag;
       break;
     default:
       NOTREACHED();
