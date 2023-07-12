@@ -388,14 +388,13 @@ std::string IndexToName(int ifindex) {
 
 // Creates net_base::IPAddress by ByteString and Family. It's used to provide
 // similar interface as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we deprecate ByteString and
-// IPAddress::Family.
+// TODO(b/279693340): Remove it when we deprecate ByteString.
 std::optional<net_base::IPAddress> CreateIPAddress(const ByteString& addr_bytes,
-                                                   IPAddress::Family family) {
+                                                   sa_family_t family) {
+  const auto ip_family = net_base::FromSAFamily(family);
   const auto addr = net_base::IPAddress::CreateFromBytes(
       {addr_bytes.GetConstData(), addr_bytes.GetLength()});
-  if (!addr || (family != IPAddress::kFamilyUnknown &&
-                net_base::ToSAFamily(addr->GetFamily()) != family)) {
+  if (!addr || (ip_family && addr->GetFamily() != ip_family)) {
     return std::nullopt;
   }
   return addr;
@@ -403,11 +402,10 @@ std::optional<net_base::IPAddress> CreateIPAddress(const ByteString& addr_bytes,
 
 // Creates net_base::IPCIDR by ByteString, prefix length, and Family. It's used
 // to provide similar interface as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we deprecate ByteString and
-// IPAddress::Family.
+// TODO(b/279693340): Remove it when we deprecate ByteString.
 std::optional<net_base::IPCIDR> CreateIPCIDR(const ByteString& addr_bytes,
                                              int prefix_length,
-                                             IPAddress::Family family) {
+                                             sa_family_t family) {
   const auto addr = CreateIPAddress(addr_bytes, family);
   if (!addr) {
     return std::nullopt;
@@ -468,7 +466,7 @@ RTNLMessage::RTNLMessage(Type type,
                          uint32_t seq,
                          uint32_t pid,
                          int32_t interface_index,
-                         IPAddress::Family family)
+                         sa_family_t family)
     : type_(type),
       mode_(mode),
       flags_(flags),
@@ -582,7 +580,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(Mode mode,
   rtattr* attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
   const int attr_length = IFLA_PAYLOAD(&hdr->hdr);
   const Type type = kTypeLink;
-  const IPAddress::Family family = hdr->ifi.ifi_family;
+  const sa_family_t family = hdr->ifi.ifi_family;
   const int32_t interface_index = hdr->ifi.ifi_index;
 
   std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(attr_data, attr_length);
@@ -626,7 +624,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(Mode mode,
   }
 
   const Type type = kTypeAddress;
-  const IPAddress::Family family = hdr->ifa.ifa_family;
+  const sa_family_t family = hdr->ifa.ifa_family;
   const int interface_index = hdr->ifa.ifa_index;
   auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
                                            family);
@@ -643,7 +641,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRoute(Mode mode,
   }
 
   const Type type = kTypeRoute;
-  const IPAddress::Family family = hdr->rtm.rtm_family;
+  const sa_family_t family = hdr->rtm.rtm_family;
   auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, 0, family);
   msg->set_route_status(RouteStatus(hdr->rtm.rtm_dst_len, hdr->rtm.rtm_src_len,
                                     hdr->rtm.rtm_table, hdr->rtm.rtm_protocol,
@@ -659,7 +657,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRule(Mode mode,
   }
 
   const Type type = kTypeRule;
-  const IPAddress::Family family = hdr->rtm.rtm_family;
+  const sa_family_t family = hdr->rtm.rtm_family;
   auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, 0, family);
   msg->set_route_status(RouteStatus(hdr->rtm.rtm_dst_len, hdr->rtm.rtm_src_len,
                                     hdr->rtm.rtm_table, hdr->rtm.rtm_protocol,
@@ -678,10 +676,10 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   }
 
   const int32_t interface_index = hdr->nd_user_opt.nduseropt_ifindex;
-  const IPAddress::Family family = hdr->nd_user_opt.nduseropt_family;
+  const sa_family_t family = hdr->nd_user_opt.nduseropt_family;
 
   // Verify IP family.
-  if (family != IPAddress::kFamilyIPv6) {
+  if (net_base::FromSAFamily(family) != net_base::IPFamily::kIPv6) {
     return nullptr;
   }
   // Verify message must at-least contain the option header.
@@ -761,7 +759,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNeighbor(
   }
 
   const int interface_index = hdr->ndm.ndm_ifindex;
-  const IPAddress::Family family = hdr->ndm.ndm_family;
+  const sa_family_t family = hdr->ndm.ndm_family;
   const Type type = kTypeNeighbor;
   auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
                                            family);
@@ -1071,13 +1069,15 @@ std::string RTNLMessage::TypeToString(RTNLMessage::Type type) {
 }
 
 std::string RTNLMessage::ToString() const {
-  // Include the space separator in |ip_family| to avoid double spaces for
+  // Include the space separator in |ip_family_str| to avoid double spaces for
   // messages with family AF_UNSPEC.
-  std::string ip_family = " " + IPAddress::GetAddressFamilyName(family());
+  const auto ip_family = net_base::FromSAFamily(family());
+  std::string ip_family_str =
+      " " + (ip_family ? net_base::ToString(*ip_family) : "unknown");
   std::string details;
   switch (type()) {
     case RTNLMessage::kTypeLink:
-      ip_family = "";
+      ip_family_str = "";
       details = base::StringPrintf(
           "%s[%d] type %s flags <%s> change %X", GetIflaIfname().c_str(),
           interface_index_, GetNetDeviceTypeName(link_status_.type).c_str(),
@@ -1145,7 +1145,7 @@ std::string RTNLMessage::ToString() const {
       break;
   }
   return base::StringPrintf("%s%s %s: %s", ModeToString(mode()).c_str(),
-                            ip_family.c_str(), TypeToString(type()).c_str(),
+                            ip_family_str.c_str(), TypeToString(type()).c_str(),
                             details.c_str());
 }
 

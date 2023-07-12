@@ -29,7 +29,6 @@
 
 #include "shill/net/io_handler.h"
 #include "shill/net/io_handler_factory_container.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/sockets.h"
 
@@ -149,7 +148,7 @@ void RTNLHandler::SetInterfaceFlags(int interface_index,
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
       0,  // sequence to be filled in by RTNLHandler::SendMessage().
       0,  // pid.
-      interface_index, IPAddress::kFamilyUnknown);
+      interface_index, AF_UNSPEC);
 
   msg->set_link_status(RTNLMessage::LinkStatus(ARPHRD_VOID, flags, change));
 
@@ -166,7 +165,7 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
       0,  // sequence to be filled in by RTNLHandler::SendMessage().
       0,  // pid.
-      interface_index, IPAddress::kFamilyUnknown);
+      interface_index, AF_UNSPEC);
 
   msg->SetAttribute(IFLA_MTU, ByteString(reinterpret_cast<unsigned char*>(&mtu),
                                          sizeof(mtu)));
@@ -186,7 +185,7 @@ void RTNLHandler::SetInterfaceMac(int interface_index,
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST | NLM_F_ACK,
       0,  // sequence to be filled in by RTNLHandler::SendMessage().
       0,  // pid.
-      interface_index, IPAddress::kFamilyUnknown);
+      interface_index, AF_UNSPEC);
 
   msg->SetAttribute(IFLA_ADDRESS, mac_address);
 
@@ -231,7 +230,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   if (seq != last_dump_sequence_)
     return;
 
-  IPAddress::Family family = IPAddress::kFamilyUnknown;
+  sa_family_t family = AF_UNSPEC;
   if ((request_flags_ & kRequestAddr) != 0) {
     type = RTNLMessage::kTypeAddress;
     flag = kRequestAddr;
@@ -445,7 +444,7 @@ bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
 bool RTNLHandler::RemoveInterface(int interface_index) {
   auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink, RTNLMessage::kModeDelete, NLM_F_REQUEST, 0, 0,
-      interface_index, IPAddress::kFamilyUnknown);
+      interface_index, AF_UNSPEC);
   return SendMessage(std::move(msg), nullptr);
 }
 
@@ -487,7 +486,7 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
   auto msg = std::make_unique<RTNLMessage>(
       shill::RTNLMessage::kTypeLink, shill::RTNLMessage::kModeAdd,
       NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
-      0 /* pid */, 0 /* if_index */, IPAddress::kFamilyUnknown);
+      0 /* pid */, 0 /* if_index */, AF_UNSPEC);
   msg->SetAttribute(IFLA_IFNAME, {interface_name, true});
   msg->SetIflaInfoKind(link_kind, link_info_data);
 

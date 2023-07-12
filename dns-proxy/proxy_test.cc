@@ -1428,7 +1428,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeAdd, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
@@ -1450,7 +1450,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeDelete, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy.RTNLMessageHandler(msg);
@@ -1556,7 +1556,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeAdd, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
@@ -1585,7 +1585,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeDelete, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy.RTNLMessageHandler(msg);
@@ -1624,7 +1624,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   shill::RTNLMessage msg_unrelated_ifindex(
       shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
-      shill::IPAddress::Family(AF_INET6));
+      AF_INET6);
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
@@ -1634,7 +1634,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   shill::RTNLMessage msg_unrelated_scope(
       shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
-      shill::IPAddress::Family(AF_INET6));
+      AF_INET6);
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(
@@ -1821,7 +1821,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeAdd, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS,
@@ -1848,7 +1848,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeDelete, 0 /* flags */,
                          0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         shill::IPAddress::Family(AF_INET6));
+                         AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy.RTNLMessageHandler(msg);
@@ -1879,7 +1879,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   shill::RTNLMessage msg_unrelated_ifindex(
       shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
-      shill::IPAddress::Family(AF_INET6));
+      AF_INET6);
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
@@ -1889,7 +1889,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   shill::RTNLMessage msg_unrelated_scope(
       shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
-      shill::IPAddress::Family(AF_INET6));
+      AF_INET6);
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(

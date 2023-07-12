@@ -183,9 +183,9 @@ class NeighborLinkMonitorTest : public testing::Test {
 
     const auto addr = net_base::IPAddress::CreateFromString(address);
     CHECK(addr);
-    shill::RTNLMessage msg(
-        shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0, kTestInterfaceIndex,
-        static_cast<unsigned char>(net_base::ToSAFamily(addr->GetFamily())));
+    shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
+                           kTestInterfaceIndex,
+                           net_base::ToSAFamily(addr->GetFamily()));
     msg.SetAttribute(NDA_DST, shill::ByteString(addr->ToByteString(), false));
     if (mode == shill::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(

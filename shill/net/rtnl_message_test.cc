@@ -17,7 +17,6 @@
 #include <re2/re2.h>
 
 #include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 
 using testing::Optional;
 using testing::Test;
@@ -434,7 +433,7 @@ RTNLMessage CreateFakeMessage() {
                      /*flags=*/0,
                      /*seq=*/0,
                      /*pid=*/0,
-                     /*interface_index=*/0, IPAddress::kFamilyIPv4);
+                     /*interface_index=*/0, AF_INET);
 }
 
 }  // namespace
@@ -512,7 +511,7 @@ class RTNLMessageTest : public Test {
 
   void TestParseRoute(const ByteString& packet,
                       RTNLMessage::Mode /*mode*/,
-                      IPAddress::Family family,
+                      sa_family_t family,
                       int interface_index,
                       std::optional<net_base::IPCIDR> dst,
                       std::optional<net_base::IPCIDR> src,
@@ -581,7 +580,7 @@ class RTNLMessageTest : public Test {
 
   void TestParseRule(const ByteString& packet,
                      RTNLMessage::Mode /*mode*/,
-                     IPAddress::Family family,
+                     sa_family_t family,
                      unsigned char table,
                      int protocol,
                      unsigned char scope,
@@ -697,7 +696,7 @@ class RTNLMessageTest : public Test {
 
   void TestParseNeighbor(const ByteString& packet,
                          RTNLMessage::Mode mode,
-                         IPAddress::Family family,
+                         sa_family_t family,
                          int interface_index,
                          uint16_t state,
                          uint8_t flags,
@@ -783,7 +782,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
       *net_base::IPAddress::CreateFromString(kDelRouteIPV6Address);
 
   TestParseRoute(ByteString(kDelRouteIPV6, sizeof(kDelRouteIPV6)),
-                 RTNLMessage::kModeDelete, IPAddress::kFamilyIPv6,
+                 RTNLMessage::kModeDelete, AF_INET6,
                  kDelRouteIPV6InterfaceIndex, dst, /*src=*/std::nullopt,
                  gateway, RT_TABLE_MAIN, RTPROT_UNSPEC, RT_SCOPE_UNIVERSE,
                  RTN_UNICAST, kDelRouteIPV6Metric);
@@ -794,8 +793,8 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
       *net_base::IPAddress::CreateFromString(kAddRouteIPV4Address);
 
   TestParseRoute(ByteString(kAddRouteIPV4, sizeof(kAddRouteIPV4)),
-                 RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4,
-                 kAddRouteIPV4InterfaceIndex, /*dst=*/std::nullopt,
+                 RTNLMessage::kModeAdd, AF_INET, kAddRouteIPV4InterfaceIndex,
+                 /*dst=*/std::nullopt,
                  /*src=*/std::nullopt, gateway, RT_TABLE_MAIN, RTPROT_BOOT,
                  RT_SCOPE_UNIVERSE, RTN_UNICAST, kAddRouteIPV4Metric);
 }
@@ -857,23 +856,22 @@ TEST_F(RTNLMessageTest, AddRouteBusted) {
 TEST_F(RTNLMessageTest, AddNeighbor) {
   TestParseNeighbor(
       ByteString(kAddNeighborMessage, sizeof(kAddNeighborMessage)),
-      RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4, 8, NUD_REACHABLE, 0,
-      NDA_DST);
+      RTNLMessage::kModeAdd, AF_INET, 8, NUD_REACHABLE, 0, NDA_DST);
 }
 
 TEST_F(RTNLMessageTest, EncodeDelNeighbor) {
   RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeDelete, 0, 1, 2,
-                  0, IPAddress::kFamilyIPv4);
+                  0, AF_INET);
   msg.set_neighbor_status(
       RTNLMessage::NeighborStatus(0, NTF_ROUTER, NDA_LLADDR));
 
-  TestParseNeighbor(msg.Encode(), RTNLMessage::kModeDelete,
-                    IPAddress::kFamilyIPv4, 0, 0, NTF_ROUTER, NDA_LLADDR);
+  TestParseNeighbor(msg.Encode(), RTNLMessage::kModeDelete, AF_INET, 0, 0,
+                    NTF_ROUTER, NDA_LLADDR);
 }
 
 TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRoute, RTNLMessage::kModeAdd, 0, 1, 2, 0,
-                  IPAddress::kFamilyIPv4);
+                  AF_INET);
   const auto dst = net_base::IPCIDR(net_base::IPv4CIDR());
   const auto src = net_base::IPCIDR(net_base::IPv4CIDR());
   const auto gateway = *net_base::IPAddress::CreateFromString("192.168.0.1");
@@ -886,14 +884,14 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(12));
   msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(13));
 
-  TestParseRoute(msg.Encode(), RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4,
-                 12, dst, src, gateway, RT_TABLE_MAIN, RTPROT_BOOT,
-                 RT_SCOPE_UNIVERSE, RTN_UNICAST, 13);
+  TestParseRoute(msg.Encode(), RTNLMessage::kModeAdd, AF_INET, 12, dst, src,
+                 gateway, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE,
+                 RTN_UNICAST, 13);
 }
 
 TEST_F(RTNLMessageTest, EncodeRuleAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRule, RTNLMessage::kModeAdd, 0, 1, 2, 0,
-                  IPAddress::kFamilyIPv4);
+                  AF_INET);
 
   const auto dst = *net_base::IPCIDR::CreateFromCIDRString("192.168.1.0/32");
   const auto src = *net_base::IPCIDR::CreateFromCIDRString("192.168.2.0/32");
@@ -915,16 +913,15 @@ TEST_F(RTNLMessageTest, EncodeRuleAdd) {
 
   msg.SetAttribute(FRA_IFNAME, ByteString(std::string("fake0"), true));
 
-  TestParseRule(msg.Encode(), RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4,
-                RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, dst,
-                src, 13, 0x1234, 0xffff, 1000, 2000, "fake0");
+  TestParseRule(msg.Encode(), RTNLMessage::kModeAdd, AF_INET, RT_TABLE_MAIN,
+                RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, dst, src, 13,
+                0x1234, 0xffff, 1000, 2000, "fake0");
 }
 
 TEST_F(RTNLMessageTest, EncodeLinkDel) {
   const int kInterfaceIndex = 0x1234;
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeDelete,
-                   NLM_F_REQUEST, 0, 0, kInterfaceIndex,
-                   IPAddress::kFamilyUnknown);
+                   NLM_F_REQUEST, 0, 0, kInterfaceIndex, AF_UNSPEC);
 
   auto packet = pmsg.Encode();
   const auto msg =
@@ -949,7 +946,7 @@ TEST_F(RTNLMessageTest, EncodeLinkDel) {
 TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
   const std::string kLinkKind = "kind";
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
-                   0, 0, 0, IPAddress::kFamilyUnknown);
+                   0, 0, 0, AF_UNSPEC);
   pmsg.SetIflaInfoKind(kLinkKind, {});
   auto packet = pmsg.Encode();
   const auto msg =
@@ -1057,25 +1054,25 @@ TEST_F(RTNLMessageTest, EncodeGetMessageLength) {
   // attribute, it should be a nlmsg header plus a specific struct for the given
   // RTNL message type.
   RTNLMessage msg_link(RTNLMessage::kTypeLink, RTNLMessage::kModeGet, 0, 0, 0,
-                       0, IPAddress::kFamilyIPv4);
+                       0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ifinfomsg)),
             msg_link.Encode().GetLength());
 
   RTNLMessage msg_address(RTNLMessage::kTypeAddress, RTNLMessage::kModeGet, 0,
-                          0, 0, 0, IPAddress::kFamilyIPv4);
+                          0, 0, 0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
             msg_address.Encode().GetLength());
 
   RTNLMessage msg_route(RTNLMessage::kTypeRoute, RTNLMessage::kModeGet, 0, 0, 0,
-                        0, IPAddress::kFamilyIPv4);
+                        0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_route.Encode().GetLength());
 
   RTNLMessage msg_rule(RTNLMessage::kTypeRule, RTNLMessage::kModeGet, 0, 0, 0,
-                       0, IPAddress::kFamilyIPv4);
+                       0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_rule.Encode().GetLength());
 
   RTNLMessage msg_neighor(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeGet, 0,
-                          0, 0, 0, IPAddress::kFamilyIPv4);
+                          0, 0, 0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ndmsg)),
             msg_neighor.Encode().GetLength());
 }

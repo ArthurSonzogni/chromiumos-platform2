@@ -20,7 +20,7 @@ RTNLMessage CreateFakeMessage() {
                      /*flags=*/0,
                      /*seq=*/0,
                      /*pid=*/0,
-                     /*interface_index=*/0, IPAddress::kFamilyIPv4);
+                     /*interface_index=*/0, AF_INET);
 }
 
 class RtnlWatcher {

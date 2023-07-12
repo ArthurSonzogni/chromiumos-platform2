@@ -52,9 +52,8 @@ MATCHER_P(MessageType, message_type, "") {
 }
 
 std::unique_ptr<RTNLMessage> CreateFakeMessage() {
-  return std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
-                                       RTNLMessage::kModeGet, 0, 0, 0, 0,
-                                       IPAddress::kFamilyUnknown);
+  return std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeLink, RTNLMessage::kModeGet, 0, 0, 0, 0, AF_UNSPEC);
 }
 
 }  // namespace
@@ -169,7 +168,7 @@ void RTNLHandlerTest::StopRTNLHandler() {
 
 void RTNLHandlerTest::AddLink() {
   RTNLMessage message(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
-                      kTestDeviceIndex, IPAddress::kFamilyIPv4);
+                      kTestDeviceIndex, AF_INET);
   message.SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                        ByteString(std::string(kTestDeviceName), true));
   ByteString b(message.Encode());
@@ -179,7 +178,7 @@ void RTNLHandlerTest::AddLink() {
 
 void RTNLHandlerTest::AddNeighbor() {
   RTNLMessage message(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
-                      0, kTestDeviceIndex, IPAddress::kFamilyIPv4);
+                      0, kTestDeviceIndex, AF_INET);
   ByteString encoded(message.Encode());
   InputData data(encoded.GetData(), encoded.GetLength());
   RTNLHandler::GetInstance()->ParseRTNL(&data);
@@ -320,9 +319,8 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
   EXPECT_CALL(*sockets_, Send(_, _, _, 0)).WillRepeatedly(ReturnArg<2>());
   for (const auto& expectation : expectations) {
     SetRequestSequence(kSequenceNumber);
-    auto message =
-        std::make_unique<RTNLMessage>(expectation.type, expectation.mode, 0, 0,
-                                      0, 0, IPAddress::kFamilyUnknown);
+    auto message = std::make_unique<RTNLMessage>(
+        expectation.type, expectation.mode, 0, 0, 0, 0, AF_UNSPEC);
     EXPECT_TRUE(
         RTNLHandler::GetInstance()->SendMessage(std::move(message), nullptr));
     EXPECT_EQ(expectation.mask, GetAndClearErrorMask(kSequenceNumber));

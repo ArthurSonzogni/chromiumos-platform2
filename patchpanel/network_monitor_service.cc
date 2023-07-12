@@ -246,12 +246,11 @@ void NeighborLinkMonitor::ProbeAll() {
 
 void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
   // |seq| will be set by RTNLHandler.
-  // TODO(jiejiang): Specify the family instead of kFamilyUnknown. This
-  // optimization could reduce the amount of data received for each request.
+  // TODO(jiejiang): Specify the family instead of AF_UNSPEC. This optimization
+  // could reduce the amount of data received for each request.
   auto msg = std::make_unique<shill::RTNLMessage>(
       shill::RTNLMessage::kTypeNeighbor, shill::RTNLMessage::kModeGet,
-      NLM_F_REQUEST | NLM_F_DUMP, /*seq=*/0, /*pid=*/0, ifindex_,
-      shill::IPAddress::kFamilyUnknown);
+      NLM_F_REQUEST | NLM_F_DUMP, /*seq=*/0, /*pid=*/0, ifindex_, AF_UNSPEC);
 
   // TODO(jiejiang): We may get an error of errno=16 (Device or resource busy)
   // from kernel here. We may need to serialize the DUMP requests.

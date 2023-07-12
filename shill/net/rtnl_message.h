@@ -17,7 +17,6 @@
 #include <net-base/ipv6_address.h>
 
 #include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/shill_export.h"
 
 struct rtattr;
@@ -161,7 +160,7 @@ class SHILL_EXPORT RTNLMessage {
               uint32_t seq,
               uint32_t pid,
               int32_t interface_index,
-              IPAddress::Family family);
+              sa_family_t family);
   RTNLMessage(const RTNLMessage&) = delete;
   RTNLMessage& operator=(const RTNLMessage&) = delete;
 
@@ -176,7 +175,7 @@ class SHILL_EXPORT RTNLMessage {
   void set_seq(uint32_t seq) { seq_ = seq; }
   uint32_t pid() const { return pid_; }
   int32_t interface_index() const { return interface_index_; }
-  IPAddress::Family family() const { return family_; }
+  sa_family_t family() const { return family_; }
 
   static std::string ModeToString(Mode mode);
   static std::string TypeToString(Type type);
@@ -310,7 +309,7 @@ class SHILL_EXPORT RTNLMessage {
   // Corresponds to ifi_family (kTypeLink), ifa_family (kTypeAddress),
   // rtm_family (kTypeRoute and kTypeRule), ndm_family (kTypeNeighbor). Always
   // IPv6 for neighbor discovery options (kTypeRdnss, kTypeDnssl).
-  IPAddress::Family family_;
+  sa_family_t family_;
   // Details specific to a message type.
   LinkStatus link_status_;
   AddressStatus address_status_;
