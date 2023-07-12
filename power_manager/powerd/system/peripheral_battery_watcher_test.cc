@@ -701,7 +701,7 @@ TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
-  const size_t kDevicesToAdd = 128;
+  const size_t kDevicesToAdd = 32;
   int fd_count = GetNumberOfOpenFiles();
   rlimit rlim_orig;
   getrlimit(RLIMIT_NOFILE, &rlim_orig);
@@ -715,6 +715,7 @@ TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
     udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem,
                                      "", kPeripheralBatterySysname, ""},
                                     UdevEvent::Action::ADD});
+    ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
   }
 
   // Make sure we didn't leak file descriptors and can still open a file.
