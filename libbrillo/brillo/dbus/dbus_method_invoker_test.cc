@@ -20,7 +20,7 @@
 
 #include "brillo/dbus/test.pb.h"
 
-using testing::_;
+using testing::An;
 using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
@@ -89,7 +89,9 @@ class DBusMethodInvokerTest : public testing::Test {
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
-                CallMethodAndBlockWithErrorDetails(_, def_timeout_ms, _))
+                CallMethodAndBlockWithErrorDetails(
+                    An<dbus::MethodCall*>(), def_timeout_ms,
+                    An<dbus::ScopedDBusError*>()))
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
@@ -241,7 +243,10 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
-                DoCallMethodWithErrorCallback(_, def_timeout_ms, _, _))
+                DoCallMethodWithErrorCallback(
+                    An<dbus::MethodCall*>(), def_timeout_ms,
+                    An<dbus::ObjectProxy::ResponseCallback*>(),
+                    An<dbus::ObjectProxy::ErrorCallback*>()))
         .WillRepeatedly(Invoke(this, &AsyncDBusMethodInvokerTest::HandleCall));
   }
 
