@@ -39,10 +39,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/storage/out_of_process_mount_helper.h"
 #include "cryptohome/username.h"
-#include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -109,9 +106,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Returns associated platform object
   virtual Platform* platform() { return platform_; }
-
-  // Return the the mount type as a string.
-  virtual std::string GetMountTypeString() const;
 
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;

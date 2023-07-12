@@ -37,18 +37,15 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/data_migrator/migration_helper.h"
-#include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/mount_utils.h"
+#include "cryptohome/storage/out_of_process_mount_helper.h"
 #include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -269,28 +266,6 @@ MountType Mount::GetMountType() const {
     return MountType::NONE;
   }
   return user_cryptohome_vault_->GetMountType();
-}
-
-std::string Mount::GetMountTypeString() const {
-  switch (GetMountType()) {
-    case MountType::NONE:
-      return "none";
-    case MountType::ECRYPTFS:
-      return "ecryptfs";
-    case MountType::DIR_CRYPTO:
-      return "dircrypto";
-    case MountType::ECRYPTFS_TO_DIR_CRYPTO:
-      return "ecryptfs-to-dircrypto";
-    case MountType::ECRYPTFS_TO_DMCRYPT:
-      return "ecryptfs-to-dmcrypt";
-    case MountType::DIR_CRYPTO_TO_DMCRYPT:
-      return "dircrypto-to-dmcrypt";
-    case MountType::EPHEMERAL:
-      return "ephemeral";
-    case MountType::DMCRYPT:
-      return "dmcrypt";
-  }
-  return "";
 }
 
 bool Mount::MigrateEncryption(const MigrationCallback& callback,
