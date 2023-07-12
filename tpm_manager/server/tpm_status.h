@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <string>
 #include <vector>
 
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -110,6 +111,9 @@ class TpmStatus {
                             uint32_t* fs_size,
                             uint32_t* aprov_time,
                             uint32_t* aprov_status) = 0;
+
+  // Get RW firmware version.
+  virtual bool GetRwVersion(std::string* rw_version) = 0;
 };
 
 }  // namespace tpm_manager

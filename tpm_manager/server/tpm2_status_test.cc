@@ -412,4 +412,28 @@ TEST_F(Tpm2StatusTest, GetTi50StatsNoSuchCommand) {
   EXPECT_EQ(aprov_time, 0);
   EXPECT_EQ(aprov_status, 0);
 }
+
+#if USE_CR50_ONBOARD || USE_TI50_ONBOARD
+TEST_F(Tpm2StatusTest, GetRwVersionSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillOnce([](uint32_t* epoch, uint32_t* major, uint32_t* minor) {
+        *epoch = 1;
+        *major = 2;
+        *minor = 3;
+        return TPM_RC_SUCCESS;
+      });
+  std::string rw_version;
+  EXPECT_TRUE(tpm_status_->GetRwVersion(&rw_version));
+  EXPECT_EQ(rw_version, "1.2.3");
+}
+
+TEST_F(Tpm2StatusTest, GetRwVersionFailure) {
+  EXPECT_CALL(mock_tpm_utility_, GetRwVersion(_, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  std::string rw_version;
+  EXPECT_FALSE(tpm_status_->GetRwVersion(&rw_version));
+  EXPECT_EQ(rw_version, "");
+}
+#endif
+
 }  // namespace tpm_manager

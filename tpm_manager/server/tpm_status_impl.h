@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <trousers/tss.h>
@@ -52,6 +53,8 @@ class TpmStatusImpl : public TpmStatus {
                     uint32_t* fs_size,
                     uint32_t* aprov_time,
                     uint32_t* aprov_status) override;
+  // This function returns all 0s version number for TPM1.2 device.
+  bool GetRwVersion(std::string* rw_version) override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

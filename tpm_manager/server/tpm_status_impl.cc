@@ -486,4 +486,11 @@ bool TpmStatusImpl::GetTi50Stats(uint32_t* fs_init_time,
                                  uint32_t* aprov_status) {
   return false;
 }
+
+bool TpmStatusImpl::GetRwVersion(std::string* rw_version) {
+  CHECK(rw_version);
+  *rw_version = "0.0.0";
+  VLOG(1) << "Report all zeros rw firmware version for TPM1.2.";
+  return true;
+}
 }  // namespace tpm_manager

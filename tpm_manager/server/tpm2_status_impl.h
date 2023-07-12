@@ -8,6 +8,7 @@
 #include "tpm_manager/server/tpm_status.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/logging.h>
@@ -52,6 +53,7 @@ class Tpm2StatusImpl : public TpmStatus {
                     uint32_t* fs_size,
                     uint32_t* aprov_time,
                     uint32_t* aprov_status) override;
+  bool GetRwVersion(std::string* rw_version) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed

@@ -343,6 +343,8 @@ message GetVersionInfoReply {
   optional bytes vendor_specific = 7;
   // The GSC version.
   optional GscVersion gsc_version = 8;
+  // The RW firmware version.
+  optional string rw_version = 9;
 }
 
 message GetSupportedFeaturesRequest {}

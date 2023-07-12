@@ -649,6 +649,12 @@ std::unique_ptr<GetVersionInfoReply> TpmManagerService::GetVersionInfoTask(
     return reply;
   }
 
+  std::string rw_version;
+  if (!tpm_status_->GetRwVersion(&rw_version)) {
+    LOG(ERROR) << __func__ << ": failed to get rw version from tpm status.";
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return reply;
+  }
   reply->set_family(family);
   reply->set_spec_level(spec_level);
   reply->set_manufacturer(manufacturer);
@@ -657,6 +663,7 @@ std::unique_ptr<GetVersionInfoReply> TpmManagerService::GetVersionInfoTask(
   reply->set_vendor_specific(reinterpret_cast<char*>(vendor_specific.data()),
                              vendor_specific.size());
   reply->set_gsc_version(tpm_status_->GetGscVersion());
+  reply->set_rw_version(rw_version);
   reply->set_status(STATUS_SUCCESS);
 
   {

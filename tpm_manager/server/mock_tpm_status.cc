@@ -38,6 +38,11 @@ bool GetDefaultVersionInfo(uint32_t* family,
   return true;
 }
 
+bool GetDefaultRwVersion(std::string* rw_version) {
+  *rw_version = "0.5.190";
+  return true;
+}
+
 MockTpmStatus::MockTpmStatus() {
   ON_CALL(*this, IsTpmEnabled()).WillByDefault(Return(true));
 
@@ -51,6 +56,7 @@ MockTpmStatus::MockTpmStatus() {
       .WillByDefault(DoAll(SetArgPointee<0>(true), Return(true)));
   ON_CALL(*this, GetVersionInfo(_, _, _, _, _, _))
       .WillByDefault(Invoke(GetDefaultVersionInfo));
+  ON_CALL(*this, GetRwVersion(_)).WillByDefault(Invoke(GetDefaultRwVersion));
 }
 MockTpmStatus::~MockTpmStatus() {}
 

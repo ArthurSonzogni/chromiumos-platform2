@@ -424,4 +424,27 @@ bool Tpm2StatusImpl::GetTi50Stats(uint32_t* fs_init_time,
   }
   return true;
 }
+
+bool Tpm2StatusImpl::GetRwVersion(std::string* rw_version) {
+  CHECK(rw_version);
+  if (!Refresh()) {
+    return false;
+  }
+
+  if (GetGscVersion() == GscVersion::GSC_VERSION_NOT_GSC) {
+    *rw_version = "0.0.0";
+    VLOG(1) << "Report all zeros rw firmware version for non-GSC devices.";
+    return true;
+  }
+  uint32_t epoch;
+  uint32_t major;
+  uint32_t minor;
+  TPM_RC result = trunks_tpm_utility_->GetRwVersion(&epoch, &major, &minor);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    return false;
+  }
+  *rw_version = std::to_string(epoch) + "." + std::to_string(major) + "." +
+                std::to_string(minor);
+  return true;
+}
 }  // namespace tpm_manager

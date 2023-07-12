@@ -7,6 +7,7 @@
 
 #include "tpm_manager/server/tpm_status.h"
 
+#include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -47,6 +48,7 @@ class MockTpmStatus : public TpmStatus {
               GetTi50Stats,
               (uint32_t*, uint32_t*, uint32_t*, uint32_t*),
               (override));
+  MOCK_METHOD(bool, GetRwVersion, (std::string*), (override));
 };
 
 }  // namespace tpm_manager
