@@ -15,7 +15,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/network/proc_fs_stub.h"
@@ -79,10 +78,6 @@ class SLAACController {
   void StopRDNSSTimer();
   // Called when the lifetime for RDNSS expires.
   void RDNSSExpired();
-
-  // Return the preferred globally scoped IPv6 address.
-  // If no primary IPv6 address exists, return nullptr.
-  const IPAddress* GetPrimaryIPv6Address();
 
   const int interface_index_;
 
