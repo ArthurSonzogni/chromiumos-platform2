@@ -16,8 +16,8 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libnet-base",
     "libshill-client",
-    "libshill-net",
   ]
 }
 
@@ -41,7 +41,6 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libshill-client-test",
-      "libshill-net",
     ]
   }
 

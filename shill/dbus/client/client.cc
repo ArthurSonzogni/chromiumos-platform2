@@ -9,7 +9,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
-#include <shill/net/ip_address.h>
+#include <net-base/ip_address.h>
 
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::DeviceProxyInterface;
@@ -602,7 +602,7 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    std::string addr = brillo::GetVariantValueOrDefault<std::string>(
+    const std::string addr = brillo::GetVariantValueOrDefault<std::string>(
         properties, kAddressProperty);
     if (addr.empty()) {
       // On IPv6 only network, dhcp is expected to fail, nevertheless shill
@@ -612,29 +612,13 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    const auto ip_addr = IPAddress::CreateFromString(addr);
-    if (!ip_addr.has_value()) {
-      LOG(WARNING) << "Invalid address [" << addr << "] in IPConfig ["
-                   << path.value() << "] on device [" << device_path << "]";
-      continue;
-    }
-
-    std::string gw = brillo::GetVariantValueOrDefault<std::string>(
-        properties, kGatewayProperty);
-    if (gw.empty()) {
-      LOG(WARNING) << "Empty property [" << kGatewayProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
-      continue;
-    }
-
-    int len =
+    const int len =
         brillo::GetVariantValueOrDefault<int>(properties, kPrefixlenProperty);
-    if (len < 0 || (ip_addr->family() == IPAddress::kFamilyIPv4 && len > 32) ||
-        len > 128) {
-      LOG(WARNING) << "Invalid property [" << kPrefixlenProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "] with value " << len;
+    const auto ip_cidr = net_base::IPCIDR::CreateFromStringAndPrefix(addr, len);
+    if (!ip_cidr) {
+      LOG(WARNING) << "Invalid address [" << addr << "] in IPConfig ["
+                   << path.value() << "] on device [" << device_path
+                   << "] with prefix length " << len;
       continue;
     }
     if (len == 0) {
@@ -646,12 +630,21 @@ Client::IPConfig Client::ParseIPConfigsProperty(
     // While multiple IPv6 addresses are valid, we expect shill to provide at
     // most one for now.
     // TODO(garrick): Support multiple IPv6 configurations.
-    if ((ip_addr->family() == IPAddress::kFamilyIPv4 &&
+    if ((ip_cidr->GetFamily() == net_base::IPFamily::kIPv4 &&
          !ipconfig.ipv4_address.empty()) ||
-        (ip_addr->family() == IPAddress::kFamilyIPv6 &&
+        (ip_cidr->GetFamily() == net_base::IPFamily::kIPv6 &&
          !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "Duplicate [" << ip_addr->family() << "] IPConfig found"
-                   << " on device [" << device_path << "]";
+      LOG(WARNING) << "Duplicate [" << ip_cidr->GetFamily()
+                   << "] IPConfig found on device [" << device_path << "]";
+      continue;
+    }
+
+    const std::string gw = brillo::GetVariantValueOrDefault<std::string>(
+        properties, kGatewayProperty);
+    if (gw.empty()) {
+      LOG(WARNING) << "Empty property [" << kGatewayProperty
+                   << "] in IPConfig [" << path.value() << "] on device ["
+                   << device_path << "]";
       continue;
     }
 
@@ -663,24 +656,28 @@ Client::IPConfig Client::ParseIPConfigsProperty(
         brillo::GetVariantValueOrDefault<std::vector<std::string>>(
             properties, kSearchDomainsProperty);
 
-    if (ip_addr->family() == IPAddress::kFamilyIPv4) {
-      ipconfig.ipv4_prefix_length = len;
-      ipconfig.ipv4_address = addr;
-      ipconfig.ipv4_gateway = gw;
-      ipconfig.ipv4_dns_addresses = ns;
-      ipconfig.ipv4_search_domains = search_domains;
-    } else {  // is_ipv6_type
-      ipconfig.ipv6_prefix_length = len;
-      ipconfig.ipv6_address = addr;
-      ipconfig.ipv6_gateway = gw;
-      ipconfig.ipv6_dns_addresses = ns;
-      ipconfig.ipv6_search_domains = search_domains;
+    switch (ip_cidr->GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ipconfig.ipv4_prefix_length = len;
+        ipconfig.ipv4_address = addr;
+        ipconfig.ipv4_gateway = gw;
+        ipconfig.ipv4_dns_addresses = ns;
+        ipconfig.ipv4_search_domains = search_domains;
+        break;
+      case net_base::IPFamily::kIPv6:
+        ipconfig.ipv6_prefix_length = len;
+        ipconfig.ipv6_address = addr;
+        ipconfig.ipv6_gateway = gw;
+        ipconfig.ipv6_dns_addresses = ns;
+        ipconfig.ipv6_search_domains = search_domains;
+        break;
     }
   }
   reset_proxy(dbus::ObjectPath());
 
   return ipconfig;
 }
+
 void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
                                                  const std::string& interface,
                                                  const std::string& signal_name,
