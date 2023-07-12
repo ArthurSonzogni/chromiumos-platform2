@@ -1098,7 +1098,7 @@ void DeviceInfo::OnCreateInterfaceResponse(const std::string& interface_name,
     return;
   }
 
-  LOG(ERROR) << "Failed to create wireguard interface " << interface_name
+  LOG(ERROR) << "Failed to create interface " << interface_name
              << ", error code=" << error;
   if (pending_links_.erase(interface_name) != 1) {
     LOG(WARNING)
