@@ -2320,16 +2320,18 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
     // This is not an error to Chrome
     return true;
   }
+  std::unique_ptr<VmBaseImpl>& vm = iter->second;
+  VmBaseImpl::Info info = vm->GetInfo();
 
   // Notify that we are about to stop a VM.
-  NotifyVmStopping(iter->first, iter->second->GetInfo().cid);
+  NotifyVmStopping(vm_id, info.cid);
 
-  if (!iter->second->Shutdown()) {
+  if (!vm->Shutdown()) {
     return false;
   }
 
   // Notify that we have stopped a VM.
-  NotifyVmStopped(iter->first, iter->second->GetInfo().cid, reason);
+  NotifyVmStopped(vm_id, info.cid, reason);
 
   vms_.erase(iter);
   return true;
