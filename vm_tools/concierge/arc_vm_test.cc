@@ -985,6 +985,8 @@ class ArcVmTest : public ::testing::Test {
     // ago again will invalidate this enabled log on some test cases.
     vm_->vmm_swap_usage_policy_.OnEnabled(base::Time::Now() - base::Days(50));
 
+    vm_->balloon_stats_thread_.Start();
+
     SetBalloonStats(0, MiB(1024));
   }
   void TearDown() override {
@@ -1003,6 +1005,12 @@ class ArcVmTest : public ::testing::Test {
     MemoryMargins margins;
     vm_->balloon_init_attempts_ = 0;
     vm_->InitializeBalloonPolicy(margins, "arcvm");
+  }
+
+  void DoInflateAggressiveBalloon(ArcVm::AggressiveBalloonCallback callback) {
+    vm_->InflateAggressiveBalloon(std::move(callback));
+    vm_->balloon_stats_thread_.FlushForTesting();
+    task_environment_.RunUntilIdle();
   }
 
   bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
@@ -1112,7 +1120,7 @@ class FakeAggressiveBalloonCallback {
 TEST_F(ArcVmTest, InflateAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(callback.counter_, 0);
   ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
 }
@@ -1121,7 +1129,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonDisableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   MemoryMargins margins;
   ASSERT_FALSE(vm_->GetBalloonPolicy(margins, "arcvm"));
 }
@@ -1130,8 +1138,8 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonTwice) {
   FakeAggressiveBalloonCallback callback1;
   FakeAggressiveBalloonCallback callback2;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback1.Create());
-  vm_->InflateAggressiveBalloon(callback2.Create());
+  DoInflateAggressiveBalloon(callback1.Create());
+  DoInflateAggressiveBalloon(callback2.Create());
   ASSERT_EQ(callback1.counter_, 0);
   ASSERT_EQ(callback2.counter_, 1);
   ASSERT_FALSE(callback2.latest_response_.success());
@@ -1140,7 +1148,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonTwice) {
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimer) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   aggressive_balloon_timer_->Fire();
   ASSERT_EQ(callback.counter_, 0);
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(110));
@@ -1151,7 +1159,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimer) {
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerMultipleTimes) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   aggressive_balloon_timer_->Fire();
   aggressive_balloon_timer_->Fire();
   aggressive_balloon_timer_->Fire();
@@ -1164,7 +1172,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerMultipleTimes) {
 TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerFailedToSetBalloonSize) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   FakeCrosvmControl::Get()->result_set_balloon_size_ = false;
   aggressive_balloon_timer_->Fire();
   ASSERT_EQ(callback.counter_, 1);
@@ -1175,7 +1183,7 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerFailedToSetBalloonSize) {
 TEST_F(ArcVmTest, DeflateBalloonOnLmkd) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
                                       MiB(30)),
             MiB(30));
@@ -1190,7 +1198,7 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
                                       MiB(30)),
             MiB(30));
@@ -1201,7 +1209,7 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(
                 kPlatformPerceptibleMaxOmmScoreAdjValue + 1, MiB(30)),
             0);
@@ -1213,7 +1221,7 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdBiggerThanActualBalloonSize) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
                                       MiB(130)),
             MiB(100));
@@ -1227,7 +1235,7 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdBiggerThanActualBalloonSize) {
 TEST_F(ArcVmTest, StopAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
   vm_->StopAggressiveBalloon(response);
   ASSERT_TRUE(response.success());
@@ -1240,7 +1248,7 @@ TEST_F(ArcVmTest, StopAggressiveBalloonReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  vm_->InflateAggressiveBalloon(callback.Create());
+  DoInflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
   vm_->StopAggressiveBalloon(response);
   ASSERT_TRUE(response.success());
