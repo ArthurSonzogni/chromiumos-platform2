@@ -31,6 +31,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv6_address.h>
 #include <ModemManager/ModemManager.h>
 
 #include "dbus/shill/dbus-constants.h"
@@ -56,7 +57,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_sock_diag.h"
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
@@ -3273,13 +3273,12 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     // Only apply static config if the address is link local. This is a
     // workaround for b/230336493.
     const auto link_local_mask =
-        IPAddress::CreateFromStringAndPrefix("fe80::", 10);
-    CHECK(link_local_mask.has_value());
-    const auto local = IPAddress::CreateFromString(props.address);
-    if (!local.has_value()) {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
+    const auto local = net_base::IPv6Address::CreateFromString(props.address);
+    if (!local) {
       LOG(ERROR) << LoggingTag()
                  << ": IPv6 address is not valid: " << props.address;
-    } else if (link_local_mask->CanReachAddress(*local)) {
+    } else if (link_local_mask.InSameSubnetWith(*local)) {
       ipv6_props_ = props;
     }
     ipv6_configured = true;
