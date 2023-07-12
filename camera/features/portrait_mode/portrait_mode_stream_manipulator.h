@@ -57,10 +57,14 @@ class PortraitModeStreamManipulator : public StreamManipulator {
 
   struct CaptureContext {
     uint32_t num_pending_buffers = 0;
+    uint32_t orientation = 0;
     bool metadata_received = false;
     bool has_pending_blob = false;
+    bool has_updated_metadata = false;
     std::optional<CameraBufferPool::Buffer> still_yuv_buffer;
     std::optional<SegmentationResult> segmentation_result;
+    // Holds the last partial result if it comes before the buffer returns.
+    std::optional<Camera3CaptureDescriptor> pending_result_;
   };
 
   bool InitializeOnThread(const camera_metadata_t* static_info,
@@ -69,7 +73,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
                                 const StreamEffectMap* stream_effects_map);
   bool OnConfiguredStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
-  bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor* result);
+  bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor result);
 
   void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
   void ResetOnThread();

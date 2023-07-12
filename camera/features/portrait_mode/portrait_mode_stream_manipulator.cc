@@ -16,11 +16,22 @@
 #include "cros-camera/common.h"
 #include "features/portrait_mode/tracing.h"
 
+namespace cros {
+
+namespace {
+
+bool UpdateResultMetadata(Camera3CaptureDescriptor* result,
+                          SegmentationResult seg_result) {
+  return result->UpdateMetadata<uint8_t>(
+      kPortraitModeSegmentationResultVendorKey,
+      std::array<uint8_t, 1>{base::checked_cast<unsigned char>(seg_result)});
+}
+
+}  // namespace
+
 //
 // PortraitModeStreamManipulator implementations.
 //
-
-namespace cros {
 
 PortraitModeStreamManipulator::PortraitModeStreamManipulator(
     CameraMojoChannelManagerToken* mojo_manager_token,
@@ -122,9 +133,8 @@ bool PortraitModeStreamManipulator::ProcessCaptureResult(
       FROM_HERE,
       base::BindOnce(
           &PortraitModeStreamManipulator::ProcessCaptureResultOnThread,
-          base::Unretained(this), &result),
+          base::Unretained(this), std::move(result)),
       &ret);
-  callbacks_.result_callback.Run(std::move(result));
   return ret;
 }
 
@@ -303,6 +313,10 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequestOnThread(
   for (auto& b : request->AcquireOutputBuffers()) {
     if (b.stream() == portrait_blob_stream_) {
       ctx->has_pending_blob = true;
+      if (request->HasMetadata(ANDROID_JPEG_ORIENTATION)) {
+        ctx->orientation =
+            request->GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION)[0];
+      }
       still_capture_processor_->QueuePendingRequest(request->frame_number(),
                                                     *request);
       if (b.raw_buffer().buffer != nullptr) {
@@ -344,56 +358,58 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequestOnThread(
 }
 
 bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   CHECK(thread_.IsCurrentThread());
-  TRACE_PORTRAIT_MODE("frame_number", result->frame_number());
+  TRACE_PORTRAIT_MODE("frame_number", result.frame_number());
 
   if (!portrait_mode_config_) {
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
-  CaptureContext* ctx = GetCaptureContext(result->frame_number());
+  CaptureContext* ctx = GetCaptureContext(result.frame_number());
   if (!ctx) {
     // This capture is bypassed.
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
-    for (auto& b : result->GetOutputBuffers()) {
+    VLOGFID(2, result.frame_number()) << "Result stream buffers from HAL:";
+    for (auto& b : result.GetOutputBuffers()) {
       VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 
-  DCHECK_GE(ctx->num_pending_buffers, result->num_output_buffers());
-  ctx->num_pending_buffers -= result->num_output_buffers();
-  ctx->metadata_received |= result->partial_result() == partial_result_count_;
+  DCHECK_GE(ctx->num_pending_buffers, result.num_output_buffers());
+  ctx->num_pending_buffers -= result.num_output_buffers();
+  ctx->metadata_received |= result.partial_result() == partial_result_count_;
 
   base::ScopedClosureRunner ctx_deleter;
   if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
-      !ctx->has_pending_blob) {
+      !ctx->has_pending_blob && ctx->has_updated_metadata) {
     ctx_deleter.ReplaceClosure(
         base::BindOnce(&PortraitModeStreamManipulator::RemoveCaptureContext,
-                       base::Unretained(this), result->frame_number()));
+                       base::Unretained(this), result.frame_number()));
   }
 
   std::optional<Camera3StreamBuffer> still_yuv_buffer;
-  for (auto& b : result->AcquireOutputBuffers()) {
+  for (auto& b : result.AcquireOutputBuffers()) {
     if (b.stream() == blob_stream_) {
       if (!still_capture_processor_->IsPendingOutputBufferQueued(
-              result->frame_number())) {
+              result.frame_number())) {
         still_capture_processor_->QueuePendingOutputBuffer(
-            result->frame_number(), b.mutable_raw_buffer());
+            result.frame_number(), b.mutable_raw_buffer());
       }
       // If this is a blob stream, extract its metadata.
       still_capture_processor_->QueuePendingAppsSegments(
-          result->frame_number(), *b.buffer(),
+          result.frame_number(), *b.buffer(),
           base::ScopedFD(b.take_release_fence()));
-      result->AppendOutputBuffer(std::move(b));
+      result.AppendOutputBuffer(std::move(b));
     } else if (b.stream() == yuv_stream_for_portrait_blob_) {
       still_yuv_buffer = std::move(b);
     } else {
-      result->AppendOutputBuffer(std::move(b));
+      result.AppendOutputBuffer(std::move(b));
     }
   }
 
@@ -401,12 +417,8 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
   if (ctx->has_pending_blob && still_yuv_buffer) {
     if (still_yuv_buffer->status() != CAMERA3_BUFFER_STATUS_OK) {
       VLOGF(1) << "Received still YUV buffer with error in result "
-               << result->frame_number();
+               << result.frame_number();
       return false;
-    }
-    uint32_t orientation = 0;
-    if (result->HasMetadata(ANDROID_JPEG_ORIENTATION)) {
-      orientation = result->GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION)[0];
     }
     // TODO(julianachang): Temporarily set can_process_portrait_mode to true.
     // This is necessary for the current function, but will be removed in the
@@ -414,30 +426,56 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
     bool can_process_portrait_mode = true;
     SegmentationResult seg_result = SegmentationResult::kUnknown;
     if (portrait_mode_->ReprocessRequest(
-            can_process_portrait_mode, *still_yuv_buffer->buffer(), orientation,
-            &seg_result, *ctx->still_yuv_buffer->handle()) != 0) {
+            can_process_portrait_mode, *still_yuv_buffer->buffer(),
+            ctx->orientation, &seg_result,
+            *ctx->still_yuv_buffer->handle()) != 0) {
       LOGF(ERROR) << "Failed to apply Portrait Mode effect";
       return false;
     }
     still_capture_processor_->QueuePendingYuvImage(
-        result->frame_number(), *ctx->still_yuv_buffer->handle(),
+        result.frame_number(), *ctx->still_yuv_buffer->handle(),
         base::ScopedFD());
     ctx->segmentation_result = seg_result;
     ctx->still_yuv_buffer = std::nullopt;
   }
 
   // Fill Portrait Mode segmentation result in metadata.
-  if (result->has_metadata() && ctx->segmentation_result.has_value()) {
+  if (ctx->segmentation_result.has_value() &&
+      (ctx->pending_result_ || result.has_metadata())) {
+    Camera3CaptureDescriptor* res =
+        ctx->pending_result_ ? &ctx->pending_result_.value() : &result;
     SegmentationResult seg_result = *ctx->segmentation_result;
     if (seg_result == SegmentationResult::kUnknown ||
-        !result->UpdateMetadata<uint8_t>(
-            kPortraitModeSegmentationResultVendorKey,
-            std::array<uint8_t, 1>{static_cast<unsigned char>(seg_result)})) {
+        !UpdateResultMetadata(res, seg_result)) {
       LOGF(ERROR) << "Cannot update kPortraitModeSegmentationResultVendorKey "
                      "in result "
-                  << result->frame_number();
+                  << res->frame_number();
     }
+    if (ctx->pending_result_) {
+      callbacks_.result_callback.Run(std::move(ctx->pending_result_.value()));
+      ctx->pending_result_.reset();
+    }
+    ctx->has_updated_metadata = true;
     ctx->segmentation_result.reset();
+  }
+
+  // Holds the last partial result if we have not updated the portrait mode
+  // processing result to metadata yet.
+  if (result.partial_result() == partial_result_count_ &&
+      !ctx->has_updated_metadata) {
+    // Returns the buffers to the client first if the result contains both
+    // buffers and metadata.
+    if (result.has_input_buffer() || result.num_output_buffers() > 0) {
+      Camera3CaptureDescriptor buffer_result(camera3_capture_result_t{});
+      if (result.has_input_buffer()) {
+        buffer_result.SetInputBuffer(*result.AcquireInputBuffer());
+      }
+      buffer_result.SetOutputBuffers(result.AcquireOutputBuffers());
+      callbacks_.result_callback.Run(std::move(buffer_result));
+    }
+    ctx->pending_result_ = std::move(result);
+  } else {
+    callbacks_.result_callback.Run(std::move(result));
   }
 
   return true;
@@ -460,7 +498,7 @@ void PortraitModeStreamManipulator::ReturnStillCaptureResultOnThread(
   ctx->still_yuv_buffer = std::nullopt;
   ctx->has_pending_blob = false;
   if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
-      !ctx->has_pending_blob) {
+      !ctx->has_pending_blob && ctx->has_updated_metadata) {
     RemoveCaptureContext(result.frame_number());
   }
 
