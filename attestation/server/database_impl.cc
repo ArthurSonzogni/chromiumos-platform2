@@ -137,14 +137,14 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
       LOG(ERROR) << __func__
                  << "Invalid boot mode, aborting: " << result.status();
       metrics_.ReportAttestationOpsStatus(
-          kAttestationEncryptDatabase, AttestationOpsStatus::kInvalidPcr0Value);
+          kAttestationEncryptDatabase, AttestationOpsStatus::kInvalidBootMode);
       return false;
     }
 
     if (!crypto_->CreateSealedKey(&database_key_, &sealed_database_key_)) {
       LOG(ERROR) << "Failed to generate database key.";
-      metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase,
-                                          AttestationOpsStatus::kFailure);
+      metrics_.ReportAttestationOpsStatus(
+          kAttestationEncryptDatabase, AttestationOpsStatus::kSealingFailure);
       return false;
     }
   }
@@ -152,7 +152,7 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
                             encrypted_output)) {
     LOG(ERROR) << "Attestation: Failed to encrypt database.";
     metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase,
-                                        AttestationOpsStatus::kFailure);
+                                        AttestationOpsStatus::kCryptoFailure);
     return false;
   }
   metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase,
@@ -163,8 +163,8 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
 bool DatabaseImpl::DecryptProtobuf(const std::string& encrypted_input) {
   if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
     LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
-    metrics_.ReportAttestationOpsStatus(
-        kAttestationDecryptDatabase, AttestationOpsStatus::kInvalidPcr0Value);
+    metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase,
+                                        AttestationOpsStatus::kInvalidBootMode);
     return false;
   }
 
@@ -172,14 +172,14 @@ bool DatabaseImpl::DecryptProtobuf(const std::string& encrypted_input) {
                           &sealed_database_key_)) {
     LOG(ERROR) << "Attestation: Could not unseal decryption key.";
     metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase,
-                                        AttestationOpsStatus::kFailure);
+                                        AttestationOpsStatus::kSealingFailure);
     return false;
   }
   std::string serial_proto;
   if (!crypto_->DecryptData(encrypted_input, database_key_, &serial_proto)) {
     LOG(ERROR) << "Attestation: Failed to decrypt database.";
     metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase,
-                                        AttestationOpsStatus::kFailure);
+                                        AttestationOpsStatus::kCryptoFailure);
     return false;
   }
   if (!protobuf_.ParseFromString(serial_proto)) {
@@ -191,7 +191,7 @@ bool DatabaseImpl::DecryptProtobuf(const std::string& encrypted_input) {
                                   serial_proto.length() - kLegacyJunkSize)) {
       LOG(ERROR) << "Failed to parse database.";
       metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase,
-                                          AttestationOpsStatus::kFailure);
+                                          AttestationOpsStatus::kParsingFailue);
       return false;
     }
   }

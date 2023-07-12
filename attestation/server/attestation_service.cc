@@ -1736,9 +1736,9 @@ void AttestationService::PrepareForEnrollment(
   if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
     LOG(ERROR) << __func__
                << "Invalid boot mode, aborting: " << result.status();
-    metrics_.ReportAttestationOpsStatus(
-        kAttestationPrepareForEnrollment,
-        AttestationOpsStatus::kInvalidPcr0Value);
+    metrics_.ReportAttestationOpsStatus(kAttestationPrepareForEnrollment,
+                                        AttestationOpsStatus::kInvalidBootMode);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -1749,6 +1749,9 @@ void AttestationService::PrepareForEnrollment(
   if (!tpm_utility_->GetEndorsementPublicKey(key_type, &ek_public_key)) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key with key_type "
                << key_type;
+    metrics_.ReportAttestationOpsStatus(
+        kAttestationPrepareForEnrollment,
+        AttestationOpsStatus::kEndorsementFailure);
     std::move(callback).Run(false);
     return;
   }
@@ -1759,6 +1762,9 @@ void AttestationService::PrepareForEnrollment(
   if (!tpm_utility_->GetEndorsementCertificate(key_type, &ek_certificate)) {
     LOG(ERROR) << __func__ << ": Failed to get " << GetKeyTypeName(key_type)
                << " EK certificate.";
+    metrics_.ReportAttestationOpsStatus(
+        kAttestationPrepareForEnrollment,
+        AttestationOpsStatus::kEndorsementFailure);
     std::move(callback).Run(false);
     return;
   }
@@ -1769,6 +1775,8 @@ void AttestationService::PrepareForEnrollment(
   // identity features.
   if (!CreateIdentity(kDefaultIdentityFeatures)) {
     LOG(ERROR) << __func__ << ": Failed to create identity.";
+    metrics_.ReportAttestationOpsStatus(kAttestationPrepareForEnrollment,
+                                        AttestationOpsStatus::kIdentityFailure);
     std::move(callback).Run(false);
     return;
   }
@@ -1787,6 +1795,8 @@ void AttestationService::PrepareForEnrollment(
 
   if (!database_->SaveChanges()) {
     LOG(ERROR) << "Attestation: Failed to write database.";
+    metrics_.ReportAttestationOpsStatus(kAttestationPrepareForEnrollment,
+                                        AttestationOpsStatus::kDatabaseFailure);
     std::move(callback).Run(false);
     return;
   }
@@ -1974,6 +1984,8 @@ bool AttestationService::ActivateAttestationKeyInternal(
   if (database_pb.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
                << identity << " does not exist.";
+    metrics_.ReportAttestationOpsStatus(kAttestationActivateAttestationKey,
+                                        AttestationOpsStatus::kIdentityFailure);
     return false;
   }
   const auto& identity_data = database_pb.identities().Get(identity);
@@ -1984,6 +1996,9 @@ bool AttestationService::ActivateAttestationKeyInternal(
             identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.asym_ca_contents(),
             encrypted_certificate.sym_ca_attestation(), &certificate_local)) {
+      metrics_.ReportAttestationOpsStatus(
+          kAttestationActivateAttestationKey,
+          AttestationOpsStatus::kIdentityFailure);
       LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
                  << ".";
       return false;
@@ -1997,6 +2012,9 @@ bool AttestationService::ActivateAttestationKeyInternal(
             encrypted_certificate.credential_mac(),
             encrypted_certificate.wrapped_certificate().wrapped_key(),
             &credential)) {
+      metrics_.ReportAttestationOpsStatus(
+          kAttestationActivateAttestationKey,
+          AttestationOpsStatus::kIdentityFailure);
       LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
                  << ".";
       return false;
@@ -2004,6 +2022,8 @@ bool AttestationService::ActivateAttestationKeyInternal(
     if (!crypto_utility_->DecryptIdentityCertificateForTpm2(
             credential, encrypted_certificate.wrapped_certificate(),
             &certificate_local)) {
+      metrics_.ReportAttestationOpsStatus(kAttestationActivateAttestationKey,
+                                          AttestationOpsStatus::kCryptoFailure);
       LOG(ERROR) << __func__ << ": Failed to decrypt certificate for identity "
                  << identity << ".";
       return false;
@@ -2015,7 +2035,7 @@ bool AttestationService::ActivateAttestationKeyInternal(
                  << "Invalid boot mode, aborting: " << result.status();
       metrics_.ReportAttestationOpsStatus(
           kAttestationActivateAttestationKey,
-          AttestationOpsStatus::kInvalidPcr0Value);
+          AttestationOpsStatus::kInvalidBootMode);
       return false;
     }
 
@@ -2026,6 +2046,9 @@ bool AttestationService::ActivateAttestationKeyInternal(
       LOG(ERROR) << __func__ << ": Failed to find or create an identity"
                  << " certificate for identity " << identity << " with "
                  << GetACAName(aca_type) << ".";
+      metrics_.ReportAttestationOpsStatus(
+          kAttestationActivateAttestationKey,
+          AttestationOpsStatus::kIdentityFailure);
       return false;
     }
     // Set the credential obtained when activating the identity with the
@@ -2033,6 +2056,9 @@ bool AttestationService::ActivateAttestationKeyInternal(
     identity_certificate->set_identity_credential(certificate_local);
     if (!database_->SaveChanges()) {
       LOG(ERROR) << __func__ << ": Failed to persist database changes.";
+      metrics_.ReportAttestationOpsStatus(
+          kAttestationActivateAttestationKey,
+          AttestationOpsStatus::kDatabaseFailure);
       return false;
     }
     if (certificate_index) {
@@ -2460,8 +2486,7 @@ void AttestationService::VerifyTask(
   }
   if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
     LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
-    metrics_.ReportAttestationOpsStatus(
-        kAttestationVerify, AttestationOpsStatus::kInvalidPcr0Value);
+    return;
   }
   if (!VerifyPCR0Quote(identity_public_key_info,
                        identity_data.pcr_quotes().at(0))) {

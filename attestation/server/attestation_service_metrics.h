@@ -16,8 +16,21 @@ namespace attestation {
 // should not be renumbered and numeric values should never be reused.
 enum class AttestationOpsStatus {
   kSuccess = 0,
-  kFailure = 1,
-  kInvalidPcr0Value = 2,
+  // kFailure = 1, // Deprecated. One should use more accurate terms following.
+  // Failure due to invalid boot mode.
+  kInvalidBootMode = 2,
+  // Failure related to sealing or unsealing.
+  kSealingFailure = 3,
+  // Failure related to encryption or decryption.
+  kCryptoFailure = 4,
+  // Failure of database operation.
+  kDatabaseFailure = 5,
+  // Failure to parse data.
+  kParsingFailue = 6,
+  // Failure related to identity.
+  kIdentityFailure = 7,
+  // Failure related to endorsement key or endorsement certificate.
+  kEndorsementFailure = 8,
   kMaxValue,
 };
 
@@ -27,7 +40,6 @@ inline constexpr char kAttestationEncryptDatabase[] = "EncryptDatabase";
 inline constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
 inline constexpr char kAttestationActivateAttestationKey[] =
     "ActivateAttestationKey";
-inline constexpr char kAttestationVerify[] = "AttestationVerify";
 inline constexpr char kAttestationPrepareForEnrollment[] =
     "PrepareForEnrollment";
 
