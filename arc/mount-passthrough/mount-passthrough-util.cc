@@ -2,6 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <dirent.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
@@ -26,6 +36,7 @@ void ParseCommandLine(int argc,
       media_provider_uid, -1,
       "UID of Android's MediaProvider "
       "(required in Android R+ for setting non-default SELinux context)");
+  DEFINE_bool(enable_casefold_lookup, false, "Enable casefold lookup");
   DEFINE_bool(enter_concierge_namespace, false, "Enter concierge namespace");
   // This is larger than the default value 1024 because this process handles
   // many open files. See b/30236190 for more context.
@@ -40,6 +51,7 @@ void ParseCommandLine(int argc,
   flags->android_app_access_type = FLAGS_android_app_access_type;
   flags->use_default_selinux_context = FLAGS_use_default_selinux_context;
   flags->media_provider_uid = FLAGS_media_provider_uid;
+  flags->enable_casefold_lookup = FLAGS_enable_casefold_lookup;
   flags->enter_concierge_namespace = FLAGS_enter_concierge_namespace;
   flags->max_number_of_open_fds = FLAGS_max_number_of_open_fds;
 }
@@ -171,7 +183,92 @@ std::vector<std::string> CreateMinijailCommandLineArgs(
                                       flags.media_provider_uid));
   }
 
+  if (flags.enable_casefold_lookup) {
+    args.push_back("--enable_casefold_lookup");
+  }
+
   return args;
+}
+
+base::FilePath CasefoldLookup(const base::FilePath& root,
+                              const base::FilePath& path) {
+  // For simplicity, do not deal with paths referencing their parents.
+  if (path.ReferencesParent()) {
+    return path;
+  }
+
+  // Just return the original path as-is if it is not a descendant of the root.
+  // Note that `IsParent()` returns true if and only if the path is an ancestor
+  // (not necessarily the direct parent) of the specified child.
+  if (!root.IsParent(path)) {
+    return path;
+  }
+
+  // Look for the nearest existing ancestor under the root.
+  base::FilePath lookup_path = path;
+  std::vector<std::string> components;
+  while (lookup_path != root) {
+    if (access(lookup_path.value().c_str(), F_OK) == 0) {
+      break;
+    }
+
+    base::FilePath parent = lookup_path.DirName();
+    // A cheap check to ensure that the loop is terminated. This should not be
+    // needed as long as everything is functioning.
+    if (parent.value().length() >= lookup_path.value().length()) {
+      LOG(ERROR) << "Unexpectedly long path length " << parent.value().length()
+                 << " for the parent of a path of length "
+                 << lookup_path.value().length();
+      break;
+    }
+
+    components.push_back(lookup_path.BaseName().value());
+    lookup_path = std::move(parent);
+  }
+
+  // Repeat the following:
+  // Open `lookup_path` assuming that it is a directory, look for an entry that
+  // matches the original path component in the case insensitive way, and append
+  // it to `lookup_path` if there is such an entry.
+  for (auto it = components.rbegin(); it != components.rend(); ++it) {
+    DIR* dirp = opendir(lookup_path.value().c_str());
+    if (dirp == nullptr) {
+      // `lookup_path` cannot be opened. Append the remaining path components
+      // and return, since there is no point in continuing the lookup.
+      do {
+        lookup_path = lookup_path.Append(*it);
+        ++it;
+      } while (it != components.rend());
+      return lookup_path;
+    }
+
+    // Iterate through the entries. Note that `readdir(3)` does not guarantee
+    // the order of ieteration.
+    while (true) {
+      struct dirent* entry = readdir(dirp);
+      if (entry == nullptr) {
+        // There is no matching entry. Append the remaining path components and
+        // return, since there is no point in continuing the lookup.
+        closedir(dirp);
+        do {
+          lookup_path = lookup_path.Append(*it);
+          ++it;
+        } while (it != components.rend());
+        return lookup_path;
+      }
+
+      const std::string entry_name = entry->d_name;
+      if (base::FilePath::CompareEqualIgnoreCase(entry_name, *it)) {
+        // A matching entry is found. Append it to `lookup_path` and continue
+        // the lookup.
+        lookup_path = lookup_path.Append(entry_name);
+        closedir(dirp);
+        break;
+      }
+    }
+  }
+
+  return lookup_path;
 }
 
 }  // namespace arc

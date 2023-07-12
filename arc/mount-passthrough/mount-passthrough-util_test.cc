@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
@@ -370,7 +373,8 @@ TEST_F(MountPassthroughUtilTest, ContainerPiRemovableRead) {
 
 // On Android R container, --media_provider_uid is specified for MyFiles
 // sharing. Unlike ARCVM, its value is different from that of --fuse_uid.
-// The other options are the same as Android P container.
+// The other options are the same as Android P container except for
+// --enable_casefold_lookup.
 TEST_F(MountPassthroughUtilTest, ContainerRvcMyFiles) {
   // From arc/container/myfiles/arc-myfiles.conf.
   const char* argv[] = {
@@ -381,6 +385,7 @@ TEST_F(MountPassthroughUtilTest, ContainerRvcMyFiles) {
       "--fuse_uid=1023",
       "--fuse_gid=1023",
       "--media_provider_uid=10063",
+      "--enable_casefold_lookup",
   };
 
   base::CommandLine command_line(std::size(argv), argv);
@@ -446,7 +451,7 @@ TEST_F(MountPassthroughUtilTest, ContainerRvcMyFiles) {
   EXPECT_EQ("-k", PopFront(args));
   EXPECT_EQ("/run/arc/media/MyFiles,/mnt/dest,none,0x102e", PopFront(args));
 
-  // Mostly same with VM (different source/dest/uid/gid).
+  // Mostly same with VM (different source/dest/uid/gid and casefold option).
   EXPECT_EQ("--", PopFront(args));
   EXPECT_EQ("/usr/bin/mount-passthrough", PopFront(args));
   EXPECT_EQ("--source=/mnt/source", PopFront(args));
@@ -456,8 +461,101 @@ TEST_F(MountPassthroughUtilTest, ContainerRvcMyFiles) {
   EXPECT_EQ("--fuse_gid=1023", PopFront(args));
   EXPECT_EQ("--android_app_access_type=full", PopFront(args));
   EXPECT_EQ("--media_provider_uid=10063", PopFront(args));
+  EXPECT_EQ("--enable_casefold_lookup", PopFront(args));
 
   EXPECT_TRUE(args.empty());
+}
+
+TEST_F(MountPassthroughUtilTest, CasefoldLookup) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+
+  const base::FilePath parent = scoped_temp_dir.GetPath().Append("parent");
+  const base::FilePath parent_upper =
+      scoped_temp_dir.GetPath().Append("Parent");
+  ASSERT_TRUE(base::CreateDirectory(parent));
+
+  const base::FilePath root = parent.Append("root");
+  const base::FilePath root_upper = parent.Append("Root");
+  ASSERT_TRUE(base::CreateDirectory(root));
+
+  const base::FilePath sibling = parent.Append("sibling");
+  const base::FilePath sibling_upper = parent.Append("Sibling");
+  ASSERT_TRUE(base::CreateDirectory(sibling));
+
+  const base::FilePath child = root.Append("child");
+  const base::FilePath root_upper_child = root_upper.Append("Child");
+  ASSERT_TRUE(base::CreateDirectory(child));
+
+  // The original path is returned as-is if it is outside of the root (including
+  // the root itself) regardless of their existence.
+  EXPECT_EQ(CasefoldLookup(root, parent), parent);
+  EXPECT_EQ(CasefoldLookup(root, parent_upper), parent_upper);
+  EXPECT_EQ(CasefoldLookup(root, root), root);
+  EXPECT_EQ(CasefoldLookup(root, root_upper), root_upper);
+  EXPECT_EQ(CasefoldLookup(root, sibling), sibling);
+  EXPECT_EQ(CasefoldLookup(root, sibling_upper), sibling_upper);
+  EXPECT_EQ(CasefoldLookup(root, root_upper_child), root_upper_child);
+  EXPECT_EQ(CasefoldLookup(root_upper, parent), parent);
+  EXPECT_EQ(CasefoldLookup(root_upper, parent_upper), parent_upper);
+  EXPECT_EQ(CasefoldLookup(root_upper, root), root);
+  EXPECT_EQ(CasefoldLookup(root_upper, root_upper), root_upper);
+  EXPECT_EQ(CasefoldLookup(root_upper, sibling), sibling);
+  EXPECT_EQ(CasefoldLookup(root_upper, sibling_upper), sibling_upper);
+  EXPECT_EQ(CasefoldLookup(root_upper, child), child);
+
+  // /dir, /diR, /Dir, /DIR -> /Dir when just /Dir exists.
+  ASSERT_TRUE(base::CreateDirectory(root.Append("Dir")));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("dir")), root.Append("Dir"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("diR")), root.Append("Dir"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir")), root.Append("Dir"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("DIR")), root.Append("Dir"));
+
+  // ../ROOT/dir -> ../ROOT/dir even if ../root/Dir (= /Dir) exists.
+  EXPECT_EQ(CasefoldLookup(root, root.Append("../ROOT/dir")),
+            root.Append("../ROOT/dir"));
+
+  // /dir/a/B/c, /diR/a/B/c, /Dir/a/B/c, /DIR/a/B/c -> /Dir/a/B/c when just /Dir
+  // exists.
+  EXPECT_EQ(CasefoldLookup(root, root.Append("dir/a/B/c")),
+            root.Append("Dir/a/B/c"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("diR/a/B/c")),
+            root.Append("Dir/a/B/c"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/a/B/c")),
+            root.Append("Dir/a/B/c"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("DIR/a/B/c")),
+            root.Append("Dir/a/B/c"));
+
+  // /dir/file, /dir/File, /Dir/file, /Dir/File -> /dir/File when just /Dir/File
+  // exists.
+  ASSERT_TRUE(base::WriteFile(root.Append("Dir/File"), std::string()));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("dir/file")),
+            root.Append("Dir/File"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("dir/File")),
+            root.Append("Dir/File"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/file")),
+            root.Append("Dir/File"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/File")),
+            root.Append("Dir/File"));
+
+  // /dir/file/a/B/c/, /Dir/File/a/B/c -> /Dir/File/a/B/c when just /Dir/File
+  // exists, even if File is a regular file.
+  EXPECT_EQ(CasefoldLookup(root, root.Append("dir/file/a/B/c")),
+            root.Append("Dir/File/a/B/c"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/File/a/B/c")),
+            root.Append("Dir/File/a/B/c"));
+
+  // /Dir/File/a/B/c -> /Dir/File/a/B/c when /Dir/File exists, even if
+  // 1) /Dir/File/a/B/c does not exist, and 2) /Dir/FILE/a/B/c exists and gives
+  // the longest case insensitive match.
+  // On the other hand, /Dir/FILE/a/B/c is converted to itself as it exists.
+  // /dir/file/a/B/c, /Dir/file/a/B/c, etc. are not tested since the results are
+  // unspecified.
+  ASSERT_TRUE(base::CreateDirectory(root.Append("Dir/FILE/a/B/c")));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/File/a/B/c")),
+            root.Append("Dir/File/a/B/c"));
+  EXPECT_EQ(CasefoldLookup(root, root.Append("Dir/FILE/a/B/c")),
+            root.Append("Dir/FILE/a/B/c"));
 }
 
 }  // namespace arc

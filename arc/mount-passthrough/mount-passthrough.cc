@@ -36,6 +36,8 @@
 #include <sstream>
 #include <string>
 
+#include "arc/mount-passthrough/mount-passthrough-util.h"
+
 #define USER_NS_SHIFT 655360
 #define CHRONOS_UID 1000
 #define CHRONOS_GID 1000
@@ -66,6 +68,7 @@ constexpr char kMediaRwDataFileContext[] = "u:object_r:media_rw_data_file:s0";
 struct FusePrivateData {
   std::string android_app_access_type;
   base::FilePath root;
+  bool enable_casefold_lookup = false;
 };
 
 // Given android_app_access_type, figure out the source of /storage mount in
@@ -144,8 +147,17 @@ int check_allowed() {
 // Converts the given relative path to an absolute path.
 base::FilePath GetAbsolutePath(const char* path) {
   DCHECK_EQ(path[0], '/');
-  return static_cast<FusePrivateData*>(fuse_get_context()->private_data)
-      ->root.Append(path + 1);
+  FusePrivateData* private_data =
+      static_cast<FusePrivateData*>(fuse_get_context()->private_data);
+  const base::FilePath absolute_path = private_data->root.Append(path + 1);
+
+  if (private_data->enable_casefold_lookup &&
+      access(absolute_path.value().c_str(), F_OK) != 0) {
+    // Fall back to casefold lookup only when there is no exact match.
+    return arc::CasefoldLookup(private_data->root, absolute_path);
+  }
+
+  return absolute_path;
 }
 
 int passthrough_create(const char* path,
@@ -458,6 +470,7 @@ int main(int argc, char** argv) {
       media_provider_uid, -1,
       "UID of Android's MediaProvider "
       "(required in Android R+ for setting non-default SELinux context)");
+  DEFINE_bool(enable_casefold_lookup, false, "Enable casefold lookup");
 
   // Use "arc-" prefix so that the log is recorded in /var/log/arc.log.
   brillo::OpenLog("arc-mount-passthrough", true /*log_pid*/);
@@ -618,6 +631,7 @@ int main(int argc, char** argv) {
   FusePrivateData private_data;
   private_data.android_app_access_type = FLAGS_android_app_access_type;
   private_data.root = base::FilePath(FLAGS_source);
+  private_data.enable_casefold_lookup = FLAGS_enable_casefold_lookup;
 
   std::vector<const char*> fuse_argv(fuse_args.size());
   std::transform(
