@@ -23,7 +23,6 @@
 #include "shill/error.h"
 #include "shill/metrics_enums.h"
 #include "shill/net/ieee80211.h"
-#include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/technology.h"
@@ -317,27 +316,6 @@ class Metrics : public DefaultServiceObserver {
     kWirelessSecurityChangeEAPWpa12ToWpa123 = 9,
 
     kWirelessSecurityChangeMax
-  };
-
-  // The result of the portal detection. TODO(b/236387876): Deprecate.
-  enum PortalResult {
-    kPortalResultSuccess = 0,
-    kPortalResultDNSFailure = 1,
-    kPortalResultDNSTimeout = 2,
-    kPortalResultConnectionFailure = 3,
-    kPortalResultConnectionTimeout = 4,
-    kPortalResultHTTPFailure = 5,
-    kPortalResultHTTPTimeout = 6,
-    kPortalResultContentFailure = 7,
-    kPortalResultContentTimeout = 8,
-    kPortalResultUnknown = 9,
-    kPortalResultContentRedirect = 10,
-
-    kPortalResultMax
-  };
-  static constexpr EnumMetric<NameByTechnology> kMetricPortalResult = {
-      .n = NameByTechnology{"PortalResult"},
-      .max = kPortalResultMax,
   };
 
   // Updated portal detector results. See b/236387876 for details.
@@ -1620,10 +1598,6 @@ class Metrics : public DefaultServiceObserver {
   // Converts a flimflam EAP inner protocol string into its UMA enumerator.
   static EapInnerProtocol EapInnerProtocolStringToEnum(
       const std::string& inner);
-
-  // Converts portal detection result to UMA portal result enumerator.
-  static PortalResult PortalDetectionResultToEnum(
-      const PortalDetector::Result& result);
 
   // Converts service connect failure to UMA service error enumerator.
   static NetworkServiceError ConnectFailureToServiceErrorEnum(

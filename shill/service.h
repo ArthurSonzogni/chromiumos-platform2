@@ -45,6 +45,7 @@ class EventDispatcher;
 class KeyValueStore;
 class Manager;
 class Metrics;
+class Network;
 class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;

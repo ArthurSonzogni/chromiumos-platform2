@@ -409,60 +409,6 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   metrics_.OnDefaultLogicalServiceChanged(nullptr);
 }
 
-TEST_F(MetricsTest, PortalDetectionResultToEnum) {
-  PortalDetector::Result result;
-
-  result.http_phase = PortalDetector::Phase::kDNS;
-  result.http_status = PortalDetector::Status::kFailure;
-  EXPECT_EQ(Metrics::kPortalResultDNSFailure,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kDNS;
-  result.http_status = PortalDetector::Status::kTimeout;
-  EXPECT_EQ(Metrics::kPortalResultDNSTimeout,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kConnection;
-  result.http_status = PortalDetector::Status::kFailure;
-  EXPECT_EQ(Metrics::kPortalResultConnectionFailure,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kConnection;
-  result.http_status = PortalDetector::Status::kTimeout;
-  EXPECT_EQ(Metrics::kPortalResultConnectionTimeout,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kHTTP;
-  result.http_status = PortalDetector::Status::kFailure;
-  EXPECT_EQ(Metrics::kPortalResultHTTPFailure,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kHTTP;
-  result.http_status = PortalDetector::Status::kTimeout;
-  EXPECT_EQ(Metrics::kPortalResultHTTPTimeout,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kContent;
-  result.http_status = PortalDetector::Status::kSuccess;
-  EXPECT_EQ(Metrics::kPortalResultSuccess,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kContent;
-  result.http_status = PortalDetector::Status::kFailure;
-  EXPECT_EQ(Metrics::kPortalResultContentFailure,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kContent;
-  result.http_status = PortalDetector::Status::kTimeout;
-  EXPECT_EQ(Metrics::kPortalResultContentTimeout,
-            Metrics::PortalDetectionResultToEnum(result));
-
-  result.http_phase = PortalDetector::Phase::kUnknown;
-  result.http_status = PortalDetector::Status::kFailure;
-  EXPECT_EQ(Metrics::kPortalResultUnknown,
-            Metrics::PortalDetectionResultToEnum(result));
-}
-
 TEST_F(MetricsTest, TimeToConnect) {
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Cellular.TimeToConnect", Ge(0),
@@ -1483,37 +1429,5 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionFailureReason) {
   metrics_.NotifyUserInitiatedConnectionFailureReason(
       Service::kFailureBadPassphrase);
 }
-
-#ifndef NDEBUG
-
-// We don't need the extra thread inside EventDispatcherForTest, using
-// ::testing::Test here directly.
-using MetricsDeathTest = ::testing::Test;
-
-TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kDNS;
-  result.http_status = PortalDetector::Status::kSuccess;
-  EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
-               "Final result status 1 is not allowed in the DNS phase");
-}
-
-TEST_F(MetricsDeathTest, PortalDetectionResultToEnumConnectionSuccess) {
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kConnection;
-  result.http_status = PortalDetector::Status::kSuccess;
-  EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
-               "Final result status 1 is not allowed in the Connection phase");
-}
-
-TEST_F(MetricsDeathTest, PortalDetectionResultToEnumHTTPSuccess) {
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kHTTP;
-  result.http_status = PortalDetector::Status::kSuccess;
-  EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
-               "Final result status 1 is not allowed in the HTTP phase");
-}
-
-#endif  // NDEBUG
 
 }  // namespace shill

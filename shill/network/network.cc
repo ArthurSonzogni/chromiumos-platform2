@@ -1025,10 +1025,6 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
             << ": OnPortalDetectorResult: " << previous_validation_state
             << " -> " << result.GetValidationState();
 
-  int portal_status = Metrics::PortalDetectionResultToEnum(result);
-  metrics_->SendEnumToUMA(Metrics::kMetricPortalResult, technology_,
-                          portal_status);
-
   if (!IsConnected()) {
     LOG(INFO) << logging_tag_
               << ": Portal detection completed but Network is not connected";

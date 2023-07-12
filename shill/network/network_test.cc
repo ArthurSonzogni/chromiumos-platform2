@@ -844,9 +844,6 @@ TEST_F(NetworkTest, PortalDetectionResultAfterDisconnection) {
             result.GetValidationState());
   EXPECT_CALL(event_handler_, OnNetworkValidationResult).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult).Times(0);
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricPortalResult, kTestTechnology,
-                            Metrics::kPortalResultSuccess));
   network_->OnPortalDetectorResult(result);
 }
 
@@ -872,9 +869,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricPortalResult, kTestTechnology,
-                            Metrics::kPortalResultSuccess));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -902,9 +896,6 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricPortalResult, kTestTechnology,
-                            Metrics::kPortalResultConnectionFailure));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -926,9 +917,6 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricPortalResult, kTestTechnology,
-                            Metrics::kPortalResultSuccess));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -951,9 +939,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(Metrics::kMetricPortalResult, kTestTechnology,
-                            Metrics::kPortalResultContentRedirect));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             network_->network_validation_result()->GetValidationState());
