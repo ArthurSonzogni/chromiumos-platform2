@@ -1062,6 +1062,11 @@ class TRUNKS_EXPORT TpmUtility {
                               uint32_t* fs_size,
                               uint32_t* aprov_time,
                               uint32_t* aprov_status) = 0;
+
+  // Get the RW firmware version number.
+  virtual TPM_RC GetRwVersion(uint32_t* epoch,
+                              uint32_t* major,
+                              uint32_t* minor) = 0;
 };
 
 }  // namespace trunks

@@ -95,6 +95,7 @@ void PrintUsage() {
   puts("  --read_pcr --index=<N> - Reads a PCR and prints the value.");
   puts("  --extend_pcr --index=<N> --value=<value> - Extends a PCR.");
   puts("  --tpm_version - Prints TPM versions and IDs similar to tpm_version.");
+  puts("  --rw_version - Prints RW Firmware version.");
   puts("  --endorsement_public_key - Prints the public endorsement key.");
   puts("  --key_create (--rsa=<bits>|--ecc) --usage=sign|decrypt|all");
   puts("               --key_blob=<file> [--print_time] [--sess_*]");
@@ -338,6 +339,23 @@ int TpmVersion(const TrunksFactory& factory) {
   printf("  Firmware Version:    %016" PRIx64 "\n",
          state->GetFirmwareVersion());
 
+  return 0;
+}
+
+int GetRwVersion(const TrunksFactory& factory) {
+  trunks::TPM_RC rc;
+  uint32_t epoch;
+  uint32_t major;
+  uint32_t minor;
+  rc = factory.GetTpmUtility()->GetRwVersion(&epoch, &major, &minor);
+  if (rc) {
+    LOG(ERROR) << "Error getting RW version: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  printf("  RW Version Info:\n");
+  printf("  Epoch:         %08" PRIx32 "\n", epoch);
+  printf("  Major:         %08" PRIx32 "\n", major);
+  printf("  Minor:         %08" PRIx32 "\n", minor);
   return 0;
 }
 
@@ -1185,6 +1203,9 @@ int main(int argc, char** argv) {
   }
   if (cl->HasSwitch("tpm_version")) {
     return TpmVersion(factory);
+  }
+  if (cl->HasSwitch("rw_version")) {
+    return GetRwVersion(factory);
   }
   if (cl->HasSwitch("endorsement_public_key")) {
     return EndorsementPublicKey(factory);

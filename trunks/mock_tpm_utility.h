@@ -391,6 +391,10 @@ class MockTpmUtility : public TpmUtility {
               GetTi50Stats,
               (uint32_t*, uint32_t*, uint32_t*, uint32_t*),
               (override));
+  MOCK_METHOD(TPM_RC,
+              GetRwVersion,
+              (uint32_t*, uint32_t*, uint32_t*),
+              (override));
 };
 
 }  // namespace trunks

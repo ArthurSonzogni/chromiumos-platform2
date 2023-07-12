@@ -3672,4 +3672,68 @@ TPM_RC TpmUtilityImpl::GetTi50Stats(uint32_t* fs_init_time,
   result = Parse_UINT32(&res, aprov_status, nullptr);
   return result;
 }
+
+TPM_RC TpmUtilityImpl::GetRwVersion(uint32_t* epoch,
+                                    uint32_t* major,
+                                    uint32_t* minor) {
+  CHECK(epoch);
+  CHECK(major);
+  CHECK(minor);
+  if (!IsGsc()) {
+    return TPM_RC_COMMAND_CODE;
+  }
+
+  // From src/platform/cr50/chip/g/upgrade_fw.h.
+  struct signed_header_version {
+    uint32_t minor;
+    uint32_t major;
+    uint32_t epoch;
+  } __attribute__((__packed__));
+
+  struct first_response_pdu {
+    uint32_t return_value;
+    uint32_t protocol_version;
+    uint32_t backup_ro_offset;
+    uint32_t backup_rw_offset;
+    struct signed_header_version shv[2];
+    uint32_t keyid[2];
+  } __attribute__((__packed__));
+
+  // GSC tool uses the FW upgrade command to retrieve the RO/RW versions. There
+  // are two phases of FW upgrade: connection establishment and actual image
+  // transfer. RO/RW versions are included in the response of the first PDU to
+  // establish connection, in new enough cr50 protocol versions. We can use this
+  // first PDU to retrieve the RW version info we want without side effects. It
+  // has all-zero digest and address.
+  constexpr std::array<uint8_t, 20> kExtensionFwUpgradeRequest{
+      0x80, 0x01,              // tag: TPM_ST_NO_SESSIONS
+      0x00, 0x00, 0x00, 0x14,  // length
+      0xba, 0xcc, 0xd0, 0x0a,  // ordinal: CONFIG_EXTENSION_COMMAND
+      0x00, 0x04,              // subcmd: EXTENSION_FW_UPGRADE
+      0x00, 0x00, 0x00, 0x00,  // digest : UINT32
+      0x00, 0x00, 0x00, 0x00,  // address : UINT32
+  };
+
+  constexpr int kExpectedResponseSize = sizeof(first_response_pdu);
+  constexpr int kRwVersionIndex = 1;
+
+  std::string response = SendCommandAndWait(std::string(
+      kExtensionFwUpgradeRequest.begin(), kExtensionFwUpgradeRequest.end()));
+  std::string out;
+  TPM_RC rc = ParseResponse_GscVendor(response, &out);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  if (out.size() != kExpectedResponseSize) {
+    return TPM_RC_SIZE;
+  }
+
+  first_response_pdu pdu;
+  memcpy(&pdu, out.data(), sizeof(first_response_pdu));
+
+  *epoch = base::NetToHost32(pdu.shv[kRwVersionIndex].epoch);
+  *major = base::NetToHost32(pdu.shv[kRwVersionIndex].major);
+  *minor = base::NetToHost32(pdu.shv[kRwVersionIndex].minor);
+  return TPM_RC_SUCCESS;
+}
 }  // namespace trunks

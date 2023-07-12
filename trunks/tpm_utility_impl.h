@@ -393,6 +393,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       uint32_t* aprov_time,
                       uint32_t* aprov_status) override;
 
+  TPM_RC GetRwVersion(uint32_t* epoch,
+                      uint32_t* major,
+                      uint32_t* minor) override;
+
  private:
   friend class TpmUtilityTest;
   friend class NVTpmUtilityTest;

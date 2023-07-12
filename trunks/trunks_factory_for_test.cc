@@ -767,6 +767,12 @@ class TpmUtilityForwarder : public TpmUtility {
                                  aprov_status);
   }
 
+  TPM_RC GetRwVersion(uint32_t* epoch,
+                      uint32_t* major,
+                      uint32_t* minor) override {
+    return target_->GetRwVersion(epoch, major, minor);
+  }
+
  private:
   TpmUtility* target_;
 };

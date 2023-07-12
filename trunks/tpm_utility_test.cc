@@ -3834,4 +3834,34 @@ TEST_F(TpmUtilityTest, GetTi50Stats) {
   EXPECT_EQ(aprov_time, 0x55667788);
   EXPECT_EQ(aprov_status, 0x9900AABB);
 }
+TEST_F(TpmUtilityTest, GetRwVersion) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x3C"   // size=28
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x04"           // subcommand=EXTENSION_FW_UPGRADE
+      "\x00\x00\x00\x00"   // return_value
+      "\x00\x00\x00\x00"   // protocol_version
+      "\x00\x00\x00\x00"   // backup_ro_offset
+      "\x00\x00\x00\x00"   // backup_rw_offset
+      "\x00\x00\x00\x00"   // shv[0].minor
+      "\x00\x00\x00\x00"   // shv[0].major
+      "\x00\x00\x00\x00"   // shv[0].epoch
+      "\x11\x22\x33\x44"   // shv[1].minor
+      "\xDD\xCC\xBB\xAA"   // shv[1].major
+      "\x88\x77\x66\x55"   // shv[1].epoch
+      "\x00\x00\x00\x00"   // keyid[0]
+      "\x00\x00\x00\x00",  // keyid[1]
+      60);
+  SetGsc(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+  uint32_t epoch;
+  uint32_t major;
+  uint32_t minor;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRwVersion(&epoch, &major, &minor));
+  EXPECT_EQ(minor, 0x11223344);
+  EXPECT_EQ(major, 0xDDCCBBAA);
+  EXPECT_EQ(epoch, 0x88776655);
+}
 }  // namespace trunks
