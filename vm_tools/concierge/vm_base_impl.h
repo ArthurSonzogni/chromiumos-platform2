@@ -15,6 +15,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
+#include <base/time/time.h>
 #include <brillo/process/process.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <spaced/proto_bindings/spaced.pb.h>
@@ -125,7 +126,8 @@ class VmBaseImpl {
   virtual Info GetInfo() const = 0;
 
   // Returns balloon stats info retrieved from virtio-balloon device.
-  virtual std::optional<BalloonStats> GetBalloonStats();
+  virtual std::optional<BalloonStats> GetBalloonStats(
+      std::optional<base::TimeDelta> timeout);
 
   // Returns guest working set info retrieved from virtio-balloon device.
   virtual std::optional<BalloonWorkingSet> GetBalloonWorkingSet();

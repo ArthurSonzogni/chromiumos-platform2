@@ -5,6 +5,10 @@
 #ifndef VM_TOOLS_CONCIERGE_CROSVM_CONTROL_IMPL_H_
 #define VM_TOOLS_CONCIERGE_CROSVM_CONTROL_IMPL_H_
 
+#include <optional>
+
+#include <base/time/time.h>
+
 #include "vm_tools/concierge/crosvm_control.h"
 
 #include <string>
@@ -44,6 +48,7 @@ class CrosvmControlImpl : public CrosvmControl {
                   size_t disk_index,
                   uint64_t new_size) override;
   bool BalloonStats(const std::string& socket_path,
+                    std::optional<base::TimeDelta> timeout,
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
   bool SetBalloonWorkingSetConfig(const std::string& socket_path,

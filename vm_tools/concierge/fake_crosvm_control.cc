@@ -88,6 +88,7 @@ bool FakeCrosvmControl::ResizeDisk(const std::string& socket_path,
 }
 
 bool FakeCrosvmControl::BalloonStats(const std::string& socket_path,
+                                     std::optional<base::TimeDelta> timeout,
                                      struct BalloonStatsFfi* stats,
                                      uint64_t* actual) {
   target_socket_path_ = socket_path;

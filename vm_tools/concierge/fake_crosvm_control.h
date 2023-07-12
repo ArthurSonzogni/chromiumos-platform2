@@ -6,7 +6,9 @@
 #define VM_TOOLS_CONCIERGE_FAKE_CROSVM_CONTROL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <base/time/time.h>
 #include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {
@@ -54,6 +56,7 @@ class FakeCrosvmControl : public CrosvmControl {
                   uint64_t new_size) override;
 
   bool BalloonStats(const std::string& socket_path,
+                    std::optional<base::TimeDelta> timeout,
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
 

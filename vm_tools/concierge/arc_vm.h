@@ -234,6 +234,7 @@ class ArcVm final : public VmBaseImpl {
 
   // Handlers for aggressive balloon
   void InflateAggressiveBalloonOnTimer();
+  void StartAggressiveBalloonTimer(std::optional<BalloonStats> stats_opt);
 
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
@@ -324,6 +325,9 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
+  base::Thread balloon_stats_thread_{"balloon_stats_thread"};
+
+  base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };
 
 }  // namespace concierge
