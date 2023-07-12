@@ -130,8 +130,8 @@ void Network::Start(const Network::StartOptions& opts) {
     ipv6_started = true;
   }
   if (link_protocol_ipv6_properties_) {
-    proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                        "0");
+    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                        ProcFsStub::kIPFlagDisableIPv6, "0");
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
     ip6config_->set_properties(*link_protocol_ipv6_properties_);
@@ -726,9 +726,9 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 }
 
 void Network::EnableARPFiltering() {
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv4, ProcFsStub::kIPFlagArpAnnounce,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4, ProcFsStub::kIPFlagArpAnnounce,
                       ProcFsStub::kIPFlagArpAnnounceBestLocal);
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv4, ProcFsStub::kIPFlagArpIgnore,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4, ProcFsStub::kIPFlagArpIgnore,
                       ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
@@ -756,7 +756,7 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   std::vector<net_base::IPCIDR> result;
   if (slaac_controller_) {
     for (const auto& slaac_addr : slaac_controller_->GetAddresses()) {
-      result.push_back(net_base::IPCIDR(slaac_addr));
+      result.emplace_back(slaac_addr);
     }
   }
 

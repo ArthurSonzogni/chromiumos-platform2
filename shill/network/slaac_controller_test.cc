@@ -239,15 +239,18 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 }
 
 TEST_F(SLAACControllerTest, StartIPv6Flags) {
-  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "disable_ipv6", "1"))
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "disable_ipv6", "0"))
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "accept_dad", "1"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6, "accept_dad", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "accept_ra", "2"))
+  EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6, "accept_ra", "2"))
       .WillOnce(Return(true));
-  EXPECT_CALL(proc_fs_, SetIPFlag(AF_INET6, "use_tempaddr", "2"))
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "use_tempaddr", "2"))
       .WillOnce(Return(true));
 
   slaac_controller_.Start();

@@ -23,7 +23,7 @@ class MockProcFsStub : public ProcFsStub {
 
   MOCK_METHOD(bool,
               SetIPFlag,
-              (IPAddress::Family, const std::string&, const std::string&),
+              (net_base::IPFamily, const std::string&, const std::string&),
               (override));
 
   MOCK_METHOD(bool, FlushRoutingCache, (), (override));

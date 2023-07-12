@@ -390,19 +390,22 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
 
 TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   ExpectCreateDHCPController(true);
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "2"))
+  EXPECT_CALL(*proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv4, "arp_announce", "2"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "1"))
+  EXPECT_CALL(*proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv4, "arp_ignore", "1"))
       .WillOnce(Return(true));
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
 TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   // Not interested in IPv4 flags in this test.
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(net_base::IPFamily::kIPv4, _, _))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+  EXPECT_CALL(*proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
   network_->set_link_protocol_ipv6_properties(
       std::make_unique<IPConfig::Properties>());

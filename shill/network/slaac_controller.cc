@@ -12,7 +12,6 @@
 
 #include <base/logging.h>
 
-#include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 
@@ -42,20 +41,20 @@ void SLAACController::Start() {
       rtnl_handler_);
 
   proc_fs_->SetIPFlag(
-      IPAddress::kFamilyIPv6,
+      net_base::IPFamily::kIPv6,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                       ProcFsStub::kIPFlagAcceptRouterAdvertisements,
                       ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagUseTempAddr,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagUseTempAddr,
                       ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
 
   // Flip kIPFlagDisableIPv6, forcing kernel to send an RS. Note this needs to
   // be done after setting kIPFlagAcceptRouterAdvertisements.
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "1");
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "0");
 }
 
@@ -76,8 +75,8 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
   }
 
   const RTNLMessage::AddressStatus& status = msg.address_status();
-  if (msg.family() != IPAddress::kFamilyIPv6 ||
-      status.scope != RT_SCOPE_UNIVERSE || (status.flags & IFA_F_PERMANENT)) {
+  if (msg.family() != AF_INET6 || status.scope != RT_SCOPE_UNIVERSE ||
+      (status.flags & IFA_F_PERMANENT)) {
     // SLAACController only monitors IPv6 global address that is not PERMANENT.
     return;
   }

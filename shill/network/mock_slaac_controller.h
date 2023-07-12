@@ -10,7 +10,6 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/net/ip_address.h"
 #include "shill/network/slaac_controller.h"
 
 namespace shill {

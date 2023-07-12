@@ -7,8 +7,9 @@
 
 #include <string>
 
+#include <net-base/ip_address.h>
+
 #include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 
 namespace shill {
 
@@ -33,11 +34,10 @@ class ProcFsStub {
   ProcFsStub& operator=(const ProcFsStub&) = delete;
   virtual ~ProcFsStub() = default;
 
-  // Set an IP configuration flag on the device. |family| should be
-  // "ipv6" or "ipv4". |flag| should be the name of the flag to be set and
-  // |value| is what this flag should be set to. Overridden by unit tests to
-  // pretend writing to procfs.
-  mockable bool SetIPFlag(IPAddress::Family family,
+  // Set an IP configuration flag on the device. |flag| should be the name of
+  // the flag to be set and |value| is what this flag should be set to.
+  // Overridden by unit tests to pretend writing to procfs.
+  mockable bool SetIPFlag(net_base::IPFamily family,
                           const std::string& flag,
                           const std::string& value);
 

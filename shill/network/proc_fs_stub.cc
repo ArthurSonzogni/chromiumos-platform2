@@ -24,17 +24,11 @@ constexpr std::array<base::StringPiece, 2> kRouteFlushPaths = {
 ProcFsStub::ProcFsStub(const std::string& interface_name)
     : interface_name_(interface_name) {}
 
-bool ProcFsStub::SetIPFlag(IPAddress::Family family,
+bool ProcFsStub::SetIPFlag(net_base::IPFamily family,
                            const std::string& flag,
                            const std::string& value) {
-  std::string ip_version;
-  if (family == IPAddress::kFamilyIPv4) {
-    ip_version = kIPFlagVersion4;
-  } else if (family == IPAddress::kFamilyIPv6) {
-    ip_version = kIPFlagVersion6;
-  } else {
-    NOTIMPLEMENTED();
-  }
+  const std::string ip_version =
+      (family == net_base::IPFamily::kIPv4) ? kIPFlagVersion4 : kIPFlagVersion6;
   base::FilePath flag_file(
       base::StringPrintf(kIPFlagTemplate, ip_version.c_str(),
                          interface_name_.c_str(), flag.c_str()));
