@@ -16,7 +16,7 @@ TEST_F(X11Test, OutputScaleAndTransformAreApplied) {
   struct sl_host_output* output = nullptr;
 
   // Assert: Dimensions are unchanged.
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->virt_rotated_width, 1920);
   EXPECT_EQ(output->virt_rotated_height, 1080);
 
@@ -50,12 +50,12 @@ TEST_F(X11DirectScaleTest,
   struct sl_host_output* output = nullptr;
 
   // Assert: Outputs are positioned correctly in logical space.
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 1920);
   EXPECT_EQ(output->virt_y, 0);
@@ -68,17 +68,17 @@ TEST_F(X11DirectScaleTest,
                                      .transform = WL_OUTPUT_TRANSFORM_90}});
 
   // Assert: Outputs are positioned correctly in logical space.
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -800);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1080);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next->next, output, link);
+  output = ctx.host_outputs[2];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 3000);
   EXPECT_EQ(output->virt_y, 0);
@@ -99,12 +99,12 @@ TEST_F(X11Test, AddingMultipleOutputsPositionsCorrectly) {
   struct sl_host_output* output = nullptr;
 
   // Assert: Outputs are positioned correctly in logical space.
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 1920);
   EXPECT_EQ(output->virt_y, 0);
@@ -120,17 +120,17 @@ TEST_F(X11Test, AddingMultipleOutputsPositionsCorrectly) {
                                    }});
 
   // Assert
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -800);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1440);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next->next, output, link);
+  output = ctx.host_outputs[2];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 3360);
   EXPECT_EQ(output->virt_y, 0);
@@ -152,22 +152,22 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingLeftOutput) {
 
   // Act: remove the leftmost output.
   struct sl_host_output* output = nullptr;
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   RemoveOutput(output);
 
   // Assert: Output is removed and others are shifted left.
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 2000);
   EXPECT_EQ(output->virt_x, 540);
   EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
-  EXPECT_EQ(ctx.host_outputs.next->next, ctx.host_outputs.prev);
+  EXPECT_EQ(ctx.host_outputs.size(), 2);
 }
 
 TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingMiddleOutput) {
@@ -186,25 +186,26 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingMiddleOutput) {
 
   // Act: Remove the middle output;
   struct sl_host_output* output = nullptr;
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   RemoveOutput(output);
 
   // Assert
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 2000);
   EXPECT_EQ(output->virt_x, 1920);
   EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
-  EXPECT_EQ(ctx.host_outputs.next->next, ctx.host_outputs.prev);
+  EXPECT_EQ(ctx.host_outputs.size(), 2);
 }
+
 TEST_F(X11Test, OtherOutputUnchangedAfterRemovingRightOutput) {
-  // Arrange: Add 3 outputs.
+  // Arrange: Add 2 outputs.
   std::vector<OutputConfig> configs = {
       {.x = 0, .y = 0, .width_pixels = 1920, .height_pixels = 1080},
       {.x = 1920, .y = 0}};
@@ -212,16 +213,16 @@ TEST_F(X11Test, OtherOutputUnchangedAfterRemovingRightOutput) {
 
   // Act: Remove the rightmost output.
   struct sl_host_output* output = nullptr;
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   RemoveOutput(output);
 
   // Assert
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
   // outputs has length 1.
-  EXPECT_EQ(ctx.host_outputs.next, ctx.host_outputs.prev);
+  EXPECT_EQ(ctx.host_outputs.size(), 1);
 }
 
 TEST_F(X11Test, RotatingOutputsShiftsNeighbouringOutputs) {
@@ -233,7 +234,7 @@ TEST_F(X11Test, RotatingOutputsShiftsNeighbouringOutputs) {
   AdvertiseOutputs(xwayland.get(), configs);
   struct sl_host_output* output = nullptr;
 
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   // Act: Rotate output by 270 degrees.
   ConfigureOutput(output, {.transform = WL_OUTPUT_TRANSFORM_270});
 
@@ -243,7 +244,7 @@ TEST_F(X11Test, RotatingOutputsShiftsNeighbouringOutputs) {
   EXPECT_EQ(output->virt_rotated_width, 1080);
   EXPECT_EQ(output->virt_rotated_height, 1920);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->virt_x, 1080);
   EXPECT_EQ(output->virt_y, 0);
 }
@@ -257,17 +258,17 @@ TEST_F(X11Test, MovingOutputsShiftsOutputs) {
   AdvertiseOutputs(xwayland.get(), configs);
   struct sl_host_output* output = nullptr;
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   // Act: Move output on the right to be on the left of other output.
   ConfigureOutput(output, {.x = -1920, .y = 700});
 
   // Assert
-  output = wl_container_of(ctx.host_outputs.next, output, link);
+  output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -1920);
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
 
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1920);
   EXPECT_EQ(output->virt_y, 0);

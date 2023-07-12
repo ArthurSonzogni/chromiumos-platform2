@@ -5,12 +5,13 @@
 #ifndef VM_TOOLS_SOMMELIER_SOMMELIER_CTX_H_
 #define VM_TOOLS_SOMMELIER_SOMMELIER_CTX_H_
 
+#include <limits.h>
 #include <memory>
 #include <string>
+#include <vector>
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <xcb/xcb.h>
-#include <limits.h>
 
 #include "sommelier-timing.h"  // NOLINT(build/include_directory)
 #include "sommelier-util.h"    // NOLINT(build/include_directory)
@@ -121,7 +122,7 @@ struct sl_context {
   struct wl_list windowed_accelerators;
   struct wl_list registries;
   struct wl_list globals;
-  struct wl_list host_outputs;
+  std::vector<struct sl_host_output*> host_outputs;
   int next_global_id;
   xcb_connection_t* connection;
   std::unique_ptr<struct wl_event_source> connection_event_source;

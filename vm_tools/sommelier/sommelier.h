@@ -293,7 +293,6 @@ struct sl_host_output {
   int32_t logical_height;
   int32_t logical_x;
   int32_t logical_y;
-  struct wl_list link;
 };
 MAP_STRUCTS(wl_output, sl_host_output);
 

@@ -3167,13 +3167,12 @@ static void sl_execvp(const char* file,
 }
 
 static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
-  struct sl_host_output* output;
   double default_scale_factor = 1.0;
   double scale = ctx->desired_scale;
 
   if (!ctx->use_direct_scale) {
     // Find internal output and determine preferred scale factor.
-    wl_list_for_each(output, &ctx->host_outputs, link) {
+    for (auto output : ctx->host_outputs) {
       if (output->internal) {
         double preferred_scale =
             sl_output_aura_scale_factor_to_double(output->preferred_scale);
@@ -3201,8 +3200,8 @@ static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
   ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, scale));
 
   // Scale affects output state. Send updated output state to xwayland.
-  wl_list_for_each(output, &ctx->host_outputs, link)
-      sl_output_send_host_output_state(output);
+  for (auto output : ctx->host_outputs)
+    sl_output_send_host_output_state(output);
 }
 
 // Extra connections are made to XWayland-hosting instances for IME support.

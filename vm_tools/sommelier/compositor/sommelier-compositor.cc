@@ -762,9 +762,7 @@ static void sl_host_surface_commit(struct wl_client* client,
     // internal output. TODO(reveman): Remove this when surface-output tracking
     // has been implemented in Chrome.
     if (!host->has_output) {
-      struct sl_host_output* output;
-
-      wl_list_for_each(output, &host->ctx->host_outputs, link) {
+      for (auto output : host->ctx->host_outputs) {
         if (output->internal) {
           wl_surface_send_enter(host->resource, output->resource);
           host->has_output = 1;

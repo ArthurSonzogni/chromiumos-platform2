@@ -5,10 +5,12 @@
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
+#include <algorithm>
 #include <assert.h>
 #include <cstdint>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 #include <wayland-client.h>
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
@@ -250,9 +252,7 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
   // typically lack support for dynamically changing density so it's
   // preferred to always use the density of the internal display.
   if (host->ctx->xwayland) {
-    struct sl_host_output* output;
-
-    wl_list_for_each(output, &host->ctx->host_outputs, link) {
+    for (auto output : host->ctx->host_outputs) {
       if (output->internal) {
         int internal_width;
         int internal_height;
@@ -282,9 +282,8 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
 void sl_output_shift_output_x(struct sl_host_output* host, bool skip_host) {
   // Outputs are positioned in a line from left to right ordered base on its
   // x position.
-  struct sl_host_output* output;
   int next_output_x = 0;
-  wl_list_for_each(output, &host->ctx->host_outputs, link) {
+  for (auto output : host->ctx->host_outputs) {
     if (output->virt_x != next_output_x) {
       output->virt_x = next_output_x;
       // Skipping sending current output's details here if skip host is set
@@ -327,13 +326,12 @@ void sl_output_shift_output_x(struct sl_host_output* host, bool skip_host) {
 struct sl_host_output* sl_infer_output_for_host_position(struct sl_context* ctx,
                                                          int32_t host_x,
                                                          int32_t host_y) {
-  struct sl_host_output* output;
   struct sl_host_output* closest = nullptr;
   int32_t closest_distance = INT32_MAX;
 
   // Return the output containing, or closest to, the query X/Y coordinates
   // in host logical space. "Closest" considers Manhattan distance.
-  wl_list_for_each(output, &ctx->host_outputs, link) {
+  for (auto output : ctx->host_outputs) {
     if (!closest) {
       closest = output;
     }
@@ -372,14 +370,13 @@ struct sl_host_output* sl_infer_output_for_host_position(struct sl_context* ctx,
 
 struct sl_host_output* sl_infer_output_for_guest_position(
     struct sl_context* ctx, int32_t virt_x, int32_t virt_y) {
-  struct sl_host_output* output;
   struct sl_host_output* first = nullptr;
   struct sl_host_output* last = nullptr;
 
   // Return the output containing the query X coordinate (in virtual space).
   // Since outputs are placed in a horizontal line in virtual space, we can
   // ignore the Y coordinate entirely.
-  wl_list_for_each(output, &ctx->host_outputs, link) {
+  for (auto output : ctx->host_outputs) {
     if (!first) {
       first = output;
     }
@@ -449,8 +446,8 @@ static void sl_output_geometry(void* data,
                                const char* make,
                                const char* model,
                                int transform) {
-  struct sl_host_output* host =
-      static_cast<sl_host_output*>(wl_output_get_user_data(output));
+  void* result = wl_output_get_user_data(output);
+  sl_host_output* host = static_cast<sl_host_output*>(result);
 
   host->x = x;
   host->y = y;
@@ -463,22 +460,23 @@ static void sl_output_geometry(void* data,
   host->make = strdup(make);
   host->transform = transform;
   if (host->ctx->separate_outputs) {
+    auto pointer = std::find(host->ctx->host_outputs.begin(),
+                             host->ctx->host_outputs.end(), host);
+    assert(pointer != host->ctx->host_outputs.end());
     // host_outputs is sorted by x. Delete then re-insert at the correct
     // position.
-    wl_list_remove(&host->link);
+    host->ctx->host_outputs.erase(pointer);
     // Insert at the end by default. If insert_at is not set in the loop,
     // hosts's x is larger than all the ones in the list currently.
-    struct wl_list* insert_at = host->ctx->host_outputs.prev;
-    struct sl_host_output* iter;
-    wl_list_for_each(iter, &host->ctx->host_outputs, link) {
-      if (host->x < iter->x) {
-        // This is the first output whose x coordinate is to the right of host,
-        // therefore insert to the left of it.
-        insert_at = iter->link.prev;
+    auto insert_at = host->ctx->host_outputs.end();
+    for (auto it = host->ctx->host_outputs.begin();
+         it != host->ctx->host_outputs.end(); ++it) {
+      if ((*it)->x > host->x) {
+        insert_at = it;
         break;
       }
     }
-    wl_list_insert(insert_at, &host->link);
+    host->ctx->host_outputs.insert(insert_at, host);
   }
 }
 
@@ -574,7 +572,10 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
     wl_output_destroy(host->proxy);
   }
   wl_resource_set_user_data(resource, nullptr);
-  wl_list_remove(&host->link);
+  auto pointer = std::find(host->ctx->host_outputs.begin(),
+                           host->ctx->host_outputs.end(), host);
+  assert(pointer != host->ctx->host_outputs.end());
+  host->ctx->host_outputs.erase(pointer);
   free(host->make);
   free(host->model);
   if (host->ctx->separate_outputs) {
@@ -629,7 +630,7 @@ static void sl_bind_host_output(struct wl_client* client,
   output->host_output = host;
   host->aura_output = nullptr;
   // We assume that first output is internal by default.
-  host->internal = wl_list_empty(&ctx->host_outputs);
+  host->internal = ctx->host_outputs.empty();
   host->x = 0;
   host->y = 0;
   host->virt_x = 0;
@@ -658,7 +659,7 @@ static void sl_bind_host_output(struct wl_client* client,
   host->device_scale_factor = 1000;
   host->expecting_scale = 0;
   host->expecting_logical_size = false;
-  wl_list_insert(ctx->host_outputs.prev, &host->link);
+  ctx->host_outputs.push_back(host);
   if (ctx->aura_shell) {
     host->expecting_scale = 1;
     host->internal = 0;

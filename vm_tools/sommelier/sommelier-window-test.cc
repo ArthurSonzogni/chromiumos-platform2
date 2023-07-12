@@ -545,7 +545,7 @@ TEST_F(X11Test,
   const int width = 1024;
   const int height = 768;
   struct sl_host_output* output = nullptr;
-  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  output = ctx.host_outputs[1];
   HostEventHandler(window->paired_surface->proxy)
       ->enter(nullptr, window->paired_surface->proxy, output->proxy);
 

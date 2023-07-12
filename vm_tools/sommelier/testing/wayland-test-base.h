@@ -242,6 +242,7 @@ class WaylandTestBase : public ::testing::Test {
   // Set up one or more fake outputs for the test.
   void AdvertiseOutputs(FakeWaylandClient* client,
                         std::vector<OutputConfig> outputs) {
+    int existing_outputs_size = ctx.host_outputs.size();
     // The host compositor should advertise a wl_output global for each output.
     // Sommelier will handle this by forwarding the globals to its client.
     // global_ids stores the ids of the globals we are advertising so that
@@ -265,23 +266,16 @@ class WaylandTestBase : public ::testing::Test {
     // putting them in a separate vector to iterate over. Newly bound outputs
     // are inserted at the end of the list, there should be as many as there
     // are configs.
-    std::vector<sl_host_output*> new_outputs = {};
-    int configs_left = outputs.size();
-    sl_host_output* host_output;
-    wl_list_for_each_reverse(host_output, &ctx.host_outputs, link) {
-      new_outputs.push_back(host_output);
-      if (--configs_left < 1) {
-        break;
-      }
-    }
-    // Reversing new_outputs as they were added in reverse.
-    std::reverse(new_outputs.begin(), new_outputs.end());
+    std::vector<sl_host_output*> new_outputs(
+        ctx.host_outputs.begin() + existing_outputs_size,
+        ctx.host_outputs.end());
+
     int i = 0;
     for (sl_host_output* output : new_outputs) {
       ConfigureOutput(output, outputs[i++]);
     }
     // host_outputs should be the requested length.
-    EXPECT_EQ(new_outputs.size(), outputs.size());
+    EXPECT_EQ(ctx.host_outputs.size(), outputs.size() + existing_outputs_size);
   }
 
   void ConfigureOutput(sl_host_output* host_output,

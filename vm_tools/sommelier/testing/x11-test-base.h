@@ -80,9 +80,9 @@ class X11TestBase : public WaylandTestBase {
     sl_window_update(window);
     Pump();
     // Default to the first output if any exist.
-    if (!wl_list_empty(&ctx.host_outputs)) {
+    if (!ctx.host_outputs.empty()) {
       struct sl_host_output* output = nullptr;
-      output = wl_container_of(ctx.host_outputs.next, output, link);
+      output = ctx.host_outputs[0];
       HostEventHandler(window->paired_surface->proxy)
           ->enter(nullptr, window->paired_surface->proxy, output->proxy);
     }

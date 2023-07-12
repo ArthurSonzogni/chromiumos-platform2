@@ -197,7 +197,6 @@ void sl_context_init_default(struct sl_context* ctx) {
   wl_list_init(&ctx->seats);
   wl_list_init(&ctx->windows);
   wl_list_init(&ctx->unpaired_windows);
-  wl_list_init(&ctx->host_outputs);
   wl_list_init(&ctx->selection_data_source_send_pending);
 #ifdef GAMEPAD_SUPPORT
   wl_list_init(&ctx->gamepads);
