@@ -3517,6 +3517,48 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultNoMultiplex) {
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
+  CellularService* service = SetRegisteredWithService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Operator does not require DUN as DEFAULT.
+  EXPECT_CALL(*mock_mobile_operator_info_, use_dun_apn_as_default())
+      .WillRepeatedly(Return(false));
+
+  // Device supports multiplexing more than one PDN.
+  device_->SetMaxActiveMultiplexedBearers(2);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // DEFAULT is connected.
+  service->SetLastGoodApn(apn1);
+
+  // Test only the operation type selection.
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kConnectDunMultiplexed);
+}
+
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);

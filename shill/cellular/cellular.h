@@ -292,6 +292,13 @@ class Cellular : public Device,
     // previous kConnectDunAsDefaultPdn operation.
     kConnectDunAsDefaultPdn,
     kDisconnectDunAsDefaultPdn,
+    // Connect/disconnect a multiplexed DUN packet data network.
+    // The kDisconnectDunMultiplexed type is not returned by
+    // GetTetheringOperationType(), it is only used to flag the ongoing
+    // operation when releasing a tethering network that was acquired with a
+    // previous kConnectDunMultiplexed operation.
+    kConnectDunMultiplexed,
+    kDisconnectDunMultiplexed,
     // The currently connected default network will be reused for tethering.
     kReuseDefaultPdn,
     // Used to report errors in GetTetheringOperationType()
@@ -313,6 +320,13 @@ class Cellular : public Device,
   // GetTetheringOperationType() selection method returns
   // kConnectDunAsDefaultPdn.
   void ConnectTetheringAsDefaultPdn(
+      AcquireTetheringNetworkResultCallback callback);
+
+  // Connects a new multiplexed PDN using the DUN specific APN.
+  // This is the operation run in AcquireTetheringNetwork() when the
+  // GetTetheringOperationType() selection method returns
+  // kConnectDunMultiplexed.
+  void ConnectMultiplexedTetheringPdn(
       AcquireTetheringNetworkResultCallback callback);
 
   // Called when an OTA profile update arrives from the network.
@@ -453,11 +467,21 @@ class Cellular : public Device,
   Network* default_pdn_for_testing() {
     return default_pdn_ ? default_pdn_->network() : nullptr;
   }
+  void SetMultiplexedTetheringPdnForTesting(const RpcIdentifier& dbus_path,
+                                            std::unique_ptr<Network> network,
+                                            LinkState link_state);
+  Network* multiplexed_tethering_pdn_for_testing() {
+    return multiplexed_tethering_pdn_ ? multiplexed_tethering_pdn_->network()
+                                      : nullptr;
+  }
 
   // Public to ease testing without real RTNL link events.
   void DefaultLinkDeleted();
   void DefaultLinkUp();
   void DefaultLinkDown();
+  void MultiplexedTetheringLinkDeleted();
+  void MultiplexedTetheringLinkUp();
+  void MultiplexedTetheringLinkDown();
 
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
@@ -575,6 +599,8 @@ class Cellular : public Device,
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
+  // Invoked when the tethering multiplexed link may need to be setup.
+  void EstablishMultiplexedTetheringLink();
 
   void LinkMsgHandler(const RTNLMessage& msg);
 
@@ -708,6 +734,7 @@ class Cellular : public Device,
     ApnList::ApnType apn_type;
     std::deque<Stringmap> apn_try_list;
     bool apn_connected;
+    std::optional<Error> saved_error;
   };
   void CompleteTetheringOperation(const Error& error);
   bool InitializeTetheringOperation(TetheringOperationType type,
@@ -723,6 +750,17 @@ class Cellular : public Device,
   // Helper to check whether a DUN as DEFAULT tethering operation is ongoing
   // (either connecting or disconnecting).
   bool IsTetheringOperationDunAsDefaultOngoing();
+
+  // Management of the tethering-specific multiplexed network attempt
+  void DisconnectMultiplexedTetheringPdn(ResultCallback callback);
+  void RunDisconnectMultiplexedTetheringPdn();
+  void OnCapabilityConnectMultiplexedTetheringReply(const Error& error);
+  void OnCapabilityDisconnectMultiplexedTetheringReply(const Error& error);
+  void OnConnectMultiplexedTetheringPdnReply(
+      AcquireTetheringNetworkResultCallback callback, const Error& error);
+
+  // Helper to check whether a multiplexed DUN tethering operation is ongoing.
+  bool IsTetheringOperationDunMultiplexedOngoing();
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
@@ -780,6 +818,9 @@ class Cellular : public Device,
   // be considered a prerequisite to be be able to create the NetworkInfo, never
   // part of it.
   std::optional<ApnList::ApnType> default_pdn_apn_type_;
+
+  // Connection associated to the PDN with APN type "dun".
+  std::optional<NetworkInfo> multiplexed_tethering_pdn_;
 
   struct LocationInfo {
     std::string mcc;

@@ -331,6 +331,7 @@ Cellular::Cellular(Manager* manager,
   // Reset networks
   default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
+  multiplexed_tethering_pdn_ = std::nullopt;
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
       this, metrics(),
@@ -647,6 +648,9 @@ void Cellular::DestroySockets() {
   if (default_pdn_) {
     default_pdn_->DestroySockets();
   }
+  if (multiplexed_tethering_pdn_) {
+    multiplexed_tethering_pdn_->DestroySockets();
+  }
 }
 
 void Cellular::CompleteActivation(Error* error) {
@@ -751,6 +755,7 @@ void Cellular::DropConnectionDefault() {
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
+  multiplexed_tethering_pdn_ = std::nullopt;
   SelectService(nullptr);
 }
 
@@ -899,8 +904,22 @@ void Cellular::OnConnectionUpdated(int interface_index) {
     return;
   }
 
-  // TODO(b/283402454): Once multiplexed DUN support is integrated, we will
-  // also expect events on the tethering-specific Network object.
+  // Event on the tethering-specific multiplexed network.
+  if (multiplexed_tethering_pdn_ &&
+      interface_index ==
+          multiplexed_tethering_pdn_->network()->interface_index()) {
+    if (IsTetheringOperationDunMultiplexedOngoing()) {
+      if (tethering_operation_->apn_connected) {
+        SLOG(1) << LoggingTag()
+                << ": multiplexed tethering operation can be completed";
+        CompleteTetheringOperation(Error(Error::kSuccess));
+      } else {
+        SLOG(1) << LoggingTag()
+                << ": multiplexed tethering operation still ongoing";
+      }
+    }
+    return;
+  }
 
   LOG(WARNING) << LoggingTag()
                << ": Unexpected network connection update: " << interface_index;
@@ -1078,8 +1097,12 @@ void Cellular::UpdateServices() {
     manager()->cellular_service_provider()->UpdateServices(this);
   }
 
-  if (state_ == State::kRegistered && modem_state_ == kModemStateConnected)
+  if (state_ == State::kRegistered && modem_state_ == kModemStateConnected) {
+    // On an idle->registered reg state change while modem is connected, we may
+    // need to establish links both in default and tethering, but the tethering
+    // one will need to go always once the default one is up.
     OnConnected();
+  }
 
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
@@ -1609,10 +1632,6 @@ void Cellular::OnDisconnectFailed() {
 }
 
 bool Cellular::IsTetheringOperationDunAsDefaultOngoing() {
-  // TODO(b/283402454): Please note that the operation type check seems
-  // redundant only because the multiplexed DUN support is not yet available.
-  // Once it is integrated, a new operation type value will exist, and the
-  // operation type check will no longer be redundant.
   return (tethering_operation_ &&
           ((tethering_operation_->type ==
             TetheringOperationType::kConnectDunAsDefaultPdn) ||
@@ -1620,29 +1639,56 @@ bool Cellular::IsTetheringOperationDunAsDefaultOngoing() {
             TetheringOperationType::kDisconnectDunAsDefaultPdn)));
 }
 
+bool Cellular::IsTetheringOperationDunMultiplexedOngoing() {
+  return (tethering_operation_ &&
+          ((tethering_operation_->type ==
+            TetheringOperationType::kConnectDunMultiplexed) ||
+           (tethering_operation_->type ==
+            TetheringOperationType::kDisconnectDunMultiplexed)));
+}
+
 void Cellular::CompleteTetheringOperation(const Error& error) {
-  CHECK(tethering_operation_);
-  CHECK(!tethering_operation_->callback.is_null());
+  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
+  bool multiplexed_dun_ongoing = IsTetheringOperationDunMultiplexedOngoing();
+  CHECK(dun_as_default_ongoing || multiplexed_dun_ongoing);
 
   // Reset operation info right away, as there are certain generic actions
   // updated to ignore events if a tethering operation is ongoing.
   ResultCallback callback = std::move(tethering_operation_->callback);
-  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
   bool apn_connected = tethering_operation_->apn_connected;
+  Error operation_error = tethering_operation_->saved_error.value_or(error);
   tethering_operation_ = std::nullopt;
 
   // Report error.
-  if (!error.IsSuccess()) {
-    LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
+  if (!operation_error.IsSuccess()) {
+    LOG(WARNING) << LoggingTag()
+                 << ": Tethering operation failed: " << operation_error;
     if (dun_as_default_ongoing && StateIsConnected()) {
       Disconnect(nullptr, "DUN as DEFAULT tethering operation failed");
+    } else if (multiplexed_dun_ongoing) {
+      // Both on connect and disconnect error we expect no multiplexed
+      // tethering PDN, it should have been cleared.
+      CHECK(!multiplexed_tethering_pdn_);
     }
-    std::move(callback).Run(error);
+    std::move(callback).Run(operation_error);
     return;
   }
 
-  // On a successful completion, the APN must have been connected.
-  CHECK(apn_connected);
+  // On a successful completion of any DUN as DEFAULT operation (either
+  // connect or disconnect, the APN must have been connected.
+  if (dun_as_default_ongoing) {
+    CHECK(apn_connected);
+  }
+
+  // If the tethering specific multiplexed Network was just connected, start
+  // portal detection. Not needed when connecting DUN as DEFAULT because
+  // Device::OnConnectionUpdated() already does it.
+  if (multiplexed_dun_ongoing && multiplexed_tethering_pdn_) {
+    // On a successful completion of a multiplexed DUN connection, the APN must
+    // have been connected.
+    CHECK(apn_connected);
+    multiplexed_tethering_pdn_->network()->StartPortalDetection(true);
+  }
 
   // Report success.
   LOG(INFO) << LoggingTag() << ": Tethering operation successful";
@@ -1669,11 +1715,139 @@ bool Cellular::InitializeTetheringOperation(TetheringOperationType type,
     return false;
   }
 
+  // If setting up a multiplexed tethering connection and the tethering
+  // specific Network already exists, fail right away.
+  if (type == TetheringOperationType::kConnectDunMultiplexed &&
+      multiplexed_tethering_pdn_) {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       Error(Error::kWrongState, "Already available.")));
+    return false;
+  }
+
   // Tethering connection attempt can go on.
   LOG(INFO) << LoggingTag() << ": Tethering operation started";
   tethering_operation_.emplace(type, std::move(callback));
   tethering_operation_->apn_connected = false;
   return true;
+}
+
+void Cellular::ConnectMultiplexedTetheringPdn(
+    AcquireTetheringNetworkResultCallback callback) {
+  CHECK(!callback.is_null());
+
+  LOG(INFO) << LoggingTag() << ": Tethering operation requested: "
+            << "connect multiplexed DUN network.";
+
+  if (!InitializeTetheringOperation(
+          TetheringOperationType::kConnectDunMultiplexed,
+          base::BindOnce(&Cellular::OnConnectMultiplexedTetheringPdnReply,
+                         weak_ptr_factory_.GetWeakPtr(),
+                         std::move(callback)))) {
+    return;
+  }
+
+  // Will disconnect DUN as multiplexed PDN.
+  tethering_operation_->apn_type = ApnList::ApnType::kDun;
+  tethering_operation_->apn_try_list = BuildTetheringApnTryList();
+  CHECK(!tethering_operation_->apn_try_list.empty());
+
+  capability_->Connect(
+      tethering_operation_->apn_type, tethering_operation_->apn_try_list,
+      base::BindOnce(&Cellular::OnCapabilityConnectMultiplexedTetheringReply,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Cellular::OnCapabilityConnectMultiplexedTetheringReply(
+    const Error& error) {
+  bool bearer_connected = error.IsSuccess();
+
+  // If attempt was aborted, bail out.
+  if (!tethering_operation_) {
+    LOG(WARNING) << LoggingTag() << ": Tethering operation aborted.";
+    if (bearer_connected) {
+      // No need to save error because there is no operation to complete.
+      RunDisconnectMultiplexedTetheringPdn();
+    }
+    return;
+  }
+
+  // Bearer connection failed, the operation can be completed in place
+  // because there is nothing to cleanup.
+  if (!bearer_connected) {
+    LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
+    CompleteTetheringOperation(error);
+    return;
+  }
+
+  // If the device is disconnected or the service was lost, cleanup the
+  // possibly connected bearer and complete.
+  if (state_ != State::kLinked || !service() || !default_pdn_) {
+    LOG(WARNING) << LoggingTag() << ": Tethering operation aborted: "
+                 << "default PDN must be connected.";
+    tethering_operation_->saved_error =
+        Error(Error::kWrongState, "Default PDN connection must be connected.");
+    RunDisconnectMultiplexedTetheringPdn();
+    return;
+  }
+
+  // Launch multiplexed tethering Network creation
+  LOG(INFO) << LoggingTag() << ": Tethering connection attempt successful.";
+  tethering_operation_->apn_connected = true;
+  EstablishMultiplexedTetheringLink();
+  if (!multiplexed_tethering_pdn_) {
+    tethering_operation_->saved_error =
+        Error(Error::kWrongState, "Setup failed.");
+    RunDisconnectMultiplexedTetheringPdn();
+    return;
+  }
+
+  // The tethering operation will be completed once the tethering network is
+  // connected (or an error returned in the process).
+  CHECK(!multiplexed_tethering_pdn_->network()->IsConnected());
+  LOG(INFO) << LoggingTag()
+            << ": Multiplexed tethering connection not fully setup yet.";
+}
+
+void Cellular::DisconnectMultiplexedTetheringPdn(ResultCallback callback) {
+  CHECK(!callback.is_null());
+
+  LOG(INFO) << LoggingTag() << ": Tethering operation requested: "
+            << "disconnect multiplexed DUN network.";
+  if (!InitializeTetheringOperation(
+          TetheringOperationType::kDisconnectDunMultiplexed,
+          std::move(callback))) {
+    return;
+  }
+
+  RunDisconnectMultiplexedTetheringPdn();
+}
+
+// This method may be called either during a normal user initiated tethering
+// network release procedure, or also as fallback when the tethering network
+// acquisition fails. In both cases, CompleteTetheringOperation() would be
+// called after the capability Disconnect().
+void Cellular::RunDisconnectMultiplexedTetheringPdn() {
+  multiplexed_tethering_pdn_ = std::nullopt;
+
+  LOG(INFO) << LoggingTag() << ": Disconnecting multiplexed tethering network.";
+  capability_->Disconnect(
+      ApnList::ApnType::kDun,
+      base::BindOnce(&Cellular::OnCapabilityDisconnectMultiplexedTetheringReply,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Cellular::OnCapabilityDisconnectMultiplexedTetheringReply(
+    const Error& error) {
+  if (error.IsFailure()) {
+    LOG(WARNING) << LoggingTag()
+                 << ": Multiplexed tethering disconnection failed: " << error;
+  }
+
+  if (IsTetheringOperationDunMultiplexedOngoing()) {
+    CompleteTetheringOperation(error);
+  }
 }
 
 void Cellular::ConnectTetheringAsDefaultPdn(
@@ -1860,10 +2034,11 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     return TetheringOperationType::kConnectDunAsDefaultPdn;
   }
 
-  // TODO(b/283402454): connect DUN APN as additional multiplexed network
-  // While multiplexing support is not available, assume we always need to
-  // reconnect the DUN APN as DEFAULT.
-  return TetheringOperationType::kConnectDunAsDefaultPdn;
+  // Connect DUN APN as additional multiplexed network
+  LOG(INFO) << LoggingTag()
+            << ": Tethering network selection: "
+               "connecting multiplexed DUN APN.";
+  return TetheringOperationType::kConnectDunMultiplexed;
 }
 
 void Cellular::AcquireTetheringNetwork(
@@ -1874,6 +2049,9 @@ void Cellular::AcquireTetheringNetwork(
 
   Error error;
   switch (GetTetheringOperationType(&error)) {
+    case TetheringOperationType::kConnectDunMultiplexed:
+      ConnectMultiplexedTetheringPdn(std::move(callback));
+      return;
     case TetheringOperationType::kConnectDunAsDefaultPdn:
       // Request a longer start timeout as we need to go through a full
       // PDN connection setup sequence.
@@ -1888,6 +2066,7 @@ void Cellular::AcquireTetheringNetwork(
           FROM_HERE, base::BindOnce(std::move(callback), nullptr, error));
       return;
     case TetheringOperationType::kDisconnectDunAsDefaultPdn:
+    case TetheringOperationType::kDisconnectDunMultiplexed:
       // Not a valid return of GetTetheringOperationType().
       NOTREACHED();
   }
@@ -1908,6 +2087,24 @@ void Cellular::OnConnectTetheringAsDefaultPdnReply(
             << ": Tethering network selection: connected DUN APN as default.";
   CHECK(default_pdn_);
   std::move(callback).Run(default_pdn_->network(), Error(Error::kSuccess));
+}
+
+void Cellular::OnConnectMultiplexedTetheringPdnReply(
+    AcquireTetheringNetworkResultCallback callback, const Error& error) {
+  if (error.IsFailure()) {
+    LOG(WARNING) << LoggingTag()
+                 << ": Tethering network selection: failed to connect "
+                    "multiplexed DUN APN: "
+                 << error;
+    std::move(callback).Run(nullptr, error);
+    return;
+  }
+
+  LOG(INFO) << LoggingTag()
+            << ": Tethering network selection: connected multiplexed DUN APN.";
+  CHECK(multiplexed_tethering_pdn_);
+  std::move(callback).Run(multiplexed_tethering_pdn_->network(),
+                          Error(Error::kSuccess));
 }
 
 void Cellular::ReleaseTetheringNetwork(Network* network,
@@ -1932,8 +2129,22 @@ void Cellular::ReleaseTetheringNetwork(Network* network,
     return;
   }
 
-  // TODO(b/249151422) If using an extra PDN connection for tethering,
-  // disconnect it here, otherwise no-op
+  // If we connected a multiplexed tethering APN, disconnect it here.
+  if (multiplexed_tethering_pdn_) {
+    // Validate that the network requested to disconnect is the one we expect.
+    if (multiplexed_tethering_pdn_->network() != network) {
+      dispatcher()->PostTask(
+          FROM_HERE,
+          base::BindOnce(std::move(callback),
+                         Error(Error::kWrongState,
+                               "Unexpected multiplexed network to release")));
+      return;
+    }
+    DisconnectMultiplexedTetheringPdn(std::move(callback));
+    return;
+  }
+
+  // We had reused the default PDN, so nothing to do.
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), Error(Error::kSuccess)));
 }
@@ -1990,6 +2201,55 @@ void Cellular::EstablishLink() {
 
   // Set state to associating.
   OnConnecting();
+}
+
+void Cellular::EstablishMultiplexedTetheringLink() {
+  if (skip_establish_link_for_testing_) {
+    return;
+  }
+
+  CHECK_EQ(State::kLinked, state_);
+  CHECK(capability_);
+
+  // The multiplexed DUN bearer selection only works if the current default PDN
+  // APN type is not DUN. This should be ensured by the tethering enablement
+  // logic, so we can assert the assumption.
+  CHECK(default_pdn_apn_type_);
+  CHECK_NE(*default_pdn_apn_type_, ApnList::ApnType::kDun);
+
+  // Do nothing if there is no tethering bearer to setup.
+  CellularBearer* bearer = capability_->GetActiveBearer(ApnList::ApnType::kDun);
+  if (!bearer) {
+    return;
+  }
+
+  SLOG(2) << LoggingTag() << ": " << __func__;
+
+  // The APN type is ensured to be one by GetActiveBearer()
+  CHECK_EQ(bearer->apn_types().size(), 1UL);
+  CHECK_EQ(bearer->apn_types()[0], ApnList::ApnType::kDun);
+
+  if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
+    LOG(WARNING) << LoggingTag() << ": No PPP support for tethering link";
+    return;
+  }
+
+  LOG(INFO) << LoggingTag() << ": Establish tethering link on "
+            << bearer->data_interface();
+
+  // Create multiplexed tethering network
+  multiplexed_tethering_pdn_.emplace(
+      this, bearer->dbus_path(),
+      rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
+      bearer->data_interface());
+
+  // Start the link listener, which will ensure the initial link state for the
+  // data interface is notified.
+  StartLinkListener();
+
+  // Unlike with the default PDN, we don't update the device state in any way at
+  // this point. The multiplexed DUN acquisition operation will continue with
+  // the link up event.
 }
 
 void Cellular::DefaultLinkUp() {
@@ -2068,6 +2328,74 @@ void Cellular::DefaultLinkDeleted() {
   }
 }
 
+void Cellular::MultiplexedTetheringLinkUp() {
+  if (multiplexed_tethering_pdn_->link_state() == LinkState::kUp) {
+    SLOG(3) << LoggingTag() << ": Multiplexed tethering link is up.";
+    return;
+  }
+
+  multiplexed_tethering_pdn_->SetLinkState(LinkState::kUp);
+  LOG(INFO) << LoggingTag()
+            << ": Multiplexed tethering link is up: configuring network";
+
+  CHECK(capability_);
+
+  // The multiplexed DUN bearer selection only works if the current default PDN
+  // APN type is not DUN. This should be ensured by the tethering enablement
+  // logic, so we can assert the assumption.
+  CHECK(default_pdn_apn_type_);
+  CHECK_NE(*default_pdn_apn_type_, ApnList::ApnType::kDun);
+
+  if (!multiplexed_tethering_pdn_->Configure(
+          capability_->GetActiveBearer(ApnList::ApnType::kDun))) {
+    LOG(INFO) << LoggingTag()
+              << ": Multiplexed tethering link network configuration failed";
+    if (IsTetheringOperationDunMultiplexedOngoing()) {
+      CompleteTetheringOperation(
+          Error(Error::kOperationFailed, "Link configuration failed."));
+      return;
+    }
+  }
+
+  LOG(INFO) << LoggingTag()
+            << ": Multiplexed tethering network configuration ready.";
+
+  multiplexed_tethering_pdn_->Start();
+  LOG(INFO) << LoggingTag() << ": Multiplexed tethering network started.";
+
+  // Network not connected yet, need to wait for OnConnectionUpdated().
+  CHECK(!multiplexed_tethering_pdn_->network()->IsConnected());
+}
+
+void Cellular::MultiplexedTetheringLinkDown() {
+  LinkState old_state = multiplexed_tethering_pdn_->link_state();
+  multiplexed_tethering_pdn_->SetLinkState(LinkState::kDown);
+
+  // LinkState::kUnknown is the initial state before the first dump
+  if (old_state == LinkState::kUnknown) {
+    LOG(INFO) << LoggingTag()
+              << ": Multiplexed tethering link is down, bringing up.";
+    rtnl_handler()->SetInterfaceFlags(
+        multiplexed_tethering_pdn_->network()->interface_index(), IFF_UP,
+        IFF_UP);
+    return;
+  }
+
+  if (old_state == LinkState::kUp) {
+    LOG(INFO) << LoggingTag()
+              << ": Multiplexed tethering link is down, disconnecting.";
+    RunDisconnectMultiplexedTetheringPdn();
+    return;
+  }
+
+  SLOG(3) << LoggingTag() << ": Multiplexed tethering link is down.";
+}
+
+void Cellular::MultiplexedTetheringLinkDeleted() {
+  LOG(INFO) << LoggingTag() << ": Multiplexed tethering link is deleted.";
+  multiplexed_tethering_pdn_->SetLinkState(LinkState::kUnknown);
+}
+
 void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink);
 
@@ -2090,7 +2418,23 @@ void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
     }
   }
 
-  // Events on other links
+  // Actions on the tethering APN Network
+  if (multiplexed_tethering_pdn_ &&
+      data_interface_index ==
+          multiplexed_tethering_pdn_->network()->interface_index()) {
+    if (msg.mode() == RTNLMessage::kModeDelete) {
+      MultiplexedTetheringLinkDeleted();
+    } else if (msg.mode() == RTNLMessage::kModeAdd) {
+      if (msg.link_status().flags & IFF_UP) {
+        MultiplexedTetheringLinkUp();
+      } else {
+        MultiplexedTetheringLinkDown();
+      }
+    } else {
+      LOG(WARNING) << LoggingTag()
+                   << ": Unexpected link message mode: " << msg.mode();
+    }
+  }
 }
 
 void Cellular::StopLinkListener() {
@@ -2099,9 +2443,11 @@ void Cellular::StopLinkListener() {
 
 void Cellular::StartLinkListener() {
   SLOG(2) << LoggingTag() << ": Started RTNL listener";
-  link_listener_ = std::make_unique<RTNLListener>(
-      RTNLHandler::kRequestLink,
-      base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this)));
+  if (!link_listener_) {
+    link_listener_ = std::make_unique<RTNLListener>(
+        RTNLHandler::kRequestLink,
+        base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this)));
+  }
   rtnl_handler()->RequestDump(RTNLHandler::kRequestLink);
 }
 
@@ -2297,6 +2643,7 @@ bool Cellular::DisconnectCleanup() {
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
+  multiplexed_tethering_pdn_ = std::nullopt;
   ResetCarrierEntitlement();
   return true;
 }
@@ -3558,6 +3905,14 @@ void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
                                        std::unique_ptr<Network> network,
                                        LinkState link_state) {
   default_pdn_.emplace(this, dbus_path, std::move(network), link_state);
+}
+
+void Cellular::SetMultiplexedTetheringPdnForTesting(
+    const RpcIdentifier& dbus_path,
+    std::unique_ptr<Network> network,
+    LinkState link_state) {
+  multiplexed_tethering_pdn_.emplace(this, dbus_path, std::move(network),
+                                     link_state);
 }
 
 Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
