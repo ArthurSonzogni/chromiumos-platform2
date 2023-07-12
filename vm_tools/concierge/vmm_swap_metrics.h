@@ -75,7 +75,7 @@ namespace vm_tools::concierge {
 // disabled.
 class VmmSwapMetrics final {
  public:
-  VmmSwapMetrics(VmId::Type vm_type,
+  VmmSwapMetrics(apps::VmType vm_type,
                  const raw_ref<MetricsLibraryInterface> metrics,
                  std::unique_ptr<base::RepeatingTimer> heartbeat_timer =
                      std::make_unique<base::RepeatingTimer>());
@@ -135,7 +135,7 @@ class VmmSwapMetrics final {
   bool SendDurationToUMA(const std::string& unprefixed_metrics_name,
                          base::TimeDelta duration) const;
 
-  const VmId::Type vm_type_;
+  const apps::VmType vm_type_;
   const raw_ref<MetricsLibraryInterface> metrics_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<base::RepeatingTimer> heartbeat_timer_

@@ -88,6 +88,7 @@
 #include <metrics/metrics_writer.h>
 #include <spaced/dbus-proxies.h>
 #include <spaced/disk_usage_proxy.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
@@ -892,12 +893,12 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
 // TODO(b/213090722): Determining a VM's type based on its properties like
 // this is undesirable. Instead we should provide the type in the request, and
 // determine its properties from that.
-VmId::Type ClassifyVm(const StartVmRequest& request) {
+apps::VmType ClassifyVm(const StartVmRequest& request) {
   if (request.vm_type() == VmInfo::BOREALIS ||
       request.vm().dlc_id() == "borealis-dlc")
-    return VmId::Type::BOREALIS;
+    return apps::VmType::BOREALIS;
   if (request.vm_type() == VmInfo::TERMINA || request.start_termina())
-    return VmId::Type::TERMINA;
+    return apps::VmType::TERMINA;
   // Bruschetta VMs are distinguished by having a separate bios, either as an FD
   // or a dlc.
   bool has_bios_fd =
@@ -905,8 +906,8 @@ VmId::Type ClassifyVm(const StartVmRequest& request) {
                   [](int type) { return type == StartVmRequest::BIOS; });
   if (request.vm_type() == VmInfo::BRUSCHETTA || has_bios_fd ||
       request.vm().dlc_id() == "edk2-ovmf-dlc")
-    return VmId::Type::BRUSCHETTA;
-  return VmId::Type::UNKNOWN;
+    return apps::VmType::BRUSCHETTA;
+  return apps::VmType::UNKNOWN;
 }
 
 }  // namespace
@@ -1749,7 +1750,7 @@ StartVmResponse Service::StartVmInternal(
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
-  VmId::Type classification = ClassifyVm(request);
+  apps::VmType classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(ToLegacyVmType(classification));
 
@@ -1766,7 +1767,7 @@ StartVmResponse Service::StartVmInternal(
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
-  if (classification == VmId::Type::TERMINA &&
+  if (classification == apps::VmType::TERMINA &&
       !is_tremplin_started_signal_connected_) {
     LOG(ERROR) << "Can't start Termina VM without TremplinStartedSignal";
     response.set_failure_reason("TremplinStartedSignal not connected");
@@ -1797,7 +1798,7 @@ StartVmResponse Service::StartVmInternal(
       GetImageSpec(request.vm(), vm_start_image_fds->kernel_fd,
                    vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
                    vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd,
-                   classification == VmId::Type::TERMINA, &failure_reason);
+                   classification == apps::VmType::TERMINA, &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1885,10 +1886,10 @@ StartVmResponse Service::StartVmInternal(
   // Storage ballooning enabled for Borealis (for ext4 setups in order
   // to not interfere with the storage management solutions of legacy
   // setups) and Bruschetta VMs.
-  if (classification == VmId::Type::BOREALIS &&
+  if (classification == apps::VmType::BOREALIS &&
       GetFilesystem(stateful_path) == "ext4") {
     storage_ballooning = request.storage_ballooning();
-  } else if (classification == VmId::Type::BRUSCHETTA) {
+  } else if (classification == apps::VmType::BRUSCHETTA) {
     storage_ballooning = true;
   }
 
@@ -1982,7 +1983,7 @@ StartVmResponse Service::StartVmInternal(
   const bool enable_render_server = request.enable_vulkan();
   // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
   // Borealis, for now.
-  const bool enable_foz_db_list = classification == VmId::Type::BOREALIS;
+  const bool enable_foz_db_list = classification == apps::VmType::BOREALIS;
 
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
@@ -2126,7 +2127,7 @@ StartVmResponse Service::StartVmInternal(
   // TODO(b/288361720): This is temporary while we test the 'provision'
   // mount option. Once we're satisfied things are stable, we'll make this
   // the default and remove this feature check.
-  if (classification == VmId::Type::BOREALIS) {
+  if (classification == apps::BOREALIS) {
     std::string error;
     std::optional<bool> provision =
         IsFeatureEnabled(kBorealisProvisionFeature, &error);

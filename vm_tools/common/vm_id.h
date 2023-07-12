@@ -19,9 +19,6 @@ enum VmType : int;
 
 class VmId {
  public:
-  // This is the de-facto VM type used by most APIs.
-  using Type = apps::VmType;
-
   VmId(const std::string owner_id, const std::string name)
       : id_(std::move(owner_id), std::move(name)) {}
 

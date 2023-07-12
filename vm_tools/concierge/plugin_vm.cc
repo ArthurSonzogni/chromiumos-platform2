@@ -177,7 +177,7 @@ VmBaseImpl::Info PluginVm::GetInfo() const {
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
       .status = VmBaseImpl::Status::RUNNING,
-      .type = VmId::Type::PLUGIN_VM,
+      .type = apps::VmType::PLUGIN_VM,
   };
 
   return info;

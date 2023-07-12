@@ -67,7 +67,7 @@ static constexpr int kPagesInFileMax = GiB(2) / KiB(4);
 // The last bucket has less than 160 MiB size which is enough granularity.
 static constexpr int kPagesInFileNumBuckets = 50;
 
-std::string GetMetricsName(VmId::Type vm_type,
+std::string GetMetricsName(apps::VmType vm_type,
                            const std::string& unprefixed_metrics_name) {
   return base::StrCat(
       {kMetricsPrefix, apps::VmType_Name(vm_type), unprefixed_metrics_name});
@@ -75,7 +75,7 @@ std::string GetMetricsName(VmId::Type vm_type,
 }  // namespace
 
 VmmSwapMetrics::VmmSwapMetrics(
-    VmId::Type vm_type,
+    apps::VmType vm_type,
     const raw_ref<MetricsLibraryInterface> metrics,
     std::unique_ptr<base::RepeatingTimer> heartbeat_timer)
     : vm_type_(vm_type),

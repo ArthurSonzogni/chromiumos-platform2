@@ -89,7 +89,7 @@ ScopedWlSocket::ScopedWlSocket(base::ScopedTempDir socket_dir,
 VmWlInterface::Result VmWlInterface::CreateWaylandServer(
     scoped_refptr<dbus::Bus> bus,
     const VmId& vm_id,
-    VmId::Type classification) {
+    apps::VmType classification) {
   // Create a temp dir where the socket will live, this makes cleanup easy.
   base::ScopedTempDir socket_dir;
   if (!socket_dir.CreateUniqueTempDir()) {

@@ -962,7 +962,7 @@ class ArcVmTest : public ::testing::Test {
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
         .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
-            VmId::Type::ARCVM,
+            apps::VmType::ARCVM,
             raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library_.get()),
             std::move(swap_metrics_heartbeat_timer)),
         .vmm_swap_low_disk_policy = std::make_unique<VmmSwapLowDiskPolicy>(

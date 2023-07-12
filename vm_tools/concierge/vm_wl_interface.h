@@ -67,7 +67,7 @@ class VmWlInterface {
   // description of the error that happened during creation.
   static Result CreateWaylandServer(scoped_refptr<dbus::Bus> bus,
                                     const VmId& vm_id,
-                                    VmId::Type classification);
+                                    apps::VmType classification);
 };
 
 }  // namespace vm_tools::concierge

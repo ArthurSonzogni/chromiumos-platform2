@@ -739,7 +739,7 @@ VmBaseImpl::Info ArcVm::GetInfo() const {
       .cid = cid(),
       .seneschal_server_handle = seneschal_server_handle(),
       .status = VmBaseImpl::Status::RUNNING,
-      .type = VmId::Type::ARCVM,
+      .type = apps::VmType::ARCVM,
   };
 
   return info;

@@ -109,7 +109,7 @@ class TerminaVm final : public VmBaseImpl {
     dbus::ObjectProxy* vm_permission_service_proxy;
     scoped_refptr<dbus::Bus> bus;
     VmId id;
-    VmId::Type classification;
+    apps::VmType classification;
     bool storage_ballooning;
     VmBuilder vm_builder;
     std::unique_ptr<ScopedWlSocket> socket;
@@ -331,7 +331,7 @@ class TerminaVm final : public VmBaseImpl {
 
   // Record's this VM's "type" in the classification sense (e.g. termina,
   // borealis, other...).
-  const VmId::Type classification_;
+  const apps::VmType classification_;
 
   // Whether this VM uses storage ballooning.
   const bool storage_ballooning_;

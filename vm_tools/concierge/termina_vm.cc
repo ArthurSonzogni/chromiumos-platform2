@@ -174,7 +174,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (classification_ == VmId::Type::BOREALIS) {
+  if (classification_ == apps::VmType::BOREALIS) {
     // Register the VM with permission service and obtain permission
     // token.
     if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
@@ -185,7 +185,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  if (classification_ == VmId::Type::BOREALIS) {
+  if (classification_ == apps::BOREALIS) {
     vm_builder.EnableWorkingSetReporting(true);
   }
 
@@ -214,7 +214,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
         .EnableBigGl(features_.big_gl)
         .EnableVirtgpuNativeContext(features_.virtgpu_native_context);
 
-    if (classification_ == VmId::Type::BOREALIS) {
+    if (classification_ == apps::VmType::BOREALIS) {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
       // For Borealis, place the render server process in
       // the GPU server cpuset cgroup.
@@ -226,7 +226,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
     if (features_.render_server) {
       vm_builder.EnableRenderServer(true);
-      if (classification_ == VmId::Type::BOREALIS) {
+      if (classification_ == apps::VmType::BOREALIS) {
         vm_builder.SetRenderServerCacheSize(
             kRenderServerCacheSizeStringBorealis);
       } else {
@@ -237,7 +237,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // Enable dGPU passthrough argument is only supported on Borealis VM.
   if (features_.dgpu_passthrough) {
-    if (classification_ == VmId::Type::BOREALIS) {
+    if (classification_ == apps::VmType::BOREALIS) {
       vm_builder.EnableDGpuPassthrough(true);
     } else {
       LOG(ERROR) << "--enable-dgpu-passthrough is only supported on Borealis.";
@@ -253,7 +253,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (classification_ == VmId::Type::BOREALIS) {
+  if (classification_ == apps::VmType::BOREALIS) {
     if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
@@ -333,7 +333,7 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
   request.set_timezone_name(timezone);
   // Borealis needs timezone info to be bind-mounted due to Steam bug, see
   // TODO(b/237960004): Clean up this exception once Steam bug is fixed.
-  request.set_use_bind_mount(classification_ == VmId::Type::BOREALIS);
+  request.set_use_bind_mount(classification_ == apps::VmType::BOREALIS);
   ::vm_tools::EmptyMessage response;
 
   auto result = stub_->SetTimezone(&ctx, request, &response);
@@ -1076,7 +1076,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
                         .stateful_size = std::move(stateful_size),
                         .features = features,
                         .id = VmId("foo", "bar"),
-                        .classification = VmId::Type::UNKNOWN}));
+                        .classification = apps::VmType::UNKNOWN}));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
   vm->network_alloc_ = network_allocation;

@@ -85,7 +85,7 @@ class VmmSwapMetricsTest : public ::testing::Test {
 
 TEST_F(VmmSwapMetricsTest, OnSwappableIdleEnabledStartHeartbeat) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -95,7 +95,7 @@ TEST_F(VmmSwapMetricsTest, OnSwappableIdleEnabledStartHeartbeat) {
 
 TEST_F(VmmSwapMetricsTest, OnSwappableIdleDisabledStopHeartbeat) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -106,7 +106,7 @@ TEST_F(VmmSwapMetricsTest, OnSwappableIdleDisabledStopHeartbeat) {
 
 TEST_F(VmmSwapMetricsTest, HeartbeatWithoutEnabled) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -121,7 +121,7 @@ TEST_F(VmmSwapMetricsTest, HeartbeatWithoutEnabled) {
 
 TEST_F(VmmSwapMetricsTest, HeartbeatFailToSend) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -137,7 +137,7 @@ TEST_F(VmmSwapMetricsTest, HeartbeatFailToSend) {
 
 TEST_F(VmmSwapMetricsTest, HeartbeatAfterEnabled) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -153,7 +153,7 @@ TEST_F(VmmSwapMetricsTest, HeartbeatAfterEnabled) {
 
 TEST_F(VmmSwapMetricsTest, HeartbeatAfterDisabled) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -170,7 +170,7 @@ TEST_F(VmmSwapMetricsTest, HeartbeatAfterDisabled) {
 
 TEST_F(VmmSwapMetricsTest, HeartbeatMultiple) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -199,7 +199,7 @@ TEST_F(VmmSwapMetricsTest, HeartbeatMultiple) {
 
 TEST_F(VmmSwapMetricsTest, MetricsNameContainsARCVM) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -211,7 +211,7 @@ TEST_F(VmmSwapMetricsTest, MetricsNameContainsARCVM) {
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsEnabled) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
 
@@ -233,7 +233,7 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsEnabled) {
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsEnabledOnDestroy) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
 
@@ -255,7 +255,7 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsEnabledOnDestroy) {
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsForceEnabled) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
 
@@ -277,7 +277,7 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsForceEnabled) {
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsDisabled) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
 
@@ -298,7 +298,7 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsDisabled) {
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsDisabledClearEnabledLog) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
 
@@ -320,7 +320,7 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsDisabledClearEnabledLog) {
 }
 
 TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   base::Time now = base::Time::Now();
   const int min_duration = 1;
@@ -371,7 +371,7 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFile) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
@@ -404,7 +404,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFile) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroy) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
@@ -429,7 +429,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroy) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroyAfterDisabled) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
@@ -452,7 +452,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroyAfterDisabled) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileWithoutLoader) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
   metrics.OnSwappableIdleEnabled();
@@ -468,7 +468,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileWithoutLoader) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileNotActive) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
@@ -488,7 +488,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileNotActive) {
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileFailToLoadStatus) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
+  VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = false;
@@ -506,8 +506,8 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileFailToLoadStatus) {
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFile) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
-                                          std::move(heartbeat_timer_));
+  VmmSwapMetrics metrics =
+      VmmSwapMetrics(apps::ARCVM, GetMetricsRef(), std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
   loader.status_.state = SwapState::ACTIVE;
@@ -541,8 +541,8 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFile) {
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileOnDestroy) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
-                                          std::move(heartbeat_timer_));
+  VmmSwapMetrics metrics =
+      VmmSwapMetrics(apps::ARCVM, GetMetricsRef(), std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
   loader.status_.state = SwapState::ACTIVE;
@@ -572,8 +572,8 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileOnDestroy) {
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileZero) {
   base::MockRepeatingTimer* heartbeat_timer = heartbeat_timer_.get();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
-                                          std::move(heartbeat_timer_));
+  VmmSwapMetrics metrics =
+      VmmSwapMetrics(apps::ARCVM, GetMetricsRef(), std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
   loader.status_.state = SwapState::ACTIVE;
@@ -596,8 +596,8 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileZero) {
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileBeforeHeartbeat) {
   base::Time now = base::Time::Now();
-  VmmSwapMetrics metrics = VmmSwapMetrics(VmId::Type::ARCVM, GetMetricsRef(),
-                                          std::move(heartbeat_timer_));
+  VmmSwapMetrics metrics =
+      VmmSwapMetrics(apps::ARCVM, GetMetricsRef(), std::move(heartbeat_timer_));
   FakeFetchVmmSwapStatus loader;
   loader.result_ = true;
   loader.status_.state = SwapState::ACTIVE;

@@ -94,7 +94,7 @@ class VmBaseImpl {
     Status status;
 
     // Type of the VM.
-    VmId::Type type;
+    apps::VmType type;
 
     // Whether the VM is using storage ballooning.
     bool storage_ballooning;

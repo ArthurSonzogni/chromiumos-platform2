@@ -600,7 +600,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .network_client = std::move(network_client),
       .seneschal_server_proxy = std::move(server_proxy),
       .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
-          VmId::Type::ARCVM,
+          apps::VmType::ARCVM,
           raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
       .vmm_swap_low_disk_policy = std::move(vmm_swap_low_disk_policy),
       .vmm_swap_tbw_policy =
