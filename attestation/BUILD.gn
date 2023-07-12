@@ -12,7 +12,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    #":attestation_client",
+    ":attestation_client",
     ":attestationd",
     ":install_init",
     ":install_minijail_conf",
@@ -155,7 +155,10 @@ shared_library("libattestation") {
 # A client command line utility.
 executable("attestation_client") {
   sources = [ "client/main.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":local_print_proto_include",
+    ":target_defaults",
+  ]
   install_path = "bin"
 
   # NOSORT
