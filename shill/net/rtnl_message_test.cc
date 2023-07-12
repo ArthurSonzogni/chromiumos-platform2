@@ -12,11 +12,11 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <net-base/byte_utils.h>
 #include <re2/re2.h>
-
-#include "shill/net/byte_string.h"
 
 using testing::Optional;
 using testing::Test;
@@ -39,12 +39,13 @@ const unsigned int kNewLinkMessageWlan0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST | IFF_UP | IFF_LOWER_UP | IFF_RUNNING;
 const unsigned int kNewLinkMessageWlan0InterfaceFlagsChange = 0;
 const uint32_t kNewLinkMessageWlan0MTU = 1500;
-const char kNewLinkMessageWlan0MacAddress[] = "\xc0\xf8\xda\x05\x03\x0b";
+constexpr uint8_t kNewLinkMessageWlan0MacAddress[] = {0xc0, 0xf8, 0xda,
+                                                      0x05, 0x03, 0x0b};
 const char kNewLinkMessageWlan0InterfaceName[] = "wlan0";
 const char kNewLinkMessageWlan0Qdisc[] = "mq";
 const int kNewLinkMessageWlan0OperState = IF_OPER_UP;
 
-const unsigned char kNewLinkMessageWlan0[] = {
+const uint8_t kNewLinkMessageWlan0[] = {
     0xe0, 0x03, 0x00, 0x00, 0x10, 0x00, 0x02, 0x00, 0x53, 0x18, 0x1f, 0x4e,
     0xac, 0x77, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00,
     0x43, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x03, 0x00,
@@ -133,7 +134,7 @@ const unsigned char kNewLinkMessageWlan0[] = {
 const int kNewLinkMessageIbf1InterfaceIndex = 17;
 const char kNewLinkMessageIbf1InterfaceName[] = "ifb1";
 
-const unsigned char kNewLinkMessageIfb1[] = {
+const uint8_t kNewLinkMessageIfb1[] = {
     0xec, 0x04, 0x00, 0x00, 0x10, 0x00, 0x02, 0x00, 0x05, 0x00, 0x00, 0x00,
     0x2a, 0x47, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x11, 0x00, 0x00, 0x00,
     0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x03, 0x00,
@@ -249,12 +250,13 @@ const unsigned int kDelLinkMessageEth0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST;
 const unsigned int kDelLinkMessageEth0InterfaceFlagsChange = 0xffffffff;
 const uint32_t kDelLinkMessageEth0MTU = 1500;
-const char kDelLinkMessageEth0MacAddress[] = "\x68\x7f\x74\xba\xef\xc7";
+const uint8_t kDelLinkMessageEth0MacAddress[] = {0x68, 0x7f, 0x74,
+                                                 0xba, 0xef, 0xc7};
 const char kDelLinkMessageEth0InterfacName[] = "eth0";
 const char kDelLinkMessageEth0Qdisc[] = "noop";
 const int kDelLinkMessageEth0OperState = IF_OPER_DOWN;
 
-const unsigned char kDelLinkMessageEth0[] = {
+const uint8_t kDelLinkMessageEth0[] = {
     0xb8, 0x01, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x08, 0x00, 0x00, 0x00,
     0x02, 0x10, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x09, 0x00, 0x03, 0x00,
@@ -301,7 +303,7 @@ const char kNewAddrIPV4Address[] = "192.168.10.100";
 const int kNewAddrIPV4AddressPrefix = 24;
 const unsigned char kNewAddrIPV4Scope = RT_SCOPE_UNIVERSE;
 
-const unsigned char kNewAddrIPV4[] = {
+const uint8_t kNewAddrIPV4[] = {
     0x3c, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x02, 0x18, 0x80, 0x00, 0x08, 0x00, 0x00, 0x00,
     0x08, 0x00, 0x01, 0x00, 0xc0, 0xa8, 0x0a, 0x64, 0x08, 0x00, 0x02, 0x00,
@@ -317,7 +319,7 @@ const char kDelAddrIPV6Address[] = "fe80::6a7f:74ff:feba:efc7";
 const int kDelAddrIPV6AddressPrefix = 64;
 const unsigned char kDelAddrIPV6Scope = RT_SCOPE_LINK;
 
-const unsigned char kDelAddrIPV6[] = {
+const uint8_t kDelAddrIPV6[] = {
     0x40, 0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x40, 0x80, 0xfd, 0x0f, 0x00,
     0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0xfe, 0x80, 0x00, 0x00, 0x00,
@@ -333,7 +335,7 @@ const char kDelRouteIPV6Address[] = "ff02::1:ffa0:688";
 const int kDelRouteIPV6Prefix = 128;
 const int kDelRouteIPV6Metric = 0;
 
-const unsigned char kDelRouteIPV6[] = {
+const uint8_t kDelRouteIPV6[] = {
     0x80, 0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x0a, 0x80, 0x00, 0x00, 0xfe, 0x00, 0x00, 0x01,
     0x00, 0x02, 0x00, 0x00, 0x08, 0x00, 0x0f, 0x00, 0xfe, 0x00, 0x00, 0x00,
@@ -353,7 +355,7 @@ const int kAddRouteIPV4InterfaceIndex = 12;
 const char kAddRouteIPV4Address[] = "192.168.17.254";
 const int kAddRouteIPV4Metric = 9;
 
-const unsigned char kAddRouteIPV4[] = {
+const uint8_t kAddRouteIPV4[] = {
     0x3c, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0xfe, 0x03, 0x00, 0x01,
     0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x0f, 0x00, 0xfe, 0x00, 0x00, 0x00,
@@ -363,7 +365,7 @@ const unsigned char kAddRouteIPV4[] = {
 
 // This is the same as kAddRouteIPV4 above, except manually corrupted
 // the second to last parameter
-const unsigned char kAddRouteBusted[] = {
+const uint8_t kAddRouteBusted[] = {
     0x3c, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0xfe, 0x03, 0x00, 0x01,
     0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x0f, 0x00, 0xfe, 0x00, 0x00, 0x00,
@@ -372,7 +374,7 @@ const unsigned char kAddRouteBusted[] = {
 };
 
 // 192.168.10.1 dev if8 lladdr 00:14:d1:cd:d5:2c REACHABLE
-const unsigned char kAddNeighborMessage[] = {
+const uint8_t kAddNeighborMessage[] = {
     0x4c, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x08, 0x00,
     0x00, 0x00, 0x02, 0x00, 0x00, 0x01, 0x08, 0x00, 0x01, 0x00, 0xc0,
@@ -385,7 +387,7 @@ const unsigned char kAddNeighborMessage[] = {
 // RDNSS notification
 // Lifetime: infinity (0xffffffff)
 // Server addresses: 2001:db8:100:f101::1, 2001:db8:100:f101::2
-const unsigned char kNdRdnssMessage[] = {
+const uint8_t kNdRdnssMessage[] = {
     0x5c, 0x00, 0x00, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x28, 0x00, 0x01, 0x00, 0x00, 0x00,
     0x86, 0x00, 0x03, 0x00, 0x14, 0x00, 0x01, 0x00, 0x19, 0x05, 0x00, 0x00,
@@ -397,7 +399,7 @@ const unsigned char kNdRdnssMessage[] = {
 };
 
 // Add IPv4 rule for src 100.87.84.110/24 table 1002
-const unsigned char kRuleMessage1[] = {
+const uint8_t kRuleMessage1[] = {
     0x3C, 0x0, 0x0, 0x0, 0x20, 0x0,  0x0,  0x0,  0x39, 0x0,  0x0,  0x0,
     0xCE, 0x4, 0x0, 0x0, 0x2,  0x0,  0x18, 0x0,  0xFC, 0x0,  0x0,  0x1,
     0x0,  0x0, 0x0, 0x0, 0x8,  0x0,  0xF,  0x0,  0xEA, 0x3,  0x0,  0x0,
@@ -405,7 +407,7 @@ const unsigned char kRuleMessage1[] = {
     0xA,  0x0, 0x0, 0x0, 0x8,  0x0,  0x2,  0x0,  0x64, 0x57, 0x54, 0x6E};
 
 // Delete IPv4 rule for iif eth0 table 1002
-const unsigned char kRuleMessage2[] = {
+const uint8_t kRuleMessage2[] = {
     0x40, 0x0,  0x0,  0x0,  0x21, 0x0, 0x0,  0x0,  0xFA, 0x0,  0x0,  0x0,  0x60,
     0x4,  0x0,  0x0,  0x2,  0x0,  0x0, 0x0,  0xFC, 0x0,  0x0,  0x1,  0x0,  0x0,
     0x0,  0x0,  0x8,  0x0,  0xF,  0x0, 0xEA, 0x3,  0x0,  0x0,  0x8,  0x0,  0xE,
@@ -413,7 +415,7 @@ const unsigned char kRuleMessage2[] = {
     0x0,  0x0,  0x0,  0x0,  0x8,  0x0, 0x6,  0x0,  0xA,  0x0,  0x0,  0x0};
 
 // Add IPv4 rule for fwmark 0x1234/0xFFFF table 1002
-const unsigned char kRuleMessage3[] = {
+const uint8_t kRuleMessage3[] = {
     0x44, 0x0, 0x0,  0x0, 0x20, 0x0,  0x0,  0x0,  0x87, 0xB1, 0xA1, 0x5E,
     0xD0, 0xE, 0x0,  0x0, 0x2,  0x0,  0x0,  0x0,  0xFC, 0x0,  0x0,  0x1,
     0x0,  0x0, 0x0,  0x0, 0x8,  0x0,  0xF,  0x0,  0xEA, 0x3,  0x0,  0x0,
@@ -422,7 +424,7 @@ const unsigned char kRuleMessage3[] = {
     0x8,  0x0, 0x10, 0x0, 0xFF, 0xFF, 0x0,  0x0};
 
 // Add IPv6 rule for table 1002
-const unsigned char kRuleMessage4[] = {
+const uint8_t kRuleMessage4[] = {
     0x2c, 0x0,  0x0, 0x0, 0x20, 0x0, 0x2, 0x0,  0x2,  0x0,  0x0,
     0x0,  0xce, 0x4, 0x0, 0x0,  0xa, 0x0, 0x0,  0x0,  0xff, 0x0,
     0x0,  0x1,  0x0, 0x0, 0x0,  0x0, 0x8, 0x0,  0xf,  0x0,  0xff,
@@ -440,18 +442,17 @@ RTNLMessage CreateFakeMessage() {
 
 class RTNLMessageTest : public Test {
  protected:
-  void TestParseLink(const ByteString& packet,
+  void TestParseLink(base::span<const uint8_t> packet,
                      RTNLMessage::Mode mode,
                      int interface_index,
                      unsigned int flags,
                      unsigned int change,
-                     ByteString address,
-                     std::string name,
+                     const std::vector<uint8_t>& address,
+                     const std::string& name,
                      uint32_t mtu,
-                     ByteString qdisc,
+                     const std::string& qdisc,
                      int oper_state) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
     EXPECT_TRUE(msg);
 
     EXPECT_EQ(RTNLMessage::kTypeLink, msg->type());
@@ -463,36 +464,32 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(change, status.change);
 
     EXPECT_TRUE(msg->HasAttribute(IFLA_ADDRESS));
-    EXPECT_EQ(address.GetLength(), msg->GetAttribute(IFLA_ADDRESS).GetLength());
-    EXPECT_TRUE(msg->GetAttribute(IFLA_ADDRESS).Equals(address));
+    EXPECT_EQ(msg->GetAttribute(IFLA_ADDRESS), address);
 
-    ByteString bytestring_name(name, true);
     EXPECT_TRUE(msg->HasAttribute(IFLA_IFNAME));
-    EXPECT_EQ(bytestring_name.GetLength(),
-              msg->GetAttribute(IFLA_IFNAME).GetLength());
-    EXPECT_TRUE(msg->GetAttribute(IFLA_IFNAME).Equals(bytestring_name));
+    EXPECT_EQ(msg->GetAttribute(IFLA_IFNAME),
+              net_base::byte_utils::StringToCStringBytes(name));
     EXPECT_EQ(name, msg->GetIflaIfname());
 
     EXPECT_TRUE(msg->HasAttribute(IFLA_MTU));
-    uint32_t mtu_val;
-    EXPECT_TRUE(msg->GetAttribute(IFLA_MTU).ConvertToCPUUInt32(&mtu_val));
-    EXPECT_EQ(mtu, mtu_val);
+    EXPECT_EQ(
+        *net_base::byte_utils::FromBytes<uint32_t>(msg->GetAttribute(IFLA_MTU)),
+        mtu);
 
     EXPECT_TRUE(msg->HasAttribute(IFLA_QDISC));
-    EXPECT_EQ(qdisc.GetLength(), msg->GetAttribute(IFLA_QDISC).GetLength());
-    EXPECT_TRUE(msg->GetAttribute(IFLA_QDISC).Equals(qdisc));
+    EXPECT_EQ(msg->GetAttribute(IFLA_QDISC),
+              net_base::byte_utils::StringToCStringBytes(qdisc));
 
     EXPECT_TRUE(msg->HasAttribute(IFLA_OPERSTATE));
-    EXPECT_EQ(oper_state, msg->GetAttribute(IFLA_OPERSTATE).GetConstData()[0]);
+    EXPECT_EQ(oper_state, msg->GetAttribute(IFLA_OPERSTATE).data()[0]);
   }
 
-  void TestParseAddress(const ByteString& packet,
+  void TestParseAddress(base::span<const uint8_t> packet,
                         RTNLMessage::Mode mode,
                         int interface_index,
                         const net_base::IPCIDR& address,
                         unsigned char scope) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
 
     EXPECT_TRUE(msg);
     EXPECT_EQ(RTNLMessage::kTypeAddress, msg->type());
@@ -504,12 +501,13 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(scope, status.scope);
 
     EXPECT_TRUE(msg->HasAttribute(IFA_ADDRESS));
-    EXPECT_EQ(ByteString(address.address().ToByteString(), false),
-              msg->GetAttribute(IFA_ADDRESS));
+    EXPECT_EQ(msg->GetAttribute(IFA_ADDRESS),
+              net_base::byte_utils::ByteStringToBytes(
+                  address.address().ToByteString()));
     EXPECT_EQ(msg->GetIfaAddress(), address);
   }
 
-  void TestParseRoute(const ByteString& packet,
+  void TestParseRoute(base::span<const uint8_t> packet,
                       RTNLMessage::Mode /*mode*/,
                       sa_family_t family,
                       int interface_index,
@@ -521,8 +519,7 @@ class RTNLMessageTest : public Test {
                       unsigned char scope,
                       unsigned char type,
                       int metric) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
 
     EXPECT_TRUE(msg);
     EXPECT_EQ(RTNLMessage::kTypeRoute, msg->type());
@@ -539,7 +536,8 @@ class RTNLMessageTest : public Test {
       EXPECT_TRUE(msg->HasAttribute(RTA_DST));
       EXPECT_EQ(status.dst_prefix, dst->prefix_length());
       EXPECT_EQ(msg->GetAttribute(RTA_DST),
-                ByteString(dst->address().ToByteString(), false));
+                net_base::byte_utils::ByteStringToBytes(
+                    dst->address().ToByteString()));
       EXPECT_EQ(msg->GetRtaDst(), dst);
     }
 
@@ -547,38 +545,40 @@ class RTNLMessageTest : public Test {
       EXPECT_TRUE(msg->HasAttribute(RTA_SRC));
       EXPECT_EQ(status.src_prefix, src->prefix_length());
       EXPECT_EQ(msg->GetAttribute(RTA_SRC),
-                ByteString(src->address().ToByteString(), false));
+                net_base::byte_utils::ByteStringToBytes(
+                    src->address().ToByteString()));
       EXPECT_EQ(msg->GetRtaSrc(), src);
     }
 
     if (gateway) {
       EXPECT_TRUE(msg->HasAttribute(RTA_GATEWAY));
-      EXPECT_EQ(msg->GetAttribute(RTA_GATEWAY),
-                ByteString(gateway->ToByteString(), false));
+      EXPECT_EQ(
+          msg->GetAttribute(RTA_GATEWAY),
+          net_base::byte_utils::ByteStringToBytes(gateway->ToByteString()));
       EXPECT_EQ(msg->GetRtaGateway(), gateway);
     }
 
     if (interface_index >= 0) {
       EXPECT_TRUE(msg->HasAttribute(RTA_OIF));
-      uint32_t int_val;
-      EXPECT_TRUE(msg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&int_val));
-      EXPECT_EQ(interface_index, int_val);
-      EXPECT_EQ(interface_index, msg->GetRtaOif());
+      EXPECT_EQ(*net_base::byte_utils::FromBytes<uint32_t>(
+                    msg->GetAttribute(RTA_OIF)),
+                interface_index);
+      EXPECT_EQ(msg->GetRtaOif(), interface_index);
     } else {
       EXPECT_FALSE(msg->HasAttribute(RTA_OIF));
     }
+
     if (metric >= 0) {
       EXPECT_TRUE(msg->HasAttribute(RTA_PRIORITY));
-      uint32_t metric_val;
-      EXPECT_TRUE(
-          msg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric_val));
-      EXPECT_EQ(metric, metric_val);
+      EXPECT_EQ(*net_base::byte_utils::FromBytes<uint32_t>(
+                    msg->GetAttribute(RTA_PRIORITY)),
+                metric);
     } else {
       EXPECT_FALSE(msg->HasAttribute(RTA_PRIORITY));
     }
   }
 
-  void TestParseRule(const ByteString& packet,
+  void TestParseRule(base::span<const uint8_t> packet,
                      RTNLMessage::Mode /*mode*/,
                      sa_family_t family,
                      unsigned char table,
@@ -593,8 +593,7 @@ class RTNLMessageTest : public Test {
                      uint32_t uidrange_start,
                      uint32_t uidrange_end,
                      const std::string& ifname) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
 
     EXPECT_TRUE(msg);
     EXPECT_EQ(RTNLMessage::kTypeRule, msg->type());
@@ -618,22 +617,19 @@ class RTNLMessageTest : public Test {
     }
 
     EXPECT_TRUE(msg->HasAttribute(FRA_PRIORITY));
-    uint32_t decoded_priority;
-    EXPECT_TRUE(
-        msg->GetAttribute(FRA_PRIORITY).ConvertToCPUUInt32(&decoded_priority));
-    EXPECT_EQ(priority, decoded_priority);
+    EXPECT_EQ(*net_base::byte_utils::FromBytes<uint32_t>(
+                  msg->GetAttribute(FRA_PRIORITY)),
+              priority);
 
     if (fwmark || fwmask) {
       EXPECT_TRUE(msg->HasAttribute(FRA_FWMARK));
       EXPECT_TRUE(msg->HasAttribute(FRA_FWMASK));
-
-      uint32_t decoded_fwmark, decoded_fwmask;
-      EXPECT_TRUE(
-          msg->GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&decoded_fwmark));
-      EXPECT_TRUE(
-          msg->GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&decoded_fwmask));
-      EXPECT_EQ(fwmark, decoded_fwmark);
-      EXPECT_EQ(fwmask, decoded_fwmask);
+      EXPECT_EQ(*net_base::byte_utils::FromBytes<uint32_t>(
+                    msg->GetAttribute(FRA_FWMARK)),
+                fwmark);
+      EXPECT_EQ(*net_base::byte_utils::FromBytes<uint32_t>(
+                    msg->GetAttribute(FRA_FWMASK)),
+                fwmask);
     } else {
       EXPECT_FALSE(msg->HasAttribute(FRA_FWMARK));
       EXPECT_FALSE(msg->HasAttribute(FRA_FWMASK));
@@ -642,9 +638,9 @@ class RTNLMessageTest : public Test {
     if (uidrange_start || uidrange_end) {
       EXPECT_TRUE(msg->HasAttribute(FRA_UID_RANGE));
 
-      struct fib_rule_uid_range decoded_range;
-      EXPECT_TRUE(msg->GetAttribute(FRA_UID_RANGE)
-                      .CopyData(sizeof(decoded_range), &decoded_range));
+      const auto decoded_range =
+          *net_base::byte_utils::FromBytes<struct fib_rule_uid_range>(
+              msg->GetAttribute(FRA_UID_RANGE));
       EXPECT_EQ(uidrange_start, decoded_range.start);
       EXPECT_EQ(uidrange_end, decoded_range.end);
     } else {
@@ -653,22 +649,20 @@ class RTNLMessageTest : public Test {
 
     if (!ifname.empty()) {
       EXPECT_TRUE(msg->HasAttribute(FRA_IFNAME));
-      std::string decoded_ifname;
-      decoded_ifname = reinterpret_cast<const char*>(
-          msg->GetAttribute(FRA_IFNAME).GetConstData());
+      const std::string decoded_ifname =
+          reinterpret_cast<const char*>(msg->GetAttribute(FRA_IFNAME).data());
       EXPECT_STREQ(ifname.c_str(), decoded_ifname.c_str());
     } else {
       EXPECT_FALSE(msg->HasAttribute(FRA_IFNAME));
     }
   }
 
-  void TestParseRdnss(const ByteString& packet,
+  void TestParseRdnss(base::span<const uint8_t> packet,
                       RTNLMessage::Mode mode,
                       int interface_index,
                       uint32_t lifetime,
                       const std::string& dns_server_addresses) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
 
     EXPECT_TRUE(msg);
     EXPECT_EQ(RTNLMessage::kTypeRdnss, msg->type());
@@ -694,15 +688,14 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(dns_server_addresses, addresses);
   }
 
-  void TestParseNeighbor(const ByteString& packet,
+  void TestParseNeighbor(base::span<const uint8_t> packet,
                          RTNLMessage::Mode mode,
                          sa_family_t family,
                          int interface_index,
                          uint16_t state,
                          uint8_t flags,
                          uint8_t type) {
-    const auto msg =
-        RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+    const auto msg = RTNLMessage::Decode(packet);
 
     EXPECT_TRUE(msg);
     EXPECT_EQ(RTNLMessage::kTypeNeighbor, msg->type());
@@ -719,15 +712,14 @@ class RTNLMessageTest : public Test {
 };
 
 TEST_F(RTNLMessageTest, NewLinkWlan0) {
-  TestParseLink(ByteString(kNewLinkMessageWlan0, sizeof(kNewLinkMessageWlan0)),
-                RTNLMessage::kModeAdd, kNewLinkMessageWlan0InterfaceIndex,
+  TestParseLink(kNewLinkMessageWlan0, RTNLMessage::kModeAdd,
+                kNewLinkMessageWlan0InterfaceIndex,
                 kNewLinkMessageWlan0InterfaceFlags,
                 kNewLinkMessageWlan0InterfaceFlagsChange,
-                ByteString(std::string(kNewLinkMessageWlan0MacAddress), false),
-                std::string(kNewLinkMessageWlan0InterfaceName),
-                kNewLinkMessageWlan0MTU,
-                ByteString(std::string(kNewLinkMessageWlan0Qdisc), true),
-                kNewLinkMessageWlan0OperState);
+                {std::begin(kNewLinkMessageWlan0MacAddress),
+                 std::end(kNewLinkMessageWlan0MacAddress)},
+                kNewLinkMessageWlan0InterfaceName, kNewLinkMessageWlan0MTU,
+                kNewLinkMessageWlan0Qdisc, kNewLinkMessageWlan0OperState);
 }
 
 TEST_F(RTNLMessageTest, NewLinkIfb1) {
@@ -738,41 +730,38 @@ TEST_F(RTNLMessageTest, NewLinkIfb1) {
   EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
   EXPECT_EQ(kNewLinkMessageIbf1InterfaceIndex, msg->interface_index());
 
-  ByteString name(std::string(kNewLinkMessageIbf1InterfaceName), true);
   EXPECT_TRUE(msg->HasAttribute(IFLA_IFNAME));
-  EXPECT_EQ(name.GetLength(), msg->GetAttribute(IFLA_IFNAME).GetLength());
-  EXPECT_TRUE(msg->GetAttribute(IFLA_IFNAME).Equals(name));
+  EXPECT_EQ(msg->GetAttribute(IFLA_IFNAME),
+            net_base::byte_utils::StringToCStringBytes(
+                kNewLinkMessageIbf1InterfaceName));
 
   EXPECT_TRUE(msg->HasAttribute(IFLA_LINKINFO));
   EXPECT_STREQ("ifb", msg->link_status().kind.value().c_str());
 }
 
 TEST_F(RTNLMessageTest, DelLinkEth0) {
-  TestParseLink(ByteString(kDelLinkMessageEth0, sizeof(kDelLinkMessageEth0)),
-                RTNLMessage::kModeDelete, kDelLinkMessageEth0InterfaceIndex,
+  TestParseLink(kDelLinkMessageEth0, RTNLMessage::kModeDelete,
+                kDelLinkMessageEth0InterfaceIndex,
                 kDelLinkMessageEth0InterfaceFlags,
                 kDelLinkMessageEth0InterfaceFlagsChange,
-                ByteString(std::string(kDelLinkMessageEth0MacAddress), false),
-                std::string(kDelLinkMessageEth0InterfacName),
-                kDelLinkMessageEth0MTU,
-                ByteString(std::string(kDelLinkMessageEth0Qdisc), true),
-                kDelLinkMessageEth0OperState);
+                {std::begin(kDelLinkMessageEth0MacAddress),
+                 std::end(kDelLinkMessageEth0MacAddress)},
+                kDelLinkMessageEth0InterfacName, kDelLinkMessageEth0MTU,
+                kDelLinkMessageEth0Qdisc, kDelLinkMessageEth0OperState);
 }
 
 TEST_F(RTNLMessageTest, NewAddrIPv4) {
   const auto addr = *net_base::IPCIDR::CreateFromStringAndPrefix(
       kNewAddrIPV4Address, kNewAddrIPV4AddressPrefix);
-  TestParseAddress(ByteString(kNewAddrIPV4, sizeof(kNewAddrIPV4)),
-                   RTNLMessage::kModeAdd, kNewAddrIPV4InterfaceIndex, addr,
-                   kNewAddrIPV4Scope);
+  TestParseAddress(kNewAddrIPV4, RTNLMessage::kModeAdd,
+                   kNewAddrIPV4InterfaceIndex, addr, kNewAddrIPV4Scope);
 }
 
 TEST_F(RTNLMessageTest, DelAddrIPv6) {
   const auto addr = *net_base::IPCIDR::CreateFromStringAndPrefix(
       kDelAddrIPV6Address, kDelAddrIPV6AddressPrefix);
-  TestParseAddress(ByteString(kDelAddrIPV6, sizeof(kDelAddrIPV6)),
-                   RTNLMessage::kModeDelete, kDelAddrIPV6InterfaceIndex, addr,
-                   kDelAddrIPV6Scope);
+  TestParseAddress(kDelAddrIPV6, RTNLMessage::kModeDelete,
+                   kDelAddrIPV6InterfaceIndex, addr, kDelAddrIPV6Scope);
 }
 
 TEST_F(RTNLMessageTest, DelRouteIPv6) {
@@ -781,8 +770,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
   const auto gateway =
       *net_base::IPAddress::CreateFromString(kDelRouteIPV6Address);
 
-  TestParseRoute(ByteString(kDelRouteIPV6, sizeof(kDelRouteIPV6)),
-                 RTNLMessage::kModeDelete, AF_INET6,
+  TestParseRoute(kDelRouteIPV6, RTNLMessage::kModeDelete, AF_INET6,
                  kDelRouteIPV6InterfaceIndex, dst, /*src=*/std::nullopt,
                  gateway, RT_TABLE_MAIN, RTPROT_UNSPEC, RT_SCOPE_UNIVERSE,
                  RTN_UNICAST, kDelRouteIPV6Metric);
@@ -792,8 +780,8 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
   const auto gateway =
       *net_base::IPAddress::CreateFromString(kAddRouteIPV4Address);
 
-  TestParseRoute(ByteString(kAddRouteIPV4, sizeof(kAddRouteIPV4)),
-                 RTNLMessage::kModeAdd, AF_INET, kAddRouteIPV4InterfaceIndex,
+  TestParseRoute(kAddRouteIPV4, RTNLMessage::kModeAdd, AF_INET,
+                 kAddRouteIPV4InterfaceIndex,
                  /*dst=*/std::nullopt,
                  /*src=*/std::nullopt, gateway, RT_TABLE_MAIN, RTPROT_BOOT,
                  RT_SCOPE_UNIVERSE, RTN_UNICAST, kAddRouteIPV4Metric);
@@ -805,9 +793,8 @@ TEST_F(RTNLMessageTest, NewRdnssOption) {
   std::string dns_server_addresses =
       "2001:db8:100:f101::1, 2001:db8:100:f101::2";
 
-  TestParseRdnss(ByteString(kNdRdnssMessage, sizeof(kNdRdnssMessage)),
-                 RTNLMessage::kModeAdd, interface_index, lifetime,
-                 dns_server_addresses);
+  TestParseRdnss(kNdRdnssMessage, RTNLMessage::kModeAdd, interface_index,
+                 lifetime, dns_server_addresses);
 }
 
 TEST_F(RTNLMessageTest, ParseRuleEvents) {
@@ -854,9 +841,8 @@ TEST_F(RTNLMessageTest, AddRouteBusted) {
 }
 
 TEST_F(RTNLMessageTest, AddNeighbor) {
-  TestParseNeighbor(
-      ByteString(kAddNeighborMessage, sizeof(kAddNeighborMessage)),
-      RTNLMessage::kModeAdd, AF_INET, 8, NUD_REACHABLE, 0, NDA_DST);
+  TestParseNeighbor(kAddNeighborMessage, RTNLMessage::kModeAdd, AF_INET, 8,
+                    NUD_REACHABLE, 0, NDA_DST);
 }
 
 TEST_F(RTNLMessageTest, EncodeDelNeighbor) {
@@ -878,11 +864,14 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
 
   msg.set_route_status(RTNLMessage::RouteStatus(
       0, 0, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
-  msg.SetAttribute(RTA_DST, ByteString(dst.address().ToByteString(), false));
-  msg.SetAttribute(RTA_SRC, ByteString(src.address().ToByteString(), false));
-  msg.SetAttribute(RTA_GATEWAY, ByteString(gateway.ToByteString(), false));
-  msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(12));
-  msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(13));
+  msg.SetAttribute(RTA_DST, net_base::byte_utils::ByteStringToBytes(
+                                dst.address().ToByteString()));
+  msg.SetAttribute(RTA_SRC, net_base::byte_utils::ByteStringToBytes(
+                                src.address().ToByteString()));
+  msg.SetAttribute(RTA_GATEWAY, net_base::byte_utils::ByteStringToBytes(
+                                    gateway.ToByteString()));
+  msg.SetAttribute(RTA_OIF, net_base::byte_utils::ToBytes<uint32_t>(12));
+  msg.SetAttribute(RTA_PRIORITY, net_base::byte_utils::ToBytes<uint32_t>(13));
 
   TestParseRoute(msg.Encode(), RTNLMessage::kModeAdd, AF_INET, 12, dst, src,
                  gateway, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE,
@@ -899,19 +888,22 @@ TEST_F(RTNLMessageTest, EncodeRuleAdd) {
   msg.set_route_status(RTNLMessage::RouteStatus(
       dst.prefix_length(), src.prefix_length(), RT_TABLE_MAIN, RTPROT_BOOT,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
-  msg.SetAttribute(FRA_DST, ByteString(dst.address().ToByteString(), false));
-  msg.SetAttribute(FRA_SRC, ByteString(src.address().ToByteString(), false));
+  msg.SetAttribute(FRA_DST, net_base::byte_utils::ByteStringToBytes(
+                                dst.address().ToByteString()));
+  msg.SetAttribute(FRA_SRC, net_base::byte_utils::ByteStringToBytes(
+                                src.address().ToByteString()));
 
-  msg.SetAttribute(FRA_PRIORITY, ByteString::CreateFromCPUUInt32(13));
-  msg.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(0x1234));
-  msg.SetAttribute(FRA_FWMASK, ByteString::CreateFromCPUUInt32(0xffff));
+  msg.SetAttribute(FRA_PRIORITY, net_base::byte_utils::ToBytes<uint32_t>(13));
+  msg.SetAttribute(FRA_FWMARK, net_base::byte_utils::ToBytes<uint32_t>(0x1234));
+  msg.SetAttribute(FRA_FWMASK, net_base::byte_utils::ToBytes<uint32_t>(0xffff));
 
   struct fib_rule_uid_range r = {.start = 1000, .end = 2000};
-  msg.SetAttribute(
-      FRA_UID_RANGE,
-      ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
+  msg.SetAttribute(FRA_UID_RANGE,
+                   {reinterpret_cast<const uint8_t*>(&r),
+                    reinterpret_cast<const uint8_t*>(&r) + sizeof(r)});
 
-  msg.SetAttribute(FRA_IFNAME, ByteString(std::string("fake0"), true));
+  msg.SetAttribute(FRA_IFNAME,
+                   net_base::byte_utils::StringToCStringBytes("fake0"));
 
   TestParseRule(msg.Encode(), RTNLMessage::kModeAdd, AF_INET, RT_TABLE_MAIN,
                 RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, dst, src, 13,
@@ -923,9 +915,8 @@ TEST_F(RTNLMessageTest, EncodeLinkDel) {
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeDelete,
                    NLM_F_REQUEST, 0, 0, kInterfaceIndex, AF_UNSPEC);
 
-  auto packet = pmsg.Encode();
-  const auto msg =
-      RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+  const auto packet = pmsg.Encode();
+  const auto msg = RTNLMessage::Decode(packet);
   EXPECT_TRUE(msg);
 
   EXPECT_EQ(RTNLMessage::kTypeLink, msg->type());
@@ -948,9 +939,9 @@ TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
                    0, 0, 0, AF_UNSPEC);
   pmsg.SetIflaInfoKind(kLinkKind, {});
-  auto packet = pmsg.Encode();
-  const auto msg =
-      RTNLMessage::Decode({packet.GetConstData(), packet.GetLength()});
+
+  const auto packet = pmsg.Encode();
+  const auto msg = RTNLMessage::Decode(packet);
   EXPECT_TRUE(msg);
   EXPECT_TRUE(msg->link_status().kind.has_value());
   EXPECT_EQ(msg->link_status().kind.value(), kLinkKind);
@@ -958,7 +949,7 @@ TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
 
 TEST_F(RTNLMessageTest, ToString) {
   struct {
-    const unsigned char* payload;
+    const uint8_t* payload;
     size_t length;
     std::string regexp;
   } test_cases[] = {
@@ -1020,32 +1011,28 @@ TEST_F(RTNLMessageTest, GetUint32Attribute) {
   EXPECT_EQ(0, msg.GetUint32Attribute(4));
 
   // Attribute found
-  msg.SetAttribute(5, ByteString::CreateFromCPUUInt32(1234));
+  msg.SetAttribute(5, net_base::byte_utils::ToBytes<uint32_t>(1234));
   EXPECT_EQ(1234, msg.GetUint32Attribute(5));
 }
 
 TEST_F(RTNLMessageTest, GetStringAttribute) {
-  const char* attr = "attribute";
+  const std::string attr = "attribute";
 
   // Attribute not found
   auto msg = CreateFakeMessage();
   EXPECT_EQ("", msg.GetStringAttribute(4));
 
   // Valid c string attribute found
-  msg.SetAttribute(5, ByteString(attr, strlen(attr) + 1));
-  EXPECT_EQ("attribute", msg.GetStringAttribute(5));
+  msg.SetAttribute(5, net_base::byte_utils::StringToCStringBytes(attr));
+  EXPECT_EQ(attr, msg.GetStringAttribute(5));
 
   // Non null-terminated c string attribute found
-  msg.SetAttribute(6, ByteString(attr, 3));
-  EXPECT_EQ("att", msg.GetStringAttribute(6));
-
-  // Non null-terminated c string attribute found
-  msg.SetAttribute(7, ByteString(attr, 1));
-  EXPECT_EQ("a", msg.GetStringAttribute(7));
+  msg.SetAttribute(6, net_base::byte_utils::ByteStringToBytes(attr));
+  EXPECT_EQ(attr, msg.GetStringAttribute(6));
 
   // Non text attribute
-  const unsigned char not_text[] = {0xff, 0xff, 0xff, 0xff};
-  msg.SetAttribute(8, ByteString(not_text, 4));
+  const uint8_t not_text[] = {0xff, 0xff, 0xff, 0xff};
+  msg.SetAttribute(8, not_text);
   EXPECT_EQ("\xff\xff\xff\xff", msg.GetStringAttribute(8));
 }
 
@@ -1055,26 +1042,24 @@ TEST_F(RTNLMessageTest, EncodeGetMessageLength) {
   // RTNL message type.
   RTNLMessage msg_link(RTNLMessage::kTypeLink, RTNLMessage::kModeGet, 0, 0, 0,
                        0, AF_INET);
-  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ifinfomsg)),
-            msg_link.Encode().GetLength());
+  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ifinfomsg)), msg_link.Encode().size());
 
   RTNLMessage msg_address(RTNLMessage::kTypeAddress, RTNLMessage::kModeGet, 0,
                           0, 0, 0, AF_INET);
   EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
-            msg_address.Encode().GetLength());
+            msg_address.Encode().size());
 
   RTNLMessage msg_route(RTNLMessage::kTypeRoute, RTNLMessage::kModeGet, 0, 0, 0,
                         0, AF_INET);
-  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_route.Encode().GetLength());
+  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_route.Encode().size());
 
   RTNLMessage msg_rule(RTNLMessage::kTypeRule, RTNLMessage::kModeGet, 0, 0, 0,
                        0, AF_INET);
-  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_rule.Encode().GetLength());
+  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct rtmsg)), msg_rule.Encode().size());
 
   RTNLMessage msg_neighor(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeGet, 0,
                           0, 0, 0, AF_INET);
-  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ndmsg)),
-            msg_neighor.Encode().GetLength());
+  EXPECT_EQ(NLMSG_LENGTH(sizeof(struct ndmsg)), msg_neighor.Encode().size());
 }
 
 }  // namespace shill

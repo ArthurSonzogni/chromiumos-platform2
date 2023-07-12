@@ -19,11 +19,8 @@
 #include <base/memory/weak_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 
-#include "shill/event_dispatcher.h"
-#include "shill/logging.h"
-#include "shill/mock_control.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
 
@@ -131,23 +128,24 @@ namespace {
 MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
   const RTNLMessage::RouteStatus& status = arg->route_status();
 
-  uint32_t priority;
+  const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
+      arg->GetAttribute(RTA_PRIORITY));
 
   return arg->type() == RTNLMessage::kTypeRoute && arg->family() == family &&
          arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
          status.table == table && status.protocol == RTPROT_BOOT &&
          status.scope == RT_SCOPE_UNIVERSE && status.type == RTN_BLACKHOLE &&
          !arg->HasAttribute(RTA_DST) && !arg->HasAttribute(RTA_SRC) &&
-         !arg->HasAttribute(RTA_GATEWAY) &&
-         arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
-         priority == metric;
+         !arg->HasAttribute(RTA_GATEWAY) && priority && *priority == metric;
 }
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   const RTNLMessage::RouteStatus& status = arg->route_status();
 
-  uint32_t oif;
-  uint32_t priority;
+  const auto oif =
+      net_base::byte_utils::FromBytes<uint32_t>(arg->GetAttribute(RTA_OIF));
+  const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
+      arg->GetAttribute(RTA_PRIORITY));
 
   return arg->type() == RTNLMessage::kTypeRoute &&
          arg->family() == entry.gateway.family() &&
@@ -160,9 +158,7 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
           arg->GetRtaSrc() == entry.src.ToIPCIDR()) &&
          ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsDefault()) ||
           arg->GetRtaGateway() == entry.gateway.ToIPAddress()) &&
-         arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
-         arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
-         priority == entry.metric;
+         oif && *oif == index && priority && *priority == entry.metric;
 }
 
 }  // namespace
@@ -187,16 +183,22 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, proto, entry.scope,
       RTN_UNICAST, 0));
 
-  msg.SetAttribute(RTA_DST, entry.dst.address());
+  msg.SetAttribute(RTA_DST, {entry.dst.address().GetConstData(),
+                             entry.dst.address().GetLength()});
   if (!entry.src.IsDefault()) {
-    msg.SetAttribute(RTA_SRC, entry.src.address());
+    msg.SetAttribute(RTA_SRC, {entry.src.address().GetConstData(),
+                               entry.src.address().GetLength()});
   }
   if (!entry.gateway.IsDefault()) {
-    msg.SetAttribute(RTA_GATEWAY, entry.gateway.address());
+    msg.SetAttribute(RTA_GATEWAY, {entry.gateway.address().GetConstData(),
+                                   entry.gateway.address().GetLength()});
   }
-  msg.SetAttribute(RTA_TABLE, ByteString::CreateFromCPUUInt32(entry.table));
-  msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(entry.metric));
-  msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(interface_index));
+  msg.SetAttribute(RTA_TABLE,
+                   net_base::byte_utils::ToBytes<uint32_t>(entry.table));
+  msg.SetAttribute(RTA_PRIORITY,
+                   net_base::byte_utils::ToBytes<uint32_t>(entry.metric));
+  msg.SetAttribute(RTA_OIF,
+                   net_base::byte_utils::ToBytes<uint32_t>(interface_index));
 
   routing_table_->RouteMsgHandler(msg);
 }
@@ -436,8 +438,8 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
 
 MATCHER_P2(IsRoutingQuery, destination, index, "") {
   const RTNLMessage::RouteStatus& status = arg->route_status();
-
-  uint32_t oif;
+  const auto oif =
+      net_base::byte_utils::FromBytes<uint32_t>(arg->GetAttribute(RTA_OIF));
 
   return arg->type() == RTNLMessage::kTypeRoute &&
          arg->family() == destination.family() &&
@@ -446,8 +448,7 @@ MATCHER_P2(IsRoutingQuery, destination, index, "") {
          arg->HasAttribute(RTA_DST) &&
          arg->GetRtaDst() == destination.ToIPCIDR() &&
          !arg->HasAttribute(RTA_SRC) && !arg->HasAttribute(RTA_GATEWAY) &&
-         arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
-         !arg->HasAttribute(RTA_PRIORITY);
+         oif && oif == index && !arg->HasAttribute(RTA_PRIORITY);
 
   return false;
 }

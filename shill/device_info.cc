@@ -28,6 +28,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -42,6 +43,7 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/byte_utils.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -714,10 +716,7 @@ bool DeviceInfo::GetLinkNameFromMessage(const RTNLMessage& msg,
   if (!msg.HasAttribute(IFLA_IFNAME))
     return false;
 
-  ByteString link_name_bytes(msg.GetAttribute(IFLA_IFNAME));
-  link_name->assign(
-      reinterpret_cast<const char*>(link_name_bytes.GetConstData()));
-
+  *link_name = msg.GetStringAttribute(IFLA_IFNAME);
   return true;
 }
 
@@ -792,7 +791,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
 
     std::string address;
     if (msg.HasAttribute(IFLA_ADDRESS)) {
-      infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
+      infos_[dev_index].mac_address =
+          ByteString(msg.GetAttribute(IFLA_ADDRESS));
       address = infos_[dev_index].mac_address.HexEncode();
       SLOG(2) << "link index " << dev_index << " address " << address;
     } else if (technology == Technology::kWiFi ||
@@ -1068,11 +1068,13 @@ bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
                                      LinkReadyCallback link_ready_callback,
                                      base::OnceClosure failure_callback) {
   RTNLAttrMap attrs;
-  attrs[kIflaXfrmLink] = ByteString::CreateFromCPUUInt32(underlying_if_index);
-  attrs[kIflaXfrmIfId] = ByteString::CreateFromCPUUInt32(xfrm_if_id);
-  const ByteString link_info_data = RTNLMessage::PackAttrs(attrs);
+  attrs[kIflaXfrmLink] =
+      net_base::byte_utils::ToBytes<uint32_t>(underlying_if_index);
+  attrs[kIflaXfrmIfId] = net_base::byte_utils::ToBytes<uint32_t>(xfrm_if_id);
+
+  const auto link_info_data = RTNLMessage::PackAttrs(attrs);
   if (!rtnl_handler_->AddInterface(
-          interface_name, kKindXfrm, link_info_data,
+          interface_name, kKindXfrm, ByteString(link_info_data),
           base::BindOnce(&DeviceInfo::OnCreateInterfaceResponse,
                          weak_factory_.GetWeakPtr(), interface_name,
                          std::move(failure_callback)))) {
@@ -1215,15 +1217,19 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
   if (!msg.HasAttribute(IFLA_STATS64)) {
     return;
   }
-  ByteString stats_bytes(msg.GetAttribute(IFLA_STATS64));
-  struct old_rtnl_link_stats64 stats;
-  if (stats_bytes.GetLength() < sizeof(stats)) {
-    LOG(WARNING) << "Link statistics size is too small: "
-                 << stats_bytes.GetLength() << " < " << sizeof(stats);
+
+  const auto stats_bytes = msg.GetAttribute(IFLA_STATS64);
+  if (stats_bytes.size() < sizeof(struct old_rtnl_link_stats64)) {
+    LOG(WARNING) << "Link statistics size is too small: " << stats_bytes.size()
+                 << " < " << sizeof(struct old_rtnl_link_stats64);
     return;
   }
 
-  memcpy(&stats, stats_bytes.GetConstData(), sizeof(stats));
+  const auto stats =
+      *net_base::byte_utils::FromBytes<struct old_rtnl_link_stats64>(
+          base::span<const uint8_t>(stats_bytes)
+              .subspan(0, sizeof(struct old_rtnl_link_stats64)));
+
   SLOG(2) << "Link statistics for "
           << " interface index " << interface_index << ": "
           << "receive: " << stats.rx_bytes << "; "

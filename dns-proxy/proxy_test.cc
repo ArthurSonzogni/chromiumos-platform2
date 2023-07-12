@@ -20,6 +20,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 #include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
@@ -1431,8 +1432,8 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
                          AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+  msg.SetAttribute(IFA_ADDRESS, net_base::byte_utils::ByteStringToBytes(
+                                    peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1559,8 +1560,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
                          AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+  msg.SetAttribute(IFA_ADDRESS, net_base::byte_utils::ByteStringToBytes(
+                                    peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1628,7 +1629,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+      IFA_ADDRESS,
+      net_base::byte_utils::ByteStringToBytes(peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg_unrelated_ifindex);
 
   shill::RTNLMessage msg_unrelated_scope(
@@ -1638,7 +1640,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+      IFA_ADDRESS,
+      net_base::byte_utils::ByteStringToBytes(peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg_unrelated_scope);
 }
 
@@ -1824,8 +1827,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
                          AF_INET6);
   msg.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS,
-                   shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+  msg.SetAttribute(IFA_ADDRESS, net_base::byte_utils::ByteStringToBytes(
+                                    peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg);
 }
 
@@ -1883,7 +1886,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_ifindex.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+      IFA_ADDRESS,
+      net_base::byte_utils::ByteStringToBytes(peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg_unrelated_ifindex);
 
   shill::RTNLMessage msg_unrelated_scope(
@@ -1893,7 +1897,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   msg_unrelated_scope.set_address_status(
       shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(
-      IFA_ADDRESS, shill::ByteString(peer_ipv6_addr.ToByteString(), false));
+      IFA_ADDRESS,
+      net_base::byte_utils::ByteStringToBytes(peer_ipv6_addr.ToByteString()));
   proxy.RTNLMessageHandler(msg_unrelated_scope);
 }
 

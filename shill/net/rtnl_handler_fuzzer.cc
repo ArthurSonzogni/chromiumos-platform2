@@ -35,10 +35,10 @@ class RTNLHandlerFuzz {
       case RTNLMessage::kTypeDnssl:
         // RDNSS and DNSSL (RTM_NEWNDUSEROPT) don't have "query" modes, so we
         // don't support re-constructing them in user space.
-        CHECK(bytes.IsEmpty());
+        CHECK(bytes.empty());
         break;
       default:
-        CHECK(!bytes.IsEmpty());
+        CHECK(!bytes.empty());
     }
   }
 };

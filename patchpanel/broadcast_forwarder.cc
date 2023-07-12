@@ -17,11 +17,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <shill/net/rtnl_handler.h>
+#include <net-base/byte_utils.h>
 
 #include "patchpanel/net_util.h"
 #include "patchpanel/socket.h"
@@ -158,20 +160,20 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   if (msg.mode() != shill::RTNLMessage::kModeAdd)
     return;
 
-  shill::ByteString b(msg.GetAttribute(IFA_LABEL).GetSubstring(0, IFNAMSIZ));
-  std::string ifname(b.GetConstCString(), b.GetLength());
-  if (ifname != dev_ifname_)
+  const std::string ifname =
+      msg.GetStringAttribute(IFA_LABEL).substr(0, IFNAMSIZ);
+  if (ifname != dev_ifname_) {
     return;
+  }
 
   // Interface address is added.
   if (msg.HasAttribute(IFA_ADDRESS)) {
-    shill::ByteString b(msg.GetAttribute(IFA_ADDRESS));
-    const auto addr = net_base::IPv4Address::CreateFromBytes(
-        base::make_span(b.GetConstData(), b.GetLength()));
+    const auto bytes = msg.GetAttribute(IFA_ADDRESS);
+    const auto addr = net_base::IPv4Address::CreateFromBytes(bytes);
     if (!addr) {
       LOG(WARNING) << "Expected IFA_ADDRESS length "
                    << net_base::IPv4Address::kAddressLength << " but got "
-                   << b.GetLength();
+                   << bytes.size();
       return;
     }
     dev_socket_->addr = *addr;
@@ -179,13 +181,12 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
 
   // Broadcast address is added.
   if (msg.HasAttribute(IFA_BROADCAST)) {
-    shill::ByteString b(msg.GetAttribute(IFA_BROADCAST));
-    const auto broadaddr = net_base::IPv4Address::CreateFromBytes(
-        base::make_span(b.GetConstData(), b.GetLength()));
+    const auto bytes = msg.GetAttribute(IFA_BROADCAST);
+    const auto broadaddr = net_base::IPv4Address::CreateFromBytes(bytes);
     if (!broadaddr) {
       LOG(WARNING) << "Expected IFA_BROADCAST length "
                    << net_base::IPv4Address::kAddressLength << " but got "
-                   << b.GetLength();
+                   << bytes.size();
       return;
     }
     dev_socket_->broadaddr = *broadaddr;

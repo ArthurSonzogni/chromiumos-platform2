@@ -18,6 +18,7 @@
 #pragma GCC diagnostic pop
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 #include <shill/net/mock_rtnl_handler.h>
 
 #include "patchpanel/fake_shill_client.h"
@@ -50,8 +51,7 @@ MATCHER_P(IsNeighborProbeMessage, address, "") {
     return false;
 
   const auto addr_bytes = arg->GetAttribute(NDA_DST);
-  const auto msg_address = net_base::IPAddress::CreateFromBytes(
-      {addr_bytes.GetConstData(), addr_bytes.GetLength()});
+  const auto msg_address = net_base::IPAddress::CreateFromBytes(addr_bytes);
   CHECK(msg_address.has_value());
   const auto expected_address = net_base::IPAddress::CreateFromString(address);
   CHECK(expected_address.has_value());
@@ -186,12 +186,12 @@ class NeighborLinkMonitorTest : public testing::Test {
     shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
                            kTestInterfaceIndex,
                            net_base::ToSAFamily(addr->GetFamily()));
-    msg.SetAttribute(NDA_DST, shill::ByteString(addr->ToByteString(), false));
+    msg.SetAttribute(
+        NDA_DST, net_base::byte_utils::ByteStringToBytes(addr->ToByteString()));
     if (mode == shill::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(
           shill::RTNLMessage::NeighborStatus(nud_state, 0, 0));
-      msg.SetAttribute(NDA_LLADDR, shill::ByteString(
-                                       std::vector<uint8_t>{1, 2, 3, 4, 5, 6}));
+      msg.SetAttribute(NDA_LLADDR, std::vector<uint8_t>{1, 2, 3, 4, 5, 6});
     }
 
     // TODO(b/2360921612) Remove static cast when shill-net types are fixed.

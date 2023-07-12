@@ -25,6 +25,8 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/ndisc.h"
 
@@ -361,8 +363,9 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
 
   RTNLAttrMap attrs;
   while (data && RTA_OK(data, len)) {
-    attrs[data->rta_type] = ByteString(
-        reinterpret_cast<unsigned char*>(RTA_DATA(data)), RTA_PAYLOAD(data));
+    attrs[data->rta_type] = {
+        reinterpret_cast<uint8_t*>(RTA_DATA(data)),
+        reinterpret_cast<uint8_t*>(RTA_DATA(data)) + RTA_PAYLOAD(data)};
     // Note: RTA_NEXT() performs subtraction on 'len'. It's important that
     // 'len' is a signed integer, so underflow works properly.
     data = RTA_NEXT(data, len);
@@ -370,7 +373,7 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
 
   if (len) {
     LOG(ERROR) << "Error parsing RTNL attributes <"
-               << ByteString(attr_data, attr_len).HexEncode()
+               << base::HexEncode(attr_data, attr_len)
                << ">, trailing length: " << len;
     return nullptr;
   }
@@ -386,26 +389,26 @@ std::string IndexToName(int ifindex) {
   return std::string(buf);
 }
 
-// Creates net_base::IPAddress by ByteString and Family. It's used to provide
-// similar interface as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we deprecate ByteString.
-std::optional<net_base::IPAddress> CreateIPAddress(const ByteString& addr_bytes,
-                                                   sa_family_t family) {
+// Creates net_base::IPAddress with Family. It's used to provide similar
+// interface as shill::IPAddress::CreateFromBytes().
+// TODO(b/279693340): Remove it when we move this logic into the IPAddress.
+std::optional<net_base::IPAddress> CreateIPAddress(
+    base::span<const uint8_t> addr_bytes, sa_family_t family) {
   const auto ip_family = net_base::FromSAFamily(family);
-  const auto addr = net_base::IPAddress::CreateFromBytes(
-      {addr_bytes.GetConstData(), addr_bytes.GetLength()});
+  const auto addr = net_base::IPAddress::CreateFromBytes(addr_bytes);
   if (!addr || (ip_family && addr->GetFamily() != ip_family)) {
     return std::nullopt;
   }
   return addr;
 }
 
-// Creates net_base::IPCIDR by ByteString, prefix length, and Family. It's used
-// to provide similar interface as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we deprecate ByteString.
-std::optional<net_base::IPCIDR> CreateIPCIDR(const ByteString& addr_bytes,
-                                             int prefix_length,
-                                             sa_family_t family) {
+// Creates net_base::IPCIDR with Family. It's used to provide similar interface
+// as shill::IPAddress::CreateFromBytes().
+// TODO(b/279693340): Remove it when we move this logic into the IPCIDR.
+std::optional<net_base::IPCIDR> CreateIPCIDR(
+    base::span<const uint8_t> addr_bytes,
+    int prefix_length,
+    sa_family_t family) {
   const auto addr = CreateIPAddress(addr_bytes, family);
   if (!addr) {
     return std::nullopt;
@@ -436,25 +439,26 @@ std::string RTNLMessage::RdnssOption::ToString() const {
   return base::StringPrintf("RdnssOption lifetime %d", lifetime);
 }
 
-ByteString RTNLMessage::PackAttrs(const RTNLAttrMap& attrs) {
-  ByteString attributes;
+// static
+std::vector<uint8_t> RTNLMessage::PackAttrs(const RTNLAttrMap& attrs) {
+  std::vector<uint8_t> attributes;
 
   for (const auto& pair : attrs) {
-    size_t len = RTA_LENGTH(pair.second.GetLength());
+    size_t len = RTA_LENGTH(pair.second.size());
     struct rtattr rt_attr = {
         // Linter discourages 'unsigned short', but 'unsigned short' is used in
         // the UAPI.
         static_cast<unsigned short>(len),  // NOLINT(runtime/int)
         pair.first,
     };
-    ByteString header(reinterpret_cast<unsigned char*>(&rt_attr),
-                      sizeof(rt_attr));
-    header.Resize(RTA_ALIGN(header.GetLength()));
-    attributes.Append(header);
+    std::vector<uint8_t> header =
+        net_base::byte_utils::ToBytes<struct rtattr>(rt_attr);
+    header.resize(RTA_ALIGN(header.size()), 0);
+    attributes.insert(attributes.end(), header.begin(), header.end());
 
-    ByteString data(pair.second);
-    data.Resize(RTA_ALIGN(data.GetLength()));
-    attributes.Append(data);
+    std::vector<uint8_t> data = pair.second;
+    data.resize(RTA_ALIGN(data.size()), 0);
+    attributes.insert(attributes.end(), data.begin(), data.end());
   }
 
   return attributes;
@@ -590,22 +594,22 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(Mode mode,
 
   std::optional<std::string> kind_option;
   if (base::Contains(*attrs, IFLA_LINKINFO)) {
-    ByteString& bytes = attrs->find(IFLA_LINKINFO)->second;
-    struct rtattr* link_data =
-        reinterpret_cast<struct rtattr*>(bytes.GetData());
-    size_t link_len = bytes.GetLength();
+    auto& bytes = attrs->find(IFLA_LINKINFO)->second;
+    struct rtattr* link_data = reinterpret_cast<struct rtattr*>(bytes.data());
+    size_t link_len = bytes.size();
     std::unique_ptr<RTNLAttrMap> linkinfo = ParseAttrs(link_data, link_len);
 
     if (linkinfo && base::Contains(*linkinfo, IFLA_INFO_KIND)) {
-      ByteString& kindBytes = linkinfo->find(IFLA_INFO_KIND)->second;
-      const char* kind = reinterpret_cast<const char*>(kindBytes.GetData());
-      std::string kind_string(kind, strnlen(kind, kindBytes.GetLength()));
-      if (base::IsStringASCII(kind_string))
+      const auto& kind_bytes = linkinfo->find(IFLA_INFO_KIND)->second;
+      const auto kind_string =
+          net_base::byte_utils::StringFromCStringBytes(kind_bytes);
+      if (base::IsStringASCII(kind_string)) {
         kind_option = kind_string;
-      else
+      } else {
         LOG(ERROR) << base::StringPrintf(
             "Invalid kind <%s>, interface index %d",
-            kindBytes.HexEncode().c_str(), interface_index);
+            base::HexEncode(kind_bytes).c_str(), interface_index);
+      }
     }
   }
 
@@ -768,10 +772,10 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNeighbor(
   return msg;
 }
 
-ByteString RTNLMessage::Encode() const {
+std::vector<uint8_t> RTNLMessage::Encode() const {
   if (type_ != kTypeLink && type_ != kTypeAddress && type_ != kTypeRoute &&
       type_ != kTypeRule && type_ != kTypeNeighbor) {
-    return ByteString();
+    return {};
   }
 
   RTNLHeader hdr;
@@ -782,26 +786,26 @@ ByteString RTNLMessage::Encode() const {
   switch (type_) {
     case kTypeLink:
       if (!EncodeLink(&hdr)) {
-        return ByteString();
+        return {};
       }
       break;
 
     case kTypeAddress:
       if (!EncodeAddress(&hdr)) {
-        return ByteString();
+        return {};
       }
       break;
 
     case kTypeRoute:
     case kTypeRule:
       if (!EncodeRoute(&hdr)) {
-        return ByteString();
+        return {};
       }
       break;
 
     case kTypeNeighbor:
       if (!EncodeNeighbor(&hdr)) {
-        return ByteString();
+        return {};
       }
       break;
 
@@ -814,10 +818,11 @@ ByteString RTNLMessage::Encode() const {
   }
 
   size_t header_length = hdr.hdr.nlmsg_len;
-  ByteString attributes = PackAttrs(attributes_);
-  hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + attributes.GetLength();
-  ByteString packet(reinterpret_cast<unsigned char*>(&hdr), header_length);
-  packet.Append(attributes);
+  const std::vector<uint8_t> attributes = PackAttrs(attributes_);
+  hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + attributes.size();
+  std::vector<uint8_t> packet(reinterpret_cast<uint8_t*>(&hdr),
+                              reinterpret_cast<uint8_t*>(&hdr) + header_length);
+  packet.insert(packet.end(), attributes.begin(), attributes.end());
 
   return packet;
 }
@@ -927,17 +932,14 @@ bool RTNLMessage::EncodeNeighbor(RTNLHeader* hdr) const {
 }
 
 uint32_t RTNLMessage::GetUint32Attribute(uint16_t attr) const {
-  uint32_t val = 0;
-  GetAttribute(attr).ConvertToCPUUInt32(&val);
-  return val;
+  return net_base::byte_utils::FromBytes<uint32_t>(GetAttribute(attr))
+      .value_or(0);
 }
 
 std::string RTNLMessage::GetStringAttribute(uint16_t attr) const {
   if (!HasAttribute(attr))
     return "";
-  ByteString bytes = GetAttribute(attr);
-  size_t len = strnlen(bytes.GetConstCString(), bytes.GetLength());
-  return std::string(bytes.GetConstCString(), len);
+  return net_base::byte_utils::StringFromCStringBytes(GetAttribute(attr));
 }
 
 std::string RTNLMessage::GetIflaIfname() const {
@@ -1010,7 +1012,7 @@ uint32_t RTNLMessage::GetFraPriority() const {
 }
 
 void RTNLMessage::SetIflaInfoKind(const std::string& link_kind,
-                                  const ByteString& info_data) {
+                                  base::span<const uint8_t> info_data) {
   // The maximum length of IFLA_INFO_KIND attribute is MODULE_NAME_LEN, defined
   // in /include/linux/module.h, as (64 - sizeof(unsigned long)). Set it to a
   // fixed value here.
@@ -1020,9 +1022,11 @@ void RTNLMessage::SetIflaInfoKind(const std::string& link_kind,
   }
   link_status_.kind = link_kind;
   RTNLAttrMap link_info_map;
-  link_info_map[IFLA_INFO_KIND] = ByteString{link_kind, true};
-  if (!info_data.IsEmpty()) {
-    link_info_map[IFLA_INFO_DATA] = info_data;
+  link_info_map[IFLA_INFO_KIND] =
+      net_base::byte_utils::StringToCStringBytes(link_kind.c_str());
+  if (!info_data.empty()) {
+    link_info_map[IFLA_INFO_DATA] = {info_data.data(),
+                                     info_data.data() + info_data.size()};
   }
   if (HasAttribute(IFLA_LINKINFO)) {
     LOG(DFATAL) << "IFLA_LINKINFO has already been set.";

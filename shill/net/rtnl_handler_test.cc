@@ -19,6 +19,7 @@
 #include <base/test/test_future.h>
 #include <base/test/task_environment.h>
 
+#include <net-base/byte_utils.h>
 #include "shill/mock_log.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
@@ -169,18 +170,19 @@ void RTNLHandlerTest::StopRTNLHandler() {
 void RTNLHandlerTest::AddLink() {
   RTNLMessage message(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
                       kTestDeviceIndex, AF_INET);
-  message.SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
-                       ByteString(std::string(kTestDeviceName), true));
-  ByteString b(message.Encode());
-  InputData data(b.GetData(), b.GetLength());
+  message.SetAttribute(
+      static_cast<uint16_t>(IFLA_IFNAME),
+      net_base::byte_utils::StringToCStringBytes(kTestDeviceName));
+  const auto b = message.Encode();
+  InputData data(b.data(), b.size());
   RTNLHandler::GetInstance()->ParseRTNL(&data);
 }
 
 void RTNLHandlerTest::AddNeighbor() {
   RTNLMessage message(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
                       0, kTestDeviceIndex, AF_INET);
-  ByteString encoded(message.Encode());
-  InputData data(encoded.GetData(), encoded.GetLength());
+  const auto encoded = message.Encode();
+  InputData data(encoded.data(), encoded.size());
   RTNLHandler::GetInstance()->ParseRTNL(&data);
 }
 

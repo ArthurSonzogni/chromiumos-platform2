@@ -20,6 +20,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"

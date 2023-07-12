@@ -26,6 +26,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/io_handler.h"
 #include "shill/net/io_handler_factory_container.h"
@@ -167,8 +169,7 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
       0,  // pid.
       interface_index, AF_UNSPEC);
 
-  msg->SetAttribute(IFLA_MTU, ByteString(reinterpret_cast<unsigned char*>(&mtu),
-                                         sizeof(mtu)));
+  msg->SetAttribute(IFLA_MTU, net_base::byte_utils::ToBytes<unsigned int>(mtu));
 
   CHECK(SendMessage(std::move(msg), nullptr));
 }
@@ -187,7 +188,8 @@ void RTNLHandler::SetInterfaceMac(int interface_index,
       0,  // pid.
       interface_index, AF_UNSPEC);
 
-  msg->SetAttribute(IFLA_ADDRESS, mac_address);
+  msg->SetAttribute(IFLA_ADDRESS,
+                    {mac_address.GetConstData(), mac_address.GetLength()});
 
   uint32_t seq;
   CHECK(SendMessage(std::move(msg), &seq));
@@ -415,12 +417,12 @@ bool RTNLHandler::AddressRequest(
   msg->set_address_status(
       RTNLMessage::AddressStatus(local.prefix_length(), 0, 0));
 
-  msg->SetAttribute(IFA_LOCAL,
-                    ByteString(local.address().ToByteString(), false));
+  msg->SetAttribute(IFA_LOCAL, net_base::byte_utils::ByteStringToBytes(
+                                   local.address().ToByteString()));
   if (broadcast) {
     CHECK_EQ(local.GetFamily(), net_base::IPFamily::kIPv4);
-    msg->SetAttribute(IFA_BROADCAST,
-                      ByteString(broadcast->ToByteString(), false));
+    msg->SetAttribute(IFA_BROADCAST, net_base::byte_utils::ByteStringToBytes(
+                                         broadcast->ToByteString()));
   }
 
   return SendMessage(std::move(msg), nullptr);
@@ -487,8 +489,10 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
       shill::RTNLMessage::kTypeLink, shill::RTNLMessage::kModeAdd,
       NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
       0 /* pid */, 0 /* if_index */, AF_UNSPEC);
-  msg->SetAttribute(IFLA_IFNAME, {interface_name, true});
-  msg->SetIflaInfoKind(link_kind, link_info_data);
+  msg->SetAttribute(IFLA_IFNAME,
+                    net_base::byte_utils::StringToCStringBytes(interface_name));
+  msg->SetIflaInfoKind(
+      link_kind, {link_info_data.GetConstData(), link_info_data.GetLength()});
 
   uint32_t seq;
   if (!SendMessage(std::move(msg), &seq)) {
@@ -525,20 +529,19 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
 
   SetErrorMask(request_sequence_, error_mask);
   message->set_seq(request_sequence_);
-  ByteString msgdata = message->Encode();
+  const auto msgdata = message->Encode();
 
-  if (msgdata.GetLength() == 0) {
+  if (msgdata.size() == 0) {
     return false;
   }
 
   VLOG(5) << "RTNL sending payload with request sequence " << request_sequence_
-          << ", length " << msgdata.GetLength() << ": \"" << msgdata.HexEncode()
+          << ", length " << msgdata.size() << ": \"" << base::HexEncode(msgdata)
           << "\"";
 
   request_sequence_++;
 
-  if (sockets_->Send(rtnl_socket_, msgdata.GetConstData(), msgdata.GetLength(),
-                     0) < 0) {
+  if (sockets_->Send(rtnl_socket_, &msgdata.front(), msgdata.size(), 0) < 0) {
     PLOG(ERROR) << "RTNL send failed";
     return false;
   }

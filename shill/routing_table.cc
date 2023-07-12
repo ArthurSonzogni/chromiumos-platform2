@@ -31,10 +31,10 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 
 #include "shill/logging.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -79,15 +79,18 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
     return false;
   }
 
-  uint32_t interface_index_u32 = 0;
-  if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
+  const auto interface_index_u32 =
+      net_base::byte_utils::FromBytes<uint32_t>(message.GetAttribute(RTA_OIF));
+  if (!interface_index_u32) {
     return false;
   }
-  *interface_index = interface_index_u32;
+  *interface_index = *interface_index_u32;
 
   uint32_t metric = 0;
   if (message.HasAttribute(RTA_PRIORITY)) {
-    message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
+    metric = net_base::byte_utils::FromBytes<uint32_t>(
+                 message.GetAttribute(RTA_PRIORITY))
+                 .value_or(0);
   }
 
   // The rtmsg structure [0] has a table id field that is only a single
@@ -100,7 +103,9 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
   // 0) elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h#L206
   uint32_t table;
   if (message.HasAttribute(RTA_TABLE)) {
-    message.GetAttribute(RTA_TABLE).ConvertToCPUUInt32(&table);
+    table = net_base::byte_utils::FromBytes<uint32_t>(
+                message.GetAttribute(RTA_TABLE))
+                .value_or(0);
   } else {
     table = route_status.table;
     LOG_IF(WARNING, table == RT_TABLE_COMPAT)
@@ -519,24 +524,27 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       entry.scope, entry.type, 0));
 
   message->SetAttribute(RTA_TABLE,
-                        ByteString::CreateFromCPUUInt32(entry.table));
+                        net_base::byte_utils::ToBytes<uint32_t>(entry.table));
   message->SetAttribute(RTA_PRIORITY,
-                        ByteString::CreateFromCPUUInt32(entry.metric));
+                        net_base::byte_utils::ToBytes<uint32_t>(entry.metric));
   if (entry.type != RTN_BLACKHOLE) {
-    message->SetAttribute(RTA_DST, entry.dst.address());
+    message->SetAttribute(RTA_DST, {entry.dst.address().GetConstData(),
+                                    entry.dst.address().GetLength()});
   }
   if (!entry.src.IsDefault()) {
-    message->SetAttribute(RTA_SRC, entry.src.address());
+    message->SetAttribute(RTA_SRC, {entry.src.address().GetConstData(),
+                                    entry.src.address().GetLength()});
   }
   if (!entry.gateway.IsDefault()) {
-    message->SetAttribute(RTA_GATEWAY, entry.gateway.address());
+    message->SetAttribute(RTA_GATEWAY, {entry.gateway.address().GetConstData(),
+                                        entry.gateway.address().GetLength()});
   }
   if (entry.type == RTN_UNICAST) {
     // Note that RouteMsgHandler will ignore anything without RTA_OIF,
     // because that is how it looks up the |tables_| vector.  But
     // FlushRoutes() and FlushRoutesWithTag() do not care.
-    message->SetAttribute(RTA_OIF,
-                          ByteString::CreateFromCPUUInt32(interface_index));
+    message->SetAttribute(
+        RTA_OIF, net_base::byte_utils::ToBytes<uint32_t>(interface_index));
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);

@@ -15,6 +15,7 @@
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/task/sequenced_task_runner.h>
+#include <net-base/byte_utils.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <shill/net/rtnl_handler.h>
@@ -269,8 +270,8 @@ void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
   // We don't need to set |ndm_flags| and |ndm_type| for this message.
   msg->set_neighbor_status(shill::RTNLMessage::NeighborStatus(
       NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
-  msg->SetAttribute(NDA_DST,
-                    shill::ByteString(entry.addr.ToByteString(), false));
+  msg->SetAttribute(NDA_DST, net_base::byte_utils::ByteStringToBytes(
+                                 entry.addr.ToByteString()));
 
   if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
     LOG(WARNING) << "Failed to send neighbor probe message for "
@@ -282,12 +283,11 @@ void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
     return;
 
   const auto family = msg.family();
-  const shill::ByteString dst = msg.GetAttribute(NDA_DST);
-  const auto addr = net_base::IPAddress::CreateFromBytes(
-      {dst.GetConstData(), dst.GetLength()});
+  const auto dst = msg.GetAttribute(NDA_DST);
+  const auto addr = net_base::IPAddress::CreateFromBytes(dst);
   if (!addr || net_base::ToSAFamily(addr->GetFamily()) != family) {
     LOG(ERROR) << "Got neighbor message with invalid addr which length is "
-               << dst.GetLength();
+               << dst.size();
     return;
   }
 

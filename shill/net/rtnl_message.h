@@ -16,7 +16,6 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/shill_export.h"
 
 struct rtattr;
@@ -25,7 +24,7 @@ namespace shill {
 
 struct RTNLHeader;
 
-using RTNLAttrMap = std::unordered_map<uint16_t, ByteString>;
+using RTNLAttrMap = std::unordered_map<uint16_t, std::vector<uint8_t>>;
 
 // Helper class for processing rtnetlink messages. See uapi/linux/rtnetlink.h
 // and rtnetlink manual page for details about the message binary encoding and
@@ -147,8 +146,8 @@ class SHILL_EXPORT RTNLMessage {
     std::vector<net_base::IPv6Address> addresses;
   };
 
-  // Packs the attribute map into a ByteString, with the proper alignment.
-  static ByteString PackAttrs(const RTNLAttrMap& attrs);
+  // Packs the attribute map into bytes, with the proper alignment.
+  static std::vector<uint8_t> PackAttrs(const RTNLAttrMap& attrs);
 
   // Parse an RTNL message.  Returns nullptr on failure.
   static std::unique_ptr<RTNLMessage> Decode(base::span<const uint8_t> data);
@@ -164,8 +163,8 @@ class SHILL_EXPORT RTNLMessage {
   RTNLMessage(const RTNLMessage&) = delete;
   RTNLMessage& operator=(const RTNLMessage&) = delete;
 
-  // Encode an RTNL message.  Returns empty ByteString on failure.
-  ByteString Encode() const;
+  // Encode an RTNL message.  Returns empty vector on failure.
+  std::vector<uint8_t> Encode() const;
 
   // Getters and setters
   Type type() const { return type_; }
@@ -207,19 +206,20 @@ class SHILL_EXPORT RTNLMessage {
   bool HasAttribute(uint16_t attr) const {
     return base::Contains(attributes_, attr);
   }
-  const ByteString GetAttribute(uint16_t attr) const {
-    return HasAttribute(attr) ? attributes_.find(attr)->second : ByteString(0);
+  std::vector<uint8_t> GetAttribute(uint16_t attr) const {
+    return HasAttribute(attr) ? attributes_.find(attr)->second
+                              : std::vector<uint8_t>();
   }
-  void SetAttribute(uint16_t attr, const ByteString& val) {
-    attributes_[attr] = val;
+  void SetAttribute(uint16_t attr, base::span<const uint8_t> val) {
+    attributes_[attr] = {val.data(), val.data() + val.size()};
   }
   // Return the value of an rtattr attribute of type uint32_t.
   uint32_t GetUint32Attribute(uint16_t attr) const;
   // Returns the value of an rtattr attribute of type string. String attributes
   // serialized by the kernel with nla_put_string() are null terminated and the
-  // null terminator is included in the underlying ByteString value. In case
-  // the ByteString does not contain any terminator, all the bytes of contained
-  // in the ByteString are copied into the standard string.
+  // null terminator is included in the underlying std::vector<uint8_t>. In case
+  // the std::vector<uint8_t> does not contain any terminator, all the bytes of
+  // contained in the std::vector<uint8_t> are copied into the standard string.
   std::string GetStringAttribute(uint16_t attr) const;
   // returns the IFLA_IFNAME attribute as standard string. This should only be
   // used for RTNLMessages of type kTypeLink.
@@ -268,7 +268,7 @@ class SHILL_EXPORT RTNLMessage {
   // which is kind-specific. Leave it empty if there is no addtiional data
   // needed for |link_kind|.
   void SetIflaInfoKind(const std::string& link_kind,
-                       const ByteString& info_data);
+                       base::span<const uint8_t> info_data);
 
  private:
   SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeLink(

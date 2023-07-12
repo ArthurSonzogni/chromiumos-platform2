@@ -29,6 +29,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
@@ -192,10 +193,10 @@ std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     int interface_index) {
   auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0,
                                                0, 0, interface_index, AF_INET);
-  message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
-                        ByteString(interface_name, true));
-  ByteString test_address(kTestMacAddress, sizeof(kTestMacAddress));
-  message->SetAttribute(IFLA_ADDRESS, test_address);
+  message->SetAttribute(
+      static_cast<uint16_t>(IFLA_IFNAME),
+      net_base::byte_utils::StringToCStringBytes(interface_name));
+  message->SetAttribute(IFLA_ADDRESS, kTestMacAddress);
   return message;
 }
 
@@ -383,9 +384,8 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   memset(&stats, 0, sizeof(stats));
   stats.rx_bytes = kReceiveByteCount;
   stats.tx_bytes = kTransmitByteCount;
-  ByteString stats_bytes0(reinterpret_cast<const unsigned char*>(&stats),
-                          sizeof(stats) - 1);
-  message->SetAttribute(IFLA_STATS64, stats_bytes0);
+  message->SetAttribute(IFLA_STATS64, {reinterpret_cast<const uint8_t*>(&stats),
+                                       sizeof(stats) - 1});
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
@@ -394,9 +394,8 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
 
   // Correctly sized link statistics message.
   message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  ByteString stats_bytes1(reinterpret_cast<const unsigned char*>(&stats),
-                          sizeof(stats));
-  message->SetAttribute(IFLA_STATS64, stats_bytes1);
+  message->SetAttribute(
+      IFLA_STATS64, {reinterpret_cast<const uint8_t*>(&stats), sizeof(stats)});
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
@@ -910,9 +909,9 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
       });
   EXPECT_TRUE(call_create_xfrm_interface());
   EXPECT_EQ(actual_link_info_data,
-            RTNLMessage::PackAttrs(
-                {{1, ByteString::CreateFromCPUUInt32(kUnderlyingIfIndex)},
-                 {2, ByteString::CreateFromCPUUInt32(kIfId)}}));
+            ByteString(RTNLMessage::PackAttrs(
+                {{1, net_base::byte_utils::ToBytes(kUnderlyingIfIndex)},
+                 {2, net_base::byte_utils::ToBytes(kIfId)}})));
   std::move(registered_response_cb).Run(100);
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 1);
@@ -1396,9 +1395,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
                                                  RTNLMessage::kModeAdd, 0, 0, 0,
                                                  kTestDeviceIndex, AF_INET);
-    message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
-                          ByteString(std::string(kTestDeviceName),
-                                     /*copy_terminator=*/true));
+    message->SetAttribute(
+        static_cast<uint16_t>(IFLA_IFNAME),
+        net_base::byte_utils::StringToCStringBytes(kTestDeviceName));
 
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName, _))
         .WillOnce(Return(delayed_technology));

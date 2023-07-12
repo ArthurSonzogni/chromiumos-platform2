@@ -14,9 +14,9 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 #include <net-base/ip_address.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/logging.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -161,7 +161,9 @@ RoutingPolicyService::ParseRoutingPolicyMessage(const RTNLMessage& message) {
   // 0) elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h#L206
   uint32_t table;
   if (message.HasAttribute(FRA_TABLE)) {
-    message.GetAttribute(FRA_TABLE).ConvertToCPUUInt32(&table);
+    table = net_base::byte_utils::FromBytes<uint32_t>(
+                message.GetAttribute(FRA_TABLE))
+                .value_or(0);
   } else {
     table = route_status.table;
     LOG_IF(WARNING, table == RT_TABLE_COMPAT)
@@ -171,40 +173,49 @@ RoutingPolicyService::ParseRoutingPolicyMessage(const RTNLMessage& message) {
 
   if (message.HasAttribute(FRA_PRIORITY)) {
     // Rule 0 (local table) doesn't have a priority attribute.
-    if (!message.GetAttribute(FRA_PRIORITY)
-             .ConvertToCPUUInt32(&entry.priority)) {
+    const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
+        message.GetAttribute(FRA_PRIORITY));
+    if (!priority) {
       return std::nullopt;
     }
+    entry.priority = *priority;
   }
 
   if (message.HasAttribute(FRA_FWMARK)) {
     RoutingPolicyEntry::FwMark fw_mark;
-    if (!message.GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&fw_mark.value)) {
+    const auto value = net_base::byte_utils::FromBytes<uint32_t>(
+        message.GetAttribute(FRA_FWMARK));
+    if (!value) {
       return std::nullopt;
     }
+    fw_mark.value = *value;
+
     if (message.HasAttribute(FRA_FWMASK)) {
-      if (!message.GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&fw_mark.mask)) {
+      const auto mask = net_base::byte_utils::FromBytes<uint32_t>(
+          message.GetAttribute(FRA_FWMASK));
+      if (!mask) {
         return std::nullopt;
       }
+      fw_mark.mask = *mask;
     }
     entry.fw_mark = fw_mark;
   }
 
   if (message.HasAttribute(FRA_UID_RANGE)) {
-    struct fib_rule_uid_range r;
-    if (!message.GetAttribute(FRA_UID_RANGE).CopyData(sizeof(r), &r)) {
+    const auto range =
+        net_base::byte_utils::FromBytes<struct fib_rule_uid_range>(
+            message.GetAttribute(FRA_UID_RANGE));
+    if (!range) {
       return std::nullopt;
     }
-    entry.uid_range = r;
+    entry.uid_range = *range;
   }
 
   if (message.HasAttribute(FRA_IFNAME)) {
-    entry.iif_name = reinterpret_cast<const char*>(
-        message.GetAttribute(FRA_IFNAME).GetConstData());
+    entry.iif_name = message.GetStringAttribute(FRA_IFNAME);
   }
   if (message.HasAttribute(FRA_OIFNAME)) {
-    entry.oif_name = reinterpret_cast<const char*>(
-        message.GetAttribute(FRA_OIFNAME).GetConstData());
+    entry.oif_name = message.GetStringAttribute(FRA_OIFNAME);
   }
 
   if (auto tmp_dst = message.GetFraDst(); tmp_dst.has_value()) {
@@ -274,36 +285,38 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, entry.invert_rule ? FIB_RULE_INVERT : 0));
 
   message->SetAttribute(FRA_TABLE,
-                        ByteString::CreateFromCPUUInt32(entry.table));
-  message->SetAttribute(FRA_PRIORITY,
-                        ByteString::CreateFromCPUUInt32(entry.priority));
+                        net_base::byte_utils::ToBytes<uint32_t>(entry.table));
+  message->SetAttribute(
+      FRA_PRIORITY, net_base::byte_utils::ToBytes<uint32_t>(entry.priority));
   if (entry.fw_mark.has_value()) {
     const RoutingPolicyEntry::FwMark& mark = entry.fw_mark.value();
     message->SetAttribute(FRA_FWMARK,
-                          ByteString::CreateFromCPUUInt32(mark.value));
+                          net_base::byte_utils::ToBytes<uint32_t>(mark.value));
     message->SetAttribute(FRA_FWMASK,
-                          ByteString::CreateFromCPUUInt32(mark.mask));
+                          net_base::byte_utils::ToBytes<uint32_t>(mark.mask));
   }
   if (entry.uid_range.has_value()) {
-    message->SetAttribute(FRA_UID_RANGE,
-                          ByteString(reinterpret_cast<const unsigned char*>(
-                                         &entry.uid_range.value()),
-                                     sizeof(entry.uid_range.value())));
+    message->SetAttribute(
+        FRA_UID_RANGE, net_base::byte_utils::ToBytes<struct fib_rule_uid_range>(
+                           *entry.uid_range));
   }
   if (entry.iif_name.has_value()) {
-    message->SetAttribute(FRA_IFNAME, ByteString(entry.iif_name.value(), true));
+    message->SetAttribute(
+        FRA_IFNAME,
+        net_base::byte_utils::StringToCStringBytes(*entry.iif_name));
   }
   if (entry.oif_name.has_value()) {
-    message->SetAttribute(FRA_OIFNAME,
-                          ByteString(entry.oif_name.value(), true));
+    message->SetAttribute(
+        FRA_OIFNAME,
+        net_base::byte_utils::StringToCStringBytes(*entry.oif_name));
   }
   if (!entry.dst.address().IsZero()) {
-    message->SetAttribute(
-        FRA_DST, ByteString(entry.dst.address().ToByteString(), false));
+    message->SetAttribute(FRA_DST, net_base::byte_utils::ByteStringToBytes(
+                                       entry.dst.address().ToByteString()));
   }
   if (!entry.src.address().IsZero()) {
-    message->SetAttribute(
-        FRA_SRC, ByteString(entry.src.address().ToByteString(), false));
+    message->SetAttribute(FRA_SRC, net_base::byte_utils::ByteStringToBytes(
+                                       entry.src.address().ToByteString()));
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);

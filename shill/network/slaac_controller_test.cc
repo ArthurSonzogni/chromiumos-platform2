@@ -4,6 +4,7 @@
 
 #include "shill/network/slaac_controller.h"
 
+#include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
@@ -100,8 +101,8 @@ std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
   auto message = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex,
       net_base::ToSAFamily(cidr.GetFamily()));
-  message->SetAttribute(IFA_ADDRESS,
-                        ByteString(cidr.address().ToByteString(), false));
+  message->SetAttribute(IFA_ADDRESS, net_base::byte_utils::ByteStringToBytes(
+                                         cidr.address().ToByteString()));
   message->set_address_status(
       RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
   return message;
