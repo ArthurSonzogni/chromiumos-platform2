@@ -256,10 +256,12 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
-    auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &platform_, &user_session_map_, &keyset_management_,
-        auth_block_utility, &auth_factor_driver_manager_, &auth_factor_manager_,
-        &user_secret_stash_storage_, &user_metadata_reader_, &features_.async);
+    auth_session_manager_ =
+        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+            &crypto_, &platform_, &user_session_map_, &keyset_management_,
+            auth_block_utility, &auth_factor_driver_manager_,
+            &auth_factor_manager_, &user_secret_stash_storage_,
+            &user_metadata_reader_, &features_.async});
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -338,7 +340,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   }
 
   void GetAuthSessionStatusImpl(
-      AuthSession* auth_session,
+      InUseAuthSession& auth_session,
       user_data_auth::GetAuthSessionStatusReply& reply) {
     userdataauth_.GetAuthSessionStatusImpl(auth_session, reply);
   }
@@ -642,7 +644,7 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
       auth_session_manager_->CreateAuthSession(kUsername, 0,
                                                AuthIntent::kDecrypt);
   EXPECT_THAT(auth_session_status, IsOk());
-  AuthSession* auth_session = auth_session_status.value().Get();
+  InUseAuthSession& auth_session = *auth_session_status;
 
   // First verify that auth is required is the status.
   GetAuthSessionStatusImpl(auth_session, reply);
@@ -656,7 +658,7 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
               Eq(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED));
 
   // Finally move time forward to time out the session.
-  task_environment.FastForwardBy(auth_session->GetRemainingTime() * 2);
+  task_environment.FastForwardBy(auth_session.GetRemainingTime() * 2);
   GetAuthSessionStatusImpl(auth_session, reply);
   ASSERT_THAT(reply.status(),
               Eq(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION));
@@ -1107,7 +1109,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-    EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+    EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
               time_left_after_authenticate);
   }
 
@@ -1676,14 +1678,13 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
         auth_session_manager_->CreateAuthSession(kUsername, /*flags=*/0,
                                                  AuthIntent::kDecrypt);
     EXPECT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
+    InUseAuthSession& auth_session = *auth_session_status;
 
-    ASSERT_TRUE(auth_session);
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-    EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+    EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
               time_left_after_authenticate);
     EXPECT_THAT(
         auth_session->authorized_intents(),
@@ -2668,7 +2669,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(serialized_token);
-  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+  EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
             time_left_after_authenticate);
   EXPECT_THAT(reply.authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,

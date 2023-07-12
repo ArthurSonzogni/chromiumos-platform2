@@ -8,12 +8,15 @@
 #include <string>
 #include <utility>
 
+#include <base/test/power_monitor_test.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -24,22 +27,30 @@
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 
+namespace cryptohome {
+namespace {
+
 using ::base::test::TaskEnvironment;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::ByMove;
 using ::testing::Eq;
+using ::testing::Gt;
 using ::testing::IsNull;
+using ::testing::IsTrue;
+using ::testing::Le;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 
-namespace cryptohome {
-
 class AuthSessionManagerTest : public ::testing::Test {
  protected:
   const Username kUsername{"foo@example.com"};
 
+  base::test::ScopedPowerMonitorTestSource test_power_monitor_;
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
@@ -75,17 +86,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &user_secret_stash_storage_,
                                          &user_metadata_reader_,
                                          &features_.async};
-
-  AuthSessionManager auth_session_manager_{&crypto_,
-                                           &platform_,
-                                           &user_session_map_,
-                                           &keyset_management_,
-                                           &auth_block_utility_,
-                                           &auth_factor_driver_manager_,
-                                           &auth_factor_manager_,
-                                           &user_secret_stash_storage_,
-                                           &user_metadata_reader_,
-                                           &features_.async};
+  AuthSessionManager auth_session_manager_{backing_apis_};
 };
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {
@@ -137,44 +138,183 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
 }
 
 TEST_F(AuthSessionManagerTest, CreateExpire) {
-  base::UnguessableToken token;
+  base::UnguessableToken tokens[2];
 
-  // Create and set up an auth session, setting it to authenticated so that it
-  // can eventually get expired.
-  {
+  // Create a pair of auth sessions. Before they're authenticated they should
+  // have infinite time remaining.
+  for (auto& token : tokens) {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
         auth_session_manager_.CreateAuthSession(kUsername, 0,
                                                 AuthIntent::kDecrypt);
-    ASSERT_TRUE(auth_session_status.ok());
+    ASSERT_THAT(auth_session_status, IsOk());
     AuthSession* auth_session = auth_session_status.value().Get();
     ASSERT_THAT(auth_session, NotNull());
     token = auth_session->token();
 
     InUseAuthSession in_use_auth_session =
         auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+  }
+  for (const auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime().is_max(), IsTrue());
+  }
 
-    EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  // Authenticate the sessions. Theys should now have finite timeouts.
+  for (auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  }
+  for (const auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+  }
+
+  // Advance the clock by timeout. This should expire all the sessions.
+  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout);
+
+  // After expiration the sessions should be gone.
+  for (const auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+  }
+}
+
+TEST_F(AuthSessionManagerTest, ExtendExpire) {
+  base::UnguessableToken tokens[2];
+
+  // Create and set up a pair of auth sessions, setting them to authenticated so
+  // that they can eventually get expired.
+  for (auto& token : tokens) {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                AuthIntent::kDecrypt);
+    ASSERT_THAT(auth_session_status, IsOk());
+    AuthSession* auth_session = auth_session_status.value().Get();
+    ASSERT_THAT(auth_session, NotNull());
+    token = auth_session->token();
+
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   }
 
-  // Before expiration we should be able to look up the session again.
+  // Before expiration we should be able to look up the sessions again.
+  for (const auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+  }
+
+  // Extend the first session by two minutes.
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()),
+                      Le(AuthSessionManager::kAuthTimeout + base::Minutes(2))));
+  }
+
+  // Move the time forward by timeout plus one minute. This should timeout the
+  // second session (original timeout) but not the first (added two minutes).
+  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout +
+                                  base::Minutes(1));
+
+  // Only the first session should be good.
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(1))));
+  }
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[1]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+  }
+
+  // Move time forward by another minute. This should expire the other session.
+  task_environment_.FastForwardBy(base::Minutes(1));
+
+  // Now both sessions should be gone.
+  for (const auto& token : tokens) {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+  }
+}
+
+TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
+  // Create and authenticate a session.
+  base::UnguessableToken token;
+  {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                AuthIntent::kDecrypt);
+    ASSERT_THAT(auth_session_status, IsOk());
+    AuthSession* auth_session = auth_session_status.value().Get();
+    ASSERT_THAT(auth_session, NotNull());
+    token = auth_session->token();
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(
+        auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  }
   {
     InUseAuthSession in_use_auth_session =
         auth_session_manager_.FindAuthSession(token);
-    ASSERT_TRUE(in_use_auth_session.AuthSessionStatus().ok());
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
   }
 
-  // This should expire the session.
-  task_environment_.FastForwardUntilNoTasksRemain();
+  // Have the device power off for 30 seconds
+  constexpr auto time_passed = base::Seconds(30);
+  test_power_monitor_.Suspend();
+  task_environment_.SuspendedFastForwardBy(time_passed);
+  test_power_monitor_.Resume();
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()),
+                      Le(AuthSessionManager::kAuthTimeout - time_passed)));
+  }
+
+  // Advance the clock the rest of the way.
+  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout -
+                                  time_passed);
 
   // After expiration the session should be gone.
   {
     InUseAuthSession in_use_auth_session =
         auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 }
 
@@ -184,16 +324,14 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
   // Start scope for first InUseAuthSession
   {
     auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{
-            .username = kUsername,
-            .is_ephemeral_user = false,
-            .intent = AuthIntent::kDecrypt,
-            .timeout_timer = std::make_unique<base::WallClockTimer>(),
-            .auth_factor_status_update_timer =
-                std::make_unique<base::WallClockTimer>(),
-            .user_exists = false,
-            .auth_factor_map = AuthFactorMap(),
-            .migrate_to_user_secret_stash = false},
+        AuthSession::Params{.username = kUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap(),
+                            .migrate_to_user_secret_stash = false},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -222,16 +360,14 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
   std::string serialized_token;
   {
     auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{
-            .username = kUsername,
-            .is_ephemeral_user = false,
-            .intent = AuthIntent::kDecrypt,
-            .timeout_timer = std::make_unique<base::WallClockTimer>(),
-            .auth_factor_status_update_timer =
-                std::make_unique<base::WallClockTimer>(),
-            .user_exists = false,
-            .auth_factor_map = AuthFactorMap(),
-            .migrate_to_user_secret_stash = false},
+        AuthSession::Params{.username = kUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap(),
+                            .migrate_to_user_secret_stash = false},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -303,16 +439,14 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   // Start scope for first InUseAuthSession
   {
     auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{
-            .username = kUsername,
-            .is_ephemeral_user = false,
-            .intent = AuthIntent::kDecrypt,
-            .timeout_timer = std::make_unique<base::WallClockTimer>(),
-            .auth_factor_status_update_timer =
-                std::make_unique<base::WallClockTimer>(),
-            .user_exists = false,
-            .auth_factor_map = AuthFactorMap(),
-            .migrate_to_user_secret_stash = false},
+        AuthSession::Params{.username = kUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap(),
+                            .migrate_to_user_secret_stash = false},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -341,16 +475,14 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   std::string serialized_token;
   {
     auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{
-            .username = kUsername,
-            .is_ephemeral_user = false,
-            .intent = AuthIntent::kDecrypt,
-            .timeout_timer = std::make_unique<base::WallClockTimer>(),
-            .auth_factor_status_update_timer =
-                std::make_unique<base::WallClockTimer>(),
-            .user_exists = false,
-            .auth_factor_map = AuthFactorMap(),
-            .migrate_to_user_secret_stash = false},
+        AuthSession::Params{.username = kUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap(),
+                            .migrate_to_user_secret_stash = false},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -370,4 +502,5 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
 }
 
+}  // namespace
 }  // namespace cryptohome

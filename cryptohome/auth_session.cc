@@ -30,6 +30,7 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -105,8 +106,6 @@ constexpr int kHighTokenOffset = 0;
 constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 // Upper limit of the Size of user specified name.
 constexpr int kUserSpecifiedNameSizeLimit = 256;
-// AuthSession will time out if it is active after this time interval.
-constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 // This is the frequency with which a signal is sent for a locked out user,
@@ -371,7 +370,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
       .username = std::move(account_id),
       .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
       .intent = intent,
-      .timeout_timer = std::make_unique<base::WallClockTimer>(),
       .auth_factor_status_update_timer =
           std::make_unique<base::WallClockTimer>(),
       .user_exists = user_exists,
@@ -385,11 +383,9 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       obfuscated_username_(SanitizeUserName(username_)),
       is_ephemeral_user_(*params.is_ephemeral_user),
       auth_intent_(*params.intent),
-      timeout_timer_(std::move(params.timeout_timer)),
       auth_factor_status_update_timer_(
           std::move(params.auth_factor_status_update_timer)),
       auth_session_creation_time_(base::TimeTicks::Now()),
-      on_timeout_(base::DoNothing()),
       crypto_(backing_apis.crypto),
       platform_(backing_apis.platform),
       user_session_map_(backing_apis.user_session_map),
@@ -411,7 +407,6 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_map_(std::move(params.auth_factor_map)),
       migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
   CHECK(!serialized_token_.empty());
-  CHECK(timeout_timer_);
   CHECK(auth_factor_status_update_timer_);
   CHECK(crypto_);
   CHECK(platform_);
@@ -463,7 +458,13 @@ void AuthSession::SetAuthorizedForIntents(
   }
   LOG(INFO) << "AuthSession: authorized for "
             << IntentSetToDebugString(authorized_intents_) << ".";
-  SetTimeoutTimer(kAuthSessionTimeout);
+
+  // Trigger all of the on-auth callbacks.
+  std::vector<base::OnceClosure> callbacks;
+  std::swap(callbacks, on_auth_);
+  for (base::OnceClosure& callback : callbacks) {
+    std::move(callback).Run();
+  }
 }
 
 void AuthSession::SetAuthorizedForFullAuthIntents(
@@ -481,18 +482,7 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
   SetAuthorizedForIntents(authorized_for);
 }
 
-void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
-  DCHECK_GT(delay, base::Minutes(0));
-  timeout_timer_->Start(FROM_HERE, base::Time::Now() + delay,
-                        base::BindOnce(&AuthSession::AuthSessionTimedOut,
-                                       base::Unretained(this)));
-}
-
 void AuthSession::SendAuthFactorStatusUpdateSignal() {
-  // Stop sending updates after the session is timed out.
-  if (timed_out_) {
-    return;
-  }
   // If the auth factor status update callback is not set (testing purposes),
   // then we won't need to send a signal.
   if (!auth_factor_status_update_callback_) {
@@ -541,24 +531,6 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
                          base::Unretained(this)));
     }
   }
-}
-
-CryptohomeStatus AuthSession::ExtendTimeoutTimer(
-    const base::TimeDelta extension_duration) {
-  // Check to make sure that the AuthSession hasn't already been timed out.
-  if (timed_out_) {
-    // AuthSession timed out before timeout_timer_.Stop() could be called.
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
-                        PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  }
-
-  // Calculate time remaining and add extension_duration to it.
-  auto extended_delay = GetRemainingTime() + extension_duration;
-  SetTimeoutTimer(extended_delay);
-  return OkStatus<CryptohomeError>();
 }
 
 CryptohomeStatus AuthSession::OnUserCreated() {
@@ -3670,21 +3642,6 @@ void AuthSession::ResetRateLimiterCredentials(
   }
 }
 
-base::TimeDelta AuthSession::GetRemainingTime() const {
-  // If the session is already timed out, return zero (no remaining time).
-  if (timed_out_) {
-    return base::TimeDelta();
-  }
-  // Otherwise, if the timer isn't running yet, return infinity.
-  if (!timeout_timer_->IsRunning()) {
-    return base::TimeDelta::Max();
-  }
-  // Finally, if we get here the timer is still running. Return however much
-  // time is remaining before it fires, clamped to zero.
-  auto time_left = timeout_timer_->desired_run_time() - base::Time::Now();
-  return time_left.is_negative() ? base::TimeDelta() : time_left;
-}
-
 std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
   const FileSystemKeyset& fs_keyset = file_system_keyset();
   const std::string message(kHibernateSecretHmacMessage);
@@ -3694,26 +3651,19 @@ std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
       brillo::Blob(message.cbegin(), message.cend())));
 }
 
-void AuthSession::SetOnTimeoutCallback(
-    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout) {
-  on_timeout_ = std::move(on_timeout);
-  // If the session is already timed out, trigger the callback immediately.
-  if (timed_out_) {
-    std::move(on_timeout_).Run(token_);
+void AuthSession::AddOnAuthCallback(base::OnceClosure on_auth) {
+  // If the session is not authorized, add it to the list of callbacks.
+  // Otherwise, just call the callback immediately.
+  if (authorized_intents_.empty()) {
+    on_auth_.push_back(std::move(on_auth));
+  } else {
+    std::move(on_auth).Run();
   }
 }
 
 void AuthSession::SetAuthFactorStatusUpdateCallback(
     const AuthFactorStatusUpdateCallback& callback) {
   auth_factor_status_update_callback_ = callback;
-}
-
-void AuthSession::AuthSessionTimedOut() {
-  LOG(INFO) << "AuthSession: timed out.";
-  authorized_intents_.clear();
-  timed_out_ = true;
-  // After this callback, it's possible that |this| has been deleted.
-  std::move(on_timeout_).Run(token_);
 }
 
 CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {

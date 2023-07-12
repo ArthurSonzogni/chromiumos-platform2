@@ -146,11 +146,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         std::make_unique<MockLECredentialManager>());
     crypto_.Init();
 
-    auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &platform_, &user_session_map_, &keyset_management_,
-        &auth_block_utility_, &auth_factor_driver_manager_,
-        &auth_factor_manager_, &user_secret_stash_storage_,
-        &user_metadata_reader_, &features_.async);
+    auth_session_manager_ =
+        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+            &crypto_, &platform_, &user_session_map_, &keyset_management_,
+            &auth_block_utility_, &auth_factor_driver_manager_,
+            &auth_factor_manager_, &user_secret_stash_storage_,
+            &user_metadata_reader_, &features_.async});
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -329,7 +330,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         .username = users_[0].username,
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
-        .timeout_timer = std::make_unique<base::WallClockTimer>(),
         .auth_factor_status_update_timer =
             std::make_unique<base::WallClockTimer>(),
         .user_exists = true,
@@ -349,7 +349,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         .username = users_[0].username,
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
-        .timeout_timer = std::make_unique<base::WallClockTimer>(),
         .auth_factor_status_update_timer =
             std::make_unique<base::WallClockTimer>(),
         .user_exists = true,
@@ -1207,11 +1206,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
-  auto auth_session_manager_mock = std::make_unique<AuthSessionManager>(
-      &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &mock_auth_block_utility_, &auth_factor_driver_manager_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      &user_metadata_reader_, &features_.async);
+  auto auth_session_manager_mock =
+      std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+          &crypto_, &platform_, &user_session_map_, &keyset_management_,
+          &mock_auth_block_utility_, &auth_factor_driver_manager_,
+          &auth_factor_manager_, &user_secret_stash_storage_,
+          &user_metadata_reader_, &features_.async});
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
                                                    AuthIntent::kDecrypt);

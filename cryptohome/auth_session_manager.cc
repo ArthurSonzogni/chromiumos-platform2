@@ -11,73 +11,47 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/location.h>
 #include <base/notreached.h>
+#include <base/time/default_clock.h>
+#include <base/time/time.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/status.h>
 
-#include "cryptohome/auth_blocks/auth_block_utility.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
-#include "cryptohome/user_session/user_session_map.h"
 
 namespace cryptohome {
 namespace {
 
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 
 }  // namespace
 
-AuthSessionManager::AuthSessionManager(
-    Crypto* crypto,
-    Platform* platform,
-    UserSessionMap* user_session_map,
-    KeysetManagement* keyset_management,
-    AuthBlockUtility* auth_block_utility,
-    AuthFactorDriverManager* auth_factor_driver_manager,
-    AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage,
-    UserMetadataReader* user_metadata_reader,
-    AsyncInitFeatures* features)
-    : crypto_(crypto),
-      platform_(platform),
-      user_session_map_(user_session_map),
-      keyset_management_(keyset_management),
-      auth_block_utility_(auth_block_utility),
-      auth_factor_driver_manager_(auth_factor_driver_manager),
-      auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage),
-      user_metadata_reader_(user_metadata_reader),
-      features_(features) {
-  // Preconditions
-  CHECK(crypto_);
-  CHECK(platform_);
-  CHECK(user_session_map_);
-  CHECK(keyset_management_);
-  CHECK(auth_block_utility_);
-  CHECK(auth_factor_driver_manager_);
-  CHECK(auth_factor_manager_);
-  CHECK(user_secret_stash_storage_);
-  CHECK(user_metadata_reader_);
-  CHECK(features_);
+AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
+    : backing_apis_(backing_apis), clock_(base::DefaultClock::GetInstance()) {
+  CHECK(backing_apis.crypto);
+  CHECK(backing_apis.platform);
+  CHECK(backing_apis.user_session_map);
+  CHECK(backing_apis.keyset_management);
+  CHECK(backing_apis.auth_block_utility);
+  CHECK(backing_apis.auth_factor_driver_manager);
+  CHECK(backing_apis.auth_factor_manager);
+  CHECK(backing_apis.user_secret_stash_storage);
+  CHECK(backing_apis.user_metadata_reader);
+  CHECK(backing_apis.features);
 }
 
 CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
     const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      account_id, flags, auth_intent,
-      {crypto_, platform_, user_session_map_, keyset_management_,
-       auth_block_utility_, auth_factor_driver_manager_, auth_factor_manager_,
-       user_secret_stash_storage_, user_metadata_reader_, features_});
+  std::unique_ptr<AuthSession> auth_session =
+      AuthSession::Create(account_id, flags, auth_intent, backing_apis_);
   return AddAuthSession(std::move(auth_session));
 }
 
@@ -95,15 +69,20 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   InUseAuthSession in_use(*this, /*is_session_active=*/true,
                           std::move(auth_session));
 
-  // Attach the expiration handler to the AuthSession. It's important that we do
-  // this after creating the map entry and in_use object because the callback
-  // may immediately fire. This should NOT immediately delete the AuthSession
-  // object although it may remove the auth_sessions_ entry we just added.
+  // Add an expiration entry for the session set to the end of time.
+  base::Time expiration_time = base::Time::Max();
+  expiration_map_.emplace(expiration_time, token);
+  ResetExpirationTimer();
+
+  // Attach the OnAuth handler to the AuthSession. It's important that we do
+  // this after creating the map entries and in_use object because the callback
+  // may immediately fire.
   //
   // Note that it is safe for use to use |Unretained| here because the manager
   // should always outlive all of the sessions it owns.
-  in_use->SetOnTimeoutCallback(base::BindOnce(
-      &AuthSessionManager::ExpireAuthSession, base::Unretained(this)));
+  in_use->AddOnAuthCallback(
+      base::BindOnce(&AuthSessionManager::SessionOnAuthCallback,
+                     base::Unretained(this), token));
 
   // Set the AuthFactorStatusUpdate signal handler to the auth session.
   if (auth_factor_status_update_callback_) {
@@ -117,15 +96,22 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
 
 void AuthSessionManager::RemoveAllAuthSessions() {
   auth_sessions_.clear();
+  expiration_map_.clear();
 }
 
 bool AuthSessionManager::RemoveAuthSession(
     const base::UnguessableToken& token) {
-  const auto iter = auth_sessions_.find(token);
-  if (iter == auth_sessions_.end())
-    return false;
-  auth_sessions_.erase(iter);
-  return true;
+  // Remove the session from the expiration map. If we don't find an entry we
+  // ignore this and rely on the session map removal step to catch the error.
+  for (auto iter = expiration_map_.begin(); iter != expiration_map_.end();
+       ++iter) {
+    if (iter->second == token) {
+      expiration_map_.erase(iter);
+      break;
+    }
+  }
+  // Remove the session from the session map.
+  return auth_sessions_.erase(token) == 1;
 }
 
 bool AuthSessionManager::RemoveAuthSession(
@@ -137,15 +123,6 @@ bool AuthSessionManager::RemoveAuthSession(
     return false;
   }
   return RemoveAuthSession(token.value());
-}
-
-void AuthSessionManager::ExpireAuthSession(
-    const base::UnguessableToken& token) {
-  if (!RemoveAuthSession(token)) {
-    // All active auth sessions should be tracked by the manager, so report it
-    // if the just-expired session is unknown.
-    NOTREACHED() << "Failed to remove expired AuthSession.";
-  }
 }
 
 InUseAuthSession AuthSessionManager::FindAuthSession(
@@ -178,14 +155,78 @@ InUseAuthSession AuthSessionManager::FindAuthSession(
   }
 }
 
-// Move the unique_ptr back into the AuthSessionManager structure, to mark
-// it as available for other dbus operations.
+void AuthSessionManager::ResetExpirationTimer() {
+  if (expiration_map_.empty()) {
+    expiration_timer_.Stop();
+  } else {
+    expiration_timer_.Start(
+        FROM_HERE, expiration_map_.cbegin()->first,
+        base::BindOnce(&AuthSessionManager::ExpireAuthSessions,
+                       base::Unretained(this)));
+  }
+}
+
+void AuthSessionManager::SessionOnAuthCallback(
+    const base::UnguessableToken& token) {
+  // Find the existing expiration time of the session.
+  auto iter = expiration_map_.begin();
+  while (iter != expiration_map_.end() && iter->second != token) {
+    ++iter;
+  }
+  // If we couldn't find a session something really went wrong, but there's not
+  // much we can do about it.
+  if (iter == expiration_map_.end()) {
+    LOG(ERROR) << "AuthSessionManager received an OnAuth event for a session "
+                  "which it is not managing";
+    return;
+  }
+  // Remove the existing expiration entry and add a new one that triggers
+  // starting now.
+  base::Time new_time = clock_->Now() + kAuthTimeout;
+  expiration_map_.erase(iter);
+  expiration_map_.emplace(new_time, token);
+  ResetExpirationTimer();
+}
+
+void AuthSessionManager::ExpireAuthSessions() {
+  base::Time now = clock_->Now();
+  // Go through the map, removing all of the sessions until we find one with an
+  // expiration time after now (or reach the end).
+  //
+  // This will always remove the first element of the map even if its expiration
+  // time is later than now. This is because it's possible for the timer to be
+  // triggered slightly early and we don't want this callback to turn into a
+  // busy-wait where it runs over and over as a no-op.
+  auto iter = expiration_map_.begin();
+  bool first_entry = true;
+  while (iter != expiration_map_.end() && (first_entry || iter->first <= now)) {
+    if (auth_sessions_.erase(iter->second) == 0) {
+      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+    }
+    ++iter;
+    first_entry = false;
+  }
+  // Erase all of the entries from the map that were just removed.
+  iter = expiration_map_.erase(expiration_map_.begin(), iter);
+  // Reset the expiration timer to run again based on what's left in the map.
+  ResetExpirationTimer();
+}
+
 void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
+  // If the session token still exists in the session map then return ownership
+  // of the session back to the manager.
   auto it = auth_sessions_.find(session->token());
   if (it == auth_sessions_.end()) {
+    // If it doesn't exist then that means the session has been removed and so
+    // just return and allow the object to be destroyed.
     return;
   }
   it->second = std::move(session);
+}
+
+void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
+    const AuthFactorStatusUpdateCallback& callback) {
+  auth_factor_status_update_callback_ = callback;
 }
 
 InUseAuthSession::InUseAuthSession()
@@ -216,7 +257,7 @@ InUseAuthSession::~InUseAuthSession() {
   }
 }
 
-CryptohomeStatus InUseAuthSession::AuthSessionStatus() {
+CryptohomeStatus InUseAuthSession::AuthSessionStatus() const {
   if (!session_) {
     // InUseAuthSession wasn't made with a valid AuthSession unique_ptr
     if (is_session_active_) {
@@ -239,13 +280,53 @@ CryptohomeStatus InUseAuthSession::AuthSessionStatus() {
   }
 }
 
-AuthSession* InUseAuthSession::Get() {
-  return session_.get();
+base::TimeDelta InUseAuthSession::GetRemainingTime() const {
+  // Find the expiration time of the session. If it doesn't have one then its
+  // expiration is pending the object no longer being in use, which we report as
+  // zero remaining time.
+  std::optional<base::Time> expiration_time;
+  for (const auto& [time, token] : manager_->expiration_map_) {
+    if (token == session_->token()) {
+      expiration_time = time;
+      break;
+    }
+  }
+  if (!expiration_time) {
+    return base::TimeDelta();
+  }
+  // If the expiration time is the end of time, then report the max duration.
+  if (expiration_time->is_max()) {
+    return base::TimeDelta::Max();
+  }
+  // Given the (finite) expiration time we now have, compute the remaining time.
+  // If the expiration time is in the past (e.g. because the expiration timer
+  // hasn't fired yet) then we clamp the time to zero.
+  base::TimeDelta time_left = *expiration_time - manager_->clock_->Now();
+  return time_left.is_negative() ? base::TimeDelta() : time_left;
 }
 
-void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
-    const AuthFactorStatusUpdateCallback& callback) {
-  auth_factor_status_update_callback_ = callback;
+CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
+  // Find the existing expiration time of the session. If it doesn't have one
+  // then the session has already been expired pending the session no longer
+  // being in use. This cannot be reverted and so the extend fails.
+  auto iter = manager_->expiration_map_.begin();
+  while (iter != manager_->expiration_map_.end() &&
+         iter->second != session_->token()) {
+    ++iter;
+  }
+  if (iter == manager_->expiration_map_.end()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                        PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  }
+  // Remove the existing expiration entry and add a new one with the new time.
+  base::Time new_time = iter->first + extension;
+  manager_->expiration_map_.erase(iter);
+  manager_->expiration_map_.emplace(new_time, session_->token());
+  manager_->ResetExpirationTimer();
+  return OkStatus<CryptohomeError>();
 }
 
 }  // namespace cryptohome

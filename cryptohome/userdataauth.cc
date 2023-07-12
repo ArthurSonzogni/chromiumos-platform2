@@ -300,11 +300,10 @@ void GroupDmcryptDeviceMounts(
 }
 
 void ReplyWithAuthenticationResult(
-    const AuthSession* auth_session,
+    InUseAuthSession auth_session,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
     CryptohomeStatus status) {
-  CHECK(auth_session);
   CHECK(!on_done.is_null());
   user_data_auth::AuthenticateAuthFactorReply reply;
   for (AuthIntent auth_intent : auth_session->authorized_intents()) {
@@ -312,7 +311,7 @@ void ReplyWithAuthenticationResult(
   }
 
   if (auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
-    reply.set_seconds_left(auth_session->GetRemainingTime().InSeconds());
+    reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
   }
 
   ReplyWithError(std::move(on_done), std::move(reply), status);
@@ -526,11 +525,12 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   if (!auth_session_manager_) {
-    default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        crypto_, platform_, sessions_, keyset_management_, auth_block_utility_,
-        auth_factor_driver_manager_, auth_factor_manager_,
-        user_secret_stash_storage_, user_metadata_reader_.get(),
-        &async_init_features_);
+    default_auth_session_manager_ =
+        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+            crypto_, platform_, sessions_, keyset_management_,
+            auth_block_utility_, auth_factor_driver_manager_,
+            auth_factor_manager_, user_secret_stash_storage_,
+            user_metadata_reader_.get(), &async_init_features_});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -2372,11 +2372,11 @@ void UserDataAuth::ExtendAuthSession(
                        .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
-  AuthSession* auth_session = auth_session_status.value().Get();
+  InUseAuthSession& auth_session = *auth_session_status;
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());
-  CryptohomeStatus ret = auth_session->ExtendTimeoutTimer(timer_extension);
+  CryptohomeStatus ret = auth_session.ExtendTimeout(timer_extension);
 
   CryptohomeStatus err = OkStatus<CryptohomeError>();
   if (!ret.ok()) {
@@ -2387,7 +2387,7 @@ void UserDataAuth::ExtendAuthSession(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession))
             .Wrap(std::move(ret));
   }
-  reply.set_seconds_left(auth_session->GetRemainingTime().InSeconds());
+  reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
   ReplyWithError(std::move(on_done), reply, std::move(err));
 }
 
@@ -2972,9 +2972,11 @@ void UserDataAuth::AuthenticateAuthFactor(
       auth_factor_labels.push_back(label);
     }
   }
-  auth_session->AuthenticateAuthFactor(
+
+  AuthSession* auth_session_ptr = auth_session.Get();
+  auth_session_ptr->AuthenticateAuthFactor(
       auth_factor_labels, request.auth_input(),
-      base::BindOnce(&ReplyWithAuthenticationResult, auth_session.Get(),
+      base::BindOnce(&ReplyWithAuthenticationResult, std::move(auth_session),
                      std::move(on_done)));
 }
 
@@ -3417,17 +3419,16 @@ void UserDataAuth::GetAuthSessionStatus(
     LOG(ERROR) << "GetAuthSessionStatus: AuthSession not found.";
     return;
   }
-  GetAuthSessionStatusImpl(auth_session.Get(), reply);
+  GetAuthSessionStatusImpl(auth_session, reply);
 }
 
 void UserDataAuth::GetAuthSessionStatusImpl(
-    AuthSession* auth_session,
+    InUseAuthSession& auth_session,
     user_data_auth::GetAuthSessionStatusReply& reply) {
-  CHECK(auth_session);
   // Default is invalid unless there is evidence otherwise.
   reply.set_status(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION);
 
-  base::TimeDelta remaining_time = auth_session->GetRemainingTime();
+  base::TimeDelta remaining_time = auth_session.GetRemainingTime();
   if (remaining_time.is_max()) {
     reply.set_status(
         user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED);

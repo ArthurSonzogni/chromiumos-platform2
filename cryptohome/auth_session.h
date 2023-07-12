@@ -11,9 +11,12 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 #include <base/containers/span.h>
+#include <base/functional/callback_forward.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/wall_clock_timer.h>
 #include <base/unguessable_token.h>
@@ -67,6 +70,7 @@ constexpr AuthIntent kAuthorizedIntentsForFullAuth[] = {
 class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
+
   // Parameter struct used to specify all the base parameters of AuthSession.
   // These parameters do not include the underlying interfaces that AuthSession
   // depends on, which are defined below in a separate parameter struct.
@@ -74,7 +78,6 @@ class AuthSession final {
     hwsec::ExplicitInit<Username> username;
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
-    std::unique_ptr<base::WallClockTimer> timeout_timer;
     std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer;
     hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
@@ -274,20 +277,12 @@ class AuthSession final {
   static std::optional<base::UnguessableToken> GetTokenFromSerializedString(
       const std::string& serialized_token);
 
-  // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.
-  CryptohomeStatus ExtendTimeoutTimer(
-      const base::TimeDelta kAuthSessionExtension);
-
-  // Get the time remaining for this AuthSession's life.
-  base::TimeDelta GetRemainingTime() const;
-
   // Get the hibernate secret, derived from the file system keyset.
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
 
-  // Sets a callback to call when the AuthSession is timed out. Note that this
-  // may trigger immediately if the session is already timed out.
-  void SetOnTimeoutCallback(
-      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout);
+  // Add a callback to call when the AuthSession is authenticated. This callback
+  // is triggered immediately if the session is already authenticated.
+  void AddOnAuthCallback(base::OnceClosure on_auth);
 
   // Send the auth factor status update signal and also set the timer for the
   // next signal based on |kAuthFactorStatusUpdateDelay|.
@@ -298,12 +293,6 @@ class AuthSession final {
       const AuthFactorStatusUpdateCallback& callback);
 
  private:
-  // AuthSessionTimedOut is called when the session times out and cleans up
-  // credentials that may be in memory. Be aware that this may destroy the
-  // AuthSession object if the owner of the object is using a callback to clean
-  // up the objects when they time out.
-  void AuthSessionTimedOut();
-
   // Emits a debug log message with this Auth Session's initial state.
   void RecordAuthSessionStart() const;
 
@@ -364,9 +353,6 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthInput& auth_input);
-
-  // Set the timeout timer to now + delay
-  void SetTimeoutTimer(const base::TimeDelta& delay);
 
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
@@ -695,16 +681,14 @@ class AuthSession final {
   // The intents which this session is currently authorized for.
   base::flat_set<AuthIntent> authorized_intents_;
 
-  // The wall clock timer object for recording AuthSession lifetime.
-  std::unique_ptr<base::WallClockTimer> timeout_timer_;
   // The wall clock timer object to send AuthFactor status update periodically.
   std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer_;
-  // Boolean that indicates if this session was timed out.
-  bool timed_out_ = false;
 
   base::TimeTicks auth_session_creation_time_;
   base::TimeTicks authenticated_time_;
-  base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
+
+  // Callbacks to be triggered when authentication occurs.
+  std::vector<base::OnceClosure> on_auth_;
   // The repeating callback to send AuthFactorStatusUpdateSignal.
   AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 

@@ -787,7 +787,7 @@ class UserDataAuth {
   void InitForChallengeResponseAuth();
 
   void GetAuthSessionStatusImpl(
-      AuthSession* auth_session,
+      InUseAuthSession& auth_session,
       user_data_auth::GetAuthSessionStatusReply& reply);
 
   // ================ Fingerprint Auth Related Methods ==================
