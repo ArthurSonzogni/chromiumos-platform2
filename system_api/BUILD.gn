@@ -98,6 +98,7 @@ install_config("install_headers") {
     "constants",
     "dbus",
     "mojo",
+    "non_standard_ipc",
     "switches",
   ]
   install_path = "/usr/include/chromeos"
