@@ -475,6 +475,10 @@ Properties	string Address [readonly]
 			applied. This property is unset if the cellular device is
 			disconnected.
 
+			The value of this property never changes from a non-empty
+			string to another different non-empty string. Changes in this
+			property always happen to or from an empty string.
+
 			This is a temporary property to be used until shill and
 			patchpanel interact with each other to automatically notify
 			the existing networks.
