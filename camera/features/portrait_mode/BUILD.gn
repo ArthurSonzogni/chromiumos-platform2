@@ -17,7 +17,6 @@ source_set("portrait_mode") {
     "//camera/features/portrait_mode/gpu_algo_manager.cc",
     "//camera/features/portrait_mode/portrait_mode_effect.cc",
     "//camera/features/portrait_mode/portrait_mode_stream_manipulator.cc",
-    "//camera/features/portrait_mode/portrait_mode_stream_manipulator_legacy.cc",
   ]
   public_configs = [ ":target_defaults" ]
 
