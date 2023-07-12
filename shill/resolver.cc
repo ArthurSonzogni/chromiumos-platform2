@@ -11,11 +11,10 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <net-base/ip_address.h>
 
 #include "shill/dns_util.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
-#include "shill/net/ip_address.h"
 
 namespace shill {
 
@@ -60,7 +59,7 @@ bool Resolver::Emit() {
 
   std::vector<std::string> lines;
   for (const auto& server : name_servers) {
-    const auto addr = IPAddress::CreateFromString(server);
+    const auto addr = net_base::IPAddress::CreateFromString(server);
     if (!addr.has_value()) {
       LOG(WARNING) << "Malformed nameserver IP: " << server;
       continue;
