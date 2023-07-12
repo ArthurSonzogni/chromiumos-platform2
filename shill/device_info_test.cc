@@ -40,7 +40,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
@@ -166,10 +165,6 @@ class DeviceInfoTest : public Test {
       RTNLMessage::Mode mode,
       const std::string& interface_name,
       int interface_index = kTestDeviceIndex);
-  std::unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
-                                                   const IPAddress& address,
-                                                   unsigned char flags,
-                                                   unsigned char scope);
   void SendMessageToDeviceInfo(const RTNLMessage& message);
 
   void CreateWiFiDevice();
@@ -195,9 +190,8 @@ std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     RTNLMessage::Mode mode,
     const std::string& interface_name,
     int interface_index) {
-  auto message =
-      std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0, 0, 0,
-                                    interface_index, IPAddress::kFamilyIPv4);
+  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0,
+                                               0, 0, interface_index, AF_INET);
   message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                         ByteString(interface_name, true));
   ByteString test_address(kTestMacAddress, sizeof(kTestMacAddress));
@@ -1399,9 +1393,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
   void AddDeviceWithNoIFLAAddress(Technology delayed_technology) {
-    auto message = std::make_unique<RTNLMessage>(
-        RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
-        kTestDeviceIndex, IPAddress::kFamilyIPv4);
+    auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
+                                                 RTNLMessage::kModeAdd, 0, 0, 0,
+                                                 kTestDeviceIndex, AF_INET);
     message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                           ByteString(std::string(kTestDeviceName),
                                      /*copy_terminator=*/true));
