@@ -54,7 +54,7 @@ There are two major types of boards that this code handles.
 framebuffer is converted every frame to ARGB format using EGL call. This only
 depends on getfb2 ioctl being available (kernel 4.4 or later).
 
-Development was done typically with samus.
+The last known device with this configuration is hana.
 
 #### getfb2-capable and atomic_modeset capable
 

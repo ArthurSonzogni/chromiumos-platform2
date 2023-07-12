@@ -93,6 +93,7 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
       continue;
 
     // Set CAP_ATOMIC so we can query all planes and plane properties.
+    // TODO(b/290543296): Revisit if we still need this check after Hana EOL.
     bool atomic_modeset =
         drmSetClientCap(file.GetPlatformFile(), DRM_CLIENT_CAP_ATOMIC, 1) == 0;
 
