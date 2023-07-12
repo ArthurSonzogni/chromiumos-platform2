@@ -23,8 +23,8 @@
 #include "shill/metrics.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/l2tp_connection.h"
-#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

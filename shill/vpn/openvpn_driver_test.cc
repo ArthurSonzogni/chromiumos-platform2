@@ -38,8 +38,8 @@
 #include "shill/vpn/mock_openvpn_management_server.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
-#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_types.h"
 
 using testing::_;
 using testing::DoAll;

@@ -32,7 +32,7 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_service.h"

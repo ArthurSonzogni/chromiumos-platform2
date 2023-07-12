@@ -31,8 +31,8 @@
 #include "shill/rpc_task.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/openvpn_management_server.h"
-#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -22,25 +23,10 @@ class Error;
 class KeyValueStore;
 class Manager;
 
-enum class VPNType {
-  kARC,
-  kIKEv2,
-  kL2TPIPsec,
-  kOpenVPN,
-  kThirdParty,  // Chrome VpnProvider Apps
-  kWireGuard,
-};
-
 class VPNProvider : public ProviderInterface {
  public:
   // Interface name of the ARC bridge.
   static constexpr base::StringPiece kArcBridgeIfName = "arcbr0";
-
-  // Maps the VPN type between strings and enums. Note that the strings are
-  // mainly used in D-Bus interface and profile storage, and we a different set
-  // of strings in metrics.
-  static std::optional<VPNType> VPNTypeStringToEnum(base::StringPiece type);
-  static std::string VPNTypeEnumToString(VPNType type);
 
   explicit VPNProvider(Manager* manager);
   VPNProvider(const VPNProvider&) = delete;

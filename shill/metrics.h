@@ -25,7 +25,7 @@
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 #include "shill/wifi/wifi_security.h"
 
 namespace shill {

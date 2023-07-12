@@ -23,7 +23,7 @@
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/vpn_connection_under_test.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

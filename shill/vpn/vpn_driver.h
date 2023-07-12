@@ -18,7 +18,7 @@
 #include "shill/mockable.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

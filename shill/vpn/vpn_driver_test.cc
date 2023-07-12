@@ -5,6 +5,8 @@
 #include "shill/vpn/vpn_driver.h"
 
 #include <iterator>
+#include <memory>
+#include <string>
 #include <vector>
 
 #include <base/strings/string_number_conversions.h>
@@ -20,6 +22,7 @@
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/vpn_types.h"
 
 using testing::_;
 using testing::NiceMock;

@@ -25,6 +25,8 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 using testing::_;
 using testing::ByMove;

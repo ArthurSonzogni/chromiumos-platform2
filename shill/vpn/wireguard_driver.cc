@@ -35,7 +35,7 @@
 #include "shill/net/process_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {

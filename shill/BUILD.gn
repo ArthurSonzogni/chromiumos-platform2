@@ -378,6 +378,7 @@ static_library("libshill") {
     "vpn/vpn_driver.cc",
     "vpn/vpn_provider.cc",
     "vpn/vpn_service.cc",
+    "vpn/vpn_types.cc",
     "wifi/hotspot_device.cc",
     "wifi/hotspot_service.cc",
     "wifi/local_device.cc",

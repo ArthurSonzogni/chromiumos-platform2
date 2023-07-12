@@ -29,7 +29,7 @@
 #include "shill/mock_service.h"
 #include "shill/net/ieee80211.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 #include "shill/wifi/mock_wifi_service.h"
 
 using testing::_;

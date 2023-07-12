@@ -9,11 +9,11 @@
 #include <memory>
 #include <utility>
 
-#include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -28,6 +28,7 @@
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_types.h"
 #include "shill/vpn/wireguard_driver.h"
 
 namespace shill {
@@ -111,45 +112,6 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 }
 
 }  // namespace
-
-// static
-std::optional<VPNType> VPNProvider::VPNTypeStringToEnum(
-    base::StringPiece type) {
-  static constexpr auto dict =
-      base::MakeFixedFlatMap<base::StringPiece, VPNType>({
-          {kProviderArcVpn, VPNType::kARC},
-          {kProviderIKEv2, VPNType::kIKEv2},
-          {kProviderL2tpIpsec, VPNType::kL2TPIPsec},
-          {kProviderOpenVpn, VPNType::kOpenVPN},
-          {kProviderThirdPartyVpn, VPNType::kThirdParty},
-          {kProviderWireGuard, VPNType::kWireGuard},
-      });
-  const auto it = dict.find(type);
-  if (it == dict.end()) {
-    return std::nullopt;
-  }
-  return it->second;
-}
-
-// static
-std::string VPNProvider::VPNTypeEnumToString(VPNType type) {
-  switch (type) {
-    case VPNType::kARC:
-      return kProviderArcVpn;
-    case VPNType::kIKEv2:
-      return kProviderIKEv2;
-    case VPNType::kL2TPIPsec:
-      return kProviderL2tpIpsec;
-    case VPNType::kOpenVPN:
-      return kProviderOpenVpn;
-    case VPNType::kThirdParty:
-      return kProviderThirdPartyVpn;
-    case VPNType::kWireGuard:
-      return kProviderWireGuard;
-  }
-  NOTREACHED();
-  return "";
-}
 
 VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
 

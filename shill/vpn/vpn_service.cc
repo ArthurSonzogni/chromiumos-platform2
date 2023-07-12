@@ -27,6 +27,7 @@
 #include "shill/technology.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 
@@ -87,8 +88,8 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
       driver_(std::move(driver)),
       last_default_physical_service_online_(manager->IsOnline()) {
   if (driver_) {
-    log_name_ = "vpn_" + VPNProvider::VPNTypeEnumToString(driver_->vpn_type()) +
-                "_" + base::NumberToString(serial_number());
+    log_name_ = "vpn_" + VPNTypeEnumToString(driver_->vpn_type()) + "_" +
+                base::NumberToString(serial_number());
   } else {
     // |driver| may be null in tests.
     log_name_ = "vpn_" + base::NumberToString(serial_number());

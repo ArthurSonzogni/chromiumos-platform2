@@ -52,6 +52,7 @@
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/vpn_provider.h"
 
 using testing::_;
 using testing::AnyNumber;

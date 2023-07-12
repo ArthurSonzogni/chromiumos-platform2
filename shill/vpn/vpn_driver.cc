@@ -20,7 +20,7 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

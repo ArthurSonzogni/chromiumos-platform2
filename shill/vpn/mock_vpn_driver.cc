@@ -4,7 +4,7 @@
 
 #include "shill/vpn/mock_vpn_driver.h"
 
-#include "shill/vpn/vpn_provider.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 

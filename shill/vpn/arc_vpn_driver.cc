@@ -20,6 +20,7 @@
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_types.h"
 
 namespace shill {
 
