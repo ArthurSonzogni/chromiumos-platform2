@@ -227,7 +227,7 @@ class KinitContext {
     }
 
     ret = krb5_parse_name_flags(ctx.get(), options_.principal_name.c_str(),
-                                0 /* flags */, &k5_.me);
+                                /*flags=*/0, &k5_.me);
     if (ret) {
       LOG(ERROR) << ctx.GetErrorMessage(ret) << " when parsing name";
       return TranslateErrorCode(ret);
@@ -257,14 +257,16 @@ class KinitContext {
 
     ret = krb5_get_init_creds_opt_alloc(ctx.get(), &d.options);
     if (ret) {
-      LOG(ERROR) << ctx.GetErrorMessage(ret) << " while getting options";
+      LOG(ERROR) << ctx.GetErrorMessage(ret)
+                 << " while allocating credential options";
       return TranslateErrorCode(ret);
     }
 
     ret = krb5_get_init_creds_opt_set_out_ccache(ctx.get(), d.options,
                                                  out_cc.get());
     if (ret) {
-      LOG(ERROR) << ctx.GetErrorMessage(ret) << " while getting options";
+      LOG(ERROR) << ctx.GetErrorMessage(ret)
+                 << " while setting credential cache with initial options";
       return TranslateErrorCode(ret);
     }
 
@@ -286,7 +288,8 @@ class KinitContext {
     }
 
     if (ret) {
-      LOG(ERROR) << ctx.GetErrorMessage(ret);
+      LOG(ERROR) << ctx.GetErrorMessage(ret)
+                 << " when acquiring or renewing the TGT";
       return TranslateErrorCode(ret);
     }
 
