@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use ctor::ctor;
-use libchromeos::syslog;
+use log::debug;
 
 pub mod common;
 
@@ -18,12 +18,7 @@ pub mod common;
 
 #[ctor]
 fn global_init() {
-    // One-time initializer for tests
-    if let Err(e) = syslog::init_with_level(
-        "shadercached_test".to_string(),
-        true,
-        syslog::LevelFilter::Debug,
-    ) {
-        panic!("Failed to initialize syslog: {}", e);
+    if stderrlog::new().verbosity(log::Level::Debug).init().is_ok() {
+        debug!("Successfully initialized stderr logger for testing");
     }
 }
