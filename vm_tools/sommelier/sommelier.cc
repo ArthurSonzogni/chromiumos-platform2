@@ -191,7 +191,7 @@ static void sl_adjust_window_position_for_screen_size(
 
   const sl_host_output* output =
       window->paired_surface ? window->paired_surface->output.get() : nullptr;
-  if (window->ctx->separate_outputs && output) {
+  if (output) {
     window->x =
         output->virt_x + (output->virt_rotated_width - window->width) / 2;
     window->y =
@@ -3851,8 +3851,6 @@ int real_main(int argc, char** argv) {
       ctx.use_virtgpu_channel = true;
     } else if (strstr(arg, "--noop-driver") == arg) {
       noop_driver = true;
-    } else if (strstr(arg, "--separate-outputs") == arg) {
-      ctx.separate_outputs = true;
     } else if (strstr(arg, "--stable-scaling") == arg) {
       ctx.stable_scaling = true;
 #ifdef PERFETTO_TRACING

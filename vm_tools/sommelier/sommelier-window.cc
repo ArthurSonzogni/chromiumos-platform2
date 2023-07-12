@@ -297,7 +297,7 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
       const sl_host_output* output = window->paired_surface
                                          ? window->paired_surface->output.get()
                                          : nullptr;
-      if (window->ctx->separate_outputs && output) {
+      if (output) {
         window->next_config.values[i++] =
             output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
         window->next_config.values[i++] =

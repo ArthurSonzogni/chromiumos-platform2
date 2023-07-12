@@ -418,11 +418,7 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
                            &host->virt_rotated_height);
 
   // Shift all outputs that are to the right of host to the right if needed.
-  if (host->ctx->separate_outputs) {
-    sl_output_shift_output_x(host, true);
-  } else {
-    host->virt_x = 0;
-  }
+  sl_output_shift_output_x(host, true);
   host->virt_y = 0;
   wl_output_send_geometry(host->resource, host->virt_x, host->virt_y,
                           host->virt_physical_width, host->virt_physical_height,
@@ -459,25 +455,23 @@ static void sl_output_geometry(void* data,
   free(host->make);
   host->make = strdup(make);
   host->transform = transform;
-  if (host->ctx->separate_outputs) {
-    auto pointer = std::find(host->ctx->host_outputs.begin(),
-                             host->ctx->host_outputs.end(), host);
-    assert(pointer != host->ctx->host_outputs.end());
-    // host_outputs is sorted by x. Delete then re-insert at the correct
-    // position.
-    host->ctx->host_outputs.erase(pointer);
-    // Insert at the end by default. If insert_at is not set in the loop,
-    // hosts's x is larger than all the ones in the list currently.
-    auto insert_at = host->ctx->host_outputs.end();
-    for (auto it = host->ctx->host_outputs.begin();
-         it != host->ctx->host_outputs.end(); ++it) {
-      if ((*it)->x > host->x) {
-        insert_at = it;
-        break;
-      }
+  auto pointer = std::find(host->ctx->host_outputs.begin(),
+                           host->ctx->host_outputs.end(), host);
+  assert(pointer != host->ctx->host_outputs.end());
+  // host_outputs is sorted by x. Delete then re-insert at the correct
+  // position.
+  host->ctx->host_outputs.erase(pointer);
+  // Insert at the end by default. If insert_at is not set in the loop,
+  // hosts's x is larger than all the ones in the list currently.
+  auto insert_at = host->ctx->host_outputs.end();
+  for (auto it = host->ctx->host_outputs.begin();
+       it != host->ctx->host_outputs.end(); ++it) {
+    if ((*it)->x > host->x) {
+      insert_at = it;
+      break;
     }
-    host->ctx->host_outputs.insert(insert_at, host);
   }
+  host->ctx->host_outputs.insert(insert_at, host);
 }
 
 static void sl_output_mode(void* data,
@@ -578,10 +572,8 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   host->ctx->host_outputs.erase(pointer);
   free(host->make);
   free(host->model);
-  if (host->ctx->separate_outputs) {
-    // Shift all outputs to the right of the deleted output to the left.
-    sl_output_shift_output_x(host, false);
-  }
+  // Shift all outputs to the right of the deleted output to the left.
+  sl_output_shift_output_x(host, false);
   delete host;
 }
 

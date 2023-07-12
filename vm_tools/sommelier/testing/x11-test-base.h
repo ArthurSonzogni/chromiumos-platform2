@@ -40,7 +40,6 @@ class X11TestBase : public WaylandTestBase {
     ctx.screen->save_unders = 0;
     ctx.screen->root_depth = 24;
     ctx.screen->allowed_depths_len = 0;
-    ctx.separate_outputs = true;
   }
 
   void Connect() override {
