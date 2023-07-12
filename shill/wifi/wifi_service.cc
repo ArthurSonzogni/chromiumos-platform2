@@ -905,25 +905,25 @@ void WiFiService::SendPostReadyStateMetrics(
       static_cast<Metrics::WiFiNetworkPhyMode>(ap_phy),
       Metrics::kWiFiNetworkPhyModeMax);
 
-  Metrics::WirelessSecurity security_uma;
+  MetricsEnums::WirelessSecurity security_uma;
   if (security_.IsValid()) {
-    security_uma = Metrics::WiFiSecurityToEnum(security_);
+    security_uma = WiFiSecurity::ToMetricEnum(security_);
   } else {
     LOG(WARNING) << "Invalid Security property in ready state.";
-    security_uma = Metrics::WiFiSecurityClassToEnum(security_class_);
+    security_uma = WiFiSecurity::ToMetricEnum(security_class_);
   }
-  if (security_uma == Metrics::kWirelessSecurityUnknown) {
+  if (security_uma == MetricsEnums::kWirelessSecurityUnknown) {
     LOG(WARNING) << "Unknown Security property in ready state.";
   }
   // Special case for Dynamic WEP, let's report it separately for the initial
   // phase of FGSec deployment. TODO(b/226138492): Remove this afterwards.
   if (security_ == WiFiSecurity::kWep && Is8021x()) {
-    security_uma = Metrics::kWirelessSecurityWepEnterprise;
+    security_uma = MetricsEnums::kWirelessSecurityWepEnterprise;
   }
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
                                    technology()),
-      security_uma, Metrics::kMetricNetworkSecurityMax);
+      security_uma, MetricsEnums::kWirelessSecurityMax);
 
   if (Is8021x()) {
     eap()->OutputConnectionMetrics(metrics(), technology());
@@ -1063,7 +1063,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   Metrics::WiFiConnectionAttemptInfo info;
   info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
   info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(ap_physical_mode());
-  info.security = Metrics::WiFiSecurityToEnum(security());
+  info.security = WiFiSecurity::ToMetricEnum(security());
   info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
   info.eap_outer = Metrics::EapOuterProtocolStringToEnum(eap()->method());
   info.band = Metrics::WiFiChannelToFrequencyRange(

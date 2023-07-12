@@ -2841,7 +2841,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.ssid, "a");
   EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
-  EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
+  EXPECT_EQ(info.security, MetricsEnums::kWirelessSecurityNone);
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoNoBSSID) {
@@ -2856,7 +2856,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-  EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
+  EXPECT_EQ(info.security, MetricsEnums::kWirelessSecurityNone);
   if ((false)) {
     EXPECT_EQ(info.ap_oui, 0x00012345);
   }
@@ -2910,7 +2910,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     service->AddEndpoint(ep);
 
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-    EXPECT_EQ(Metrics::WiFiSecurityToEnum(WiFiSecurity::kWpa3), info.security);
+    EXPECT_EQ(WiFiSecurity::ToMetricEnum(WiFiSecurity::kWpa3), info.security);
   }
   {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
@@ -2919,7 +2919,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(ep);
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-    EXPECT_EQ(Metrics::WiFiSecurityToEnum(WiFiSecurity::kWpa2), info.security);
+    EXPECT_EQ(WiFiSecurity::ToMetricEnum(WiFiSecurity::kWpa2), info.security);
   }
 }
 

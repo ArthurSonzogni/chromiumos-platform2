@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "shill/metrics_enums.h"
+
 namespace shill {
 
 // This utility class captures the security mode of given
@@ -42,6 +44,11 @@ class WiFiSecurity {
 
   static std::string SecurityClass(Mode m);
   std::string SecurityClass() const { return SecurityClass(mode_); }
+
+  static MetricsEnums::WirelessSecurity ToMetricEnum(
+      const WiFiSecurity& security);
+  static MetricsEnums::WirelessSecurity ToMetricEnum(
+      const std::string& security_class);
 
   bool IsValid() const;
   bool IsWpa() const;

@@ -10,6 +10,8 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include "shill/metrics_enums.h"
+
 namespace shill {
 
 namespace Logging {
@@ -334,6 +336,61 @@ std::string WiFiSecurity::ToString() const {
                          [this](auto& p) { return p.second == mode_; });
   DCHECK(it != std::end(modes_map));
   return it->first;
+}
+
+// static
+MetricsEnums::WirelessSecurity WiFiSecurity::ToMetricEnum(
+    const WiFiSecurity& security) {
+  switch (security.mode()) {
+    case WiFiSecurity::kNone:
+      return MetricsEnums::kWirelessSecurityNone;
+    case WiFiSecurity::kWep:
+      return MetricsEnums::kWirelessSecurityWep;
+    case WiFiSecurity::kWpa:
+      return MetricsEnums::kWirelessSecurityWpa;
+    case WiFiSecurity::kWpaWpa2:
+      return MetricsEnums::kWirelessSecurityWpaWpa2;
+    case WiFiSecurity::kWpaAll:
+      return MetricsEnums::kWirelessSecurityWpaAll;
+    case WiFiSecurity::kWpa2:
+      return MetricsEnums::kWirelessSecurityWpa2;
+    case WiFiSecurity::kWpa2Wpa3:
+      return MetricsEnums::kWirelessSecurityWpa2Wpa3;
+    case WiFiSecurity::kWpa3:
+      return MetricsEnums::kWirelessSecurityWpa3;
+    case WiFiSecurity::kWpaEnterprise:
+      return MetricsEnums::kWirelessSecurityWpaEnterprise;
+    case WiFiSecurity::kWpaWpa2Enterprise:
+      return MetricsEnums::kWirelessSecurityWpaWpa2Enterprise;
+    case WiFiSecurity::kWpaAllEnterprise:
+      return MetricsEnums::kWirelessSecurityWpaAllEnterprise;
+    case WiFiSecurity::kWpa2Enterprise:
+      return MetricsEnums::kWirelessSecurityWpa2Enterprise;
+    case WiFiSecurity::kWpa2Wpa3Enterprise:
+      return MetricsEnums::kWirelessSecurityWpa2Wpa3Enterprise;
+    case WiFiSecurity::kWpa3Enterprise:
+      return MetricsEnums::kWirelessSecurityWpa3Enterprise;
+    default:
+      return MetricsEnums::kWirelessSecurityUnknown;
+  }
+}
+
+// static
+MetricsEnums::WirelessSecurity WiFiSecurity::ToMetricEnum(
+    const std::string& security_class) {
+  if (security_class == kSecurityClassNone) {
+    return MetricsEnums::kWirelessSecurityNone;
+  }
+  if (security_class == kSecurityClassWep) {
+    return MetricsEnums::kWirelessSecurityWep;
+  }
+  if (security_class == kSecurityClassPsk) {
+    return MetricsEnums::kWirelessSecurityPsk;
+  } else if (security_class == kSecurityClass8021x) {
+    return MetricsEnums::kWirelessSecurity8021x;
+  } else {
+    return MetricsEnums::kWirelessSecurityUnknown;
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream, WiFiSecurity::Mode mode) {

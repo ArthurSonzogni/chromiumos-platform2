@@ -280,59 +280,6 @@ Metrics::WiFiFrequencyRange Metrics::WiFiChannelToFrequencyRange(
 }
 
 // static
-Metrics::WirelessSecurity Metrics::WiFiSecurityToEnum(
-    const WiFiSecurity& security) {
-  switch (security.mode()) {
-    case WiFiSecurity::kNone:
-      return kWirelessSecurityNone;
-    case WiFiSecurity::kWep:
-      return kWirelessSecurityWep;
-    case WiFiSecurity::kWpa:
-      return kWirelessSecurityWpa;
-    case WiFiSecurity::kWpaWpa2:
-      return kWirelessSecurityWpaWpa2;
-    case WiFiSecurity::kWpaAll:
-      return kWirelessSecurityWpaAll;
-    case WiFiSecurity::kWpa2:
-      return kWirelessSecurityWpa2;
-    case WiFiSecurity::kWpa2Wpa3:
-      return kWirelessSecurityWpa2Wpa3;
-    case WiFiSecurity::kWpa3:
-      return kWirelessSecurityWpa3;
-    case WiFiSecurity::kWpaEnterprise:
-      return kWirelessSecurityWpaEnterprise;
-    case WiFiSecurity::kWpaWpa2Enterprise:
-      return kWirelessSecurityWpaWpa2Enterprise;
-    case WiFiSecurity::kWpaAllEnterprise:
-      return kWirelessSecurityWpaAllEnterprise;
-    case WiFiSecurity::kWpa2Enterprise:
-      return kWirelessSecurityWpa2Enterprise;
-    case WiFiSecurity::kWpa2Wpa3Enterprise:
-      return kWirelessSecurityWpa2Wpa3Enterprise;
-    case WiFiSecurity::kWpa3Enterprise:
-      return kWirelessSecurityWpa3Enterprise;
-  }
-}
-
-// static
-Metrics::WirelessSecurity Metrics::WiFiSecurityClassToEnum(
-    const std::string& security_class) {
-  if (security_class == kSecurityClassNone) {
-    return kWirelessSecurityNone;
-  }
-  if (security_class == kSecurityClassWep) {
-    return kWirelessSecurityWep;
-  }
-  if (security_class == kSecurityClassPsk) {
-    return kWirelessSecurityPsk;
-  } else if (security_class == kSecurityClass8021x) {
-    return kWirelessSecurity8021x;
-  } else {
-    return kWirelessSecurityUnknown;
-  }
-}
-
-// static
 Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
     const std::string& outer) {
   if (outer == kEapMethodPEAP) {
