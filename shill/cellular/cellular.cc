@@ -3188,22 +3188,8 @@ void Cellular::EntitlementCheck(
     return;
   }
 
-  auto network_addresses = GetPrimaryNetwork()->GetAddresses();
-  if (network_addresses.empty()) {
-    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
-    metrics()->NotifyCellularEntitlementCheckResult(
-        Metrics::kCellularEntitlementCheckNoIp);
-    dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback),
-                       TetheringManager::EntitlementStatus::kNotAllowed));
-    return;
-  }
-
   entitlement_check_callback_ = std::move(callback);
-  // TODO(b/285242955): Use all available addresses instead of only primary one.
-  carrier_entitlement_->Check(network_addresses[0].address(),
-                              GetPrimaryNetwork()->GetDNSServers(),
+  carrier_entitlement_->Check(GetPrimaryNetwork()->GetDNSServers(),
                               GetPrimaryNetwork()->interface_name(),
                               mobile_operator_info_->entitlement_config());
 }

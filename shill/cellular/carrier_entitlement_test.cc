@@ -20,6 +20,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
@@ -49,7 +51,10 @@ using brillo::http::request_type::kPost;
 namespace shill {
 
 namespace {
-constexpr net_base::IPAddress kSrcIp(net_base::IPv4Address(192, 168, 88, 5));
+constexpr net_base::IPAddress kDNS1(net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kDNS2(net_base::IPv4Address(1, 1, 1, 1));
+constexpr net_base::IPAddress kDNS3(net_base::IPv6Address(
+    0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x88));
 constexpr char kImsi[] = "001010000000004";
 constexpr char kInterfaceName[] = "wwan8";
 constexpr char kUrl[] = "testurl.com";
@@ -165,9 +170,10 @@ class CarrierEntitlementTest : public testing::Test {
     EXPECT_EQ(req_data_, expected);
   }
 
-  void ExpectCreateConnection(const char* http_method,
+  void ExpectCreateConnection(const std::vector<std::string>& dns_list,
+                              const char* http_method,
                               const std::string& content) {
-    ExpectSetupBeforeHttpCall(kSrcIp.ToString());
+    ExpectSetupBeforeHttpCall(interface_name_, dns_list);
     EXPECT_CALL(*transport_, CreateConnection(url_, http_method, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
     if (http_method != kGet) {
@@ -181,8 +187,11 @@ class CarrierEntitlementTest : public testing::Test {
     }
   }
 
-  void ExpectSetupBeforeHttpCall(const std::string& ip) {
-    EXPECT_CALL(*transport_, SetLocalIpAddress(ip));
+  void ExpectSetupBeforeHttpCall(const std::string& ifname,
+                                 const std::vector<std::string>& dns_list) {
+    EXPECT_CALL(*transport_, SetDnsServers(dns_list));
+    EXPECT_CALL(*transport_, SetDnsInterface(ifname));
+    EXPECT_CALL(*transport_, SetInterface(ifname));
     EXPECT_CALL(*transport_, UseCustomCertificate(_));
     EXPECT_CALL(*transport_,
                 SetDefaultTimeout(CarrierEntitlement::kHttpRequestTimeout));
@@ -219,16 +228,16 @@ class CarrierEntitlementTestNoParams : public CarrierEntitlementTest {
 TEST_F(CarrierEntitlementTestNoParams, Constructor) {}
 
 TEST_F(CarrierEntitlementTestNoParams, CheckAllowed) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUserNotAllowedToTether) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(
       CarrierEntitlement::kServerCodeUserNotAllowedToTether,
       brillo::http::status_code::Forbidden);
@@ -237,11 +246,11 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUserNotAllowedToTether) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUserNotAllowedToTether));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedUser) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
@@ -249,11 +258,11 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedUser) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUnrecognizedUser));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS2}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckHttpSyntaxError) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS3.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(
       CarrierEntitlement::kServerCodeHttpSyntaxError,
       brillo::http::status_code::Forbidden);
@@ -261,30 +270,30 @@ TEST_F(CarrierEntitlementTestNoParams, CheckHttpSyntaxError) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckHttpSyntaxErrorOnServer));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS3}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString(), kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1, kDNS2}, interface_name_, config_);
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString(), kDNS3.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(CarrierEntitlement::kServerCodeInternalError,
                                   brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckInternalErrorOnServer));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS2, kDNS3}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
@@ -292,50 +301,50 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckUnrecognizedUser));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({}, interface_name_, config_);
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(CarrierEntitlement::kServerCodeInternalError,
                                   brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kUnrecognizedUser));
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckInternalErrorOnServer));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedHttpStatusCode) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Redirect);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
   EXPECT_CALL(
       metrics_,
       NotifyCellularEntitlementCheckResult(
           Metrics::kCellularEntitlementCheckUnrecognizedHttpStatusCode));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, CheckErrorCallback) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncFail();
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckHttpRequestError));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS2}, interface_name_, config_);
 }
 
 TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS2}, interface_name_, config_);
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
@@ -344,7 +353,7 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS2.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
@@ -354,15 +363,15 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
 }
 
 TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckReturnsNotAllowed) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess(
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
@@ -381,15 +390,15 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckReturnsNotAllowed) {
 }
 
 TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckErrorCallback) {
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
   VerifyAllExpectations();
 
-  ExpectCreateConnection(kPost, "{}");
+  ExpectCreateConnection({kDNS1.ToString()}, kPost, "{}");
   ExpectFinishRequestAsyncFail();
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
   EXPECT_CALL(metrics_,
@@ -413,12 +422,12 @@ class CarrierEntitlementTestGet : public CarrierEntitlementTest {
 };
 
 TEST_F(CarrierEntitlementTestGet, CheckAllowed) {
-  ExpectCreateConnection(kGet, "");
+  ExpectCreateConnection({kDNS1.ToString()}, kGet, "");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1}, interface_name_, config_);
 }
 
 class CarrierEntitlementTestWithImsi : public CarrierEntitlementTest {
@@ -430,12 +439,13 @@ class CarrierEntitlementTestWithImsi : public CarrierEntitlementTest {
 };
 
 TEST_F(CarrierEntitlementTestWithImsi, CheckAllowed) {
-  ExpectCreateConnection(kPost, "{\"imsi\":\"001010000000004\"}");
+  ExpectCreateConnection({kDNS1.ToString(), kDNS2.ToString(), kDNS3.ToString()},
+                         kPost, "{\"imsi\":\"001010000000004\"}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckAllowed));
-  carrier_entitlement_->Check(kSrcIp, {}, interface_name_, config_);
+  carrier_entitlement_->Check({kDNS1, kDNS2, kDNS3}, interface_name_, config_);
 }
 
 }  // namespace shill

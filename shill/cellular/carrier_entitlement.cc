@@ -10,17 +10,16 @@
 #include <utility>
 #include <vector>
 
-#include "base/check.h"
-#include "base/functional/callback_helpers.h"
-#include "base/strings/string_util.h"
-#include "base/values.h"
+#include <base/check.h>
+#include <base/functional/callback_helpers.h>
+#include <base/strings/string_util.h>
+#include <base/values.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/http/http_request.h>
 
 #include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 
 namespace shill {
 
@@ -37,7 +36,6 @@ CarrierEntitlement::CarrierEntitlement(
       check_cb_(check_cb),
       transport_(brillo::http::Transport::CreateDefault()),
       request_in_progress_(false),
-      last_src_address_(net_base::IPFamily::kIPv4),
       weak_ptr_factory_(this) {}
 
 CarrierEntitlement::~CarrierEntitlement() {
@@ -47,20 +45,17 @@ CarrierEntitlement::~CarrierEntitlement() {
 }
 
 void CarrierEntitlement::Check(
-    const net_base::IPAddress& src_address,
     const std::vector<net_base::IPAddress>& dns_list,
     const std::string& interface_name,
     const MobileOperatorMapper::EntitlementConfig& config) {
   last_dns_list_ = dns_list;
   last_interface_name_ = interface_name;
-  last_src_address_ = src_address;
   config_ = config;
-  CheckInternal(src_address, dns_list, last_interface_name_,
+  CheckInternal(dns_list, last_interface_name_,
                 /* user_triggered */ true);
 }
 
 void CarrierEntitlement::CheckInternal(
-    const net_base::IPAddress& src_address,
     const std::vector<net_base::IPAddress>& dns_list,
     const std::string& interface_name,
     bool user_triggered) {
@@ -96,19 +91,13 @@ void CarrierEntitlement::CheckInternal(
         Metrics::kCellularEntitlementCheckFailedToBuildPayload);
     return;
   }
-  const std::string addr_string = src_address.ToString();
   std::vector<std::string> dns_list_str;
   for (auto& ip : dns_list) {
     dns_list_str.push_back(ip.ToString());
   }
   transport_->SetDnsServers(dns_list_str);
-  transport_->SetLocalIpAddress(addr_string);
   transport_->SetDnsInterface(interface_name);
-  if (src_address.GetFamily() == net_base::IPFamily::kIPv6) {
-    transport_->SetDnsLocalIPv6Address(addr_string);
-  } else {
-    transport_->SetDnsLocalIPv4Address(addr_string);
-  }
+  transport_->SetInterface(interface_name);
   transport_->UseCustomCertificate(brillo::http::Transport::Certificate::kNss);
 
   transport_->SetDefaultTimeout(kHttpRequestTimeout);
@@ -134,7 +123,7 @@ void CarrierEntitlement::CheckInternal(
 void CarrierEntitlement::PostBackgroundCheck() {
   background_check_cancelable.Reset(base::BindOnce(
       &CarrierEntitlement::CheckInternal, weak_ptr_factory_.GetWeakPtr(),
-      last_src_address_, last_dns_list_, last_interface_name_,
+      last_dns_list_, last_interface_name_,
       /* user_triggered */ false));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                background_check_cancelable.callback(),
