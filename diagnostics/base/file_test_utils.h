@@ -23,11 +23,6 @@ namespace diagnostics {
 bool WriteFileAndCreateParentDirs(const base::FilePath& file_path,
                                   const std::string& file_contents);
 
-// Create the directory located in |file_path|, and create a symbolic link under
-// |file_path| pointing back to |file_path|. Will create all nested parent
-// directories if necessary.
-bool CreateCyclicSymbolicLink(const base::FilePath& file_path);
-
 // Write |file_contents| into file located in |file_path|, then create a
 // symbolic link which points to |file_path|. Will create all nested parent
 // directories if necessary.
