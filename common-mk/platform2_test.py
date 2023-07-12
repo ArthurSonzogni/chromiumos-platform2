@@ -114,7 +114,7 @@ ENV_PASSTHRU_REGEX_LIST = list(
 )
 
 
-class Platform2Test(object):
+class Platform2Test:
     """Framework for running platform2 tests"""
 
     _BIND_RW_MOUNT_PATHS = (
@@ -352,7 +352,7 @@ class Platform2Test(object):
 
             # Create /etc/passwd if it does not already exist
             mode = "r+" if os.path.exists(passwd_db) else "x+"
-            with open(passwd_db, mode) as f:
+            with open(passwd_db, mode, encoding="utf-8") as f:
                 data = f.read()
                 if data and data[-1] != "\n":
                     f.write("\n")
@@ -397,8 +397,8 @@ class Platform2Test(object):
     def SetupDev(self):
         """Initialize a pseudo /dev directory.
 
-        Unittests shouldn't need access to the real host /dev, especially since it
-        won't be the same as exists on builders.
+        Unittests shouldn't need access to the real host /dev, especially since
+        it won't be the same as exists on builders.
         """
         NODES = {
             "full": (1, 7, 0o666),
