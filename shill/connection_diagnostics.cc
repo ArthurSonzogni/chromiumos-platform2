@@ -19,7 +19,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 
 namespace {
 // These strings are dependent on ConnectionDiagnostics::Type. Any changes to

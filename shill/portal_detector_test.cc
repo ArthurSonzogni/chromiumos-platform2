@@ -19,7 +19,6 @@
 
 #include "shill/http_request.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/net/ip_address.h"
 
 using testing::_;
 using testing::Mock;

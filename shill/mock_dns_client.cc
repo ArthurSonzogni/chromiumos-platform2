@@ -4,8 +4,6 @@
 
 #include "shill/mock_dns_client.h"
 
-#include "shill/net/ip_address.h"
-
 namespace shill {
 
 MockDnsClient::MockDnsClient()

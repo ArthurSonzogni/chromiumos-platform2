@@ -17,7 +17,6 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/http/http_request.h>
 
-#include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 

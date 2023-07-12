@@ -47,7 +47,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/ieee80211.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"

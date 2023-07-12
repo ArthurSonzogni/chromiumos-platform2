@@ -24,14 +24,11 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
-#include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"

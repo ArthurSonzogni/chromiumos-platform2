@@ -26,7 +26,6 @@
 
 #include "shill/callbacks.h"
 #include "shill/net/event_history.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/wake_on_wifi_interface.h"

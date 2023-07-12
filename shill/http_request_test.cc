@@ -26,8 +26,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_manager.h"
-#include "shill/net/ip_address.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/test_event_dispatcher.h"
 
 using ::testing::_;
@@ -57,12 +55,6 @@ const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 const char kServerAddress[] = "10.1.1.1";
 }  // namespace
-
-MATCHER_P(IsIPAddress, address, "") {
-  const auto ip_address = IPAddress::CreateFromString(address);
-  CHECK(ip_address.has_value());
-  return ip_address.Equals(arg);
-}
 
 MATCHER_P(ByteStringMatches, byte_string, "") {
   return byte_string.Equals(arg);

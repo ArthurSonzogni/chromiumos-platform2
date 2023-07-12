@@ -23,7 +23,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/process_manager.h"
 #include "shill/net/shill_time.h"
 #include "shill/network/dhcp_provider.h"

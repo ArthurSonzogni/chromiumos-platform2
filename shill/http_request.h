@@ -19,8 +19,6 @@
 #include <net-base/ip_address.h>
 
 #include "shill/dns_client.h"
-#include "shill/net/ip_address.h"
-#include "shill/refptr_types.h"
 
 namespace shill {
 

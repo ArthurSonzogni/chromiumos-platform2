@@ -10,7 +10,6 @@
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "mojom/passpoint.mojom.h"
-#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/wifi_provider.h"
 
