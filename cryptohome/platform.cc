@@ -1359,8 +1359,8 @@ bool Platform::DetachLoop(const base::FilePath& device_path) {
       return device->Detach();
     }
   }
-  // Not found the device
-  return false;
+  // If the device is not found among attached, assume it is already detached.
+  return true;
 }
 
 bool Platform::DiscardDevice(const base::FilePath& device) {
