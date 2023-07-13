@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 
 #include "init/startup/platform_impl.h"
@@ -59,6 +60,16 @@ class UefiDelegate {
   virtual bool MakeUefiVarWritableByFwupd(const std::string& vendor,
                                           const std::string& name,
                                           const UserAndGroup& fwupd) = 0;
+
+  // Make the EFI System Resource Table (ESRT) readable by the fwupd
+  // service.
+  //
+  // The ESRT is represented by files in /sys/firmware/efi/esrt. The
+  // ownership of everything in that directory (recursive) is changed to
+  // fwupd.
+  //
+  // Errors are logged but otherwise ignored.
+  virtual void MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) = 0;
 
   // Mount the EFI System Partition (ESP).
   //

@@ -96,6 +96,25 @@ bool UefiDelegateImpl::MakeUefiVarWritableByFwupd(const std::string& vendor,
   return true;
 }
 
+void UefiDelegateImpl::MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) {
+  const base::FilePath esrt_dir = root_dir_.Append(kSysEfiDir).Append("esrt");
+  base::FileEnumerator file_enumerator(
+      esrt_dir, /*recursive=*/true,
+      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES);
+
+  file_enumerator.ForEach([this, fwupd](const base::FilePath& path) {
+    base::ScopedFD fd = platform_.Open(path, O_RDONLY | O_CLOEXEC);
+    if (fd.is_valid()) {
+      if (!platform_.Fchown(fd.get(), fwupd.uid, fwupd.gid)) {
+        PLOG(WARNING) << "Failed to change ownership of " << path << " to "
+                      << fwupd.uid << ":" << fwupd.gid;
+      }
+    } else {
+      PLOG(WARNING) << "Failed to open " << path;
+    }
+  });
+}
+
 bool UefiDelegateImpl::MountEfiSystemPartition(const UserAndGroup& fwupd) {
   const base::FilePath mount_point = root_dir_.Append(kEspDir);
   const auto esp_dev = platform_.GetRootDevicePartitionPath(kEspLabel);
@@ -138,6 +157,8 @@ void MaybeRunUefiStartup(UefiDelegate& uefi_delegate) {
     uefi_delegate.MakeUefiVarWritableByFwupd(kEfiImageSecurityDatabaseGuid,
                                              "dbx", fwupd.value());
   }
+
+  uefi_delegate.MakeEsrtReadableByFwupd(fwupd.value());
 
   uefi_delegate.MountEfiSystemPartition(fwupd.value());
 }

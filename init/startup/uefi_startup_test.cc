@@ -26,6 +26,15 @@ using testing::StrictMock;
 
 namespace startup {
 
+namespace {
+
+// Same as Platform::Open.
+base::ScopedFD OpenImpl(const base::FilePath& path, int flags) {
+  return base::ScopedFD(HANDLE_EINTR(open(path.value().c_str(), flags)));
+}
+
+}  // namespace
+
 bool operator==(const UefiDelegate::UserAndGroup& lhs,
                 const UefiDelegate::UserAndGroup& rhs) {
   return lhs.uid == rhs.uid && lhs.gid == rhs.gid;
@@ -47,6 +56,10 @@ class MockUefiDelegate : public UefiDelegate {
                const std::string& name,
                const UserAndGroup& fwupd),
               (override));
+  MOCK_METHOD(void,
+              MakeEsrtReadableByFwupd,
+              (const UserAndGroup& fwupd),
+              (override));
   MOCK_METHOD(bool,
               MountEfiSystemPartition,
               (const UserAndGroup& fwupd),
@@ -67,6 +80,7 @@ TEST(UefiStartup, UefiEnabled) {
       mock_uefi_delegate,
       MakeUefiVarWritableByFwupd(kEfiImageSecurityDatabaseGuid, "dbx", fwupd))
       .WillOnce(Return(true));
+  EXPECT_CALL(mock_uefi_delegate, MakeEsrtReadableByFwupd(fwupd));
   EXPECT_CALL(mock_uefi_delegate,
               MountEfiSystemPartition(UefiDelegate::UserAndGroup{1, 2}))
       .WillOnce(Return(true));
@@ -138,8 +152,7 @@ TEST_F(UefiDelegateTest, ModifyVar) {
   ASSERT_TRUE(base::WriteFile(var_path, ""));
 
   EXPECT_CALL(mock_platform_, Open(var_path, O_RDONLY | O_CLOEXEC))
-      .WillOnce(Return(base::ScopedFD(
-          HANDLE_EINTR(open(var_path.value().c_str(), O_RDONLY | O_CLOEXEC)))));
+      .WillOnce(OpenImpl);
 
   EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_GETFLAGS, _)).WillOnce(Return(0));
   EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_SETFLAGS, _)).WillOnce(Return(0));
@@ -157,11 +170,36 @@ TEST_F(UefiDelegateTest, ModifyInvalidVar) {
       efivars_dir.Append("myvar-1a2a2d4e-6e6a-468f-944c-c00d14d92c1e");
 
   EXPECT_CALL(mock_platform_, Open(var_path, O_RDONLY | O_CLOEXEC))
-      .WillOnce(Return(base::ScopedFD()));
+      .WillOnce(OpenImpl);
 
   EXPECT_FALSE(uefi_delegate_->MakeUefiVarWritableByFwupd(
       "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar",
       UefiDelegate::UserAndGroup{123, 456}));
+}
+
+// Test making the ESRT readable by fwupd.
+TEST_F(UefiDelegateTest, MakeEsrtReadableByFwupd) {
+  // Set up an esrt directory.
+  const base::FilePath esrt_dir = root_dir_.Append(kSysEfiDir).Append("esrt");
+  ASSERT_TRUE(base::CreateDirectory(esrt_dir));
+  const base::FilePath version_path = esrt_dir.Append("fw_resource_version");
+  ASSERT_TRUE(base::WriteFile(version_path, "1"));
+  const base::FilePath entries_dir = esrt_dir.Append("entries");
+  ASSERT_TRUE(base::CreateDirectory(entries_dir));
+  const base::FilePath entry_path = entries_dir.Append("entry_file");
+  ASSERT_TRUE(base::WriteFile(entry_path, "2"));
+
+  // The `entries` directory, `fw_resource_version` file, and
+  // `entry_file` should all get modified, so expect these calls to
+  // happen three times.
+  EXPECT_CALL(mock_platform_, Open(_, O_RDONLY | O_CLOEXEC))
+      .Times(3)
+      .WillRepeatedly(OpenImpl);
+  EXPECT_CALL(mock_platform_, Fchown(_, 123, 456))
+      .Times(3)
+      .WillRepeatedly(Return(true));
+
+  uefi_delegate_->MakeEsrtReadableByFwupd(UefiDelegate::UserAndGroup{123, 456});
 }
 
 // Test mounting the ESP.

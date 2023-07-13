@@ -49,6 +49,7 @@ class UefiDelegateImpl : public UefiDelegate {
   bool MakeUefiVarWritableByFwupd(const std::string& vendor,
                                   const std::string& name,
                                   const UserAndGroup& fwupd) override;
+  void MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) override;
   bool MountEfiSystemPartition(const UserAndGroup& fwupd) override;
 
  private:
