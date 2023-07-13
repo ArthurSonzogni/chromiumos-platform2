@@ -43,6 +43,8 @@ GroundTruth::~GroundTruth() = default;
 
 mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     mojom::EventCategoryEnum category) {
+  // Please update docs/event_supportability.md.
+  // LINT.IfChange
   switch (category) {
     // UnmappedEnumField.
     case mojom::EventCategoryEnum::kUnmappedEnumField:
@@ -147,6 +149,7 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
           nullptr));
     }
   }
+  // LINT.ThenChange(//docs/event_supportability.md)
 }
 
 void GroundTruth::IsEventSupported(
@@ -158,6 +161,8 @@ void GroundTruth::IsEventSupported(
 
 mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     mojom::RoutineArgumentPtr routine_arg) {
+  // Please update docs/routine_supportability.md.
+  // LINT.IfChange
   switch (routine_arg->which()) {
     // UnrecognizedArgument.
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
@@ -220,6 +225,7 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     case mojom::RoutineArgument::Tag::kLedLitUp:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
   }
+  // LINT.ThenChange(//docs/routine_supportability.md)
 }
 
 void GroundTruth::IsRoutineSupported(
