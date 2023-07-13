@@ -1,0 +1,5 @@
+type cros_hiberman, chromeos_domain, domain;
+
+permissive cros_hiberman;
+
+domain_auto_trans(cros_init, cros_hiberman_exec, cros_tcsd);

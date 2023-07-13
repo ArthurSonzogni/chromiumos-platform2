@@ -198,6 +198,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/dnsproxyd             u:object_r:cros_dnsproxyd_exec:s0
 /usr/sbin/device_managementd    u:object_r:cros_device_managementd_exec:s0
 /usr/sbin/gsctool               u:object_r:cros_gsctool_exec:s0
+/usr/sbin/hiberman              u:object_r:cros_hiberman_exec:s0
 /usr/sbin/hpsd                  u:object_r:cros_hpsd_exec:s0
 /usr/sbin/huddly-monitor        u:object_r:cros_huddly_monitor_exec:s0
 /usr/sbin/iioservice            u:object_r:cros_iioservice_exec:s0

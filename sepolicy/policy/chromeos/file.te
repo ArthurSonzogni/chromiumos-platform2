@@ -108,6 +108,7 @@ type cros_gsctool_exec, exec_type, file_type, cros_file_type, cros_system_file_t
 type cros_healthd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_health_tool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hermes_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_hiberman_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hotlined_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hotlog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hps_factory_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
