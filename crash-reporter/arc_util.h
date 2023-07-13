@@ -16,8 +16,6 @@
 #include <base/time/time.h>
 #include <session_manager/dbus-proxies.h>
 
-#include "crash-reporter/crash_collector.h"
-
 namespace arc_util {
 
 using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;

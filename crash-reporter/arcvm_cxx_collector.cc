@@ -4,10 +4,10 @@
 
 #include "crash-reporter/arcvm_cxx_collector.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <utility>
-
-#include <unistd.h>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -22,7 +22,6 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
-#include "crash-reporter/util.h"
 
 namespace {
 

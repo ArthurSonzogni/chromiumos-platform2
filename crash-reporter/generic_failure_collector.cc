@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -16,8 +17,6 @@
 #include <base/strings/stringprintf.h>
 #include <metrics/metrics_library.h>
 
-#include "base/check.h"
-#include "base/files/file_path.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 

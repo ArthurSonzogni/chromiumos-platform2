@@ -24,7 +24,6 @@
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
-#include "crash-reporter/util.h"
 
 using base::FilePath;
 using base::StringPiece;

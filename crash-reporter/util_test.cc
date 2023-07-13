@@ -4,13 +4,13 @@
 
 #include "crash-reporter/util.h"
 
-#include <stdlib.h>
-
 #include <fcntl.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+
 #include <limits>
 #include <memory>
 #include <utility>
-#include <sys/mman.h>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -28,12 +28,12 @@
 #include <brillo/streams/memory_stream.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
-#include "metrics/metrics_library_mock.h"
 
 // The QEMU emulator we use to run unit tests on simulated ARM boards does not
 // support memfd_create. (https://bugs.launchpad.net/qemu/+bug/1734792) Skip

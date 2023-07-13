@@ -5,11 +5,11 @@
 #ifndef CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 #define CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 
-#include <memory>
-#include <string>
-
 #include <stdint.h>
 #include <stdio.h>
+
+#include <memory>
+#include <string>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>

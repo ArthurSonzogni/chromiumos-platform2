@@ -4,8 +4,6 @@
 
 #include "crash-reporter/user_collector_base.h"
 
-#include "crash-reporter/vm_support.h"
-
 #include <signal.h>  // SIGSYS
 
 #include <memory>
@@ -28,6 +26,7 @@
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
+#include "crash-reporter/vm_support.h"
 
 using base::FilePath;
 using base::ReadFileToString;

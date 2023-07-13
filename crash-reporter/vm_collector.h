@@ -23,6 +23,9 @@ class VmCollector : public CrashCollector {
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
           metrics_lib);
+  VmCollector(const VmCollector&) = delete;
+  VmCollector& operator=(const VmCollector&) = delete;
+
   bool Collect(pid_t pid);
 
   // Returns the severity level and product group of the crash.
@@ -35,9 +38,6 @@ class VmCollector : public CrashCollector {
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
           metrics_lib);
-
-  VmCollector(const VmCollector&) = delete;
-  VmCollector& operator=(const VmCollector&) = delete;
 };
 
 #endif  // CRASH_REPORTER_VM_COLLECTOR_H_

@@ -4,6 +4,9 @@
 
 #include "crash-reporter/ephemeral_crash_collector.h"
 
+#include <memory>
+#include <string>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -11,9 +14,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <brillo/process/process.h>
 #include <metrics/metrics_library.h>
-
-#include <memory>
-#include <string>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"

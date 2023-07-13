@@ -4,6 +4,9 @@
 
 #include "crash-reporter/ephemeral_crash_collector.h"
 
+#include <memory>
+#include <string>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
@@ -12,9 +15,6 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
-
-#include <memory>
-#include <string>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"

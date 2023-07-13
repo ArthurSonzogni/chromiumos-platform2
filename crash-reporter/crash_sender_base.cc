@@ -19,7 +19,6 @@
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender_paths.h"
-#include "crash-reporter/crash_sender_util.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 

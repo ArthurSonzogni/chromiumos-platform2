@@ -15,9 +15,6 @@
 #ifndef CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_
 #define CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_
 
-#include "crash-reporter/arc_util.h"
-#include "crash-reporter/crash_collector.h"
-
 #include <memory>
 #include <string>
 
@@ -27,6 +24,9 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
+
+#include "crash-reporter/arc_util.h"
+#include "crash-reporter/crash_collector.h"
 
 // Collector for C++ crashes (native_crash) in ARCVM.
 class ArcvmCxxCollector : public CrashCollector {

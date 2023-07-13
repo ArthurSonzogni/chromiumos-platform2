@@ -19,7 +19,6 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
-#include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
 namespace {

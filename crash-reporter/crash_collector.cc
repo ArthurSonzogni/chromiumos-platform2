@@ -24,6 +24,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -54,7 +55,6 @@
 #include <redaction_tool/redaction_tool.h>
 #include <zlib.h>
 
-#include "base/files/file_path.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"

@@ -23,7 +23,6 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
-#include "crash-reporter/util.h"
 
 using ::testing::TestWithParam;
 

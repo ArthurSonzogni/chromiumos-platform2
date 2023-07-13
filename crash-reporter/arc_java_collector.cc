@@ -18,7 +18,6 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
-#include "crash-reporter/util.h"
 
 using base::File;
 using base::FilePath;

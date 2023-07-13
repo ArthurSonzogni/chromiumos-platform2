@@ -14,13 +14,13 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/strcat.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "base/strings/strcat.h"
 #include "crash-reporter/test_util.h"
 
 using brillo::ClearLog;

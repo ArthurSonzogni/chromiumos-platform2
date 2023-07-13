@@ -4,6 +4,8 @@
 
 #include "crash-reporter/bert_collector.h"
 
+#include <fcntl.h>
+
 #include <memory>
 
 #include <base/files/file_util.h>
@@ -12,7 +14,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/syslog_logging.h>
-#include <fcntl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>

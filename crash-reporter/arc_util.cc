@@ -4,11 +4,11 @@
 
 #include "crash-reporter/arc_util.h"
 
-#include <optional>
-#include <sstream>
-
 #include <stdint.h>
 #include <sysexits.h>
+
+#include <optional>
+#include <sstream>
 
 #include <base/logging.h>
 #include <brillo/process/process.h>

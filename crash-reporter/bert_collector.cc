@@ -5,9 +5,10 @@
 #include "crash-reporter/bert_collector.h"
 
 #include <fcntl.h>
+#include <sys/stat.h>
+
 #include <memory>
 #include <string>
-#include <sys/stat.h>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -15,7 +16,6 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "crash-reporter/constants.h"
-#include "crash-reporter/util.h"
 
 using base::FilePath;
 
