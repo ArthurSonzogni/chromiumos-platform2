@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_SEGMENTATION_UTILS_H_
-#define RMAD_UTILS_SEGMENTATION_UTILS_H_
+#ifndef RMAD_SEGMENTATION_SEGMENTATION_UTILS_H_
+#define RMAD_SEGMENTATION_SEGMENTATION_UTILS_H_
 
 namespace rmad {
 
@@ -24,4 +24,4 @@ class SegmentationUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_SEGMENTATION_UTILS_H_
+#endif  // RMAD_SEGMENTATION_SEGMENTATION_UTILS_H_

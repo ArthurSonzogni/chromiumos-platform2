@@ -91,6 +91,7 @@ if (use.test) {
       "interface:libinterface_test",
       "logs:liblogs_test",
       "metrics:libmetrics_test",
+      "segmentation:libsegmentation_test",
       "ssfc:libssfc_test",
       "state_handler:libstate_handler_test",
       "system:libsystem_test",

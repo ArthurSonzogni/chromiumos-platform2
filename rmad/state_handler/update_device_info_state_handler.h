@@ -11,10 +11,10 @@
 
 #include <base/files/file_path.h>
 
+#include "rmad/segmentation/segmentation_utils.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/regions_utils.h"
-#include "rmad/utils/segmentation_utils.h"
 #include "rmad/utils/vpd_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 

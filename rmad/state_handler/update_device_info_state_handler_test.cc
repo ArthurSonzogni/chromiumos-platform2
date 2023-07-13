@@ -15,8 +15,8 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/segmentation/fake_segmentation_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/utils/fake_segmentation_utils.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_regions_utils.h"

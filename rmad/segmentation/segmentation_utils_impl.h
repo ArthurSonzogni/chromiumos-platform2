@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_SEGMENTATION_UTILS_IMPL_H_
-#define RMAD_UTILS_SEGMENTATION_UTILS_IMPL_H_
+#ifndef RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_
+#define RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_
 
-#include "rmad/utils/segmentation_utils.h"
+#include "rmad/segmentation/segmentation_utils.h"
 
 #include <memory>
 
@@ -32,4 +32,4 @@ class SegmentationUtilsImpl : public SegmentationUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_SEGMENTATION_UTILS_IMPL_H_
+#endif  // RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_

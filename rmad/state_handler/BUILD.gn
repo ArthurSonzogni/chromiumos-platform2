@@ -44,6 +44,7 @@ source_set("libstate_handler") {
   deps = [
     "//rmad/logs:liblogs",
     "//rmad/metrics:libmetrics",
+    "//rmad/segmentation:libsegmentation",
     "//rmad/system:libsystem",
     "//rmad/udev:libudev",
     "//rmad/utils:libutils",

@@ -12,7 +12,6 @@ pkg_config("target_defaults") {
     "libcros_config",
     "libec",
     "libmems",
-    "libsegmentation",
     "mojo_service_manager",
     "protobuf",
     "re2",
@@ -39,7 +38,6 @@ source_set("libutils") {
     "json_store.cc",
     "mojo_service_utils_impl.cc",
     "regions_utils_impl.cc",
-    "segmentation_utils_impl.cc",
     "sensor_calibration_utils_impl.cc",
     "sys_utils_impl.cc",
     "type_conversions.cc",
@@ -56,10 +54,7 @@ if (use.test) {
     # can include runtime_probe.pb.h properly.
     cflags = [ "-I${sysroot}/usr/include/runtime_probe/proto_bindings" ]
 
-    pkg_deps = [
-      "libmems_test_support",
-      "libsegmentation-test",
-    ]
+    pkg_deps = [ "libmems_test_support" ]
   }
 
   source_set("libutils_test") {
@@ -76,7 +71,6 @@ if (use.test) {
       "json_store_test.cc",
       "mojo_service_utils_test.cc",
       "regions_utils_test.cc",
-      "segmentation_utils_test.cc",
       "sensor_calibration_utils_test.cc",
       "sys_utils_test.cc",
       "type_conversions_test.cc",

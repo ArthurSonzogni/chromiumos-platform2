@@ -1,0 +1,33 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libsegmentation",
+  ]
+}
+
+source_set("libsegmentation") {
+  sources = [ "segmentation_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  pkg_config("test_pkg_deps") {
+    pkg_deps = [ "libsegmentation-test" ]
+  }
+
+  source_set("libsegmentation_test") {
+    sources = [ "segmentation_utils_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_pkg_deps",
+    ]
+    deps = [ ":libsegmentation" ]
+  }
+}

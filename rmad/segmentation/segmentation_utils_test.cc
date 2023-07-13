@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/utils/segmentation_utils_impl.h"
+#include "rmad/segmentation/segmentation_utils_impl.h"
 
 #include <memory>
 #include <utility>
