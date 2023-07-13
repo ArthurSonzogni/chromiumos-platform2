@@ -89,11 +89,6 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack,
             0);
 
   if (!have_tpm_error) {
-    // TODO(b/278988634): Remove ReportCryptohomeErrorLeaf after the unified
-    // leaf node bucket is stable.
-    ReportCryptohomeErrorLeaf(error_bucket_name,
-                              static_cast<uint32_t>(last_non_tpm_loc));
-
     // We now report leaf nodes without TPM error in the LeafWithTPM bucket too.
     // The format is the same as cryptohome errors with TPM error, but with the
     // TPM error bits (last 16 bits) zeroed. It will never collide with leaf

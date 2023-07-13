@@ -92,11 +92,6 @@ TEST_F(ErrorReportingTest, NoTPMError) {
       .Times(2)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix),
-                              kErrorLocationForTesting1.location()))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix),
                               kErrorLocationForTesting1.location() << 16))
       .Times(2)
@@ -134,9 +129,6 @@ TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix), _))
       .Times(2);
-  EXPECT_CALL(metrics_, SendSparseToUMA(
-                            EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix), _))
-      .Times(1);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix), _))
       .Times(1);

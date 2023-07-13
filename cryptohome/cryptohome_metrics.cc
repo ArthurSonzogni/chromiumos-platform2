@@ -885,19 +885,6 @@ void ReportCryptohomeErrorHashedStack(std::string error_bucket_name,
   g_metrics->SendSparseToUMA(name, static_cast<int>(hashed));
 }
 
-void ReportCryptohomeErrorLeaf(std::string error_bucket_name,
-                               const uint32_t node) {
-  if (!g_metrics || g_disable_error_metrics) {
-    return;
-  }
-
-  std::string name =
-      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
-                        kCryptohomeErrorLeafWithoutTPMSuffix},
-                       ".");
-  g_metrics->SendSparseToUMA(name, static_cast<int>(node));
-}
-
 void ReportCryptohomeErrorLeafWithTPM(std::string error_bucket_name,
                                       const uint32_t mixed) {
   if (!g_metrics || g_disable_error_metrics) {

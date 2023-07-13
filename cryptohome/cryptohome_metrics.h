@@ -305,8 +305,6 @@ enum class LegacyCodePathLocation {
 
 inline constexpr char kCryptohomeErrorPrefix[] = "Cryptohome";
 inline constexpr char kCryptohomeErrorHashedStackSuffix[] = "HashedStack";
-inline constexpr char kCryptohomeErrorLeafWithoutTPMSuffix[] =
-    "LeafErrorWithoutTPM";
 inline constexpr char kCryptohomeErrorLeafWithTPMSuffix[] = "LeafErrorWithTPM";
 inline constexpr char kCryptohomeErrorDevCheckUnexpectedStateSuffix[] =
     "DevUnexpectedState";
@@ -631,10 +629,6 @@ void ReportDownloadsBindMountMigrationStatus(
 // Reports the full error id's hash when an error occurred.
 void ReportCryptohomeErrorHashedStack(std::string error_bucket_name,
                                       const uint32_t hashed);
-
-// Reports the leaf node of an error id when an error occurred.
-void ReportCryptohomeErrorLeaf(std::string error_bucket_name,
-                               const uint32_t node);
 
 // Reports the leaf node and TPM error when an error occurred.
 void ReportCryptohomeErrorLeafWithTPM(std::string error_bucket_name,
