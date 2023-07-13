@@ -138,7 +138,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
 /usr/bin/sound_card_init        u:object_r:cros_sound_card_init_exec:s0
-/usr/bin/swap_management        u:object_r:cros_swap_management_exec:s0
 /usr/bin/ti50-emulator-ec_comm    u:object_r:cros_ti50-emulator-ec_comm_exec:s0
 /usr/bin/ti50-emulator-fw_updater u:object_r:cros_ti50-emulator-fw_updater_exec:s0
 /usr/bin/ti50-emulator-kernel     u:object_r:cros_ti50-emulator-kernel_exec:s0
@@ -226,6 +225,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/spaced_cli            u:object_r:cros_spaced_cli_exec:s0
 /usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/sslh(-fork|-select)?  u:object_r:cros_sslh_exec:s0
+/usr/sbin/swap_management       u:object_r:cros_swap_management_exec:s0
 /usr/sbin/syslog-cat            u:object_r:cros_syslog_cat_exec:s0
 /usr/sbin/tcsd                  u:object_r:cros_tcsd_exec:s0
 /usr/sbin/tpm_managerd          u:object_r:cros_tpm_managerd_exec:s0
