@@ -150,7 +150,8 @@ bool LoopDevice::Detach() {
       loop_ioctl_.Run(GetDevicePath(), LOOP_CLR_FD, 0, kLoopDeviceIoctlFlags);
   if (err < 0) {
     LOG_IF(ERROR, err != -ENXIO) << "ioctl(LOOP_CLR_FD) failed, err: " << err;
-    return false;
+    // ENXIO means the device doesn't exist. Assume it is already detached then.
+    return err == -ENXIO;
   }
 
   return true;
