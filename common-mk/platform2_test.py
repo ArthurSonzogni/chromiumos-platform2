@@ -23,6 +23,7 @@ import sys
 import tempfile
 from typing import List, Optional
 
+import capng  # pylint: disable=import-error
 import psutil  # pylint: disable=import-error
 
 from chromite.lib import build_target_lib
@@ -84,6 +85,17 @@ def _ReapUntilProcessExits(monitored_pid):
     return pid_status
 
 
+def _drop_all_capabilities() -> None:
+    """Drops all capabilities the current process has.
+
+    We will never regain those capabilities, even if we exec other programs with
+    effective UID 0, by setting securebits.
+    """
+    capng.capng_clear(capng.CAPNG_SELECT_BOTH)
+    capng.capng_apply(capng.CAPNG_SELECT_BOTH)
+    capng.capng_lock()
+
+
 SAN_OPTIONS = re.compile(r"[A-Z]{1,3}SAN_OPTIONS$")
 
 # Compiled regular expressions for determining what environment variables to
@@ -129,6 +141,7 @@ class Platform2Test:
         board,
         host,
         framework,
+        strategy,
         user,
         gtest_filter,
         user_gtest_filter,
@@ -144,6 +157,7 @@ class Platform2Test:
         self.args = test_bin_args
         self.board = board
         self.host = host
+        self.strategy = strategy
         self.user = user
         self.bind_mount_dev = bind_mount_dev
         self.jobs = jobs
@@ -391,7 +405,7 @@ class Platform2Test:
             # user databases.  For example, glibc will dlopen nss modules.
             pwd.getpwall()
 
-        if self.framework == "qemu":
+        if self.framework == "qemu" and self.strategy == "sudo":
             self.qemu.Install()
             self.qemu.RegisterBinfmt()
 
@@ -596,7 +610,12 @@ class Platform2Test:
                     os.path.join(new_sysroot, "mnt/empty"), d, readonly=True
                 )
 
-        self._remount_ro(new_sys)
+        # Remount /sys read-only if we have the root privilege and we can do it.
+        # When we don't have one, it's very likely we don't have write
+        # permissions anyway. It's still possible that the host system is
+        # configured to allow non-root access, but we haven't gotten to it.
+        if self.strategy == "sudo":
+            self._remount_ro(new_sys)
 
     def _setup_build(self, new_sysroot: str) -> None:
         """Set up /build, namely ${SYSROOT}/${SYSROOT}.
@@ -736,8 +755,18 @@ class Platform2Test:
                     % (", ".join("%s=%s" % x for x in self.env_vars.items()))
                 )
             print("cmd: {%s} %s" % (cmd, " ".join(repr(x) for x in argv)))
-            os.chroot(self.sysroot)
-            os.chdir(cwd)
+
+            if self.framework == "qemu" and self.strategy == "unprivileged":
+                cmd = "proot"
+                argv = [
+                    cmd,
+                    f"--rootfs={self.sysroot}",
+                    f"--qemu={self.qemu.name}",
+                    f"--cwd={cwd}",
+                ] + argv
+            else:
+                os.chroot(self.sysroot)
+                os.chdir(cwd)
 
             # Set the child's pgid to its pid, so we can kill any processes
             # that the child creates after the child terminates.
@@ -777,7 +806,10 @@ class Platform2Test:
             # Some progs want this like bash else they get super confused.
             os.environ["PWD"] = cwd
             os.environ["GTEST_COLOR"] = "yes"
-            if self.user != "root":
+            if self.user == "root":
+                if self.strategy == "unprivileged":
+                    _drop_all_capabilities()
+            else:
                 user, uid, gid, home = self.GetNonRootAccount(self.user)
                 os.setgid(gid)
                 os.setuid(uid)
@@ -888,34 +920,62 @@ def _SudoCommand():
 
 def _ReExecuteIfNeeded(
     argv: List[str],
+    strategy: str,
     ns_net: bool = True,
     ns_pid: bool = True,
     pid_uid: Optional[int] = None,
     pid_gid: Optional[int] = None,
 ) -> None:
-    """Re-execute tests as root.
+    """Re-execute the current executable as necessary.
 
-    We often need to do things as root, so make sure we're that.  Like chroot
-    for proper library environment or do bind mounts.
+    We need privileges to perform file system operations (e.g. bind-mount and
+    chroot), so make sure we have them. If strategy="sudo", we call sudo to
+    obtain real root privileges. If strategy="unprivileged", we call unshare to
+    enter an unprivileged user namespace where we have privileges to enter other
+    kinds of namespaces.
 
-    Also unshare the mount namespace so as to ensure that doing bind mounts for
+    Then unshare the mount namespace so as to ensure that doing bind mounts for
     tests don't leak out to the normal chroot.  Also unshare the UTS namespace
     so changes to `hostname` do not impact the host.
     """
+    modified_envs = False
+
     # Disable the Gentoo sandbox if it's active to avoid warnings/errors.
     if os.environ.get("SANDBOX_ON") == "1":
         os.environ["SANDBOX_ON"] = "0"
+        modified_envs = True
+
+    # Clear the LD_PRELOAD var since it won't be usable w/sudo
+    # (and the Gentoo sandbox normally sets it for us).
+    if os.environ.pop("LD_PRELOAD", None) is not None:
+        modified_envs = True
+
+    # Execute the self binary if we need to modify environment variables.
+    if modified_envs:
         os.execvp(argv[0], argv)
-    elif os.geteuid() != 0:
-        # Clear the LD_PRELOAD var since it won't be usable w/sudo
-        # (and the Gentoo sandbox normally sets it for us).
-        os.environ.pop("LD_PRELOAD", None)
-        cmd = _SudoCommand() + ["--"] + argv
-        os.execvp(cmd[0], cmd)
+
+    # If the current UID is not root, use sudo or unprivileged user namespace to
+    # become it.
+    if strategy == "sudo":
+        if os.geteuid() != 0:
+            cmd = _SudoCommand() + ["--"] + argv
+            os.execvp(cmd[0], cmd)
     else:
-        namespaces.SimpleUnshare(
-            net=ns_net, pid=ns_pid, pid_uid=pid_uid, pid_gid=pid_gid
+        if os.geteuid() == 0:
+            raise RuntimeError("--strategy=unprivileged is for non-root users")
+        namespaces.CreateUserNs()
+        # We're now UID=GID=0, so fix up user-related environment variables.
+        # Note that we also modify other environment variables later.
+        os.environ.update(
+            {
+                "HOME": "/root",
+                "USER": "root",
+            }
         )
+
+    namespaces.SimpleUnshare(
+        net=ns_net, pid=ns_pid, pid_uid=pid_uid, pid_gid=pid_gid
+    )
 
 
 def GetParser():
@@ -1001,6 +1061,12 @@ def GetParser():
         default=[],
         help="environmental variable(s) to set: <name>=<value>",
     )
+    parser.add_argument(
+        "--strategy",
+        default="sudo",
+        choices=("sudo", "unprivileged"),
+        help="strategy to enter sysroot",
+    )
     parser.add_argument("cmdline", nargs="*")
 
     return parser
@@ -1027,16 +1093,26 @@ def main(argv):
     if options.jobs < 0:
         parser.error("You must specify jobs greater than or equal to 0")
 
-    if options.pid_uid is None:
-        options.pid_uid = os.getuid()
-        argv.insert(0, f"--pid-uid={options.pid_uid}")
-    if options.pid_gid is None:
-        options.pid_gid = os.getgid()
-        argv.insert(0, f"--pid-gid={options.pid_gid}")
+    if options.strategy == "sudo":
+        if options.pid_uid is None:
+            options.pid_uid = os.getuid()
+            argv.insert(0, f"--pid-uid={options.pid_uid}")
+        if options.pid_gid is None:
+            options.pid_gid = os.getgid()
+            argv.insert(0, f"--pid-gid={options.pid_gid}")
 
-    # Once we've finished sanity checking args, make sure we're root.
+    if options.strategy == "unprivileged":
+        if not options.bind_mount_dev:
+            parser.error(
+                message="unprivileged strategy requires --bind-mount-dev"
+            )
+        if options.user != "root":
+            parser.error(message="unprivileged strategy requires --user=root")
+
+    # Once we've finished checking args, make sure we have privileges.
     _ReExecuteIfNeeded(
         [sys.argv[0]] + argv,
+        strategy=options.strategy,
         ns_net=options.ns_net,
         ns_pid=options.ns_pid,
         pid_uid=options.pid_uid,
@@ -1057,6 +1133,7 @@ def main(argv):
         options.board,
         options.host,
         options.framework,
+        options.strategy,
         options.user,
         options.gtest_filter,
         options.user_gtest_filter,
