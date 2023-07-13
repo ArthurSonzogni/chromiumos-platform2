@@ -25,8 +25,6 @@ SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
       swap_tool_(std::make_unique<SwapTool>()),
       shutdown_timer_(std::move(shutdown_timer)) {
-  // Replay metrics left from last boot;
-  metrics_.Replay(kSwapMetricsFile);
   metrics_.SetOutputFile(kSwapMetricsFile);
 }
 
