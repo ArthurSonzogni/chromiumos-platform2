@@ -152,7 +152,9 @@ class Cellular : public Device,
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
   bool IsUnderlyingDeviceEnabled() const override;
-  void Scan(Error* error, const std::string& /*reason*/) override;
+  void Scan(Error* error,
+            const std::string& /*reason*/,
+            bool /*is_dbus_call*/) override;
   void RegisterOnNetwork(const std::string& network_id,
                          ResultCallback callback) override;
   void RequirePin(const std::string& pin,

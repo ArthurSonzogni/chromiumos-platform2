@@ -660,7 +660,9 @@ bool Cellular::IsUnderlyingDeviceEnabled() const {
   return IsEnabledModemState(modem_state_);
 }
 
-void Cellular::Scan(Error* error, const std::string& /*reason*/) {
+void Cellular::Scan(Error* error,
+                    const std::string& /*reason*/,
+                    bool /*is_dbus_call*/) {
   SLOG(2) << LoggingTag() << ": Scanning started";
   CHECK(error);
   if (proposed_scan_in_progress_) {

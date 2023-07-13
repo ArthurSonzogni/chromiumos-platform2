@@ -39,7 +39,7 @@ class MockWiFi : public WiFi {
 
   MOCK_METHOD(void, Start, (EnabledStateChangedCallback), (override));
   MOCK_METHOD(void, Stop, (EnabledStateChangedCallback), (override));
-  MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
+  MOCK_METHOD(void, Scan, (Error*, const std::string&, bool), (override));
   MOCK_METHOD(void, Restart, (), (override));
   MOCK_METHOD(void, DisconnectFromIfActive, (WiFiService*), (override));
   MOCK_METHOD(void, DisconnectFrom, (WiFiService*), (override));

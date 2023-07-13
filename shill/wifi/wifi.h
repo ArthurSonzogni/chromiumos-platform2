@@ -145,7 +145,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
-  void Scan(Error* error, const std::string& reason) override;
+  void Scan(Error* error,
+            const std::string& reason,
+            bool is_dbus_call) override;
   void EnsureScanAndConnectToBestService(Error* error);
   // Callback for system suspend.
   void OnBeforeSuspend(ResultCallback callback) override;

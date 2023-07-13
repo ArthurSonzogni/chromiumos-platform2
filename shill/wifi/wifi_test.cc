@@ -910,7 +910,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
 
   void FireScanTimer() { wifi_->ScanTimerHandler(); }
-  void TriggerScan() { wifi_->Scan(nullptr, __func__); }
+  void TriggerScan() { wifi_->Scan(nullptr, __func__, false); }
   const WiFiServiceRefPtr& GetCurrentService() {
     return wifi_->current_service_;
   }

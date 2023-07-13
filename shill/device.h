@@ -98,7 +98,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.
-  virtual void Scan(Error* error, const std::string& reason);
+  virtual void Scan(Error* error, const std::string& reason, bool is_dbus_call);
   virtual void RegisterOnNetwork(const std::string& network_id,
                                  ResultCallback callback);
   virtual void RequirePin(const std::string& pin,

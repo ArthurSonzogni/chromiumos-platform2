@@ -1485,10 +1485,10 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[1].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kWiFi));
-    EXPECT_CALL(*mock_devices_[0], Scan(_, _));
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _, _));
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
-    EXPECT_CALL(*mock_devices_[1], Scan(_, _)).Times(0);
+    EXPECT_CALL(*mock_devices_[1], Scan(_, _, _)).Times(0);
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     manager()->DeregisterDevice(mock_devices_[1].get());
@@ -1498,7 +1498,7 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kWiFi));
-    EXPECT_CALL(*mock_devices_[0], Scan(_, _));
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _, _));
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     Mock::VerifyAndClearExpectations(mock_devices_[0].get());
@@ -1506,7 +1506,7 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
-    EXPECT_CALL(*mock_devices_[0], Scan(_, _)).Times(0);
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _, _)).Times(0);
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     Mock::VerifyAndClearExpectations(mock_devices_[0].get());
@@ -3360,7 +3360,7 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
   EXPECT_CALL(*wifi_service_wpa2wpa3_8021x, Connect(_, _)).Times(1);
   EXPECT_CALL(*wifi_service_wpa3_8021x, Connect(_, _)).Times(1);
 
-  ON_CALL(*wifi_device, Scan(_, _))
+  ON_CALL(*wifi_device, Scan(_, _, _))
       .WillByDefault(
           InvokeWithoutArgs(manager(), &Manager::ConnectToBestWiFiService));
   ON_CALL(*wifi_service_open, HasBSSIDConnectableEndpoints())

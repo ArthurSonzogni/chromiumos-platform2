@@ -216,9 +216,9 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
                                       link_name_.c_str(), flags, change);
 }
 
-void Device::Scan(Error* error, const std::string& reason) {
+void Device::Scan(Error* error, const std::string& reason, bool is_dbus_call) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
-                << reason;
+                << reason << (is_dbus_call ? " D-Bus call" : "");
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         GetTechnologyName() + " device doesn't implement Scan");
 }

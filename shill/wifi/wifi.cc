@@ -355,13 +355,16 @@ std::string WiFi::DeviceStorageSuffix() const {
   return perm_address_.empty() ? Device::DeviceStorageSuffix() : perm_address_;
 }
 
-void WiFi::Scan(Error* /*error*/, const std::string& reason) {
+void WiFi::Scan(Error* /*error*/,
+                const std::string& reason,
+                bool is_dbus_call) {
   if ((wifi_state_->GetPhyState() != WiFiState::PhyState::kIdle) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
     return;
   }
-  SLOG(this, 1) << __func__ << " on " << link_name() << " from " << reason;
+  SLOG(this, 1) << __func__ << " on " << link_name() << " from " << reason
+                << (is_dbus_call ? " D-Bus call" : "");
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
@@ -438,7 +441,7 @@ void WiFi::EnsureScanAndConnectToBestService(Error* error) {
   // radio becomes idle.
   if (wifi_state_->GetPhyState() == WiFiState::PhyState::kIdle) {
     wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
-    Scan(error, "Starting ensured scan.");
+    Scan(error, "Starting ensured scan.", false);
   } else {
     wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kWaiting);
   }
@@ -1132,7 +1135,7 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(nullptr, __func__);
+      Scan(nullptr, __func__, false);
     }
   } else {
     HandleRoam(new_bss, old_bss);
@@ -2947,7 +2950,7 @@ void WiFi::InitiateScan() {
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(nullptr, __func__);
+    Scan(nullptr, __func__, false);
     RestartFastScanAttempts();
   } else {
     SLOG(this, 1) << __func__
@@ -3113,7 +3116,7 @@ void WiFi::ScanTimerHandler() {
     return;
   }
   if (wifi_state_->GetPhyState() == WiFiState::PhyState::kIdle && IsIdle()) {
-    Scan(nullptr, __func__);
+    Scan(nullptr, __func__, false);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -3497,7 +3500,7 @@ void WiFi::ConnectToSupplicant() {
     AddCred(c);
   }
 
-  Scan(nullptr, __func__);
+  Scan(nullptr, __func__, false);
   StartScanTimer();
 }
 
@@ -3737,7 +3740,7 @@ void WiFi::HandleEnsuredScan() {
       wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
       // This starts a scan in the event loop, allowing SetPhyState
       // to complete before proceeding.
-      Scan(nullptr, "Previous scan complete. Starting ensured scan.");
+      Scan(nullptr, "Previous scan complete. Starting ensured scan.", false);
       break;
     case WiFiState::EnsuredScanState::kScanning:
       // Valid states after a scan are:

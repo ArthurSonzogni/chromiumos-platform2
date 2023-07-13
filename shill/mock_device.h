@@ -36,7 +36,7 @@ class MockDevice : public Device {
               SetEnabledChecked,
               (bool, bool, ResultCallback),
               (override));
-  MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
+  MOCK_METHOD(void, Scan, (Error*, const std::string&, bool), (override));
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));
   MOCK_METHOD(bool, Save, (StoreInterface*), (override));
   MOCK_METHOD(bool,

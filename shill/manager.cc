@@ -2678,7 +2678,7 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
     case Technology::kCellular:
     case Technology::kWiFi:
       for (const auto& device : FilterByTechnology(technology_identifier)) {
-        device->Scan(error, __func__);
+        device->Scan(error, __func__, true);
       }
       break;
 
