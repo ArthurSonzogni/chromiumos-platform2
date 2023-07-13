@@ -643,6 +643,15 @@ class Platform2Test:
             # that the child creates after the child terminates.
             os.setpgid(0, 0)
 
+            # This is the default value, but doesn't handle per-package
+            # PATH or ROOTPATH extensions.  Which doesn't seem to be a big
+            # deal atm as we don't really use those on DUTs.
+            os.environ["PATH"] = (
+                "/usr/local/sbin:/usr/local/bin:"
+                "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin"
+            )
+            os.environ.pop("TMPDIR", None)
+
             # Remove sysroot from path environment variables.
             for var in ("OUT", "SRC", "T", "LLVM_PROFILE_FILE"):
                 if var in os.environ:
