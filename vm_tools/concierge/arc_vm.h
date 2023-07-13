@@ -176,6 +176,9 @@ class ArcVm final : public VmBaseImpl {
   void HandleStatefulUpdate(
       const spaced::StatefulDiskSpaceUpdate update) override;
 
+  // Does clean up when the guest boot is done and the userland is ready.
+  void HandleUserlandReady();
+
   // Returns the kernel parameters for the VM
   static std::vector<std::string> GetKernelParams(
       const crossystem::Crossystem& cros_system,

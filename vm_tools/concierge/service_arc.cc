@@ -661,9 +661,8 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
     return response;
   }
 
-  // Create the RT v-Cpu for the VM now that boot is complete
-  auto& vm = iter->second;
-  vm->MakeRtVcpu();
+  ArcVm* vm = dynamic_cast<ArcVm*>(iter->second.get());
+  vm->HandleUserlandReady();
 
   // Notify the VM guest userland ready
   SendVmGuestUserlandReadySignal(vm_id,

@@ -681,6 +681,11 @@ void ArcVm::HandleSuspendDone() {
   ResumeCrosvm();
 }
 
+void ArcVm::HandleUserlandReady() {
+  // Create the RT v-Cpu for the VM now that boot is complete.
+  MakeRtVcpu();
+}
+
 // static
 bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                 int quota) {
