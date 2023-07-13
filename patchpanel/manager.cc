@@ -1095,9 +1095,9 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   // only affect multicast traffic on wireless device.
   for (const auto* device : arc_svc_->GetDevices()) {
     const auto& upstream_device = device->shill_device();
-    if (upstream_device.has_value()) {
+    if (!upstream_device.has_value()) {
       LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
-                 << device;
+                 << *device;
       continue;
     }
     if (upstream_device->type != ShillClient::Device::Type::kWifi) {
@@ -1136,9 +1136,9 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
   is_arc_interactive_ = is_interactive;
   for (const auto* device : arc_svc_->GetDevices()) {
     const auto& upstream_device = device->shill_device();
-    if (upstream_device.has_value()) {
+    if (!upstream_device.has_value()) {
       LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
-                 << device;
+                 << *device;
       continue;
     }
     if (upstream_device->type == ShillClient::Device::Type::kWifi &&
