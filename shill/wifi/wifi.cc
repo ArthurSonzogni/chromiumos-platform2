@@ -368,9 +368,18 @@ void WiFi::Scan(Error* /*error*/,
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
-  dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&WiFi::ScanTask,
-                                weak_ptr_factory_while_started_.GetWeakPtr()));
+  if (is_dbus_call && manager()->GetWiFiRequestScanType(nullptr) ==
+                          kWiFiRequestScanTypePassive) {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&WiFi::ScanTask,
+                       weak_ptr_factory_while_started_.GetWeakPtr(), false));
+  } else {
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&WiFi::ScanTask,
+                       weak_ptr_factory_while_started_.GetWeakPtr(), true));
+  }
 }
 
 int16_t WiFi::GetSignalLevelForActiveService() {
@@ -2353,8 +2362,11 @@ void WiFi::ConfigureScanSSIDLimit(const KeyValueStore& caps) {
                  << "hidden SSID and broadcast scan.";
 }
 
-void WiFi::ScanTask() {
-  SLOG(this, 2) << "WiFi " << link_name() << " scan requested.";
+void WiFi::ScanTask(bool is_active_scan) {
+  SLOG(this, 2) << "WiFi " << link_name() << " "
+                << (is_active_scan ? WPASupplicant::kScanTypeActive
+                                   : WPASupplicant::kScanTypePassive)
+                << " scan requested.";
   if (!enabled()) {
     SLOG(this, 2) << "Ignoring scan request while device is not enabled.";
     SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
@@ -2373,41 +2385,50 @@ void WiFi::ScanTask() {
     return;
   }
   KeyValueStore scan_args;
-  scan_args.Set<std::string>(WPASupplicant::kPropertyScanType,
-                             WPASupplicant::kScanTypeActive);
-
-  ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
-  if (!hidden_ssids.empty()) {
-    // Determine how many hidden ssids to pass in, based on max_ssids_per_scan_
-    if (max_ssids_per_scan_ > 1) {
-      // The empty '' "broadcast SSID" counts toward the max scan limit, so the
-      // capability needs to be >= 2 to have at least 1 hidden SSID.
-      if (hidden_ssids.size() >= static_cast<size_t>(max_ssids_per_scan_)) {
-        // TODO(b/172220260): Devise a better method for time-sharing with SSIDs
-        // that do not fit in
-        hidden_ssids.erase(hidden_ssids.begin() + max_ssids_per_scan_ - 1,
-                           hidden_ssids.end());
-      }
-      // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
-      // SSIDs to wpa_supplicant, we need to explicitly specify the default
-      // behavior of doing a broadcast probe.
-      hidden_ssids.push_back(ByteArray());
-
-    } else if (max_ssids_per_scan_ == 1) {
-      // Handle case where driver can only accept one scan_ssid at a time
-      AlternateSingleScans(&hidden_ssids);
-    } else {  // if max_ssids_per_scan_ < 1
-      hidden_ssids.resize(0);
-    }
-
+  if (is_active_scan) {
+    scan_args.Set<std::string>(WPASupplicant::kPropertyScanType,
+                               WPASupplicant::kScanTypeActive);
+    ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
     if (!hidden_ssids.empty()) {
-      scan_args.Set<ByteArrays>(WPASupplicant::kPropertyScanSSIDs,
-                                hidden_ssids);
+      // Determine how many hidden ssids to pass in, based on
+      // max_ssids_per_scan_
+      if (max_ssids_per_scan_ > 1) {
+        // The empty '' "broadcast SSID" counts toward the max scan limit, so
+        // the capability needs to be >= 2 to have at least 1 hidden SSID.
+        if (hidden_ssids.size() >= static_cast<size_t>(max_ssids_per_scan_)) {
+          // TODO(b/172220260): Devise a better method for time-sharing with
+          // SSIDs that do not fit in
+          hidden_ssids.erase(hidden_ssids.begin() + max_ssids_per_scan_ - 1,
+                             hidden_ssids.end());
+        }
+        // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
+        // SSIDs to wpa_supplicant, we need to explicitly specify the default
+        // behavior of doing a broadcast probe.
+        hidden_ssids.push_back(ByteArray());
+
+      } else if (max_ssids_per_scan_ == 1) {
+        // Handle case where driver can only accept one scan_ssid at a time
+        AlternateSingleScans(&hidden_ssids);
+      } else {  // if max_ssids_per_scan_ < 1
+        hidden_ssids.resize(0);
+      }
+
+      if (!hidden_ssids.empty()) {
+        scan_args.Set<ByteArrays>(WPASupplicant::kPropertyScanSSIDs,
+                                  hidden_ssids);
+      }
     }
+    scan_args.Set<bool>(WPASupplicant::kPropertyScanNonColoc6GHz, false);
+    scan_args.Set<bool>(WPASupplicant::kPropertyScan6GHzOnly, false);
+  } else {
+    scan_args.Set<std::string>(WPASupplicant::kPropertyScanType,
+                               WPASupplicant::kScanTypePassive);
+    scan_args.Set<bool>(WPASupplicant::kPropertyScanNonColoc6GHz, true);
+    scan_args.Set<bool>(WPASupplicant::kPropertyScan6GHzOnly, true);
   }
+
   scan_args.Set<bool>(WPASupplicant::kPropertyScanAllowRoam,
                       manager()->scan_allow_roam());
-
   if (!supplicant_interface_proxy_->Scan(scan_args)) {
     // A scan may fail if, for example, the wpa_supplicant vanishing
     // notification is posted after this task has already started running.

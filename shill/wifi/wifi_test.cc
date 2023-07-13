@@ -732,6 +732,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->UpdateSupplicantProperties(service, kv, error);
   }
 
+  void Scan(Error* error, const std::string& reason, bool is_dbus_call) {
+    wifi_->Scan(error, reason, is_dbus_call);
+  }
+
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
   using MockPasspointCredentialsRefPtr =
@@ -3074,6 +3078,97 @@ TEST_F(WiFiMainTest, ScanAllowRoam) {
   manager()->props_.scan_allow_roam = false;
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(AllowRoam(false)));
   event_dispatcher_->DispatchPendingEvents();
+}
+
+MATCHER_P3(RequestScanType,
+           scan_type_expected,
+           scan_non_coloc_6ghz_expected,
+           scan_6ghz_only_expected,
+           "") {
+  if (!arg.template Contains<std::string>(WPASupplicant::kPropertyScanType)) {
+    return false;
+  }
+  if (!arg.template Contains<bool>(WPASupplicant::kPropertyScanNonColoc6GHz)) {
+    return false;
+  }
+  if (!arg.template Contains<bool>(WPASupplicant::kPropertyScan6GHzOnly)) {
+    return false;
+  }
+
+  std::string scan_type_actual =
+      arg.template Get<std::string>(WPASupplicant::kPropertyScanType);
+  bool scan_non_coloc_6ghz_actual =
+      arg.template Get<bool>(WPASupplicant::kPropertyScanNonColoc6GHz);
+  bool scan_6ghz_only_actual =
+      arg.template Get<bool>(WPASupplicant::kPropertyScan6GHzOnly);
+  return scan_type_expected == scan_type_actual &&
+         scan_non_coloc_6ghz_expected == scan_non_coloc_6ghz_actual &&
+         scan_6ghz_only_expected == scan_6ghz_only_actual;
+}
+
+TEST_F(WiFiMainTest, WiFiRequestScanTypeDefault) {
+  Error error;
+  StartWiFi();
+  // Dispatch any scan tasks that may have been called previously.
+  event_dispatcher_->DispatchPendingEvents();
+  manager()->props_.request_scan_type = kWiFiRequestScanTypeDefault;
+  // kWiFiRequestScanTypeDefault is equivalent to kWiFiRequestScanTypeActive
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      Scan(RequestScanType(WPASupplicant::kScanTypeActive, false, false)));
+  SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+               __func__);
+  Scan(&error, "RequestScan", true);
+  event_dispatcher_->DispatchPendingEvents();
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, WiFiRequestScanTypeActive) {
+  Error error;
+  StartWiFi();
+  // Dispatch any scan tasks that may have been called previously.
+  event_dispatcher_->DispatchPendingEvents();
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      Scan(RequestScanType(WPASupplicant::kScanTypeActive, false, false)));
+  manager()->props_.request_scan_type = kWiFiRequestScanTypeActive;
+  SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+               __func__);
+  Scan(&error, "RequestScan", true);
+  event_dispatcher_->DispatchPendingEvents();
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, WiFiRequestScanTypePassive) {
+  Error error;
+  StartWiFi();
+  // Dispatch any scan tasks that may have been called previously.
+  event_dispatcher_->DispatchPendingEvents();
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      Scan(RequestScanType(WPASupplicant::kScanTypePassive, true, true)));
+  manager()->props_.request_scan_type = kWiFiRequestScanTypePassive;
+  SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+               __func__);
+  Scan(&error, "RequestScan", true);
+  event_dispatcher_->DispatchPendingEvents();
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, WiFiRequestScanTypePassiveNonDBus) {
+  Error error;
+  StartWiFi();
+  // Dispatch any scan tasks that may have been called previously.
+  event_dispatcher_->DispatchPendingEvents();
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      Scan(RequestScanType(WPASupplicant::kScanTypeActive, false, false)));
+  manager()->props_.request_scan_type = kWiFiRequestScanTypePassive;
+  SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+               __func__);
+  Scan(&error, "NotRequestScan", false);
+  event_dispatcher_->DispatchPendingEvents();
+  StopWiFi();
 }
 
 TEST_F(WiFiMainTest, WEPSupported) {

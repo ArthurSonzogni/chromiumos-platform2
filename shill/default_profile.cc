@@ -139,6 +139,8 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
                          &ft_enabled)) {
     manager_props->ft_enabled = ft_enabled;
   }
+
+  manager_props->request_scan_type = kWiFiRequestScanTypeDefault;
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {

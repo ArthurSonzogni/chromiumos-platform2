@@ -235,6 +235,9 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedBool(kWifiGlobalFTEnabledProperty, &Manager::GetFTEnabled,
                           &Manager::SetFTEnabled);
   store_.RegisterBool(kWifiScanAllowRoamProperty, &props_.scan_allow_roam);
+  HelpRegisterDerivedString(kWifiRequestScanTypeProperty,
+                            &Manager::GetWiFiRequestScanType,
+                            &Manager::SetWiFiRequestScanType);
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
@@ -3191,6 +3194,20 @@ void Manager::NotifyDefaultLogicalServiceChanged(
   }
 
   was_last_online_ = (logical_service != nullptr);
+}
+
+bool Manager::SetWiFiRequestScanType(const std::string& type, Error* error) {
+  if (type != kWiFiRequestScanTypeActive &&
+      type != kWiFiRequestScanTypeDefault &&
+      type != kWiFiRequestScanTypePassive) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        base::StringPrintf("WiFi RequestScan Type %s is invalid.",
+                           type.c_str()));
+    return false;
+  }
+  props_.request_scan_type = type;
+  return true;
 }
 
 }  // namespace shill

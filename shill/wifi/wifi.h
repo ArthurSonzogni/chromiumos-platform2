@@ -536,7 +536,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   //     V              V                 V
   // [ScanDone]-->[ScanDoneTask]-->[UpdateScanStateAfterScanDone]
   void UpdateScanStateAfterScanDone();
-  void ScanTask();
+  void ScanTask(bool is_active_scan);
   // When scans are limited to one ssid, alternate between broadcast probes
   // and directed probes. This is necessary because the broadcast probe takes
   // up one SSID slot, leaving no space for the directed probe.

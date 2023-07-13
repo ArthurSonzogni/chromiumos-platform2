@@ -112,6 +112,7 @@ struct ManagerProperties {
   bool enable_dhcp_qos = false;
   std::optional<bool> ft_enabled;
   bool scan_allow_roam = true;
+  std::string request_scan_type;
 };
 
 class Manager {
@@ -464,6 +465,10 @@ class Manager {
 
   bool GetFTEnabled(Error* error);
   bool scan_allow_roam() const { return props_.scan_allow_roam; }
+  std::string GetWiFiRequestScanType(Error* /*error*/) {
+    return props_.request_scan_type;
+  }
+  bool SetWiFiRequestScanType(const std::string& type, Error* error);
 
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
@@ -602,6 +607,10 @@ class Manager {
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
+  FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypeDefault);
+  FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypeActive);
+  FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypePassive);
+  FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypePassiveNonDBus);
   FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 

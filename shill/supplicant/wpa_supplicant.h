@@ -164,7 +164,9 @@ class WPASupplicant {
   static constexpr char kPropertyPreSharedKey[] = "psk";
   static constexpr char kPropertyPrivacy[] = "Privacy";
   static constexpr char kPropertyRSN[] = "RSN";
+  static constexpr char kPropertyScan6GHzOnly[] = "6GHzOnly";
   static constexpr char kPropertyScanAllowRoam[] = "AllowRoam";
+  static constexpr char kPropertyScanNonColoc6GHz[] = "NonColoc6GHz";
   static constexpr char kPropertyScanSSIDs[] = "SSIDs";
   static constexpr char kPropertyScanType[] = "Type";
   static constexpr char kPropertySecurityProtocol[] = "proto";
@@ -172,6 +174,7 @@ class WPASupplicant {
   static constexpr char kPropertyWEPTxKeyIndex[] = "wep_tx_keyidx";
   static constexpr char kPropertyWPA[] = "WPA";
   static constexpr char kScanTypeActive[] = "active";
+  static constexpr char kScanTypePassive[] = "passive";
   static constexpr char kSecurityAuthAlg[] = "OPEN SHARED";
   static constexpr char kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
   static constexpr char kSecurityModeRSN[] = "RSN";

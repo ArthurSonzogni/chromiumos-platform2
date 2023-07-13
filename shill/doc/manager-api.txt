@@ -878,6 +878,13 @@ Properties	object ActiveProfile [readonly]
 			Specifies whether or not a WiFi scan could trigger a
 			roam if a better AP is found on the same network.
 
+		string WiFi.RequestScanType [readwrite]
+
+			Specifies WiFi RequestScan scan type. The possible values are
+			"active", "default", "passive". WiFi RequestScan performs active
+			scans if the value is "active" or "default", and passive scans
+			if the value is "passive".
+
 		array{string, string} DNSProxyDOHProviders [readonly]
 
 			The DNS-over-HTTPS service providers. URLs of the secure

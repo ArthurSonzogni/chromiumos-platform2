@@ -128,6 +128,7 @@ constexpr char kUninitializedTechnologiesProperty[] =
 constexpr char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 constexpr char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
 constexpr char kWifiScanAllowRoamProperty[] = "WiFi.ScanAllowRoam";
+constexpr char kWifiRequestScanTypeProperty[] = "WiFi.RequestScanType";
 
 // Manager and DefaultProfile property names (the Manager properties that are
 // persisted by a DefaultProfile; these are always read-only for
@@ -1056,6 +1057,11 @@ constexpr char kTetheringReadinessNotAllowedUserNotEntitled[] =
 constexpr char kTetheringReadinessReady[] = "ready";
 constexpr char kTetheringReadinessUpstreamNetworkNotAvailable[] =
     "upstream_network_not_available";
+
+// WiFi RequestScan types
+constexpr char kWiFiRequestScanTypeActive[] = "active";
+constexpr char kWiFiRequestScanTypeDefault[] = "default";
+constexpr char kWiFiRequestScanTypePassive[] = "passive";
 
 }  // namespace shill
 
