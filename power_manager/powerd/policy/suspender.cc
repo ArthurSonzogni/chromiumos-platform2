@@ -784,7 +784,7 @@ Suspender::State Suspender::Suspend() {
 
   // TODO(crbug.com/790898): Identify attempts that are canceled due to wakeup
   // events from dark resume sources and call HandleDarkResume instead.
-  return dark_resume_->InDarkResume() ? HandleDarkResume(result)
+  return dark_resume_->InDarkResume() ? HandleDarkResume(result, hibernate)
                                       : HandleNormalResume(result, hibernate);
 }
 
@@ -812,13 +812,14 @@ Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result,
   return HandleUnsuccessfulSuspend(result, from_hibernate);
 }
 
-Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
+Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result,
+                                             bool from_hibernate) {
   // Go through the normal unsuccessful-suspend path if the suspend failed in
   // the kernel or if we've exceeded the maximum number of retries.
   if (result == Delegate::SuspendResult::FAILURE ||
       (result == Delegate::SuspendResult::CANCELED &&
        current_num_attempts_ > max_retries_))
-    return HandleUnsuccessfulSuspend(result, false);
+    return HandleUnsuccessfulSuspend(result, from_hibernate);
 
   // Save the first run's number of attempts so it can be reported later.
   if (!initial_num_attempts_)

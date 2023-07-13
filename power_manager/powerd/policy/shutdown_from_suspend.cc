@@ -21,6 +21,7 @@
 namespace power_manager::policy {
 
 const base::TimeDelta kDefaultHibernateDelay = base::Days(1);
+const int kMaxHibernateAttempts = 3;
 
 using power_manager::system::RealWakeupTimer;
 using power_manager::system::WakeupTimer;
@@ -108,18 +109,25 @@ ShutdownFromSuspend::Action ShutdownFromSuspend::DetermineTargetState() {
   }
 
   bool hibernate_available = suspend_configurator_->IsHibernateAvailable();
-  if (hibernate_timer_fired_ && hibernate_available) {
+  if (hibernate_timer_fired_ && hibernate_available &&
+      hibernate_attempts_ < kMaxHibernateAttempts) {
     LOG(INFO) << "Hibernate timer expired. The system will attempt to "
                  "hibernate";
+    hibernate_attempts_++;
     return Action::HIBERNATE;
   }
 
   if (ShutdownFromSuspend::IsBatteryLow()) {
     // If the battery is low we always will attempt to hibernate (if it's
     // available) or shutdown.
-    LOG(INFO) << ((hibernate_available) ? "Hibernate" : "Shutdown")
-              << " due to low battery";
-    return hibernate_available ? Action::HIBERNATE : Action::SHUT_DOWN;
+    if (hibernate_available && hibernate_attempts_ < kMaxHibernateAttempts) {
+      LOG(INFO) << "Hibernate due to low battery";
+      hibernate_attempts_++;
+      return Action::HIBERNATE;
+    } else {
+      LOG(INFO) << "Shutdown due to low battery";
+      return Action::SHUT_DOWN;
+    }
   }
 
   // By default we will suspend.
@@ -135,12 +143,13 @@ void ShutdownFromSuspend::ConfigureTimers() {
   // Only start the timer for hibernate if the delay is non-zero.
   if (suspend_configurator_->IsHibernateAvailable() &&
       hibernate_delay_ != base::TimeDelta() &&
-      !hibernate_alarm_timer_->IsRunning()) {
+      !hibernate_alarm_timer_->IsRunning() && !hibernate_timer_fired_) {
     hibernate_alarm_timer_->Start(
         hibernate_delay_,
         base::BindRepeating(&ShutdownFromSuspend::OnHibernateTimerWake,
                             base::Unretained(this)));
     hibernate_timer_fired_ = false;
+    hibernate_attempts_ = 0;
   }
 
   if (!shutdown_alarm_timer_->IsRunning()) {

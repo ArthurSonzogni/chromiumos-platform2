@@ -384,7 +384,7 @@ class Suspender : public SuspendDelayObserver,
 
   // Helper methods called by Suspend() to handle various suspend results.
   State HandleNormalResume(Delegate::SuspendResult result, bool from_hibernate);
-  State HandleDarkResume(Delegate::SuspendResult result);
+  State HandleDarkResume(Delegate::SuspendResult result, bool from_hibernate);
 
   // Helper method called by HandleNormalResume() or HandleDarkResume() in
   // response to a failed or canceled suspend or hibernation attempt.

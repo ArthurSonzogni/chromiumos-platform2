@@ -91,6 +91,9 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   bool shutdown_timer_fired_ = false;
   bool hibernate_timer_fired_ = false;
 
+  // Number of hibernate attempts since dark resume was entered,
+  int64_t hibernate_attempts_ = 0;
+
   // Timer to wake the system from suspend after |shutdown_delay_|.
   std::unique_ptr<power_manager::system::WakeupTimer> shutdown_alarm_timer_;
   std::unique_ptr<power_manager::system::WakeupTimer> hibernate_alarm_timer_;
