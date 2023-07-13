@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using testing::_;
+using testing::A;
 using testing::Invoke;
 
 namespace {
@@ -79,7 +79,8 @@ TEST_F(CrosECUtilTest, ModeEntrySupported) {
 
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                      IsMethod("EcGetInventory"), _, _))
+                                      IsMethod("EcGetInventory"), A<int>(),
+                                      A<dbus::ScopedDBusError*>()))
       .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout,
                           dbus::ScopedDBusError* error) {
         return RespondWithString(method_call, kSampleInventoryInput1);

@@ -13,7 +13,7 @@
 
 #include "chromeos/dbus/service_constants.h"
 
-using testing::_;
+using testing::A;
 using testing::Invoke;
 
 namespace {
@@ -73,7 +73,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                      IsMethod("IsGuestSessionActive"), _, _))
+                                      IsMethod("IsGuestSessionActive"),
+                                      A<int>(), A<dbus::ScopedDBusError*>()))
       .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout,
                            dbus::ScopedDBusError* error) {
         // We can set an arbitrary serial number.
