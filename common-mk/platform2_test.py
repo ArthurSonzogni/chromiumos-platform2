@@ -15,7 +15,6 @@ import ctypes
 import ctypes.util
 import errno
 import os
-from pathlib import Path
 import pwd
 import re
 import signal
@@ -123,15 +122,6 @@ ENV_PASSTHRU_REGEX_LIST = list(
 
 class Platform2Test:
     """Framework for running platform2 tests"""
-
-    _BIND_RW_MOUNT_PATHS = (
-        "dev/pts",
-        "dev/shm",
-    )
-    _BIND_RO_MOUNT_PATHS = (
-        "sys",
-        "mnt/host/source",
-    )
 
     def __init__(
         self,
@@ -413,12 +403,73 @@ class Platform2Test:
             osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY,
         )
 
-    def SetupDev(self):
-        """Initialize a pseudo /dev directory.
+    def _bind_mount_file(
+        self, old_path: str, new_path: str, *, readonly: bool = False
+    ) -> None:
+        """Bind-mounts a regular file.
+
+        It creates the target file for the mount point if it doesn't exist.
+        """
+        # Don't call osutils.Touch with makedirs=True. It unconditionally
+        # changes the permission of the file's parent directory to 0775.
+        osutils.SafeMakedirs(os.path.dirname(new_path), mode=0o755)
+        osutils.Touch(new_path, makedirs=False)
+        osutils.Mount(old_path, new_path, None, osutils.MS_BIND)
+        if readonly:
+            self._remount_ro(new_path)
+
+    def _bind_mount_dir(
+        self, old_path: str, new_path: str, *, readonly: bool = False
+    ) -> None:
+        """Bind-mounts a directory.
+
+        It creates the target directory for the mount point if it doesn't exist.
+        """
+        osutils.SafeMakedirs(new_path, mode=0o755)
+        osutils.Mount(
+            old_path, new_path, None, osutils.MS_BIND | osutils.MS_REC
+        )
+        if readonly:
+            self._remount_ro(new_path)
+
+    def _bind_mount_missing_files(self, old_dir: str, new_dir: str) -> None:
+        """Bind-mounts a file under old_dir to new_dir if it's missing."""
+        for name in os.listdir(old_dir):
+            old_path = os.path.join(old_dir, name)
+            new_path = os.path.join(new_dir, name)
+            if os.path.exists(new_path):
+                continue
+            if os.path.islink(old_path):
+                dest = os.readlink(old_path)
+                os.symlink(dest, new_path)
+            elif os.path.isfile(old_path):
+                self._bind_mount_file(old_path, new_path)
+            elif os.path.isdir(old_path):
+                self._bind_mount_dir(old_path, new_path)
+            else:
+                raise RuntimeError(f"Unsupported file type: {old_path}")
+
+    def _setup_mnt(self, new_sysroot: str) -> None:
+        """Initialize the /mnt directory in the new root file system."""
+        # Bind-mount /mnt/empty to itself to make it read-only.
+        empty_dir = os.path.join(new_sysroot, "mnt/empty")
+        self._bind_mount_dir(empty_dir, empty_dir, readonly=True)
+        self._bind_mount_dir(
+            constants.CHROOT_SOURCE_ROOT,
+            os.path.join(new_sysroot, "mnt/host/source"),
+            readonly=True,
+        )
+
+    def _setup_dev(self, new_sysroot: str) -> None:
+        """Initialize the /dev directory in the new root file system.
 
         Unittests shouldn't need access to the real host /dev, especially since
         it won't be the same as exists on builders.
         """
+        if self.bind_mount_dev:
+            self._bind_mount_dir("/dev", os.path.join(new_sysroot, "dev"))
+            return
+
         NODES = {
             "full": (1, 7, 0o666),
             "null": (1, 3, 0o666),
@@ -436,8 +487,8 @@ class Platform2Test:
         }
 
         # Create an empty scratch space for /dev.
-        path = os.path.join(self.sysroot, "dev")
-        osutils.SafeMakedirs(path)
+        path = os.path.join(new_sysroot, "dev")
+        osutils.SafeMakedirs(path, mode=0o755)
         osutils.Mount(
             "/dev",
             path,
@@ -459,23 +510,19 @@ class Platform2Test:
             for source, target in SYMLINKS.items():
                 os.symlink(target, os.path.join(path, source))
 
-            # Mount subpaths.
-            os.mkdir(os.path.join(path, "shm"), 0o1777)
+            # Bind-mount a few subpaths from the host.
+            for name in ("shm", "pts"):
+                subpath = os.path.join(path, name)
+                self._bind_mount_dir(os.path.join("/dev", name), subpath)
 
-    def SetupProc(self, tempdir: Path) -> None:
-        """Initialize a reduced /proc directory.
+    def _setup_proc(self, new_sysroot: str) -> None:
+        """Initialize the /proc directory in the new root file system.
 
         We want to expose process info, but not host config settings.
         """
-        # Mount the new proc to a tempdir before we move it to the final place.
-        # This allows us to bind mount paths from the real /proc when we're
-        # using --sysroot=/.
-        osutils.Mount(
-            "/proc",
-            tempdir,
-            None,
-            osutils.MS_BIND,
-        )
+        new_proc = os.path.join(new_sysroot, "proc")
+        self._bind_mount_dir("/proc", new_proc)
+
         DISABLE_SUBDIRS = (
             "acpi",
             "asound",
@@ -484,17 +531,16 @@ class Platform2Test:
             "dynamic_debug",
             "fs",
         )
-        empty_dir = os.path.join(self.sysroot, "mnt", "empty")
-        for d in DISABLE_SUBDIRS:
-            d = tempdir / d
-            if d.is_dir():
-                osutils.Mount(
-                    empty_dir, d, None, osutils.MS_BIND | osutils.MS_RDONLY
+        for name in DISABLE_SUBDIRS:
+            d = os.path.join(new_proc, name)
+            if os.path.isdir(d):
+                self._bind_mount_dir(
+                    os.path.join(new_sysroot, "mnt/empty"), d, readonly=True
                 )
 
         # Setup some sysctl paths.  Have to be careful to only expose stable
         # entries that are long term stable ABI, and only read-only.
-        sysctl = tempdir / "sys"
+        sysctl = os.path.join(new_proc, "sys")
         osutils.Mount(
             "sysctl",
             sysctl,
@@ -502,42 +548,53 @@ class Platform2Test:
             osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
             "mode=0755,size=1M",
         )
-        d = sysctl / "kernel" / "random"
-        osutils.SafeMakedirs(d)
-        osutils.Mount("/proc/sys/kernel/random", d, None, osutils.MS_BIND)
-        self._remount_ro(d)
+        self._bind_mount_dir(
+            "/proc/sys/kernel/random",
+            os.path.join(sysctl, "kernel/random"),
+            readonly=True,
+        )
         self._remount_ro(sysctl)
 
-        d = os.path.join(self.sysroot, "proc")
-        osutils.SafeMakedirs(d)
+    def _setup_run(self, new_sysroot: str) -> None:
+        """Initialize the /run directory in the new root file system."""
+        new_run = os.path.join(new_sysroot, "run")
+        osutils.SafeMakedirs(new_run, mode=0o755)
         osutils.Mount(
-            tempdir,
-            d,
-            None,
-            osutils.MS_MOVE,
+            "run",
+            new_run,
+            "tmpfs",
+            osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
+            "mode=0755,size=100M",
         )
 
-    def SetupSys(self) -> None:
-        """Initialize a reduced /sys directory.
+        new_lock = os.path.join(new_run, "lock")
+        osutils.SafeMakedirs(new_lock, mode=0o1777)
+
+    def _setup_sys(self, new_sysroot: str) -> None:
+        """Initialize the /sys directory in the new root file system.
 
         We want to expose generic config, but not host config settings.
         """
+        new_sys = os.path.join(new_sysroot, "sys")
+        self._bind_mount_dir("/sys", new_sys)
+
         DISABLE_SUBDIRS = (
             "firmware",
             "hypervisor",
             "module",
             "power",
         )
-        empty_dir = os.path.join(self.sysroot, "mnt/empty")
-        for d in DISABLE_SUBDIRS:
-            d = os.path.join(self.sysroot, "sys", d)
+        for name in DISABLE_SUBDIRS:
+            d = os.path.join(new_sys, name)
             if os.path.isdir(d):
-                osutils.Mount(
-                    empty_dir, d, "none", osutils.MS_BIND | osutils.MS_RDONLY
+                self._bind_mount_dir(
+                    os.path.join(new_sysroot, "mnt/empty"), d, readonly=True
                 )
 
-    def SetupSysrootInSysroot(self) -> None:
-        """Set up /${SYSROOT}/${SYSROOT}.
+        self._remount_ro(new_sys)
+
+    def _setup_build(self, new_sysroot: str) -> None:
+        """Set up /build, namely ${SYSROOT}/${SYSROOT}.
 
         Some build tools such as Bazel references absolute paths of the
         sysroot: https://bazel.build/extending/rules#runfiles.
@@ -545,13 +602,63 @@ class Platform2Test:
         """
         if self.sysroot == "/":
             return
-        osutils.SafeMakedirs(self.sysroot + self.sysroot)
-        osutils.Mount(
-            self.sysroot,
-            self.sysroot + self.sysroot,
-            "none",
-            osutils.MS_BIND | osutils.MS_RDONLY,
+        assert self.sysroot.startswith("/build/")
+
+        double_sysroot = new_sysroot + self.sysroot
+        osutils.SafeMakedirs(os.path.dirname(double_sysroot), mode=0o755)
+        os.symlink("/", double_sysroot)
+
+        self._bind_mount_missing_files(
+            os.path.join(self.sysroot, "build"),
+            os.path.join(new_sysroot, "build"),
         )
+
+    def _setup_sysroot(self) -> None:
+        """Sets up the sysroot.
+
+        We may have to create a few directories under the sysroot for
+        bind-mounts to succeed when they have not been created by sysroot
+        packages yet. To support the case even if we don't have privileges to
+        create directories in the sysroot, we create a new tmpfs where we can
+        create arbitrary files, bind-mount directories from the sysroot to make
+        it look very close to the real sysroot, and finally mounts it at the
+        sysroot.
+
+        At the end of this function, the working directory of the current
+        process will be / as the original working directory may become
+        inaccessible.
+        """
+        # Mount a new tmpfs at "/" where we can create arbitrary files without
+        # fearing of failing to delete a temporary directory.
+        # The trick is that this mount point can be accessed as "/..", not "/",
+        # so we can still access the original root file system.
+        osutils.Mount("root", "/", "tmpfs", 0, "mode=0755,size=100M")
+
+        new_sysroot = "/.."
+
+        # Create special directories/mounts that may not exist in the sysroot.
+        # We set up /mnt first because other mounts may bind-mount /mnt/empty.
+        self._setup_mnt(new_sysroot)
+        self._setup_build(new_sysroot)
+        self._setup_dev(new_sysroot)
+        self._setup_proc(new_sysroot)
+        self._setup_run(new_sysroot)
+        self._setup_sys(new_sysroot)
+
+        self._bind_mount_missing_files(self.sysroot, new_sysroot)
+
+        # Finally, mount the new root file system at the sysroot.
+        if self.sysroot == "/":
+            os.chroot(new_sysroot)
+        else:
+            osutils.Mount(new_sysroot, self.sysroot, None, osutils.MS_MOVE)
+
+        # The original working directory may be inaccessible, so change it to /.
+        # Actually it doesn't matter whichever directory we set the current
+        # directory to here because we'll call os.chdir() with an absolute path
+        # soon, but the semantics of this function is clearer if we don't leave
+        # the current directory possibly inaccessible.
+        os.chdir("/")
 
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
@@ -561,56 +668,13 @@ class Platform2Test:
         # user if they test by hand.
         self.pre_test()
 
-        # Set up /dev first.
-        bind_mount_paths = []
-        if self.bind_mount_dev:
-            bind_mount_paths += ["dev"]
-        else:
-            self.SetupDev()
-        bind_mount_paths += (
-            self._BIND_RW_MOUNT_PATHS + self._BIND_RO_MOUNT_PATHS
-        )
+        # Some programs expect to find data files via $CWD, so doing a chroot
+        # and dropping them into / would make them fail.
+        # Query the working directory before calling _setup_sysroot as it
+        # changes the current directory.
+        cwd = self.removeSysrootPrefix(os.getcwd())
 
-        # Make sure /mnt/empty is always empty, and remains empty.
-        mnt_empty = os.path.join(self.sysroot, "mnt/empty")
-        osutils.SafeMakedirs(mnt_empty)
-        osutils.Mount(
-            "empty-dir",
-            mnt_empty,
-            "tmpfs",
-            osutils.MS_RDONLY,
-            "mode=0755,size=1K",
-        )
-
-        self.SetupSysrootInSysroot()
-
-        for mount in bind_mount_paths:
-            path = os.path.join(self.sysroot, mount)
-            osutils.SafeMakedirs(path)
-            osutils.Mount("/" + mount, path, "none", osutils.MS_BIND)
-            if mount in self._BIND_RO_MOUNT_PATHS:
-                self._remount_ro(path)
-
-        with tempfile.TemporaryDirectory() as tempdir_obj:
-            tempdir = Path(tempdir_obj)
-            self.SetupProc(tempdir)
-
-        self.SetupSys()
-
-        # Make sure /run/lock is usable.  But not the real lock path since tests
-        # shouldn't be touching real state.
-        path = os.path.join(self.sysroot, "run")
-        # Ensure that ${SYSROOT}/run exists before we try to mount to it.
-        osutils.SafeMakedirs(path, mode=0o755, sudo=True)
-        osutils.Mount(
-            "run",
-            path,
-            "tmpfs",
-            osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
-            "mode=755",
-        )
-        path = os.path.join(path, "lock")
-        osutils.SafeMakedirs(path, mode=0o1777)
+        self._setup_sysroot()
 
         positive_filters = self.gtest_filter[0]
         negative_filters = self.gtest_filter[1]
@@ -627,10 +691,6 @@ class Platform2Test:
         argv[0] = self.removeSysrootPrefix(argv[0])
         if gtest_filter != "-":
             argv.append("--gtest_filter=" + gtest_filter)
-
-        # Some programs expect to find data files via $CWD, so doing a chroot
-        # and dropping them into / would make them fail.
-        cwd = self.removeSysrootPrefix(os.getcwd())
 
         # Default for jobs is 1 right now in which case we run the test runner
         # directly since running it as gtest_parallel carries a non-trivial
