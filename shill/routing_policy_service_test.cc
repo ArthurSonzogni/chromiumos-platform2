@@ -4,14 +4,14 @@
 
 #include "shill/routing_policy_service.h"
 
+#include <linux/fib_rules.h>
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
 #include <base/memory/ptr_util.h>
+#include <net-base/ip_address.h>
 
-#include "shill/logging.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/rtnl_message.h"
 
 using testing::_;
 using testing::Field;
@@ -73,27 +73,27 @@ TEST_F(RoutingPolicyServiceTest, PolicyRuleAddFlush) {
   const int iface_id1 = 4;
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(rule_table_->AddRule(
-      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(100)
-                     .SetTable(1001)
-                     .SetUidRange({1000, 2000})));
+  auto rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
+  rule.priority = 100;
+  rule.table = 1001;
+  rule.uid_range = fib_rule_uid_range{1000, 2000};
+  EXPECT_TRUE(rule_table_->AddRule(iface_id0, rule));
   EXPECT_EQ(CountRoutingPolicyEntries(), 1);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(rule_table_->AddRule(
-      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(101)
-                     .SetTable(1002)
-                     .SetIif("arcbr0")));
+  rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
+  rule.priority = 101;
+  rule.table = 1002;
+  rule.iif_name = "arcbr0";
+  EXPECT_TRUE(rule_table_->AddRule(iface_id0, rule));
   EXPECT_EQ(CountRoutingPolicyEntries(), 2);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(rule_table_->AddRule(
-      iface_id1, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(102)
-                     .SetTable(1003)
-                     .SetUidRange({100, 101})));
+  rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
+  rule.priority = 102;
+  rule.table = 1003;
+  rule.uid_range = fib_rule_uid_range{100, 101};
+  EXPECT_TRUE(rule_table_->AddRule(iface_id1, rule));
   EXPECT_EQ(CountRoutingPolicyEntries(), 3);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))

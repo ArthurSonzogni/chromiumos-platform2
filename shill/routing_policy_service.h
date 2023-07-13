@@ -13,9 +13,7 @@
 
 #include <base/no_destructor.h>
 
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/refptr_types.h"
 #include "shill/routing_policy_entry.h"
 
 namespace shill {
@@ -69,8 +67,8 @@ class RoutingPolicyService {
                  const RoutingPolicyEntry& entry,
                  RTNLMessage::Mode mode,
                  unsigned int flags);
-  bool ParseRoutingPolicyMessage(const RTNLMessage& message,
-                                 RoutingPolicyEntry* entry);
+  std::optional<RoutingPolicyEntry> ParseRoutingPolicyMessage(
+      const RTNLMessage& message);
 
   // Maps from interface ids to the routing policy entries associated with the
   // interface.

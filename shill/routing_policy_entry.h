@@ -11,13 +11,16 @@
 #include <optional>
 #include <string>
 
-#include "shill/net/ip_address.h"
+#include <net-base/ip_address.h>
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b);
 
 namespace shill {
 
 // Represents a single policy routing rule.
+// ctor will initialize |dst| and |src| to be of the same family of |family|,
+// but caller needs to ensure the family still matches when they set |dst| or
+// |src| afterwards.
 struct RoutingPolicyEntry {
   struct FwMark {
     uint32_t value = 0;
@@ -28,36 +31,16 @@ struct RoutingPolicyEntry {
     }
   };
 
-  explicit RoutingPolicyEntry(IPAddress::Family family);
-
-  static RoutingPolicyEntry Create(IPAddress::Family family_in);
-  static RoutingPolicyEntry CreateFromSrc(IPAddress src_in);
-  static RoutingPolicyEntry CreateFromDst(IPAddress dst_in);
-
-  RoutingPolicyEntry& SetPriority(uint32_t priority_in);
-  RoutingPolicyEntry& SetTable(uint32_t table_in);
-  RoutingPolicyEntry& SetFwMark(FwMark fw_mark_in);
-  // Sets the UID range to contain just a single UID.
-  RoutingPolicyEntry& SetUid(uint32_t uid);
-  RoutingPolicyEntry& SetUidRange(fib_rule_uid_range uid_range_in);
-  RoutingPolicyEntry& SetIif(std::string iif_name_in);
-  RoutingPolicyEntry& SetOif(std::string oif_name_in);
-
-  // Flip between IPv4 and v6. |dst| and |src| will only be modified if they
-  // have already been set, and will be set to IPAddress(new_ip_family). If
-  // |dst| or |src| has been set and is not the default address (all zeros),
-  // consider simply creating a new RoutingPolicyEntry using
-  // CreateFrom{Src,Dst}.
-  RoutingPolicyEntry& FlipFamily();
+  explicit RoutingPolicyEntry(net_base::IPFamily family);
 
   bool operator==(const RoutingPolicyEntry& b) const;
 
-  IPAddress::Family family;
+  net_base::IPFamily family;
   uint32_t priority = 1;
   uint32_t table = RT_TABLE_MAIN;
 
-  IPAddress dst;
-  IPAddress src;
+  net_base::IPCIDR dst;
+  net_base::IPCIDR src;
 
   std::optional<FwMark> fw_mark;
   std::optional<fib_rule_uid_range> uid_range;

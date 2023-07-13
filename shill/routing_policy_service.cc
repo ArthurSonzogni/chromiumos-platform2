@@ -6,12 +6,14 @@
 
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <net-base/ip_address.h>
 
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
@@ -104,14 +106,14 @@ void RoutingPolicyService::Stop() {
 
 void RoutingPolicyService::RuleMsgHandler(const RTNLMessage& message) {
   // Family will be set to the real value in ParseRoutingPolicyMessage().
-  RoutingPolicyEntry entry(IPAddress::kFamilyIPv4);
+  auto entry = ParseRoutingPolicyMessage(message);
 
-  if (!ParseRoutingPolicyMessage(message, &entry)) {
+  if (!entry) {
     return;
   }
 
-  if (!(entry.priority > kRulePriorityLocal &&
-        entry.priority < kRulePriorityMain)) {
+  if (!(entry->priority > kRulePriorityLocal &&
+        entry->priority < kRulePriorityMain)) {
     // Don't touch the system-managed rules.
     return;
   }
@@ -119,33 +121,35 @@ void RoutingPolicyService::RuleMsgHandler(const RTNLMessage& message) {
   // If this rule matches one of our known rules, ignore it.  Otherwise,
   // assume it is left over from an old run and delete it.
   for (const auto& table : policy_tables_) {
-    if (std::find(table.second.begin(), table.second.end(), entry) !=
+    if (std::find(table.second.begin(), table.second.end(), *entry) !=
         table.second.end()) {
       return;
     }
   }
 
-  ApplyRule(-1, entry, RTNLMessage::kModeDelete, 0);
+  ApplyRule(-1, *entry, RTNLMessage::kModeDelete, 0);
   return;
 }
 
-bool RoutingPolicyService::ParseRoutingPolicyMessage(
-    const RTNLMessage& message, RoutingPolicyEntry* entry) {
-  if (message.type() != RTNLMessage::kTypeRule ||
-      message.family() == IPAddress::kFamilyUnknown) {
-    return false;
+std::optional<RoutingPolicyEntry>
+RoutingPolicyService::ParseRoutingPolicyMessage(const RTNLMessage& message) {
+  if (message.type() != RTNLMessage::kTypeRule) {
+    return std::nullopt;
   }
 
   const RTNLMessage::RouteStatus& route_status = message.route_status();
   if (route_status.type != RTN_UNICAST) {
-    return false;
+    return std::nullopt;
   }
 
-  entry->family = message.family();
-  entry->src = IPAddress::CreateFromFamily(entry->family);
-  entry->dst = IPAddress::CreateFromFamily(entry->family);
+  auto family = net_base::FromSAFamily(message.family());
+  if (!family) {
+    return std::nullopt;
+  }
 
-  entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
+  auto entry = RoutingPolicyEntry(*family);
+
+  entry.invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
 
   // The rtmsg structure [0] has a table id field that is only a single
   // byte. Prior to Linux v2.6, routing table IDs were of type u8. v2.6 changed
@@ -163,54 +167,62 @@ bool RoutingPolicyService::ParseRoutingPolicyMessage(
     LOG_IF(WARNING, table == RT_TABLE_COMPAT)
         << "Received RT_TABLE_COMPAT, but message has no FRA_TABLE attribute";
   }
-  entry->SetTable(table);
+  entry.table = table;
 
   if (message.HasAttribute(FRA_PRIORITY)) {
     // Rule 0 (local table) doesn't have a priority attribute.
     if (!message.GetAttribute(FRA_PRIORITY)
-             .ConvertToCPUUInt32(&entry->priority)) {
-      return false;
+             .ConvertToCPUUInt32(&entry.priority)) {
+      return std::nullopt;
     }
   }
 
   if (message.HasAttribute(FRA_FWMARK)) {
     RoutingPolicyEntry::FwMark fw_mark;
     if (!message.GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&fw_mark.value)) {
-      return false;
+      return std::nullopt;
     }
     if (message.HasAttribute(FRA_FWMASK)) {
       if (!message.GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&fw_mark.mask)) {
-        return false;
+        return std::nullopt;
       }
     }
-    entry->SetFwMark(fw_mark);
+    entry.fw_mark = fw_mark;
   }
 
   if (message.HasAttribute(FRA_UID_RANGE)) {
     struct fib_rule_uid_range r;
     if (!message.GetAttribute(FRA_UID_RANGE).CopyData(sizeof(r), &r)) {
-      return false;
+      return std::nullopt;
     }
-    entry->SetUidRange(r);
+    entry.uid_range = r;
   }
 
   if (message.HasAttribute(FRA_IFNAME)) {
-    entry->SetIif(reinterpret_cast<const char*>(
-        message.GetAttribute(FRA_IFNAME).GetConstData()));
+    entry.iif_name = reinterpret_cast<const char*>(
+        message.GetAttribute(FRA_IFNAME).GetConstData());
   }
   if (message.HasAttribute(FRA_OIFNAME)) {
-    entry->SetOif(reinterpret_cast<const char*>(
-        message.GetAttribute(FRA_OIFNAME).GetConstData()));
+    entry.oif_name = reinterpret_cast<const char*>(
+        message.GetAttribute(FRA_OIFNAME).GetConstData());
   }
 
   if (auto tmp_dst = message.GetFraDst(); tmp_dst.has_value()) {
-    entry->dst = IPAddress(*tmp_dst);
+    if (tmp_dst->GetFamily() == family) {
+      entry.dst = *tmp_dst;
+    } else {
+      LOG(WARNING) << "FRA_DST family mismatch.";
+    }
   }
   if (auto tmp_src = message.GetFraSrc(); tmp_src.has_value()) {
-    entry->src = IPAddress(*tmp_src);
+    if (tmp_src->GetFamily() == family) {
+      entry.src = *tmp_src;
+    } else {
+      LOG(WARNING) << "FRA_SRC family mismatch.";
+    }
   }
 
-  return true;
+  return entry;
 }
 
 bool RoutingPolicyService::AddRule(int interface_index,
@@ -251,13 +263,13 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
                                      unsigned int flags) {
   SLOG(2) << base::StringPrintf(
       "%s: index %d family %s prio %d", __func__, interface_index,
-      IPAddress::GetAddressFamilyName(entry.family).c_str(), entry.priority);
+      net_base::ToString(entry.family).c_str(), entry.priority);
 
-  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRule, mode,
-                                               NLM_F_REQUEST | flags, 0, 0, 0,
-                                               entry.family);
+  auto message = std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeRule, mode, NLM_F_REQUEST | flags, 0, 0, 0,
+      net_base::ToSAFamily(entry.family));
   message->set_route_status(RTNLMessage::RouteStatus(
-      entry.dst.prefix(), entry.src.prefix(),
+      entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, RTPROT_BOOT,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, entry.invert_rule ? FIB_RULE_INVERT : 0));
 
@@ -285,11 +297,13 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
     message->SetAttribute(FRA_OIFNAME,
                           ByteString(entry.oif_name.value(), true));
   }
-  if (!entry.dst.IsDefault()) {
-    message->SetAttribute(FRA_DST, entry.dst.address());
+  if (!entry.dst.address().IsZero()) {
+    message->SetAttribute(
+        FRA_DST, ByteString(entry.dst.address().ToByteString(), false));
   }
-  if (!entry.src.IsDefault()) {
-    message->SetAttribute(FRA_SRC, entry.src.address());
+  if (!entry.src.address().IsZero()) {
+    message->SetAttribute(
+        FRA_SRC, ByteString(entry.src.address().ToByteString(), false));
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);
