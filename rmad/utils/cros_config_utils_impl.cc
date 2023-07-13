@@ -173,7 +173,7 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
     return false;
   }
 
-  std::vector<std::string> items;
+  std::set<std::string> items;
   base::FileEnumerator directories(base::FilePath(configs_root_path_), false,
                                    base::FileEnumerator::FileType::DIRECTORIES);
   for (base::FilePath path = directories.Next(); !path.empty();
@@ -191,13 +191,15 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
     base::FilePath key_path = path.Append(category).Append(key);
     std::string key_str;
     if (!base::ReadFileToString(key_path, &key_str)) {
-      LOG(WARNING) << "Failed to read key from " << key_path.value();
+      // This might be expected behavior. cros_config sometimes doesn't populate
+      // attributes with empty strings.
+      DLOG(WARNING) << "Failed to read key from " << key_path.value();
       continue;
     }
-    items.push_back(key_str);
+    items.insert(key_str);
   }
 
-  *list = std::move(items);
+  *list = std::vector<std::string>(items.begin(), items.end());
   return true;
 }
 

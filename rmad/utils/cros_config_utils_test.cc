@@ -134,10 +134,10 @@ class CrosConfigUtilsImplTest : public testing::Test {
     base::FilePath cros_config_root_path;
     if (custom_label) {
       cros_config_root_path = CreateCrosConfigFs(
-          {kModelName, kModelName, kModelName, kModelNameUnused},
-          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdUnused},
-          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther,
-           kCustomLabelTagUnused});
+          {kModelName, kModelName, kModelName, kModelName, kModelNameUnused},
+          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdOther1, kSkuIdUnused},
+          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTag,
+           kCustomLabelTagOther, kCustomLabelTagUnused});
       fake_cros_config->SetString(std::string(kCrosIdentityPath),
                                   kCrosIdentityCustomLabelTagKey,
                                   kCustomLabelTag);
