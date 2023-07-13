@@ -640,5 +640,38 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   return response;
 }
 
+ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
+    const ArcVmCompleteBootRequest& request) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  ArcVmCompleteBootResponse response;
+
+  if (!CheckVmNameAndOwner(request, response)) {
+    response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
+    return response;
+  }
+
+  VmId vm_id(request.owner_id(), kArcVmName);
+
+  auto iter = FindVm(vm_id.owner_id(), vm_id.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Unable to locate ArcVm instance";
+    response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);
+    return response;
+  }
+
+  // Create the RT v-Cpu for the VM now that boot is complete
+  auto& vm = iter->second;
+  vm->MakeRtVcpu();
+
+  // Notify the VM guest userland ready
+  SendVmGuestUserlandReadySignal(vm_id,
+                                 GuestUserlandReady::ARC_BRIDGE_CONNECTED);
+
+  response.set_result(ArcVmCompleteBootResult::SUCCESS);
+  return response;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools
