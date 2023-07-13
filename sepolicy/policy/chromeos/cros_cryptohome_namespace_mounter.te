@@ -138,6 +138,8 @@ allow cros_cryptohome_namespace_mounter self:key {
   write
 };
 
+allow cros_cryptohome_namespace_mounter device:lnk_file { open read getattr };
+
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_cryptohomed is not converted into a permissive domain after being
 # flipped to enforcing.
