@@ -442,6 +442,10 @@ void PrintPartner(const base::FilePath& port, int indent);
 // then print the identity and alternate mode information.
 void PrintCable(const base::FilePath& port, int indent);
 
+// PrintPhysicalLocation will print `panel` and `horizontal_position` in the
+// physical_location directory. Other files in the directory are irrelevant.
+void PrintPhysicalLocation(const base::FilePath& port, int indent);
+
 // PrintPortInfo will print relevant type-c connector class information for the
 // port located at the sysfs path "port"
 void PrintPortInfo(const base::FilePath& port, int indent);

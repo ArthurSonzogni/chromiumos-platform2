@@ -448,10 +448,21 @@ void PrintCable(const base::FilePath& port, int indent) {
   ParseDirsAndExecute(cable_dir, indent + 2, kPlugRegex, &PrintPlugInfo);
 }
 
+void PrintPhysicalLocation(const base::FilePath& port, int indent) {
+  auto physical_location_dir = port.Append("physical_location");
+  if (!base::DirectoryExists(physical_location_dir))
+    return;
+
+  std::cout << GetIndentStr(indent) << "physical_location" << std::endl;
+  PrintFile(physical_location_dir.Append("panel"), indent + 2);
+  PrintFile(physical_location_dir.Append("horizontal_position"), indent + 2);
+}
+
 void PrintPortInfo(const base::FilePath& port, int indent) {
   PrintDirFiles(port, indent);
   PrintPartner(port, indent + 2);
   PrintCable(port, indent + 2);
+  PrintPhysicalLocation(port, indent + 2);
   std::cout << std::endl;
 }
 
