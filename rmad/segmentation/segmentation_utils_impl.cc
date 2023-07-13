@@ -21,7 +21,7 @@ bool SegmentationUtilsImpl::IsFeatureEnabled() const {
   return false;
 }
 
-bool SegmentationUtilsImpl::IsFeatureProvisioned() const {
+bool SegmentationUtilsImpl::IsFeatureMutable() const {
   // TODO(chenghan): Check GSC values.
   return true;
 }

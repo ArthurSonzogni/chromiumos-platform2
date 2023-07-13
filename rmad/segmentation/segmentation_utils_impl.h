@@ -23,7 +23,7 @@ class SegmentationUtilsImpl : public SegmentationUtils {
   ~SegmentationUtilsImpl() override = default;
 
   bool IsFeatureEnabled() const override;
-  bool IsFeatureProvisioned() const override;
+  bool IsFeatureMutable() const override;
   int GetFeatureLevel() const override;
 
  private:

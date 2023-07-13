@@ -33,9 +33,9 @@ TEST_F(SegmentationUtilsTest, IsFeatureEnabled) {
   EXPECT_FALSE(segmentation_utils->IsFeatureEnabled());
 }
 
-TEST_F(SegmentationUtilsTest, IsFeatureProvisioned) {
+TEST_F(SegmentationUtilsTest, IsFeatureMutable) {
   auto segmentation_utils = CreateSegmentationUtils();
-  EXPECT_FALSE(segmentation_utils->IsFeatureEnabled());
+  EXPECT_TRUE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, GetFeatureLevel) {

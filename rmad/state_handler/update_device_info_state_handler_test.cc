@@ -73,7 +73,7 @@ struct StateHandlerArgs {
   const std::vector<uint64_t> sku_list = kSkuList;
   bool has_custom_label_list = true;
   bool is_feature_enabled = true;
-  bool is_feature_provisioned = true;
+  bool is_feature_mutable = false;
   int feature_level = 0;
   bool set_serial_number_success = true;
   bool set_region_success = true;
@@ -218,8 +218,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Fake |SegmentationUtils|.
     auto segmentation_utils = std::make_unique<FakeSegmentationUtils>(
-        args.is_feature_enabled, args.is_feature_provisioned,
-        args.feature_level);
+        args.is_feature_enabled, args.is_feature_mutable, args.feature_level);
 
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), std::move(cbi_utils),
@@ -369,9 +368,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       InitializeState_FeatureNotProvisioned_Success) {
+       InitializeState_FeatureMutable_Success) {
   auto handler = CreateStateHandler(
-      {.is_feature_enabled = true, .is_feature_provisioned = false});
+      {.is_feature_enabled = true, .is_feature_mutable = true});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -384,7 +383,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_FeatureLevel0_Success) {
   auto handler = CreateStateHandler({.is_feature_enabled = true,
-                                     .is_feature_provisioned = true,
+                                     .is_feature_mutable = false,
                                      .feature_level = 0});
   json_store_->SetValue(kMlbRepair, false);
 
@@ -398,7 +397,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_FeatureLevel1_Success) {
   auto handler = CreateStateHandler({.is_feature_enabled = true,
-                                     .is_feature_provisioned = true,
+                                     .is_feature_mutable = false,
                                      .feature_level = 1});
   json_store_->SetValue(kMlbRepair, false);
 

@@ -198,7 +198,10 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     }
   }
   if (segmentation_utils_->IsFeatureEnabled()) {
-    if (segmentation_utils_->IsFeatureProvisioned()) {
+    if (segmentation_utils_->IsFeatureMutable()) {
+      // If feature is mutable, we don't know the final feature level.
+      feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN;
+    } else {
       switch (segmentation_utils_->GetFeatureLevel()) {
         case 0:
           feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
@@ -210,8 +213,6 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
           feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0;
           NOTREACHED_NORETURN();
       }
-    } else {
-      feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN;
     }
   } else {
     feature_level = UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNSUPPORTED;
@@ -438,7 +439,7 @@ base::FilePath UpdateDeviceInfoStateHandler::GetFakeFeaturesInputFilePath()
 std::unique_ptr<SegmentationUtils>
 UpdateDeviceInfoStateHandler::CreateFakeSegmentationUtils() const {
   bool is_feature_enabled = false;
-  bool is_feature_provisioned = false;
+  bool is_feature_mutable = true;
   int feature_level = 0;
 
   auto fake_features =
@@ -446,12 +447,12 @@ UpdateDeviceInfoStateHandler::CreateFakeSegmentationUtils() const {
   if (fake_features->Initialized()) {
     // Read JSON success.
     fake_features->GetValue("is_feature_enabled", &is_feature_enabled);
-    fake_features->GetValue("is_feature_provisioned", &is_feature_provisioned);
+    fake_features->GetValue("is_feature_mutable", &is_feature_mutable);
     fake_features->GetValue("feature_level", &feature_level);
   }
 
   return std::make_unique<FakeSegmentationUtils>(
-      is_feature_enabled, is_feature_provisioned, feature_level);
+      is_feature_enabled, is_feature_mutable, feature_level);
 }
 
 }  // namespace rmad

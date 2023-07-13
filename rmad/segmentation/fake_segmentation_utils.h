@@ -12,20 +12,20 @@ namespace rmad {
 class FakeSegmentationUtils : public SegmentationUtils {
  public:
   explicit FakeSegmentationUtils(bool is_feature_enabled,
-                                 bool is_feature_provisioned,
+                                 bool is_feature_mutable,
                                  int feature_level)
       : is_feature_enabled_(is_feature_enabled),
-        is_feature_provisioned_(is_feature_provisioned),
+        is_feature_mutable_(is_feature_mutable),
         feature_level_(feature_level) {}
   ~FakeSegmentationUtils() override = default;
 
   bool IsFeatureEnabled() const override { return is_feature_enabled_; }
-  bool IsFeatureProvisioned() const override { return is_feature_provisioned_; }
+  bool IsFeatureMutable() const override { return is_feature_mutable_; }
   int GetFeatureLevel() const override { return feature_level_; }
 
  private:
   bool is_feature_enabled_;
-  bool is_feature_provisioned_;
+  bool is_feature_mutable_;
   int feature_level_;
 };
 

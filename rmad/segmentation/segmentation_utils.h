@@ -15,8 +15,8 @@ class SegmentationUtils {
   // Returns true if feature is available on the model.
   virtual bool IsFeatureEnabled() const = 0;
 
-  // Returns true if feature values are provisioned on the device.
-  virtual bool IsFeatureProvisioned() const = 0;
+  // Returns true if feature values are mutable on the device.
+  virtual bool IsFeatureMutable() const = 0;
 
   // Returns the feature level according to the provisioned values.
   virtual int GetFeatureLevel() const = 0;
