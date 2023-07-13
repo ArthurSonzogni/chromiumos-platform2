@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <deque>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -343,6 +344,9 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   base::flat_map<int64_t /*timestamp*/, std::unique_ptr<ProcessContext>>
       process_contexts_ GUARDED_BY_CONTEXT(gl_thread_checker_);
+  std::vector<std::unique_ptr<ProcessContext>>
+      pending_effect_disabled_process_contexts_
+          GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   CameraThread gl_thread_;
 
@@ -600,6 +604,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
 void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   process_contexts_.clear();
+  pending_effect_disabled_process_contexts_.clear();
   still_capture_processor_->Reset();
   base::AutoLock lock(stream_contexts_lock_);
   for (auto& stream_context : stream_contexts_) {
@@ -899,6 +904,13 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       }
       RenderEffect(std::move(process_context), *timestamp);
     }
+  } else if (!process_contexts_.empty()) {
+    // Delay returning this frame until the previous frames under processing are
+    // done to keep them in order.
+    for (auto& [size, process_context] : process_contexts) {
+      pending_effect_disabled_process_contexts_.push_back(
+          std::move(process_context));
+    }
   }
 
   metrics_.RecordNumConcurrentStreams(stream_contexts_.size());
@@ -1028,11 +1040,24 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
                   << " since context is gone";
     return;
   }
+  base::ScopedClosureRunner pending_contexts_cleaner;
   std::unique_ptr<ProcessContext> process_context =
       std::move(process_contexts_.at(timestamp));
   process_contexts_.erase(timestamp);
   camera3_stream_buffer_t& result_buffer =
       process_context->result_buffer.mutable_raw_buffer();
+  if (process_contexts_.empty()) {
+    // After processing this frame, we can return the pending no-effect frames
+    // in order.
+    pending_contexts_cleaner.ReplaceClosure(base::BindOnce(
+        [](std::vector<std::unique_ptr<ProcessContext>>& process_contexts) {
+          for (auto& process_context : process_contexts) {
+            process_context.reset();
+          }
+          process_contexts.clear();
+        },
+        std::ref(pending_effect_disabled_process_contexts_)));
+  }
 
   // The pipeline produces a GL texture, which needs to be synchronously
   // converted to YUV on this thread (because that's where the GL context
