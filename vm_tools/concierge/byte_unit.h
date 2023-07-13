@@ -8,14 +8,14 @@
 #include <cstdint>
 
 namespace vm_tools::concierge {
-constexpr int64_t KiB(int64_t bytes) {
-  return bytes * 1024;
+constexpr int64_t KiB(int64_t kilobytes) {
+  return kilobytes * 1024;
 }
-constexpr int64_t MiB(int64_t bytes) {
-  return bytes * 1024 * 1024;
+constexpr int64_t MiB(int64_t megabytes) {
+  return megabytes * KiB(1024);
 }
-constexpr int64_t GiB(int64_t bytes) {
-  return bytes * 1024 * 1024 * 1024;
+constexpr int64_t GiB(int64_t gigabytes) {
+  return gigabytes * MiB(1024);
 }
 }  // namespace vm_tools::concierge
 
