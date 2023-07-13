@@ -17,6 +17,7 @@
 #include "rmad/constants.h"
 #include "rmad/segmentation/fake_segmentation_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
+#include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_regions_utils.h"
@@ -217,14 +218,36 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     // Fake |SegmentationUtils|.
-    auto segmentation_utils = std::make_unique<FakeSegmentationUtils>(
-        args.is_feature_enabled, args.is_feature_mutable, args.feature_level);
+    WriteFakeFeaturesInput(args.is_feature_enabled, args.is_feature_mutable,
+                           args.feature_level);
+    auto segmentation_utils =
+        std::make_unique<FakeSegmentationUtils>(GetTempDirPath());
 
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), std::move(cbi_utils),
         std::move(cros_config_utils), std::move(write_protect_utils),
         std::move(regions_utils), std::move(vpd_utils),
         std::move(segmentation_utils));
+  }
+
+  void WriteFakeFeaturesInput(bool is_feature_enabled,
+                              bool is_feature_mutable,
+                              int feature_level) {
+    auto input = base::MakeRefCounted<JsonStore>(
+        GetTempDirPath().AppendASCII(kFakeFeaturesInputFilePath), false);
+    input->Clear();
+    input->SetValue("is_feature_enabled", is_feature_enabled);
+    input->SetValue("is_feature_mutable", is_feature_mutable);
+    input->SetValue("feature_level", feature_level);
+    input->Sync();
+  }
+
+  bool ReadFakeFeaturesOutput(bool* is_chassis_branded,
+                              int* hw_compliance_version) {
+    auto output = base::MakeRefCounted<JsonStore>(
+        GetTempDirPath().AppendASCII(kFakeFeaturesOutputFilePath), true);
+    return output->GetValue("is_chassis_branded", is_chassis_branded) &&
+           output->GetValue("hw_compliance_version", hw_compliance_version);
   }
 
  protected:

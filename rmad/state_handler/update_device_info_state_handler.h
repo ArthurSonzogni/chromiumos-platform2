@@ -51,8 +51,9 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
  private:
   bool VerifyReadOnly(const UpdateDeviceInfoState& device_info);
   bool WriteDeviceInfo(const UpdateDeviceInfoState& device_info);
-  base::FilePath GetFakeFeaturesInputFilePath() const;
   std::unique_ptr<SegmentationUtils> CreateFakeSegmentationUtils() const;
+  base::FilePath GetTestDirPath() const;
+  base::FilePath GetFakeFeaturesInputFilePath() const;
 
   RmadConfig rmad_config_;
 

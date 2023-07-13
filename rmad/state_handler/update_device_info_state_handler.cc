@@ -430,29 +430,18 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   return true;
 }
 
-base::FilePath UpdateDeviceInfoStateHandler::GetFakeFeaturesInputFilePath()
-    const {
-  return working_dir_path_.AppendASCII(kTestDirPath)
-      .AppendASCII(kFakeFeaturesInputFilePath);
-}
-
 std::unique_ptr<SegmentationUtils>
 UpdateDeviceInfoStateHandler::CreateFakeSegmentationUtils() const {
-  bool is_feature_enabled = false;
-  bool is_feature_mutable = true;
-  int feature_level = 0;
+  return std::make_unique<FakeSegmentationUtils>(GetTestDirPath());
+}
 
-  auto fake_features =
-      base::MakeRefCounted<JsonStore>(GetFakeFeaturesInputFilePath(), true);
-  if (fake_features->Initialized()) {
-    // Read JSON success.
-    fake_features->GetValue("is_feature_enabled", &is_feature_enabled);
-    fake_features->GetValue("is_feature_mutable", &is_feature_mutable);
-    fake_features->GetValue("feature_level", &feature_level);
-  }
+base::FilePath UpdateDeviceInfoStateHandler::GetTestDirPath() const {
+  return working_dir_path_.AppendASCII(kTestDirPath);
+}
 
-  return std::make_unique<FakeSegmentationUtils>(
-      is_feature_enabled, is_feature_mutable, feature_level);
+base::FilePath UpdateDeviceInfoStateHandler::GetFakeFeaturesInputFilePath()
+    const {
+  return GetTestDirPath().AppendASCII(kFakeFeaturesInputFilePath);
 }
 
 }  // namespace rmad

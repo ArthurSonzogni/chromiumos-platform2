@@ -12,7 +12,10 @@ pkg_config("target_defaults") {
 }
 
 source_set("libsegmentation") {
-  sources = [ "segmentation_utils_impl.cc" ]
+  sources = [
+    "fake_segmentation_utils.cc",
+    "segmentation_utils_impl.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     "//rmad/system:libsystem",
