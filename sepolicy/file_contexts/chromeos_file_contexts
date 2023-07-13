@@ -360,7 +360,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
 /var/log/atrus.log              u:object_r:cros_var_log_atrus:s0
 /var/log/audit(/.*)?            u:object_r:cros_var_log_audit:s0
-/var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0
 /var/log/bio_crypto_init(/.*)?  u:object_r:cros_var_log_biod:s0
 /var/log/biod(/.*)?             u:object_r:cros_var_log_biod:s0
 /var/log/bluetooth.log          u:object_r:cros_var_log_bluetooth:s0
@@ -607,7 +606,6 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(/.*)?   u:object_r:media_rw_data_file:s0
 ')
 /home/.shadow/[0-9a-z]{40}/(cache|mount)/root/\.cache(/.*)?  u:object_r:cros_home_shadow_uid_root:s0
-/home/.shadow/[0-9a-z]{40}/(cache|mount)/root(/\.cache)?/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/(cache|mount)/root(/\.cache)?/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
 /home/.shadow/[0-9a-z]{40}/(cache|mount)/root(/\.cache)?/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
 /home/.shadow/[0-9a-z]{40}/(cache|mount)/root(/\.cache)?/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0

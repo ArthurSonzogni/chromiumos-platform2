@@ -88,8 +88,6 @@ allowxperm cros_cryptohomed unlabeled:{ dir file } ioctl {
 
 # cryptohomed creates and relabelto dirs/files in
 # daemon-store directories.
-cros_daemon_store_create(cros_cryptohomed, authpolicyd)
-cros_daemon_store_perms(cros_cryptohomed, authpolicyd, relabelto)
 cros_daemon_store_create(cros_cryptohomed, cdm-oemcrypto)
 cros_daemon_store_perms(cros_cryptohomed, cdm-oemcrypto, relabelto)
 cros_daemon_store_create(cros_cryptohomed, chaps)
@@ -378,7 +376,6 @@ filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_r
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user")
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "Downloads")
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "MyFiles")
-filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_authpolicyd, dir, "authpolicyd")
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_cdm-oemcrypto, dir, "cdm-oemcrypto")
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps")
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_crash, dir, "crash")

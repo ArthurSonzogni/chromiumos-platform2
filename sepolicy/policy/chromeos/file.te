@@ -238,7 +238,6 @@ type cros_home_shadow_low_entropy_creds, file_type, cros_file_type, cros_home_fi
 type cros_home_shadow_uid_user, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_android, file_type, cros_file_type, cros_home_file_type;
-type cros_home_shadow_uid_root_authpolicyd, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_cdm-oemcrypto, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_chaps, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_crash, file_type, cros_file_type, cros_home_file_type;
@@ -468,7 +467,6 @@ type cros_var_lock, file_type, cros_file_type, cros_var_file_type;
 
 # /var/log
 type cros_arc_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
-type cros_authpolicy_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_boot_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_hammerd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_metrics_file, file_type, cros_file_type, cros_var_file_type;
