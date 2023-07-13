@@ -181,9 +181,11 @@ class HdrNetStreamManipulatorTest : public Test {
 
   void SetUp() override {
     CHECK(gpu_resources_.Initialize());
+    runtime_options_.SetSWPrivacySwitchState(
+        mojom::CameraPrivacySwitchState::OFF);
     HdrNetConfig::Options test_options = {.hdrnet_enable = true};
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
-        &gpu_resources_, base::FilePath(),
+        &runtime_options_, &gpu_resources_, base::FilePath(),
         std::make_unique<tests::FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(

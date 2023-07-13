@@ -62,6 +62,7 @@ namespace {
 
 void MaybeEnableHdrNetStreamManipulator(
     const FeatureProfile& feature_profile,
+    StreamManipulator::RuntimeOptions* runtime_options,
     StreamManipulatorManager::CreateOptions& create_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
@@ -105,7 +106,7 @@ void MaybeEnableHdrNetStreamManipulator(
         JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
     out_stream_manipulators->emplace_back(
         std::make_unique<HdrNetStreamManipulator>(
-            gpu_resources,
+            runtime_options, gpu_resources,
             feature_profile.GetConfigFilePath(
                 FeatureProfile::FeatureType::kHdrnet),
             std::make_unique<StillCaptureProcessorImpl>(
@@ -205,8 +206,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   // HDRnet must get frames without applying any other post-processing because
   // the ML inference needs pixel values in linear domain.
-  MaybeEnableHdrNetStreamManipulator(feature_profile, create_options,
-                                     gpu_resources, &stream_manipulators_);
+  MaybeEnableHdrNetStreamManipulator(feature_profile, runtime_options,
+                                     create_options, gpu_resources,
+                                     &stream_manipulators_);
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   stream_manipulators_.emplace_back(std::make_unique<ZslStreamManipulator>());

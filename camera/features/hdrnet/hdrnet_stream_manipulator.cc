@@ -220,12 +220,14 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
 //
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
+    RuntimeOptions* runtime_options,
     GpuResources* root_gpu_resources,
     base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     HdrNetProcessor::Factory hdrnet_processor_factory,
     HdrNetConfig::Options* options)
-    : root_gpu_resources_(root_gpu_resources),
+    : runtime_options_(runtime_options),
+      root_gpu_resources_(root_gpu_resources),
       hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
@@ -620,6 +622,11 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   if (!tm_mode.empty() && (tm_mode[0] == ANDROID_TONEMAP_MODE_CONTRAST_CURVE ||
                            tm_mode[0] == ANDROID_TONEMAP_MODE_GAMMA_VALUE ||
                            tm_mode[0] == ANDROID_TONEMAP_MODE_PRESET_CURVE)) {
+    skip_hdrnet_processing = true;
+  }
+
+  if (runtime_options_->sw_privacy_switch_state() ==
+      mojom::CameraPrivacySwitchState::ON) {
     skip_hdrnet_processing = true;
   }
 

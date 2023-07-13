@@ -35,6 +35,7 @@ namespace cros {
 class HdrNetStreamManipulator : public StreamManipulator {
  public:
   HdrNetStreamManipulator(
+      RuntimeOptions* runtime_options,
       GpuResources* gpu_resources,
       base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
@@ -206,6 +207,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   void OnOptionsUpdated(const base::Value::Dict& json_values);
   void UploadMetrics();
 
+  RuntimeOptions* runtime_options_ = nullptr;
   GpuResources* root_gpu_resources_ = nullptr;
   GpuResources* hdrnet_gpu_resources_ = nullptr;
   HdrNetProcessor::Factory hdrnet_processor_factory_;
