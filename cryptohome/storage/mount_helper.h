@@ -21,6 +21,7 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/error.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper_interface.h"
 #include "cryptohome/storage/mount_stack.h"
 #include "cryptohome/username.h"
@@ -250,7 +251,7 @@ class MountHelper : public MountHelperInterface {
 
   Platform* platform_;  // Un-owned.
 
-  FRIEND_TEST(PersistentSystemTest, MountOrdering);
+  FRIEND_TEST(MountHelperTest, MountOrdering);
 };
 
 }  // namespace cryptohome

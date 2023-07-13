@@ -37,10 +37,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
@@ -52,12 +49,10 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
-#include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -88,6 +83,9 @@ struct Attributes {
   gid_t gid;
 };
 
+// TODO(hardigoyal, b:290897808): Cleanup the rest of this file, there is
+// duplicated mount_helper_unittest.cc. This would require migrating tests
+// to just use MountHelper and not Mount+MountHelper.
 constexpr char kEtc[] = "/etc";
 constexpr char kEtcSkel[] = "/etc/skel";
 constexpr char kEtcDaemonStore[] = "/etc/daemon-store";
@@ -740,286 +738,7 @@ class PersistentSystemTest : public ::testing::Test {
   }
 };
 
-TEST_F(PersistentSystemTest, MountOrdering) {
-  // Checks that mounts made with MountAndPush/BindAndPush are undone in the
-  // right order. We mock everything here, so we can isolate testing of the
-  // ordering only.
-  // TODO(dlunev): once mount_helper is refactored, change this test to be able
-  // to live within an anonymous namespace.
-  SetHomedir(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
-
-  FilePath src("/src");
-  FilePath dest0("/dest/foo");
-  FilePath dest1("/dest/bar");
-  FilePath dest2("/dest/baz");
-  {
-    InSequence sequence;
-    EXPECT_CALL(platform_,
-                Mount(src, dest0, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(src, dest1, _, true)).WillOnce(Return(true));
-    EXPECT_CALL(platform_,
-                Mount(src, dest2, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Unmount(dest2, _, _)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, Unmount(dest1, _, _)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, Unmount(dest0, _, _)).WillOnce(Return(true));
-
-    EXPECT_TRUE(mnt_helper.MountAndPush(src, dest0, "", ""));
-    EXPECT_TRUE(mnt_helper.BindAndPush(src, dest1, RemountOption::kShared));
-    EXPECT_TRUE(mnt_helper.MountAndPush(src, dest2, "", ""));
-    mnt_helper.UnmountAll();
-  }
-}
-
 namespace {
-
-TEST_F(PersistentSystemTest, BindDownloads) {
-  // Make sure that the flag to bind downloads is honoured and the file
-  // migration happens to `user/Downloads`.
-  const std::string kContent{"some_content"};
-  const base::FilePath kFile{"some_file"};
-  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-
-  SetHomedir(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-
-  const ObfuscatedUsername obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(kUser);
-  const base::FilePath dircrypto_mount_point =
-      GetUserMountDirectory(obfuscated_username);
-
-  ASSERT_TRUE(
-      platform_.WriteStringToFile(dircrypto_mount_point.Append(kUserHomeSuffix)
-                                      .Append(kMyFilesDir)
-                                      .Append(kDownloadsDir)
-                                      .Append(kFile),
-                                  kContent));
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-
-  // The file should migrate to user/Downloads
-  ASSERT_FALSE(
-      platform_.FileExists(dircrypto_mount_point.Append(kUserHomeSuffix)
-                               .Append(kMyFilesDir)
-                               .Append(kDownloadsDir)
-                               .Append(kFile)));
-  std::string result;
-  ASSERT_TRUE(
-      platform_.ReadFileToString(dircrypto_mount_point.Append(kUserHomeSuffix)
-                                     .Append(kDownloadsDir)
-                                     .Append(kFile),
-                                 &result));
-  ASSERT_THAT(result, kContent);
-}
-
-TEST_F(PersistentSystemTest, NoBindDownloads) {
-  // Make sure that the flag to bind downloads is honoured and the file
-  // migration happens to `user/MyFiles/Downloads`
-  const std::string kContent{"some_content"};
-  const base::FilePath kFile{"some_file"};
-  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-
-  SetHomedir(kUser);
-  MountHelper helper_downloads_mounted(
-      /*legacy_mount=*/true, /*bind_mount_downloads=*/true, &platform_);
-
-  ASSERT_THAT(helper_downloads_mounted.PerformMount(
-                  MountType::DIR_CRYPTO, kUser,
-                  SecureBlobToHex(keyset.KeyReference().fek_sig),
-                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-              IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-
-  helper_downloads_mounted.UnmountAll();
-
-  const ObfuscatedUsername obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(kUser);
-  const base::FilePath dircrypto_mount_point =
-      GetUserMountDirectory(obfuscated_username);
-
-  ASSERT_TRUE(
-      platform_.WriteStringToFile(dircrypto_mount_point.Append(kUserHomeSuffix)
-                                      .Append(kDownloadsDir)
-                                      .Append(kFile),
-                                  kContent));
-
-  MountHelper helper_downloads_unmounted(
-      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
-
-  ASSERT_THAT(helper_downloads_unmounted.PerformMount(
-                  MountType::DIR_CRYPTO, kUser,
-                  SecureBlobToHex(keyset.KeyReference().fek_sig),
-                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-              IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
-
-  helper_downloads_unmounted.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-
-  // The entire directory under `kDownloadsDir` should be migrated including the
-  // test file that was written.
-  ASSERT_FALSE(platform_.DirectoryExists(
-      dircrypto_mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir)));
-  std::string result;
-  ASSERT_TRUE(
-      platform_.ReadFileToString(dircrypto_mount_point.Append(kUserHomeSuffix)
-                                     .Append(kMyFilesDir)
-                                     .Append(kDownloadsDir)
-                                     .Append(kFile),
-                                 &result));
-  ASSERT_THAT(result, kContent);
-}
-
-TEST_F(PersistentSystemTest, IsFirstMountComplete_False) {
-  const base::FilePath kSkelFile{"skel_file"};
-  const std::string kSkelFileContent{"skel_content"};
-  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-  const ObfuscatedUsername obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(kUser);
-
-  SetHomedir(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/,
-                         false /* bind_mount_downloads */, &platform_);
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-
-  // Add a file to skel dir.
-  ASSERT_TRUE(platform_.WriteStringToFile(
-      base::FilePath(kEtcSkel).Append(kSkelFile), kSkelFileContent));
-
-  // No new files in the vault, so the freshly added skel file should be added.
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
-  ASSERT_TRUE(platform_.FileExists(GetUserMountDirectory(obfuscated_username)
-                                       .Append(kUserHomeSuffix)
-                                       .Append(kSkelFile)));
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-}
-
-TEST_F(PersistentSystemTest, IsFirstMountComplete_True) {
-  const base::FilePath kSkelFile{"skel_file"};
-  const std::string kSkelFileContent{"skel_content"};
-  const base::FilePath kVaultFile{"vault_file"};
-  const std::string kVaultFileContent{"vault_content"};
-  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-  const ObfuscatedUsername obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(kUser);
-
-  SetHomedir(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/,
-                         false /* bind_mount_downloads */, &platform_);
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
-  // Add a file to vault.
-  ASSERT_TRUE(
-      platform_.WriteStringToFile(GetUserMountDirectory(obfuscated_username)
-                                      .Append(kUserHomeSuffix)
-                                      .Append(kVaultFile),
-                                  kVaultFileContent));
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-
-  // Add a file to skel dir.
-  ASSERT_TRUE(platform_.WriteStringToFile(
-      base::FilePath(kEtcSkel).Append(kSkelFile), kSkelFileContent));
-
-  // Vault has a new file that is not a skel-copied file and not one of the
-  // initial directories, thus we skip copying Skel over again.
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
-  ASSERT_FALSE(platform_.FileExists(GetUserMountDirectory(obfuscated_username)
-                                        .Append(kUserHomeSuffix)
-                                        .Append(kSkelFile)));
-
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-}
-
-// For Dmcrypt we test only mount part, without container. In fact, we should do
-// the same for all and rely on the vault container to setup things properly and
-// uniformly.
-TEST_F(PersistentSystemTest, Dmcrypt_MountUnmount) {
-  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-
-  SetDmcryptPrereqs(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
-
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DMCRYPT, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-
-  mnt_helper.UnmountAll();
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
-           /*downloads_bind_mount=*/true);
-}
 
 TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
   // Verify mount and unmount of ecryptfs vault and file preservation.

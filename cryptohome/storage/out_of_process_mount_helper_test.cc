@@ -24,10 +24,8 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/namespace_mounter_ipc.pb.h"
-#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/mount_utils.h"
 

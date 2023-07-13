@@ -412,6 +412,7 @@ if (use.test) {
       "storage/encrypted_container/ramdisk_device_test.cc",
       "storage/ephemeral_policy_util_unittest.cc",
       "storage/homedirs_unittest.cc",
+      "storage/mount_helper_unittest.cc",
       "storage/mount_stack_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",
