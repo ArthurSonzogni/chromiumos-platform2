@@ -11,8 +11,12 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/test_util.h"
@@ -52,7 +56,11 @@ ArcvmCxxCollector::CrashInfo GetCrashInfo() {
 
 class TestArcvmCxxCollector : public ArcvmCxxCollector {
  public:
-  explicit TestArcvmCxxCollector(const base::FilePath& crash_directory) {
+  explicit TestArcvmCxxCollector(const base::FilePath& crash_directory)
+      : ArcvmCxxCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {
     Initialize(false /* early */);
     set_crash_directory_for_test(crash_directory);
   }

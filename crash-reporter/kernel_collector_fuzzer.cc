@@ -5,14 +5,20 @@
 #include <unistd.h>
 #include <cinttypes>
 
+#include <memory>
+
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 #include <session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/kernel_collector.h"
@@ -28,7 +34,11 @@ class Environment {
 
 class KernelCollectorForFuzzing : public KernelCollector {
  public:
-  KernelCollectorForFuzzing() : KernelCollector() {}
+  KernelCollectorForFuzzing()
+      : KernelCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
 
   void SetUpDBus() override {
     // Mock out all DBus calls so (a) we don't actually call DBus and (b) we

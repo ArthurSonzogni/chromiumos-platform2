@@ -12,17 +12,24 @@
 #define CRASH_REPORTER_USER_COLLECTOR_H_
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/user_collector_base.h"
 
 // User crash collector.
 class UserCollector : public UserCollectorBase {
  public:
-  UserCollector();
+  explicit UserCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   UserCollector(const UserCollector&) = delete;
   UserCollector& operator=(const UserCollector&) = delete;
 

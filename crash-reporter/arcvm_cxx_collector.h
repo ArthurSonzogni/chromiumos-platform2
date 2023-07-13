@@ -18,11 +18,15 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
 // Collector for C++ crashes (native_crash) in ARCVM.
 class ArcvmCxxCollector : public CrashCollector {
@@ -35,7 +39,10 @@ class ArcvmCxxCollector : public CrashCollector {
     std::string exec_name;  // The name of crashed binary.
   };
 
-  ArcvmCxxCollector();
+  explicit ArcvmCxxCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ~ArcvmCxxCollector() override;
 
   // Handles a C++ crash in ARCVM.
@@ -52,7 +59,10 @@ class ArcvmCxxCollector : public CrashCollector {
       bool arc_native,
       const arc_util::BuildProperty& build_property,
       const CrashInfo& crash_info,
-      int64_t uptime_millis);
+      int64_t uptime_millis,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  private:
   friend class ArcvmCxxCollectorMock;

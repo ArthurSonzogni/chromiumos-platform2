@@ -2,11 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/test_util.h"
@@ -26,6 +32,11 @@ const unsigned int kPanicDataReservedByte = 3;
 
 class ECCollectorMock : public ECCollector {
  public:
+  ECCollectorMock()
+      : ECCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 

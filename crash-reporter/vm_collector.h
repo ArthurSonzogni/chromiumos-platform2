@@ -5,7 +5,12 @@
 #ifndef CRASH_REPORTER_VM_COLLECTOR_H_
 #define CRASH_REPORTER_VM_COLLECTOR_H_
 
+#include <memory>
 #include <string>
+
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -14,14 +19,22 @@
 // code that manages generating reports inside the VM, see VmSupportProper.
 class VmCollector : public CrashCollector {
  public:
-  VmCollector();
+  explicit VmCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   bool Collect(pid_t pid);
 
   // Returns the severity level and product group of the crash.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
-  static CollectorInfo GetHandlerInfo(bool vm_crash, int32_t vm_pid);
+  static CollectorInfo GetHandlerInfo(
+      bool vm_crash,
+      int32_t vm_pid,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
   VmCollector(const VmCollector&) = delete;
   VmCollector& operator=(const VmCollector&) = delete;

@@ -10,17 +10,24 @@
 #define CRASH_REPORTER_SELINUX_VIOLATION_COLLECTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // SELinux violation collector.
 class SELinuxViolationCollector : public CrashCollector {
  public:
-  SELinuxViolationCollector();
+  explicit SELinuxViolationCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   SELinuxViolationCollector(const SELinuxViolationCollector&) = delete;
   SELinuxViolationCollector& operator=(const SELinuxViolationCollector&) =
       delete;
@@ -34,7 +41,12 @@ class SELinuxViolationCollector : public CrashCollector {
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
-  static CollectorInfo GetHandlerInfo(bool selinux_violation, int32_t weight);
+  static CollectorInfo GetHandlerInfo(
+      bool selinux_violation,
+      int32_t weight,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  protected:
   void set_violation_report_path_for_testing(const base::FilePath& file_path) {

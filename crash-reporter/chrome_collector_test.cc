@@ -10,11 +10,14 @@
 #include <sys/types.h>
 
 #include <functional>
+#include <memory>
 #include <utility>
 
 #include <base/auto_reset.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/test/task_environment.h>
 #include <base/strings/strcat.h>
@@ -24,6 +27,8 @@
 #include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -175,7 +180,12 @@ constexpr char kSampleDmesg[] =
 
 class ChromeCollectorMock : public ChromeCollector {
  public:
-  ChromeCollectorMock() : ChromeCollector(kNormalCrashSendMode) {}
+  ChromeCollectorMock()
+      : ChromeCollector(
+            kNormalCrashSendMode,
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 

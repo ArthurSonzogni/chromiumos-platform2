@@ -4,13 +4,19 @@
 
 #include "crash-reporter/missed_crash_collector.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -21,7 +27,11 @@ namespace {
 
 class MissedCrashCollectorMock : public MissedCrashCollector {
  public:
-  MissedCrashCollectorMock() : MissedCrashCollector() {}
+  MissedCrashCollectorMock()
+      : MissedCrashCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
@@ -89,7 +99,10 @@ hello
 }
 
 TEST(MissedCrashCollectorTest, ComputeSeverity_MissedCrashExecutable) {
-  MissedCrashCollector collector;
+  MissedCrashCollector collector(
+      base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::make_unique<MetricsLibraryMock>()));
   CrashCollector::ComputedCrashSeverity computed_severity =
       collector.ComputeSeverity("missed_crash");
 

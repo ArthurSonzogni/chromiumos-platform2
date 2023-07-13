@@ -9,7 +9,12 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/process/process.h>
+#include <metrics/metrics_library.h>
+
+#include "crash-reporter/gsc_collector_base.h"
 
 using brillo::ProcessImpl;
 
@@ -19,6 +24,12 @@ const char kGscFirmwarePath[] = "/opt/google/ti50/firmware";
 const char kGscToolPath[] = "/usr/sbin/gsctool";
 
 }  // namespace
+
+GscCollector::GscCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : GscCollectorBase(metrics_lib) {}
 
 GscCollectorBase::Status GscCollector::GetTi50Flog(std::string* flog_output) {
   ProcessImpl gsctool;

@@ -14,6 +14,8 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 #if USE_DIRENCRYPTION
 #include <keyutils.h>
@@ -128,7 +130,10 @@ bool UseLooseCoreSizeForChromeCrashEarly() {
                           paths::kRunningLooseChromeCrashEarlyTestFile));
 }
 
-bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
+bool IsFeedbackAllowed(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   if (HasMockConsent()) {
     LOG(INFO) << "mock-consent file present; assuming consent";
     return true;
@@ -146,7 +151,7 @@ bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
   if (vm_support) {
     ret = vm_support->GetMetricsConsent();
   } else {
-    ret = metrics_lib->AreMetricsEnabled();
+    ret = metrics_lib->data->AreMetricsEnabled();
   }
 
   if (!ret) {
@@ -158,7 +163,10 @@ bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
   return ret;
 }
 
-bool IsBootFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
+bool IsBootFeedbackAllowed(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   std::string contents;
   if (base::ReadFileToString(paths::Get(paths::kBootConsentFile), &contents)) {
     if (contents != "1") {

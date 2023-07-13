@@ -4,11 +4,17 @@
 
 #include "crash-reporter/mount_failure_collector.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -36,7 +42,12 @@ class MountFailureCollectorMock : public MountFailureCollector {
  public:
   MountFailureCollectorMock(StorageDeviceType device_type,
                             bool testonly_send_all)
-      : MountFailureCollector(device_type, testonly_send_all) {}
+      : MountFailureCollector(
+            device_type,
+            testonly_send_all,
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 

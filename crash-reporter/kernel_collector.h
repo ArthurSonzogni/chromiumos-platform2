@@ -9,11 +9,15 @@
 #ifndef CRASH_REPORTER_KERNEL_COLLECTOR_H_
 #define CRASH_REPORTER_KERNEL_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/kernel_util.h"
@@ -21,7 +25,10 @@
 // Kernel crash collector.
 class KernelCollector : public CrashCollector {
  public:
-  KernelCollector();
+  explicit KernelCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   KernelCollector(const KernelCollector&) = delete;
   KernelCollector& operator=(const KernelCollector&) = delete;
 

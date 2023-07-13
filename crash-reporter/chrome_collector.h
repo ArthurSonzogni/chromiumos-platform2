@@ -15,14 +15,21 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // Chrome crash collector.
 class ChromeCollector : public CrashCollector {
  public:
-  explicit ChromeCollector(CrashSendingMode crash_sending_mode);
+  explicit ChromeCollector(
+      CrashSendingMode crash_sending_mode,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ChromeCollector(const ChromeCollector&) = delete;
   ChromeCollector& operator=(const ChromeCollector&) = delete;
 
@@ -48,15 +55,19 @@ class ChromeCollector : public CrashCollector {
                                const std::string& dump_dir,
                                int signal);
 
-  static CollectorInfo GetHandlerInfo(CrashSendingMode mode,
-                                      const std::string& dump_file_path,
-                                      int memfd,
-                                      pid_t pid,
-                                      uid_t uid,
-                                      const std::string& executable_name,
-                                      const std::string& non_exe_error_key,
-                                      const std::string& chrome_dump_dir,
-                                      int signal);
+  static CollectorInfo GetHandlerInfo(
+      CrashSendingMode mode,
+      const std::string& dump_file_path,
+      int memfd,
+      pid_t pid,
+      uid_t uid,
+      const std::string& executable_name,
+      const std::string& non_exe_error_key,
+      const std::string& chrome_dump_dir,
+      int signal,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
   void set_max_upload_bytes_for_test(int max_upload_bytes) {
     max_upload_bytes_ = max_upload_bytes;

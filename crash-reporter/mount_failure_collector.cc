@@ -12,8 +12,11 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
@@ -53,9 +56,13 @@ std::vector<std::string> ConstructLoggingCommands(StorageDeviceType device_type,
 
 }  // namespace
 
-MountFailureCollector::MountFailureCollector(StorageDeviceType device_type,
-                                             bool testonly_send_all)
-    : CrashCollector("mount_failure_collector"),
+MountFailureCollector::MountFailureCollector(
+    StorageDeviceType device_type,
+    bool testonly_send_all,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("mount_failure_collector", metrics_lib),
       device_type_(device_type),
       testonly_send_all_(testonly_send_all) {}
 
@@ -157,9 +164,12 @@ CollectorInfo MountFailureCollector::GetHandlerInfo(
     const std::string& mount_device,
     bool testonly_send_all,
     bool mount_failure,
-    bool umount_failure) {
+    bool umount_failure,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   auto mount_failure_collector = std::make_shared<MountFailureCollector>(
-      ValidateStorageDeviceType(mount_device), testonly_send_all);
+      ValidateStorageDeviceType(mount_device), testonly_send_all, metrics_lib);
   return {
       .collector = mount_failure_collector,
       .handlers = {{

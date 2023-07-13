@@ -7,11 +7,22 @@
 
 #include "crash-reporter/kernel_collector.h"
 
+#include <memory>
+
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 class KernelCollectorMock : public KernelCollector {
  public:
+  KernelCollectorMock()
+      : KernelCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(bool, DumpDirMounted, (), (override));
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };

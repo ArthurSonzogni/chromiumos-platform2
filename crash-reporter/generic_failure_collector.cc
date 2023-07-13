@@ -11,7 +11,10 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <metrics/metrics_library.h>
 
 #include "base/check.h"
 #include "base/files/file_path.h"
@@ -35,8 +38,12 @@ const char* const GenericFailureCollector::kModemFailure = "cellular-failure";
 const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
 const char* const GenericFailureCollector::kHermesFailure = "hermes_failure";
 
-GenericFailureCollector::GenericFailureCollector()
-    : CrashCollector("generic_failure"), failure_report_path_("/dev/stdin") {}
+GenericFailureCollector::GenericFailureCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("generic_failure", metrics_lib),
+      failure_report_path_("/dev/stdin") {}
 
 GenericFailureCollector::~GenericFailureCollector() {}
 
@@ -111,8 +118,12 @@ CrashCollector::ComputedCrashSeverity GenericFailureCollector::ComputeSeverity(
 
 // static
 CollectorInfo GenericFailureCollector::GetHandlerInfo(
-    const HandlerInfoOptions& options) {
-  auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
+    const HandlerInfoOptions& options,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto generic_failure_collector =
+      std::make_shared<GenericFailureCollector>(metrics_lib);
   return {
       .collector = generic_failure_collector,
       .handlers = {

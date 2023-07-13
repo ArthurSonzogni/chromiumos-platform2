@@ -12,10 +12,14 @@
 #ifndef CRASH_REPORTER_ARCVM_KERNEL_COLLECTOR_H_
 #define CRASH_REPORTER_ARCVM_KERNEL_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/scoped_file.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
@@ -23,7 +27,10 @@
 // Collector for kernel crashes of ARCVM.
 class ArcvmKernelCollector : public CrashCollector {
  public:
-  ArcvmKernelCollector();
+  explicit ArcvmKernelCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ~ArcvmKernelCollector() override;
 
   // Handles a kernel crash of ARCVM.
@@ -34,7 +41,11 @@ class ArcvmKernelCollector : public CrashCollector {
       const std::string& exec_name) override;
 
   static CollectorInfo GetHandlerInfo(
-      bool arc_kernel, const arc_util::BuildProperty& build_property);
+      bool arc_kernel,
+      const arc_util::BuildProperty& build_property,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  private:
   friend class ArcvmKernelCollectorTest;

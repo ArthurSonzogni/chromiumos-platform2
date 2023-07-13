@@ -14,8 +14,11 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
@@ -28,10 +31,14 @@ constexpr char kArcvmCxxCollectorName[] = "ARCVM_native";
 
 }  // namespace
 
-ArcvmCxxCollector::ArcvmCxxCollector()
+ArcvmCxxCollector::ArcvmCxxCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
     : CrashCollector(kArcvmCxxCollectorName,
                      kAlwaysUseUserCrashDirectory,
-                     kNormalCrashSendMode) {}
+                     kNormalCrashSendMode,
+                     metrics_lib) {}
 
 ArcvmCxxCollector::~ArcvmCxxCollector() = default;
 
@@ -126,8 +133,11 @@ CollectorInfo ArcvmCxxCollector::GetHandlerInfo(
     bool arc_native,
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
-    int64_t uptime_millis) {
-  auto arcvm_cxx_collector = std::make_shared<ArcvmCxxCollector>();
+    int64_t uptime_millis,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto arcvm_cxx_collector = std::make_shared<ArcvmCxxCollector>(metrics_lib);
   return {
       .collector = arcvm_cxx_collector,
       .handlers = {{

@@ -16,11 +16,15 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 #include <session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/chrome_collector.h"
@@ -55,7 +59,11 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
                                      std::string user_hash,
                                      std::string dri_error_state,
                                      std::string dmesg_result)
-      : ChromeCollector(crash_sending_mode),
+      : ChromeCollector(
+            crash_sending_mode,
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())),
         user_name_(std::move(user_name)),
         user_hash_(std::move(user_hash)),
         dri_error_state_(std::move(dri_error_state)),

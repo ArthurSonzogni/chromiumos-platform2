@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <limits>
 #include <memory>
+#include <utility>
 #include <sys/mman.h>
 
 #include <base/command_line.h>
@@ -16,6 +17,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/test/simple_test_clock.h>
@@ -487,31 +490,41 @@ TEST_F(CrashCommonUtilTest, GetNextLine) {
 }
 
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedMock) {
-  MetricsLibraryMock mock_metrics;
-  mock_metrics.set_metrics_enabled(false);
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  mock_metrics->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get("/etc/lsb-release"),
                                     "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
                                     "CHROMEOS_RELEASE_DESCRIPTION=12985.0.0 "
                                     "(Official Build) dev-channel asuka test"));
 
-  EXPECT_FALSE(IsFeedbackAllowed(&mock_metrics));
+  EXPECT_FALSE(IsFeedbackAllowed(mock_metrics_refptr));
   ASSERT_TRUE(test_util::CreateFile(
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockConsent), ""));
   EXPECT_TRUE(HasMockConsent());
 
-  EXPECT_TRUE(IsFeedbackAllowed(&mock_metrics));
+  EXPECT_TRUE(IsFeedbackAllowed(mock_metrics_refptr));
 }
 
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedDev) {
-  MetricsLibraryMock mock_metrics;
-  mock_metrics.set_metrics_enabled(false);
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  mock_metrics->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
 
-  EXPECT_FALSE(IsFeedbackAllowed(&mock_metrics));
+  EXPECT_FALSE(IsFeedbackAllowed(mock_metrics_refptr));
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kLeaveCoreFile), ""));
 
-  EXPECT_TRUE(IsFeedbackAllowed(&mock_metrics));
+  EXPECT_TRUE(IsFeedbackAllowed(mock_metrics_refptr));
 }
 
 // Disable this test when in a VM because there's no easy way to mock the
@@ -520,40 +533,58 @@ TEST_F(CrashCommonUtilTest, IsFeedbackAllowedDev) {
 // use a fake implementation here to set metrics consent appropriately.
 #if !USE_KVM_GUEST
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedRespectsMetricsLib) {
-  MetricsLibraryMock mock_metrics;
-  mock_metrics.set_metrics_enabled(false);
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();
+  mock_metrics_ptr->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
 
-  EXPECT_FALSE(IsFeedbackAllowed(&mock_metrics));
+  EXPECT_FALSE(IsFeedbackAllowed(mock_metrics_refptr));
 
-  mock_metrics.set_metrics_enabled(true);
-  EXPECT_TRUE(IsFeedbackAllowed(&mock_metrics));
+  mock_metrics_ptr->set_metrics_enabled(true);
+  EXPECT_TRUE(IsFeedbackAllowed(mock_metrics_refptr));
 }
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsMetricsLib) {
-  MetricsLibraryMock mock_metrics;
-  mock_metrics.set_metrics_enabled(false);
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();
+  mock_metrics_ptr->set_metrics_enabled(false);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
 
-  EXPECT_FALSE(IsBootFeedbackAllowed(&mock_metrics));
+  EXPECT_FALSE(IsBootFeedbackAllowed(mock_metrics_refptr));
 
-  mock_metrics.set_metrics_enabled(true);
-  EXPECT_TRUE(IsBootFeedbackAllowed(&mock_metrics));
+  mock_metrics_ptr->set_metrics_enabled(true);
+  EXPECT_TRUE(IsBootFeedbackAllowed(mock_metrics_refptr));
 }
 
 TEST_F(CrashCommonUtilTest, IsBootFeedbackAllowedRespectsFile) {
-  MetricsLibraryMock mock_metrics;
-  mock_metrics.set_metrics_enabled(true);
+  std::unique_ptr<MetricsLibraryMock> mock_metrics =
+      std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_metrics_ptr = mock_metrics.get();
+  mock_metrics_ptr->set_metrics_enabled(true);
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      mock_metrics_refptr = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::move(mock_metrics));
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kBootConsentFile), "0"));
 
   // Last user opted out, so we should disable.
-  EXPECT_FALSE(IsBootFeedbackAllowed(&mock_metrics));
+  EXPECT_FALSE(IsBootFeedbackAllowed(mock_metrics_refptr));
 
   // Both last user opted in as well as device owner, opt in.
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kBootConsentFile), "1"));
-  EXPECT_TRUE(IsBootFeedbackAllowed(&mock_metrics));
+  EXPECT_TRUE(IsBootFeedbackAllowed(mock_metrics_refptr));
 
   // Last user opted in, but device owner opted out, so opt out.
-  mock_metrics.set_metrics_enabled(false);
-  EXPECT_FALSE(IsBootFeedbackAllowed(&mock_metrics));
+  mock_metrics_ptr->set_metrics_enabled(false);
+  EXPECT_FALSE(IsBootFeedbackAllowed(mock_metrics_refptr));
 }
 #endif  // USE_KVM_GUEST
 

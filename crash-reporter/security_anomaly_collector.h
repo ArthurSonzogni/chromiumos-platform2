@@ -6,22 +6,34 @@
 #define CRASH_REPORTER_SECURITY_ANOMALY_COLLECTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // Collector for processing security anomalies reported by secanomalyd.
 class SecurityAnomalyCollector : public CrashCollector {
  public:
-  SecurityAnomalyCollector();
+  explicit SecurityAnomalyCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   SecurityAnomalyCollector(const SecurityAnomalyCollector&) = delete;
   SecurityAnomalyCollector& operator=(const SecurityAnomalyCollector&) = delete;
 
   bool Collect(int32_t weight);
 
-  static CollectorInfo GetHandlerInfo(int32_t weight, bool security_anomaly);
+  static CollectorInfo GetHandlerInfo(
+      int32_t weight,
+      bool security_anomaly,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  protected:
   void set_anomaly_report_path_for_testing(const base::FilePath& path) {

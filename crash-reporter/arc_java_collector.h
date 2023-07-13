@@ -8,12 +8,16 @@
 #ifndef CRASH_REPORTER_ARC_JAVA_COLLECTOR_H_
 #define CRASH_REPORTER_ARC_JAVA_COLLECTOR_H_
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
@@ -21,7 +25,10 @@
 // Collector for Java crashes in the ARC++ container and ARC VM.
 class ArcJavaCollector : public CrashCollector {
  public:
-  ArcJavaCollector();
+  explicit ArcJavaCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ArcJavaCollector(const ArcJavaCollector&) = delete;
   ArcJavaCollector& operator=(const ArcJavaCollector&) = delete;
 
@@ -41,7 +48,10 @@ class ArcJavaCollector : public CrashCollector {
   static CollectorInfo GetHandlerInfo(
       const std::string& arc_java_crash,
       const arc_util::BuildProperty& build_property,
-      int64_t uptime_millis);
+      int64_t uptime_millis,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
   void SetCrashTypeForTesting(const std::string& crash_type_string) {
     received_crash_type_ = crash_type_string;

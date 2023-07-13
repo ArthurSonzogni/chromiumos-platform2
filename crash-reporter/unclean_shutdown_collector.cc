@@ -4,15 +4,19 @@
 
 #include "crash-reporter/unclean_shutdown_collector.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
 #include <brillo/strings/string_utils.h>
+#include <metrics/metrics_library.h>
 
 using base::FilePath;
 using brillo::SafeFD;
@@ -97,9 +101,11 @@ bool SafelyCopyFile(FilePath source, FilePath dest) {
 
 }  // namespace
 
-
-UncleanShutdownCollector::UncleanShutdownCollector()
-    : CrashCollector("unclean_shutdown"),
+UncleanShutdownCollector::UncleanShutdownCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("unclean_shutdown", metrics_lib),
       unclean_shutdown_file_(kUncleanShutdownFile),
       powerd_trace_path_(kPowerdTracePath),
       powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)),

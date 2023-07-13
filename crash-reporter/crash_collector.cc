@@ -28,6 +28,8 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/ranges/algorithm.h>
@@ -45,6 +47,7 @@
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 #include <debugd/dbus-constants.h>
+#include <metrics/metrics_library.h>
 #include <policy/device_policy_impl.h>
 #include <re2/re2.h>
 #include <redaction_tool/libmetrics_metrics_recorder.h>
@@ -419,17 +422,25 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
   return true;
 }
 
-CrashCollector::CrashCollector(const std::string& collector_name,
-                               const std::string& tag)
+CrashCollector::CrashCollector(
+    const std::string& collector_name,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib,
+    const std::string& tag)
     : CrashCollector(collector_name,
                      kUseNormalCrashDirectorySelectionMethod,
                      kNormalCrashSendMode,
+                     metrics_lib,
                      tag) {}
 
 CrashCollector::CrashCollector(
     const std::string& collector_name,
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib,
     const std::string& tag)
     : collector_name_(collector_name),
       lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
@@ -444,15 +455,12 @@ CrashCollector::CrashCollector(
       force_daemon_store_(std::nullopt),
       is_finished_(false),
       bytes_written_(0),
+      metrics_lib_(metrics_lib),
       tag_(tag) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
-  metrics_lib_ = base::MakeRefCounted<
-      base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
-      std::forward<std::unique_ptr<MetricsLibraryInterface>>(
-          std::make_unique<MetricsLibrary>()));
 }
 
 CrashCollector::~CrashCollector() {

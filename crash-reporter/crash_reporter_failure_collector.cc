@@ -10,6 +10,9 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
@@ -20,8 +23,11 @@ namespace {
 const char kExecName[] = "crash_reporter_failure";
 }  // namespace
 
-CrashReporterFailureCollector::CrashReporterFailureCollector()
-    : CrashCollector("crash-reporter-failure-collector") {}
+CrashReporterFailureCollector::CrashReporterFailureCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("crash-reporter-failure-collector", metrics_lib) {}
 
 CrashReporterFailureCollector::~CrashReporterFailureCollector() {}
 
@@ -55,9 +61,12 @@ CrashReporterFailureCollector::ComputeSeverity(const std::string& exec_name) {
 
 // static
 CollectorInfo CrashReporterFailureCollector::GetHandlerInfo(
-    bool crash_reporter_crashed) {
+    bool crash_reporter_crashed,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   auto crash_reporter_failure_collector =
-      std::make_shared<CrashReporterFailureCollector>();
+      std::make_shared<CrashReporterFailureCollector>(metrics_lib);
   return {.collector = crash_reporter_failure_collector,
           .handlers = {{
               .should_handle = crash_reporter_crashed,

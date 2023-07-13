@@ -4,13 +4,19 @@
 
 #include "crash-reporter/gsc_collector_base.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -29,6 +35,11 @@ namespace {
 
 class GscCollectorMock : public GscCollectorBase {
  public:
+  GscCollectorMock()
+      : GscCollectorBase(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
   MOCK_METHOD(GscCollectorBase::Status,
               GetGscFlog,

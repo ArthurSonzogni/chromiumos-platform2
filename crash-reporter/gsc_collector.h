@@ -9,14 +9,22 @@
 #ifndef CRASH_REPORTER_GSC_COLLECTOR_H_
 #define CRASH_REPORTER_GSC_COLLECTOR_H_
 
+#include <memory>
 #include <string>
+
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/gsc_collector_base.h"
 
 // GSC crash collector.
 class GscCollector : public GscCollectorBase {
  public:
-  GscCollector() = default;
+  explicit GscCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   GscCollector(const GscCollector&) = delete;
   GscCollector& operator=(const GscCollector&) = delete;
 

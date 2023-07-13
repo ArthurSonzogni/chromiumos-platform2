@@ -15,12 +15,15 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/udev_bluetooth_util.h"
 #include "crash-reporter/util.h"
@@ -42,8 +45,11 @@ const char kUdevUsbExecName[] = "udev-usb";
 
 }  // namespace
 
-UdevCollector::UdevCollector()
-    : CrashCollector("udev"),
+UdevCollector::UdevCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("udev", metrics_lib),
       dev_coredump_directory_(kDefaultDevCoredumpDirectory) {}
 
 UdevCollector::~UdevCollector() {}
@@ -346,8 +352,12 @@ std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
 }
 
 // static
-CollectorInfo UdevCollector::GetHandlerInfo(const std::string& udev_event) {
-  auto udev_collector = std::make_shared<UdevCollector>();
+CollectorInfo UdevCollector::GetHandlerInfo(
+    const std::string& udev_event,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto udev_collector = std::make_shared<UdevCollector>(metrics_lib);
   return {.collector = udev_collector,
           .handlers = {{
               .should_handle = !udev_event.empty(),

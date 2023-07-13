@@ -10,9 +10,13 @@
 #ifndef CRASH_REPORTER_EPHEMERAL_CRASH_COLLECTOR_H_
 #define CRASH_REPORTER_EPHEMERAL_CRASH_COLLECTOR_H_
 
+#include <memory>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -21,7 +25,10 @@
 // reboot vault.
 class EphemeralCrashCollector : public CrashCollector {
  public:
-  EphemeralCrashCollector();
+  explicit EphemeralCrashCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   EphemeralCrashCollector(const EphemeralCrashCollector&) = delete;
   EphemeralCrashCollector& operator=(const EphemeralCrashCollector&) = delete;
 

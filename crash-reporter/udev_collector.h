@@ -16,16 +16,23 @@
 #define CRASH_REPORTER_UDEV_COLLECTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // Udev crash collector.
 class UdevCollector : public CrashCollector {
  public:
-  UdevCollector();
+  explicit UdevCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   UdevCollector(const UdevCollector&) = delete;
   UdevCollector& operator=(const UdevCollector&) = delete;
 
@@ -41,7 +48,11 @@ class UdevCollector : public CrashCollector {
   // could be omitted, in which case it would be treated as a wildcard (*).
   bool HandleCrash(const std::string& udev_event);
 
-  static CollectorInfo GetHandlerInfo(const std::string& udev_event);
+  static CollectorInfo GetHandlerInfo(
+      const std::string& udev_event,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  protected:
   std::string dev_coredump_directory_;

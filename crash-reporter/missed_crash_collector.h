@@ -5,10 +5,15 @@
 #ifndef CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 #define CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <stdint.h>
 #include <stdio.h>
+
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -17,7 +22,10 @@
 // itself; instead, it has the logs passed to it on a file descriptor.
 class MissedCrashCollector : public CrashCollector {
  public:
-  MissedCrashCollector();
+  explicit MissedCrashCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ~MissedCrashCollector() override;
 
   bool Collect(int pid,
@@ -34,11 +42,15 @@ class MissedCrashCollector : public CrashCollector {
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
-  static CollectorInfo GetHandlerInfo(bool missed_chrome_crash,
-                                      int32_t pid,
-                                      int32_t recent_miss_count,
-                                      int32_t recent_match_count,
-                                      int32_t pending_miss_count);
+  static CollectorInfo GetHandlerInfo(
+      bool missed_chrome_crash,
+      int32_t pid,
+      int32_t recent_miss_count,
+      int32_t recent_match_count,
+      int32_t pending_miss_count,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  private:
   // FILE we can read from that contains the logs to attach to this crash

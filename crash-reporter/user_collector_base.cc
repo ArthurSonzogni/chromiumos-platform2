@@ -8,18 +8,22 @@
 
 #include <signal.h>  // SIGSYS
 
+#include <memory>
 #include <optional>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <libminijail.h>
+#include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
@@ -61,10 +65,14 @@ const char* UserCollectorBase::kGroupId = "Gid:\t";
 
 UserCollectorBase::UserCollectorBase(
     const std::string& collector_name,
-    CrashDirectorySelectionMethod crash_directory_selection_method)
+    CrashDirectorySelectionMethod crash_directory_selection_method,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
     : CrashCollector(collector_name,
                      crash_directory_selection_method,
                      kNormalCrashSendMode,
+                     metrics_lib,
                      collector_name) {}
 
 void UserCollectorBase::Initialize(bool directory_failure, bool early) {

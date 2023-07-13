@@ -11,7 +11,12 @@
 #ifndef CRASH_REPORTER_BERT_COLLECTOR_H_
 #define CRASH_REPORTER_BERT_COLLECTOR_H_
 
+#include <memory>
+
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -41,7 +46,10 @@ static_assert(sizeof(acpi_table_bert) == 48,
 // Firmware Error Bert dump collector.
 class BERTCollector : public CrashCollector {
  public:
-  BERTCollector();
+  explicit BERTCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   BERTCollector(const BERTCollector&) = delete;
   BERTCollector& operator=(const BERTCollector&) = delete;
 

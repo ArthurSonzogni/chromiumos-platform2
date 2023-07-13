@@ -5,12 +5,15 @@
 #ifndef CRASH_REPORTER_UTIL_H_
 #define CRASH_REPORTER_UTIL_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
@@ -49,8 +52,10 @@ bool UseLooseCoreSizeForChromeCrashEarly();
 // * The presence/absence of mock consent
 // * Whether this is a developer image
 // * Whether the metrics library indicates consent
-// Does not take ownership of |metrics_lib|
-bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
+bool IsFeedbackAllowed(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib);
 
 // Determines whether feedback is allowed, for early boot collectors.
 // If the boot-collector-consent file is present, and contains anything other
@@ -59,8 +64,10 @@ bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
 // This mirrors metrics_lib's AreMetricsEnabled method, which checks the
 // per-user consent file and determines there's no consent if it's present and
 // contains anything but "1".
-// Does not take ownership of |metrics_lib|
-bool IsBootFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
+bool IsBootFeedbackAllowed(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib);
 
 // Returns true if we should skip crash collection (based on the filter-in
 // and filter-out files).

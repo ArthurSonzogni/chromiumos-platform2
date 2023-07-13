@@ -5,11 +5,14 @@
 #include "crash-reporter/bert_collector.h"
 
 #include <fcntl.h>
+#include <memory>
 #include <string>
 #include <sys/stat.h>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
@@ -69,8 +72,11 @@ bool BertRead(const FilePath& bert_table_path,
 
 }  // namespace
 
-BERTCollector::BERTCollector()
-    : CrashCollector("bert"), acpitable_path_(kACPITablePath) {}
+BERTCollector::BERTCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("bert", metrics_lib), acpitable_path_(kACPITablePath) {}
 
 BERTCollector::~BERTCollector() {}
 

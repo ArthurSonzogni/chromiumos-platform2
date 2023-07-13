@@ -8,20 +8,27 @@
 #ifndef CRASH_REPORTER_USER_COLLECTOR_BASE_H_
 #define CRASH_REPORTER_USER_COLLECTOR_BASE_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 class UserCollectorBase : public CrashCollector {
  public:
-  UserCollectorBase(
+  explicit UserCollectorBase(
       const std::string& collector_name,
-      CrashDirectorySelectionMethod crash_directory_selection_method);
+      CrashDirectorySelectionMethod crash_directory_selection_method,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
   void Initialize(bool directory_failure, bool early);
 

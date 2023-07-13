@@ -12,9 +12,13 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "base/strings/strcat.h"
 #include "crash-reporter/test_util.h"
@@ -68,9 +72,17 @@ const char k64BitAuxv[] = R"(
 
 class MockArcppCxxCollector : public ArcppCxxCollector {
  public:
-  MockArcppCxxCollector() : ArcppCxxCollector() {}
+  MockArcppCxxCollector()
+      : ArcppCxxCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   explicit MockArcppCxxCollector(ContextPtr context)
-      : ArcppCxxCollector(std::move(context)) {}
+      : ArcppCxxCollector(
+            std::move(context),
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
   MOCK_METHOD(ErrorType,
               ConvertCoreToMinidump,

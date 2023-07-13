@@ -6,13 +6,18 @@
 
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -30,7 +35,11 @@ const char kTestFailureDirectory[] = "test-failure_directory";
 
 class GenericFailureCollectorMock : public GenericFailureCollector {
  public:
-  GenericFailureCollectorMock() : GenericFailureCollector() {}
+  GenericFailureCollectorMock()
+      : GenericFailureCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
 
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };

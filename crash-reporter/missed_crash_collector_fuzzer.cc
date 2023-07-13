@@ -7,13 +7,18 @@
 #include <iostream>
 #include <stdio.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 #include <session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/missed_crash_collector.h"
@@ -32,7 +37,12 @@ class MissedCrashCollectorForFuzzing : public MissedCrashCollector {
  public:
   explicit MissedCrashCollectorForFuzzing(std::string user_name,
                                           std::string user_hash)
-      : user_name_(std::move(user_name)), user_hash_(std::move(user_hash)) {}
+      : MissedCrashCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())),
+        user_name_(std::move(user_name)),
+        user_hash_(std::move(user_hash)) {}
 
   void SetUpDBus() override {
     // Mock out all DBus calls so (a) we don't actually call DBus and (b) we

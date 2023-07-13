@@ -14,8 +14,11 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/user_collector_base.h"
@@ -45,8 +48,15 @@ class ArcppCxxCollector : public UserCollectorBase {
 
   using ContextPtr = std::unique_ptr<Context>;
 
-  ArcppCxxCollector();
-  explicit ArcppCxxCollector(ContextPtr context);
+  explicit ArcppCxxCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
+  explicit ArcppCxxCollector(
+      ContextPtr context,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ArcppCxxCollector(const ArcppCxxCollector&) = delete;
   ArcppCxxCollector& operator=(const ArcppCxxCollector&) = delete;
 

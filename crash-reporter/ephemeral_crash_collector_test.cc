@@ -6,9 +6,14 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
+#include <memory>
 #include <string>
 
 #include "crash-reporter/paths.h"
@@ -22,6 +27,13 @@ constexpr char kTestCrashFileContents[] = "Not a real crash.";
 }  // namespace
 
 class EphemeralCrashCollectorTest : public testing::Test {
+ public:
+  EphemeralCrashCollectorTest()
+      : collector_(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
+
  private:
   void SetUp() override {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());

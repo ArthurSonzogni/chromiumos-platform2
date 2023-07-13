@@ -112,13 +112,20 @@ class CrashCollector {
     Product product_group;
   };
 
-  explicit CrashCollector(const std::string& collector_name,
-                          const std::string& tag = "");
+  explicit CrashCollector(
+      const std::string& collector_name,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib,
+      const std::string& tag = "");
 
   explicit CrashCollector(
       const std::string& collector_name,
       CrashDirectorySelectionMethod crash_directory_selection_method,
       CrashSendingMode crash_sending_mode,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib,
       const std::string& tag = "");
 
   CrashCollector(const CrashCollector&) = delete;
@@ -656,11 +663,11 @@ class CrashCollector {
   // If not null, GetUptime() will return *override_uptime_for_testing_;
   std::unique_ptr<base::TimeDelta> override_uptime_for_testing_;
 
-  // Prepended to log messages to differentiate between collectors.
-  const std::string tag_;
-
   scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
       metrics_lib_;
+
+  // Prepended to log messages to differentiate between collectors.
+  const std::string tag_;
 
   // Is this an early-boot crash collection?
   bool early_ = false;

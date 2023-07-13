@@ -4,10 +4,16 @@
 
 #include "crash-reporter/clobber_state_collector.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -27,7 +33,11 @@ const char kLogConfigFileContents[] =
 
 class ClobberStateCollectorMock : public ClobberStateCollector {
  public:
-  ClobberStateCollectorMock() : ClobberStateCollector() {}
+  ClobberStateCollectorMock()
+      : ClobberStateCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 
   void set_tmpfiles_log(const base::FilePath& tmpfiles_log) {

@@ -9,9 +9,13 @@
 #ifndef CRASH_REPORTER_KERNEL_WARNING_COLLECTOR_H_
 #define CRASH_REPORTER_KERNEL_WARNING_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -31,7 +35,10 @@ class KernelWarningCollector : public CrashCollector {
     kAth10k,
   };
 
-  KernelWarningCollector();
+  explicit KernelWarningCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   KernelWarningCollector(const KernelWarningCollector&) = delete;
   KernelWarningCollector& operator=(const KernelWarningCollector&) = delete;
 
@@ -44,13 +51,17 @@ class KernelWarningCollector : public CrashCollector {
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
-  static CollectorInfo GetHandlerInfo(int32_t weight,
-                                      bool kernel_warning,
-                                      bool kernel_wifi_warning,
-                                      bool kernel_smmu_fault,
-                                      bool kernel_suspend_warning,
-                                      bool kernel_iwlwifi_error,
-                                      bool kernel_ath10k_error);
+  static CollectorInfo GetHandlerInfo(
+      int32_t weight,
+      bool kernel_warning,
+      bool kernel_wifi_warning,
+      bool kernel_smmu_fault,
+      bool kernel_suspend_warning,
+      bool kernel_iwlwifi_error,
+      bool kernel_ath10k_error,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  protected:
   std::string warning_report_path_;

@@ -8,8 +8,11 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 
@@ -19,8 +22,11 @@ constexpr char kMetadataKeyPrefix[] = "security_anomaly_";
 constexpr char kSignatureKey[] = "sig";
 }  // namespace
 
-SecurityAnomalyCollector::SecurityAnomalyCollector()
-    : CrashCollector("security_anomaly_collector"),
+SecurityAnomalyCollector::SecurityAnomalyCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("security_anomaly_collector", metrics_lib),
       anomaly_report_path_("/dev/stdin") {}
 
 bool SecurityAnomalyCollector::LoadSecurityAnomaly(
@@ -106,10 +112,14 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
 }
 
 // static
-CollectorInfo SecurityAnomalyCollector::GetHandlerInfo(int32_t weight,
-                                                       bool security_anomaly) {
+CollectorInfo SecurityAnomalyCollector::GetHandlerInfo(
+    int32_t weight,
+    bool security_anomaly,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   auto security_anomaly_collector =
-      std::make_shared<SecurityAnomalyCollector>();
+      std::make_shared<SecurityAnomalyCollector>(metrics_lib);
   return {.collector = security_anomaly_collector,
           .handlers = {{
               .should_handle = security_anomaly,

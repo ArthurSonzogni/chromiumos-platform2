@@ -14,6 +14,8 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringize_macros.h>
 #include <base/time/time.h>
@@ -55,11 +57,18 @@ bool GetAbiMigrationState(std::string* state);
 
 }  // namespace
 
-ArcppCxxCollector::ArcppCxxCollector()
-    : ArcppCxxCollector(ContextPtr(new ArcContext(this))) {}
+ArcppCxxCollector::ArcppCxxCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : ArcppCxxCollector(ContextPtr(new ArcContext(this)), metrics_lib) {}
 
-ArcppCxxCollector::ArcppCxxCollector(ContextPtr context)
-    : UserCollectorBase("ARCPP_cxx", kAlwaysUseUserCrashDirectory),
+ArcppCxxCollector::ArcppCxxCollector(
+    ContextPtr context,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : UserCollectorBase("ARCPP_cxx", kAlwaysUseUserCrashDirectory, metrics_lib),
       context_(std::move(context)) {}
 
 // The parameter |exec_name| is unused as we are computing the crash severity

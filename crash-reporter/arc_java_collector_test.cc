@@ -12,9 +12,13 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/paths.h"
@@ -42,7 +46,11 @@ const base::Time kFakeOsTime = base::Time::UnixEpoch() + base::Days(1234);
 
 class TestArcJavaCollector : public ArcJavaCollector {
  public:
-  explicit TestArcJavaCollector(const base::FilePath& crash_directory) {
+  explicit TestArcJavaCollector(const base::FilePath& crash_directory)
+      : ArcJavaCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {
     Initialize(false /* early */);
     set_crash_directory_for_test(crash_directory);
   }
@@ -235,7 +243,10 @@ class ComputeArcJavaCollectorCrashSeverityParameterizedTest
 TEST_P(ComputeArcJavaCollectorCrashSeverityParameterizedTest,
        ComputeCrashSeverity_Arc) {
   const ArcJavaCollectorComputeCrashSeverityTestCase& test_case = GetParam();
-  ArcJavaCollector java_collector;
+  ArcJavaCollector java_collector(
+      (base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::make_unique<MetricsLibraryMock>())));
   java_collector.SetCrashTypeForTesting(test_case.crash_type);
 
   CrashCollector::ComputedCrashSeverity computed_severity =

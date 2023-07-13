@@ -5,9 +5,13 @@
 #ifndef CRASH_REPORTER_MOUNT_FAILURE_COLLECTOR_H_
 #define CRASH_REPORTER_MOUNT_FAILURE_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -23,8 +27,12 @@ enum class StorageDeviceType {
 // the stateful and encrypted stateful partition are supported.
 class MountFailureCollector : public CrashCollector {
  public:
-  explicit MountFailureCollector(StorageDeviceType device_type,
-                                 bool testonly_send_all);
+  explicit MountFailureCollector(
+      StorageDeviceType device_type,
+      bool testonly_send_all,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   MountFailureCollector(const MountFailureCollector&) = delete;
   MountFailureCollector& operator=(const MountFailureCollector&) = delete;
 
@@ -39,10 +47,14 @@ class MountFailureCollector : public CrashCollector {
   static StorageDeviceType ValidateStorageDeviceType(const std::string& device);
   static std::string StorageDeviceTypeToString(StorageDeviceType device_type);
 
-  static CollectorInfo GetHandlerInfo(const std::string& mount_device,
-                                      bool testonly_send_all,
-                                      bool mount_failure,
-                                      bool umount_failure);
+  static CollectorInfo GetHandlerInfo(
+      const std::string& mount_device,
+      bool testonly_send_all,
+      bool mount_failure,
+      bool umount_failure,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  private:
   StorageDeviceType device_type_;

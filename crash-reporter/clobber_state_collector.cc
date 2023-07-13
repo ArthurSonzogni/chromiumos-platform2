@@ -11,8 +11,11 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
@@ -63,8 +66,11 @@ std::string filter_signature(const std::vector<std::string>& lines) {
 
 }  // namespace
 
-ClobberStateCollector::ClobberStateCollector()
-    : CrashCollector("clobber_state_collector"),
+ClobberStateCollector::ClobberStateCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("clobber_state_collector", metrics_lib),
       tmpfiles_log_(kTmpfilesLogPath) {}
 
 bool ClobberStateCollector::Collect() {
@@ -108,8 +114,13 @@ bool ClobberStateCollector::Collect() {
 }
 
 // static
-CollectorInfo ClobberStateCollector::GetHandlerInfo(bool clobber_state) {
-  auto clobber_state_collector = std::make_shared<ClobberStateCollector>();
+CollectorInfo ClobberStateCollector::GetHandlerInfo(
+    bool clobber_state,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto clobber_state_collector =
+      std::make_shared<ClobberStateCollector>(metrics_lib);
   return {
       .collector = clobber_state_collector,
       .handlers = {{

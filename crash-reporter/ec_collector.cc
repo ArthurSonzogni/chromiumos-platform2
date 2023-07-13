@@ -4,15 +4,19 @@
 
 #include "crash-reporter/ec_collector.h"
 
+#include <memory>
 #include <string>
 
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <libec/ec_command.h>
 #include <libec/ec_panicinfo.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/util.h"
 
@@ -30,8 +34,11 @@ const char kECExecName[] = "embedded-controller";
 
 }  // namespace
 
-ECCollector::ECCollector()
-    : CrashCollector("ec"), debugfs_path_(kECDebugFSPath) {}
+ECCollector::ECCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("ec", metrics_lib), debugfs_path_(kECDebugFSPath) {}
 
 ECCollector::~ECCollector() {}
 

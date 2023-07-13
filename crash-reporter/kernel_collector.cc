@@ -6,15 +6,19 @@
 
 #include <algorithm>
 #include <cinttypes>
+#include <memory>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <metrics/metrics_library.h>
 #include <linux/watchdog.h>
 #include <re2/re2.h>
 
@@ -74,8 +78,11 @@ static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 
 }  // namespace
 
-KernelCollector::KernelCollector()
-    : CrashCollector("kernel"),
+KernelCollector::KernelCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("kernel", metrics_lib),
       is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),

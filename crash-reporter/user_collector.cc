@@ -18,6 +18,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
@@ -26,6 +28,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
@@ -172,8 +175,12 @@ bool IsACrashpadChildOf(const base::FilePath& status_file,
 #endif  // !USE_FORCE_BREAKPAD
 }  // namespace
 
-UserCollector::UserCollector()
-    : UserCollectorBase("user", kUseNormalCrashDirectorySelectionMethod),
+UserCollector::UserCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : UserCollectorBase(
+          "user", kUseNormalCrashDirectorySelectionMethod, metrics_lib),
       core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       filter_path_(kFilterPath),

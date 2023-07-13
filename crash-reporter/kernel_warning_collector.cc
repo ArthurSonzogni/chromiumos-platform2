@@ -10,8 +10,11 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
+#include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
@@ -31,8 +34,12 @@ const pid_t kKernelPid = 0;
 using base::FilePath;
 using base::StringPrintf;
 
-KernelWarningCollector::KernelWarningCollector()
-    : CrashCollector("kernel_warning"), warning_report_path_("/dev/stdin") {}
+KernelWarningCollector::KernelWarningCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("kernel_warning", metrics_lib),
+      warning_report_path_("/dev/stdin") {}
 
 KernelWarningCollector::~KernelWarningCollector() {}
 
@@ -382,8 +389,11 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
     bool kernel_smmu_fault,
     bool kernel_suspend_warning,
     bool kernel_iwlwifi_error,
-    bool kernel_ath10k_error) {
-  auto collector = std::make_shared<KernelWarningCollector>();
+    bool kernel_ath10k_error,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto collector = std::make_shared<KernelWarningCollector>(metrics_lib);
   base::RepeatingCallback<bool(KernelWarningCollector::WarningType)>
       kernel_warn_cb = base::BindRepeating(&KernelWarningCollector::Collect,
                                            collector, weight);

@@ -12,7 +12,10 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/util.h"
@@ -26,10 +29,14 @@ constexpr char kArcJavaCollectorName[] = "ARC_java";
 
 }  // namespace
 
-ArcJavaCollector::ArcJavaCollector()
+ArcJavaCollector::ArcJavaCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
     : CrashCollector(kArcJavaCollectorName,
                      kAlwaysUseUserCrashDirectory,
                      kNormalCrashSendMode,
+                     metrics_lib,
                      kArcJavaCollectorName) {}
 
 bool ArcJavaCollector::HandleCrash(
@@ -209,8 +216,11 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
 CollectorInfo ArcJavaCollector::GetHandlerInfo(
     const std::string& arc_java_crash,
     const arc_util::BuildProperty& build_property,
-    int64_t uptime_millis) {
-  auto arc_java_collector = std::make_shared<ArcJavaCollector>();
+    int64_t uptime_millis,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto arc_java_collector = std::make_shared<ArcJavaCollector>(metrics_lib);
   return {
       .collector = arc_java_collector,
       .handlers = {{

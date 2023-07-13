@@ -11,9 +11,13 @@
 #ifndef CRASH_REPORTER_EC_COLLECTOR_H_
 #define CRASH_REPORTER_EC_COLLECTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -26,7 +30,10 @@
 // EC crash collector.
 class ECCollector : public CrashCollector {
  public:
-  ECCollector();
+  explicit ECCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   ECCollector(const ECCollector&) = delete;
   ECCollector& operator=(const ECCollector&) = delete;
 

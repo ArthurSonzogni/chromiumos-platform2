@@ -4,14 +4,18 @@
 
 #include "crash-reporter/gsc_collector_base.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/strings/string_utils.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
@@ -33,8 +37,11 @@ constexpr uint32_t kInvalidCrashLogID = 0xFFFFFFFF;
 
 }  // namespace
 
-GscCollectorBase::GscCollectorBase()
-    : CrashCollector("gsc"),
+GscCollectorBase::GscCollectorBase(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("gsc", metrics_lib),
       crash_detected_(false),
       latest_crash_id_(kInvalidCrashLogID),
       prev_crash_id_(kInvalidCrashLogID) {}

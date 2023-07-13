@@ -9,8 +9,11 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
+#include <metrics/metrics_library.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 #include "crash-reporter/constants.h"
@@ -18,9 +21,14 @@
 // Disallow fallback directory -- VM collector is run in a sandbox without
 // access to /home/chronos. (vm_collector is invoked via cicerone, with a
 // minijail configured in platform2/vm_tools/init/vm_cicerone.conf)
-VmCollector::VmCollector()
-    : CrashCollector(
-          "vm_collector", kAlwaysUseDaemonStore, kNormalCrashSendMode) {}
+VmCollector::VmCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("vm_collector",
+                     kAlwaysUseDaemonStore,
+                     kNormalCrashSendMode,
+                     metrics_lib) {}
 
 bool VmCollector::Collect(pid_t pid) {
   vm_tools::cicerone::CrashReport crash_report;
@@ -76,8 +84,13 @@ CrashCollector::ComputedCrashSeverity VmCollector::ComputeSeverity(
 }
 
 // static
-CollectorInfo VmCollector::GetHandlerInfo(bool vm_crash, int32_t vm_pid) {
-  auto vm_collector = std::make_shared<VmCollector>();
+CollectorInfo VmCollector::GetHandlerInfo(
+    bool vm_crash,
+    int32_t vm_pid,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto vm_collector = std::make_shared<VmCollector>(metrics_lib);
   return {.collector = vm_collector,
           .handlers = {{
               .should_handle = vm_crash,

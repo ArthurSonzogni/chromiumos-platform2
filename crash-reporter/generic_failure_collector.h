@@ -12,17 +12,24 @@
 #ifndef CRASH_REPORTER_GENERIC_FAILURE_COLLECTOR_H_
 #define CRASH_REPORTER_GENERIC_FAILURE_COLLECTOR_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // Generic failure collector.
 class GenericFailureCollector : public CrashCollector {
  public:
-  GenericFailureCollector();
+  explicit GenericFailureCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   GenericFailureCollector(const GenericFailureCollector&) = delete;
   GenericFailureCollector& operator=(const GenericFailureCollector&) = delete;
 
@@ -67,7 +74,11 @@ class GenericFailureCollector : public CrashCollector {
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
-  static CollectorInfo GetHandlerInfo(const HandlerInfoOptions& options);
+  static CollectorInfo GetHandlerInfo(
+      const HandlerInfoOptions& options,
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
 
  protected:
   std::string failure_report_path_;

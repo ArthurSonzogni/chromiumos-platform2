@@ -10,12 +10,18 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 
-MissedCrashCollector::MissedCrashCollector()
-    : CrashCollector("missed_crash"), input_file_(stdin) {}
+MissedCrashCollector::MissedCrashCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("missed_crash", metrics_lib), input_file_(stdin) {}
 
 MissedCrashCollector::~MissedCrashCollector() = default;
 
@@ -82,12 +88,17 @@ CrashCollector::ComputedCrashSeverity MissedCrashCollector::ComputeSeverity(
   };
 }
 
-CollectorInfo MissedCrashCollector::GetHandlerInfo(bool missed_chrome_crash,
-                                                   int32_t pid,
-                                                   int32_t recent_miss_count,
-                                                   int32_t recent_match_count,
-                                                   int32_t pending_miss_count) {
-  auto missed_crash_collector = std::make_shared<MissedCrashCollector>();
+CollectorInfo MissedCrashCollector::GetHandlerInfo(
+    bool missed_chrome_crash,
+    int32_t pid,
+    int32_t recent_miss_count,
+    int32_t recent_match_count,
+    int32_t pending_miss_count,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
+  auto missed_crash_collector =
+      std::make_shared<MissedCrashCollector>(metrics_lib);
   return {
       .collector = missed_crash_collector,
       .handlers = {{

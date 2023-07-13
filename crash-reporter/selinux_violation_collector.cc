@@ -11,8 +11,11 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
@@ -27,8 +30,12 @@ constexpr size_t kMaxValueLen = 128;
 using base::FilePath;
 using base::StringPrintf;
 
-SELinuxViolationCollector::SELinuxViolationCollector()
-    : CrashCollector("selinux"), violation_report_path_("/dev/stdin") {}
+SELinuxViolationCollector::SELinuxViolationCollector(
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
+    : CrashCollector("selinux", metrics_lib),
+      violation_report_path_("/dev/stdin") {}
 
 SELinuxViolationCollector::~SELinuxViolationCollector() {}
 
@@ -161,10 +168,14 @@ SELinuxViolationCollector::ComputeSeverity(const std::string& exec_name) {
 }
 
 // static
-CollectorInfo SELinuxViolationCollector::GetHandlerInfo(bool selinux_violation,
-                                                        int32_t weight) {
+CollectorInfo SELinuxViolationCollector::GetHandlerInfo(
+    bool selinux_violation,
+    int32_t weight,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   auto selinux_violation_collector =
-      std::make_shared<SELinuxViolationCollector>();
+      std::make_shared<SELinuxViolationCollector>(metrics_lib);
   return {.collector = selinux_violation_collector,
           .handlers = {{
               .should_handle = selinux_violation,

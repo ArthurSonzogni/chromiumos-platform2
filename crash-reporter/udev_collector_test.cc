@@ -4,16 +4,21 @@
 
 #include "crash-reporter/udev_collector.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -71,6 +76,11 @@ int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
 
 class UdevCollectorMock : public UdevCollector {
  public:
+  UdevCollectorMock()
+      : UdevCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 

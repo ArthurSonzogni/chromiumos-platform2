@@ -11,12 +11,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <memory>
 #include <optional>
 #include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -37,6 +39,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 #include <policy/mock_device_policy.h>
 
@@ -72,12 +75,22 @@ constexpr int64_t kFakeNow = 1598929274543LL;
 
 }  // namespace
 
-CrashCollectorMock::CrashCollectorMock() : CrashCollector("mock") {}
+CrashCollectorMock::CrashCollectorMock()
+    : CrashCollector(
+          "mock",
+          base::MakeRefCounted<
+              base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+              std::make_unique<MetricsLibraryMock>())) {}
 CrashCollectorMock::CrashCollectorMock(
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode)
     : CrashCollector(
-          "mock", crash_directory_selection_method, crash_sending_mode) {}
+          "mock",
+          crash_directory_selection_method,
+          crash_sending_mode,
+          base::MakeRefCounted<
+              base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+              std::make_unique<MetricsLibraryMock>())) {}
 
 class CrashCollectorTest : public ::testing::Test {
  public:

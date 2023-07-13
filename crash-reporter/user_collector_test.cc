@@ -18,6 +18,8 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -27,6 +29,8 @@
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
@@ -59,6 +63,11 @@ const char kChromeIgnoreMsg[] =
 
 class UserCollectorMock : public UserCollector {
  public:
+  UserCollectorMock()
+      : UserCollector(
+            base::MakeRefCounted<
+                base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+                std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
   MOCK_METHOD(std::vector<std::string>,
               GetCommandLine,

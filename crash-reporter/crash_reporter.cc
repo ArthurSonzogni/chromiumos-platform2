@@ -17,6 +17,8 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>
@@ -62,10 +64,6 @@ const char kKernelCrashDetected[] =
 const char kUncleanShutdownDetected[] =
     "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
-
-// Used for consent verification.
-// TODO(mutexlox): Declare this in main and plumb it through via parameters.
-MetricsLibrary s_metrics_lib;
 
 bool TouchFile(const FilePath& file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
@@ -114,6 +112,9 @@ bool InitializeSystem(std::shared_ptr<UserCollector> user_collector,
 
 int BootCollect(
     bool always_allow_feedback,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib,
     std::shared_ptr<KernelCollector> kernel_collector,
     std::shared_ptr<ECCollector> ec_collector,
     std::shared_ptr<GscCollector> gsc_collector,
@@ -124,7 +125,7 @@ int BootCollect(
   bool was_unclean_shutdown = false;
   LOG(INFO) << "Running boot collector";
 
-  if (always_allow_feedback || util::IsBootFeedbackAllowed(&s_metrics_lib)) {
+  if (always_allow_feedback || util::IsBootFeedbackAllowed(metrics_lib)) {
     was_unclean_shutdown = unclean_shutdown_collector->Collect();
 
     // If there is an EC/BERT/Kernel crash and the unclean shutdown collector
@@ -480,6 +481,11 @@ int main(int argc, char* argv[]) {
     user_crash_attrs = *attrs;
   }
 
+  // Used for consent verification and metrics reporting.
+  scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
+      metrics_lib = base::MakeRefCounted<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
+          std::make_unique<MetricsLibrary>());
   std::vector<CollectorInfo> collectors;
 
 #if USE_ARCPP || USE_ARCVM
@@ -496,19 +502,19 @@ int main(int argc, char* argv[]) {
           .time = static_cast<time_t>(FLAGS_arc_native_time),
           .pid = FLAGS_pid,
           .exec_name = FLAGS_exe},
-      FLAGS_arc_uptime));
+      FLAGS_arc_uptime, metrics_lib));
 
-  collectors.push_back(
-      ArcvmKernelCollector::GetHandlerInfo(FLAGS_arc_kernel, build_prop));
+  collectors.push_back(ArcvmKernelCollector::GetHandlerInfo(
+      FLAGS_arc_kernel, build_prop, metrics_lib));
 #endif  // USE_ARCVM
 
 #if USE_ARCPP || USE_ARCVM
   collectors.push_back(ArcJavaCollector::GetHandlerInfo(
-      FLAGS_arc_java_crash, build_prop, FLAGS_arc_uptime));
+      FLAGS_arc_java_crash, build_prop, FLAGS_arc_uptime, metrics_lib));
 #endif  // USE_ARCPP || USE_ARCVM
 
 #if USE_ARCPP
-  auto arcpp_cxx_collector = std::make_shared<ArcppCxxCollector>();
+  auto arcpp_cxx_collector = std::make_shared<ArcppCxxCollector>(metrics_lib);
 
   // Always initialize arcpp_cxx_collector so that we can use it to determine
   // whether the process is a process in the ARC++ container or a normal
@@ -533,7 +539,7 @@ int main(int argc, char* argv[]) {
   bool is_arcpp_cxx_process = false;
 #endif  // USE_ARCPP
 
-  auto user_collector = std::make_shared<UserCollector>();
+  auto user_collector = std::make_shared<UserCollector>(metrics_lib);
   collectors.push_back({
       .collector = user_collector,
       .init = base::BindRepeating(&UserCollector::Initialize, user_collector,
@@ -560,7 +566,8 @@ int main(int argc, char* argv[]) {
                    }},
   });
 
-  auto ephemeral_crash_collector = std::make_shared<EphemeralCrashCollector>();
+  auto ephemeral_crash_collector =
+      std::make_shared<EphemeralCrashCollector>(metrics_lib);
   collectors.push_back({
       .collector = ephemeral_crash_collector,
       .init = base::BindRepeating(&EphemeralCrashCollector::Initialize,
@@ -580,18 +587,18 @@ int main(int argc, char* argv[]) {
   });
 
   collectors.push_back(
-      ClobberStateCollector::GetHandlerInfo(FLAGS_clobber_state));
+      ClobberStateCollector::GetHandlerInfo(FLAGS_clobber_state, metrics_lib));
 
   collectors.push_back(MountFailureCollector::GetHandlerInfo(
       FLAGS_mount_device, testonly_send_all, FLAGS_mount_failure,
-      FLAGS_umount_failure));
+      FLAGS_umount_failure, metrics_lib));
 
   collectors.push_back(MissedCrashCollector::GetHandlerInfo(
       FLAGS_missed_chrome_crash, FLAGS_pid, FLAGS_recent_miss_count,
-      FLAGS_recent_match_count, FLAGS_pending_miss_count));
+      FLAGS_recent_match_count, FLAGS_pending_miss_count, metrics_lib));
 
   auto unclean_shutdown_collector =
-      std::make_shared<UncleanShutdownCollector>();
+      std::make_shared<UncleanShutdownCollector>(metrics_lib);
   collectors.push_back({
       .collector = unclean_shutdown_collector,
       .handlers = {{
@@ -608,13 +615,13 @@ int main(int argc, char* argv[]) {
       // the collector gets initialized.
   }};
 
-  auto kernel_collector = std::make_shared<KernelCollector>();
+  auto kernel_collector = std::make_shared<KernelCollector>(metrics_lib);
   collectors.push_back({
       .collector = kernel_collector,
       .handlers = boot_handlers,
   });
 
-  auto ec_collector = std::make_shared<ECCollector>();
+  auto ec_collector = std::make_shared<ECCollector>(metrics_lib);
   auto ec_collector_handlers(boot_handlers);
   ec_collector_handlers.push_back({
       .should_handle = FLAGS_ec_collect,
@@ -625,29 +632,29 @@ int main(int argc, char* argv[]) {
       .handlers = ec_collector_handlers,
   });
 
-  auto gsc_collector = std::make_shared<GscCollector>();
+  auto gsc_collector = std::make_shared<GscCollector>(metrics_lib);
   collectors.push_back({
       .collector = gsc_collector,
       .handlers = boot_handlers,
   });
 
-  auto bert_collector = std::make_shared<BERTCollector>();
+  auto bert_collector = std::make_shared<BERTCollector>(metrics_lib);
   collectors.push_back({
       .collector = bert_collector,
       .handlers = boot_handlers,
   });
 
-  collectors.push_back(UdevCollector::GetHandlerInfo(FLAGS_udev));
+  collectors.push_back(UdevCollector::GetHandlerInfo(FLAGS_udev, metrics_lib));
 
   collectors.push_back(ChromeCollector::GetHandlerInfo(
       crash_sending_mode, FLAGS_chrome, FLAGS_chrome_memfd, FLAGS_pid,
       FLAGS_uid, FLAGS_exe, FLAGS_error_key, FLAGS_chrome_dump_dir,
-      FLAGS_chrome_signal));
+      FLAGS_chrome_signal, metrics_lib));
 
   collectors.push_back(KernelWarningCollector::GetHandlerInfo(
       FLAGS_weight, FLAGS_kernel_warning, FLAGS_kernel_wifi_warning,
       FLAGS_kernel_smmu_fault, FLAGS_kernel_suspend_warning,
-      FLAGS_kernel_iwlwifi_error, FLAGS_kernel_ath10k_error));
+      FLAGS_kernel_iwlwifi_error, FLAGS_kernel_ath10k_error, metrics_lib));
 
   GenericFailureCollector::HandlerInfoOptions handler_info_options = {
       .suspend_failure = FLAGS_suspend_failure,
@@ -660,20 +667,20 @@ int main(int argc, char* argv[]) {
       .guest_oom_event = FLAGS_guest_oom_event,
       .weight = FLAGS_weight};
 
-  collectors.push_back(
-      GenericFailureCollector::GetHandlerInfo(handler_info_options));
+  collectors.push_back(GenericFailureCollector::GetHandlerInfo(
+      handler_info_options, metrics_lib));
 
   collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
-      FLAGS_selinux_violation, FLAGS_weight));
+      FLAGS_selinux_violation, FLAGS_weight, metrics_lib));
 
   collectors.push_back(CrashReporterFailureCollector::GetHandlerInfo(
-      FLAGS_crash_reporter_crashed));
+      FLAGS_crash_reporter_crashed, metrics_lib));
 
   collectors.push_back(
-      VmCollector::GetHandlerInfo(FLAGS_vm_crash, FLAGS_vm_pid));
+      VmCollector::GetHandlerInfo(FLAGS_vm_crash, FLAGS_vm_pid, metrics_lib));
 
   collectors.push_back(SecurityAnomalyCollector::GetHandlerInfo(
-      FLAGS_weight, FLAGS_security_anomaly));
+      FLAGS_weight, FLAGS_security_anomaly, metrics_lib));
 
   for (const CollectorInfo& collector : collectors) {
     bool ran_init = false;
@@ -682,7 +689,7 @@ int main(int argc, char* argv[]) {
         if (info.should_check_appsync) {
           // We need to check for AppSync permissions - if we can't get it bail
           // out for this collector.
-          if (!s_metrics_lib.IsAppSyncEnabled()) {
+          if (!metrics_lib->data->IsAppSyncEnabled()) {
             LOG(ERROR) << "Collector has should_check_appsync set to true but "
                           "Apps Sync has not been opted-in to.";
             return 0;
@@ -710,7 +717,7 @@ int main(int argc, char* argv[]) {
           // For early boot crash collectors, the consent file will not be
           // accessible.  Instead, check consent during boot collection.
           if (FLAGS_early || always_allow_feedback ||
-              util::IsFeedbackAllowed(&s_metrics_lib)) {
+              util::IsFeedbackAllowed(metrics_lib)) {
             handled = info.cb.Run();
           } else if (collector.collector == ephemeral_crash_collector &&
                      ephemeral_crash_collector->SkipConsent()) {
@@ -737,8 +744,8 @@ int main(int argc, char* argv[]) {
   // These special cases (which use multiple collectors) are at the end so that
   // it's clear that all relevant collectors have been initialized.
   if (FLAGS_boot_collect) {
-    return BootCollect(always_allow_feedback, kernel_collector, ec_collector,
-                       gsc_collector, bert_collector,
+    return BootCollect(always_allow_feedback, metrics_lib, kernel_collector,
+                       ec_collector, gsc_collector, bert_collector,
                        unclean_shutdown_collector, ephemeral_crash_collector);
   }
 

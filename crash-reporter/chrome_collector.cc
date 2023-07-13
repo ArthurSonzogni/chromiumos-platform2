@@ -9,6 +9,7 @@
 
 #include <limits>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -18,6 +19,8 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -25,6 +28,7 @@
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/variant_dictionary.h>
+#include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
@@ -73,10 +77,15 @@ bool GetDelimitedString(const std::string& str,
 
 }  // namespace
 
-ChromeCollector::ChromeCollector(CrashSendingMode crash_sending_mode)
+ChromeCollector::ChromeCollector(
+    CrashSendingMode crash_sending_mode,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib)
     : CrashCollector("chrome",
                      kUseNormalCrashDirectorySelectionMethod,
-                     crash_sending_mode),
+                     crash_sending_mode,
+                     metrics_lib),
       output_file_ptr_(stdout),
       max_upload_bytes_(util::kDefaultMaxUploadBytes) {}
 
@@ -645,7 +654,10 @@ CollectorInfo ChromeCollector::GetHandlerInfo(
     const std::string& executable_name,
     const std::string& non_exe_error_key,
     const std::string& chrome_dump_dir,
-    int signal) {
+    int signal,
+    const scoped_refptr<
+        base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+        metrics_lib) {
   CHECK(dump_file_path.empty() || memfd == -1)
       << "--chrome= and --chrome_memfd= cannot be both set";
   if (memfd == -1) {
@@ -653,7 +665,7 @@ CollectorInfo ChromeCollector::GetHandlerInfo(
         << "--error_key is only for --chrome_memfd crashes";
   }
 
-  auto chrome_collector = std::make_shared<ChromeCollector>(mode);
+  auto chrome_collector = std::make_shared<ChromeCollector>(mode, metrics_lib);
   return {
       .collector = chrome_collector,
       .handlers = {{

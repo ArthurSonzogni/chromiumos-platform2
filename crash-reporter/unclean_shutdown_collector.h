@@ -15,15 +15,23 @@
 #ifndef CRASH_REPORTER_UNCLEAN_SHUTDOWN_COLLECTOR_H_
 #define CRASH_REPORTER_UNCLEAN_SHUTDOWN_COLLECTOR_H_
 
+#include <memory>
+
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 // Unclean shutdown collector.
 class UncleanShutdownCollector : public CrashCollector {
  public:
-  UncleanShutdownCollector();
+  explicit UncleanShutdownCollector(
+      const scoped_refptr<
+          base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
+          metrics_lib);
   UncleanShutdownCollector(const UncleanShutdownCollector&) = delete;
   UncleanShutdownCollector& operator=(const UncleanShutdownCollector&) = delete;
 
