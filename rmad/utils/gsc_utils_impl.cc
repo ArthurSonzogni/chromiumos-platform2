@@ -29,8 +29,8 @@ const std::vector<std::string> kGetRsuChallengeArgv{kGsctoolCmd, "-a", "-r",
 const std::vector<std::string> kSendRsuResponseArgv{kGsctoolCmd, "-a", "-r"};
 constexpr char kRsuChallengeRegexp[] = R"(CHALLENGE=([[:alnum:]]{80}))";
 // Constants for CCD info.
-const std::vector<std::string> kGetCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
-constexpr char kFactoryModeMatchStr[] = "Capabilities are modified.";
+const std::vector<std::string> kGetCcdInfoArgv{kGsctoolCmd, "-a", "-I", "-M"};
+constexpr char kFactoryModeMatchStr[] = "CCD_FLAG_FACTORY_MODE=Y";
 // Constants for factory mode.
 const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};

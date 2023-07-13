@@ -38,16 +38,18 @@ constexpr char kExpectedChallengeCode[] =
 
 // Constants for CCD info.
 constexpr char kFactoryModeEnabledResponse[] = R"(
-State: Locked
+STATE=Locked
 ---
 ---
-Capabilities are modified.
+CCD_FLAG_FACTORY_MODE=Y
+---
 )";
 constexpr char kFactoryModeDisabledResponse[] = R"(
-State: Locked
+STATE=Locked
 ---
 ---
-Capabilities are default.
+CCD_FLAG_FACTORY_MODE=N
+---
 )";
 
 // Constants for board ID.
