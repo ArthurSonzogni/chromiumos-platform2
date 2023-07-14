@@ -13,11 +13,13 @@ group("all") {
     ":cpufreq_config",
     ":dump_power_status",
     ":inject_powerd_input_event",
+    ":install_dbus_conf",
+    ":install_init_scripts",
     ":install_minijail_power_conf",
     ":install_minijail_temp_logger_conf",
     ":install_production_scripts",
-    ":install_temp_logger_script",
     ":install_testing_scripts",
+    ":install_tmpfiles_conf",
     ":libpolicy",
     ":libpolicy_stub",
     ":libpowerd",
@@ -91,6 +93,11 @@ if (use.cellular) {
       "dbus_bindings/dbus-objectmanager.dbus-xml",
     ]
   }
+}
+
+install_config("install_dbus_conf") {
+  sources = [ "dbus/org.chromium.PowerManager.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
 
 install_config("install_minijail_power_conf") {
@@ -543,10 +550,18 @@ install_config("install_testing_scripts") {
 }
 
 # Scripts called from init scripts
-install_config("install_temp_logger_script") {
-  sources = [ "tools/temp_logger.sh" ]
+install_config("install_init_scripts") {
+  sources = [
+    "init/shared/powerd-pre-start.sh",
+    "tools/temp_logger.sh",
+  ]
   install_path = "/usr/share/cros/init"
   options = "-m0755"
+}
+
+install_config("install_tmpfiles_conf") {
+  sources = [ "tmpfiles.d/powerd.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.fuzzer || use.test) {
