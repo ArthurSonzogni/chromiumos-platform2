@@ -356,6 +356,11 @@
         The ratio of lost frames.
       </summary>
     </metric>
+    <metric name="CodecType" type="int">
+      <summary>
+        The codec ID such as mSBC(2), LC3(3).
+      </summary>
+    </metric>
   </event>
 </project>
 
