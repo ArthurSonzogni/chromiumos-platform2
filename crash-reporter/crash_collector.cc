@@ -43,6 +43,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
+#include <brillo/dbus/data_serialization.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
@@ -1672,10 +1673,10 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
     dbus::MessageWriter writer(&method_call);
 
     // Append the file list.
-    brillo::dbus_utils::DBusParamWriter::Append(&writer,
-                                                std::move(in_memory_files_));
-    // Append a true value for `consent_already_checked_by_crash_reporter`.
-    brillo::dbus_utils::DBusParamWriter::Append(&writer, true);
+    brillo::dbus_utils::WriteDBusArgs(
+        &writer,
+        /*in_files=*/in_memory_files_,
+        /*consent_already_checked_by_crash_reporter=*/true);
 
     debugd_proxy_->GetObjectProxy()->CallMethodWithErrorCallback(
         &method_call, 0 /*timeout_ms*/,
