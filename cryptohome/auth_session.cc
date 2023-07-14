@@ -489,9 +489,8 @@ void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
 }
 
 void AuthSession::SendAuthFactorStatusUpdateSignal() {
-  // If the auth session is not authorized for anything we won't need to send
-  // another signal.
-  if (authorized_intents_.empty()) {
+  // Stop sending updates after the session is timed out.
+  if (timed_out_) {
     return;
   }
   // If the auth factor status update callback is not set (testing purposes),
