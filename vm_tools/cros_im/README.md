@@ -66,7 +66,7 @@ invokes `../test/run_tests.py`, which can also be run directly if needed.
 
 The GTK IM module can be manually tested by setting up a custom IM module cache:
 ```bash
-/usr/lib/*/libgtk-3-0/gtk-query-immodules-3.0 im-cros.so > dev-immodules.cache
+/usr/lib/*/libgtk-3-0/gtk-query-immodules-3.0 im-cros-gtk3.so > dev-immodules.cache
 export GTK_IM_MODULE_FILE=$(pwd)/dev-immodules.cache
 ```
 

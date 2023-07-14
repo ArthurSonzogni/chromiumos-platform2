@@ -1,1 +1,2 @@
 option('wl_protocol_dir', type : 'string', value : '../sommelier/protocol', description : 'Location of the wayland protocol directory.')
+option('build_gtk4', type : 'boolean', value : 'false', description : 'Set to true to build GTK4 immodule and tests.')

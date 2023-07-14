@@ -25,7 +25,7 @@ import time
 from typing import Callable, Dict, List, Optional
 
 
-TEST_BINARY = "./cros_im_tests"
+TEST_BINARY = "./cros_im_tests_gtk3"
 
 
 def run_tests_with_wayland_server(test_func: Callable) -> bool:
@@ -80,7 +80,7 @@ def verify_in_build_directory() -> bool:
 
 
 def set_up_immodules_cache() -> bool:
-    with open("test_immodules.cache", "w") as f:
+    with open("test_immodules.cache", "w", encoding="utf-8") as f:
         try:
             get_gnu_process = subprocess.run(
                 ["dpkg-architecture", "-q", "DEB_BUILD_MULTIARCH"],
@@ -92,7 +92,7 @@ def set_up_immodules_cache() -> bool:
             subprocess.call(
                 [
                     f"/usr/lib/{gnu_type}/libgtk-3-0/gtk-query-immodules-3.0",
-                    "libim_test_cros_gtk.so",
+                    "libim_test_cros_gtk3.so",
                 ],
                 stdout=f,
             )

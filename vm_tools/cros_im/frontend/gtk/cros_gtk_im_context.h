@@ -27,17 +27,24 @@ namespace gtk {
 class CrosGtkIMContext : public GtkIMContext {
  public:
   // Must be called prior to creating objects.
+  static bool InitializeWaylandManager();
   static void RegisterType(GTypeModule* module);
 
   static CrosGtkIMContext* Create();
+  static GType GetType();
 
   CrosGtkIMContext();
   ~CrosGtkIMContext();
 
   // GtkIMContext implementation:
+#ifdef GTK4
+  void SetClientWidget(GtkWidget* widget);
+  gboolean FilterKeypress(GdkEvent* event);
+#else
   void SetClientWindow(GdkWindow* window);
+  gboolean FilterKeypress(GdkEventKey* key);
+#endif
   void GetPreeditString(char** str, PangoAttrList** attrs, int* cursor_pos);
-  gboolean FilterKeypress(GdkEventKey* Key);
   void FocusIn();
   void FocusOut();
   void Reset();
@@ -87,10 +94,14 @@ class CrosGtkIMContext : public GtkIMContext {
   bool is_x11_;
 
   // Ref counted
+#ifdef GTK4
+  GtkWidget* client_widget_ = nullptr;
+  GdkSurface* root_surface_ = nullptr;
+#else
   GdkWindow* gdk_window_ = nullptr;
   GdkWindow* top_level_gdk_window_ = nullptr;
-
-  // Set if FocusIn() is called prior to SetClientWindow().
+#endif
+  // Set if FocusIn() is called prior to SetClientWindow()/SetClientWidget().
   bool pending_activation_ = false;
 
   bool supports_preedit_ = true;

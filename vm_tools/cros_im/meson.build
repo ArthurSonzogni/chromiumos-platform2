@@ -57,15 +57,18 @@ backend_sources = [
 gtk_sources = backend_sources + [
   'frontend/gtk/cros_gtk_im_context.cc',
   'frontend/gtk/cros_gtk_im_context.h',
-  'frontend/gtk/im_cros.cc',
   'frontend/gtk/x11.cc',
   'frontend/gtk/x11.h',
 ]
 
+gtk3_sources = gtk_sources + [
+  'frontend/gtk/im_cros_gtk3.cc',
+]
+
 gtk_args = ['-DDISABLE_SURROUNDING']
 
-libim_cros_gtk = shared_library('im-cros',
-  sources: gtk_sources + wl_outs,
+libim_cros_gtk3 = shared_library('im-cros-gtk3',
+  sources: gtk3_sources + wl_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
@@ -78,6 +81,22 @@ libim_cros_gtk = shared_library('im-cros',
   install: true,
   install_dir: get_option('libdir') / 'gtk-3.0/3.0.0/immodules',
 )
+
+if get_option('build_gtk4')
+  libim_cros_gtk4 = shared_library('im-cros-gtk4',
+    sources: gtk_sources + [
+    'frontend/gtk/im_cros_gtk4.cc',
+  ]  + wl_outs,
+    dependencies: [
+      meson.get_compiler('cpp').find_library('m'),
+      dependency('gtk4'),
+      dependency('wayland-client'),
+    ],
+    cpp_args: ['-DGTK4'] + gtk_args,
+    install: true,
+    install_dir: get_option('libdir') / 'gtk-4.0/4.0.0/immodules',
+  )
+endif
 
 qt_other_sources = [
   'frontend/qt/cros_qt_im_context.cc',
@@ -113,8 +132,8 @@ shared_library('libcrosplatforminputcontextplugin',
   install_dir: get_option('libdir') / 'qt5/plugins/platforminputcontexts',
 )
 
-
-libim_test_cros_gtk = shared_library('im_test_cros_gtk',
+# TODO(b/283915925): Add tests for GTK4.
+libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
   sources: [
     'backend/test/backend_test.cc',
     'backend/test/backend_test.h',
@@ -134,7 +153,7 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
     'backend/test/mock_wayland_client.h',
     'backend/test/request.cc',
     'backend/test/request.h',
-  ] + gtk_sources,
+  ] + gtk3_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
@@ -153,7 +172,7 @@ test_sources = [
   'test/gtk_windowing_test.cc',
 ]
 
-cros_im_tests = executable('cros_im_tests',
+cros_im_tests_gtk3 = executable('cros_im_tests_gtk3',
   sources: test_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
@@ -166,7 +185,7 @@ python3 = find_program('python3')
 test('run_all_tests',
   python3,
   args: ['../test/run_tests.py', '--with_xvfb'],
-  depends: [libim_test_cros_gtk, cros_im_tests],
+  depends: [libim_test_cros_gtk3, cros_im_tests_gtk3],
   timeout: 120,
   verbose : true,
 )

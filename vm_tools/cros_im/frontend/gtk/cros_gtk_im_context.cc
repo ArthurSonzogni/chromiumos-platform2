@@ -5,8 +5,16 @@
 #include "frontend/gtk/cros_gtk_im_context.h"
 
 #include <gdk/gdk.h>
+
+#ifdef GTK4
+#include <gdk/wayland/gdkwayland.h>
+#include <gdk/x11/gdkx.h>
+#include <gtk/gtkwidget.h>
+#else
 #include <gdk/gdkwayland.h>
 #include <gdk/gdkx.h>
+#endif
+
 // Remove definitions from X11 headers that collide with our code.
 #undef FocusIn
 #undef FocusOut
@@ -14,6 +22,8 @@
 #include <iostream>
 #include <utility>
 
+#include "backend/wayland_manager.h"
+#include "frontend/gtk/x11.h"
 #include "util/logging.h"
 
 namespace cros_im {
@@ -57,7 +67,11 @@ void cros_gtk_im_context_class_init(CrosGtkIMContextClass* klass) {
   GObjectClass* gobject = G_OBJECT_CLASS(klass);
 
   gobject->dispose = DisposeCrosGtkIMContext;
+#ifdef GTK4
+  im_context->set_client_widget = Fwd<&CrosGtkIMContext::SetClientWidget>;
+#else
   im_context->set_client_window = Fwd<&CrosGtkIMContext::SetClientWindow>;
+#endif
   im_context->get_preedit_string = Fwd<&CrosGtkIMContext::GetPreeditString>;
   im_context->filter_keypress = Fwd<&CrosGtkIMContext::FilterKeypress>;
   im_context->focus_in = Fwd<&CrosGtkIMContext::FocusIn>;
@@ -190,6 +204,25 @@ PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
 
 }  // namespace
 
+bool CrosGtkIMContext::InitializeWaylandManager() {
+  GdkDisplay* gdk_display = gdk_display_get_default();
+  if (!gdk_display) {
+    LOG(WARNING) << "GdkDisplay wasn't found";
+    return false;
+  }
+  if (GDK_IS_X11_DISPLAY(gdk_display)) {
+    if (!SetUpWaylandForX11())
+      return false;
+  } else if (GDK_IS_WAYLAND_DISPLAY(gdk_display)) {
+    WaylandManager::CreateInstance(
+        gdk_wayland_display_get_wl_display(gdk_display));
+  } else {
+    LOG(WARNING) << "Unknown GdkDisplay type";
+    return false;
+  }
+  return true;
+}
+
 void CrosGtkIMContext::RegisterType(GTypeModule* module) {
   cros_gtk_im_context_register_type(module);
 }
@@ -197,6 +230,10 @@ void CrosGtkIMContext::RegisterType(GTypeModule* module) {
 CrosGtkIMContext* CrosGtkIMContext::Create() {
   return ToCrosGtkIMContext(
       g_object_new(cros_gtk_im_context_get_type(), nullptr));
+}
+
+GType CrosGtkIMContext::GetType() {
+  return cros_gtk_im_context_get_type();
 }
 
 CrosGtkIMContext::CrosGtkIMContext()
@@ -207,6 +244,24 @@ CrosGtkIMContext::CrosGtkIMContext()
 
 CrosGtkIMContext::~CrosGtkIMContext() = default;
 
+#ifdef GTK4
+void CrosGtkIMContext::SetClientWidget(GtkWidget* widget) {
+  if (widget) {
+    g_set_object(&client_widget_, widget);
+
+    GdkSurface* surface =
+        gtk_native_get_surface(GTK_NATIVE(gtk_widget_get_root(widget)));
+    g_set_object(&root_surface_, surface);
+    if (!root_surface_)
+      LOG(WARNING) << "Root GdkSurface was null";
+    if (pending_activation_)
+      Activate();
+  } else {
+    g_set_object(&client_widget_, nullptr);
+    g_set_object(&root_surface_, nullptr);
+  }
+}
+#else
 void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
   if (window) {
     GdkWindow* toplevel = gdk_window_get_effective_toplevel(window);
@@ -221,6 +276,7 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
     g_set_object(&top_level_gdk_window_, nullptr);
   }
 }
+#endif
 
 void CrosGtkIMContext::GetPreeditString(char** preedit,
                                         PangoAttrList** styles,
@@ -236,7 +292,11 @@ void CrosGtkIMContext::GetPreeditString(char** preedit,
   }
 }
 
+#ifdef GTK4
+gboolean CrosGtkIMContext::FilterKeypress(GdkEvent* event) {
+#else
 gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
+#endif
   // The original purpose of this interface was to provide IMEs a chance to
   // consume key events and emit signals like preedit-changed or commit in
   // response.  In our implementation (the Wayland model), when a text field
@@ -251,35 +311,55 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
 
   // TODO(b/232048508): Chrome sometimes sends wl_keyboard::key instead, which
   // could lead to race conditions under X11.
-
+#ifdef GTK4
+  if (gdk_event_get_event_type(event) != GDK_KEY_PRESS) {
+#else
   if (event->type != GDK_KEY_PRESS) {
+#endif
     return false;
   }
 
   // Don't consume events with modifiers like <Ctrl>.
+  uint32_t unicode_char;
+  guint no_text_input_mask;
+  guint event_keyval;
+  guint modifier_state;
+#ifdef GTK4
+  no_text_input_mask = GDK_CONTROL_MASK | GDK_ALT_MASK;
+  modifier_state = gdk_event_get_modifier_state(event);
+  event_keyval = gdk_key_event_get_keyval(event);
+#else
   GdkDisplay* gdk_display = gdk_window_get_display(gdk_window_);
-  GdkModifierType no_text_input_mask =
+  no_text_input_mask =
       gdk_keymap_get_modifier_mask(gdk_keymap_get_for_display(gdk_display),
                                    GDK_MODIFIER_INTENT_NO_TEXT_INPUT);
-  if (event->state & no_text_input_mask) {
+  modifier_state = event->state;
+  event_keyval = event->keyval;
+#endif
+
+  if (modifier_state & no_text_input_mask) {
     return false;
   }
 
-  uint32_t c = gdk_keyval_to_unicode(event->keyval);
-  if (!c || g_unichar_iscntrl(c)) {
+  unicode_char = gdk_keyval_to_unicode(event_keyval);
+  if (!unicode_char || g_unichar_iscntrl(unicode_char)) {
     return false;
   }
 
   // g_unichar_to_utf8() supposedly requires 6 bytes of space, despite UTF-8
   // only needing 4 bytes.
   char utf8[6];
-  size_t len = g_unichar_to_utf8(c, utf8);
+  size_t len = g_unichar_to_utf8(unicode_char, utf8);
   backend_observer_.Commit({utf8, len});
   return true;
 }
 
 void CrosGtkIMContext::FocusIn() {
+#ifdef GTK4
+  if (root_surface_) {
+#else
   if (top_level_gdk_window_) {
+#endif
     Activate();
   } else {
     // TODO(timloh): Add an automated test for this case. This code path can be
@@ -290,6 +370,9 @@ void CrosGtkIMContext::FocusIn() {
 }
 
 void CrosGtkIMContext::FocusOut() {
+  // TODO(b/283915925): This function gets called twice in gtk4 whenever we
+  // switch out from a Crostini window, which can cause multiple warnings to
+  // spam logs.
   if (pending_activation_) {
     pending_activation_ = false;
   } else {
@@ -302,6 +385,20 @@ void CrosGtkIMContext::Reset() {
 }
 
 void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
+  int x = 0, y = 0;
+#ifdef GTK4
+  // TODO(b/291845382): In GTK4, when the window is not maximized the position
+  // of the candidates box is incorrect.
+  if (!client_widget_)
+    return;
+  auto* native = gtk_widget_get_native(client_widget_);
+  double top_level_x, top_level_y;
+  // Get coordinates against the current window.
+  gtk_widget_translate_coordinates(client_widget_, GTK_WIDGET(native), area->x,
+                                   area->y, &top_level_x, &top_level_y);
+  x = top_level_x;
+  y = top_level_y;
+#else
   if (!gdk_window_)
     return;
 
@@ -313,10 +410,10 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   int top_level_x = 0, top_level_y = 0;
   gdk_window_get_origin(top_level_gdk_window_, &top_level_x, &top_level_y);
 
-  backend_->SetCursorLocation(offset_x - top_level_x + area->x,
-                              offset_y - top_level_y + area->y, area->width,
-                              area->height);
-
+  x = offset_x - top_level_x + area->x;
+  y = offset_y - top_level_y + area->y;
+#endif
+  backend_->SetCursorLocation(x, y, area->width, area->height);
   UpdateSurrounding();
 }
 
@@ -406,8 +503,14 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   // See comment in FilterKeypress for general context.
 
   // Some apps do not behave correctly if we immediately convert these into
-  // commit events, so do that in FilterKeypress insead (b/255273154).
+  // commit events, so do that in FilterKeypress instead (b/255273154).
 
+#ifdef GTK4
+  LOG(WARNING) << "KeySym is currently unimplemented for GTK4. Dropped keysym: "
+               << keysym;
+  // TODO(b/283915925): In GTK4, gdkevent struct is readonly and we cannot
+  // construct new events. Consider moving KeySym to sommelier side.
+#else
   if (!context_->gdk_window_)
     return;
 
@@ -455,6 +558,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
       gdk_seat_get_keyboard(gdk_display_get_default_seat(gdk_display)));
   gdk_display_put_event(gdk_display, raw_event);
   gdk_event_free(raw_event);
+#endif
 }
 
 std::optional<std::string>
@@ -514,6 +618,23 @@ CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
 }
 
 void CrosGtkIMContext::Activate() {
+#ifdef GTK4
+  if (!root_surface_) {
+    LOG(WARNING) << "Tried to activate without an active window.";
+    return;
+  }
+
+  if (is_x11_) {
+    backend_->ActivateX11(gdk_x11_surface_get_xid(root_surface_));
+  } else {
+    wl_surface* surface = gdk_wayland_surface_get_wl_surface(root_surface_);
+    if (!surface) {
+      LOG(WARNING) << "GdkSurface doesn't have an associated wl_surface.";
+      return;
+    }
+    backend_->Activate(surface);
+  }
+#else
   if (!top_level_gdk_window_) {
     LOG(WARNING) << "Tried to activate without an active window.";
     return;
@@ -530,6 +651,7 @@ void CrosGtkIMContext::Activate() {
     }
     backend_->Activate(surface);
   }
+#endif
 
   pending_activation_ = false;
 
