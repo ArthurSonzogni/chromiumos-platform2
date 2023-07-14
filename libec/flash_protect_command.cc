@@ -99,10 +99,8 @@ FlashProtectCommand_v2::FlashProtectCommand_v2(flash_protect::Flags flags,
                      FLASH_PROTECT_GET_RESULT,
                      {.poll_for_result_num_attempts = 20,
                       .poll_interval = base::Milliseconds(100),
-                      // The EC temporarily stops responding to EC commands
-                      // when this command is run, so we will keep trying until
-                      // we get success (or time out).
-                      .validate_poll_result = false},
+                      // Stop polling when this command returns EC_RES_ERROR.
+                      .validate_poll_result = true},
                      2) {
   Req()->action = FLASH_PROTECT_ASYNC;
   Req()->flags = base::to_underlying(flags);

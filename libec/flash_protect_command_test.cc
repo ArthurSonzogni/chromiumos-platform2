@@ -119,7 +119,7 @@ TEST(FlashProtectCommand_v2, FlashProtectCommand_v2) {
   EXPECT_EQ(cmd.Req()->action, FLASH_PROTECT_ASYNC);
   EXPECT_EQ(cmd.options().poll_for_result_num_attempts, 20);
   EXPECT_EQ(cmd.options().poll_interval, base::Milliseconds(100));
-  EXPECT_EQ(cmd.options().validate_poll_result, false);
+  EXPECT_EQ(cmd.options().validate_poll_result, true);
 }
 
 TEST(FlashProtectCommand, FlashProtectCommand_v1) {
