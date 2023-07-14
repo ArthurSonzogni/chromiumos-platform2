@@ -21,6 +21,7 @@
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/service.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/l2tp_connection.h"
 #include "shill/vpn/vpn_service.h"
@@ -150,7 +151,7 @@ std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
 void ReportConnectionEndReason(Metrics* metrics,
                                Service::ConnectFailure failure) {
   metrics->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecSwanctlEndReason,
-                         Metrics::ConnectFailureToServiceErrorEnum(failure));
+                         Service::ConnectFailureToMetricsEnum(failure));
 }
 
 }  // namespace

@@ -42,6 +42,42 @@ class MetricsEnums {
     kWirelessSecurityMax
   };
 
+  // These correspond to entries in Chrome's tools/metrics/histograms/enums.xml.
+  // Please do not remove entries (append 'Deprecated' instead), and update the
+  // enums.xml file when entries are added.
+  enum NetworkServiceError {
+    kNetworkServiceErrorNone = 0,
+    kNetworkServiceErrorAAA = 1,
+    kNetworkServiceErrorActivation = 2,
+    kNetworkServiceErrorBadPassphrase = 3,
+    kNetworkServiceErrorBadWEPKey = 4,
+    kNetworkServiceErrorConnect = 5,
+    kNetworkServiceErrorDHCP = 6,
+    kNetworkServiceErrorDNSLookup = 7,
+    kNetworkServiceErrorEAPAuthentication = 8,
+    kNetworkServiceErrorEAPLocalTLS = 9,
+    kNetworkServiceErrorEAPRemoteTLS = 10,
+    kNetworkServiceErrorHTTPGet = 11,
+    kNetworkServiceErrorIPsecCertAuth = 12,
+    kNetworkServiceErrorIPsecPSKAuth = 13,
+    kNetworkServiceErrorInternal = 14,
+    kNetworkServiceErrorNeedEVDO = 15,
+    kNetworkServiceErrorNeedHomeNetwork = 16,
+    kNetworkServiceErrorOTASP = 17,
+    kNetworkServiceErrorOutOfRange = 18,
+    kNetworkServiceErrorPPPAuth = 19,
+    kNetworkServiceErrorPinMissing = 20,
+    kNetworkServiceErrorUnknown = 21,
+    kNetworkServiceErrorNotAssociated = 22,
+    kNetworkServiceErrorNotAuthenticated = 23,
+    kNetworkServiceErrorTooManySTAs = 24,
+    kNetworkServiceErrorDisconnect = 25,
+    kNetworkServiceErrorSimLocked = 26,
+    kNetworkServiceErrorNotRegistered = 27,
+    kNetworkServiceErrorInvalidAPN = 28,
+    kNetworkServiceErrorMax
+  };
+
  protected:
   MetricsEnums();
   MetricsEnums(const MetricsEnums&) = delete;

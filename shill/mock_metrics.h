@@ -8,6 +8,7 @@
 #include <string>
 
 #include "shill/metrics.h"
+#include "shill/metrics_enums.h"
 
 #include <gmock/gmock.h>
 
@@ -65,7 +66,7 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(void,
               NotifyWiFiConnectionAttemptResult,
-              (NetworkServiceError, uint64_t),
+              (MetricsEnums::NetworkServiceError, uint64_t),
               (override));
   MOCK_METHOD(void,
               NotifyWiFiDisconnection,

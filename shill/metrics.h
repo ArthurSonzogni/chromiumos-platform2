@@ -280,7 +280,7 @@ class Metrics {
       {
           .n = NameByTechnology{"EapOuterProtocol"},
           .max = kEapOuterProtocolMax,
-      };
+  };
 
   enum EapInnerProtocol {
     kEapInnerProtocolUnknown = 0,
@@ -300,7 +300,7 @@ class Metrics {
       {
           .n = NameByTechnology{"EapInnerProtocol"},
           .max = kEapInnerProtocolMax,
-      };
+  };
 
   enum WirelessSecurityChange {
     kWirelessSecurityChangeWpa3ToWpa23 = 0,
@@ -361,7 +361,7 @@ class Metrics {
       kMetricNeighborLinkMonitorFailure = {
           .n = NameByTechnology{"NeighborLinkMonitorFailure"},
           .max = kNeighborLinkMonitorFailureMax,
-      };
+  };
 
   enum WiFiApChannelSwitch {
     kWiFiApChannelSwitchUndef = 0,
@@ -465,7 +465,7 @@ class Metrics {
       kMetricCellular3GPPRegistrationDelayedDrop = {
           .n = FixedName{"Network.Shill.Cellular.3GPPRegistrationDelayedDrop"},
           .max = kCellular3GPPRegistrationDelayedDropMax,
-      };
+  };
 
   enum CellularApnSource {
     kCellularApnSourceMoDb = 0,
@@ -748,12 +748,12 @@ class Metrics {
       {
           .n = NameByVPNType{"IkeEncryptionAlgorithm"},
           .max = kVpnIpsecEncryptionAlgorithmMax,
-      };
+  };
   static constexpr EnumMetric<NameByVPNType> kMetricVpnEspEncryptionAlgorithm =
       {
           .n = NameByVPNType{"EspEncryptionAlgorithm"},
           .max = kVpnIpsecEncryptionAlgorithmMax,
-      };
+  };
 
   enum VpnIpsecIntegrityAlgorithm {
     kVpnIpsecIntegrityAlgorithmUnknown = 0,
@@ -849,7 +849,7 @@ class Metrics {
       kMetricWifiUserInitiatedConnectionResult = {
           .n = FixedName{"Network.Shill.WiFi.UserInitiatedConnectionResult"},
           .max = kUserInitiatedConnectionResultMax,
-      };
+  };
 
   // Reason when a connection initiated by Service::UserInitiatedConnect fails.
   enum UserInitiatedConnectionFailureReason {
@@ -876,7 +876,7 @@ class Metrics {
               FixedName{
                   "Network.Shill.WiFi.UserInitiatedConnectionFailureReason"},
           .max = kUserInitiatedConnectionFailureReasonMax,
-      };
+  };
 
   // Device presence.
   enum DevicePresenceStatus {
@@ -898,62 +898,27 @@ class Metrics {
     kDeviceTechnologyTypeMax
   };
 
-  // These correspond to entries in Chrome's tools/metrics/histograms/enums.xml.
-  // Please do not remove entries (append 'Deprecated' instead), and update the
-  // enums.xml file when entries are added.
-  enum NetworkServiceError {
-    kNetworkServiceErrorNone = 0,
-    kNetworkServiceErrorAAA = 1,
-    kNetworkServiceErrorActivation = 2,
-    kNetworkServiceErrorBadPassphrase = 3,
-    kNetworkServiceErrorBadWEPKey = 4,
-    kNetworkServiceErrorConnect = 5,
-    kNetworkServiceErrorDHCP = 6,
-    kNetworkServiceErrorDNSLookup = 7,
-    kNetworkServiceErrorEAPAuthentication = 8,
-    kNetworkServiceErrorEAPLocalTLS = 9,
-    kNetworkServiceErrorEAPRemoteTLS = 10,
-    kNetworkServiceErrorHTTPGet = 11,
-    kNetworkServiceErrorIPsecCertAuth = 12,
-    kNetworkServiceErrorIPsecPSKAuth = 13,
-    kNetworkServiceErrorInternal = 14,
-    kNetworkServiceErrorNeedEVDO = 15,
-    kNetworkServiceErrorNeedHomeNetwork = 16,
-    kNetworkServiceErrorOTASP = 17,
-    kNetworkServiceErrorOutOfRange = 18,
-    kNetworkServiceErrorPPPAuth = 19,
-    kNetworkServiceErrorPinMissing = 20,
-    kNetworkServiceErrorUnknown = 21,
-    kNetworkServiceErrorNotAssociated = 22,
-    kNetworkServiceErrorNotAuthenticated = 23,
-    kNetworkServiceErrorTooManySTAs = 24,
-    kNetworkServiceErrorDisconnect = 25,
-    kNetworkServiceErrorSimLocked = 26,
-    kNetworkServiceErrorNotRegistered = 27,
-    kNetworkServiceErrorInvalidAPN = 28,
-    kNetworkServiceErrorMax
-  };
   static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {
       .n = NameByTechnology{"ServiceErrors"},
-      .max = kNetworkServiceErrorMax,
+      .max = MetricsEnums::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricVpnIkev2EndReason = {
       .n = FixedName{"Network.Shill.Vpn.Ikev2.EndReason"},
-      .max = kNetworkServiceErrorMax,
+      .max = MetricsEnums::kNetworkServiceErrorMax,
   };
   // Temporary metrics for comparing the robustness of the two L2TP/IPsec
   // drivers (b/204261554).
   static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecSwanctlEndReason = {
       .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason"},
-      .max = kNetworkServiceErrorMax,
+      .max = MetricsEnums::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecStrokeEndReason = {
       .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.StrokeEndReason"},
-      .max = kNetworkServiceErrorMax,
+      .max = MetricsEnums::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricPasspointConnectionResult = {
       .n = FixedName{"Network.Shill.WiFi.Passpoint.ConnectionResult"},
-      .max = kNetworkServiceErrorMax,
+      .max = MetricsEnums::kNetworkServiceErrorMax,
   };
 
   // Corresponds to RegulatoryDomain enum values in
@@ -1004,7 +969,7 @@ class Metrics {
           .min = 1,
           .max = 8 * 60 * 60,  // 8 hours
           .num_buckets = kTimerHistogramNumBuckets,
-      };
+  };
 
   static constexpr HistogramMetric<FixedName> kMetricTimeToDropSeconds = {
       .n = FixedName{"Network.Shill.TimeToDrop"},
@@ -1221,7 +1186,7 @@ class Metrics {
           .min = 1,
           .max = 20000,  // 20 seconds
           .num_buckets = kTimerHistogramNumBuckets,
-      };
+  };
 
   // Sparse histogram metric recording the number of Passpoint credentials
   // saved for a user profile. This metric is recorded once every time the
@@ -1238,21 +1203,21 @@ class Metrics {
           .min = kMetricRememberedWiFiNetworkCountMin,
           .max = kMetricRememberedWiFiNetworkCountMax,
           .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
-      };
+  };
   static constexpr HistogramMetric<PrefixName>
       kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat = {
           .n = PrefixName{"Network.Shill.WiFi.RememberedUserNetworkCount."},
           .min = kMetricRememberedWiFiNetworkCountMin,
           .max = kMetricRememberedWiFiNetworkCountMax,
           .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
-      };
+  };
   static constexpr HistogramMetric<FixedName>
       kMetricRememberedWiFiNetworkCount = {
           .n = FixedName{"Network.Shill.WiFi.RememberedNetworkCount"},
           .min = kMetricRememberedWiFiNetworkCountMin,
           .max = kMetricRememberedWiFiNetworkCountMax,
           .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
-      };
+  };
   static constexpr HistogramMetric<FixedName> kMetricPasspointNetworkCount = {
       .n = FixedName{"Network.Shill.WiFi.PasspointNetworkCount"},
       .min = kMetricRememberedWiFiNetworkCountMin,
@@ -1328,7 +1293,7 @@ class Metrics {
           .min = 1,
           .max = 20,
           .num_buckets = 20,
-      };
+  };
 
   // Called with the number of detection attempts when the PortalDetector
   // completes or is stopped and the result is a non connected state.
@@ -1339,7 +1304,7 @@ class Metrics {
           .min = 1,
           .max = 20,
           .num_buckets = 20,
-      };
+  };
 
   // Called with the number of detection attempts when a Service first
   // transitions to redirect-found.
@@ -1350,7 +1315,7 @@ class Metrics {
           .min = 1,
           .max = 10,
           .num_buckets = 10,
-      };
+  };
 
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
@@ -1367,7 +1332,7 @@ class Metrics {
           .min = 1,
           .max = 100,
           .num_buckets = 40,
-      };
+  };
 
   // AP 802.11r/k/v support statistics.
   static constexpr char kMetricAp80211kSupport[] =
@@ -1434,7 +1399,7 @@ class Metrics {
           .min = 1,
           .max = 100,
           .num_buckets = 10,
-      };
+  };
 
   // Number of peers used in a WireGuard connection.
   static constexpr HistogramMetric<FixedName> kMetricVpnWireGuardPeersNum = {
@@ -1456,7 +1421,7 @@ class Metrics {
           .min = 1,
           .max = 7 * 24 * 60 * 60,  // 7 days
           .num_buckets = 100,
-      };
+  };
 
   // Number of wifi services available when auto-connect is initiated.
   static constexpr HistogramMetric<FixedName>
@@ -1465,7 +1430,7 @@ class Metrics {
           .min = 1,
           .max = 50,
           .num_buckets = 10,
-      };
+  };
 
   // Number of BSSes available for a wifi service when we attempt to connect
   // to that service.
@@ -1510,7 +1475,7 @@ class Metrics {
           .min = 0,
           .max = 180,
           .num_buckets = 30,
-      };
+  };
 
   enum WiFiRestartReason { kRestartReasonCannotAssoc = 0, kRestartReasonMax };
   // Metric to track when the WiFi device is has been requested to restart.
@@ -1597,10 +1562,6 @@ class Metrics {
   // Converts a flimflam EAP inner protocol string into its UMA enumerator.
   static EapInnerProtocol EapInnerProtocolStringToEnum(
       const std::string& inner);
-
-  // Converts service connect failure to UMA service error enumerator.
-  static NetworkServiceError ConnectFailureToServiceErrorEnum(
-      Service::ConnectFailure failure);
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
@@ -1888,7 +1849,7 @@ class Metrics {
   // Emits the |WiFiConnectionAttemptResult| structured event that describes
   // the result of the corresponding |WiFiConnectionAttempt| event.
   virtual void NotifyWiFiConnectionAttemptResult(
-      NetworkServiceError result_code, uint64_t session_tag);
+      MetricsEnums::NetworkServiceError result_code, uint64_t session_tag);
 
   enum WiFiDisconnectionType {
     kWiFiDisconnectionTypeUnknown = 0,

@@ -25,6 +25,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/data_types.h"
+#include "shill/metrics_enums.h"
 #include "shill/mockable.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
@@ -518,8 +519,10 @@ class Service : public base::RefCounted<Service> {
   const std::string& error_details() const { return error_details_; }
   void SetErrorDetails(base::StringPiece details);
 
-  static const char* ConnectFailureToString(const ConnectFailure& state);
-  static const char* ConnectStateToString(const ConnectState& state);
+  static const char* ConnectFailureToString(ConnectFailure failure);
+  static const char* ConnectStateToString(ConnectState state);
+  static MetricsEnums::NetworkServiceError ConnectFailureToMetricsEnum(
+      ConnectFailure failure);
 
   // Compare two services.  The first element of the result pair is true if
   // Service |a| should be displayed above |b|.  If |compare_connectivity_state|

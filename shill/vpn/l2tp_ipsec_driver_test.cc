@@ -105,10 +105,9 @@ class L2TPIPsecDriverTest : public testing::Test {
   }
 
   void ExpectEndReasonMetricsReported(Service::ConnectFailure failure) {
-    EXPECT_CALL(
-        metrics_,
-        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecSwanctlEndReason,
-                      Metrics::ConnectFailureToServiceErrorEnum(failure)));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecSwanctlEndReason,
+                              Service::ConnectFailureToMetricsEnum(failure)));
   }
 
   // Dependencies used by |driver_|.

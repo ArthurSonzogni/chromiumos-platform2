@@ -307,75 +307,6 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
   }
 }
 
-// static
-Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
-    Service::ConnectFailure failure) {
-  // Explicitly map all possible failures. So when new failures are added,
-  // they will need to be mapped as well. Otherwise, the compiler will
-  // complain.
-  switch (failure) {
-    case Service::kFailureNone:
-      return kNetworkServiceErrorNone;
-    case Service::kFailureAAA:
-      return kNetworkServiceErrorAAA;
-    case Service::kFailureActivation:
-      return kNetworkServiceErrorActivation;
-    case Service::kFailureBadPassphrase:
-      return kNetworkServiceErrorBadPassphrase;
-    case Service::kFailureBadWEPKey:
-      return kNetworkServiceErrorBadWEPKey;
-    case Service::kFailureConnect:
-      return kNetworkServiceErrorConnect;
-    case Service::kFailureDHCP:
-      return kNetworkServiceErrorDHCP;
-    case Service::kFailureDNSLookup:
-      return kNetworkServiceErrorDNSLookup;
-    case Service::kFailureEAPAuthentication:
-      return kNetworkServiceErrorEAPAuthentication;
-    case Service::kFailureEAPLocalTLS:
-      return kNetworkServiceErrorEAPLocalTLS;
-    case Service::kFailureEAPRemoteTLS:
-      return kNetworkServiceErrorEAPRemoteTLS;
-    case Service::kFailureHTTPGet:
-      return kNetworkServiceErrorHTTPGet;
-    case Service::kFailureIPsecCertAuth:
-      return kNetworkServiceErrorIPsecCertAuth;
-    case Service::kFailureIPsecPSKAuth:
-      return kNetworkServiceErrorIPsecPSKAuth;
-    case Service::kFailureInternal:
-      return kNetworkServiceErrorInternal;
-    case Service::kFailureInvalidAPN:
-      return kNetworkServiceErrorInvalidAPN;
-    case Service::kFailureNeedEVDO:
-      return kNetworkServiceErrorNeedEVDO;
-    case Service::kFailureNeedHomeNetwork:
-      return kNetworkServiceErrorNeedHomeNetwork;
-    case Service::kFailureNotAssociated:
-      return kNetworkServiceErrorNotAssociated;
-    case Service::kFailureNotAuthenticated:
-      return kNetworkServiceErrorNotAuthenticated;
-    case Service::kFailureOTASP:
-      return kNetworkServiceErrorOTASP;
-    case Service::kFailureOutOfRange:
-      return kNetworkServiceErrorOutOfRange;
-    case Service::kFailurePPPAuth:
-      return kNetworkServiceErrorPPPAuth;
-    case Service::kFailureSimLocked:
-      return kNetworkServiceErrorSimLocked;
-    case Service::kFailureNotRegistered:
-      return kNetworkServiceErrorNotRegistered;
-    case Service::kFailurePinMissing:
-      return kNetworkServiceErrorPinMissing;
-    case Service::kFailureTooManySTAs:
-      return kNetworkServiceErrorTooManySTAs;
-    case Service::kFailureDisconnect:
-      return kNetworkServiceErrorDisconnect;
-    case Service::kFailureUnknown:
-    case Service::kFailureMax:
-      return kNetworkServiceErrorUnknown;
-  }
-}
-
 void Metrics::RegisterService(const Service& service) {
   SLOG(2) << __func__;
   LOG_IF(WARNING, base::Contains(services_metrics_,
@@ -1374,8 +1305,8 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .Record();
 }
 
-void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
-                                                uint64_t session_tag) {
+void Metrics::NotifyWiFiConnectionAttemptResult(
+    MetricsEnums::NetworkServiceError result_code, uint64_t session_tag) {
   int64_t usecs;
   if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
     LOG(ERROR) << "Failed to read timestamp";
@@ -1588,8 +1519,8 @@ void Metrics::UpdateServiceStateTransitionMetrics(
 }
 
 void Metrics::SendServiceFailure(const Service& service) {
-  NetworkServiceError error =
-      ConnectFailureToServiceErrorEnum(service.failure());
+  MetricsEnums::NetworkServiceError error =
+      Service::ConnectFailureToMetricsEnum(service.failure());
   // Publish technology specific connection failure metrics. This will
   // account for all the connection failures happening while connected to
   // a particular interface e.g. wifi, cellular etc.

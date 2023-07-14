@@ -2600,9 +2600,9 @@ TEST_F(WiFiServiceTest,
   session_tag = GetSessionTag(service);
   // The "connection attempt result" must have the same session tag as the
   // "connection attempt" event when the connection succeeded.
-  EXPECT_CALL(*metrics(), NotifyWiFiConnectionAttemptResult(
-                              Metrics::ConnectFailureToServiceErrorEnum(error),
-                              session_tag));
+  EXPECT_CALL(*metrics(),
+              NotifyWiFiConnectionAttemptResult(
+                  Service::ConnectFailureToMetricsEnum(error), session_tag));
   service->EmitConnectionAttemptResultEvent(error);
 }
 
@@ -2616,9 +2616,9 @@ TEST_F(WiFiServiceTest,
   session_tag = GetSessionTag(service);
   // The "connection attempt result" must have the same session tag as the
   // "connection attempt" event when the connection failed.
-  EXPECT_CALL(*metrics(), NotifyWiFiConnectionAttemptResult(
-                              Metrics::ConnectFailureToServiceErrorEnum(error),
-                              session_tag));
+  EXPECT_CALL(*metrics(),
+              NotifyWiFiConnectionAttemptResult(
+                  Service::ConnectFailureToMetricsEnum(error), session_tag));
   service->EmitConnectionAttemptResultEvent(error);
 }
 

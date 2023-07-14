@@ -240,8 +240,8 @@ TEST_F(MetricsTest, ServiceFailure) {
       .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(library_,
               SendEnumToUMA("Network.Shill.Wifi.ServiceErrors",
-                            Metrics::kNetworkServiceErrorBadPassphrase,
-                            Metrics::kNetworkServiceErrorMax));
+                            MetricsEnums::kNetworkServiceErrorBadPassphrase,
+                            MetricsEnums::kNetworkServiceErrorMax));
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
@@ -1139,7 +1139,7 @@ TEST_F(MetricsTest, NotifyWiFiConnectionAttemptResultEmitsAttemptResultEvent) {
       .Times(1);
   constexpr uint64_t tag = 0x123456789;
   metrics_.NotifyWiFiConnectionAttemptResult(
-      Metrics::kNetworkServiceErrorBadPassphrase, tag);
+      MetricsEnums::kNetworkServiceErrorBadPassphrase, tag);
 }
 
 TEST_F(MetricsTest, NotifyWiFiConnectionDisconnectionEmitsConnectionEndEvent) {

@@ -1136,7 +1136,7 @@ void WiFiService::EmitConnectionAttemptResultEvent(
   ValidateTagState(kSessionTagExpectedValid,
                    Metrics::kWiFiSessionTagConnectionAttemptResultSuffix);
 
-  auto service_error = Metrics::ConnectFailureToServiceErrorEnum(failure);
+  auto service_error = Service::ConnectFailureToMetricsEnum(failure);
   metrics()->NotifyWiFiConnectionAttemptResult(service_error, session_tag_);
   if (parent_credentials_) {
     metrics()->SendEnumToUMA(Metrics::kMetricPasspointConnectionResult,

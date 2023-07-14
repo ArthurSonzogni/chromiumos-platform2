@@ -90,10 +90,9 @@ class IKEv2DriverTest : public testing::Test {
   }
 
   void ExpectEndReasonMetricsReported(Service::ConnectFailure failure) {
-    EXPECT_CALL(
-        metrics_,
-        SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
-                      Metrics::ConnectFailureToServiceErrorEnum(failure)));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
+                              Service::ConnectFailureToMetricsEnum(failure)));
   }
 
   // Dependencies used by |driver_|.

@@ -34,6 +34,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/metrics_enums.h"
 #include "shill/net/event_history.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
@@ -1273,8 +1274,8 @@ void Service::SetAutoConnect(bool connect) {
 // static
 // Note: keep in sync with ERROR_* constants in
 // android/system/connectivity/shill/IService.aidl.
-const char* Service::ConnectFailureToString(const ConnectFailure& state) {
-  switch (state) {
+const char* Service::ConnectFailureToString(ConnectFailure failure) {
+  switch (failure) {
     case kFailureNone:
       return kErrorNoFailure;
     case kFailureAAA:
@@ -1340,7 +1341,7 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
 }
 
 // static
-const char* Service::ConnectStateToString(const ConnectState& state) {
+const char* Service::ConnectStateToString(ConnectState state) {
   switch (state) {
     case kStateUnknown:
       return "Unknown";
@@ -1366,6 +1367,75 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
       return "Disconnecting";
   }
   return "Invalid";
+}
+
+// static
+MetricsEnums::NetworkServiceError Service::ConnectFailureToMetricsEnum(
+    Service::ConnectFailure failure) {
+  // Explicitly map all possible failures. So when new failures are added,
+  // they will need to be mapped as well. Otherwise, the compiler will
+  // complain.
+  switch (failure) {
+    case Service::kFailureNone:
+      return MetricsEnums::kNetworkServiceErrorNone;
+    case Service::kFailureAAA:
+      return MetricsEnums::kNetworkServiceErrorAAA;
+    case Service::kFailureActivation:
+      return MetricsEnums::kNetworkServiceErrorActivation;
+    case Service::kFailureBadPassphrase:
+      return MetricsEnums::kNetworkServiceErrorBadPassphrase;
+    case Service::kFailureBadWEPKey:
+      return MetricsEnums::kNetworkServiceErrorBadWEPKey;
+    case Service::kFailureConnect:
+      return MetricsEnums::kNetworkServiceErrorConnect;
+    case Service::kFailureDHCP:
+      return MetricsEnums::kNetworkServiceErrorDHCP;
+    case Service::kFailureDNSLookup:
+      return MetricsEnums::kNetworkServiceErrorDNSLookup;
+    case Service::kFailureEAPAuthentication:
+      return MetricsEnums::kNetworkServiceErrorEAPAuthentication;
+    case Service::kFailureEAPLocalTLS:
+      return MetricsEnums::kNetworkServiceErrorEAPLocalTLS;
+    case Service::kFailureEAPRemoteTLS:
+      return MetricsEnums::kNetworkServiceErrorEAPRemoteTLS;
+    case Service::kFailureHTTPGet:
+      return MetricsEnums::kNetworkServiceErrorHTTPGet;
+    case Service::kFailureIPsecCertAuth:
+      return MetricsEnums::kNetworkServiceErrorIPsecCertAuth;
+    case Service::kFailureIPsecPSKAuth:
+      return MetricsEnums::kNetworkServiceErrorIPsecPSKAuth;
+    case Service::kFailureInternal:
+      return MetricsEnums::kNetworkServiceErrorInternal;
+    case Service::kFailureInvalidAPN:
+      return MetricsEnums::kNetworkServiceErrorInvalidAPN;
+    case Service::kFailureNeedEVDO:
+      return MetricsEnums::kNetworkServiceErrorNeedEVDO;
+    case Service::kFailureNeedHomeNetwork:
+      return MetricsEnums::kNetworkServiceErrorNeedHomeNetwork;
+    case Service::kFailureNotAssociated:
+      return MetricsEnums::kNetworkServiceErrorNotAssociated;
+    case Service::kFailureNotAuthenticated:
+      return MetricsEnums::kNetworkServiceErrorNotAuthenticated;
+    case Service::kFailureOTASP:
+      return MetricsEnums::kNetworkServiceErrorOTASP;
+    case Service::kFailureOutOfRange:
+      return MetricsEnums::kNetworkServiceErrorOutOfRange;
+    case Service::kFailurePPPAuth:
+      return MetricsEnums::kNetworkServiceErrorPPPAuth;
+    case Service::kFailureSimLocked:
+      return MetricsEnums::kNetworkServiceErrorSimLocked;
+    case Service::kFailureNotRegistered:
+      return MetricsEnums::kNetworkServiceErrorNotRegistered;
+    case Service::kFailurePinMissing:
+      return MetricsEnums::kNetworkServiceErrorPinMissing;
+    case Service::kFailureTooManySTAs:
+      return MetricsEnums::kNetworkServiceErrorTooManySTAs;
+    case Service::kFailureDisconnect:
+      return MetricsEnums::kNetworkServiceErrorDisconnect;
+    case Service::kFailureUnknown:
+    case Service::kFailureMax:
+      return MetricsEnums::kNetworkServiceErrorUnknown;
+  }
 }
 
 std::string Service::GetTechnologyName() const {
