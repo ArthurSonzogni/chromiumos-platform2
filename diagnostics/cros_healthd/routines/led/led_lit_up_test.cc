@@ -31,7 +31,7 @@ class MockLedLitUpRoutineReplier
   explicit MockLedLitUpRoutineReplier(
       mojo::PendingReceiver<mojom::DEPRECATED_LedLitUpRoutineReplier> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
-    DCHECK(receiver_.is_bound());
+    CHECK(receiver_.is_bound());
   }
   MockLedLitUpRoutineReplier(const MockLedLitUpRoutineReplier&) = delete;
   MockLedLitUpRoutineReplier& operator=(const MockLedLitUpRoutineReplier&) =

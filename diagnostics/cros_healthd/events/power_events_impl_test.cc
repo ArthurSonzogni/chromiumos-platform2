@@ -37,7 +37,7 @@ class MockCrosHealthdPowerObserver : public mojom::CrosHealthdPowerObserver {
   MockCrosHealthdPowerObserver(
       mojo::PendingReceiver<mojom::CrosHealthdPowerObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
-    DCHECK(receiver_.is_bound());
+    CHECK(receiver_.is_bound());
   }
   MockCrosHealthdPowerObserver(const MockCrosHealthdPowerObserver&) = delete;
   MockCrosHealthdPowerObserver& operator=(const MockCrosHealthdPowerObserver&) =

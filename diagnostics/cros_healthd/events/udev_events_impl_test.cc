@@ -74,7 +74,7 @@ class MockCrosHealthdThunderboltObserver
   explicit MockCrosHealthdThunderboltObserver(
       mojo::PendingReceiver<mojom::CrosHealthdThunderboltObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
-    DCHECK(receiver_.is_bound());
+    CHECK(receiver_.is_bound());
   }
   MockCrosHealthdThunderboltObserver(
       const MockCrosHealthdThunderboltObserver&) = delete;
@@ -95,7 +95,7 @@ class MockCrosHealthdUsbObserver : public mojom::CrosHealthdUsbObserver {
   explicit MockCrosHealthdUsbObserver(
       mojo::PendingReceiver<mojom::CrosHealthdUsbObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
-    DCHECK(receiver_.is_bound());
+    CHECK(receiver_.is_bound());
   }
   MockCrosHealthdUsbObserver(const MockCrosHealthdUsbObserver&) = delete;
   MockCrosHealthdUsbObserver& operator=(const MockCrosHealthdUsbObserver&) =

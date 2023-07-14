@@ -110,7 +110,7 @@ void FakeDiagnosticRoutine::Cancel() {
 
 void FakeDiagnosticRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                  bool include_output) {
-  DCHECK(response);
+  CHECK(response);
 
   response->progress_percent = progress_percent_;
   response->output = CreateReadOnlySharedMemoryRegionMojoHandle(output_);
@@ -259,7 +259,7 @@ std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
-  DCHECK(debugd_proxy);
+  CHECK(debugd_proxy);
   return std::move(next_routine_);
 }
 
@@ -267,7 +267,7 @@ std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
-  DCHECK(debugd_proxy);
+  CHECK(debugd_proxy);
   return std::move(next_routine_);
 }
 

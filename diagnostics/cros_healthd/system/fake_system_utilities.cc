@@ -16,7 +16,7 @@ FakeSystemUtilities::FakeSystemUtilities() = default;
 FakeSystemUtilities::~FakeSystemUtilities() = default;
 
 int FakeSystemUtilities::Uname(struct utsname* buf) {
-  DCHECK(buf);
+  CHECK(buf);
 
   if (uname_ret_code_ == 0)
     snprintf(buf->machine, sizeof(utsname::machine), "%s",

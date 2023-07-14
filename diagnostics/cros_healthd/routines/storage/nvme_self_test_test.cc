@@ -49,7 +49,7 @@ class NvmeSelfTestRoutineTest : public testing::Test {
   }
 
   void RunRoutineStart() {
-    DCHECK(routine_);
+    CHECK(routine_);
     routine_->Start();
   }
   void RunRoutineCancel() { routine_->Cancel(); }

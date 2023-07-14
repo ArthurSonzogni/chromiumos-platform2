@@ -86,7 +86,7 @@ class BatteryHealthRoutineTest : public testing::Test {
   }
 
   void RunRoutineAndWaitForExit() {
-    DCHECK(routine_);
+    CHECK(routine_);
     routine_->Start();
 
     // Since the BatteryHealthRoutine has finished by the time Start() returns,

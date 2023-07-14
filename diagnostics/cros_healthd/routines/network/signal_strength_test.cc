@@ -47,7 +47,7 @@ class SignalStrengthRoutineTest : public testing::Test {
   }
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
-    DCHECK(routine_);
+    CHECK(routine_);
     mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
     routine_->Start();

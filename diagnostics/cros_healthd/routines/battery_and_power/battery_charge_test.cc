@@ -63,7 +63,7 @@ class BatteryChargeRoutineTest : public testing::Test {
   }
 
   void StartRoutineAndVerifyInteractiveResponse() {
-    DCHECK(routine_);
+    CHECK(routine_);
 
     routine_->Start();
     auto update = GetUpdate();
