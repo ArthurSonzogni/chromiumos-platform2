@@ -851,31 +851,12 @@ class Metrics {
           .max = kUserInitiatedConnectionResultMax,
   };
 
-  // Reason when a connection initiated by Service::UserInitiatedConnect fails.
-  enum UserInitiatedConnectionFailureReason {
-    kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
-    kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
-    kUserInitiatedConnectionFailureReasonConnect = 3,
-    kUserInitiatedConnectionFailureReasonDHCP = 4,
-    kUserInitiatedConnectionFailureReasonDNSLookup = 5,
-    kUserInitiatedConnectionFailureReasonEAPAuthentication = 6,
-    kUserInitiatedConnectionFailureReasonEAPLocalTLS = 7,
-    kUserInitiatedConnectionFailureReasonEAPRemoteTLS = 8,
-    kUserInitiatedConnectionFailureReasonOutOfRange = 9,
-    kUserInitiatedConnectionFailureReasonPinMissing = 10,
-    kUserInitiatedConnectionFailureReasonUnknown = 11,
-    kUserInitiatedConnectionFailureReasonNone = 12,
-    kUserInitiatedConnectionFailureReasonNotAssociated = 13,
-    kUserInitiatedConnectionFailureReasonNotAuthenticated = 14,
-    kUserInitiatedConnectionFailureReasonTooManySTAs = 15,
-    kUserInitiatedConnectionFailureReasonMax
-  };
   static constexpr EnumMetric<FixedName>
       kMetricWifiUserInitiatedConnectionFailureReason = {
           .n =
               FixedName{
                   "Network.Shill.WiFi.UserInitiatedConnectionFailureReason"},
-          .max = kUserInitiatedConnectionFailureReasonMax,
+          .max = MetricsEnums::kUserInitiatedConnectionFailureReasonMax,
   };
 
   // Device presence.
@@ -1741,11 +1722,6 @@ class Metrics {
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
       const DetailedCellularConnectionResult& result);
-
-  // Notifies this object about the reason of failed user-initiated connection
-  // attempt.
-  virtual void NotifyUserInitiatedConnectionFailureReason(
-      const Service::ConnectFailure failure);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);

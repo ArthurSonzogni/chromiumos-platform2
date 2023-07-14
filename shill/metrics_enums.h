@@ -78,6 +78,26 @@ class MetricsEnums {
     kNetworkServiceErrorMax
   };
 
+  // Reason when a connection initiated by Service::UserInitiatedConnect fails.
+  enum UserInitiatedConnectionFailureReason {
+    kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
+    kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
+    kUserInitiatedConnectionFailureReasonConnect = 3,
+    kUserInitiatedConnectionFailureReasonDHCP = 4,
+    kUserInitiatedConnectionFailureReasonDNSLookup = 5,
+    kUserInitiatedConnectionFailureReasonEAPAuthentication = 6,
+    kUserInitiatedConnectionFailureReasonEAPLocalTLS = 7,
+    kUserInitiatedConnectionFailureReasonEAPRemoteTLS = 8,
+    kUserInitiatedConnectionFailureReasonOutOfRange = 9,
+    kUserInitiatedConnectionFailureReasonPinMissing = 10,
+    kUserInitiatedConnectionFailureReasonUnknown = 11,
+    kUserInitiatedConnectionFailureReasonNone = 12,
+    kUserInitiatedConnectionFailureReasonNotAssociated = 13,
+    kUserInitiatedConnectionFailureReasonNotAuthenticated = 14,
+    kUserInitiatedConnectionFailureReasonTooManySTAs = 15,
+    kUserInitiatedConnectionFailureReasonMax
+  };
+
  protected:
   MetricsEnums();
   MetricsEnums(const MetricsEnums&) = delete;

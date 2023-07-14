@@ -1438,6 +1438,45 @@ MetricsEnums::NetworkServiceError Service::ConnectFailureToMetricsEnum(
   }
 }
 
+// static
+MetricsEnums::UserInitiatedConnectionFailureReason
+Service::ConnectFailureToFailureReason(Service::ConnectFailure failure) {
+  switch (failure) {
+    case Service::kFailureNone:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonNone;
+    case Service::kFailureBadPassphrase:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonBadPassphrase;
+    case Service::kFailureBadWEPKey:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonBadWEPKey;
+    case Service::kFailureConnect:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonConnect;
+    case Service::kFailureDHCP:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonDHCP;
+    case Service::kFailureDNSLookup:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonDNSLookup;
+    case Service::kFailureEAPAuthentication:
+      return MetricsEnums::
+          kUserInitiatedConnectionFailureReasonEAPAuthentication;
+    case Service::kFailureEAPLocalTLS:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonEAPLocalTLS;
+    case Service::kFailureEAPRemoteTLS:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
+    case Service::kFailureNotAssociated:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonNotAssociated;
+    case Service::kFailureNotAuthenticated:
+      return MetricsEnums::
+          kUserInitiatedConnectionFailureReasonNotAuthenticated;
+    case Service::kFailureOutOfRange:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonOutOfRange;
+    case Service::kFailurePinMissing:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonPinMissing;
+    case Service::kFailureTooManySTAs:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonTooManySTAs;
+    default:
+      return MetricsEnums::kUserInitiatedConnectionFailureReasonUnknown;
+  }
+}
+
 std::string Service::GetTechnologyName() const {
   return TechnologyName(technology());
 }
@@ -1505,7 +1544,9 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       break;
     case kStateFailure:
       result = Metrics::kUserInitiatedConnectionResultFailure;
-      metrics()->NotifyUserInitiatedConnectionFailureReason(failure_);
+      metrics()->SendEnumToUMA(
+          Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
+          ConnectFailureToFailureReason(failure_));
       break;
     case kStateIdle:
       // This assumes the device specific class (wifi, cellular) will advance

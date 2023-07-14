@@ -138,10 +138,6 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
   MOCK_METHOD(void,
-              NotifyUserInitiatedConnectionFailureReason,
-              (const Service::ConnectFailure),
-              (override));
-  MOCK_METHOD(void,
               NotifyConnectionDiagnosticsIssue,
               (const std::string&),
               (override));

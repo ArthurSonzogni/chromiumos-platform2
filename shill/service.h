@@ -523,6 +523,8 @@ class Service : public base::RefCounted<Service> {
   static const char* ConnectStateToString(ConnectState state);
   static MetricsEnums::NetworkServiceError ConnectFailureToMetricsEnum(
       ConnectFailure failure);
+  static MetricsEnums::UserInitiatedConnectionFailureReason
+  ConnectFailureToFailureReason(ConnectFailure failure);
 
   // Compare two services.  The first element of the result pair is true if
   // Service |a| should be displayed above |b|.  If |compare_connectivity_state|

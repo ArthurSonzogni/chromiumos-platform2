@@ -972,59 +972,6 @@ void Metrics::NotifyCellularEntitlementCheckResult(
   SendEnumToUMA(kMetricCellularEntitlementCheck, result);
 }
 
-void Metrics::NotifyUserInitiatedConnectionFailureReason(
-    const Service::ConnectFailure failure) {
-  UserInitiatedConnectionFailureReason reason;
-  switch (failure) {
-    case Service::kFailureNone:
-      reason = kUserInitiatedConnectionFailureReasonNone;
-      break;
-    case Service::kFailureBadPassphrase:
-      reason = kUserInitiatedConnectionFailureReasonBadPassphrase;
-      break;
-    case Service::kFailureBadWEPKey:
-      reason = kUserInitiatedConnectionFailureReasonBadWEPKey;
-      break;
-    case Service::kFailureConnect:
-      reason = kUserInitiatedConnectionFailureReasonConnect;
-      break;
-    case Service::kFailureDHCP:
-      reason = kUserInitiatedConnectionFailureReasonDHCP;
-      break;
-    case Service::kFailureDNSLookup:
-      reason = kUserInitiatedConnectionFailureReasonDNSLookup;
-      break;
-    case Service::kFailureEAPAuthentication:
-      reason = kUserInitiatedConnectionFailureReasonEAPAuthentication;
-      break;
-    case Service::kFailureEAPLocalTLS:
-      reason = kUserInitiatedConnectionFailureReasonEAPLocalTLS;
-      break;
-    case Service::kFailureEAPRemoteTLS:
-      reason = kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
-      break;
-    case Service::kFailureNotAssociated:
-      reason = kUserInitiatedConnectionFailureReasonNotAssociated;
-      break;
-    case Service::kFailureNotAuthenticated:
-      reason = kUserInitiatedConnectionFailureReasonNotAuthenticated;
-      break;
-    case Service::kFailureOutOfRange:
-      reason = kUserInitiatedConnectionFailureReasonOutOfRange;
-      break;
-    case Service::kFailurePinMissing:
-      reason = kUserInitiatedConnectionFailureReasonPinMissing;
-      break;
-    case Service::kFailureTooManySTAs:
-      reason = kUserInitiatedConnectionFailureReasonTooManySTAs;
-      break;
-    default:
-      reason = kUserInitiatedConnectionFailureReasonUnknown;
-      break;
-  }
-  SendEnumToUMA(kMetricWifiUserInitiatedConnectionFailureReason, reason);
-}
-
 bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {
   SLOG(5) << "Sending enum " << name << " with value " << sample << ".";
   return library_->SendEnumToUMA(name, sample, max);
