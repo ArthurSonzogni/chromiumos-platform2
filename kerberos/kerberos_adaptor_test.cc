@@ -34,7 +34,7 @@ using dbus::MockBus;
 using dbus::MockExportedObject;
 using dbus::MockObjectProxy;
 using dbus::ObjectPath;
-using testing::_;
+using testing::A;
 using testing::AnyNumber;
 using testing::Invoke;
 using testing::Mock;
@@ -146,9 +146,13 @@ class KerberosAdaptorTest : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, GetExportedObject(object_path))
         .WillRepeatedly(Return(mock_exported_object_.get()));
     EXPECT_CALL(*mock_exported_object_, Unregister()).Times(AnyNumber());
-    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
+    EXPECT_CALL(
+        *mock_exported_object_,
+        ExportMethod(A<const std::string&>(), A<const std::string&>(),
+                     A<const dbus::ExportedObject::MethodCallCallback&>(),
+                     A<dbus::ExportedObject::OnExportedCallback>()))
         .Times(AnyNumber());
-    EXPECT_CALL(*mock_exported_object_, SendSignal(_))
+    EXPECT_CALL(*mock_exported_object_, SendSignal(A<dbus::Signal*>()))
         .WillRepeatedly(
             Invoke(this, &KerberosAdaptorTest::OnKerberosFilesChanged));
 
@@ -272,12 +276,14 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
   // Stub out Session Manager's RetrievePrimarySession D-Bus method.
   auto mock_session_manager_proxy = base::MakeRefCounted<MockObjectProxy>(
       mock_bus_.get(), login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+      ObjectPath(login_manager::kSessionManagerServicePath));
   EXPECT_CALL(*mock_bus_,
-              GetObjectProxy(login_manager::kSessionManagerServiceName, _))
+              GetObjectProxy(login_manager::kSessionManagerServiceName,
+                             A<const ObjectPath&>()))
       .WillOnce(Return(mock_session_manager_proxy.get()));
-  EXPECT_CALL(*mock_session_manager_proxy,
-              CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(*mock_session_manager_proxy, CallMethodAndBlockWithErrorDetails(
+                                               A<dbus::MethodCall*>(), A<int>(),
+                                               A<dbus::ScopedDBusError*>()))
       .WillOnce(Invoke(&StubRetrievePrimarySession));
 
   // Recreate an adaptor, but don't call set_storage_dir_for_testing().
