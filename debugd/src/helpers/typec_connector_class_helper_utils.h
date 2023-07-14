@@ -57,6 +57,8 @@ constexpr char kPartnerPdoRegex[] = "pd[0-9]+$";
 constexpr char kPdoCapabilitiesRegex[] = "(sink|source)-capabilities$";
 constexpr char kPdoTypeRegex[] =
     "[0-9]+:(battery|fixed_supply|programmable_supply|variable_supply)$";
+constexpr char kUsbDeviceRegex[] = "[0-9]+\\-[0-9]+(\\.[0-9]+)*$";
+constexpr char kUsbPortRegex[] = "usb[0-9]+\\-port[0-9]+$";
 
 // Masks for id_header fields.
 constexpr uint32_t kPDUFPProductTypeMask = 0x38000000;
@@ -445,6 +447,18 @@ void PrintCable(const base::FilePath& port, int indent);
 // PrintPhysicalLocation will print `panel` and `horizontal_position` in the
 // physical_location directory. Other files in the directory are irrelevant.
 void PrintPhysicalLocation(const base::FilePath& port, int indent);
+
+// PrintUsbDeviceInfo will print `busnum`, `devnum`, `devpath` in the usb
+// device directory, which are minimal info needed to map to corresponding
+// peripheral.
+void PrintUsbDeviceInfo(const base::FilePath& usb_device, int indent);
+
+// PrintUsbDevice will check and print usb device in the usb port directory.
+void PrintUsbDevice(const base::FilePath& usb_port, int indent);
+
+// PrintUsbSubsystem will find the type-c connector's linked usb ports and print
+// relevant usb subsystem information.
+void PrintUsbSubsystem(const base::FilePath& port, int indent);
 
 // PrintPortInfo will print relevant type-c connector class information for the
 // port located at the sysfs path "port"

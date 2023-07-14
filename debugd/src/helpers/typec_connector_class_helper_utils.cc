@@ -458,11 +458,33 @@ void PrintPhysicalLocation(const base::FilePath& port, int indent) {
   PrintFile(physical_location_dir.Append("horizontal_position"), indent + 2);
 }
 
+void PrintUsbDeviceInfo(const base::FilePath& usb_device, int indent) {
+  std::cout << GetIndentStr(indent) << "usb_device" << std::endl;
+  PrintFile(usb_device.Append("busnum"), indent + 2);
+  PrintFile(usb_device.Append("devnum"), indent + 2);
+  PrintFile(usb_device.Append("devpath"), indent + 2);
+  ParseDirsAndExecute(usb_device, indent + 2, kUsbDeviceRegex,
+                      &PrintUsbDeviceInfo);
+}
+
+void PrintUsbDevice(const base::FilePath& usb_port, int indent) {
+  auto usb_device_dir = usb_port.Append("device");
+  if (!base::DirectoryExists(usb_device_dir))
+    return;
+
+  PrintUsbDeviceInfo(usb_device_dir, indent);
+}
+
+void PrintUsbSubsystem(const base::FilePath& port, int indent) {
+  ParseDirsAndExecute(port, indent, kUsbPortRegex, &PrintUsbDevice);
+}
+
 void PrintPortInfo(const base::FilePath& port, int indent) {
   PrintDirFiles(port, indent);
   PrintPartner(port, indent + 2);
   PrintCable(port, indent + 2);
   PrintPhysicalLocation(port, indent + 2);
+  PrintUsbSubsystem(port, indent + 2);
   std::cout << std::endl;
 }
 
