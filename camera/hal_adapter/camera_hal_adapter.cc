@@ -132,6 +132,7 @@ bool CameraHalAdapter::Start() {
 
   if (FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
     LOGF(INFO) << "Effects are enabled, initiating DLC install.";
+    effects_enabled_ = true;
     dlc_client_ = DlcClient::Create(
         base::BindOnce(
             [](StreamManipulator::RuntimeOptions* options,
@@ -361,7 +362,7 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
             << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level;
 
-  if (!FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+  if (!effects_enabled_) {
     return mojom::SetEffectResult::kFeatureDisabled;
   }
 
