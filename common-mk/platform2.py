@@ -147,6 +147,7 @@ _IUSE = [
     "optee_oemcrypto",
     "os_install_service",
     "passive_metrics",
+    "pavp_4_3",
     "pinweaver",
     "pinweaver_csme",
     "postinst_metrics",
