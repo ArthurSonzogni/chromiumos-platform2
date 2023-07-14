@@ -47,6 +47,7 @@ using hwsec_foundation::SecureBlobToHex;
 
 using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::InSequence;
@@ -903,6 +904,331 @@ TEST_F(MountHelperTest, Dmcrypt_MountUnmount) {
   mount_helper_->UnmountAll();
   VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
            /*downloads_bind_mount=*/true);
+}
+
+class DownloadsBindMountMigrationTest : public MountHelperTest {
+ public:
+  void SetUp() override {
+    MountHelperTest::SetUp();
+
+    keyset_ = FileSystemKeyset::CreateRandom();
+
+    const base::FilePath dircrypto_mount_mount =
+        GetUserMountDirectory(brillo::cryptohome::home::SanitizeUserName(kUser))
+            .Append(kUserHomeSuffix);
+    downloads_ = dircrypto_mount_mount.Append(kDownloadsDir);
+    downloads_in_my_files_ =
+        dircrypto_mount_mount.Append(kMyFilesDir).Append(kDownloadsDir);
+    downloads_backup_ = dircrypto_mount_mount.Append(kDownloadsBackupDir);
+
+    SetHomedir(kUser);
+  }
+
+  bool CreateTestFileAtPath(const FilePath& path) {
+    return platform_.WriteStringToFile(path, kContent);
+  }
+
+  bool ExpectFileContentsCorrect(const FilePath& path) {
+    std::string result;
+    EXPECT_TRUE(platform_.ReadFileToString(path, &result));
+    return result == kContent;
+  }
+
+  std::string GetMigrationXattr(const FilePath& path) {
+    std::string xattr;
+    if (!platform_.GetExtendedFileAttributeAsString(
+            path, kBindMountMigrationXattrName, &xattr)) {
+      return "";
+    }
+    return xattr;
+  }
+
+  bool SetMigrationXattr(const FilePath& path, const std::string& xattr) {
+    return platform_.SetExtendedFileAttribute(
+        path, kBindMountMigrationXattrName, xattr.c_str(), xattr.size());
+  }
+
+  void SetUpAndVerifyUserHome(bool bind_mount_downloads) {
+    // Create a mounter that sets up ~/Downloads bind mounted to
+    // ~/MyFiles/Downloads and mount it.
+    mount_helper_ = std::make_unique<MountHelper>(
+        /*legacy_mount=*/true, bind_mount_downloads, &platform_);
+    EXPECT_THAT(mount_helper_->PerformMount(
+                    MountType::DIR_CRYPTO, kUser,
+                    SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                    SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+                IsOk());
+
+    // Verify that the bind mount was created successfully.
+    VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+             bind_mount_downloads);
+    EXPECT_EQ(platform_.IsDirectoryMounted(downloads_in_my_files_),
+              bind_mount_downloads);
+  }
+
+ protected:
+  base::FilePath downloads_;
+  base::FilePath downloads_in_my_files_;
+  base::FilePath downloads_backup_;
+  FileSystemKeyset keyset_;
+
+  const std::string kContent = "some_content";
+};
+
+TEST_F(DownloadsBindMountMigrationTest,
+       DownloadsIsMigratedToMyFilesSuccessfully) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Create a test file in ~/Downloads, which we expect to move to
+  // ~/MyFiles/Downloads after migration.
+  const FilePath test_file_path = downloads_.Append("test_file_name");
+  ASSERT_TRUE(CreateTestFileAtPath(test_file_path));
+
+  // Unmount the helper with the file system still in tact.
+  mount_helper_->UnmountAll();
+
+  // Mount the user home without a bind mount Downloads.
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Expect the file has been moved to the new location (not just bind mounted)
+  // and the contents match and that the extended attribute has been set to
+  // "migrated".
+  ASSERT_TRUE(ExpectFileContentsCorrect(
+      downloads_in_my_files_.Append(test_file_path.BaseName())));
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest, NewMountSetsXattrOnFirstMount) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Ensure the directory has the right xattr set.
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       MountPreviouslyMigratedButNotUpdatedXattrGetsUpdatedOnNextMount) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Update the xattr on ~/MyFiles/Downloads to be the "migrating" instead of
+  // "migrated".
+  EXPECT_TRUE(
+      SetMigrationXattr(downloads_in_my_files_, kBindMountMigratingStage));
+
+  // Unmount the helper with the file system still in tact, then remount it.
+  mount_helper_->UnmountAll();
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+
+  // Ensure the directory gets the xattr updated.
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FilesInMyFilesDownloadsShouldBeMovedBeforeMigration) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // In the event the ~/MyFiles/Downloads bind mount fails and files are written
+  // there, they should be moved prior to migrating ~/Downloads to
+  // ~/MyFiles/Downloads.
+  const FilePath test_file_path =
+      downloads_in_my_files_.Append("test_file_name");
+  ASSERT_TRUE(CreateTestFileAtPath(test_file_path));
+
+  // Unmount the helper with the file system still in tact.
+  mount_helper_->UnmountAll();
+
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Expect the file has been moved to the new location (not just bind mounted)
+  // and the contents match and that the extended attribute has been set to
+  // "migrated".
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_file_path));
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FailingToCleanUpTheBackupFolderShouldFallbackToBindMount) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Create the backup directory.
+  ASSERT_TRUE(platform_.CreateDirectory(downloads_backup_));
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  mount_helper_->UnmountAll();
+
+  // Create a mounter that doesn't bind mount at all and mount it.
+  mount_helper_ = std::make_unique<MountHelper>(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  // Ignore all other calls to DeletePathRecursively but when the
+  // ~/Downloads-backup call is made, return false to mock failing to remove the
+  // backup folder.
+  EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(AnyNumber());
+  EXPECT_CALL(platform_, DeletePathRecursively(downloads_backup_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FailingToSetTheXattrBeforeMigratingShouldFallback) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  mount_helper_->UnmountAll();
+
+  // Create a mounter that doesn't bind mount at all and mount it.
+  mount_helper_ = std::make_unique<MountHelper>(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  // Ignore all other calls to SetExtendedFileAttribute but when the
+  // "migrating" call is made, return false to mock failing to set the xattr.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(
+                             downloads_, kBindMountMigrationXattrName, _, _))
+      .WillOnce(Return(false));
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       IfRenamingMyFilesDownloadsToDownloadsBackupFailsFallbackToBindMount) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  mount_helper_->UnmountAll();
+
+  // Create a mounter that doesn't bind mount at all.
+  mount_helper_ = std::make_unique<MountHelper>(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
+  // call is made, return false to mock a failure.
+  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
+  EXPECT_CALL(platform_, Rename(downloads_in_my_files_, downloads_backup_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       IfRenamingDownloadsToMyFilesFailsTheBackupIsRestored) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  mount_helper_->UnmountAll();
+
+  // Create a mounter that doesn't bind mount at all.
+  mount_helper_ = std::make_unique<MountHelper>(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
+  // call is made, return false to mock a failure.
+  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
+  EXPECT_CALL(platform_, Rename(downloads_, downloads_in_my_files_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       SettingTheXattrToMigratedFailingShouldNotFallback) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  mount_helper_->UnmountAll();
+
+  // Create a mounter that doesn't bind mount at all.
+  mount_helper_ = std::make_unique<MountHelper>(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  // Ignore all other calls to SetExtendedFileAttribute but when the
+  // "migrated" call is made, return false to mock failing to set the xattr.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(platform_,
+              SetExtendedFileAttribute(downloads_in_my_files_,
+                                       kBindMountMigrationXattrName, _, _))
+      .WillOnce(Return(false));
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+  // Verify that the underlying filesystem has not fallen back to bind mounting.
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/false);
+  ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(
+    DownloadsBindMountMigrationTest,
+    IfANewDownloadsFolderIsCreatedAfterMigrationItShouldNotRetriggerMigration) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Create a test file in ~/Downloads and expect that neither get moved as the
+  // migration has stabilised already.
+  ASSERT_TRUE(platform_.CreateDirectory(downloads_));
+  const FilePath test_downloads_file_path =
+      downloads_.Append("test_downloads_file");
+  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_file_path));
+
+  // Create a test file in ~/MyFiles/Downloads and expect that neither get moved
+  // as the migration has stabilised already.
+  const FilePath test_downloads_in_my_files_file_path =
+      downloads_in_my_files_.Append("test_downloads_in_my_files_file");
+  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_in_my_files_file_path));
+
+  // Unmount and remount.
+  mount_helper_->UnmountAll();
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+  // Verify that ~/MyFiles/Downloads is not mounted and that all the files
+  // reside in the correct places, not having been migrated.
+  ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_file_path));
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_in_my_files_file_path));
 }
 
 }  // namespace
