@@ -45,14 +45,14 @@ class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
   // Callback function for setting privacy screen state.
   void OnReceiveResponse(bool success);
 
-  // Gathers the current privacy state.
-  void GatherState();
-
   // Validates if the current privacy is set to expected and marks routine
   // status as passing or failed.
-  void ValidateState(bool privacy_screen_supported,
-                     bool current_state,
-                     const std::optional<std::string>& error);
+  void ValidateState();
+
+  // Callback function of GetPrivacyScreenInfo in ValidateState.
+  void ValidateStateCallback(bool privacy_screen_supported,
+                             bool current_state,
+                             const std::optional<std::string>& error);
 
   // Context object used to communicate with the browser and to call executor
   // functions.

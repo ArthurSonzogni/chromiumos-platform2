@@ -29,7 +29,7 @@ void PrivacyScreenRoutine::Start() {
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&PrivacyScreenRoutine::GatherState,
+      base::BindOnce(&PrivacyScreenRoutine::ValidateState,
                      base::Unretained(this)),
       // This delay is working as a timeout. The timeout is concerning two
       // checks, failing either of which leads to the failure of routine.
@@ -69,7 +69,7 @@ void PrivacyScreenRoutine::OnReceiveResponse(bool success) {
   request_processed_ = success;
 }
 
-void PrivacyScreenRoutine::GatherState() {
+void PrivacyScreenRoutine::ValidateState() {
   if (request_processed_ == std::nullopt) {
     UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage);
@@ -82,11 +82,12 @@ void PrivacyScreenRoutine::GatherState() {
     return;
   }
 
-  context_->executor()->GetPrivacyScreenInfo(base::BindOnce(
-      &PrivacyScreenRoutine::ValidateState, weak_factory_.GetWeakPtr()));
+  context_->executor()->GetPrivacyScreenInfo(
+      base::BindOnce(&PrivacyScreenRoutine::ValidateStateCallback,
+                     weak_factory_.GetWeakPtr()));
 }
 
-void PrivacyScreenRoutine::ValidateState(
+void PrivacyScreenRoutine::ValidateStateCallback(
     bool privacy_screen_supported,
     bool current_state,
     const std::optional<std::string>& error) {
