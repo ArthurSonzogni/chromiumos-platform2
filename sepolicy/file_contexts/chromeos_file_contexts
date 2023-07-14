@@ -312,6 +312,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
 /var/lib/cras(/.*)?             u:object_r:cros_var_lib_cras:s0
 /var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
+/var/lib/device_management(/.*)? u:object_r:cros_var_lib_device_management:s0
 /var/lib/dlcservice(/.*)?       u:object_r:cros_var_lib_dlcservice:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
