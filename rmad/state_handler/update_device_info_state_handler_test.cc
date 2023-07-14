@@ -61,6 +61,8 @@ constexpr uint32_t kNewRegionSelection = 1;
 constexpr uint32_t kNewSkuSelection = 1;
 constexpr uint32_t kNewCustomLabelSelection = 2;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
+constexpr bool kNewIsChassisBranded = true;
+constexpr int kNewHwComplianceVersion = 1;
 
 struct StateHandlerArgs {
   const std::vector<bool> wp_status_list = {false};
@@ -1043,6 +1045,100 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_FlushOutVpd_Failed) {
 
   EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_FeatureNotEnabled_Success) {
+  auto handler = CreateStateHandler({.is_feature_enabled = false});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewCustomLabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+  state.mutable_update_device_info()->set_is_chassis_branded(
+      kNewIsChassisBranded);
+  state.mutable_update_device_info()->set_hw_compliance_version(
+      kNewHwComplianceVersion);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  // Feature bits are not set.
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_FALSE(
+      ReadFakeFeaturesOutput(&is_chassis_branded, &hw_compliance_version));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_FeatureNotMutable_Success) {
+  auto handler = CreateStateHandler(
+      {.is_feature_enabled = true, .is_feature_mutable = false});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewCustomLabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+  state.mutable_update_device_info()->set_is_chassis_branded(
+      kNewIsChassisBranded);
+  state.mutable_update_device_info()->set_hw_compliance_version(
+      kNewHwComplianceVersion);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  // Feature bits are not set.
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_FALSE(
+      ReadFakeFeaturesOutput(&is_chassis_branded, &hw_compliance_version));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_FeatureMutable_Success) {
+  auto handler = CreateStateHandler(
+      {.is_feature_enabled = true, .is_feature_mutable = true});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewCustomLabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+  state.mutable_update_device_info()->set_is_chassis_branded(
+      kNewIsChassisBranded);
+  state.mutable_update_device_info()->set_hw_compliance_version(
+      kNewHwComplianceVersion);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  // Feature bits are set.
+  bool is_chassis_branded;
+  int hw_compliance_version;
+  EXPECT_TRUE(
+      ReadFakeFeaturesOutput(&is_chassis_branded, &hw_compliance_version));
+  EXPECT_EQ(is_chassis_branded, kNewIsChassisBranded);
+  EXPECT_EQ(hw_compliance_version, kNewHwComplianceVersion);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {

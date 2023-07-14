@@ -420,7 +420,9 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
 
   if (device_info.original_feature_level() ==
       UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_UNKNOWN) {
-    // TODO(chenghan): Provision feature values.
+    // Provision |is_chassis_branded| and |hw_compliance_version|.
+    segmentation_utils_->SetFeatureFlags(device_info.is_chassis_branded(),
+                                         device_info.hw_compliance_version());
   }
 
   if (!vpd_utils_->FlushOutRoVpdCache()) {
