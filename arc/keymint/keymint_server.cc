@@ -342,7 +342,7 @@ void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
   // TODO(b/274723521): Finish this.
 }
 
-void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateAadRequestPtr request,
+void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
                               UpdateAadCallback callback) {
   // TODO(b/274723521): Finish this.
 }

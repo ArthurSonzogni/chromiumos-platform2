@@ -90,7 +90,7 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   void SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
                        SendRootOfTrustCallback callback) override;
 
-  void UpdateAad(arc::mojom::keymint::UpdateAadRequestPtr request,
+  void UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
                  UpdateAadCallback callback) override;
 
   void Update(arc::mojom::keymint::UpdateRequestPtr request,
