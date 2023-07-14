@@ -6,7 +6,10 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 pkg_config("target_defaults") {
-  pkg_deps = [ "libmetrics" ]
+  pkg_deps = [
+    "libmetrics",
+    "libstructuredmetrics",
+  ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
   } else {
@@ -30,7 +33,10 @@ proto_library("enterprise_rollback_metrics_proto") {
 }
 
 shared_library("libenterprise_rollback_metrics") {
-  sources = [ "enterprise_rollback_metrics_handler.cc" ]
+  sources = [
+    "enterprise_rollback_metrics_handler.cc",
+    "structured_metrics_recorder.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":enterprise_rollback_metrics_proto",
@@ -57,7 +63,10 @@ install_config("install_proto_header") {
 
 if (use.test) {
   executable("libenterprise_rollback_metrics_test") {
-    sources = [ "enterprise_rollback_metrics_handler_test.cc" ]
+    sources = [
+      "enterprise_rollback_metrics_handler_test.cc",
+      "structured_metrics_recorder_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

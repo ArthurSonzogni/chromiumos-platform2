@@ -82,10 +82,6 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   void SetFileHandlerForTesting(const FileHandler& file_handler);
 
  private:
-  // Ensures the right structured metric is recorded per event.
-  void RecordStructuredMetric(const EventData& event_data,
-                              const RollbackMetadata& rollback_metadata) const;
-
   // Object for managing files.
   FileHandler file_handler_;
 };

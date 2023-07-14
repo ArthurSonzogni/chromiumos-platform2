@@ -9,6 +9,7 @@ option optimize_for = LITE_RUNTIME;
 // TODO(b/261850979): Add Enterprise Rollback events.
 enum EnterpriseRollbackEvent {
   EVENT_UNSPECIFIED = 0;
+  ROLLBACK_POLICY_ACTIVATED = 1;
 }
 
 // Information about the triggered Rollback event required to log the metric.

@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -13,6 +14,10 @@
 #include <base/version.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
+#include <metrics/structured/event_base.h>
+#include <metrics/structured/mock_recorder.h>
+#include <metrics/structured/recorder_singleton.h>
+#include <metrics/structured_events.h>
 
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
@@ -64,8 +69,20 @@ class EnterpriseRollbackMetricsHandlerTest : public ::testing::Test {
     enterprise_rollback_metrics_handler_.SetFileHandlerForTesting(
         file_handler_);
 
+    // Set mock recorder for structured metrics.
+    auto recorder = std::make_unique<metrics::structured::MockRecorder>();
+    recorder_ = recorder.get();
+    metrics::structured::RecorderSingleton::GetInstance()->SetRecorderForTest(
+        std::move(recorder));
+
     // Enable metrics by default in all tests.
     file_handler_.CreateMetricsReportingEnabledFile();
+  }
+
+  void TearDown() override {
+    // Free recorder to ensure the expectations are run and avoid leaks.
+    metrics::structured::RecorderSingleton::GetInstance()
+        ->DestroyRecorderForTest();
   }
 
  protected:
@@ -81,6 +98,7 @@ class EnterpriseRollbackMetricsHandlerTest : public ::testing::Test {
 
   FileHandlerForTesting file_handler_;
   EnterpriseRollbackMetricsHandler enterprise_rollback_metrics_handler_;
+  metrics::structured::MockRecorder* recorder_;
 };
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest, NoMetricsFileInitially) {
@@ -206,7 +224,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
       EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
       EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
 
@@ -220,7 +238,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_EQ(rollback_metrics_data.event_data(0).event(),
             EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
   ASSERT_EQ(rollback_metrics_data.event_data(1).event(),
-            EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
+            EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED);
   ASSERT_EQ(rollback_metrics_data.event_data(2).event(),
             EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
 }
@@ -246,16 +264,22 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
       EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
+
+  // EVENT_UNSPECIFIED is not reported but ROLLBACK_POLICY_ACTIVATED should
+  // trigger the corresponding structured metric call.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(1);
+
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.ReportTrackedEvents());
 
-  // EVENT_UNSPECIFIED is not reported. We test the events are deleted but the
-  // file and header are intact.
-  // TODO(b/261850979): Create tests for each reported metric when reporting is
-  // implemented.
+  // We verify the events are deleted but the file and header are intact.
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
@@ -269,13 +293,19 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   auto lock_process =
       file_handler_.StartLockMetricsFileProcess(GetBuildDirectory());
   ASSERT_NE(lock_process, nullptr);
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(0);
 
   ASSERT_FALSE(enterprise_rollback_metrics_handler_.ReportTrackedEvents());
 
@@ -286,8 +316,6 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 }
 
-// TODO(b/261850979): Check structure metric corresponding to the event is
-// reported immediately when implemented.
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
        ReportingEventNowAlsoReportsPreviouslyTrackedEvents) {
   EnterpriseRollbackMetricsData rollback_metrics_data;
@@ -295,15 +323,23 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
 
+  // The corresponding structured metrics for the tracked events and the new one
+  // should be reported.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(3);
+
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.ReportEventNow(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   // Previous events should have also been reported.
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
@@ -317,9 +353,9 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
@@ -328,8 +364,15 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       file_handler_.StartLockMetricsFileProcess(GetBuildDirectory());
   EXPECT_NE(lock_process, nullptr);
 
+  // Only the new corresponding structure metrics should be reported.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(1);
+
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.ReportEventNow(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 
@@ -338,35 +381,47 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
 }
 
-TEST_F(EnterpriseRollbackMetricsHandlerTest, StopTrackingDeletesMetricFile) {
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       StopTrackingReportsEventsAndDeletesMetricFile) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(2);
 
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
   enterprise_rollback_metrics_handler_.StopTrackingRollback();
 
-  // EVENT_UNSPECIFIED is not reported. We test the file is deleted.
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
-       StopTrackingDeletesMetricFileIfLocked) {
+       StopTrackingDoesNotReportEventsButDeletesMetricFileIfLocked) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
   // Events will not be reported but the file is deleted.
   auto lock_process =
       file_handler_.StartLockMetricsFileProcess(GetBuildDirectory());
   ASSERT_NE(lock_process, nullptr);
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(0);
 
   enterprise_rollback_metrics_handler_.StopTrackingRollback();
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());

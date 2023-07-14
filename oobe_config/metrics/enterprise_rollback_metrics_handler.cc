@@ -10,7 +10,8 @@
 
 #include <base/files/file.h>
 #include <base/logging.h>
-#include <base/notreached.h>
+
+#include "oobe_config/metrics/structured_metrics_recorder.h"
 
 namespace oobe_config {
 
@@ -232,20 +233,6 @@ void EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
 
 bool EnterpriseRollbackMetricsHandler::IsTrackingRollbackEvents() const {
   return file_handler_.HasRollbackMetricsData();
-}
-
-void EnterpriseRollbackMetricsHandler::RecordStructuredMetric(
-    const EventData& event_data,
-    const RollbackMetadata& rollback_metadata) const {
-  // TODO(b/261850979): Report all events using structured metrics.
-  switch (event_data.event()) {
-    case EnterpriseRollbackEvent::EVENT_UNSPECIFIED:
-      LOG(INFO) << "Event to record undefined.";
-      break;
-    default:
-      NOTREACHED();
-      break;
-  }
 }
 
 void EnterpriseRollbackMetricsHandler::SetFileHandlerForTesting(
