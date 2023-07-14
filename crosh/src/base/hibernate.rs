@@ -7,10 +7,11 @@
 
 use dbus::blocking::Connection;
 use libchromeos::sys::error;
-use system_api::client::OrgChromiumPowerManager;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
+
+const SUSPEND_FLAVOR_HIBERNATE: u32 = 2;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
@@ -37,16 +38,22 @@ fn hibernate(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> 
         dispatcher::Error::CommandReturnedError
     })?;
 
-    let conn_path = connection.with_proxy(
+    let proxy = connection.with_proxy(
         "org.chromium.PowerManager",
         "/org/chromium/PowerManager",
         DEFAULT_DBUS_TIMEOUT,
     );
 
-    conn_path.request_suspend(0, 0, 2).map_err(|err| {
-        println!("ERROR: Got unexpected result: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
+    proxy
+        .method_call(
+            "org.chromium.PowerManager",
+            "RequestSuspend",
+            (SUSPEND_FLAVOR_HIBERNATE,),
+        )
+        .map_err(|err| {
+            error!("ERROR: D-Bus method call failed: {}", err);
+            dispatcher::Error::CommandReturnedError
+        })?;
 
     Ok(())
 }
