@@ -37,6 +37,10 @@ class MockDeviceInfo : public DeviceInfo {
               GetMacAddressFromKernel,
               (int),
               (const, override));
+  MOCK_METHOD(std::optional<net_base::MacAddress>,
+              GetPermAddress,
+              (int),
+              (override));
   MOCK_METHOD(bool,
               GetByteCounts,
               (int, uint64_t*, uint64_t*),

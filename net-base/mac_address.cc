@@ -82,6 +82,11 @@ std::string MacAddress::ToString() const {
                             data_[2], data_[3], data_[4], data_[5]);
 }
 
+std::string MacAddress::ToHexString() const {
+  return base::StringPrintf("%02x%02x%02x%02x%02x%02x", data_[0], data_[1],
+                            data_[2], data_[3], data_[4], data_[5]);
+}
+
 std::ostream& operator<<(std::ostream& os, const MacAddress& address) {
   os << address.ToString();
   return os;

@@ -23,6 +23,7 @@
 #include <net-base/socket.h>
 
 #include "shill/metrics.h"
+#include "shill/mockable.h"
 #include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
@@ -75,6 +76,17 @@ class DeviceInfo {
   // Queries the kernel for a MAC address for |interface_index|.
   // Returns std::nullopt on failure.
   virtual std::optional<net_base::MacAddress> GetMacAddressFromKernel(
+      int interface_index) const;
+
+  // Returns hardware (permanent) MAC address for |interface_index|.  The
+  // address is returned either from cache (if it is available from netlink
+  // notifications or previous calls) or from query to the kernel.
+  // Returns std::nullopt on failure.
+  mockable std::optional<net_base::MacAddress> GetPermAddress(
+      int interface_index);
+  // Queries the kernel for a hardware (permanent) MAC address for
+  // |interface_index|.  Returns std::nullopt on failure.
+  std::optional<net_base::MacAddress> GetPermAddressFromKernel(
       int interface_index) const;
 
   // Query IDs that identify the adapter (e.g. PCI IDs). Returns |false| if
@@ -158,7 +170,14 @@ class DeviceInfo {
 
     DeviceRefPtr device;
     std::string name;
+    // MAC addresses of the device. |mac_address| is the address currently used
+    // and |perm_address| is a hardware MAC.  These two should be the same with
+    // the following exceptions:
+    // - when MAC randomization is turned on for a given device (e.g. WiFi) then
+    //   |mac_address| will be changing,
+    // - virtual devices do not have |perm_address|, only |mac_address|.
     std::optional<net_base::MacAddress> mac_address;
+    std::optional<net_base::MacAddress> perm_address;
     unsigned int flags;
     uint64_t rx_bytes;
     uint64_t tx_bytes;

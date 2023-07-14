@@ -5,13 +5,8 @@
 #include "shill/ethernet/ethernet.h"
 
 #include <linux/ethtool.h>
-#include <netinet/ether.h>
-#include <netinet/in.h>
-#include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
-#include <linux/netdevice.h>
 #include <linux/sockios.h>
 #include <string.h>
-#include <sys/ioctl.h>
 
 #include <memory>
 #include <set>
@@ -143,7 +138,6 @@ Ethernet::Ethernet(Manager* manager,
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(std::make_unique<EapListener>(interface_index, link_name)),
-      permanent_mac_address_(GetPermanentMacAddressFromKernel()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
@@ -156,6 +150,13 @@ Ethernet::Ethernet(Manager* manager,
       kUsbEthernetMacAddressSourceProperty,
       StringAccessor(std::make_unique<CustomAccessor<Ethernet, std::string>>(
           this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
+
+  auto perm_mac = manager->device_info()->GetPermAddress(interface_index);
+  if (perm_mac) {
+    permanent_mac_address_ = perm_mac->ToHexString();
+  } else {
+    LOG(WARNING) << "Ethernet device with missing perm MAC: " << link_name;
+  }
 
   eap_listener_->set_request_received_callback(base::BindRepeating(
       &Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
@@ -834,50 +835,6 @@ void Ethernet::set_mac_address(const std::string& new_mac_address) {
     DisconnectFrom(service_.get());
     ConnectTo(service_.get());
   }
-}
-
-std::string Ethernet::GetPermanentMacAddressFromKernel() {
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-
-  constexpr int kPermAddrBufferSize =
-      sizeof(struct ethtool_perm_addr) + MAX_ADDR_LEN;
-  char perm_addr_buffer[kPermAddrBufferSize];
-  memset(perm_addr_buffer, 0, kPermAddrBufferSize);
-  struct ethtool_perm_addr* perm_addr = static_cast<struct ethtool_perm_addr*>(
-      static_cast<void*>(perm_addr_buffer));
-  perm_addr->cmd = ETHTOOL_GPERMADDR;
-  perm_addr->size = MAX_ADDR_LEN;
-
-  ifr.ifr_data = perm_addr;
-
-  if (!RunEthtoolCmd(&ifr)) {
-    PLOG(WARNING) << "Failed to read permanent MAC address.";
-    return std::string();
-  }
-
-  if (perm_addr->size != ETH_ALEN) {
-    LOG(WARNING) << "Invalid permanent MAC address size: " << perm_addr->size;
-    return std::string();
-  }
-
-  const auto mac_address = *net_base::MacAddress::CreateFromBytes(
-      {perm_addr->data, net_base::MacAddress::kAddressLength});
-  if (mac_address.IsZero()) {
-    // All-zero permanent MAC address ("00:00:00:00:00:00") is not meaningful,
-    // no matter if it is expected (e.g., for veths) or not.
-    LOG(WARNING) << "Permanent MAC address on " << link_name()
-                 << " is all zeros. Perhaps veth interface?";
-    return std::string();
-  }
-
-  const std::string mac_address_str =
-      base::ToLowerASCII(base::HexEncode(mac_address.ToBytes()));
-  if (!IsValidMac(mac_address_str)) {
-    LOG(ERROR) << "Invalid permanent MAC address: " << mac_address_str;
-    return std::string();
-  }
-  return mac_address_str;
 }
 
 std::string Ethernet::GetDeviceBusType() const {

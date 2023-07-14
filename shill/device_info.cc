@@ -6,10 +6,13 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <linux/ethtool.h>
+#include <linux/if.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <net/if.h>
+#include <linux/sockios.h>
+#include <linux/version.h>
 #include <net/if_arp.h>
 #include <netinet/ether.h>
 #include <string.h>
@@ -802,6 +805,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
                  << link_name << ", Technology: " << technology;
       return;
     }
+
+    if (msg.HasAttribute(IFLA_PERM_ADDRESS)) {
+      infos_[dev_index].perm_address = net_base::MacAddress::CreateFromBytes(
+          msg.GetAttribute(IFLA_PERM_ADDRESS));
+    }
+
     metrics_->RegisterDevice(dev_index, technology);
     device =
         CreateDevice(link_name, HexEncode(mac_address), dev_index, technology);
@@ -884,6 +893,70 @@ std::optional<net_base::MacAddress> DeviceInfo::GetMacAddressFromKernel(
 
   return net_base::MacAddress::CreateFromBytes(
       {ifr.ifr_hwaddr.sa_data, net_base::MacAddress::kAddressLength});
+}
+
+std::optional<net_base::MacAddress> DeviceInfo::GetPermAddress(
+    int interface_index) {
+  auto iter = infos_.find(interface_index);
+  if (iter == infos_.end()) {
+    return std::nullopt;
+  }
+  Info& info = iter->second;
+  if (!info.perm_address) {
+    // TODO(b/298960315): Clean up this fallback, it should not be needed.
+    LOG(WARNING) << "Perm MAC requested for device w/o it in info: "
+                 << info.name;
+    // Ask the kernel for the hardware MAC address.
+    info.perm_address = GetPermAddressFromKernel(interface_index);
+  }
+
+  return info.perm_address;
+}
+
+std::optional<net_base::MacAddress> DeviceInfo::GetPermAddressFromKernel(
+    int interface_index) const {
+  const Info* info = GetInfo(interface_index);
+  if (!info) {
+    return std::nullopt;
+  }
+
+  std::unique_ptr<net_base::Socket> socket =
+      socket_factory_->Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  if (!socket) {
+    PLOG(ERROR) << __func__ << ": Unable to open socket";
+    return std::nullopt;
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, info->name.c_str(), sizeof(ifr.ifr_name));
+
+  constexpr int kPermAddrBufferSize =
+      sizeof(struct ethtool_perm_addr) + MAX_ADDR_LEN;
+  char perm_addr_buffer[kPermAddrBufferSize];
+  memset(perm_addr_buffer, 0, kPermAddrBufferSize);
+  struct ethtool_perm_addr* perm_addr = static_cast<struct ethtool_perm_addr*>(
+      static_cast<void*>(perm_addr_buffer));
+  perm_addr->cmd = ETHTOOL_GPERMADDR;
+  perm_addr->size = MAX_ADDR_LEN;
+
+  ifr.ifr_data = perm_addr;
+  if (!socket->Ioctl(SIOCETHTOOL, &ifr)) {
+    PLOG(ERROR) << __func__ << ": Unable to read permanent MAC address";
+    return std::nullopt;
+  }
+
+  auto mac =
+      net_base::MacAddress::CreateFromBytes({perm_addr->data, perm_addr->size});
+
+  if (!mac) {
+    PLOG(ERROR) << "Invalid MAC address length: " << perm_addr->size;
+  } else if (mac->IsZero()) {
+    PLOG(WARNING) << "Kernel returned zero MAC address";
+    return std::nullopt;
+  }
+
+  return mac;
 }
 
 bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,

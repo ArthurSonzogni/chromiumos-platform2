@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <linux/ethtool.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
@@ -58,10 +59,13 @@
 
 using testing::_;
 using testing::AnyNumber;
+using testing::AnyOf;
 using testing::ContainerEq;
 using testing::DoAll;
 using testing::ElementsAreArray;
+using testing::Eq;
 using testing::HasSubstr;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::NotNull;
@@ -69,6 +73,7 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
+using testing::WithArg;
 
 namespace shill {
 namespace {
@@ -83,6 +88,8 @@ constexpr int kTestDeviceIndex = 123456;
 constexpr char kTestDeviceName[] = "test-device";
 constexpr std::array<uint8_t, 6> kTestMacAddress = {0xaa, 0xbb, 0xcc,
                                                     0xdd, 0xee, 0xff};
+constexpr std::array<uint8_t, 6> kTestPermMacAddress = {0x12, 0x34, 0x56,
+                                                        0x78, 0x9a, 0xbc};
 constexpr int kReceiveByteCount = 1234;
 constexpr int kTransmitByteCount = 5678;
 constexpr char kVendorIdString[] = "0x0123";
@@ -198,6 +205,7 @@ std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
       static_cast<uint16_t>(IFLA_IFNAME),
       net_base::byte_utils::StringToCStringBytes(interface_name));
   message->SetAttribute(IFLA_ADDRESS, kTestMacAddress);
+  message->SetAttribute(IFLA_PERM_ADDRESS, kTestPermMacAddress);
   return message;
 }
 
@@ -628,7 +636,7 @@ TEST_F(DeviceInfoTest, HasSubdir) {
       DeviceInfo::HasSubdir(temp_dir.GetPath(), base::FilePath("nonexistent")));
 }
 
-TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
+TEST_F(DeviceInfoTest, GetMacAddressesFromKernelUnknownDevice) {
   // We should not create socket when queying an unknown device.
   EXPECT_CALL(*socket_factory_, Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0))
       .Times(0);
@@ -636,11 +644,15 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
   const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_EQ(mac_address, std::nullopt);
+  const auto perm_mac_address =
+      device_info_.GetPermAddressFromKernel(kTestDeviceIndex);
+  EXPECT_EQ(perm_mac_address, std::nullopt);
 }
 
-TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
+TEST_F(DeviceInfoTest, GetMacAddressesFromKernelUnableToOpenSocket) {
   // Fails to create a socket.
   EXPECT_CALL(*socket_factory_, Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0))
+      .Times(2)
       .WillOnce(Return(nullptr));
 
   auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -650,14 +662,19 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
   const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_EQ(mac_address, std::nullopt);
+  const auto perm_mac_address =
+      device_info_.GetPermAddressFromKernel(kTestDeviceIndex);
+  EXPECT_EQ(perm_mac_address, std::nullopt);
 }
 
-TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
+TEST_F(DeviceInfoTest, GetMacAddressesFromKernelIoctlFails) {
   // Creates a socket successfully, but fails to call ioctl.
   EXPECT_CALL(*socket_factory_, Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0))
+      .Times(2)
       .WillOnce([]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, Ioctl(SIOCGIFHWADDR, NotNull()))
+        EXPECT_CALL(*socket,
+                    Ioctl(AnyOf(Eq(SIOCGIFHWADDR), Eq(SIOCETHTOOL)), NotNull()))
             .WillOnce(Return(std::nullopt));
         return socket;
       });
@@ -670,11 +687,14 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
   const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_EQ(mac_address, std::nullopt);
+  const auto perm_mac_address =
+      device_info_.GetPermAddressFromKernel(kTestDeviceIndex);
+  EXPECT_EQ(perm_mac_address, std::nullopt);
 }
 
 MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
   const struct ifreq* const ifr = static_cast<struct ifreq*>(arg);
-  return (ifr != nullptr) && (ifr->ifr_ifindex == ifindex) &&
+  return (ifr != nullptr) && (ifindex < 0 || ifr->ifr_ifindex == ifindex) &&
          (strcmp(ifname, ifr->ifr_name) == 0);
 }
 
@@ -708,6 +728,35 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
   const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_EQ(mac_address, net_base::MacAddress(kMacAddress));
+}
+
+TEST_F(DeviceInfoTest, GetPermAddressFromKernel) {
+  EXPECT_CALL(*socket_factory_, Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0))
+      .WillOnce([&]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket,
+                    Ioctl(SIOCETHTOOL, IfreqEquals(-1, kTestDeviceName)))
+            .WillOnce(DoAll(WithArg<1>(Invoke([&](auto arg) {
+                              auto ifreq = static_cast<struct ifreq*>(arg);
+                              auto addr = static_cast<ethtool_perm_addr*>(
+                                  ifreq->ifr_data);
+                              memcpy(addr->data, kTestPermMacAddress.data(),
+                                     kTestPermMacAddress.size());
+                              addr->size = kTestPermMacAddress.size();
+                            })),
+                            Return(0)));
+
+        return socket;
+      });
+
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
+
+  const auto perm_mac_address =
+      device_info_.GetPermAddressFromKernel(kTestDeviceIndex);
+  EXPECT_EQ(perm_mac_address, net_base::MacAddress(kTestPermMacAddress));
 }
 
 MATCHER_P2(ArpreqEquals, ifname, peer, "") {

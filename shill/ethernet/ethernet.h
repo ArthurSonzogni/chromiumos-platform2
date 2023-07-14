@@ -169,10 +169,6 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // if needed.
   void set_mac_address(const std::string& mac_address) override;
 
-  // Queries the kernel for a permanent MAC address. Returns a permanent MAC
-  // address in lower case on success. Otherwise returns an empty string.
-  std::string GetPermanentMacAddressFromKernel();
-
   // Returns device bus type on success. Otherwise, returns empty string.
   std::string GetDeviceBusType() const;
 

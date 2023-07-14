@@ -13,10 +13,12 @@ TEST(MacAddress, constructor) {
   constexpr MacAddress default_addr;
   EXPECT_TRUE(default_addr.IsZero());
   EXPECT_EQ(default_addr.ToString(), "00:00:00:00:00:00");
+  EXPECT_EQ(default_addr.ToHexString(), "000000000000");
 
   constexpr MacAddress addr1(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc);
   EXPECT_FALSE(addr1.IsZero());
   EXPECT_EQ(addr1.ToString(), "12:34:56:78:9a:bc");
+  EXPECT_EQ(addr1.ToHexString(), "123456789abc");
 
   constexpr std::array<uint8_t, 6> bytes = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc};
   constexpr MacAddress addr2(bytes);

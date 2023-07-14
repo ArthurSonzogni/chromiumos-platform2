@@ -64,6 +64,9 @@ class NET_BASE_EXPORT MacAddress {
   // e.g. MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff) => "aa:bb:cc:dd:ee:ff"
   std::string ToString() const;
 
+  // Same as ToString() but without colons.
+  std::string ToHexString() const;
+
  private:
   // Stores the raw byte of address in network order.
   DataType data_;
