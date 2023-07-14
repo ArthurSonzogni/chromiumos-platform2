@@ -280,6 +280,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     std::optional<CameraBufferPool::Buffer> rgba_buffer;
     SharedImage rgba_image;
     base::TimeTicks processing_time_start;
+    bool skip_effects_processing = false;
   };
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
@@ -344,9 +345,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   base::flat_map<int64_t /*timestamp*/, std::unique_ptr<ProcessContext>>
       process_contexts_ GUARDED_BY_CONTEXT(gl_thread_checker_);
-  std::vector<std::unique_ptr<ProcessContext>>
-      pending_effect_disabled_process_contexts_
-          GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   CameraThread gl_thread_;
 
@@ -604,7 +602,6 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
 void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   process_contexts_.clear();
-  pending_effect_disabled_process_contexts_.clear();
   still_capture_processor_->Reset();
   base::AutoLock lock(stream_contexts_lock_);
   for (auto& stream_context : stream_contexts_) {
@@ -827,6 +824,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   }
 
   base::AutoLock lock(stream_contexts_lock_);
+  const bool has_enabled_effects = last_set_effect_config_.HasEnabledEffects();
   size_t num_processed_streams = 0;
   base::flat_map<Size, std::unique_ptr<ProcessContext>> process_contexts;
   for (auto& result_buffer : result.AcquireOutputBuffers()) {
@@ -897,29 +895,14 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     it->second->result_buffer_appended = yuv_stream_appended;
     it->second->result_buffer = std::move(result_buffer);
     it->second->processing_time_start = processing_time_start;
+    it->second->skip_effects_processing = !has_enabled_effects;
     ++num_processed_streams;
 
     OnFrameStarted(*stream_context, processing_time_start);
   }
 
-  if (last_set_effect_config_.HasEnabledEffects()) {
-    for (auto& [size, process_context] : process_contexts) {
-      // To make sure the user sees frames with effects applied, we fail the
-      // buffers unless it successfully goes through the whole pipeline.
-      process_context->result_buffer.mutable_raw_buffer().status =
-          CAMERA3_BUFFER_STATUS_ERROR;
-      for (auto& b : process_context->copy_buffers) {
-        b.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
-      }
-      RenderEffect(std::move(process_context), *timestamp);
-    }
-  } else if (!process_contexts_.empty()) {
-    // Delay returning this frame until the previous frames under processing are
-    // done to keep them in order.
-    for (auto& [size, process_context] : process_contexts) {
-      pending_effect_disabled_process_contexts_.push_back(
-          std::move(process_context));
-    }
+  for (auto& [size, process_context] : process_contexts) {
+    RenderEffect(std::move(process_context), *timestamp);
   }
 
   metrics_.RecordNumConcurrentStreams(stream_contexts_.size());
@@ -938,6 +921,33 @@ void EffectsStreamManipulatorImpl::RenderEffect(
       perfetto::Flow::ProcessScoped(process_context->result_buffer.flow_id()),
       "frame_number", process_context->frame_number, "timestamp", timestamp);
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+
+  // Mediapipe requires timestamps to be strictly increasing for a given
+  // pipeline. If we receive non-monotonic timestamps or render the pipeline
+  // for multiple streams in parallel, make sure the same timestamp isn't
+  // repeated.
+  timestamp = std::max(timestamp, last_timestamp_ + 1);
+  last_timestamp_ = timestamp;
+
+  if (process_context->skip_effects_processing) {
+    if (!process_contexts_.empty()) {
+      // Delay returning this frame until the previous frames under processing
+      // are done to keep them in order.
+      DCHECK_GT(timestamp, process_contexts_.rbegin()->first);
+      DVLOGF(1) << "Frame " << process_context->frame_number << " (timestamp "
+                << timestamp << ") pending on previous effects processing";
+      process_contexts_.emplace(timestamp, std::move(process_context));
+    }
+    return;
+  }
+
+  // To make sure the user sees frames with effects applied, we fail the buffers
+  // unless it successfully goes through the whole pipeline.
+  process_context->result_buffer.mutable_raw_buffer().status =
+      CAMERA3_BUFFER_STATUS_ERROR;
+  for (auto& b : process_context->copy_buffers) {
+    b.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
+  }
 
   stream_contexts_lock_.AssertAcquired();
   StreamContext* stream_context =
@@ -987,13 +997,6 @@ void EffectsStreamManipulatorImpl::RenderEffect(
     return;
   }
   glFinish();
-
-  // Mediapipe requires timestamps to be strictly increasing for a given
-  // pipeline. If we receive non-monotonic timestamps or render the pipeline
-  // for multiple streams in parallel, make sure the same timestamp isn't
-  // repeated.
-  timestamp = std::max(timestamp, last_timestamp_ + 1);
-  last_timestamp_ = timestamp;
 
   auto [it, inserted] = process_contexts_.emplace(
       std::make_pair(timestamp, std::move(process_context)));
@@ -1054,18 +1057,22 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
   process_contexts_.erase(timestamp);
   camera3_stream_buffer_t& result_buffer =
       process_context->result_buffer.mutable_raw_buffer();
-  if (process_contexts_.empty()) {
-    // After processing this frame, we can return the pending no-effect frames
-    // in order.
-    pending_contexts_cleaner.ReplaceClosure(base::BindOnce(
-        [](std::vector<std::unique_ptr<ProcessContext>>& process_contexts) {
-          for (auto& process_context : process_contexts) {
-            process_context.reset();
+  // After processing this frame, we can return the pending no-effect frames
+  // in order.
+  pending_contexts_cleaner.ReplaceClosure(base::BindOnce(
+      [](base::flat_map<int64_t, std::unique_ptr<ProcessContext>>&
+             process_contexts) {
+        while (!process_contexts.empty()) {
+          auto it = process_contexts.begin();
+          if (!it->second->skip_effects_processing) {
+            break;
           }
-          process_contexts.clear();
-        },
-        std::ref(pending_effect_disabled_process_contexts_)));
-  }
+          DVLOGF(1) << "Frame " << it->second->frame_number << " (timestamp "
+                    << it->first << ") returned to client";
+          process_contexts.erase(it);
+        }
+      },
+      std::ref(process_contexts_)));
 
   // The pipeline produces a GL texture, which needs to be synchronously
   // converted to YUV on this thread (because that's where the GL context
