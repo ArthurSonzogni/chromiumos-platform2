@@ -725,6 +725,47 @@
   </event>
 </project>
 
+<project name="RollbackEnterprise">
+  <owner>crisguerrero@chromium.org</owner>
+  <owner>mpolzer@google.com</owner>
+  <owner>chromeos-commercial-remote-management@google.com</owner>
+  <id>per-project</id>
+
+  <summary>
+    Project for recording Enterprise Rollback metrics. Rollback involves a
+    powerwash. To ensure the metrics are not lost, we track the events that
+    happen before powerwash in a file and preserve it. Tracked events are
+    reported after powerwash. It is possible that the date when the event is
+    reported does not correspond to the date when the event happened.
+  </summary>
+
+  <event name="RollbackPolicyActivated">
+    <summary>
+      The administrator has set the policy to roll back to a previous version.
+      This event happens before powerwash.
+    </summary>
+    <metric name="origin_chromeos_version_major" type="int">
+      <summary>ChromeOS major version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="target_chromeos_version_major" type="int">
+      <summary>ChromeOS major target version selected in the policy.</summary>
+    </metric>
+    <metric name="target_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor target version selected in the policy.</summary>
+    </metric>
+    <metric name="target_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch target version selected by the policy.</summary>
+    </metric>
+  </event>
+  <!-- TODO(b/261850979): Add Enterprise Rollback metrics -->
+</project>
+
 <project name="rmad">
   <owner>genechang@google.com</owner>
   <id>per-project</id>
