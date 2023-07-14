@@ -19,7 +19,6 @@
 #include <metrics/timer.h>
 
 #include "shill/cellular/apn_list.h"
-#include "shill/default_service_observer.h"
 #include "shill/error.h"
 #include "shill/metrics_enums.h"
 #include "shill/net/ieee80211.h"
@@ -51,7 +50,7 @@ struct MetricsNameByTechnology {
   }
 };
 
-class Metrics : public DefaultServiceObserver {
+class Metrics {
  public:
   using NameByTechnology = MetricsNameByTechnology;
   using TechnologyLocation = MetricsNameByTechnology::Location;
@@ -1625,11 +1624,8 @@ class Metrics : public DefaultServiceObserver {
       Technology technology_id,
       TechnologyLocation location = TechnologyLocation::kBeforeName);
 
-  // Implements DefaultServiceObserver.
-  void OnDefaultLogicalServiceChanged(
-      const ServiceRefPtr& logical_service) override;
-  void OnDefaultPhysicalServiceChanged(
-      const ServiceRefPtr& physical_service) override;
+  // Notifies Metrics when the default logical Service has changed.
+  void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
 
   // Notifies this object that |service| state has changed.
   virtual void NotifyServiceStateChanged(const Service& service,

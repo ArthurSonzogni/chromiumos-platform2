@@ -340,10 +340,6 @@ void Manager::Start() {
   CHECK(!filepath.empty());
   resolver_->set_path(filepath);
 
-  if (metrics_) {
-    AddDefaultServiceObserver(metrics_);
-  }
-
   InitializeProfiles();
   running_ = true;
   device_info_.Start();
@@ -398,9 +394,6 @@ void Manager::Stop() {
   sort_services_task_.Cancel();
   init_patchpanel_client_task_.Cancel();
   refresh_traffic_counter_task_.Cancel();
-  if (metrics_) {
-    RemoveDefaultServiceObserver(metrics_);
-  }
 #if !defined(DISABLE_FLOSS)
   bluetooth_manager_->Stop();
 #endif  // DISABLE_FLOSS
@@ -1549,6 +1542,9 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
     if (physical_service_changed) {
       observer.OnDefaultPhysicalServiceChanged(physical_service);
     }
+  }
+  if (logical_service_changed) {
+    metrics_->NotifyDefaultLogicalServiceChanged(logical_service);
   }
 }
 

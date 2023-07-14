@@ -391,8 +391,8 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
       .Times(0);
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
-  metrics_.OnDefaultLogicalServiceChanged(service_);
-  metrics_.OnDefaultLogicalServiceChanged(wifi_service);
+  metrics_.NotifyDefaultLogicalServiceChanged(service_);
+  metrics_.NotifyDefaultLogicalServiceChanged(wifi_service);
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
@@ -406,7 +406,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
                         Metrics::kMetricTimeToDropSeconds.min,
                         Metrics::kMetricTimeToDropSeconds.max,
                         Metrics::kMetricTimeToDropSeconds.num_buckets));
-  metrics_.OnDefaultLogicalServiceChanged(nullptr);
+  metrics_.NotifyDefaultLogicalServiceChanged(nullptr);
 }
 
 TEST_F(MetricsTest, TimeToConnect) {

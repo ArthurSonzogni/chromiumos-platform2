@@ -421,7 +421,7 @@ void Metrics::AddServiceStateTransitionTimer(const Service& service,
   service_metrics->timers.push_back(std::move(timer));
 }
 
-void Metrics::OnDefaultLogicalServiceChanged(
+void Metrics::NotifyDefaultLogicalServiceChanged(
     const ServiceRefPtr& logical_service) {
   base::TimeDelta elapsed_seconds;
   Technology technology = logical_service ? logical_service->technology()
@@ -452,8 +452,6 @@ void Metrics::OnDefaultLogicalServiceChanged(
 
   was_last_online_ = (logical_service != nullptr);
 }
-
-void Metrics::OnDefaultPhysicalServiceChanged(const ServiceRefPtr&) {}
 
 void Metrics::NotifyServiceStateChanged(const Service& service,
                                         Service::ConnectState new_state) {
