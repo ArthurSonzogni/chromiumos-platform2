@@ -13,7 +13,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <brillo/brillo_export.h>
-#include <brillo/dbus/dbus_param_writer.h>
+#include <brillo/dbus/data_serialization.h>
 #include <brillo/errors/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -100,7 +100,7 @@ class DBusMethodResponse : public DBusMethodResponseBase {
     CheckCanSendResponse();
     auto response = CreateCustomResponse();
     ::dbus::MessageWriter writer(response.get());
-    DBusParamWriter::Append(&writer, return_values...);
+    WriteDBusArgs(&writer, return_values...);
     SendRawResponse(std::move(response));
   }
 };

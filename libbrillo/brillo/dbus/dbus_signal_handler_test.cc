@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/functional/bind.h>
-#include <brillo/dbus/dbus_param_writer.h>
+#include <brillo/dbus/data_serialization.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -61,7 +61,7 @@ class DBusSignalHandlerTest : public testing::Test {
 
     dbus::Signal signal(kInterface, kSignal);
     dbus::MessageWriter writer(&signal);
-    DBusParamWriter::Append(&writer, args...);
+    WriteDBusArgs(&writer, args...);
     signal_callback.Run(&signal);
   }
 

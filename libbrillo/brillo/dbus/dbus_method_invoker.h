@@ -72,8 +72,8 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_param_reader.h>
-#include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
@@ -105,7 +105,7 @@ inline std::unique_ptr<::dbus::Response> CallMethodAndBlockWithTimeout(
   ::dbus::MethodCall method_call(interface_name, method_name);
   // Add method arguments to the message buffer.
   ::dbus::MessageWriter writer(&method_call);
-  DBusParamWriter::Append(&writer, args...);
+  WriteDBusArgs(&writer, args...);
   ::dbus::ScopedDBusError dbus_error;
   auto response = object->CallMethodAndBlockWithErrorDetails(
       &method_call, timeout_ms, &dbus_error);
@@ -245,7 +245,7 @@ inline void CallMethodWithTimeout(
     const InArgs&... params) {
   ::dbus::MethodCall method_call(interface_name, method_name);
   ::dbus::MessageWriter writer(&method_call);
-  DBusParamWriter::Append(&writer, params...);
+  WriteDBusArgs(&writer, params...);
 
   auto split_error_callback =
       base::SplitOnceCallback(std::move(error_callback));

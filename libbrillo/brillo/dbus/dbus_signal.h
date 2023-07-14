@@ -10,7 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <brillo/brillo_export.h>
-#include <brillo/dbus/dbus_param_writer.h>
+#include <brillo/dbus/data_serialization.h>
 #include <dbus/message.h>
 
 namespace brillo {
@@ -58,7 +58,7 @@ class DBusSignal : public DBusSignalBase {
   bool Send(const Args&... args) const {
     ::dbus::Signal signal(interface_name_, signal_name_);
     ::dbus::MessageWriter signal_writer(&signal);
-    DBusParamWriter::Append(&signal_writer, args...);
+    WriteDBusArgs(&signal_writer, args...);
     return SendSignal(&signal);
   }
 };
