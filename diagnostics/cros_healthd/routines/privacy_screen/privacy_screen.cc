@@ -25,7 +25,7 @@ void PrivacyScreenRoutine::Start() {
   // Send a request to browser to set privacy screen state.
   context_->mojo_service()->GetChromiumDataCollector()->SetPrivacyScreenState(
       target_state_, base::BindOnce(&PrivacyScreenRoutine::OnReceiveResponse,
-                                    base::Unretained(this)));
+                                    weak_factory_.GetWeakPtr()));
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
