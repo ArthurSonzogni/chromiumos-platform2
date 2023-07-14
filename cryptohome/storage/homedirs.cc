@@ -27,9 +27,6 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "cryptohome/crypto.h"
-#include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
@@ -38,7 +35,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/ephemeral_policy_util.h"
 #include "cryptohome/storage/error.h"
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
 
 using base::FilePath;
@@ -47,14 +44,6 @@ using brillo::cryptohome::home::SanitizeUserName;
 
 namespace cryptohome {
 
-const char* kEmptyOwner = "";
-// Each xattr is set to Android app internal data directory, contains
-// 8-byte inode number of cache subdirectory.  See
-// frameworks/base/core/java/android/app/ContextImpl.java
-const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
-const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
-const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
-const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 const char kForceKeylockerForTestingFlag[] =
     "/run/cryptohome/.force_keylocker_for_testing";
 

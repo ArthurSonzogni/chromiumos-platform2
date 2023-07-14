@@ -60,6 +60,12 @@ extern const char kRunDaemonStoreCacheBaseDir[];
 // Directory within RootHome that is used for daemon store cache
 extern const char kDaemonStoreCacheDir[];
 
+// Extended attributes for tracked directory removal.
+extern const char kAndroidCacheInodeAttribute[];
+extern const char kAndroidCodeCacheInodeAttribute[];
+extern const char kTrackedDirectoryNameAttribute[];
+extern const char kRemovableFileAttribute[];
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_STORAGE_MOUNT_CONSTANTS_H_

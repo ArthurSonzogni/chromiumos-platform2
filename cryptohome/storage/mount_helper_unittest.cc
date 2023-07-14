@@ -34,7 +34,6 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"

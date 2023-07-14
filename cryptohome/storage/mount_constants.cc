@@ -33,4 +33,13 @@ constexpr char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
 constexpr char kRunDaemonStoreCacheBaseDir[] = "/run/daemon-store-cache/";
 
 constexpr char kDaemonStoreCacheDir[] = ".cache";
+
+// Each xattr is set to Android app internal data directory, contains
+// 8-byte inode number of cache subdirectory.  See
+// frameworks/base/core/java/android/app/ContextImpl.java
+constexpr char kAndroidCacheInodeAttribute[] = "user.inode_cache";
+constexpr char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
+constexpr char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
+constexpr char kRemovableFileAttribute[] = "user.GCacheRemovable";
+
 }  // namespace cryptohome
