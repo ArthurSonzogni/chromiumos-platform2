@@ -45,7 +45,8 @@ use crate::metrics::DurationMetricUnit;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
-use crate::resume_dbus::{DBusEvent, DBusServer};
+use crate::resume_dbus::DBusEvent;
+use crate::resume_dbus::DBusServer;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -255,6 +256,7 @@ impl ResumeConductor {
         let start = Instant::now();
         // Load the snapshot image into the kernel
         let image_size = snap_dev.load_image(hiber_image_file)?;
+        info!("Image loaded with size {}", image_size);
 
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
