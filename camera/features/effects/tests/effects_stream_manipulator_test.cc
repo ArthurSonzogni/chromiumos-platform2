@@ -295,6 +295,7 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
 TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
   mojom::EffectsConfigPtr config = mojom::EffectsConfig::New();
   config->relight_enabled = true;
+  config->light_intensity = 1.0;
   runtime_options_.SetEffectsConfig(std::move(config));
 
   InitialiseStreamManipulator();
@@ -333,6 +334,7 @@ TEST_F(EffectsStreamManipulatorTest,
 
   mojom::EffectsConfigPtr config1 = mojom::EffectsConfig::New();
   config1->relight_enabled = true;
+  config1->light_intensity = 1.0;
   runtime_options_.SetEffectsConfig(std::move(config1));
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
