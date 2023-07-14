@@ -24,9 +24,6 @@
 
 namespace {
 
-// Number of retry attempts for reading the PowerStatus.
-static const int kPowerRefreshRetries = 3;
-
 // Escapes |str| so it can be printed as a value.
 std::string Escape(const std::string& str) {
   std::string out;
@@ -70,16 +67,7 @@ int main(int argc, char** argv) {
   power_supply.Init(path, cros_ec_path, &ec_command_factory, &prefs, &udev,
                     &dbus_wrapper, battery_percentage_converter.get());
 
-  bool success = false;
-  for (int i = 0; i < kPowerRefreshRetries; i++) {
-    success = power_supply.RefreshImmediately();
-    if (success)
-      break;
-    // Backoff before retrying
-    base::PlatformThread::Sleep(base::Milliseconds(1 << i));
-  }
-
-  CHECK(success);
+  CHECK(power_supply.RefreshImmediatelyWithRetry());
   const power_manager::system::PowerStatus status =
       power_supply.GetPowerStatus();
 

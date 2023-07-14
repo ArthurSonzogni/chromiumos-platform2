@@ -68,6 +68,11 @@ constexpr base::TimeDelta
 constexpr base::TimeDelta kDefaultBatteryStabilizedAfterResumeDelay =
     base::Seconds(5);
 
+// Number of retry attempts for reading the PowerStatus.
+constexpr int kPowerRefreshRetries = 5;
+// Delay in milliseconds of retry attempts for reading the PowerStatus.
+constexpr int kPowerRefreshDelays[] = {1, 10, 100, 1000, 1000};
+
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
 bool ReadAndTrimString(const base::FilePath& directory,
@@ -726,6 +731,16 @@ PowerStatus PowerSupply::GetPowerStatus() const {
 bool PowerSupply::RefreshImmediately() {
   return PerformUpdate(UpdatePolicy::UNCONDITIONALLY,
                        NotifyPolicy::ASYNCHRONOUSLY);
+}
+
+bool PowerSupply::RefreshImmediatelyWithRetry() {
+  for (int i = 0; i < kPowerRefreshRetries; i++) {
+    if (RefreshImmediately()) {
+      return true;
+    }
+    base::PlatformThread::Sleep(base::Milliseconds(kPowerRefreshDelays[i]));
+  }
+  return false;
 }
 
 void PowerSupply::SetSuspended(bool suspended) {

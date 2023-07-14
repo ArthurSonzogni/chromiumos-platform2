@@ -408,6 +408,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
 
+  // Blocking method to retry RefreshImmediately() when it failed.
+  bool RefreshImmediatelyWithRetry();
+
  private:
   // Specifies when UpdatePowerStatus() should update |power_status_|.
   enum class UpdatePolicy {
