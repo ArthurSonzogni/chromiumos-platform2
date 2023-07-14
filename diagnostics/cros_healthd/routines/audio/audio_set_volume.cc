@@ -77,7 +77,7 @@ void AudioSetVolumeRoutine::SetAudioOutputMuteCallback(bool success) {
   if (success) {
     UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed, "");
   } else {
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  "Failed to unmute audio output. (Force muted)");
   }
 }

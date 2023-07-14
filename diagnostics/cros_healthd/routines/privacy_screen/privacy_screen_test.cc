@@ -178,7 +178,7 @@ TEST_F(PrivacyScreenRoutineTest, TurnOffFailed) {
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/true,
                     /*privacy_screen_request_processed=*/true,
-                    /*privacy_screen_enabled_after=*/false);
+                    /*privacy_screen_enabled_after=*/true);
   RunRoutineAndWaitUntilFinished();
   VerifyNonInteractiveUpdate(
       GetUpdate()->routine_update_union,
