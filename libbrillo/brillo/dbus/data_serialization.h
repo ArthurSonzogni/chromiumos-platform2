@@ -749,6 +749,15 @@ bool ReadDBusArgs(dbus::MessageReader* reader, Args*... args) {
          !reader->HasMoreData();
 }
 
+// Taking a tuple of either 1) references to arguments, or 2) storages
+// of arguments, then read the D-Bus arguments to there.
+template <typename Tuple>
+bool ApplyReadDBusArgs(dbus::MessageReader* reader, Tuple&& tuple) {
+  return std::apply(
+      [reader](auto&&... in_args) { return ReadDBusArgs(reader, &in_args...); },
+      std::forward<Tuple>(tuple));
+}
+
 // Writes the D-Bus arguments to |writer| in order.
 template <typename... Args>
 void WriteDBusArgs(dbus::MessageWriter* writer, const Args&... args) {

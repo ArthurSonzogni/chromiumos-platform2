@@ -138,59 +138,6 @@ inline std::unique_ptr<::dbus::Response> CallMethodAndBlock(
                                        error, args...);
 }
 
-namespace internal {
-// In order to support non-copyable file descriptor types, we have this
-// internal::HackMove() helper function that does really nothing for normal
-// types but uses Pass() for file descriptors so we can move them out from
-// the temporaries created inside DBusParamReader<...>::Invoke().
-// If only libchrome supported real rvalues so we can just do std::move() and
-// be done with it.
-template <typename T>
-inline const T& HackMove(const T& val) {
-  return val;
-}
-
-// Even though |val| here is passed as const&, the actual value is created
-// inside DBusParamReader<...>::Invoke() and is temporary in nature, so it is
-// safe to move the file descriptor out of |val|. That's why we are doing
-// const_cast here. It is a bit hacky, but there is no negative side effects.
-inline base::ScopedFD HackMove(const base::ScopedFD& val) {
-  return std::move(const_cast<base::ScopedFD&>(val));
-}
-inline std::vector<base::ScopedFD> HackMove(
-    const std::vector<base::ScopedFD>& val) {
-  return std::move(const_cast<std::vector<base::ScopedFD>&>(val));
-}
-}  // namespace internal
-
-// Extracts the parameters of |ResultTypes...| types from the message reader
-// and puts the values in the resulting |tuple|. Returns false on error and
-// provides additional error details in |error| object.
-template <typename... ResultTypes>
-inline bool ExtractMessageParametersAsTuple(
-    ::dbus::MessageReader* reader,
-    ErrorPtr* error,
-    std::tuple<ResultTypes...>* val_tuple) {
-  auto callback = [val_tuple](const ResultTypes&... params) {
-    *val_tuple = std::forward_as_tuple(internal::HackMove(params)...);
-  };
-  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
-                                                        error);
-}
-// Overload of ExtractMessageParametersAsTuple to handle reference types in
-// tuples created with std::tie().
-template <typename... ResultTypes>
-inline bool ExtractMessageParametersAsTuple(
-    ::dbus::MessageReader* reader,
-    ErrorPtr* error,
-    std::tuple<ResultTypes&...>* ref_tuple) {
-  auto callback = [ref_tuple](const ResultTypes&... params) {
-    *ref_tuple = std::forward_as_tuple(internal::HackMove(params)...);
-  };
-  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
-                                                        error);
-}
-
 // A helper method to extract a list of values from a message buffer.
 // The function will return false and provide detailed error information on
 // failure. It fails if the D-Bus message buffer (represented by the |reader|)
@@ -208,9 +155,13 @@ template <typename... ResultTypes>
 inline bool ExtractMessageParameters(::dbus::MessageReader* reader,
                                      ErrorPtr* error,
                                      ResultTypes*... results) {
-  auto ref_tuple = std::tie(*results...);
-  return ExtractMessageParametersAsTuple<ResultTypes...>(reader, error,
-                                                         &ref_tuple);
+  if (!ReadDBusArgs(reader, results...)) {
+    *error = Error::Create(FROM_HERE, errors::dbus::kDomain,
+                           DBUS_ERROR_INVALID_ARGS, "Failed to read params");
+    return false;
+  }
+
+  return true;
 }
 
 // Convenient helper method to extract return value(s) of a D-Bus method call.
@@ -257,17 +208,20 @@ void TranslateSuccessResponse(
     base::OnceCallback<void(OutArgs...)> success_callback,
     AsyncErrorCallback error_callback,
     ::dbus::Response* resp) {
-  auto callback = [&success_callback](const OutArgs&... params) {
-    if (!success_callback.is_null()) {
-      std::move(success_callback).Run(params...);
-    }
-  };
-  ErrorPtr error;
+  std::tuple<StorageType<OutArgs>...> tuple;
   ::dbus::MessageReader reader(resp);
-  if (!DBusParamReader<false, OutArgs...>::Invoke(callback, &reader, &error) &&
-      !error_callback.is_null()) {
-    std::move(error_callback).Run(error.get());
+  if (!ApplyReadDBusArgs(&reader, tuple)) {
+    std::move(error_callback)
+        .Run(Error::Create(FROM_HERE, errors::dbus::kDomain,
+                           DBUS_ERROR_INVALID_ARGS, "Failed to read params")
+                 .get());
+    return;
   }
+  std::apply(
+      [&success_callback](auto&&... args) {
+        std::move(success_callback).Run(std::forward<decltype(args)>(args)...);
+      },
+      std::move(tuple));
 }
 
 // A helper method to dispatch a non-blocking D-Bus method call. Can specify

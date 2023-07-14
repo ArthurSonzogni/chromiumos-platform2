@@ -667,5 +667,43 @@ TEST(DBusUtils, Protobuf) {
   EXPECT_EQ("abcd", test_message_out.bar());
 }
 
+TEST(DBusUtils, ApplyReadDBusArgs) {
+  // Test of storage tuple.
+  {
+    std::unique_ptr<Response> message = Response::CreateEmpty();
+    MessageWriter writer(message.get());
+    WriteDBusArgs(&writer, 1, true, 5.);
+    ASSERT_EQ("ibd", message->GetSignature());
+
+    MessageReader reader(message.get());
+
+    std::tuple<std::int32_t, bool, double> tuple;
+    ASSERT_TRUE(ApplyReadDBusArgs(&reader, tuple));
+    EXPECT_EQ(1, std::get<0>(tuple));
+    EXPECT_TRUE(std::get<1>(tuple));
+    // Intentionally compare by == for double, we do not expect any FP error.
+    EXPECT_EQ(5., std::get<2>(tuple));
+  }
+
+  // Test of reference tuple.
+  {
+    std::unique_ptr<Response> message = Response::CreateEmpty();
+    MessageWriter writer(message.get());
+    WriteDBusArgs(&writer, 1, true, 5.);
+    ASSERT_EQ("ibd", message->GetSignature());
+
+    MessageReader reader(message.get());
+
+    std::int32_t i = 0;
+    bool b = false;
+    double d = 0.;
+    ASSERT_TRUE(ApplyReadDBusArgs(&reader, std::tie(i, b, d)));
+    EXPECT_EQ(1, i);
+    EXPECT_TRUE(b);
+    // Intentionally compare by == for double, we do not expect any FP error.
+    EXPECT_EQ(5., d);
+  }
+}
+
 }  // namespace dbus_utils
 }  // namespace brillo

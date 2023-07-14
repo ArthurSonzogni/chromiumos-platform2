@@ -375,10 +375,8 @@ class BRILLO_EXPORT DBusInterface final {
                   std::make_unique<Response>(method_call, std::move(sender));
 
               std::tuple<StorageType<Args>...> args;
-              if (!std::apply(
-                      [&reader](auto&&... in_args) {
-                        return ReadDBusArgs(&reader, &in_args...);
-                      },
+              if (!ApplyReadDBusArgs(
+                      &reader,
                       internal::FilterTuple<!std::is_pointer_v<Args>...>(
                           args))) {
                 // Error parsing method arguments.
