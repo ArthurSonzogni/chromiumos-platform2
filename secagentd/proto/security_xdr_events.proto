@@ -247,3 +247,46 @@ message NetworkSocketListenEvent {
   optional Process process = 2;
   optional Socket socket = 3;
 }
+
+// Authentication Events.
+
+// Authenticate Event Wrapper.
+message XdrAuthenticateEvent {
+  optional CommonEventDataFields common = 1;
+  repeated AuthenticateEventAtomicVariant batched_events = 2;
+}
+
+// Singular Authenticate event.
+message AuthenticateEventAtomicVariant {
+  optional CommonEventVariantDataFields common = 1;
+  oneof variant_type {
+    AuthenticateEvent logon = 2;
+    AuthenticateEvent logoff = 3;
+    AuthenticateEvent unlock = 4;
+    AuthenticateEvent lock = 5;
+    AuthenticateEvent failure = 6;
+  }
+}
+
+// This should follow the Cryptohome AuthFactorType.
+// https://chromium.googlesource.com/chromiumos/platform2/+/main/cryptohome/auth_factor/auth_factor_type.h#13
+enum AuthenticationType {
+  UNKNOWN = 0;
+  PASSWORD = 1;
+  PIN = 2;
+  ONLINE_RECOVERY = 3;
+  KIOSK = 4;
+  SMART_CARD = 5;
+  FINGERPRINT = 6;
+}
+
+// authentication field only used for entry events.
+message AuthenticateEvent {
+  optional Authentication authentication = 1;
+}
+
+// num_failed_attempts only used for the "failure" AuthenticateEvent.
+message Authentication {
+  repeated AuthenticationType auth_factor = 1;
+  optional uint64 num_failed_attempts = 2;
+}
