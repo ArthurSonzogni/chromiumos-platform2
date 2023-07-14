@@ -10,28 +10,22 @@
 #include <memory>
 #include <vector>
 
-#include <base/check.h>
-#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
-#include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <policy/libpolicy.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
@@ -832,7 +826,7 @@ TEST_F(MountHelperTest, IsFirstMountComplete_False) {
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 }
 
-TEST_F(MountHelperTest, IsFirstMountComplete_True) {
+TEST_F(MountHelperTest, Dircrypto_IsFirstMountComplete_True) {
   const base::FilePath kSkelFile{"skel_file"};
   const std::string kSkelFileContent{"skel_content"};
   const base::FilePath kVaultFile{"vault_file"};
@@ -904,6 +898,57 @@ TEST_F(MountHelperTest, Dmcrypt_MountUnmount) {
   mount_helper_->UnmountAll();
   VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
            /*downloads_bind_mount=*/true);
+}
+
+TEST_F(MountHelperTest, Ecryptfs_IsFirstMountComplete_True) {
+  const base::FilePath kSkelFile{"skel_file"};
+  const std::string kSkelFileContent{"skel_content"};
+  const base::FilePath kVaultFile{"vault_file"};
+  const std::string kVaultFileContent{"vault_content"};
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+  const ObfuscatedUsername obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(kUser);
+  // Ensure that bind_mount_downloads is false.
+  mount_helper_ = std::make_unique<MountHelper>(
+      true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
+
+  SetHomedir(kUser);
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::ECRYPTFS, kUser,
+                  SecureBlobToHex(keyset.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
+              IsOk());
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
+           /*downloads_bind_mount=*/false);
+  // Add a file to vault.
+
+  auto test_file_path = GetUserMountDirectory(obfuscated_username)
+                            .Append(kUserHomeSuffix)
+                            .Append(kVaultFile);
+  ASSERT_TRUE(platform_.WriteStringToFile(test_file_path, kVaultFileContent));
+  mount_helper_->UnmountAll();
+
+  // Add a file to skel dir.
+  ASSERT_TRUE(platform_.WriteStringToFile(
+      base::FilePath(kEtcSkel).Append(kSkelFile), kSkelFileContent));
+
+  // Ensure that bind_mount_downloads is false.
+  mount_helper_ = std::make_unique<MountHelper>(
+      true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
+
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::ECRYPTFS, kUser,
+                  SecureBlobToHex(keyset.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
+              IsOk());
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
+           /*downloads_bind_mount=*/false);
+
+  std::string result;
+  ASSERT_TRUE(platform_.ReadFileToString(test_file_path, &result));
+  ASSERT_THAT(result, kVaultFileContent);
+
+  mount_helper_->UnmountAll();
 }
 
 class DownloadsBindMountMigrationTest : public MountHelperTest {

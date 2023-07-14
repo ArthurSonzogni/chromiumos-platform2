@@ -737,12 +737,11 @@ class PersistentSystemTest : public ::testing::Test {
 
 namespace {
 
-TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
-  // Verify mount and unmount of ecryptfs vault and file preservation.
-  const std::string kContent{"some_content"};
-  const base::FilePath kFile{"some_file"};
+TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
+  // Verify force_dircrypto flag prohibits ecryptfs mounts.
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-  const CryptohomeVault::Options options = {
+
+  CryptohomeVault::Options options = {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
@@ -751,29 +750,15 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
            /*downloads_bind_mount=*/true);
 
-  ASSERT_TRUE(platform_.WriteStringToFile(
-      base::FilePath(kHomeChronosUser).Append(kFile), kContent));
-
   ASSERT_TRUE(mount_->UnmountCryptohome());
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
            /*downloads_bind_mount=*/true);
 
-  ASSERT_FALSE(
-      platform_.FileExists(base::FilePath(kHomeChronosUser).Append(kFile)));
-
-  MockPreclearKeyring(/*success=*/true);
-  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-
-  std::string result;
-  ASSERT_TRUE(platform_.ReadFileToString(
-      base::FilePath(kHomeChronosUser).Append(kFile), &result));
-  ASSERT_THAT(result, kContent);
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
-           /*downloads_bind_mount=*/true);
+  options = {
+      .block_ecryptfs = true,
+  };
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              IsError(MOUNT_ERROR_OLD_ENCRYPTION));
 }
 
 TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
