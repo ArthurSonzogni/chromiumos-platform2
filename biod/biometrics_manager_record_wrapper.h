@@ -39,13 +39,15 @@ class BiometricsManagerRecordWrapper {
   std::string GetUserId() const { return record_->GetUserId(); }
 
  private:
-  bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
-  bool Remove(brillo::ErrorPtr* error);
-
   BiometricsManagerWrapper* biometrics_manager_;
   std::unique_ptr<BiometricsManagerRecordInterface> record_;
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ObjectPath object_path_;
+
+ protected:
+  bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
+  bool Remove(brillo::ErrorPtr* error);
+
   brillo::dbus_utils::ExportedProperty<std::string> property_label_;
 };
 
