@@ -104,7 +104,12 @@ void SetUpSandboxForDryRun(struct minijail* jail) {
       // not a directory, likely something's wrong.
       continue;
     }
-    minijail_bind(jail, dir, dir, /*writable=*/0);
+    // Recursively mount because some directories may contain mounted
+    // subdirectories, such as kCryptohomeCrashDirectory. It won't hurt if some
+    // directories don't contain mounted subdirectories, because the purpose is
+    // to make them read-only, not invisible.
+    PCHECK(0 == minijail_mount(jail, dir, dir, "none",
+                               /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
   }
 }
 
