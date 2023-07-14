@@ -38,7 +38,7 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/storage/mount_helper_interface.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

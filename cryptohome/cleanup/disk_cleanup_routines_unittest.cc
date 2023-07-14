@@ -72,8 +72,9 @@ class DiskCleanupRoutinesTest
   virtual ~DiskCleanupRoutinesTest() = default;
 
   void SetUp() {
-    EXPECT_CALL(platform_, DirectoryExists(Property(
-                               &FilePath::value, EndsWith(kEcryptfsVaultDir))))
+    EXPECT_CALL(platform_,
+                DirectoryExists(Property(&base::FilePath::value,
+                                         EndsWith(kEcryptfsVaultDir))))
         .WillRepeatedly(Return(ShouldTestEcryptfs()));
 
     EXPECT_CALL(platform_, HasExtendedFileAttribute(_, _))
@@ -138,7 +139,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserCache) {
   std::vector<base::FilePath> entriesToClean{base::FilePath("abc"),
                                              base::FilePath("efg")};
 
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     HasSubstr("user/Cache")),
                                            false, _))
       .WillRepeatedly(InvokeWithoutArgs(
@@ -171,17 +172,17 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV1) {
                                              base::FilePath("efg")};
 
   EXPECT_CALL(platform_,
-              GetFileEnumerator(
-                  Property(&FilePath::value, HasSubstr("user/GCache/v1/tmp")),
-                  false, _))
+              GetFileEnumerator(Property(&base::FilePath::value,
+                                         HasSubstr("user/GCache/v1/tmp")),
+                                false, _))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, entriesToClean)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     EndsWith("user/GCache/v1")),
                                            true, base::FileEnumerator::FILES))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     EndsWith("user/GCache/v2")),
                                            true, base::FileEnumerator::FILES))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
@@ -219,17 +220,17 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV2) {
   }
 
   EXPECT_CALL(platform_,
-              GetFileEnumerator(
-                  Property(&FilePath::value, HasSubstr("user/GCache/v1/tmp")),
-                  false, _))
+              GetFileEnumerator(Property(&base::FilePath::value,
+                                         HasSubstr("user/GCache/v1/tmp")),
+                                false, _))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     EndsWith("user/GCache/v1")),
                                            true, base::FileEnumerator::FILES))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, v1Entries)));
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     EndsWith("user/GCache/v2")),
                                            true, base::FileEnumerator::FILES))
       .WillRepeatedly(InvokeWithoutArgs(
@@ -350,7 +351,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
   EXPECT_CALL(
       platform_,
       GetFileEnumerator(
-          Property(&FilePath::value,
+          Property(&base::FilePath::value,
                    EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
                                                              : kMountDir) +
                             "/root")),
@@ -400,7 +401,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCache) {
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCacheMountedUsers) {
-  const FilePath cache_dir = FilePath(kRunDaemonStoreCacheBaseDir);
+  const base::FilePath cache_dir = base::FilePath(kRunDaemonStoreCacheBaseDir);
   base::FilePath daemon_one = cache_dir.Append("daemon-one");
   base::FilePath daemon_two = cache_dir.Append("daemon-two");
 

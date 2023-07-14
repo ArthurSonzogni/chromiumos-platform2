@@ -20,12 +20,10 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
+#include "cryptohome/storage/mount_helper_interface.h"
 #include "cryptohome/storage/mount_stack.h"
 #include "cryptohome/username.h"
-
-using base::FilePath;
 
 namespace cryptohome {
 
@@ -34,38 +32,6 @@ extern const char kEphemeralCryptohomeRootContext[];
 extern const char kBindMountMigrationXattrName[];
 extern const char kBindMountMigratingStage[];
 extern const char kBindMountMigratedStage[];
-
-// Objects that implement MountHelperInterface can perform mount operations.
-// This interface will be used as we transition all cryptohome mounts to be
-// performed out-of-process.
-class MountHelperInterface {
- public:
-  virtual ~MountHelperInterface() {}
-
-  // Ephemeral mounts cannot be performed twice, so cryptohome needs to be able
-  // to check whether an ephemeral mount can be performed.
-  virtual bool CanPerformEphemeralMount() const = 0;
-
-  // Returns whether an ephemeral mount has been performed.
-  virtual bool MountPerformed() const = 0;
-
-  // Returns whether |path| is currently mounted as part of the ephemeral mount.
-  virtual bool IsPathMounted(const base::FilePath& path) const = 0;
-
-  // Carries out an ephemeral mount for user |username|.
-  virtual StorageStatus PerformEphemeralMount(
-      const Username& username,
-      const base::FilePath& ephemeral_loop_device) = 0;
-
-  // Unmounts the mount point.
-  virtual void UnmountAll() = 0;
-
-  // Carries out mount operations for a regular cryptohome.
-  virtual StorageStatus PerformMount(MountType mount_type,
-                                     const Username& username,
-                                     const std::string& fek_signature,
-                                     const std::string& fnek_signature) = 0;
-};
 
 class MountHelper : public MountHelperInterface {
  public:
@@ -95,7 +61,7 @@ class MountHelper : public MountHelperInterface {
   bool SetUpEcryptfsMount(const ObfuscatedUsername& obfuscated_username,
                           const std::string& fek_signature,
                           const std::string& fnek_signature,
-                          const FilePath& mount_type);
+                          const base::FilePath& mount_type);
 
   // Sets up the dircrypto mount.
   void SetUpDircryptoMount(const ObfuscatedUsername& obfuscated_username);
@@ -138,14 +104,14 @@ class MountHelper : public MountHelperInterface {
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  FilePath GetMountedUserHomePath(
+  base::FilePath GetMountedUserHomePath(
       const ObfuscatedUsername& obfuscated_username) const;
 
   // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  FilePath GetMountedRootHomePath(
+  base::FilePath GetMountedRootHomePath(
       const ObfuscatedUsername& obfuscated_username) const;
 
   // Mounts a mount point and pushes it to the mount stack.
@@ -168,8 +134,8 @@ class MountHelper : public MountHelperInterface {
   //   src - Path to bind from
   //   dest - Path to bind to
   //   is_shared - bind mount as MS_SHARED
-  bool BindAndPush(const FilePath& src,
-                   const FilePath& dest,
+  bool BindAndPush(const base::FilePath& src,
+                   const base::FilePath& dest,
                    RemountOption remount = RemountOption::kNoRemount);
 
   // If |bind_mount_downloads_| flag is set, bind mounts |user_home|/Downloads
@@ -186,7 +152,7 @@ class MountHelper : public MountHelperInterface {
   bool MoveDownloadsToMyFiles(const base::FilePath& user_home);
 
   // Copies the skeleton directory to the user's cryptohome.
-  void CopySkeleton(const FilePath& destination) const;
+  void CopySkeleton(const base::FilePath& destination) const;
 
   // Ensures that a specified directory exists, with all path components owned
   // by kRootUid:kRootGid.
@@ -197,7 +163,9 @@ class MountHelper : public MountHelperInterface {
 
   // Ensures that the |num|th component of |path| is owned by |uid|:|gid| and is
   // a directory.
-  bool EnsurePathComponent(const FilePath& path, uid_t uid, gid_t gid) const;
+  bool EnsurePathComponent(const base::FilePath& path,
+                           uid_t uid,
+                           gid_t gid) const;
 
   // Attempts to unmount a mountpoint. If the unmount fails, logs processes with
   // open handles to it and performs a lazy unmount.
@@ -219,14 +187,16 @@ class MountHelper : public MountHelperInterface {
   //   /run/daemon-store/$daemon/$hash
   // for a hardcoded list of $daemon directories.
   bool MountDaemonStoreDirectories(
-      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
+      const base::FilePath& root_home,
+      const ObfuscatedUsername& obfuscated_username);
   // Calls InternalMountDaemonStoreDirectories to bind-mount
   //   /home/.shadow/$hash/mount/root/.cache/$daemon (*)
   // to
   //   /run/daemon-store-cache/$daemon/$hash
   // for a hardcoded list of $daemon directories.
   bool MountDaemonStoreCacheDirectories(
-      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
+      const base::FilePath& root_home,
+      const ObfuscatedUsername& obfuscated_username);
   // This can be used to make the Cryptohome mount propagate into the daemon's
   // mount namespace. See
   // https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders
@@ -234,7 +204,7 @@ class MountHelper : public MountHelperInterface {
   //
   // (*) Path for a regular mount. The path is different for an ephemeral mount.
   bool InternalMountDaemonStoreDirectories(
-      const FilePath& root_home,
+      const base::FilePath& root_home,
       const ObfuscatedUsername& obfuscated_username,
       const char* etc_daemon_store_base_dir,
       const char* run_daemon_store_base_dir);
@@ -250,13 +220,13 @@ class MountHelper : public MountHelperInterface {
   // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
   bool MountHomesAndDaemonStores(const Username& username,
                                  const ObfuscatedUsername& obfuscated_username,
-                                 const FilePath& user_home,
-                                 const FilePath& root_home);
+                                 const base::FilePath& user_home,
+                                 const base::FilePath& root_home);
 
   // Mounts the legacy home directory.
   // The legacy home directory is from before multiprofile and is mounted at
   // /home/chronos/user.
-  bool MountLegacyHome(const FilePath& from);
+  bool MountLegacyHome(const base::FilePath& from);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to |default_user_|.
@@ -264,7 +234,8 @@ class MountHelper : public MountHelperInterface {
   // Parameters
   //   source - Where to copy files from
   //   destination - Where to copy files to
-  void RecursiveCopy(const FilePath& source, const FilePath& destination) const;
+  void RecursiveCopy(const base::FilePath& source,
+                     const base::FilePath& destination) const;
 
   // Returns true if we think there was at least one successful mount in
   // the past.

@@ -44,6 +44,7 @@
 #include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/out_of_process_mount_helper.h"
 #include "cryptohome/vault_keyset.h"
 

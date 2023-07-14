@@ -24,7 +24,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/storage/mount_helper_interface.h"
 
 using base::FilePath;
 
