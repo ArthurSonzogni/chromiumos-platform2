@@ -11,7 +11,7 @@
 #include "fuzzer/FuzzedDataProvider.h"
 #include <gmock/gmock.h>
 
-using testing::_;
+using testing::A;
 using testing::Invoke;
 
 namespace {
@@ -71,7 +71,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                      IsMethod("EcGetInventory"), _, _))
+                                      IsMethod("EcGetInventory"), A<int>(),
+                                      A<dbus::ScopedDBusError*>()))
       .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout,
                            dbus::ScopedDBusError* error) {
         return RespondWithString(method_call, resp_str);
