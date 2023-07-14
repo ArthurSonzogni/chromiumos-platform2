@@ -94,20 +94,6 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
   }
 }
 
-// Converts APN types to strings used in a metric name.
-std::string ApnTypeToMetricString(ApnList::ApnType type) {
-  switch (type) {
-    case ApnList::ApnType::kDefault:
-      return "DEFAULT";
-    case ApnList::ApnType::kDun:
-      return "DUN";
-    case ApnList::ApnType::kAttach:
-      return "IA";
-  }
-  NOTREACHED();
-  return "";
-}
-
 // Converts VPN types to strings used in a metric name.
 std::string VPNTypeToMetricString(VPNType type) {
   switch (type) {
@@ -161,7 +147,7 @@ void Metrics::SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
   // easier to find the metrics using autocomplete in UMA.
   const std::string name =
       base::StringPrintf("%s.Cellular.%s.%s", kMetricPrefix, metric.n.name,
-                         ApnTypeToMetricString(type).c_str());
+                         ApnList::GetApnTypeString(type).c_str());
   library_->SendEnumToUMA(name, sample, metric.max);
 }
 
