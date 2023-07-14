@@ -464,6 +464,32 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckErrorCallback) {
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
 }
 
+TEST_F(CarrierEntitlementTestNoParams, CheckNoEntitlementNeeded) {
+  config_.url = "";
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  carrier_entitlement_->Check(config_);
+  VerifyAllExpectations();
+}
+
+TEST_F(CarrierEntitlementTestNoParams, CheckNoNetwork) {
+  EXPECT_CALL(*cellular_, GetPrimaryNetwork()).WillOnce(Return(nullptr));
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckNoNetwork));
+  carrier_entitlement_->Check(config_);
+  VerifyAllExpectations();
+}
+
+TEST_F(CarrierEntitlementTestNoParams, CheckNetworkNotConnected) {
+  EXPECT_CALL(*network_, IsConnected()).WillOnce(Return(false));
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckNetworkNotConnected));
+
+  carrier_entitlement_->Check(config_);
+  VerifyAllExpectations();
+}
 class CarrierEntitlementTestGet : public CarrierEntitlementTest {
  public:
   CarrierEntitlementTestGet()
