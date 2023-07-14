@@ -1317,6 +1317,16 @@ void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
   std::move(phy_ready_callback).Run();
 }
 
+void WiFiProvider::UpdatePhyInfo(base::OnceClosure phy_ready_callback) {
+  phy_info_ready_cb_ = std::move(phy_ready_callback);
+  phy_update_timeout_cb_.Reset(
+      base::BindOnce(&WiFiProvider::PhyUpdateTimeout,
+                     weak_ptr_factory_while_started_.GetWeakPtr()));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, phy_update_timeout_cb_.callback(), kPhyUpdateTimeout);
+  GetPhyInfo(kAllPhys);
+}
+
 void WiFiProvider::PhyUpdateTimeout() {
   LOG(WARNING) << "Timed out waiting for RegChange/PhyDump - proceeding with "
                   "current info.";

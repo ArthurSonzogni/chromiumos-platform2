@@ -156,6 +156,12 @@ TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled_SelfManaged) {
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
   ON_CALL(wifi_phy_, reg_self_managed()).WillByDefault(Return(true));
   EXPECT_TRUE(device_->Start());
+  // Create a ScanDone event.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).WillOnce(Return(true));
+  DispatchPendingEvents();
+  EXPECT_CALL(*wifi_provider_, UpdatePhyInfo(_))
+      .WillOnce(Invoke([&](auto callback) { std::move(callback).Run(); }));
+  device_->ScanDone(true);
   // Expect kInterfaceEnabled DeviceEvent sent.
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceEnabled, _)).Times(1);
   DispatchPendingEvents();

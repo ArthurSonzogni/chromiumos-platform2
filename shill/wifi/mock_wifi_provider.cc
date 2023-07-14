@@ -18,8 +18,12 @@ namespace shill {
 
 MockWiFiProvider::MockWiFiProvider(Manager* manager) : WiFiProvider(manager) {
   ON_CALL(*this, GetHiddenSSIDList()).WillByDefault(Return(ByteArrays()));
-  ON_CALL(*this, UpdateRegAndPhyInfo(_))
-      .WillByDefault(WithArg<0>(Invoke([](auto cb) { std::move(cb).Run(); })));
+  ON_CALL(*this, UpdateRegAndPhyInfo(_)).WillByDefault(Invoke([](auto cb) {
+    std::move(cb).Run();
+  }));
+  ON_CALL(*this, UpdatePhyInfo(_)).WillByDefault(Invoke([](auto cb) {
+    std::move(cb).Run();
+  }));
 }
 
 MockWiFiProvider::~MockWiFiProvider() = default;

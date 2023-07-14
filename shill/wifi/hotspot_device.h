@@ -76,7 +76,7 @@ class HotspotDevice : public LocalDevice,
                            const RpcIdentifier& cred,
                            const KeyValueStore& properties) override{};
   void InterworkingSelectDone() override{};
-  void ScanDone(const bool& success) override{};
+  void ScanDone(const bool& success) override;
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override;
   void StationRemoved(const RpcIdentifier& Station) override;
@@ -96,6 +96,8 @@ class HotspotDevice : public LocalDevice,
   void StateChanged(const std::string& new_state);
   // Callback handler to handle the case when phy information is ready.
   void OnPhyInfoReady();
+  // Scan task handler to trigger a scan on the AP interface.
+  void ScanTask();
 
   // Primary interface link name.
   std::string primary_link_name_;
@@ -104,6 +106,8 @@ class HotspotDevice : public LocalDevice,
   // If the primary interface was controlled by wpa_supplicant before starting a
   // virtual interface.
   bool prev_primary_iface_control_state_;
+  // Whether the interface is waiting for PHY info to be updated.
+  bool pending_phy_info_;
 
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;

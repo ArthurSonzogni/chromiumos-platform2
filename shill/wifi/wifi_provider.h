@@ -243,6 +243,9 @@ class WiFiProvider : public ProviderInterface {
   // information afterwards.
   mockable void UpdateRegAndPhyInfo(base::OnceClosure callback);
 
+  // This is an explicit request to refresh PHY information.
+  mockable void UpdatePhyInfo(base::OnceClosure callback);
+
   // Sets the regulatory domain to the "world" domain.
   mockable void ResetRegDomain();
 
@@ -250,6 +253,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
+  FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_Success);
   FRIEND_TEST(WiFiProviderTest2, UpdatePhyInfo_Success);
 
   // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.

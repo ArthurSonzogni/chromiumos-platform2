@@ -37,6 +37,7 @@ HotspotDevice::HotspotDevice(Manager* manager,
           manager, IfaceType::kAP, link_name, mac_address, phy_index, callback),
       primary_link_name_(primary_link_name),
       prev_primary_iface_control_state_(false),
+      pending_phy_info_(false),
       service_(nullptr),
       supplicant_state_(kInterfaceStateUnknown) {
   supplicant_primary_interface_path_ = RpcIdentifier("");
@@ -77,15 +78,21 @@ bool HotspotDevice::Start() {
     return false;
   }
 
+  pending_phy_info_ = true;
   if (!wifi_phy->reg_self_managed()) {
     // For non-self-managed solution, update the region domain and refresh Phy
     // info.
     manager()->wifi_provider()->UpdateRegAndPhyInfo(
         base::BindOnce(&HotspotDevice::OnPhyInfoReady, base::Unretained(this)));
   } else {
-    // TODO (b/281130838): Add a scan before sending out kInterfaceEnabled
-    // event.
-    OnPhyInfoReady();
+    // For self-managed solution, region information is lost when the STA
+    // interface is tore down. Schedule a scan to fetch the region domain and
+    // update Phy info.
+    // TODO(b/291790575): Omited this scan on future DBS capable devices where
+    // the STA interface is unaffected.
+    Dispatcher()->PostTask(FROM_HERE,
+                           base::BindOnce(&HotspotDevice::ScanTask,
+                                          weak_ptr_factory_.GetWeakPtr()));
   }
 
   return true;
@@ -112,6 +119,7 @@ bool HotspotDevice::Stop() {
     manager()->wifi_provider()->ResetRegDomain();
   }
 
+  pending_phy_info_ = false;
   return ret;
 }
 
@@ -299,8 +307,41 @@ std::vector<std::vector<uint8_t>> HotspotDevice::GetStations() {
 }
 
 void HotspotDevice::OnPhyInfoReady() {
+  pending_phy_info_ = false;
   // Phy information is up to date. Post interface enabled event.
   PostDeviceEvent(DeviceEvent::kInterfaceEnabled);
+}
+
+void HotspotDevice::ScanTask() {
+  LOG(INFO) << "Interface " << link_name() << " scan requested.";
+  if (!supplicant_interface_proxy_.get()) {
+    LOG(ERROR) << "Ignoring scan request while supplicant does not control the "
+                  "interface.";
+    ScanDone(false);
+    return;
+  }
+
+  KeyValueStore scan_args;
+  scan_args.Set<std::string>(WPASupplicant::kPropertyScanType,
+                             WPASupplicant::kScanTypeActive);
+  scan_args.Set<bool>(WPASupplicant::kPropertyScanAllowRoam, false);
+
+  if (!supplicant_interface_proxy_->Scan(scan_args)) {
+    LOG(WARNING) << "Scan failed";
+    ScanDone(false);
+  }
+}
+
+void HotspotDevice::ScanDone(const bool& success) {
+  LOG(INFO) << "Interface " << link_name() << " scan done. Scan "
+            << (success ? "success" : "failed");
+
+  if (pending_phy_info_) {
+    // No matter success or not, require a PHY info update to be in sync with
+    // the PHY.
+    manager()->wifi_provider()->UpdatePhyInfo(
+        base::BindOnce(&HotspotDevice::OnPhyInfoReady, base::Unretained(this)));
+  }
 }
 
 }  // namespace shill
