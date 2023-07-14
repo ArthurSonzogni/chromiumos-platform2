@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -43,8 +44,10 @@ class FakeChromiumDataCollector
 
   void SetPrivacyScreenRequestProcessedBehaviour(
       base::OnceClosure on_receive_request,
-      std::optional<bool> response_value) {
+      base::TimeDelta response_delay,
+      bool response_value) {
     on_receive_privacy_screen_set_request_ = std::move(on_receive_request);
+    privacy_screen_response_delay_ = response_delay;
     privacy_screen_request_processed_ = response_value;
   }
 
@@ -70,11 +73,11 @@ class FakeChromiumDataCollector
   // Expected touchpad library name.
   std::string touchpad_library_name_;
   // Runnable function when browser receive privacy screen request.
-  std::optional<base::OnceClosure> on_receive_privacy_screen_set_request_ =
-      std::nullopt;
-  // Expected result of processing privacy screen request. |std::nullopt|
-  // indicates browser does not response.
-  std::optional<bool> privacy_screen_request_processed_ = true;
+  base::OnceClosure on_receive_privacy_screen_set_request_;
+  // Delay after browser receives request and before responses to client.
+  base::TimeDelta privacy_screen_response_delay_;
+  // Expected result of processing privacy screen request.
+  bool privacy_screen_request_processed_;
   // Expected audio output mute request result.
   bool audio_output_mute_request_result_;
 };

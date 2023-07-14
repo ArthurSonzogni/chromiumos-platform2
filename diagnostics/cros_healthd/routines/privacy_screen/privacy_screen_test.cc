@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -11,6 +12,7 @@
 #include <base/test/task_environment.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/test/bind.h>
+#include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/routines/privacy_screen/privacy_screen.h"
@@ -59,15 +61,23 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
                            base::Unretained(this), display_util_init_success,
                            privacy_screen_supported,
                            privacy_screen_enabled_after),
-            privacy_screen_request_processed);
+            base::Milliseconds(
+                // The timeout in routine is 1000 ms, and the unittest checks
+                // the result in 2000 ms; therefore we set a delay between those
+                // values when browser response timeout exceeds.
+                privacy_screen_request_processed.has_value() ? 10 : 1500),
+            privacy_screen_request_processed.value_or(true));
   }
 
-  void WaitUntilRoutineFinished(base::OnceClosure callback) {
+  void RunRoutineAndWaitUntilFinished() {
+    base::RunLoop run_loop;
+    routine()->Start();
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, std::move(callback),
+        FROM_HERE, run_loop.QuitClosure(),
         // Privacy screen routine should be finished within 1 second. Set 2
         // seconds as a safe timeout.
         base::Milliseconds(2000));
+    run_loop.Run();
   }
 
   mojom::RoutineUpdatePtr GetUpdate() {
@@ -110,13 +120,10 @@ TEST_F(PrivacyScreenRoutineTest, DisplayUtilInitializationFailedError) {
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/true);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(update->routine_update_union,
-                               mojom::DiagnosticRoutineStatusEnum::kError,
-                               kDisplayUtilInitializationError);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(GetUpdate()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
+                             kDisplayUtilInitializationError);
 }
 
 // Test that routine fails if browser rejects request.
@@ -127,31 +134,26 @@ TEST_F(PrivacyScreenRoutineTest, RequestRejected) {
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/false,
                     /*privacy_screen_enabled_after=*/false);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(update->routine_update_union,
-                               mojom::DiagnosticRoutineStatusEnum::kFailed,
-                               kPrivacyScreenRoutineRequestRejectedMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(GetUpdate()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
+                             kPrivacyScreenRoutineRequestRejectedMessage);
 }
 
-// Test that routine fails if browser does not response.
+// Test that routine fails if browser response timeout exceeds.
 TEST_F(PrivacyScreenRoutineTest, BrowserResponseTimeoutExceeded) {
   CreateRoutine(/*target_state=*/true);
   SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
+
                     /*privacy_screen_request_processed=*/std::nullopt,
                     /*privacy_screen_enabled_after=*/true);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(
-        update->routine_update_union,
-        mojom::DiagnosticRoutineStatusEnum::kFailed,
-        kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(
+      GetUpdate()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
+      kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage);
 }
 
 // Test that routine fails if privacy screen is not turned on.
@@ -162,14 +164,11 @@ TEST_F(PrivacyScreenRoutineTest, TurnOnFailed) {
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/false);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(
-        update->routine_update_union,
-        mojom::DiagnosticRoutineStatusEnum::kFailed,
-        kPrivacyScreenRoutineFailedToTurnPrivacyScreenOnMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(
+      GetUpdate()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
+      kPrivacyScreenRoutineFailedToTurnPrivacyScreenOnMessage);
 }
 
 // Test that routine fails if privacy screen is not turned off.
@@ -180,14 +179,11 @@ TEST_F(PrivacyScreenRoutineTest, TurnOffFailed) {
                     /*privacy_screen_enabled_before=*/true,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/false);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(
-        update->routine_update_union,
-        mojom::DiagnosticRoutineStatusEnum::kFailed,
-        kPrivacyScreenRoutineFailedToTurnPrivacyScreenOffMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(
+      GetUpdate()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
+      kPrivacyScreenRoutineFailedToTurnPrivacyScreenOffMessage);
 }
 
 // Test that we can turn privacy screen on.
@@ -198,13 +194,10 @@ TEST_F(PrivacyScreenRoutineTest, TurnOnSuccess) {
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/true);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(update->routine_update_union,
-                               mojom::DiagnosticRoutineStatusEnum::kPassed,
-                               kPrivacyScreenRoutineSucceededMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(GetUpdate()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
+                             kPrivacyScreenRoutineSucceededMessage);
 }
 
 // Test that we can turn privacy screen off.
@@ -215,13 +208,10 @@ TEST_F(PrivacyScreenRoutineTest, TurnOffSuccess) {
                     /*privacy_screen_enabled_before=*/true,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/false);
-  routine()->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
-    auto update = GetUpdate();
-    VerifyNonInteractiveUpdate(update->routine_update_union,
-                               mojom::DiagnosticRoutineStatusEnum::kPassed,
-                               kPrivacyScreenRoutineSucceededMessage);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  VerifyNonInteractiveUpdate(GetUpdate()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
+                             kPrivacyScreenRoutineSucceededMessage);
 }
 
 }  // namespace

@@ -6,6 +6,10 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/time/time.h>
+
 namespace diagnostics {
 
 namespace internal_mojom = ::ash::cros_healthd::internal::mojom;
@@ -31,15 +35,13 @@ void FakeChromiumDataCollector::GetTouchpadLibraryName(
 
 void FakeChromiumDataCollector::SetPrivacyScreenState(
     bool target_state, SetPrivacyScreenStateCallback callback) {
-  if (!privacy_screen_request_processed_.has_value()) {
-    // Browser does not response.
-    return;
-  }
-
-  if (on_receive_privacy_screen_set_request_.has_value()) {
-    std::move(on_receive_privacy_screen_set_request_.value()).Run();
-  }
-  std::move(callback).Run(privacy_screen_request_processed_.value());
+  CHECK(!on_receive_privacy_screen_set_request_.is_null());
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      std::move(on_receive_privacy_screen_set_request_)
+          .Then(base::BindOnce(std::move(callback),
+                               privacy_screen_request_processed_)),
+      privacy_screen_response_delay_);
 }
 
 void FakeChromiumDataCollector::SetAudioOutputMute(

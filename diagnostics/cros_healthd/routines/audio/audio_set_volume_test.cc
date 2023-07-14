@@ -73,12 +73,15 @@ class AudioSetVolumeRoutineTest : public testing::Test {
         .SetAudioOutputMuteRequestResult(expected_result);
   }
 
-  void WaitUntilRoutineFinished(base::OnceClosure callback) {
+  void RunRoutineAndWaitUntilFinished() {
+    base::RunLoop run_loop;
+    routine_->Start();
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, std::move(callback),
+        FROM_HERE, run_loop.QuitClosure(),
         // This routine should be finished within 1 second. Set 2 seconds as a
         // safe timeout.
         base::Milliseconds(2000));
+    run_loop.Run();
   }
 
   MockContext mock_context_;
@@ -98,11 +101,8 @@ TEST_F(AudioSetVolumeRoutineTest, SuccessfulCase) {
   SetSetOutputNodeVolume();
   SetAudioOutputMuteRequestResult(true);
 
-  routine_->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
-    EXPECT_EQ(routine_->GetStatus(),
-              mojom::DiagnosticRoutineStatusEnum::kPassed);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kPassed);
 }
 
 TEST_F(AudioSetVolumeRoutineTest, SetOutputUserMuteError) {
@@ -110,11 +110,8 @@ TEST_F(AudioSetVolumeRoutineTest, SetOutputUserMuteError) {
   SetSetOutputNodeVolume();
   SetAudioOutputMuteRequestResult(false);
 
-  routine_->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
-    EXPECT_EQ(routine_->GetStatus(),
-              mojom::DiagnosticRoutineStatusEnum::kFailed);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kFailed);
 }
 
 TEST_F(AudioSetVolumeRoutineTest, SetOutputNodeVolumeError) {
@@ -122,11 +119,8 @@ TEST_F(AudioSetVolumeRoutineTest, SetOutputNodeVolumeError) {
   SetSetOutputNodeVolumeError();
   SetAudioOutputMuteRequestResult(true);
 
-  routine_->Start();
-  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
-    EXPECT_EQ(routine_->GetStatus(),
-              mojom::DiagnosticRoutineStatusEnum::kError);
-  }));
+  RunRoutineAndWaitUntilFinished();
+  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
 }  // namespace
