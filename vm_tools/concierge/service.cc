@@ -2299,7 +2299,7 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
 
   StopVmResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2417,7 +2417,7 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
   SuspendVmResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2451,7 +2451,7 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
   ResumeVmResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2495,7 +2495,7 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
 
   GetVmInfoResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2528,7 +2528,7 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
 
   GetVmEnterpriseReportingInfoResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2554,7 +2554,7 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
 
   ArcVmCompleteBootResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
     return response;
   }
@@ -2608,7 +2608,7 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
 
   AdjustVmResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -2864,7 +2864,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     CreateDiskImageRequest request, base::ScopedFD in_fd) {
   CreateDiskImageResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
   }
@@ -3139,7 +3139,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 
   DestroyDiskImageResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
   }
@@ -3256,7 +3256,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
 
   ResizeDiskImageResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
   }
@@ -3433,7 +3433,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
   ExportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
   }
@@ -3515,7 +3515,7 @@ ImportDiskImageResponse Service::ImportDiskImage(
   ImportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -3676,8 +3676,7 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
 
   ListVmDisksResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response,
-                              true /* Empty VmName allowed*/)) {
+  if (!CheckVmNameAndOwner(request, response, true /* Empty VmName allowed*/)) {
     return response;
   }
 
@@ -3705,7 +3704,7 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
 
   AttachUsbDeviceResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -3760,7 +3759,7 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
 
   DetachUsbDeviceResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -3793,7 +3792,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
 
   ListUsbDeviceResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -3873,7 +3872,7 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
 
   ListVmsResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -3927,7 +3926,7 @@ void Service::ReclaimVmMemory(
 
   ReclaimVmMemoryResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
@@ -3962,7 +3961,7 @@ void Service::AggressiveBalloon(
 
   AggressiveBalloonResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
@@ -4597,8 +4596,8 @@ bool Service::AddGroupPermissionMesa(
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!ValidateVmNameAndOwner(request,
-                              request /* in place of a response proto */)) {
+  if (!CheckVmNameAndOwner(request,
+                           request /* in place of a response proto */)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,
                                    "Empty or malformed owner ID / VM name");
@@ -4642,7 +4641,7 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!ValidateVmNameAndOwner(request, *response)) {
+  if (!CheckVmNameAndOwner(request, *response)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,
                                    "Empty or malformed owner ID / VM name");
@@ -4713,7 +4712,7 @@ void Service::SwapVm(
 
   SwapVmResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
@@ -4752,7 +4751,7 @@ InstallPflashResponse Service::InstallPflash(
     const InstallPflashRequest& request, const base::ScopedFD& pflash_src_fd) {
   InstallPflashResponse response;
 
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
@@ -4792,7 +4791,7 @@ bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
                                 GetVmGpuCachePathResponse* response) {
   LOG(INFO) << "Received request: " << __func__;
 
-  if (!ValidateVmNameAndOwner(request, *response)) {
+  if (!CheckVmNameAndOwner(request, *response)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,
                                    "Empty or malformed owner ID / VM name");

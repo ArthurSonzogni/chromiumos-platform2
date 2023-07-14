@@ -115,9 +115,9 @@ bool CheckCpuCount(const T& request, StartVmResponse* response) {
 // usually means that VM name is stored in field called name and owner_id stored
 // in owner_id.
 template <class _RequestProto, class _ResponseProto>
-bool ValidateVmNameAndOwner(const _RequestProto& request,
-                            _ResponseProto& response,
-                            bool empty_vm_name_allowed = false) {
+bool CheckVmNameAndOwner(const _RequestProto& request,
+                         _ResponseProto& response,
+                         bool empty_vm_name_allowed = false) {
   auto set_failure_reason = [&](const char* reason) {
     if constexpr (kHasFailureReason<_ResponseProto>) {
       response.set_failure_reason(reason);
@@ -224,7 +224,7 @@ bool Service::CheckExistingDisk(const T& request, StartVmResponse* response) {
 template <class StartXXRequest>
 bool Service::CheckStartVmPreconditions(const StartXXRequest& request,
                                         StartVmResponse* response) {
-  if (!ValidateVmNameAndOwner(request, response)) {
+  if (!CheckVmNameAndOwner(request, response)) {
     return false;
   }
 
