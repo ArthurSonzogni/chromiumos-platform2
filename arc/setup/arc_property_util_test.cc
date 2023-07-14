@@ -23,7 +23,7 @@
 #include <gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
-using ::testing::_;
+using ::testing::A;
 using ::testing::ByMove;
 using ::testing::HasSubstr;
 using ::testing::Return;
@@ -540,7 +540,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   base::WriteFile(product_build_prop, kProductBuildProp,
                   strlen(kProductBuildProp));
 
-  EXPECT_CALL(*bus_, GetObjectProxy(_, _))
+  EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
+                                    A<const dbus::ObjectPath&>()))
       .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
@@ -553,8 +554,10 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   client_info.set_make(kMake);
   client_info.set_model(kModel);
   writer.AppendProtoAsArrayOfBytes(client_info);
-  EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
-              CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(
+      *cdm_factory_daemon_object_proxy_,
+      CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(), A<int>(),
+                                         A<dbus::ScopedDBusError*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
@@ -597,12 +600,15 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
   base::WriteFile(product_build_prop, kProductBuildProp,
                   strlen(kProductBuildProp));
 
-  EXPECT_CALL(*bus_, GetObjectProxy(_, _))
+  EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
+                                    A<const dbus::ObjectPath&>()))
       .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
-  EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
-              CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(
+      *cdm_factory_daemon_object_proxy_,
+      CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(), A<int>(),
+                                         A<dbus::ScopedDBusError*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
