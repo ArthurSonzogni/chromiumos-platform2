@@ -12,7 +12,7 @@
 #include "dlp/dlp_adaptor_test_helper.h"
 #include "dlp/dlp_fuzzer.pb.h"
 
-using testing::_;
+using testing::A;
 
 namespace {
 std::vector<uint8_t> SerializeMessageToVector(
@@ -41,8 +41,10 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   // cap_sys_admin capability.
   adaptor->SetFanotifyWatcherStartedForTesting(true);
 
-  EXPECT_CALL(*helper.mock_session_manager_proxy(),
-              CallMethodAndBlockWithErrorDetails(_, _, _))
+  EXPECT_CALL(
+      *helper.mock_session_manager_proxy(),
+      CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(), A<int>(),
+                                         A<dbus::ScopedDBusError*>()))
       .WillRepeatedly(::testing::ReturnNull());
 
   adaptor->SetDlpFilesPolicy(
