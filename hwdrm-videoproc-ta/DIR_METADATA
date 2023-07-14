@@ -1,0 +1,4 @@
+buganizer {
+  component_id: 168352  # ChromeOS > Platform > Graphics > Video
+}
+team_email: "chromeos-gfx-video@google.com"

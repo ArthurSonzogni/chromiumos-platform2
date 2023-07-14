@@ -83,6 +83,7 @@ copies.
 | [hermes](./hermes/) | ChromeOS LPA implementation for eSIM hardware support |
 | [hiberman](./hiberman/) | ChromeOS Hibernation Manager |
 | [hps](./hps/) | ChromeOS HPS daemon and utilities |
+| [hwdrm-videoproc-ta](./hwdrm-videoproc-ta/) | Hwdrm video processing trusted application |
 | [hwsec-host-utils](./hwsec-host-utils/) | Hwsec-related host-only utilities |
 | [hwsec-optee-plugin](./hwsec-optee-plugin/) | Hwsec-related optee plugin |
 | [hwsec-optee-ta](./hwsec-optee-ta/) | Hwsec-related optee plugin trusted application |
