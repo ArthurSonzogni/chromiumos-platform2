@@ -83,6 +83,25 @@ constexpr char kRenderServerCacheSizeStringBorealis[] = "1000M";
 // operations.
 constexpr int kInvalidDiskIndex = -1;
 
+// Helper function to convert spaced enum to vm_tools equivalent.
+vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
+    spaced::StatefulDiskSpaceState state) {
+  switch (state) {
+    case spaced::StatefulDiskSpaceState::NORMAL:
+      return vm_tools::StatefulDiskSpaceState::DISK_NORMAL;
+      break;
+    case spaced::StatefulDiskSpaceState::LOW:
+      return vm_tools::StatefulDiskSpaceState::DISK_LOW;
+      break;
+    case spaced::StatefulDiskSpaceState::CRITICAL:
+      return vm_tools::StatefulDiskSpaceState::DISK_CRITICAL;
+      break;
+    case spaced::StatefulDiskSpaceState::NONE:
+    default:
+      return vm_tools::StatefulDiskSpaceState::DISK_NONE;
+  }
+}
+
 }  // namespace
 
 TerminaVm::TerminaVm(Config config)
@@ -952,25 +971,6 @@ uint64_t TerminaVm::GetAvailableDiskSpace() {
   }
 
   return response.available_space();
-}
-
-// Helper function to convert spaced enum to vm_tools equivalent.
-vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
-    spaced::StatefulDiskSpaceState state) {
-  switch (state) {
-    case spaced::StatefulDiskSpaceState::NORMAL:
-      return vm_tools::StatefulDiskSpaceState::DISK_NORMAL;
-      break;
-    case spaced::StatefulDiskSpaceState::LOW:
-      return vm_tools::StatefulDiskSpaceState::DISK_LOW;
-      break;
-    case spaced::StatefulDiskSpaceState::CRITICAL:
-      return vm_tools::StatefulDiskSpaceState::DISK_CRITICAL;
-      break;
-    case spaced::StatefulDiskSpaceState::NONE:
-    default:
-      return vm_tools::StatefulDiskSpaceState::DISK_NONE;
-  }
 }
 
 void TerminaVm::HandleStatefulUpdate(
