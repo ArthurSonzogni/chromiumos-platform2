@@ -305,8 +305,6 @@ constexpr FeatureMappingEntry kFeaturesMap[] = {
     {"CastMediaRouteProvider", "1", "cast-media-route-provider", 1},
     {"CdmFactoryDaemon", "0", "cdm-factory-daemon", 2},
     {"CdmFactoryDaemon", "1", "cdm-factory-daemon", 1},
-    {"CellularUseAttachApn", "0", "cellular-use-attach-apn", 2},
-    {"CellularUseAttachApn", "1", "cellular-use-attach-apn", 1},
     {"ChangePasswordAffiliationInfo", "0", "change-password-affiliation", 2},
     {"ChangePasswordAffiliationInfo", "1", "change-password-affiliation", 1},
     {"CheckOfflineCapability", "0", "check-offline-capability", 4},

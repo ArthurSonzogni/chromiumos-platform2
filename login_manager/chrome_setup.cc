@@ -105,9 +105,6 @@ constexpr char kEnableBreakpadFlag[] = "--no-enable-crashpad";
 const char kSchedulerTunePath[] = "/scheduler-tune";
 const char kBoostUrgentProperty[] = "boost-urgent";
 
-constexpr char kModemPath[] = "/modem";
-constexpr char kModemAttachApnProperty[] = "attach-apn-required";
-
 constexpr char kHpsPath[] = "/hps";
 constexpr char kHasHpsProperty[] = "has-hps";
 
@@ -187,18 +184,6 @@ void SetUpHandwritingRecognitionWebPlatformApiFlag(
   }
 
   builder->AddFeatureEnableOverride("HandwritingRecognitionWebPlatformApi");
-}
-
-// Enables the "CellularUseAttachApn" Chrome feature flag if the
-// "modem/attach-apn-required" property is set to "true" in cros_config.
-void SetUpModemFlag(ChromiumCommandBuilder* builder,
-                    brillo::CrosConfigInterface* cros_config) {
-  std::string required;
-  if (cros_config &&
-      cros_config->GetString(kModemPath, kModemAttachApnProperty, &required) &&
-      required == "true") {
-    builder->AddFeatureEnableOverride("CellularUseAttachApn");
-  }
 }
 
 void SetUpOsInstallFlags(ChromiumCommandBuilder* builder) {
@@ -676,7 +661,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
-  SetUpModemFlag(builder, cros_config);
   SetUpHPEngageOneProAIOSystem(builder);
 }
 
