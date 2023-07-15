@@ -143,15 +143,16 @@ void DlcManager::OnDlcStateChanged(const dlcservice::DlcState& state) {
 
 void DlcManager::InvokeRootPathCallbacks(
     const std::string& dlc_id, std::optional<base::FilePath> root_path) {
-  if (!pending_root_path_callbacks_.count(dlc_id)) {
+  const auto iter = pending_root_path_callbacks_.find(dlc_id);
+  if (iter == pending_root_path_callbacks_.end()) {
     return;
   }
 
-  for (auto& root_path_cb : pending_root_path_callbacks_[dlc_id]) {
+  for (auto& root_path_cb : iter->second) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(root_path_cb), root_path));
   }
-  pending_root_path_callbacks_.erase(dlc_id);
+  pending_root_path_callbacks_.erase(iter);
 }
 
 void DlcManager::HandleDlcRootPathCallbackTimeout(const std::string& dlc_id) {
