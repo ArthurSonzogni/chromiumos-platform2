@@ -94,7 +94,6 @@
           "sku-id": 0
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -251,7 +250,6 @@
           "sku-id": 0
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -409,7 +407,6 @@
           "sku-id": 1
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -577,7 +574,6 @@
           "sku-id": 1
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -735,7 +731,6 @@
           "sku-id": 2
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -849,7 +844,6 @@
           "sku-id": 3
         },
         "modem": {
-          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },

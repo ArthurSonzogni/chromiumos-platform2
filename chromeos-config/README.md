@@ -862,7 +862,6 @@ In the tables below,
 ### modem
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| attach-apn-required | boolean |  | False |  | False | Try to explicitly setup an attach APN when registering to the LTE network. |
 | firmware-variant | string |  | False |  | False | Variant of the modem firmware to be used. This value is read by modemfwd to match against the variant field of a firmware entry in a firmware manifest. In most cases, we simply use the model name as the value. |
 | wedge-reboot-delay-ms | string | ```[0-9]+``` | False |  | False | Delay in milliseconds after which we pulse the modem reset GPIO if it hasn't appeared on the USB bus. This value is used by modemfwd and defaults to 5 minutes if not defined. |
 

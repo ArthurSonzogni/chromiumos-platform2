@@ -115,7 +115,6 @@ some_config: &some_config
     frid: "{{$frid}}"
     sku-id: "{{$sku-id}}"
   modem:
-    attach-apn-required: True
     firmware-variant: "some"
     wedge-reboot-delay-ms : "20000"
   wallpaper: "some"

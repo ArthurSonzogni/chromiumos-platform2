@@ -1236,10 +1236,6 @@ properties:
                     if not defined.
                   type: string
                   pattern: "[0-9]+"
-                attach-apn-required:
-                  description: Try to explicitly setup an attach APN when
-                    registering to the LTE network.
-                  type: boolean
               additionalProperties: false
             uwb:
               type: object
