@@ -50,8 +50,6 @@ class DelegateProcess : public SandboxedProcess {
   DelegateProcess();
 
  private:
-  void StartAndIgnoreResult();
-
   mojo::Remote<ash::cros_healthd::mojom::Delegate> remote_;
   mojo::OutgoingInvitation invitation_;
   // Must be the last member of the class.

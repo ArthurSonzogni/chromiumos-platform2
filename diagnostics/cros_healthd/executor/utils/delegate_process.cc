@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/bind.h>
 #include <base/task/sequenced_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -40,12 +41,8 @@ DelegateProcess::DelegateProcess(std::string_view seccomp_filename,
 
 void DelegateProcess::StartAsync() {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(&DelegateProcess::StartAndIgnoreResult,
+      FROM_HERE, base::BindOnce(base::IgnoreResult(&DelegateProcess::Start),
                                 weak_factory_.GetWeakPtr()));
-}
-
-void DelegateProcess::StartAndIgnoreResult() {
-  Start();
 }
 
 bool DelegateProcess::Start() {
