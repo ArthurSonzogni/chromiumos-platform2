@@ -162,7 +162,7 @@ int DeviceConfig::GetArcApiLevel() {
     }
     std::string str;
     if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &str)) {
-      LOGF(ERROR) << "Failed to read board name";
+      LOGF(ERROR) << "Failed to read CHROMEOS_ARC_ANDROID_SDK_VERSION";
       return 0;
     }
     int version;
@@ -171,7 +171,7 @@ int DeviceConfig::GetArcApiLevel() {
                   << " in /etc/lsb-release";
       return 0;
     }
-    return value;
+    return version;
   }();
   return value;
 }
