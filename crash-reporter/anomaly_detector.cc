@@ -714,7 +714,7 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
     weight = 50;
   } else if (RE2::PartialMatch(line, *entitlement_check_failure)) {
     error_code = "EntitlementCheckFailure";
-    weight = 50;
+    // No weight. Send all.
   }
   if (error_code.empty()) {
     return std::nullopt;
