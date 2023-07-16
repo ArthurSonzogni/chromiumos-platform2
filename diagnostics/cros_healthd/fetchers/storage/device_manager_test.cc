@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_device_lister.h"
-#include "diagnostics/cros_healthd/fetchers/storage/mock/mock_device_resolver.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -44,10 +43,6 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
   const std::string kBlockClass = "block";
   const std::string kNvmeClass = "nvme";
   const std::string kEmmcClass = "mmc";
-  constexpr mojom::StorageDevicePurpose kNvmePurpose =
-      mojom::StorageDevicePurpose::kSwapDevice;
-  constexpr mojom::StorageDevicePurpose kEmmcPurpose =
-      mojom::StorageDevicePurpose::kBootDevice;
   const uint64_t kNvmeSize = 1024;
   const uint64_t kEmmcSize = 768;
   const uint64_t kBlockSize = 512;
@@ -109,18 +104,12 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
       .WillOnce(Return(ByMove(std::move(mock_emmc_udev))))
       .WillOnce(Return(ByMove(std::move(mock_nvme_udev))));
 
-  auto mock_resolver =
-      std::make_unique<StrictMock<MockStorageDeviceResolver>>();
-  EXPECT_CALL(*mock_resolver, GetDevicePurpose(_))
-      .WillOnce(Return(kNvmePurpose))
-      .WillOnce(Return(kEmmcPurpose));
-
   auto mock_lister = std::make_unique<StrictMock<MockStorageDeviceLister>>();
   EXPECT_CALL(*mock_lister, ListDevices(base::FilePath(kFakeRoot)))
       .WillRepeatedly(Return(listed));
 
-  StorageDeviceManager manager(std::move(mock_lister), std::move(mock_resolver),
-                               std::move(mock_udev), std::move(mock_platform));
+  StorageDeviceManager manager(std::move(mock_lister), std::move(mock_udev),
+                               std::move(mock_platform));
 
   // Do multiple cycles. If the device info preservation is not working,
   // the WillOnce of udev mock will fail.

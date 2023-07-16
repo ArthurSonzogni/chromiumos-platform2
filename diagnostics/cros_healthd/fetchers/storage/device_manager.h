@@ -17,7 +17,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
-#include "diagnostics/cros_healthd/fetchers/storage/device_resolver.h"
 
 namespace diagnostics {
 
@@ -25,7 +24,6 @@ namespace diagnostics {
 class StorageDeviceManager final {
  public:
   StorageDeviceManager(std::unique_ptr<StorageDeviceLister> device_lister,
-                       std::unique_ptr<StorageDeviceResolver> device_resolver,
                        std::unique_ptr<brillo::Udev> udev,
                        std::unique_ptr<Platform> platform);
   StorageDeviceManager(const StorageDeviceManager&) = delete;
@@ -48,7 +46,6 @@ class StorageDeviceManager final {
       const base::FilePath& root) const;
 
   const std::unique_ptr<const StorageDeviceLister> device_lister_;
-  const std::unique_ptr<const StorageDeviceResolver> device_resolver_;
   std::unique_ptr<brillo::Udev> udev_;  // Has non-const interface
   const std::unique_ptr<const Platform> platform_;
 

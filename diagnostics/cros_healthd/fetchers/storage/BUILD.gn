@@ -28,7 +28,6 @@ source_set("storage_data_source") {
     "device_info.cc",
     "device_lister.cc",
     "device_manager.cc",
-    "device_resolver.cc",
     "platform.cc",
   ]
 }
@@ -41,7 +40,6 @@ if (use.test) {
       "device_info_test.cc",
       "device_lister_test.cc",
       "device_manager_test.cc",
-      "device_resolver_test.cc",
     ]
   }
 }

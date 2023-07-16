@@ -14,7 +14,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
-#include "diagnostics/cros_healthd/fetchers/storage/device_resolver.h"
 
 namespace diagnostics {
 
@@ -30,18 +29,10 @@ mojom::ProbeErrorPtr DiskFetcher::InitManager() {
     return mojom::ProbeError::New(mojom::ErrorType::kSystemUtilityError,
                                   "Unable to create udev interface");
 
-  auto platform = std::make_unique<Platform>();
-  if (auto resolver_result = StorageDeviceResolver::Create(
-          context_->root_dir(), platform->GetRootDeviceName());
-      resolver_result.has_value()) {
-    manager_ = std::make_unique<StorageDeviceManager>(
-        std::make_unique<StorageDeviceLister>(),
-        std::move(resolver_result.value()), std::move(udev),
-        std::move(platform));
-    return nullptr;
-  } else {
-    return std::move(resolver_result.error());
-  }
+  manager_ = std::make_unique<StorageDeviceManager>(
+      std::make_unique<StorageDeviceLister>(), std::move(udev),
+      std::make_unique<Platform>());
+  return nullptr;
 }
 
 mojom::NonRemovableBlockDeviceResultPtr
