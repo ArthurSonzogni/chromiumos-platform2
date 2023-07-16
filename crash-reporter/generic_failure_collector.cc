@@ -34,6 +34,8 @@ const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
     "arc-service-failure";
 const char* const GenericFailureCollector::kModemFailure = "cellular-failure";
+const char* const GenericFailureCollector::kModemfwdFailure =
+    "modemfwd_failure";
 const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
 const char* const GenericFailureCollector::kHermesFailure = "hermes_failure";
 
@@ -144,6 +146,12 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
               .cb = base::BindRepeating(
                   &GenericFailureCollector::CollectWithWeight,
                   generic_failure_collector, kModemFailure, options.weight),
+          },
+          {
+              .should_handle = options.modemfwd_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kModemfwdFailure, options.weight),
           },
           {
               .should_handle = options.hermes_failure,

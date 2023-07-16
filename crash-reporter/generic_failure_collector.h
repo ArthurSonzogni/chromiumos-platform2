@@ -62,6 +62,7 @@ class GenericFailureCollector : public CrashCollector {
     bool suspend_failure = false;
     bool auth_failure = false;
     bool modem_failure = false;
+    bool modemfwd_failure = false;
     bool recovery_failure = false;
     bool hermes_failure = false;
     std::string arc_service_failure;
@@ -100,6 +101,7 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kServiceFailure;
   static const char* const kArcServiceFailure;
   static const char* const kModemFailure;
+  static const char* const kModemfwdFailure;
   static const char* const kGuestOomEvent;
   static const char* const kHermesFailure;
 

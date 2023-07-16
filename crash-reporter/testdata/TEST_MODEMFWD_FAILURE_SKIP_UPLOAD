@@ -1,0 +1,1 @@
+2023-07-16T13:52:37.139148Z ERR modemfwd[2435]: OnInit(...): Domain=modemfwd, Code=org.chromium.Modemfwd.Error.InitFailureNonLteSku, Message=No suitable helpers found in /opt/google/modemfwd-helpers

@@ -32,6 +32,7 @@ using ::testing::Return;
 using ::anomaly::CryptohomeParser;
 using ::anomaly::HermesParser;
 using ::anomaly::KernelParser;
+using ::anomaly::ModemfwdParser;
 using ::anomaly::ParserRun;
 using ::anomaly::ParserTest;
 using ::anomaly::SELinuxParser;
@@ -769,4 +770,20 @@ TEST(AnomalyDetectorTest, ESimInstallFailureBlocked) {
   HermesParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_ESIM_INSTALL_MALFORMED_RESPONSE", {install_failure},
              &parser);
+}
+
+TEST(AnomalyDetectorTest, CellularFailureModemfwd) {
+  ParserRun modemfwd_failure = {
+      .expected_text = "dlcServiceReturnedErrorOnInstall",
+      .expected_flags = {
+          {"--modemfwd_failure", base::StringPrintf("--weight=%d", 50)}}};
+  ModemfwdParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_MODEMFWD_FAILURE_ERROR", {modemfwd_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CellularFailureModemfwdNonCellularSku) {
+  ParserRun modemfwd_failure_non_cellular = {.expected_size = 0};
+  ModemfwdParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_MODEMFWD_FAILURE_SKIP_UPLOAD",
+             {modemfwd_failure_non_cellular}, &parser);
 }

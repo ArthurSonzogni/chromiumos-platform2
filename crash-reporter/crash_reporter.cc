@@ -369,6 +369,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(arc_kernel, false, "ARC Kernel Crash");
 #endif
   DEFINE_bool(modem_failure, false, "Report modem failure");
+  DEFINE_bool(modemfwd_failure, false, "Report modemfwd failure");
   DEFINE_bool(hermes_failure, false, "Report hermes failure");
   DEFINE_bool(guest_oom_event, false,
               "OOM event in Crostini (captured via stdin)");
@@ -666,6 +667,7 @@ int main(int argc, char* argv[]) {
       .suspend_failure = FLAGS_suspend_failure,
       .auth_failure = FLAGS_auth_failure,
       .modem_failure = FLAGS_modem_failure,
+      .modemfwd_failure = FLAGS_modemfwd_failure,
       .recovery_failure = FLAGS_cryptohome_recovery_failure,
       .hermes_failure = FLAGS_hermes_failure,
       .arc_service_failure = FLAGS_arc_service_failure,
