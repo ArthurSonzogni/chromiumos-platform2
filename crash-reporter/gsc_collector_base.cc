@@ -163,6 +163,39 @@ GscCollectorBase::Status GscCollectorBase::PersistGscCrashId(
   return Status::Success;
 }
 
+GscCollectorBase::Status GscCollectorBase::GetGscCrashSignature(
+    std::string* signature_output) {
+  if (GetGscClog(signature_output) != Status::Success) {
+    return Status::Fail;
+  }
+
+  size_t offset = 0;
+  size_t size = 0;
+  if (GetGscCrashSignatureOffsetAndLength(&offset, &size) != Status::Success) {
+    return Status::Fail;
+  }
+
+  // 1. Remove the newlines from the clog output, so the string length
+  // calculations don't include them.
+  signature_output->erase(
+      std::remove(signature_output->begin(), signature_output->end(), '\n'),
+      signature_output->cend());
+  if (signature_output->size() < offset + size) {
+    LOG(ERROR) << "GSC clog output is too short: signature_output->size() = "
+               << signature_output->size() << ", offset = " << offset
+               << ", size = " << size;
+    return Status::Fail;
+  }
+  // 2. Trim the beginning of the string to the start of the signature within
+  // the crash log.
+  signature_output->erase(0, offset);
+  // 3. Trim off the remainder of the string after the end of the signature.
+  signature_output->erase(signature_output->begin() + size,
+                          signature_output->end());
+
+  return Status::Success;
+}
+
 bool GscCollectorBase::Collect(bool use_saved_lsb) {
   SetUseSavedLsb(use_saved_lsb);
 
@@ -229,9 +262,15 @@ bool GscCollectorBase::Collect(bool use_saved_lsb) {
   FilePath gsc_crash_path =
       GetCrashPath(root_crash_directory, dump_basename, "log.gz");
 
-  // TODO(b/265310865): Create unique GSC crash signatures based on the crash
-  // data.
-  AddCrashMetaData(kSignatureKey, kGscExecName);
+  std::string crash_signature = "";
+  if (GetGscCrashSignature(&crash_signature) != Status::Success ||
+      crash_signature.size() == 0) {
+    LOG(INFO) << "Failed to get the GSC signature: crash_signature.size() = "
+              << crash_signature.size();
+    // Set a default signature, so we don't lose the crash entirely.
+    crash_signature = kGscExecName;
+  }
+  AddCrashMetaData(kSignatureKey, crash_signature);
 
   // Get the log contents, compress, and attach to crash report.
   if (!GetLogContents(log_config_path_, kGscExecName, gsc_crash_path)) {

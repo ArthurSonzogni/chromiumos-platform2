@@ -31,9 +31,15 @@ class GscCollector : public GscCollectorBase {
   ~GscCollector() override = default;
 
  private:
+  // Flash Log (flog)
   GscCollectorBase::Status GetTi50Flog(std::string* flog_output);
-
   Status GetGscFlog(std::string* flog_output) override;
+
+  // Crash Log (clog)
+  GscCollectorBase::Status GetTi50Clog(std::string* clog_output);
+  Status GetGscClog(std::string* clog_output) override;
+  Status GetGscCrashSignatureOffsetAndLength(size_t* offset_out,
+                                             size_t* size_out) override;
 };
 
 #endif  // CRASH_REPORTER_GSC_COLLECTOR_H_

@@ -43,9 +43,14 @@ class GscCollectorBase : public CrashCollector {
 
  private:
   virtual Status GetGscFlog(std::string* flog_output) = 0;
+  virtual Status GetGscClog(std::string* clog_output) = 0;
+  virtual Status GetGscCrashSignatureOffsetAndLength(size_t* offset_out,
+                                                     size_t* size_out) = 0;
+
   Status ParseGscFlog(const std::string& gsctool_flog);
   Status GetCrashId(const std::string& flog_line, uint32_t* crash_id);
   Status GetPreviousGscCrashId(uint32_t* crash_id);
+  Status GetGscCrashSignature(std::string* signature_output);
 
   bool crash_detected_;
   // The latest crash ID in the current GSC flog output.
