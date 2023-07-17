@@ -132,6 +132,13 @@ void SetUpWallpaperFlags(
     brillo::CrosConfigInterface* cros_config,
     const base::RepeatingCallback<bool(const base::FilePath&)>& path_exists);
 
+// Add "--delay_on_active_camera_client_change_for_notification" switch to
+// spacify that a notification workaround should be used for the issue with
+// delayed camera privacy switch events that occur on Jinlon device.
+void SetUpDelayOnActiveCameraClientChangeForNotificationFlag(
+    chromeos::ui::ChromiumCommandBuilder* builder,
+    brillo::CrosConfigInterface* cros_config);
+
 // Add "--device-help-content-id" switch to specify the help content
 // to be displayed in the Showoff app.
 void SetUpHelpContentSwitch(chromeos::ui::ChromiumCommandBuilder* builder,

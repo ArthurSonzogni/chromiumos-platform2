@@ -632,6 +632,10 @@ properties:
                         type: boolean
                         description: The camera has a privacy switch that
                           can disable the output when enabled.
+                      privacy-switch-is-delayed:
+                        type: boolean
+                        description: The state of the privacy switch can be
+                          read only when the camera stream is active.
                       interface:
                         type: string
                         description: The interface type of the camera device.

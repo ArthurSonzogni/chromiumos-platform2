@@ -675,6 +675,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("enable_dsp_hotword"))
     builder->AddFeatureEnableOverride("EnableDspHotword");
 
+  SetUpDelayOnActiveCameraClientChangeForNotificationFlag(builder, cros_config);
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
   SetUpHelpContentSwitch(builder, cros_config);
@@ -742,6 +743,25 @@ void AddSerializedAshSwitches(ChromiumCommandBuilder* builder,
     } else {
       builder->AddArg(flag);
     }
+  }
+}
+
+void SetUpDelayOnActiveCameraClientChangeForNotificationFlag(
+    ChromiumCommandBuilder* builder, brillo::CrosConfigInterface* cros_config) {
+  if (!cros_config) {
+    return;
+  }
+
+  // It is sufficient to directly index the first device, as the workaround
+  // triggered by the switch that we are adding to the command line is
+  // compensating for an issue specific to the camera privacy switch behavior on
+  // Jinlon and Jinlon has only one camera.
+  const char* kCameraDevicePath = "/camera/devices/0";
+  std::string property_value;
+  if (cros_config->GetString(kCameraDevicePath, "privacy-switch-is-delayed",
+                             &property_value) &&
+      (property_value == "true")) {
+    builder->AddArg("--delay_on_active_camera_client_change_for_notification");
   }
 }
 

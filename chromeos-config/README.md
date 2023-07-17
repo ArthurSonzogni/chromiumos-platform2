@@ -628,6 +628,7 @@ In the tables below,
 | ids | array - string |  | False |  | False | An identifier string of camera module. For USB cameras this must be 4-digit hexadecimal VID and PID separated by a colon, e.g. 0123:abcd. For MIPI cameras it depends on vendor software usage. |
 | interface | string |  | True |  | False | The interface type of the camera device. |
 | orientation | integer |  | True |  | False | Clockwise angle through which the output image needs to be rotated to be upright on the device screen in its native orientation. |
+| privacy-switch-is-delayed | boolean |  | False |  | False | The state of the privacy switch can be read only when the camera stream is active. |
 
 ### flags
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
