@@ -16,13 +16,9 @@
 #include "base/files/important_file_writer.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/no_destructor.h"
-#include "base/strings/strcat.h"
 #include "base/uuid.h"
-#include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
-#include "metrics/metrics_library.h"
 
 namespace secagentd {
 
@@ -37,7 +33,11 @@ DeviceUser::DeviceUser(
     const base::FilePath& root_path)
     : weak_ptr_factory_(this),
       session_manager_(std::move(session_manager)),
-      root_path_(root_path) {}
+      root_path_(root_path) {
+  session_manager_->GetObjectProxy()->SetNameOwnerChangedCallback(
+      base::BindRepeating(&DeviceUser::OnSessionManagerNameChange,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
 
 void DeviceUser::RegisterSessionChangeHandler() {
   session_manager_->RegisterSessionStateChangedSignalHandler(
@@ -45,6 +45,12 @@ void DeviceUser::RegisterSessionChangeHandler() {
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&DeviceUser::HandleRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
+                                            const std::string& new_owner) {
+  // When session manager crashes it logs user out.
+  device_user_ = "";
 }
 
 std::string DeviceUser::GetDeviceUser() {

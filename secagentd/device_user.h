@@ -11,7 +11,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/files/file_path.h"
-#include "base/functional/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "bindings/device_management_backend.pb.h"
@@ -67,6 +66,9 @@ class DeviceUser : public DeviceUserInterface {
   void HandleRegistrationResult(const std::string& interface,
                                 const std::string& signal,
                                 bool success);
+  // Handles if Session Manager's name changes, possibly indicating a crash.
+  void OnSessionManagerNameChange(const std::string& old_owner,
+                                  const std::string& new_owner);
   // Handles when there is a login/out event.
   void OnSessionStateChange(const std::string& state);
   // Updates the device id after a session change.

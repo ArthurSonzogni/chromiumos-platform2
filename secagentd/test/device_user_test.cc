@@ -13,11 +13,11 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
+#include "dbus/login_manager/dbus-constants.h"
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "session_manager/dbus-proxies.h"
 #include "session_manager-client-test/session_manager/dbus-proxy-mocks.h"
 
 namespace secagentd::testing {
@@ -42,6 +42,8 @@ class DeviceUserTestFixture : public ::testing::Test {
     session_manager_ =
         std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
     session_manager_ref_ = session_manager_.get();
+
+    SetupNameChangeCb();
 
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     daemon_store_directory_ =
@@ -109,6 +111,21 @@ class DeviceUserTestFixture : public ::testing::Test {
             })));
   }
 
+  void SetupNameChangeCb() {
+    session_manager_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(), login_manager::kSessionManagerServiceName,
+        dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+    EXPECT_CALL(*session_manager_object_proxy_, SetNameOwnerChangedCallback)
+        .WillOnce(WithArg<0>(
+            Invoke([this](const base::RepeatingCallback<void(
+                              const std::string&, const std::string&)>& cb) {
+              name_change_cb_ = cb;
+            })));
+
+    EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
+        .WillOnce(Return(session_manager_object_proxy_.get()));
+  }
+
   void SetDeviceUser(const std::string& user) {
     device_user_->device_user_ = user;
   }
@@ -117,7 +134,11 @@ class DeviceUserTestFixture : public ::testing::Test {
   base::FilePath daemon_store_directory_;
   base::ScopedTempDir fake_root_;
   base::RepeatingCallback<void(const std::string&)> registration_cb_;
+  base::RepeatingCallback<void(const std::string&, const std::string&)>
+      name_change_cb_;
   scoped_refptr<DeviceUser> device_user_;
+  scoped_refptr<dbus::MockObjectProxy> session_manager_object_proxy_;
+  scoped_refptr<dbus::MockBus> bus_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyMock>
       session_manager_;
   org::chromium::SessionManagerInterfaceProxyMock* session_manager_ref_;
@@ -494,6 +515,15 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
+}
+TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
+  SetDeviceUser(kDeviceUser);
+
+  // Simulate "crash" by invoking name change method.
+  name_change_cb_.Run("old_name", "");
+  name_change_cb_.Run("", "new_name");
+
+  EXPECT_EQ("", device_user_->GetDeviceUser());
 }
 
 }  // namespace secagentd::testing
