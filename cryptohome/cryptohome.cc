@@ -2334,7 +2334,6 @@ int main(int argc, char** argv) {
                  switches::kActions[switches::ACTION_INVALIDATE_AUTH_SESSION],
                  action.c_str())) {
     user_data_auth::InvalidateAuthSessionRequest req;
-    user_data_auth::InvalidateAuthSessionReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
 
@@ -2343,23 +2342,12 @@ int main(int argc, char** argv) {
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
-    brillo::ErrorPtr error;
-    VLOG(1) << "Attempting to invalidate auth session";
-    if (!userdataauth_proxy.InvalidateAuthSession(req, &reply, &error,
-                                                  timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InvalidateAuthSession call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Auth session failed to invalidate.\n");
-      return static_cast<int>(reply.error());
-    }
-
+    // InvalidateAuthSession always succeeds currently, so don't wait for its
+    // response. Chrome should call InvalidateAuthSession in a non-blocking way.
+    // By making the call unblocking here too, we can capture more precise
+    // latencies in perf tests.
+    userdataauth_proxy.InvalidateAuthSessionAsync(
+        req, base::DoNothing(), base::DoNothing(), timeout_ms);
     printer.PrintHumanOutput("Auth session invalidated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_EXTEND_AUTH_SESSION],
                      action.c_str())) {
