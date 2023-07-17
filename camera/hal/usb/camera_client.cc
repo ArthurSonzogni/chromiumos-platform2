@@ -1382,6 +1382,13 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   // so we need to return the buffer back if any error happens.
   current_v4l2_buffer_id_ = buffer_id;
 
+  if (data_size == 0) {
+    LOGFID(ERROR, device_id_)
+        << "No content for input buffer id: " << buffer_id;
+    EnqueueV4L2Buffer();
+    return -EAGAIN;
+  }
+
   ret = input_buffers_[buffer_id]->SetDataSize(data_size);
   if (ret) {
     LOGFID(ERROR, device_id_)
