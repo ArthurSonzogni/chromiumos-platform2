@@ -59,6 +59,9 @@ class BRILLO_EXPORT ChromiumCommandBuilder {
   // Cros-config name for the platform name attribute in the identity path.
   static const char kCrosConfigPlatformName[];
 
+  static const char kCrosConfigBluetoothFlagsPath[];
+  static const char kCrosConfigBlockFlossAvailability[];
+
   ChromiumCommandBuilder();
   ChromiumCommandBuilder(const ChromiumCommandBuilder&) = delete;
   ChromiumCommandBuilder& operator=(const ChromiumCommandBuilder&) = delete;

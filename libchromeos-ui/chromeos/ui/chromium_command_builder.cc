@@ -22,6 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/userdb_utils.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <cros_config/cros_config.h>
 
 #include "chromeos/ui/util.h"
@@ -122,6 +123,11 @@ const char ChromiumCommandBuilder::kDisableBlinkFeaturesFlag[] =
     "disable-blink-features";
 const char ChromiumCommandBuilder::kCrosConfigIdentityPath[] = "/identity";
 const char ChromiumCommandBuilder::kCrosConfigPlatformName[] = "platform-name";
+
+const char ChromiumCommandBuilder::kCrosConfigBluetoothFlagsPath[] =
+    "/bluetooth/flags";
+const char ChromiumCommandBuilder::kCrosConfigBlockFlossAvailability[] =
+    "block-floss-availability";
 
 ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 
@@ -564,10 +570,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
-  // Disable Floss if the Floss USE flag was not set.
-  if (!UseFlagIsSet("floss"))
-    AddFeatureDisableOverride("FlossIsAvailable");
-
   // The display controller on SC7280 uses multiple planes when the screen
   // resolution is sufficiently wide, and we can run out of planes to display
   // the cursor on its own plane (e.g. if a 4k display is plugged in). Thus in
@@ -581,6 +583,19 @@ void ChromiumCommandBuilder::AddUiFlags() {
     if (platform_name == "Herobrine") {
       AddArg("--sw-cursor-on-wide-displays");
     }
+  }
+
+  // Disable Floss if the Floss USE flag was not set or the cros config
+  // was specified.
+  // TODO(b/292020117): Remove the USE flag check once we replace it with cros
+  // config.
+  std::string block_floss_availability;
+  if (!UseFlagIsSet("floss") ||
+      (cros_config.GetString(kCrosConfigBluetoothFlagsPath,
+                             kCrosConfigBlockFlossAvailability,
+                             &block_floss_availability) &&
+       block_floss_availability == "true")) {
+    AddFeatureDisableOverride("FlossIsAvailable");
   }
 
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
