@@ -423,6 +423,88 @@ constexpr struct {
     },
 };
 
+}  // namespace
+
+ino_t GetInode(const base::FilePath& path) {
+  struct stat st;
+  if (stat(path.value().c_str(), &st) != 0) {
+    return 0;
+  }
+  return st.st_ino;
+}
+
+// Given a file with text in the format used by /proc/PID/cmdline i.e. a bunch
+// of null-separated strings, read it into a string replacing null bytes with
+// spaces. This is a lossy conversion if args have spaces within them.
+std::string ReadCmdline(const base::FilePath& path) {
+  // Embedded nulls seem to confuse the base:: string functions so we don't get
+  // to use them :'(. Instead read it as bytes then step through byte-by-byte
+  // converting+replacing as we go. cmdline is user-controlled data but all the
+  // bits we care about are ASCII so we don't need to deal with complicated text
+  // encodings. Similarly, all the bits we care about don't have arguments with
+  // spaces so we don't need to worry about that either.
+  auto cmdline = base::ReadFileToBytes(path);
+  std::string ret = "";
+  if (!cmdline) {
+    // Error
+    return ret;
+  }
+  ret.reserve(cmdline->size());
+  for (auto b : *cmdline) {
+    if (b == '\0') {
+      ret.push_back(' ');
+    } else {
+      ret.push_back(b);
+    }
+  }
+  return ret;
+}
+
+// Sanitises an in-container cmdline by stripping bits which could contain PII.
+std::string SanitiseCmdline(const std::string& cmdline,
+                            ino_t root_inode,
+                            ino_t proc_inode) {
+  if (cmdline == "") {
+    // Unable to read the cmdline. Error reading file, etc.
+    // This commonly happens when the process shuts down between us starting to
+    // iterate over running processes and sending the signal e.g. because
+    // SIGKILL to an earlier process made this one shut down too.
+    return "unknown process";
+  }
+  if (root_inode != 0 && root_inode == proc_inode) {
+    // /ns/mnt inodes match, so the process is _not_ inside a mount namespace,
+    // so it's not inside a container. So we can log the entire cmdline.
+    return cmdline;
+  }
+  if (cmdline.find("/opt/google") != string::npos) {
+    // A Google-provided binary but the last args could be user-supplied e.g.
+    // running their app under Sommelier. So only logs the first few
+    // components - just enough to tell if this is sommelier/garcon/etc.
+    int offset = 0;
+    for (int n = 0; n < 3 && offset != string::npos; n++) {
+      offset = cmdline.find(" ", offset + 1);
+    }
+    return cmdline.substr(0, offset);
+  }
+  // Arbitrary container process, cmdline could have anything. Don't log to be
+  // safe.
+  return "container process";
+}
+
+// Logs the provided `pids` as having timed out while waiting on them to shut
+// down. Will log just the PID for user processes inside the container, will log
+// PID and full cmdline for vm-level process, will log truncated cmdline or
+// Google-supplied in-container processes.
+void LogTimedOutProcess(ino_t root_inode, pid_t pid) {
+  auto path = base::FilePath("/proc").Append(base::NumberToString(pid));
+
+  auto cmdline = SanitiseCmdline(ReadCmdline(path.Append("cmdline")),
+                                 root_inode, GetInode(path.Append("ns/mnt")));
+  LOG(ERROR) << "Sending SIGKILL to " << cmdline << " (PID=" << pid << ")";
+}
+
+namespace {
+
 // Waits for all the processes in |pids| to exit.  Returns when all processes
 // have exited or when |deadline| is reached, whichever happens first.
 void WaitForChildren(std::set<pid_t> pids, base::Time deadline) {
@@ -589,6 +671,20 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
     PLOG(WARNING) << "Unable to send SIGSTOP to all processes.  System "
                   << "thrashing may occur";
   }
+  ino_t root_inode;
+  if (signo == SIGKILL) {
+    // Only used for SIGKILL, to log processes which are going to get killed.
+    // We use the inode of init's mount namespace as an identifier to figure out
+    // if other processes are in the same namespace as us or a different one
+    // (i.e. inside a container).
+    root_inode = GetInode(base::FilePath("/proc/1/ns/mnt"));
+    if (root_inode == 0) {
+      // Unable to get the root inode so log an error. Still continue, this
+      // means everything will be treated as an in-container process (since no
+      // inodes will match) but we can still get pids in that case.
+      PLOG(ERROR) << "Unable to get inode for root mount namespace";
+    }
+  }
 
   base::FileEnumerator enumerator(base::FilePath("/proc"),
                                   false /* recursive */,
@@ -605,6 +701,9 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
       continue;
     }
 
+    if (signo == SIGKILL) {
+      LogTimedOutProcess(root_inode, process);
+    }
     if (kill(process, signo) < 0) {
       PLOG(ERROR) << "Failed to send " << strsignal(signo) << " to process "
                   << process;
@@ -976,94 +1075,6 @@ void Init::Worker::Spawn(struct ChildInfo info,
   sigprocmask(SIG_SETMASK, &omask, nullptr);
 }
 
-// Returns the inode of `path`. Follows symlinks i.e. if `path` is a symlink
-// returns the inode of whatever the symlink points to.
-ino_t GetInode(const base::FilePath& path) {
-  struct stat st;
-  if (stat(path.value().c_str(), &st) != 0) {
-    return 0;
-  }
-  return st.st_ino;
-}
-
-// Given a file with text in the format used by /proc/PID/cmdline i.e. a bunch
-// of null-separated strings, read it into a string replacing null bytes with
-// spaces. This is a lossy conversion if args have spaces within them.
-std::string ReadCmdline(const base::FilePath& path) {
-  // Embedded nulls seem to confuse the base:: string functions so we don't get
-  // to use them :'(. Instead read it as bytes then step through byte-by-byte
-  // converting+replacing as we go. cmdline is user-controlled data but all the
-  // bits we care about are ASCII so we don't need to deal with complicated text
-  // encodings. Similarly, all the bits we care about don't have arguments with
-  // spaces so we don't need to worry about that either.
-  auto cmdline = base::ReadFileToBytes(path);
-  std::string ret = "";
-  if (!cmdline) {
-    // Error
-    return ret;
-  }
-  ret.reserve(cmdline->size());
-  for (auto b : *cmdline) {
-    if (b == '\0') {
-      ret.push_back(' ');
-    } else {
-      ret.push_back(b);
-    }
-  }
-  return ret;
-}
-
-// Sanitises an in-container cmdline by stripping bits which could contain PII.
-std::string SanitiseCmdline(const std::string& cmdline,
-                            ino_t root_inode,
-                            ino_t proc_inode) {
-  if (cmdline == "") {
-    // Unable to read the cmdline. Error reading file, etc.
-    return "unknown process";
-  }
-  if (root_inode == proc_inode) {
-    // /ns/mnt inodes match, so the process is _not_ inside a mount namespace,
-    // so it's not inside a container. So we can log the entire cmdline.
-    return cmdline;
-  }
-  if (cmdline.find("/opt/google") != string::npos) {
-    // A Google-provided binary but the last args could be user-supplied e.g.
-    // running their app under Sommelier. So only logs the first few
-    // components - just enough to tell if this is sommelier/garcon/etc.
-    int offset = 0;
-    for (int n = 0; n < 3 && offset != string::npos; n++) {
-      offset = cmdline.find(" ", offset + 1);
-    }
-    return cmdline.substr(0, offset);
-  }
-  // Arbitrary container process, cmdline could have anything. Don't log to be
-  // safe.
-  return "container process";
-}
-
-// Logs the provided `pids` as having timed out while waiting on them to shut
-// down. Will log just the PID for user processes inside the container, will log
-// PID and full cmdline for vm-level process, will log truncated cmdline or
-// Google-supplied in-container processes.
-void LogTimedOutProcesses(const std::set<pid_t>& pids) {
-  // Get inode of /proc/1/ns/mnt (follow the symlink)
-  auto root_inode = GetInode(base::FilePath("/proc/1/ns/mnt"));
-  if (root_inode == 0) {
-    // Unable to continue, bail without logging anything other than an error
-    // message.
-    PLOG(ERROR) << "Unable to get inode for root mount namespace";
-  }
-
-  for (auto pid : pids) {
-    auto path = base::FilePath("/proc").Append(base::NumberToString(pid));
-
-    auto cmdline = SanitiseCmdline(ReadCmdline(path.Append("cmdline")),
-                                   root_inode, GetInode(path.Append("ns/mnt")));
-    LOG(ERROR) << "Timed out waiting for " << cmdline << " (PID=" << pid
-               << ") to shut down";
-  }
-}
-
 void Init::Worker::Shutdown(int notify_fd) {
   DCHECK_NE(notify_fd, -1);
 
@@ -1080,13 +1091,6 @@ void Init::Worker::Shutdown(int notify_fd) {
                     base::Time::Now() + kTremplinShutdownTimeout);
   }
 
-  // Second, send SIGPWR to lxd, if it is running.  This will cause lxd to shut
-  // down all running containers in parallel.
-  pid_t lxd_pid = FindProcessByName("lxd");
-  if (lxd_pid != 0 && kill(lxd_pid, SIGPWR) == 0) {
-    WaitForChildren({lxd_pid}, base::Time::Now() + kShutdownTimeout);
-  }
-
   // Now send SIGTERM to all remaining processes.
   std::set<pid_t> pids;
   BroadcastSignal(SIGTERM, &pids);
@@ -1096,9 +1100,6 @@ void Init::Worker::Shutdown(int notify_fd) {
 
   // Kill anything left with SIGKILL.
   BroadcastSignal(SIGKILL, &pids);
-
-  // Log any processes which took too long to shut down and had to be killed.
-  LogTimedOutProcesses(pids);
 
   // Detach loopback devices.
   DetachLoopback();
