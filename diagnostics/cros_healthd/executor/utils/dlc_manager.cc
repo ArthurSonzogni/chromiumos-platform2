@@ -148,6 +148,7 @@ void DlcManager::InvokeRootPathCallbacks(
     return;
   }
 
+  // Invokes all callbacks when the installation completes.
   for (auto& root_path_cb : iter->second) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(root_path_cb), root_path));
@@ -156,20 +157,22 @@ void DlcManager::InvokeRootPathCallbacks(
 }
 
 void DlcManager::HandleDlcRootPathCallbackTimeout(const std::string& dlc_id) {
-  if (!pending_root_path_callbacks_.count(dlc_id)) {
+  const auto iter = pending_root_path_callbacks_.find(dlc_id);
+  if (iter == pending_root_path_callbacks_.end()) {
     return;
   }
 
-  // Invoked the first-in callback with null result.
+  auto& root_path_callbacks = iter->second;
   LOG(ERROR) << "DLC timeout error (" << dlc_id << ")";
+  // Invokes the earliest callback with null result, which is the first one in
+  // |root_path_callbacks|.
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
-      base::BindOnce(std::move(pending_root_path_callbacks_[dlc_id][0]),
-                     std::nullopt));
+      base::BindOnce(std::move(root_path_callbacks[0]), std::nullopt));
+  root_path_callbacks.erase(root_path_callbacks.begin());
 
-  pending_root_path_callbacks_.erase(pending_root_path_callbacks_.begin());
-  if (pending_root_path_callbacks_.empty()) {
-    pending_root_path_callbacks_.erase(dlc_id);
+  if (root_path_callbacks.empty()) {
+    pending_root_path_callbacks_.erase(iter);
   }
 }
 
