@@ -15,12 +15,6 @@
 
 #include "debugd/src/subprocess_tool.h"
 
-namespace brillo {
-namespace dbus_utils {
-class ExportedPropertyBase;
-}  // namespace dbus_utils
-}  // namespace brillo
-
 namespace debugd {
 
 class CrashSenderTool : public SubprocessTool {
