@@ -102,6 +102,16 @@ constexpr char kUnknownCrashSeverityEnumString[] =
 // Sentinel value indicating ProductEnumToString() received a non-enum value.
 constexpr char kUnknownProductEnumString[] = "unknown-product-enum";
 
+// UMA histogram names to record the computed crash severity and product.
+constexpr char kStabilityErrorHistogram[] = "ChromeOS.Stability.Error";
+constexpr char kStabilityFatalHistogram[] = "ChromeOS.Stability.Fatal";
+constexpr char kStabilityInfoHistogram[] = "ChromeOS.Stability.Info";
+constexpr char kStabilityUnknownEnumValueHistogram[] =
+    "ChromeOS.Stability.UnknownValue";
+constexpr char kStabilityUnspecifiedHistogram[] =
+    "ChromeOS.Stability.Unspecified";
+constexpr char kStabilityWarningHistogram[] = "ChromeOS.Stability.Warning";
+
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -1664,8 +1674,15 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   }
 
   // Record report created metric in UMA.
-  // TODO(b/270732207): Remove deadlock risk.
   metrics_lib_->data->SendCrosEventToUMA(kReportCountEnum);
+
+  // Record computed severity and product in UMA.
+  computed_crash_severity.product_group =
+      ValidateProductGroupForHistogram(computed_crash_severity.product_group);
+  const std::string histogram =
+      CrashSeverityEnumToHistogram(computed_crash_severity.crash_severity);
+  metrics_lib_->data->SendEnumToUMA(histogram,
+                                    computed_crash_severity.product_group);
 
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     SetUpDBus();
@@ -1711,10 +1728,11 @@ std::string CrashCollector::CrashSeverityEnumToString(
       return "WARNING";
     case CrashSeverity::kInfo:
       return "INFO";
+    default:
+      LOG(ERROR) << "Unexpected enum value for CrashSeverity: "
+                 << static_cast<int>(crash_severity);
+      return kUnknownCrashSeverityEnumString;
   }
-  LOG(ERROR) << "Unexpected enum value for CrashSeverity: "
-             << static_cast<int>(crash_severity);
-  return kUnknownCrashSeverityEnumString;
 }
 
 std::string CrashCollector::ProductEnumToString(Product product) const {
@@ -1729,10 +1747,49 @@ std::string CrashCollector::ProductEnumToString(Product product) const {
       return "Arc";
     case Product::kLacros:
       return "Lacros";
+    default:
+      LOG(ERROR) << "Unexpected enum value for Product: "
+                 << static_cast<int>(product);
+      return kUnknownProductEnumString;
   }
-  LOG(ERROR) << "Unexpected enum value for Product: "
-             << static_cast<int>(product);
-  return kUnknownProductEnumString;
+}
+
+std::string CrashCollector::CrashSeverityEnumToHistogram(
+    CrashSeverity crash_severity) const {
+  switch (crash_severity) {
+    case CrashSeverity::kUnspecified:
+      return kStabilityUnspecifiedHistogram;
+    case CrashSeverity::kFatal:
+      return kStabilityFatalHistogram;
+    case CrashSeverity::kError:
+      return kStabilityErrorHistogram;
+    case CrashSeverity::kWarning:
+      return kStabilityWarningHistogram;
+    case CrashSeverity::kInfo:
+      return kStabilityInfoHistogram;
+    default:
+      LOG(ERROR)
+          << "Unexpected severity enum value for ChromeOS.Stability histogram: "
+          << static_cast<int>(crash_severity);
+      return kStabilityUnknownEnumValueHistogram;
+  }
+}
+
+CrashCollector::Product CrashCollector::ValidateProductGroupForHistogram(
+    Product product) const {
+  switch (product) {
+    case Product::kUnspecified:
+    case Product::kUi:
+    case Product::kPlatform:
+    case Product::kArc:
+    case Product::kLacros:
+      return product;
+    default:
+      LOG(ERROR)
+          << "Unexpected product enum value for ChromeOS.Stability histogram: "
+          << static_cast<int>(product);
+      return Product::kUnknownValue;
+  }
 }
 
 bool CrashCollector::ShouldHandleChromeCrashes() {

@@ -104,7 +104,8 @@ class CrashCollector {
     kPlatform = 2,
     kArc = 3,
     kLacros = 4,
-    kMaxValue = kLacros,
+    kUnknownValue = 5,
+    kMaxValue = kUnknownValue,
   };
 
   struct ComputedCrashSeverity {
@@ -654,6 +655,15 @@ class CrashCollector {
   // Returns the stringified version of a given |product| value, which is
   // reported to the crash server.
   std::string ProductEnumToString(Product product) const;
+
+  // Returns the histogram name of a given |crash_severity| value, which is
+  // reported to UMA.
+  std::string CrashSeverityEnumToHistogram(CrashSeverity crash_severity) const;
+
+  // Checks that |product| is one of { kUnspecified, kUi, kPlatform, kArc,
+  // kLacros }. If so, return |product| unmodified. If not, return
+  // Product::kUnknownValue. This value is reported to UMA.
+  Product ValidateProductGroupForHistogram(Product product) const;
 
   // Returns an error type signature for a given |error_type| value,
   // which is reported to the crash server along with the

@@ -2087,6 +2087,12 @@ TEST_F(CrashCollectorTest, CollectionLogsToUMA) {
 
   EXPECT_CALL(*mock_ref, SendCrosEventToUMA("Crash.Collector.CollectionCount"))
       .WillOnce(Return(true));
+  EXPECT_CALL(
+      *mock_ref,
+      SendEnumToUMA("ChromeOS.Stability.Unspecified",
+                    static_cast<int>(CrashCollector::Product::kUnspecified),
+                    static_cast<int>(CrashCollector::Product::kMaxValue) + 1))
+      .WillOnce(Return(true));
   collector_.FinishCrash(kMetaFilePath, "kernel", kPayloadName);
 }
 
