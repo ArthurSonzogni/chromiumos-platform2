@@ -344,7 +344,7 @@ int CachedFrame::DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame) {
   base::ElapsedTimer sw_timer;
   ret = image_processor_->ConvertFormat(in_frame, out_frame);
   if (ret) {
-    return -EINVAL;
+    return -EAGAIN;
   }
   camera_metrics_->SendJpegProcessLatency(JpegProcessType::kDecode,
                                           JpegProcessMethod::kSoftware,
