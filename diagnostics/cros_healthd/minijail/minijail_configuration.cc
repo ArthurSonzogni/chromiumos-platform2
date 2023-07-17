@@ -205,6 +205,15 @@ void EnterExecutorMinijail() {
   // across processes. (/run/lock)
   PCHECK(0 ==
          minijail_bind(j.get(), "/run/lock", "/run/lock", /*writeable=*/1));
+  // Used by crash_sender. Each subdir in this directory is also bind-mounted,
+  // and thus recursion is needed.
+  // Note that subdirs in /run/daemon-store/crash and /home/chronos (mounted
+  // below) change as users log in and out. However, this does not present an
+  // issue for recursive bind-mount, which handles the changes in mounted
+  // directories in subtrees.
+  PCHECK(0 == minijail_mount(j.get(), "/run/daemon-store/crash",
+                             "/run/daemon-store/crash", "none",
+                             /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
   // Used by DLC.
   PCHECK(0 == minijail_mount(j.get(), "/run/imageloader", "/run/imageloader",
                              "none", /*flags=*/MS_BIND | MS_REC));
@@ -215,8 +224,12 @@ void EnterExecutorMinijail() {
   // https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#creating-the-stateful-file-system-the-chromeos_startup-script
   // Therefore, cros_healthd, which starts after basic service, should always
   // have access to '/home/chronos' when this line is reached.
-  PCHECK(0 == minijail_bind(j.get(), "/home/chronos", "/home/chronos",
-                            /*writeable=*/0));
+  //
+  // Additionally, the recursive mounting is needed by crash_sender, as noted
+  // above.
+  PCHECK(0 == minijail_mount(j.get(), "/home/chronos/", "/home/chronos/",
+                             "none",
+                             /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
 
   // Also bind efivars, which is a separate filesystem mounted under sys.
   // It is only present on some systems.
