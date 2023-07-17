@@ -561,6 +561,9 @@ properties:
                     enable-bluetooth-offload:
                       description: Enable audio offload path.
                       type: boolean
+                    block-floss-availability:
+                      description: Block Floss from enablement by chrome.
+                      type: boolean
                   additionalProperties: false
               additionalProperties: false
             wifi:

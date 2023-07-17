@@ -590,6 +590,7 @@ In the tables below,
 ### flags
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| block-floss-availability | boolean |  | False |  | False | Block Floss from enablement by chrome. |
 | enable-bluetooth-offload | boolean |  | False |  | False | Enable audio offload path. |
 | enable-suspend-management | boolean |  | False |  | False | Enable powerd suspend management callbacks. |
 | reset-on-resume | boolean |  | False |  | False | Expect bluetooth chip to have reset on resume. |
