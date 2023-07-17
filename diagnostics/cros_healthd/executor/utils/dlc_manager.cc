@@ -15,8 +15,6 @@
 #include <dlcservice/dbus-proxies.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
-#include "diagnostics/cros_healthd/utils/dbus_utils.h"
-
 namespace diagnostics {
 
 DlcManager::DlcManager(
@@ -107,21 +105,19 @@ void DlcManager::InstallDlc(const std::string& dlc_id) {
   // installation is complete.
   dlcservice::InstallRequest install_request;
   install_request.set_id(dlc_id);
-  auto [on_success, on_error] =
-      SplitDbusCallback(base::BindOnce(&DlcManager::HandleDlcInstallResponse,
-                                       weak_factory_.GetWeakPtr(), dlc_id));
-  dlcservice_proxy_->InstallAsync(install_request, std::move(on_success),
-                                  std::move(on_error));
+  dlcservice_proxy_->InstallAsync(
+      install_request, /*on_success=*/base::DoNothing(),
+      base::BindOnce(&DlcManager::HandleDlcInstallError,
+                     weak_factory_.GetWeakPtr(), dlc_id));
 }
 
-void DlcManager::HandleDlcInstallResponse(const std::string& dlc_id,
-                                          brillo::Error* err) {
+void DlcManager::HandleDlcInstallError(const std::string& dlc_id,
+                                       brillo::Error* err) {
   if (err) {
     LOG(ERROR) << "DLC installation error (" << dlc_id
                << "): " << err->GetCode() + ", message: " << err->GetMessage();
-    InvokeRootPathCallbacks(dlc_id, std::nullopt);
-    return;
   }
+  InvokeRootPathCallbacks(dlc_id, std::nullopt);
 }
 
 void DlcManager::OnDlcStateChanged(const dlcservice::DlcState& state) {

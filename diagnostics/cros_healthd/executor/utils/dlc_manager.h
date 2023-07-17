@@ -70,8 +70,8 @@ class DlcManager {
   // Install DLC for the |dlc_id|.
   void InstallDlc(const std::string& dlc_id);
 
-  // Handle the response of installing DLC.
-  void HandleDlcInstallResponse(const std::string& dlc_id, brillo::Error* err);
+  // Handle the error of installing DLC.
+  void HandleDlcInstallError(const std::string& dlc_id, brillo::Error* err);
 
   // Handle the DLC state changed signal. Used to check if the DLC installation
   // is complete.
