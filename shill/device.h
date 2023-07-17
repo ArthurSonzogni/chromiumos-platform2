@@ -66,7 +66,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Enable or disable the device. This is a convenience method for
   // cases where we want to SetEnabledNonPersistent, but don't care
   // about the results.
-  mockable void SetEnabled(bool enable);
+  virtual void SetEnabled(bool enable);
   // Enable or disable the device. Unlike SetEnabledPersistent, it does not
   // save the setting in the profile.
   //

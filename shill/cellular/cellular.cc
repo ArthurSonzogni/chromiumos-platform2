@@ -1498,6 +1498,20 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
   OnConnected();
 }
 
+void Cellular::HandleDisableResult(const Error& error) {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+  if (capability_ && !using_capability_for_testing_)
+    DestroyCapability();
+}
+
+void Cellular::SetEnabled(bool enable) {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+  SetEnabledChecked(enable, false,
+                    enable ? base::DoNothing()
+                           : base::BindOnce(&Cellular::HandleDisableResult,
+                                            weak_ptr_factory_.GetWeakPtr()));
+}
+
 void Cellular::OnEnabled() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   manager()->AddTerminationAction(

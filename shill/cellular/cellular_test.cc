@@ -170,6 +170,7 @@ class CellularTest : public testing::Test {
     device_ =
         new Cellular(&manager_, kTestInterfaceName, kTestInterfaceAddress,
                      kTestInterfaceIndex, kDBusService, kTestModemDBusPath);
+    device_->capability_for_testing();
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
