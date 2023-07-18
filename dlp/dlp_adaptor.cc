@@ -62,9 +62,9 @@ std::string ParseProto(const base::Location& from_here,
   return "";
 }
 
-FileEntry ConvertToFileEntry(ino_t inode, AddFileRequest request) {
+FileEntry ConvertToFileEntry(FileId id, AddFileRequest request) {
   FileEntry result;
-  result.inode = inode;
+  result.id = id;
   if (request.has_source_url())
     result.source_url = request.source_url();
   if (request.has_referrer_url())
@@ -72,9 +72,9 @@ FileEntry ConvertToFileEntry(ino_t inode, AddFileRequest request) {
   return result;
 }
 
-std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
+std::set<std::pair<base::FilePath, FileId>> EnumerateFiles(
     const base::FilePath& root_path) {
-  std::set<std::pair<base::FilePath, ino64_t>> files;
+  std::set<std::pair<base::FilePath, FileId>> files;
   base::FileEnumerator enumerator(root_path, /*recursive=*/true,
                                   base::FileEnumerator::FILES);
   for (base::FilePath entry = enumerator.Next(); !entry.empty();
@@ -206,22 +206,22 @@ void DlpAdaptor::AddFiles(
 
   std::vector<FileEntry> files_to_add;
   std::vector<base::FilePath> files_paths;
-  std::vector<ino_t> files_inodes;
+  std::vector<FileId> files_ids;
   for (const AddFileRequest& add_file_request : request.add_file_requests()) {
     LOG(INFO) << "Adding file to the database: "
               << add_file_request.file_path();
 
-    const ino_t inode = GetInodeValue(add_file_request.file_path());
-    if (!inode) {
+    const FileId id = GetFileId(add_file_request.file_path());
+    if (!id) {
       ReplyOnAddFiles(std::move(response), "Failed to get inode");
       dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
       return;
     }
 
-    FileEntry file_entry = ConvertToFileEntry(inode, add_file_request);
+    FileEntry file_entry = ConvertToFileEntry(id, add_file_request);
     files_to_add.push_back(file_entry);
     files_paths.emplace_back(add_file_request.file_path());
-    files_inodes.emplace_back(inode);
+    files_ids.emplace_back(id);
   }
 
   if (!db_) {
@@ -237,7 +237,7 @@ void DlpAdaptor::AddFiles(
       files_to_add,
       base::BindOnce(&DlpAdaptor::OnFilesUpserted, base::Unretained(this),
                      std::move(response), std::move(files_paths),
-                     std::move(files_inodes)));
+                     std::move(files_ids)));
 }
 
 void DlpAdaptor::RequestFileAccess(
@@ -272,27 +272,27 @@ void DlpAdaptor::RequestFileAccess(
     return;
   }
 
-  std::vector<ino64_t> inodes;
+  std::vector<FileId> ids;
   for (const auto& file_path : request.files_paths()) {
-    const ino_t inode_n = GetInodeValue(file_path);
-    if (inode_n > 0) {
-      inodes.push_back(inode_n);
+    const FileId id = GetFileId(file_path);
+    if (id > 0) {
+      ids.push_back(id);
     }
   }
 
-  // If no valid inodes provided, return immediately.
-  if (inodes.empty()) {
+  // If no valid ids provided, return immediately.
+  if (ids.empty()) {
     ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
                              /*allowed=*/true,
                              /*error_message=*/std::string());
     return;
   }
 
-  db_->GetFileEntriesByInodes(
-      inodes, base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
-                             base::Unretained(this), std::move(response),
-                             std::move(request), std::move(local_fd),
-                             std::move(remote_fd)));
+  db_->GetFileEntriesByIds(
+      ids, base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
+                          base::Unretained(this), std::move(response),
+                          std::move(request), std::move(local_fd),
+                          std::move(remote_fd)));
 }
 
 void DlpAdaptor::ProcessRequestFileAccessWithData(
@@ -302,20 +302,20 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     RequestFileAccessRequest request,
     base::ScopedFD local_fd,
     base::ScopedFD remote_fd,
-    std::map<ino64_t, FileEntry> file_entries) {
+    std::map<FileId, FileEntry> file_entries) {
   IsFilesTransferRestrictedRequest matching_request;
-  std::vector<ino64_t> request_inodes;
-  std::vector<ino64_t> granted_inodes;
+  std::vector<FileId> request_ids;
+  std::vector<FileId> granted_ids;
 
   for (const auto& file_path : request.files_paths()) {
-    const ino_t inode_n = GetInodeValue(file_path);
-    auto it = file_entries.find(inode_n);
+    const FileId id = GetFileId(file_path);
+    auto it = file_entries.find(id);
     if (it == std::end(file_entries)) {
       // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
     }
     RestrictionLevel cached_level = requests_cache_.Get(
-        inode_n, file_path,
+        id, file_path,
         request.has_destination_url() ? request.destination_url() : "",
         request.has_destination_component() ? request.destination_component()
                                             : DlpComponent::UNKNOWN_COMPONENT);
@@ -328,25 +328,25 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     }
     // Was previously allowed, no need to check again.
     if (!RequiresCheck(cached_level)) {
-      granted_inodes.emplace_back(inode_n);
+      granted_ids.emplace_back(id);
       continue;
     }
 
-    request_inodes.push_back(inode_n);
+    request_ids.push_back(id);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
-    file_metadata->set_inode(inode_n);
+    file_metadata->set_inode(id);
     file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
-  if (request_inodes.empty()) {
-    if (!granted_inodes.empty()) {
+  if (request_ids.empty()) {
+    if (!granted_ids.empty()) {
       int lifeline_fd = AddLifelineFd(local_fd.get());
       approved_requests_.insert_or_assign(
           lifeline_fd,
-          std::make_pair(std::move(granted_inodes), request.process_id()));
+          std::make_pair(std::move(granted_ids), request.process_id()));
     }
 
     ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
@@ -374,7 +374,7 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
-                     std::move(request_inodes), std::move(granted_inodes),
+                     std::move(request_ids), std::move(granted_ids),
                      request.process_id(), std::move(local_fd),
                      std::move(callbacks.first), std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
@@ -404,26 +404,25 @@ void DlpAdaptor::GetFilesSources(
     return;
   }
 
-  std::vector<ino64_t> inodes = {request.files_inodes().begin(),
-                                 request.files_inodes().end()};
-  std::vector<std::pair<ino64_t, std::string>> requested_files;
+  std::vector<FileId> ids;
+  std::vector<std::pair<FileId, std::string>> requested_files;
   for (const auto& inode : request.files_inodes()) {
-    inodes.push_back(inode);
+    ids.push_back(inode);
     requested_files.emplace_back(inode, "");
   }
 
   for (const auto& path : request.files_paths()) {
-    const ino64_t inode = GetInodeValue(path);
-    if (inode > 0) {
-      inodes.push_back(inode);
-      requested_files.emplace_back(inode, path);
+    const FileId id = GetFileId(path);
+    if (id > 0) {
+      ids.push_back(id);
+      requested_files.emplace_back(id, path);
     }
   }
 
-  db_->GetFileEntriesByInodes(
-      inodes, base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                             base::Unretained(this), std::move(response),
-                             requested_files));
+  db_->GetFileEntriesByIds(
+      ids, base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
+                          base::Unretained(this), std::move(response),
+                          requested_files));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -448,18 +447,18 @@ void DlpAdaptor::CheckFilesTransfer(
     return;
   }
 
-  std::vector<ino64_t> inodes;
+  std::vector<FileId> ids;
   for (const auto& file_path : request.files_paths()) {
-    const ino_t file_inode = GetInodeValue(file_path);
-    if (file_inode > 0) {
-      inodes.push_back(file_inode);
+    const FileId file_id = GetFileId(file_path);
+    if (file_id > 0) {
+      ids.push_back(file_id);
     }
   }
 
-  db_->GetFileEntriesByInodes(
-      inodes, base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
-                             base::Unretained(this), std::move(response),
-                             std::move(request)));
+  db_->GetFileEntriesByIds(
+      ids, base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
+                          base::Unretained(this), std::move(response),
+                          std::move(request)));
 }
 
 void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
@@ -548,23 +547,23 @@ void DlpAdaptor::OnPendingFilesUpserted(base::OnceClosure init_callback,
 }
 
 void DlpAdaptor::AddPerFileWatch(
-    const std::set<std::pair<base::FilePath, ino64_t>>& files) {
+    const std::set<std::pair<base::FilePath, FileId>>& files) {
   if (!fanotify_watcher_->IsActive())
     return;
 
-  std::vector<ino64_t> inodes;
+  std::vector<FileId> ids;
   for (const auto& entry : files) {
-    inodes.push_back(entry.second);
+    ids.push_back(entry.second);
   }
 
-  db_->GetFileEntriesByInodes(
-      inodes, base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
-                             base::Unretained(this), files));
+  db_->GetFileEntriesByIds(
+      ids, base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
+                          base::Unretained(this), files));
 }
 
 void DlpAdaptor::ProcessAddPerFileWatchWithData(
-    const std::set<std::pair<base::FilePath, ino64_t>>& files,
-    std::map<ino64_t, FileEntry> file_entries) {
+    const std::set<std::pair<base::FilePath, FileId>>& files,
+    std::map<FileId, FileEntry> file_entries) {
   for (const auto& entry : files) {
     if (file_entries.find(entry.second) != std::end(file_entries)) {
       fanotify_watcher_->AddFileDeleteWatch(entry.first);
@@ -597,7 +596,7 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
 }
 
 void DlpAdaptor::ProcessFileOpenRequest(
-    ino_t inode, int pid, base::OnceCallback<void(bool)> callback) {
+    FileId id, int pid, base::OnceCallback<void(bool)> callback) {
   if (pid == base::GetCurrentProcId()) {
     // Allowing itself all file accesses (to database files).
     std::move(callback).Run(/*allowed=*/true);
@@ -611,16 +610,15 @@ void DlpAdaptor::ProcessFileOpenRequest(
     return;
   }
 
-  db_->GetFileEntriesByInodes(
-      {inode},
-      base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
-                     base::Unretained(this), pid, std::move(callback)));
+  db_->GetFileEntriesByIds(
+      {id}, base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
+                           base::Unretained(this), pid, std::move(callback)));
 }
 
 void DlpAdaptor::ProcessFileOpenRequestWithData(
     int pid,
     base::OnceCallback<void(bool)> callback,
-    std::map<ino64_t, FileEntry> file_entries) {
+    std::map<FileId, FileEntry> file_entries) {
   if (file_entries.size() != 1) {
     std::move(callback).Run(/*allowed=*/true);
     return;
@@ -629,7 +627,7 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 
   int lifeline_fd = -1;
   for (const auto& [key, value] : approved_requests_) {
-    if (base::Contains(value.first, file_entry.inode) && value.second == pid) {
+    if (base::Contains(value.first, file_entry.id) && value.second == pid) {
       lifeline_fd = key;
       break;
     }
@@ -641,7 +639,7 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
-  request.mutable_file_metadata()->set_inode(file_entry.inode);
+  request.mutable_file_metadata()->set_inode(file_entry.id);
   request.mutable_file_metadata()->set_source_url(file_entry.source_url);
   request.mutable_file_metadata()->set_referrer_url(file_entry.referrer_url);
   // TODO(crbug.com/1357967)
@@ -657,15 +655,15 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
                      base::Unretained(this), std::move(callbacks.second)));
 }
 
-void DlpAdaptor::OnFileDeleted(ino_t inode) {
+void DlpAdaptor::OnFileDeleted(FileId id) {
   if (!db_) {
     LOG(WARNING) << "DLP database is not ready yet.";
     dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     return;
   }
 
-  db_->DeleteFileEntryByInode(inode,
-                              /*callback=*/base::DoNothing());
+  db_->DeleteFileEntryById(id,
+                           /*callback=*/base::DoNothing());
 }
 
 void DlpAdaptor::OnFanotifyError(FanotifyError error) {
@@ -698,8 +696,8 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
 }
 
 void DlpAdaptor::OnRequestFileAccess(
-    std::vector<uint64_t> request_inodes,
-    std::vector<uint64_t> granted_inodes,
+    std::vector<FileId> request_ids,
+    std::vector<FileId> granted_ids,
     int pid,
     base::ScopedFD local_fd,
     RequestFileAccessCallback callback,
@@ -730,11 +728,11 @@ void DlpAdaptor::OnRequestFileAccess(
   }
 
   if (allowed) {
-    request_inodes.insert(request_inodes.end(), granted_inodes.begin(),
-                          granted_inodes.end());
+    request_ids.insert(request_ids.end(), granted_ids.begin(),
+                       granted_ids.end());
     int lifeline_fd = AddLifelineFd(local_fd.get());
     approved_requests_.insert_or_assign(
-        lifeline_fd, std::make_pair(std::move(request_inodes), pid));
+        lifeline_fd, std::make_pair(std::move(request_ids), pid));
   }
 
   std::move(callback).Run(allowed, /*error_message=*/std::string());
@@ -765,12 +763,12 @@ void DlpAdaptor::OnFilesUpserted(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     std::vector<base::FilePath> files_paths,
-    std::vector<ino_t> files_inodes,
+    std::vector<FileId> files_ids,
     bool success) {
-  CHECK(files_paths.size() == files_inodes.size());
+  CHECK(files_paths.size() == files_ids.size());
   if (success) {
     for (size_t i = 0; i < files_paths.size(); ++i) {
-      AddPerFileWatch({std::make_pair(files_paths[i], files_inodes[i])});
+      AddPerFileWatch({std::make_pair(files_paths[i], files_ids[i])});
     }
     ReplyOnAddFiles(std::move(response), std::string());
   } else {
@@ -795,22 +793,22 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     CheckFilesTransferRequest request,
-    std::map<ino64_t, FileEntry> file_entries) {
+    std::map<FileId, FileEntry> file_entries) {
   CheckFilesTransferResponse response_proto;
 
   IsFilesTransferRestrictedRequest matching_request;
   base::flat_set<std::string> files_to_check;
   std::vector<std::string> already_restricted;
   for (const auto& file_path : request.files_paths()) {
-    const ino_t file_inode = GetInodeValue(file_path);
-    auto it = file_entries.find(file_inode);
+    const FileId file_id = GetFileId(file_path);
+    auto it = file_entries.find(file_id);
     if (it == std::end(file_entries)) {
       // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
     }
 
     RestrictionLevel cached_level = requests_cache_.Get(
-        file_inode, file_path,
+        file_id, file_path,
         request.has_destination_url() ? request.destination_url() : "",
         request.has_destination_component() ? request.destination_component()
                                             : DlpComponent::UNKNOWN_COMPONENT);
@@ -826,7 +824,7 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     files_to_check.insert(file_path);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
-    file_metadata->set_inode(file_inode);
+    file_metadata->set_inode(file_id);
     file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
@@ -921,16 +919,16 @@ void DlpAdaptor::ReplyOnCheckFilesTransfer(
 void DlpAdaptor::ProcessGetFilesSourcesWithData(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::vector<std::pair<ino64_t, std::string>>& requested_files,
-    std::map<ino64_t, FileEntry> file_entries) {
+    const std::vector<std::pair<FileId, std::string>>& requested_files,
+    std::map<FileId, FileEntry> file_entries) {
   GetFilesSourcesResponse response_proto;
-  for (const auto& [inode, path] : requested_files) {
-    auto it = file_entries.find(inode);
+  for (const auto& [id, path] : requested_files) {
+    auto it = file_entries.find(id);
     if (it == std::end(file_entries)) {
       continue;
     }
     FileMetadata* file_metadata = response_proto.add_files_metadata();
-    file_metadata->set_inode(inode);
+    file_metadata->set_inode(id);
     if (!path.empty()) {
       file_metadata->set_path(path);
     }
@@ -985,7 +983,7 @@ void DlpAdaptor::OnLifelineFdClosed(int client_fd) {
 }
 
 // static
-ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
+FileId DlpAdaptor::GetFileId(const std::string& path) {
   struct stat file_stats;
   if (stat(path.c_str(), &file_stats) != 0) {
     PLOG(ERROR) << "Could not access " << path;
@@ -997,17 +995,17 @@ ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
 void DlpAdaptor::CleanupAndSetDatabase(
     std::unique_ptr<DlpDatabase> db,
     base::OnceClosure callback,
-    const std::set<std::pair<base::FilePath, ino64_t>>& files) {
+    const std::set<std::pair<base::FilePath, FileId>>& files) {
   DCHECK(db);
   DlpDatabase* db_ptr = db.get();
 
-  std::set<ino64_t> inodes;
+  std::set<FileId> ids;
   for (const auto& entry : files) {
-    inodes.insert(entry.second);
+    ids.insert(entry.second);
   }
 
-  db_ptr->DeleteFileEntriesWithInodesNotInSet(
-      inodes,
+  db_ptr->DeleteFileEntriesWithIdsNotInSet(
+      ids,
       base::BindOnce(&DlpAdaptor::OnDatabaseCleaned, base::Unretained(this),
                      std::move(db), std::move(callback)));
 }

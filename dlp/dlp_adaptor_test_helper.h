@@ -47,13 +47,13 @@ class DlpAdaptorTestHelper {
     feature_lib_->SetEnabled("CrOSLateBootDlpDatabaseCleanupFeature", enabled);
   }
 
-  void ProcessFileOpenRequest(ino_t inode,
+  void ProcessFileOpenRequest(FileId id,
                               int pid,
                               base::OnceCallback<void(bool)> callback);
 
-  void OnFileDeleted(ino_t inode);
+  void OnFileDeleted(FileId id);
 
-  static ino_t GetInodeValue(const std::string& path);
+  static FileId GetFileId(const std::string& path);
 
   bool IsFanotifyWatcherActive() const {
     return adaptor_->fanotify_watcher_->IsActive();

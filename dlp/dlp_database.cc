@@ -25,15 +25,15 @@ namespace dlp {
 namespace {
 
 int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
-  auto* file_entries_out = static_cast<std::map<ino64_t, FileEntry>*>(data);
+  auto* file_entries_out = static_cast<std::map<FileId, FileEntry>*>(data);
   FileEntry file_entry;
 
   if (!row[0]) {
-    LOG(ERROR) << "FileEntry.inode is null";
+    LOG(ERROR) << "FileEntry.id is null";
     return SQLITE_ERROR;
   }
-  if (!base::StringToInt64(row[0], &file_entry.inode)) {
-    LOG(ERROR) << "FileEntry.inode is not a number";
+  if (!base::StringToUint64(row[0], &file_entry.id)) {
+    LOG(ERROR) << "FileEntry.id is not a number";
     return SQLITE_ERROR;
   }
 
@@ -49,23 +49,23 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
   }
   file_entry.referrer_url = row[2];
 
-  file_entries_out->insert_or_assign(file_entry.inode, std::move(file_entry));
+  file_entries_out->insert_or_assign(file_entry.id, std::move(file_entry));
   return SQLITE_OK;
 }
 
-int GetInodesCallback(void* data, int count, char** row, char** names) {
-  auto* inodes_out = static_cast<std::set<int64_t>*>(data);
+int GetIdsCallback(void* data, int count, char** row, char** names) {
+  auto* ids_out = static_cast<std::set<FileId>*>(data);
 
   if (!row[0]) {
-    LOG(ERROR) << "file_entries.inode is null";
+    LOG(ERROR) << "file_entries.id is null";
     return SQLITE_ERROR;
   }
-  int64_t inode;
-  if (!base::StringToInt64(row[0], &inode)) {
-    LOG(ERROR) << "file_entries.inode is not a number";
+  FileId id;
+  if (!base::StringToUint64(row[0], &id)) {
+    LOG(ERROR) << "file_entries.id is not a number";
     return SQLITE_ERROR;
   }
-  inodes_out->insert(inode);
+  ids_out->insert(id);
   return SQLITE_OK;
 }
 
@@ -96,10 +96,10 @@ class DlpDatabase::Core {
   int Init();
   bool UpsertFileEntry(const FileEntry& file_entry);
   bool UpsertFileEntries(const std::vector<FileEntry>& file_entries);
-  std::map<ino64_t, FileEntry> GetFileEntriesByInodes(
-      std::vector<ino64_t> inodes) const;
-  bool DeleteFileEntryByInode(int64_t inode);
-  bool DeleteFileEntriesWithInodesNotInSet(std::set<ino64_t> inodes_to_keep);
+  std::map<FileId, FileEntry> GetFileEntriesByIds(
+      std::vector<FileId> ids) const;
+  bool DeleteFileEntryById(FileId id);
+  bool DeleteFileEntriesWithIdsNotInSet(std::set<FileId> ids_to_keep);
 
  private:
   // Returns true if the database connection is open.
@@ -216,7 +216,7 @@ bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
   const std::string sql = base::StringPrintf(
       "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url)"
       " VALUES (%" PRId64 ", '%s', '%s')",
-      file_entry.inode, EscapeSQLString(file_entry.source_url).c_str(),
+      file_entry.id, EscapeSQLString(file_entry.source_url).c_str(),
       EscapeSQLString(file_entry.referrer_url).c_str());
   ExecResult result = ExecSQL(sql);
   if (result.code != SQLITE_OK) {
@@ -243,7 +243,7 @@ bool DlpDatabase::Core::UpsertFileEntries(
     if (!first) {
       sql += ",";
     }
-    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.inode,
+    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.id,
                               EscapeSQLString(file_entry.source_url).c_str(),
                               EscapeSQLString(file_entry.referrer_url).c_str());
     first = false;
@@ -260,20 +260,20 @@ bool DlpDatabase::Core::UpsertFileEntries(
   return true;
 }
 
-std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
-    std::vector<ino64_t> inodes) const {
-  std::map<ino64_t, FileEntry> file_entries;
+std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
+    std::vector<FileId> ids) const {
+  std::map<FileId, FileEntry> file_entries;
   if (!IsOpen())
     return file_entries;
 
   std::string sql =
       "SELECT inode,source_url,referrer_url FROM file_entries WHERE inode IN (";
   bool first = true;
-  for (ino64_t inode : inodes) {
+  for (FileId id : ids) {
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(inode);
+    sql += base::NumberToString(id);
     first = false;
   }
   sql += ")";
@@ -291,23 +291,23 @@ std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
   return file_entries;
 }
 
-bool DlpDatabase::Core::DeleteFileEntryByInode(int64_t inode) {
+bool DlpDatabase::Core::DeleteFileEntryById(FileId id) {
   if (!IsOpen())
     return false;
 
-  const std::string sql = base::StringPrintf(
-      "DELETE FROM file_entries WHERE inode = %" PRId64, inode);
+  const std::string sql =
+      base::StringPrintf("DELETE FROM file_entries WHERE inode = %" PRId64, id);
   return ExecDeleteSQL(sql) >= 0;
 }
 
-bool DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet(
-    std::set<ino64_t> inodes_to_keep) {
+bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
+    std::set<FileId> ids_to_keep) {
   if (!IsOpen())
     return false;
 
-  std::set<int64_t> inodes;
+  std::set<FileId> ids;
   ExecResult result =
-      ExecSQL("SELECT inode FROM file_entries", GetInodesCallback, &inodes);
+      ExecSQL("SELECT inode FROM file_entries", GetIdsCallback, &ids);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
@@ -315,28 +315,28 @@ bool DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet(
     return false;
   }
 
-  base::EraseIf(inodes, [&inodes_to_keep](int64_t inode) {
-    return base::Contains(inodes_to_keep, inode);
+  base::EraseIf(ids, [&ids_to_keep](FileId id) {
+    return base::Contains(ids_to_keep, id);
   });
-  if (inodes.size() == 0) {
+  if (ids.size() == 0) {
     return true;
   }
 
   std::string sql = "DELETE FROM file_entries WHERE inode IN (";
   bool first = true;
-  for (int64_t inode : inodes) {
+  for (FileId id : ids) {
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(inode);
+    sql += base::NumberToString(id);
     first = false;
   }
   sql += ")";
 
   const int deleted = ExecDeleteSQL(sql);
-  if (deleted != inodes.size()) {
+  if (deleted != ids.size()) {
     LOG(ERROR) << "Failed to cleanup database, deleted: " << deleted
-               << ", instead of: " << inodes.size();
+               << ", instead of: " << ids.size();
     return false;
   }
   return true;
@@ -425,34 +425,34 @@ void DlpDatabase::UpsertFileEntries(const std::vector<FileEntry>& file_entries,
       std::move(callback));
 }
 
-void DlpDatabase::GetFileEntriesByInodes(
-    std::vector<ino64_t> inodes,
-    base::OnceCallback<void(std::map<ino64_t, FileEntry>)> callback) const {
+void DlpDatabase::GetFileEntriesByIds(
+    std::vector<FileId> ids,
+    base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&DlpDatabase::Core::GetFileEntriesByInodes,
-                     base::Unretained(core_.get()), std::move(inodes)),
+      base::BindOnce(&DlpDatabase::Core::GetFileEntriesByIds,
+                     base::Unretained(core_.get()), std::move(ids)),
       std::move(callback));
 }
 
-void DlpDatabase::DeleteFileEntryByInode(
-    int64_t inode, base::OnceCallback<void(bool)> callback) {
+void DlpDatabase::DeleteFileEntryById(FileId id,
+                                      base::OnceCallback<void(bool)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&DlpDatabase::Core::DeleteFileEntryByInode,
-                     base::Unretained(core_.get()), inode),
+      base::BindOnce(&DlpDatabase::Core::DeleteFileEntryById,
+                     base::Unretained(core_.get()), id),
       std::move(callback));
 }
 
-void DlpDatabase::DeleteFileEntriesWithInodesNotInSet(
-    std::set<ino64_t> inodes_to_keep, base::OnceCallback<void(bool)> callback) {
+void DlpDatabase::DeleteFileEntriesWithIdsNotInSet(
+    std::set<FileId> ids_to_keep, base::OnceCallback<void(bool)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet,
-                     base::Unretained(core_.get()), inodes_to_keep),
+      base::BindOnce(&DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet,
+                     base::Unretained(core_.get()), ids_to_keep),
       std::move(callback));
 }
 

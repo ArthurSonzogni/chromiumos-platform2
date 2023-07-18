@@ -14,15 +14,15 @@ namespace dlp {
 namespace {
 
 IsFilesTransferRestrictedRequest BuildRequest(
-    const std::vector<std::pair<ino_t, std::string>>& files,
+    const std::vector<std::pair<FileId, std::string>>& files,
     const std::string& destination_url,
     DlpComponent destination_component) {
   IsFilesTransferRestrictedRequest request;
   request.set_destination_url(destination_url);
   request.set_destination_component(destination_component);
-  for (const auto& [inode, path] : files) {
+  for (const auto& [id, path] : files) {
     FileMetadata* file_metadata = request.add_transferred_files();
-    file_metadata->set_inode(inode);
+    file_metadata->set_inode(id);
     file_metadata->set_path(path);
   }
   return request;

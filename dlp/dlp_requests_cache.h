@@ -16,6 +16,8 @@
 
 namespace dlp {
 
+typedef ino64_t FileId;
+
 // In-memory cache of results of IsFilesTransferRestricted evaluation done in
 // Chrome.
 class DlpRequestsCache {
@@ -34,7 +36,7 @@ class DlpRequestsCache {
 
   // Return cached restriction level for a single file request, is available.
   // Return LEVEL_NOT_SPECIFIED by default.
-  RestrictionLevel Get(ino_t inode,
+  RestrictionLevel Get(FileId id,
                        const std::string& path,
                        const std::string& destination_url,
                        DlpComponent destination_component) const;
@@ -45,20 +47,20 @@ class DlpRequestsCache {
  private:
   // Internal comparable structure to store in the map.
   struct CachedRequest {
-    CachedRequest(ino_t inode,
+    CachedRequest(FileId id,
                   const std::string& path,
                   const std::string& destination_url,
                   DlpComponent destination_component);
     bool operator<(const CachedRequest& o) const;
 
-    ino_t inode;
+    FileId id;
     std::string path;
     std::string destination_url;
     DlpComponent destination_component;
   };
 
   // Caching a single file evaluation result.
-  void CacheFileRequest(ino_t inode,
+  void CacheFileRequest(FileId id,
                         const std::string& path,
                         const std::string& destination_url,
                         DlpComponent destination_component,

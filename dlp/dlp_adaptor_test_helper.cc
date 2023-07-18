@@ -79,16 +79,16 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;
 
 void DlpAdaptorTestHelper::ProcessFileOpenRequest(
-    ino_t inode, int pid, base::OnceCallback<void(bool)> callback) {
-  adaptor_->ProcessFileOpenRequest(inode, pid, std::move(callback));
+    FileId id, int pid, base::OnceCallback<void(bool)> callback) {
+  adaptor_->ProcessFileOpenRequest(id, pid, std::move(callback));
 }
 
-void DlpAdaptorTestHelper::OnFileDeleted(ino_t inode) {
-  adaptor_->OnFileDeleted(inode);
+void DlpAdaptorTestHelper::OnFileDeleted(FileId id) {
+  adaptor_->OnFileDeleted(id);
 }
 
-ino_t DlpAdaptorTestHelper::GetInodeValue(const std::string& path) {
-  return DlpAdaptor::GetInodeValue(path);
+FileId DlpAdaptorTestHelper::GetFileId(const std::string& path) {
+  return DlpAdaptor::GetFileId(path);
 }
 
 void DlpAdaptorTestHelper::ReCreateAdaptor() {

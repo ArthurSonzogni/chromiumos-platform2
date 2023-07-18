@@ -19,12 +19,11 @@ void DlpRequestsCache::CacheResult(IsFilesTransferRestrictedRequest request,
 }
 
 RestrictionLevel DlpRequestsCache::Get(
-    ino_t inode,
+    FileId id,
     const std::string& path,
     const std::string& destination_url,
     DlpComponent destination_component) const {
-  CachedRequest cached_file(inode, path, destination_url,
-                            destination_component);
+  CachedRequest cached_file(id, path, destination_url, destination_component);
   auto it = cached_requests_.find(cached_file);
   if (it == cached_requests_.end()) {
     return LEVEL_UNSPECIFIED;
@@ -37,18 +36,18 @@ void DlpRequestsCache::ResetCache() {
 }
 
 DlpRequestsCache::CachedRequest::CachedRequest(
-    ino_t inode,
+    FileId id,
     const std::string& path,
     const std::string& destination_url,
     DlpComponent destination_component)
-    : inode(inode),
+    : id(id),
       path(path),
       destination_url(destination_url),
       destination_component(destination_component) {}
 
 bool DlpRequestsCache::CachedRequest::operator<(const CachedRequest& o) const {
-  if (inode != o.inode) {
-    return inode < o.inode;
+  if (id != o.id) {
+    return id < o.id;
   }
   if (path != o.path) {
     return path < o.path;
@@ -59,12 +58,12 @@ bool DlpRequestsCache::CachedRequest::operator<(const CachedRequest& o) const {
   return destination_component < o.destination_component;
 }
 
-void DlpRequestsCache::CacheFileRequest(ino_t inode,
+void DlpRequestsCache::CacheFileRequest(FileId id,
                                         const std::string& path,
                                         const std::string& destination_url,
                                         DlpComponent destination_component,
                                         RestrictionLevel restriction_level) {
-  CachedRequest cached_file_request(inode, path, destination_url,
+  CachedRequest cached_file_request(id, path, destination_url,
                                     destination_component);
   cached_requests_.insert_or_assign(cached_file_request, restriction_level);
 }

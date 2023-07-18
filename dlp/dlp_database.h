@@ -23,12 +23,15 @@ namespace dlp {
 
 // Database for storing information about DLP-protected files.
 
+// Files are identified by their inode number.
+typedef ino64_t FileId;
+
 // |FileEntry| objects stored in |file_entries| table.
-// A file entry represents a DLP-protected file. |inode| identifies the file on
+// A file entry represents a DLP-protected file. |id| identifies the file on
 // the user filesystem, |source_url| and |referrer_url| (possibly empty)
 // tell where from the file was originated.
 struct FileEntry {
-  int64_t inode;
+  FileId id;
   std::string source_url;
   std::string referrer_url;
 };
@@ -75,23 +78,21 @@ class DlpDatabase : public DlpDatabaseDelegate {
   void UpsertFileEntries(const std::vector<FileEntry>& file_entries,
                          base::OnceCallback<void(bool)> callback);
 
-  // Gets the file entries by inodes. Returns a map of only found entries to
+  // Gets the file entries by ids. Returns a map of only found entries to
   // the |callback|.
-  void GetFileEntriesByInodes(
-      std::vector<ino64_t> inodes,
-      base::OnceCallback<void(std::map<ino64_t, FileEntry>)> callback) const;
+  void GetFileEntriesByIds(
+      std::vector<FileId> ids,
+      base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const;
 
-  // Deletes file entry with |inode| from database. Returns true to the
+  // Deletes file entry with |id| from database. Returns true to the
   // |callback| if no error occurred.
-  void DeleteFileEntryByInode(int64_t inode,
-                              base::OnceCallback<void(bool)> callback);
+  void DeleteFileEntryById(FileId id, base::OnceCallback<void(bool)> callback);
 
   // Filters the file entries table to contain only entries with
-  // |inodes_to_keep| inode values. Returns true to the |callback| if no error
+  // |ids_to_keep| id values. Returns true to the |callback| if no error
   // occurred.
-  void DeleteFileEntriesWithInodesNotInSet(
-      std::set<ino64_t> inodes_to_keep,
-      base::OnceCallback<void(bool)> callback);
+  void DeleteFileEntriesWithIdsNotInSet(
+      std::set<FileId> ids_to_keep, base::OnceCallback<void(bool)> callback);
 
  private:
   // DlpDatabaseDelegate overrides:
