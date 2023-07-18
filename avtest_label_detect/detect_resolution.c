@@ -135,6 +135,8 @@ static bool query_support_for_enc_av1(int fd,
                                       int32_t min_width,
                                       int32_t min_height) {
   return query_support_for(fd, va_profiles_av1, VAEntrypointEncSliceLP, false,
+                           min_width, min_height) ||
+         query_support_for(fd, va_profiles_av1, VAEntrypointEncSlice, false,
                            min_width, min_height);
 }
 
