@@ -2,50 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::gpu_freq_scaling::amd_device::{
-    amd_sustained_mode_cleanup, amd_sustained_mode_init, create_amd_device_config,
-};
-use anyhow::{bail, Result};
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
-
-static VC_MODE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
-
-pub fn disable_vc_mode() -> Result<()> {
-    match VC_MODE.lock() {
-        Ok(mut vc_mode) => {
-            if *vc_mode {
-                if let Ok(dev) = create_amd_device_config() {
-                    match amd_sustained_mode_cleanup(&dev) {
-                        Ok(_) => *vc_mode = false,
-                        Err(_) => bail!("failed to clean amd sustained mode"),
-                    }
-                }
-            }
-        }
-        Err(_) => bail!("failed to vc mutex"),
-    }
-    Ok(())
-}
-
-pub fn enable_vc_mode() -> Result<()> {
-    match VC_MODE.lock() {
-        Ok(mut vc_mode) => {
-            if !*vc_mode {
-                if let Ok(dev) = create_amd_device_config() {
-                    match amd_sustained_mode_init(&dev) {
-                        Ok(_) => *vc_mode = true,
-                        Err(_) => bail!("failed to init amd sustained mode"),
-                    }
-                    dev.set_min_frequency(1600)?;
-                }
-            }
-        }
-        Err(_) => bail!("failed to vc mutex"),
-    }
-    Ok(())
-}
-
 pub mod intel_device {
     use crate::{
         common::{self, GameMode},
