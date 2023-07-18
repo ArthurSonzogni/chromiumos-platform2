@@ -111,4 +111,9 @@ StatusOr<attestation::CertifiedKey> AttestationFrontendImpl::CreateCertifiedKey(
       external_data);
 }
 
+StatusOr<Attestation::CreateIdentityResult>
+AttestationFrontendImpl::CreateIdentity(attestation::KeyType key_type) const {
+  return middleware_.CallSync<&Backend::Attestation::CreateIdentity>(key_type);
+}
+
 }  // namespace hwsec

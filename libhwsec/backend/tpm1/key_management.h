@@ -121,9 +121,10 @@ class KeyManagementTpm1 : public KeyManagement {
       uint32_t signature_scheme,
       uint32_t encryption_scheme);
 
-  // Gets public key in DER format as string from the |key|. The format of
-  // public key is RSAPublicKey for RSA.
+  // Gets public key in DER format as string from the |key| or |pubkey_blob| of
+  // the key. The format of public key is RSAPublicKey.
   StatusOr<brillo::Blob> GetPublicKeyDer(Key key);
+  StatusOr<brillo::Blob> GetPublicKeyDerFromBlob(brillo::Blob pubkey_blob);
 
  private:
   struct KeyPolicyPair {

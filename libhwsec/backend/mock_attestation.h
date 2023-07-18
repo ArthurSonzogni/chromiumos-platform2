@@ -49,6 +49,10 @@ class MockAttestation : public Attestation {
                EndorsementAuth endorsement_auth,
                const std::string& external_data),
               (override));
+  MOCK_METHOD(StatusOr<CreateIdentityResult>,
+              CreateIdentity,
+              (attestation::KeyType key_type),
+              (override));
 
  private:
   Attestation* default_;

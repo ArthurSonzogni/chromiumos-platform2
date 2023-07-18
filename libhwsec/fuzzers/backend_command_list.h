@@ -40,6 +40,7 @@ using FuzzCommandList =
     CommandList<&Backend::Attestation::Quote,
                 &Backend::Attestation::IsQuoted,
                 &Backend::Attestation::CreateCertifiedKey,
+                &Backend::Attestation::CreateIdentity,
                 &Backend::Config::ToOperationPolicy,
                 &Backend::Config::SetCurrentUser,
                 &Backend::Config::IsCurrentUserSet,

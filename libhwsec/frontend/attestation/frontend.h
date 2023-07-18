@@ -12,7 +12,7 @@
 #include <attestation/proto_bindings/keystore.pb.h>
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/key_management.h"
+#include "libhwsec/backend/attestation.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
@@ -23,7 +23,7 @@ namespace hwsec {
 
 class AttestationFrontend : public Frontend {
  public:
-  using CreateKeyResult = KeyManagement::CreateKeyResult;
+  using CreateIdentityResult = Attestation::CreateIdentityResult;
   ~AttestationFrontend() override = default;
   virtual StatusOr<brillo::SecureBlob> Unseal(
       const brillo::Blob& sealed_data) const = 0;
@@ -46,6 +46,8 @@ class AttestationFrontend : public Frontend {
       KeyRestriction restriction,
       EndorsementAuth endorsement_auth,
       const std::string& external_data) const = 0;
+  virtual StatusOr<Attestation::CreateIdentityResult> CreateIdentity(
+      attestation::KeyType key_type) const = 0;
 };
 
 }  // namespace hwsec

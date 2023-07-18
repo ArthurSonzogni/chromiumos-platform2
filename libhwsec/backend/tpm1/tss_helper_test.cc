@@ -173,4 +173,67 @@ TEST_F(TssHelperTest, GetDelegateTpmHandle) {
   EXPECT_EQ(result2->value(), kFakeTpm2);
 }
 
+TEST_F(TssHelperTest, GetOwnerTpmHandle) {
+  TSS_HCONTEXT kFakeContext = 0x1234;
+  TSS_HTPM kFakeTpm1 = 0x5678;
+  TSS_HTPM kFakeTpm2 = 0x8765;
+  TSS_HPOLICY kPolicy1 = 0x9901;
+  TSS_HPOLICY kPolicy2 = 0x9902;
+
+  std::string fake_owner_password = "fake_owner_password";
+
+  tpm_manager::GetTpmStatusReply reply;
+  *reply.mutable_local_data()->mutable_owner_password() = fake_owner_password;
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Context_Connect(kFakeContext, nullptr))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Context_GetTpmObject(kFakeContext, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm1), Return(TPM_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm2), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_GetPolicyObject(kFakeTpm1, TSS_POLICY_USAGE, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_GetPolicyObject(kFakeTpm2, TSS_POLICY_USAGE, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kPolicy2), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
+      .With(Args<3, 2>(ElementsAreArray(fake_owner_password)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Policy_SetSecret(kPolicy2, TSS_SECRET_MODE_PLAIN, _, _))
+      .With(Args<3, 2>(ElementsAreArray(fake_owner_password)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Context_CloseObject(kFakeContext, kFakeTpm1))
+      .WillOnce(Return(TPM_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Context_CloseObject(kFakeContext, kFakeTpm2))
+      .WillOnce(Return(TPM_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kFakeContext))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  auto result1 = backend_->GetTssHelper().GetOwnerTpmHandle();
+  ASSERT_OK(result1);
+  EXPECT_EQ(result1->value(), kFakeTpm1);
+
+  auto result2 = backend_->GetTssHelper().GetOwnerTpmHandle();
+  ASSERT_OK(result2);
+  EXPECT_EQ(result2->value(), kFakeTpm2);
+}
+
 }  // namespace hwsec

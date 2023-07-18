@@ -29,6 +29,7 @@
 #include "libhwsec/backend/mock_backend.h"
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm_retry_action.h"
+#include "libhwsec/fuzzed/attestation.h"
 #include "libhwsec/fuzzed/basic_objects.h"
 #include "libhwsec/fuzzed/config.h"
 #include "libhwsec/fuzzed/da_mitigation.h"

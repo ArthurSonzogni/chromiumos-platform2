@@ -819,9 +819,11 @@ StatusOr<RSAPublicInfo> KeyManagementTpm2::GetRSAPublicInfo(Key key) {
 
 StatusOr<ECCPublicInfo> KeyManagementTpm2::GetECCPublicInfo(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  return GetECCPublicInfoFromPublicData(key_data.cache.public_area);
+}
 
-  const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
-
+StatusOr<ECCPublicInfo> KeyManagementTpm2::GetECCPublicInfoFromPublicData(
+    const trunks::TPMT_PUBLIC& public_data) {
   if (public_data.type != trunks::TPM_ALG_ECC) {
     return MakeStatus<TPMError>("Get ECC public info for none-ECC key",
                                 TPMRetryAction::kNoRetry);
@@ -1022,11 +1024,17 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
 StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDer(
     Key key, bool use_rsa_subject_key_info) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
+  return GetPublicKeyDerFromPublicData(public_data, use_rsa_subject_key_info);
+}
+
+StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDerFromPublicData(
+    const trunks::TPMT_PUBLIC& public_data, bool use_rsa_subject_key_info) {
   std::string public_key_der;
-  switch (key_data.cache.public_area.type) {
+  switch (public_data.type) {
     case trunks::TPM_ALG_RSA: {
       ASSIGN_OR_RETURN(const crypto::ScopedRSA& public_key,
-                       GetRsaPublicKey(key));
+                       GetRsaPublicKey(public_data));
       public_key_der = use_rsa_subject_key_info
                            ? RSASubjectPublicKeyInfoToString(public_key)
                            : RSAPublicKeyToString(public_key);
@@ -1034,7 +1042,7 @@ StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDer(
     }
     case trunks::TPM_ALG_ECC: {
       ASSIGN_OR_RETURN(const crypto::ScopedEC_KEY& public_key,
-                       GetEccPublicKey(key));
+                       GetEccPublicKey(public_data));
       public_key_der = ECCSubjectPublicKeyInfoToString(public_key);
       break;
     }
@@ -1049,9 +1057,11 @@ StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDer(
   return BlobFromString(public_key_der);
 }
 
-// Convert TPMT_PUBLIC TPM public area of ECC |key| to a OpenSSL EC key.
-StatusOr<crypto::ScopedEC_KEY> KeyManagementTpm2::GetEccPublicKey(Key key) {
-  ASSIGN_OR_RETURN(const ECCPublicInfo& public_info, GetECCPublicInfo(key));
+// Convert TPMT_PUBLIC |public area| to a OpenSSL EC key.
+StatusOr<crypto::ScopedEC_KEY> KeyManagementTpm2::GetEccPublicKey(
+    const trunks::TPMT_PUBLIC& public_data) {
+  ASSIGN_OR_RETURN(const ECCPublicInfo& public_info,
+                   GetECCPublicInfoFromPublicData(public_data));
 
   crypto::ScopedEC_Key public_key(EC_KEY_new_by_curve_name(public_info.nid));
   if (!public_key) {
@@ -1086,11 +1096,15 @@ StatusOr<crypto::ScopedEC_KEY> KeyManagementTpm2::GetEccPublicKey(Key key) {
   return public_key;
 }
 
-// Convert TPMT_PUBLIC TPM public area of RSA |key| to a OpenSSL RSA key.
-StatusOr<crypto::ScopedRSA> KeyManagementTpm2::GetRsaPublicKey(Key key) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
-  brillo::Blob modulus = BlobFromString(
-      StringFrom_TPM2B_PUBLIC_KEY_RSA(key_data.cache.public_area.unique.rsa));
+// Convert TPMT_PUBLIC |public area| to a OpenSSL RSA key.
+StatusOr<crypto::ScopedRSA> KeyManagementTpm2::GetRsaPublicKey(
+    const trunks::TPMT_PUBLIC& public_data) {
+  if (public_data.type != trunks::TPM_ALG_RSA) {
+    return MakeStatus<TPMError>("Key is not in RSA format",
+                                TPMRetryAction::kNoRetry);
+  }
+  brillo::Blob modulus =
+      BlobFromString(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa));
   crypto::ScopedRSA rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
   if (rsa == nullptr) {
     return MakeStatus<TPMError>("Failed to create RSA",

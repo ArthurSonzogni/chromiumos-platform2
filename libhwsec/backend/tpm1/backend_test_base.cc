@@ -169,4 +169,37 @@ void BackendTpm1TestBase::SetupDelegate() {
       .WillRepeatedly(Return(TPM_SUCCESS));
 }
 
+void BackendTpm1TestBase::SetupOwner() {
+  // Cache the default user TPM handle.
+  EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
+              IsOkAndHolds(kDefaultTpm));
+
+  TSS_HPOLICY kPolicy1 = 0x9909;
+
+  std::string fake_owner_password = "fake_owner_password";
+
+  tpm_manager::GetTpmStatusReply reply;
+  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  *reply.mutable_local_data()->mutable_owner_password() = fake_owner_password;
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
+      .Times(AtMost(1))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
+      .RetiresOnSaturation();
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Context_GetTpmObject(kDefaultContext, _))
+      .Times(AtMost(1))
+      .WillOnce(DoAll(SetArgPointee<1>(kDefaultOwnerTpm), Return(TPM_SUCCESS)))
+      .RetiresOnSaturation();
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_GetPolicyObject(kDefaultOwnerTpm, TSS_POLICY_USAGE, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
+      .With(Args<3, 2>(ElementsAreArray(fake_owner_password)))
+      .WillRepeatedly(Return(TPM_SUCCESS));
+}
+
 }  // namespace hwsec

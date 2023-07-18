@@ -114,4 +114,40 @@ StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetDelegateTpmHandle() {
   return local_tpm_handle;
 }
 
+StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetOwnerTpmHandle() {
+  tpm_manager::GetTpmStatusRequest request;
+  tpm_manager::GetTpmStatusReply reply;
+  if (brillo::ErrorPtr err; !tpm_manager_.GetTpmStatus(
+          request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
+    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
+        .Wrap(std::move(err));
+  }
+  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
+
+  if (reply.local_data().owner_password().empty()) {
+    return MakeStatus<TPMError>("No valid owner password",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, GetTssContext(),
+                   _.WithStatus<TPMError>("Failed to get TSS context"));
+  ScopedTssObject<TSS_HTPM> local_tpm_handle(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_GetTpmObject(
+                      context, local_tpm_handle.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_Context_GetTpmObject");
+
+  TSS_HPOLICY tpm_usage_policy;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
+                      local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
+      .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
+
+  brillo::Blob owner_password =
+      brillo::BlobFromString(reply.local_data().owner_password());
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
+                      tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
+                      owner_password.size(), owner_password.data())))
+      .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
+  return local_tpm_handle;
+}
+
 }  // namespace hwsec

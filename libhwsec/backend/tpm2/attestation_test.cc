@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/sha.h>
+#include <trunks/mock_blob_parser.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/tpm_generated.h>
@@ -25,14 +26,51 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace hwsec {
 
+namespace {
+
+constexpr trunks::TPMT_PUBLIC kDefaultRsaPublic = {
+    .type = trunks::TPM_ALG_RSA,
+    .name_alg = trunks::TPM_ALG_SHA256,
+    .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+    .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+    .parameters =
+        trunks::TPMU_PUBLIC_PARMS{
+            .rsa_detail =
+                trunks::TPMS_RSA_PARMS{
+                    .symmetric =
+                        trunks::TPMT_SYM_DEF_OBJECT{
+                            .algorithm = trunks::TPM_ALG_NULL,
+                        },
+                    .scheme =
+                        trunks::TPMT_RSA_SCHEME{
+                            .scheme = trunks::TPM_ALG_NULL,
+                        },
+                    .key_bits = 2048,
+                    .exponent = 0,
+                },
+        },
+    .unique =
+        trunks::TPMU_PUBLIC_ID{
+            .rsa =
+                trunks::TPM2B_PUBLIC_KEY_RSA{
+                    .size = 10,
+                    .buffer = "9876543210",
+                },
+        },
+};
+
+constexpr trunks::TPMT_PUBLIC kDefaultEccPublic = {
+    .type = trunks::TPM_ALG_ECC,
+};
+
+}  // namespace
+
 class BackendAttestationTpm2Test : public BackendTpm2TestBase {
  protected:
   StatusOr<ScopedKey> LoadFakeRSAKey(const uint32_t fake_key_handle) {
     const OperationPolicy kFakePolicy{};
     const std::string kFakeKeyBlob = "fake_key_blob";
-    const trunks::TPMT_PUBLIC kFakePublic = {
-        .type = trunks::TPM_ALG_RSA,
-    };
+    const trunks::TPMT_PUBLIC kFakePublic = kDefaultRsaPublic;
 
     EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
         .WillOnce(
@@ -49,9 +87,7 @@ class BackendAttestationTpm2Test : public BackendTpm2TestBase {
   StatusOr<ScopedKey> LoadFakeECCKey(const uint32_t fake_key_handle) {
     const OperationPolicy kFakePolicy{};
     const std::string kFakeKeyBlob = "fake_key_blob";
-    const trunks::TPMT_PUBLIC kFakePublic = {
-        .type = trunks::TPM_ALG_ECC,
-    };
+    const trunks::TPMT_PUBLIC kFakePublic = kDefaultEccPublic;
 
     EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
         .WillOnce(
@@ -341,36 +377,7 @@ TEST_F(BackendAttestationTpm2Test, CreateCertifiedKey) {
   const std::string kFakeKeyName = "fake_key_name";
   const std::string kFakeIdentityName = "fake_identity_name";
   const std::string kFakeKeyBlob = "fake_key_blob";
-  const trunks::TPMT_PUBLIC kFakePublic = {
-      .type = trunks::TPM_ALG_RSA,
-      .name_alg = trunks::TPM_ALG_SHA256,
-      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
-      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
-      .parameters =
-          trunks::TPMU_PUBLIC_PARMS{
-              .rsa_detail =
-                  trunks::TPMS_RSA_PARMS{
-                      .symmetric =
-                          trunks::TPMT_SYM_DEF_OBJECT{
-                              .algorithm = trunks::TPM_ALG_NULL,
-                          },
-                      .scheme =
-                          trunks::TPMT_RSA_SCHEME{
-                              .scheme = trunks::TPM_ALG_NULL,
-                          },
-                      .key_bits = 2048,
-                      .exponent = 0,
-                  },
-          },
-      .unique =
-          trunks::TPMU_PUBLIC_ID{
-              .rsa =
-                  trunks::TPM2B_PUBLIC_KEY_RSA{
-                      .size = 10,
-                      .buffer = "9876543210",
-                  },
-          },
-  };
+  const trunks::TPMT_PUBLIC kFakePublic = kDefaultRsaPublic;
   const std::string kFakeCertifyInfoString = "fake_certify_info";
   const std::string kFakeSignatureString = "fake_signature";
   const trunks::TPM2B_ATTEST kFakeCertifyInfo =
@@ -447,6 +454,42 @@ TEST_F(BackendAttestationTpm2Test, CreateCertifiedKey) {
   EXPECT_EQ(result->certified_key_proof(), kFakeSignatureString);
   EXPECT_EQ(result->key_type(), kFakeKeyType);
   EXPECT_EQ(result->key_usage(), kFakeKeyUsage);
+}
+
+TEST_F(BackendAttestationTpm2Test, CreateIdentity) {
+  const attestation::KeyType kFakeKeyType = attestation::KEY_TYPE_RSA;
+  const trunks::TPM_ALG_ID kFakeTrunksAlgorithm = trunks::TPM_ALG_RSA;
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const trunks::TPM2B_PUBLIC kFakePublic{
+      .size = sizeof(trunks::TPMT_PUBLIC),
+      .public_area = kDefaultRsaPublic,
+  };
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              CreateIdentityKey(kFakeTrunksAlgorithm, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyBlob), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockBlobParser(), ParseKeyBlob(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePublic), Return(true)));
+
+  std::string serialized_public_key;
+  EXPECT_EQ(
+      trunks::Serialize_TPMT_PUBLIC(kDefaultRsaPublic, &serialized_public_key),
+      TPM_RC_SUCCESS);
+
+  auto result = backend_->GetAttestationTpm2().CreateIdentity(kFakeKeyType);
+  ASSERT_OK(result);
+  attestation::IdentityKey identity_key = result->identity_key;
+  attestation::IdentityBinding identity_binding = result->identity_binding;
+  ASSERT_TRUE(identity_key.has_identity_key_type());
+  ASSERT_TRUE(identity_key.has_identity_public_key_der());
+  ASSERT_TRUE(identity_key.has_identity_key_blob());
+  ASSERT_TRUE(identity_binding.has_identity_public_key_tpm_format());
+  ASSERT_TRUE(identity_binding.has_identity_public_key_der());
+  EXPECT_EQ(identity_key.identity_key_type(), kFakeKeyType);
+  EXPECT_EQ(identity_key.identity_key_blob(), kFakeKeyBlob);
+  EXPECT_EQ(identity_binding.identity_public_key_tpm_format(),
+            serialized_public_key);
 }
 
 }  // namespace hwsec

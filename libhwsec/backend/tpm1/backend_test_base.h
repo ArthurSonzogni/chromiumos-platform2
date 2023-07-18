@@ -31,10 +31,12 @@ class BackendTpm1TestBase : public ::testing::Test {
   static inline constexpr TSS_HCONTEXT kDefaultContext = 9876;
   static inline constexpr TSS_HTPM kDefaultTpm = 6543;
   static inline constexpr TSS_HTPM kDefaultDelegateTpm = 9527;
+  static inline constexpr TSS_HTPM kDefaultOwnerTpm = 9528;
   static inline constexpr uint32_t kDefaultSrkHandle = 5566123;
 
   void SetupSrk();
   void SetupDelegate();
+  void SetupOwner();
 
   brillo::Blob kDefaultSrkPubkey = brillo::BlobFromString("default_srk");
   std::unique_ptr<ProxyForTest> proxy_;

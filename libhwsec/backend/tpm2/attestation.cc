@@ -310,4 +310,55 @@ StatusOr<attestation::CertifiedKey> AttestationTpm2::CreateCertifiedKey(
   return certified_key;
 }
 
+StatusOr<Attestation::CreateIdentityResult> AttestationTpm2::CreateIdentity(
+    attestation::KeyType key_type) {
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
+  trunks::TPM_ALG_ID algorithm = (key_type == attestation::KEY_TYPE_RSA)
+                                     ? trunks::TPM_ALG_RSA
+                                     : trunks::TPM_ALG_ECC;
+
+  std::string identity_key_blob;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateIdentityKey(
+          algorithm, delegate.get(), &identity_key_blob)))
+      .WithStatus<TPMError>("Failed to call CreateIdentityKey");
+
+  std::unique_ptr<trunks::BlobParser> parser =
+      context_.GetTrunksFactory().GetBlobParser();
+  trunks::TPM2B_PUBLIC public_info;
+  trunks::TPM2B_PRIVATE not_used;
+  if (!parser->ParseKeyBlob(identity_key_blob, &public_info, &not_used)) {
+    return MakeStatus<TPMError>("Failed to parse key blob",
+                                TPMRetryAction::kNoRetry);
+  }
+  const trunks::TPMT_PUBLIC& public_data = public_info.public_area;
+
+  std::string serialized_public_key;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(trunks::Serialize_TPMT_PUBLIC(
+                      public_data, &serialized_public_key)))
+      .WithStatus<TPMError>("Failed to serialized TPMT_PUBLIC");
+
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& public_key_der,
+      key_management_.GetPublicKeyDerFromPublicData(public_data, false),
+      _.WithStatus<TPMError>("Failed to get public key in DER format"));
+
+  attestation::IdentityKey identity_key_info;
+  identity_key_info.set_identity_key_type(key_type);
+  identity_key_info.set_identity_public_key_der(BlobToString(public_key_der));
+  identity_key_info.set_identity_key_blob(identity_key_blob);
+
+  attestation::IdentityBinding identity_binding_info;
+  identity_binding_info.set_identity_public_key_tpm_format(
+      serialized_public_key);
+  identity_binding_info.set_identity_public_key_der(
+      BlobToString(public_key_der));
+
+  return Attestation::CreateIdentityResult{
+      .identity_key = identity_key_info,
+      .identity_binding = identity_binding_info,
+  };
+}
+
 }  // namespace hwsec

@@ -60,6 +60,10 @@ class MockAttestationFrontend : public MockFrontend,
                EndorsementAuth endorsement_auth,
                const std::string& external_data),
               (const override));
+  MOCK_METHOD(StatusOr<Attestation::CreateIdentityResult>,
+              CreateIdentity,
+              (attestation::KeyType key_type),
+              (const override));
 };
 
 }  // namespace hwsec

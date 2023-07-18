@@ -886,10 +886,13 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadPublicKeyFromSpki(
 StatusOr<brillo::Blob> KeyManagementTpm1::GetPublicKeyDer(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
   brillo::Blob pubkey_blob = key_data.cache.pubkey_blob;
+  return GetPublicKeyDerFromBlob(pubkey_blob);
+}
 
+StatusOr<brillo::Blob> KeyManagementTpm1::GetPublicKeyDerFromBlob(
+    brillo::Blob pubkey_blob) {
   ASSIGN_OR_RETURN(const crypto::ScopedRSA& rsa,
                    ParseRsaFromTpmPubkeyBlob(overalls_, pubkey_blob));
-
   std::string public_key_der = hwsec_foundation::RSAPublicKeyToString(rsa);
   if (public_key_der.empty()) {
     return MakeStatus<TPMError>("Failed to DER-encode public key",

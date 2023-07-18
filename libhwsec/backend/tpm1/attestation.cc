@@ -6,14 +6,19 @@
 
 #include <arpa/inet.h>
 #include <base/hash/sha1.h>
+#include <base/memory/free_deleter.h>
 #include <base/sys_byteorder.h>
+#include <memory>
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 
+#include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -28,6 +33,10 @@ namespace hwsec {
 
 namespace {
 
+using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
+
+constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
+constexpr unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 constexpr unsigned int kDigestSize = sizeof(TPM_DIGEST);
 constexpr size_t kSelectBitmapSize = 2;
 
@@ -61,6 +70,83 @@ StatusOr<std::string> buildPcrComposite(uint32_t pcr_index,
   composite_header.value_size = base::HostToNet32(quoted_pcr_value.size());
   const char* buffer = reinterpret_cast<const char*>(&composite_header);
   return std::string(buffer, sizeof(composite_header)) + quoted_pcr_value;
+}
+
+StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
+                                     TSS_HCONTEXT context,
+                                     TSS_HOBJECT object,
+                                     TSS_FLAG flag,
+                                     TSS_FLAG sub_flag) {
+  uint32_t length = 0;
+  ScopedTssMemory buf(overalls, context);
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+                      object, flag, sub_flag, &length, buf.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
+
+  return brillo::Blob(buf.value(), buf.value() + length);
+}
+
+StatusOr<std::string> DecryptIdentityRequest(overalls::Overalls& overalls,
+                                             RSA* pca_key,
+                                             const std::string& request) {
+  // Parse the serialized TPM_IDENTITY_REQ structure.
+  UINT64 offset = 0;
+  BYTE* buffer = reinterpret_cast<BYTE*>(
+      const_cast<typename std::string::value_type*>(request.data()));
+  TPM_IDENTITY_REQ request_parsed;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_IDENTITY_REQ(
+                      &offset, buffer, &request_parsed)))
+      .WithStatus<TPMError>("Failed to call Ospi_UnloadBlob_IDENTITY_REQ");
+  ScopedByteArray scoped_asym_blob(request_parsed.asymBlob);
+  ScopedByteArray scoped_sym_blob(request_parsed.symBlob);
+
+  // Decrypt the symmetric key.
+  unsigned char key_buffer[kDefaultTpmRsaKeyBits / 8];
+  int key_length =
+      RSA_private_decrypt(request_parsed.asymSize, request_parsed.asymBlob,
+                          key_buffer, pca_key, RSA_PKCS1_PADDING);
+  if (key_length == -1) {
+    return MakeStatus<TPMError>("Failed to decrypt identity request key",
+                                TPMRetryAction::kNoRetry);
+  }
+  TPM_SYMMETRIC_KEY symmetric_key;
+  offset = 0;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_SYMMETRIC_KEY(
+                      &offset, key_buffer, &symmetric_key)))
+      .WithStatus<TPMError>("Failed to call Ospi_UnloadBlob_SYMMETRIC_KEY");
+  ScopedByteArray scoped_sym_key(symmetric_key.data);
+
+  // Decrypt the request with the symmetric key.
+  brillo::SecureBlob proof_serial;
+  proof_serial.resize(request_parsed.symSize);
+  UINT32 proof_serial_length = proof_serial.size();
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Orspi_SymDecrypt(
+          symmetric_key.algId, TPM_ES_SYM_CBC_PKCS5PAD, symmetric_key.data,
+          NULL, request_parsed.symBlob, request_parsed.symSize,
+          proof_serial.data(), &proof_serial_length)))
+      .WithStatus<TPMError>("Failed to call Orspi_SymDecrypt");
+
+  // Parse the serialized TPM_IDENTITY_PROOF structure.
+  TPM_IDENTITY_PROOF proof;
+  offset = 0;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_IDENTITY_PROOF(
+          &offset, proof_serial.data(), &proof)))
+      .WithStatus<TPMError>("Failed to call Orspi_UnloadBlob_IDENTITY_PROOF");
+  ScopedByteArray scoped_label(proof.labelArea);
+  ScopedByteArray scoped_binding(proof.identityBinding);
+  ScopedByteArray scoped_endorsement(proof.endorsementCredential);
+  ScopedByteArray scoped_platform(proof.platformCredential);
+  ScopedByteArray scoped_conformance(proof.conformanceCredential);
+  ScopedByteArray scoped_key(proof.identityKey.pubKey.key);
+  ScopedByteArray scoped_parms(proof.identityKey.algorithmParms.parms);
+
+  std::string identity_binding(
+      proof.identityBinding, proof.identityBinding + proof.identityBindingSize);
+  brillo::SecureClearBytes(proof.identityBinding, proof.identityBindingSize);
+  return identity_binding;
 }
 
 }  // namespace
@@ -264,6 +350,143 @@ StatusOr<attestation::CertifiedKey> AttestationTpm1::CreateCertifiedKey(
   certified_key.set_key_usage(key_usage);
 
   return certified_key;
+}
+
+StatusOr<Attestation::CreateIdentityResult> AttestationTpm1::CreateIdentity(
+    attestation::KeyType key_type) {
+  if (key_type != attestation::KEY_TYPE_RSA) {
+    return MakeStatus<TPMError>("non-RSA identity key is unsupported",
+                                TPMRetryAction::kNoRetry);
+  }
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
+  ASSIGN_OR_RETURN(ScopedTssObject<TSS_HTPM> tpm_handle,
+                   tss_helper_.GetOwnerTpmHandle());
+
+  // Create fake PCA key.
+  crypto::ScopedRSA fake_pca_key =
+      hwsec_foundation::GenerateRsa(kDefaultTpmRsaKeyBits);
+  if (!fake_pca_key) {
+    return MakeStatus<TPMError>("Failed to generate fake pca key",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  brillo::Blob modulus(RSA_size(fake_pca_key.get()));
+  const BIGNUM* n;
+  RSA_get0_key(fake_pca_key.get(), &n, nullptr, nullptr);
+  if (BN_bn2bin(n, modulus.data()) != modulus.size()) {
+    return MakeStatus<TPMError>("RSA modulus size mismatch",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // Create a TSS object for the fake PCA public key.
+  TSS_FLAG pca_key_flags =
+      kDefaultTpmRsaKeyFlag | TSS_KEY_TYPE_LEGACY | TSS_KEY_MIGRATABLE;
+  ASSIGN_OR_RETURN(
+      ScopedKey pca_public_key_object,
+      key_management_.CreateRsaPublicKeyObject(
+          modulus, pca_key_flags, TSS_SS_NONE, TSS_ES_RSAESPKCSV15),
+      _.WithStatus<TPMError>("Failed to create PCA public key info"));
+  ASSIGN_OR_RETURN(const KeyTpm1& pca_public_key_data,
+                   key_management_.GetKeyData(pca_public_key_object.GetKey()),
+                   _.WithStatus<TPMError>("Failed to get PCA public key data"));
+  if (!pca_public_key_data.scoped_key.has_value()) {
+    return MakeStatus<TPMError>("Missing scoped key in PCA public key data",
+                                TPMRetryAction::kNoRetry);
+  }
+  TSS_HKEY pca_public_key = pca_public_key_data.scoped_key.value().value();
+
+  // Get the fake PCA public key in serialized TPM_PUBKEY form.
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& pca_public_key_blob,
+      GetAttribData(overalls_, context, pca_public_key, TSS_TSPATTRIB_KEY_BLOB,
+                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY),
+      _.WithStatus<TPMError>("Failed to get serilized PCA public key"));
+
+  // Construct an arbitrary unicode label.
+  const char* label_text = "ChromeOS_AIK_1BJNAMQDR4RH44F4ET2KPAOMJMO043K1";
+  BYTE* label_ascii =
+      const_cast<BYTE*>(reinterpret_cast<const BYTE*>(label_text));
+  unsigned int label_size = strlen(label_text);
+  ScopedByteArray scoped_label(
+      overalls_.Orspi_Native_To_UNICODE(label_ascii, &label_size));
+  if (!scoped_label.get()) {
+    return MakeStatus<TPMError>("Failed to create AIK label",
+                                TPMRetryAction::kNoRetry);
+  }
+  BYTE* label = scoped_label.get();
+  std::string identity_label(label, label + label_size);
+
+  // Initialize a key object to hold the new identity key.
+  ScopedTssKey identity_key(overalls_, context);
+  TSS_FLAG identity_key_flags = kDefaultTpmRsaKeyFlag | TSS_KEY_TYPE_IDENTITY |
+                                TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
+                      context, TSS_OBJECT_TYPE_RSAKEY, identity_key_flags,
+                      identity_key.ptr())))
+      .WithStatus<TPMError>("Failed to create identity key object");
+
+  // Get Storage Root Key (SRK).
+  ASSIGN_OR_RETURN(ScopedKey srk,
+                   key_management_.GetPersistentKey(
+                       KeyManagement::PersistentKeyType::kStorageRootKey));
+  ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
+                   key_management_.GetKeyData(srk.GetKey()));
+
+  // Create the identity and receive the request intended for the PCA.
+  uint32_t request_length = 0;
+  ScopedTssMemory request(overalls_, context);
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls_.Ospi_TPM_CollateIdentityRequest(
+          tpm_handle, srk_data.key_handle, pca_public_key, label_size, label,
+          identity_key, TSS_ALG_3DES, &request_length, request.ptr())))
+      .WithStatus<TPMError>("Failed to make identity");
+
+  // Decrypt and parse the identity request.
+  std::string request_blob(request.value(), request.value() + request_length);
+  ASSIGN_OR_RETURN(
+      const std::string& identity_binding,
+      DecryptIdentityRequest(overalls_, fake_pca_key.get(), request_blob),
+      _.WithStatus<TPMError>("Failed to decrypt the identity request"));
+  brillo::SecureClearBytes(request.value(), request_length);
+
+  // Get the AIK public key.
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& identity_public_key,
+      GetAttribData(overalls_, context, identity_key, TSS_TSPATTRIB_KEY_BLOB,
+                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY),
+      _.WithStatus<TPMError>("Failed to get identity key blob"));
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& identity_public_key_der,
+      key_management_.GetPublicKeyDerFromBlob(identity_public_key),
+      _.WithStatus<TPMError>("Failed to get DER-encoded identity public key"));
+
+  // Get the AIK blob so we can load it later.
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& identity_key_blob,
+      GetAttribData(overalls_, context, identity_key, TSS_TSPATTRIB_KEY_BLOB,
+                    TSS_TSPATTRIB_KEYBLOB_BLOB),
+      _.WithStatus<TPMError>("Failed to get identity key blob"));
+
+  // Fill the fields in CreateIdentityResult
+  attestation::IdentityKey identity_key_info;
+  identity_key_info.set_identity_key_type(key_type);
+  identity_key_info.set_identity_public_key_der(
+      BlobToString(identity_public_key_der));
+  identity_key_info.set_identity_key_blob(BlobToString(identity_key_blob));
+
+  attestation::IdentityBinding identity_binding_info;
+  identity_binding_info.set_identity_public_key_tpm_format(
+      BlobToString(identity_public_key));
+  identity_binding_info.set_identity_binding(identity_binding);
+  identity_binding_info.set_pca_public_key(BlobToString(pca_public_key_blob));
+  identity_binding_info.set_identity_label(identity_label);
+  identity_binding_info.set_identity_public_key_der(
+      BlobToString(identity_public_key_der));
+
+  return Attestation::CreateIdentityResult{
+      .identity_key = identity_key_info,
+      .identity_binding = identity_binding_info,
+  };
 }
 
 }  // namespace hwsec

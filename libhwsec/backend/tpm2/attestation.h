@@ -47,6 +47,9 @@ class AttestationTpm2 : public Attestation {
       EndorsementAuth endorsement_auth,
       const std::string& external_data) override;
 
+  StatusOr<CreateIdentityResult> CreateIdentity(
+      attestation::KeyType key_type) override;
+
  private:
   // Certifies the |key| by the |identity_key| with |external_data|.
   StatusOr<CertifyKeyResult> CertifyKey(Key key,

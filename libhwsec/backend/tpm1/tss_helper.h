@@ -33,6 +33,10 @@ class TssHelper {
   // permission.
   StatusOr<ScopedTssObject<TSS_HTPM>> GetDelegateTpmHandle();
 
+  // The owner TPM handle would not be cached to prevent leaking the owner
+  // permission.
+  StatusOr<ScopedTssObject<TSS_HTPM>> GetOwnerTpmHandle();
+
  private:
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
   overalls::Overalls& overalls_;

@@ -117,14 +117,17 @@ class KeyManagementTpm2 : public KeyManagement {
       trunks::TPM_ALG_ID scheme,
       trunks::TPM_ALG_ID hash_alg);
 
-  // Gets public key in DER format as string from the |key|. The format of
-  // public key is SubjectPublicKeyInfo for ECC, RSAPublicKey for RSA.
+  // Gets public key in DER format as string from the |key| or |public_data| of
+  // the key. The format of public key is SubjectPublicKeyInfo for ECC,
+  // RSAPublicKey for RSA.
   // If |use_rsa_subject_key_info| is true, the format would be
   // SubjectPublicKeyInfo for RSA, too.
   // TODO(b/172213969): We should get rid of |use_rsa_subject_key_info|
   //                    once the bug is resolved.
   StatusOr<brillo::Blob> GetPublicKeyDer(Key key,
                                          bool use_rsa_subject_key_info);
+  StatusOr<brillo::Blob> GetPublicKeyDerFromPublicData(
+      const trunks::TPMT_PUBLIC& public_data, bool use_rsa_subject_key_info);
 
  private:
   StatusOr<CreateKeyResult> CreateRsaKey(
@@ -146,8 +149,12 @@ class KeyManagementTpm2 : public KeyManagement {
       std::optional<KeyReloadDataTpm2> reload_data);
   Status FlushTransientKey(Key key, KeyTpm2& key_data);
   Status FlushKeyTokenAndHandle(KeyToken token, trunks::TPM_HANDLE handle);
-  StatusOr<crypto::ScopedEC_KEY> GetEccPublicKey(Key key);
-  StatusOr<crypto::ScopedRSA> GetRsaPublicKey(Key key);
+  StatusOr<ECCPublicInfo> GetECCPublicInfoFromPublicData(
+      const trunks::TPMT_PUBLIC& public_data);
+  StatusOr<crypto::ScopedEC_KEY> GetEccPublicKey(
+      const trunks::TPMT_PUBLIC& public_data);
+  StatusOr<crypto::ScopedRSA> GetRsaPublicKey(
+      const trunks::TPMT_PUBLIC& public_data);
 
   TrunksContext& context_;
   ConfigTpm2& config_;
