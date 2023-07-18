@@ -468,7 +468,10 @@ VdaContext* GpuVdaImpl::InitDecodeSession(vda_profile_t profile) {
     return nullptr;
   }
 
-  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  // Make sure we are not running on |ipc_task_runner_| to avoid dead lock.
+  // A new task is going to be scheduled on |ipc_task_runner_|, that we want
+  // to block on and therefore this method can't be called on ipc thread.
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
   DLOG(INFO) << "Initializing decode session with profile " << profile;
 
   base::WaitableEvent init_complete_event(
@@ -488,7 +491,10 @@ void GpuVdaImpl::InitDecodeSessionOnIpcThread(
     vda_profile_t profile,
     base::WaitableEvent* init_complete_event,
     VdaContext** out_context) {
+  // We detach the checker here, to immediately attach it to |ipc_task_runner_|
+  // thread.
   DETACH_FROM_THREAD(ipc_thread_checker_);
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   mojo::Remote<arc::mojom::VideoDecodeAccelerator> remote_vda =

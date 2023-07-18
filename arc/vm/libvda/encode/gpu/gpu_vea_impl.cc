@@ -386,6 +386,9 @@ bool GpuVeaImpl::Initialize() {
     return false;
 
   ipc_task_runner_ = connection_->GetIpcTaskRunner();
+  // Make sure we are not running on |ipc_task_runner_| to avoid dead lock.
+  // A new task is going to be scheduled on |ipc_task_runner_|, that we want
+  // to block on and therefore this method can't be called on ipc thread.
   CHECK(!ipc_task_runner_->BelongsToCurrentThread());
 
   base::WaitableEvent init_complete_event(
@@ -410,8 +413,11 @@ bool GpuVeaImpl::Initialize() {
 
 void GpuVeaImpl::InitializeOnIpcThread(
     base::WaitableEvent* init_complete_event) {
-  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  // We detach the checker here, to immediately attach it to |ipc_task_runner_|
+  // thread.
   DETACH_FROM_THREAD(ipc_thread_checker_);
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
       connection_->CreateEncodeAccelerator();
@@ -441,7 +447,10 @@ void GpuVeaImpl::OnGetSupportedProfiles(
 }
 
 VeaContext* GpuVeaImpl::InitEncodeSession(vea_config_t* config) {
-  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  // Make sure we are not running on |ipc_task_runner_| to avoid dead lock.
+  // A new task is going to be scheduled on |ipc_task_runner_|, that we want
+  // to block on and therefore this method can't be called on ipc thread.
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
   output_formats_.clear();
 
   if (!connection_) {
