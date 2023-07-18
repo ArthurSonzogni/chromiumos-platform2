@@ -392,7 +392,9 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
 
         if batterysaver == BatterySaverMode::Active {
             return Ok(());
-        } else if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
+        } else if power_source == config::PowerSourceType::DC
+            && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active)
+        {
             if let Err(err) = self.set_epp(config::EnergyPerformancePreference::BalancePower) {
                 error!("Failed to set energy performance preference: {:#}", err);
             }
@@ -1095,51 +1097,83 @@ mod tests {
 
         write_epp(root.path(), "balance_performance")?;
 
-        let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
-        };
-
-        // Let's assume we have no config
-        let config_provider = FakeConfigProvider {
-            default_power_preferences: |_| Ok(None),
-            web_rtc_power_preferences: |_| Ok(None),
-            fullscreen_power_preferences: |_| Ok(None),
-            ..Default::default()
-        };
-
-        let manager = DirectoryPowerPreferencesManager {
-            root: root.path().to_path_buf(),
-            config_provider,
-            power_source_provider,
-        };
-
         let tests = [
             (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::DC,
+                },
                 RTCAudioActive::Active,
                 FullscreenVideo::Inactive,
                 "balance_power",
             ),
             (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::DC,
+                },
                 RTCAudioActive::Inactive,
                 FullscreenVideo::Active,
                 "balance_power",
             ),
             (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::DC,
+                },
                 RTCAudioActive::Active,
                 FullscreenVideo::Active,
                 "balance_power",
             ),
             (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::DC,
+                },
                 RTCAudioActive::Inactive,
+                FullscreenVideo::Inactive,
+                "balance_performance",
+            ),
+            (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::AC,
+                },
+                RTCAudioActive::Inactive,
+                FullscreenVideo::Active,
+                "balance_performance",
+            ),
+            (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::AC,
+                },
+                RTCAudioActive::Active,
+                FullscreenVideo::Active,
+                "balance_performance",
+            ),
+            (
+                FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::AC,
+                },
+                RTCAudioActive::Active,
                 FullscreenVideo::Inactive,
                 "balance_performance",
             ),
         ];
 
         for test in tests {
+            // Let's assume we have no config
+            let config_provider = FakeConfigProvider {
+                default_power_preferences: |_| Ok(None),
+                web_rtc_power_preferences: |_| Ok(None),
+                fullscreen_power_preferences: |_| Ok(None),
+                ..Default::default()
+            };
+
+            let manager = DirectoryPowerPreferencesManager {
+                root: root.path().to_path_buf(),
+                config_provider,
+                power_source_provider: test.0,
+            };
+
             manager.update_power_preferences(
-                test.0,
                 test.1,
+                test.2,
                 common::GameMode::Off,
                 common::VmBootMode::Inactive,
                 common::BatterySaverMode::Inactive,
@@ -1147,7 +1181,7 @@ mod tests {
 
             let epp = read_epp(root.path())?;
 
-            assert_eq!(epp, test.2);
+            assert_eq!(epp, test.3);
         }
 
         Ok(())
