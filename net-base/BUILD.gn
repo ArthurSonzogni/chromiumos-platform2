@@ -31,6 +31,7 @@ shared_library("libnet-base") {
     "ip_address_utils.cc",
     "ipv4_address.cc",
     "ipv6_address.cc",
+    "mac_address.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
@@ -53,6 +54,7 @@ if (use.test) {
       "ip_address_test.cc",
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
+      "mac_address_test.cc",
     ]
     configs += [
       "//common-mk:test",
