@@ -45,7 +45,8 @@ DATA_ROOT="/tmp/data"
 main() {
   export DEBIAN_FRONTEND=noninteractive
 
-  echo localhost > /etc/hostname
+  echo refvm > /etc/hostname
+  sed -i -e '2i127.0.1.1       refvm' /etc/hosts
 
   # Use minimal initramfs settings.
   mkdir -p /etc/initramfs-tools/conf.d
