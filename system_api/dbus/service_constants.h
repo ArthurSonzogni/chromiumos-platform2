@@ -267,6 +267,8 @@ const char kChromeFeaturesServiceIsPeripheralDataAccessEnabledMethod[] =
     "IsPeripheralDataAccessEnabled";
 const char kChromeFeaturesServiceIsDNSProxyEnabledMethod[] =
     "IsDNSProxyEnabled";
+const char kChromeFeaturesServiceIsSuspendToDiskEnabledMethod[] =
+    "IsSuspendToDiskEnabled";
 
 const char kUrlHandlerServiceName[] = "org.chromium.UrlHandlerService";
 const char kUrlHandlerServicePath[] = "/org/chromium/UrlHandlerService";
