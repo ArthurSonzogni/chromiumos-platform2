@@ -49,7 +49,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     return ret;
   }
   if (buffer_handles.find(handle->buffer_id) == buffer_handles.end()) {
-    LOGF(ERROR) << "Unknown buffer handle";
+    LOGF(ERROR) << "Unknown buffer handle: " << handle->buffer_id;
     ret.reset();
     return ret;
   }
@@ -95,8 +95,14 @@ int DeserializeStreamBuffer(
   }
   out_buffer->stream = it->second.get();
 
-  // TODO(b/226688669): Define a special buffer_id that indicates no buffer is
-  // attached for the buffer management APIs.
+  if (ptr->buffer_id == cros::mojom::NO_BUFFER_BUFFER_ID) {
+    out_buffer->buffer = nullptr;
+    out_buffer->status = CAMERA3_BUFFER_STATUS_OK;
+    out_buffer->acquire_fence = -1;
+    out_buffer->release_fence = -1;
+    return 0;
+  }
+
   auto buffer_handle = buffer_handles.find(ptr->buffer_id);
   if (buffer_handle == buffer_handles.end()) {
     LOGF(ERROR) << "Invalid buffer id: " << ptr->buffer_id;

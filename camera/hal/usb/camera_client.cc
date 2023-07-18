@@ -348,7 +348,7 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
         &num_returned_buf_reqs, returned_buf_reqs.data());
     if (ret != CAMERA3_BUF_REQ_OK) {
       // TODO(b/226688669): Handle errors.
-      LOGF(ERROR) << "Failed to request stream buffers";
+      LOGF(ERROR) << "Failed to request stream buffers: " << ret;
       return -EINVAL;
     }
     request->output_buffers = returned_output_buffers.data();
