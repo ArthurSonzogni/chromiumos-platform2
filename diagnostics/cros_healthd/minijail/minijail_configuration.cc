@@ -140,14 +140,6 @@ void EnterHealthdMinijail() {
   // Symlink for reading the previous shutdown metrics.
   BindMountIfPathExists(jail.get(), base::FilePath("/var/log/metrics"));
 
-  // Create a new tmpfs filesystem for /tmp and mount necessary files.
-  // We should not use minijail_mount_tmp() to create /tmp when we have file to
-  // bind mount. See minijail_enter() for more details.
-  minijail_mount_with_data(jail.get(), "tmpfs", "/tmp", "tmpfs", 0, "");
-  // Symlink for reading the boot up info.
-  BindMountIfPathExists(jail.get(),
-                        base::FilePath("/tmp/uptime-login-prompt-visible"));
-
   // Bind-mount other necessary files.
   //
   // Allows creation of shared memory files that are used to set up

@@ -23,7 +23,7 @@ namespace {
 // Uptime stats file created when session_manager executes Chrome.
 // For any case of reload after crash no stats are recorded.
 // For any signout stats are recorded.
-const char kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
+const char kChromeUptimeFile[] = "/run/bootstat/uptime-chrome-exec";
 
 // A metric to track the time between when SIGTERM is sent to the browser
 // process and when the browser process group exits (or killed via SIGABRT).

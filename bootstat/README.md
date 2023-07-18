@@ -53,8 +53,8 @@ See that header for specification details.
 
 ## Design and Implementation Details
 
-Uptime data are stored in a file named `/tmp/uptime-<event-name>`;
-disk statistics are stored in a file named `/tmp/disk-<event-name>`.
+Uptime data are stored in a file named `/run/bootstat/uptime-<event-name>`;
+disk statistics are stored in a file named `/run/bootstat/disk-<event-name>`.
 This convention is a concession to pre-existing code that depends on
 these files existing with these specific names, including the
 [platform.BootPerf] test, the boot-complete upstart job,

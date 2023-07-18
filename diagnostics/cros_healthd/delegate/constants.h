@@ -18,7 +18,7 @@ inline constexpr char kShutdownMetrics[] = "/var/log/metrics";
 inline constexpr char kPreviousPowerdLog[] =
     "/var/log/power_manager/powerd.PREVIOUS";
 inline constexpr char kUptimeLoginPromptVisible[] =
-    "/tmp/uptime-login-prompt-visible";
+    "/run/bootstat/uptime-login-prompt-visible";
 
 // The path to the fingerprint device node.
 inline constexpr char kCrosFpDevice[] = "/dev/cros_fp";

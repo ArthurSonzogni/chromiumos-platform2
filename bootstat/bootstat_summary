@@ -8,7 +8,7 @@
 # shellcheck source=../../scripts/lib/shflags/shflags
 . /usr/share/misc/shflags || exit 1
 
-DEFINE_string directory /tmp "Bootstat archive directory" d
+DEFINE_string directory /run/bootstat "Bootstat archive directory" d
 
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
@@ -70,7 +70,7 @@ done
 #  1st awk program: print times as milliseconds and normalize idle time
 #     by NCPU.
 #  sort: sort the events by the uptime timestamp.
-#  sed: remove '/tmp/uptime-' from the event name.
+#  sed: remove '/run/bootstat/uptime-' from the event name.
 #  2nd awk program:  produce the summarized output
 awk 'BEGIN{OFMT="%f"}
      {print 1000*$1, 1000*$2/'"${NCPU}"', FILENAME}' "$@" |

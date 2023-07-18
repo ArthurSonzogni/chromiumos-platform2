@@ -35,7 +35,7 @@ namespace bootstat {
 namespace {
 // Default root-relative path to directory where output statistics will be
 // stored.
-static const char kDefaultOutputDirectoryName[] = "tmp";
+static const char kDefaultOutputDirectoryName[] = "run/bootstat";
 
 static constexpr char kProcUptime[] = "proc/uptime";
 

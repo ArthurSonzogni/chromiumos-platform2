@@ -49,7 +49,7 @@ while [ $# -gt 0 ]; do
   # The 'boot-complete' upstart job tests for whether an event has
   # been recorded by calling this script, so it's not an error if
   # the requested event doesn't exist.
-  EVENTFILE="/tmp/${TAG}-${EVENT}"
+  EVENTFILE="/run/bootstat/${TAG}-${EVENT}"
   if [ -f "${EVENTFILE}" ]; then
     result="$(awk -v field="${FIELD}" -v before="${BEFORE}"            \
       '(!before || $field < before) {result=$field} END{print result}' \
