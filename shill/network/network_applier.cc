@@ -19,6 +19,7 @@
 #include "shill/network/network_priority.h"
 #include "shill/routing_policy_service.h"
 #include "shill/routing_table.h"
+#include "shill/routing_table_entry.h"
 
 namespace shill {
 
@@ -166,8 +167,8 @@ void NetworkApplier::ApplyRoutingPolicy(
   // the actual routing of packets that have been tagged in iptables PREROUTING.
   if (technology == Technology::kVPN) {
     for (const auto& uid : rule_table_->GetUserTrafficUids()) {
-      for (auto entry : {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-                         RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+      for (const auto family : net_base::kIPFamilies) {
+        auto entry = RoutingPolicyEntry(family);
         entry.priority = kVpnUidRulePriority;
         entry.table = table_id;
         entry.uid_range = fib_rule_uid_range{uid, uid};
@@ -185,9 +186,8 @@ void NetworkApplier::ApplyRoutingPolicy(
     // Note that this rule could be added multiple times when default network
     // changes, but since the rule itself is identical, there will only be one
     // instance added into kernel.
-    for (auto main_table_rule :
-         {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-          RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+    for (const auto family : net_base::kIPFamilies) {
+      auto main_table_rule = RoutingPolicyEntry(family);
       main_table_rule.priority = kPhysicalPriorityOffset;
       main_table_rule.table = RT_TABLE_MAIN;
       rule_table_->AddRule(-1, main_table_rule);
@@ -195,9 +195,8 @@ void NetworkApplier::ApplyRoutingPolicy(
     // Add a default routing rule to use the primary interface if there is
     // nothing better.
     // TODO(crbug.com/999589) Remove this rule.
-    for (auto catch_all_rule :
-         {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-          RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+    for (const auto family : net_base::kIPFamilies) {
+      auto catch_all_rule = RoutingPolicyEntry(family);
       catch_all_rule.priority = kCatchallPriority;
       catch_all_rule.table = table_id;
       rule_table_->AddRule(interface_index, catch_all_rule);
@@ -224,9 +223,8 @@ void NetworkApplier::ApplyRoutingPolicy(
 
   // Always set a rule for matching traffic tagged with the fwmark routing tag
   // corresponding to this network interface.
-  for (auto fwmark_routing_entry :
-       {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-        RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+  for (const auto family : net_base::kIPFamilies) {
+    auto fwmark_routing_entry = RoutingPolicyEntry(family);
     fwmark_routing_entry.priority = rule_priority;
     fwmark_routing_entry.table = table_id;
     fwmark_routing_entry.fw_mark = GetFwmarkRoutingTag(interface_index);
@@ -238,8 +236,8 @@ void NetworkApplier::ApplyRoutingPolicy(
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
-  for (auto oif_rule : {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-                        RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+  for (const auto family : net_base::kIPFamilies) {
+    auto oif_rule = RoutingPolicyEntry(family);
     oif_rule.priority = rule_priority;
     oif_rule.table = table_id;
     oif_rule.oif_name = interface_name;
@@ -263,8 +261,8 @@ void NetworkApplier::ApplyRoutingPolicy(
       rule_table_->AddRule(interface_index, if_addr_rule);
     }
 
-    for (auto iif_rule : {RoutingPolicyEntry(net_base::IPFamily::kIPv4),
-                          RoutingPolicyEntry(net_base::IPFamily::kIPv6)}) {
+    for (const auto family : net_base::kIPFamilies) {
+      auto iif_rule = RoutingPolicyEntry(family);
       iif_rule.priority = rule_priority;
       iif_rule.table = table_id;
       iif_rule.iif_name = interface_name;

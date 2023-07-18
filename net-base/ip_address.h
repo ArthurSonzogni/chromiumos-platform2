@@ -25,6 +25,10 @@ enum class NET_BASE_EXPORT IPFamily {
   kIPv6,
 };
 
+// Helper const for iterating through both IP families.
+constexpr std::initializer_list<IPFamily> kIPFamilies = {IPFamily::kIPv4,
+                                                         IPFamily::kIPv6};
+
 // Converts from IPFamily enum to sa_family_t.
 NET_BASE_EXPORT sa_family_t ToSAFamily(IPFamily family);
 
