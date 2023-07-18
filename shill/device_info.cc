@@ -1074,7 +1074,7 @@ bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
 
   const auto link_info_data = RTNLMessage::PackAttrs(attrs);
   if (!rtnl_handler_->AddInterface(
-          interface_name, kKindXfrm, ByteString(link_info_data),
+          interface_name, kKindXfrm, link_info_data,
           base::BindOnce(&DeviceInfo::OnCreateInterfaceResponse,
                          weak_factory_.GetWeakPtr(), interface_name,
                          std::move(failure_callback)))) {

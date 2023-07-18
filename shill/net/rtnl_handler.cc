@@ -478,7 +478,7 @@ int RTNLHandler::GetInterfaceIndex(const std::string& interface_name) {
 
 bool RTNLHandler::AddInterface(const std::string& interface_name,
                                const std::string& link_kind,
-                               const ByteString& link_info_data,
+                               base::span<const uint8_t> link_info_data,
                                ResponseCallback response_callback) {
   if (interface_name.length() >= IFNAMSIZ) {
     LOG(DFATAL) << "Interface name is too long: " << interface_name;
@@ -491,8 +491,7 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
       0 /* pid */, 0 /* if_index */, AF_UNSPEC);
   msg->SetAttribute(IFLA_IFNAME,
                     net_base::byte_utils::StringToCStringBytes(interface_name));
-  msg->SetIflaInfoKind(
-      link_kind, {link_info_data.GetConstData(), link_info_data.GetLength()});
+  msg->SetIflaInfoKind(link_kind, link_info_data);
 
   uint32_t seq;
   if (!SendMessage(std::move(msg), &seq)) {

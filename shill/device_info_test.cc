@@ -846,7 +846,8 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   // RTNLHandler::AddInterface() returns true, but the kernel returns false.
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillRepeatedly([&](const std::string& interface_name,
-                          const std::string& link_kind, const ByteString&,
+                          const std::string& link_kind,
+                          base::span<const uint8_t>,
                           RTNLHandler::ResponseCallback response_callback) {
         registered_response_cb = std::move(response_callback);
         return true;
@@ -880,7 +881,7 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   auto link_ready_cb = [&](const std::string&, int) { link_ready_calls_num++; };
   auto on_failure_cb = [&]() { on_failure_calls_num++; };
 
-  ByteString actual_link_info_data;
+  std::vector<uint8_t> actual_link_info_data;
   RTNLHandler::ResponseCallback registered_response_cb;
 
   auto call_create_xfrm_interface = [&]() {
@@ -901,17 +902,17 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillRepeatedly([&](const std::string& interface_name,
                           const std::string& link_kind,
-                          const ByteString& link_info_data,
+                          base::span<const uint8_t> link_info_data,
                           RTNLHandler::ResponseCallback response_callback) {
-        actual_link_info_data = link_info_data;
+        actual_link_info_data = {link_info_data.begin(), link_info_data.end()};
         registered_response_cb = std::move(response_callback);
         return true;
       });
   EXPECT_TRUE(call_create_xfrm_interface());
   EXPECT_EQ(actual_link_info_data,
-            ByteString(RTNLMessage::PackAttrs(
+            RTNLMessage::PackAttrs(
                 {{1, net_base::byte_utils::ToBytes(kUnderlyingIfIndex)},
-                 {2, net_base::byte_utils::ToBytes(kIfId)}})));
+                 {2, net_base::byte_utils::ToBytes(kIfId)}}));
   std::move(registered_response_cb).Run(100);
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 1);

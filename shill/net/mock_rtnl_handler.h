@@ -52,7 +52,7 @@ class MockRTNLHandler : public RTNLHandler {
               AddInterface,
               (const std::string& interface_name,
                const std::string& link_kind,
-               const ByteString& link_info_data,
+               base::span<const uint8_t> link_info_data,
                ResponseCallback response_callback),
               (override));
   bool SendMessage(std::unique_ptr<RTNLMessage> message,

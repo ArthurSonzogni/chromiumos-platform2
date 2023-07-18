@@ -566,7 +566,7 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
 
   base::test::TestFuture<int32_t> error_future;
 
-  RTNLHandler::GetInstance()->AddInterface(kIfName, kIfType, ByteString{},
+  RTNLHandler::GetInstance()->AddInterface(kIfName, kIfType, {},
                                            error_future.GetCallback());
 
   const auto sent_msg =
