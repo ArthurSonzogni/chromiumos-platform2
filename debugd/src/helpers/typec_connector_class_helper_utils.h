@@ -460,6 +460,10 @@ void PrintUsbDevice(const base::FilePath& usb_port, int indent);
 // relevant usb subsystem information.
 void PrintUsbSubsystem(const base::FilePath& port, int indent);
 
+// PrintDrmSubsystem will print `connector_id` and `status` in the drm_connector
+// directory which is a symlink to the corresponding DP connector.
+void PrintDrmSubsystem(const base::FilePath& port, int indent);
+
 // PrintPortInfo will print relevant type-c connector class information for the
 // port located at the sysfs path "port"
 void PrintPortInfo(const base::FilePath& port, int indent);

@@ -479,12 +479,22 @@ void PrintUsbSubsystem(const base::FilePath& port, int indent) {
   ParseDirsAndExecute(port, indent, kUsbPortRegex, &PrintUsbDevice);
 }
 
+void PrintDrmSubsystem(const base::FilePath& port, int indent) {
+  auto drm_connector_dir = port.Append("drm_connector");
+  if (!base::DirectoryExists(drm_connector_dir))
+    return;
+
+  std::cout << GetIndentStr(indent) << "dp_connector" << std::endl;
+  PrintFile(drm_connector_dir.Append("connector_id"), indent + 2);
+}
+
 void PrintPortInfo(const base::FilePath& port, int indent) {
   PrintDirFiles(port, indent);
   PrintPartner(port, indent + 2);
   PrintCable(port, indent + 2);
   PrintPhysicalLocation(port, indent + 2);
   PrintUsbSubsystem(port, indent + 2);
+  PrintDrmSubsystem(port, indent + 2);
   std::cout << std::endl;
 }
 
