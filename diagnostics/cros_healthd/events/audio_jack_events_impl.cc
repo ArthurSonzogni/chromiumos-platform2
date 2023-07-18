@@ -71,6 +71,7 @@ void AudioJackEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
 
 void AudioJackEventsImpl::CleanUp(uint32_t custom_reason,
                                   const std::string& description) {
+  process_control_.reset();
   observers_.ClearWithReason(custom_reason, description);
 }
 

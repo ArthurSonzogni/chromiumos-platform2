@@ -67,6 +67,7 @@ void StylusGarageEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
 
 void StylusGarageEventsImpl::CleanUp(uint32_t custom_reason,
                                      const std::string& description) {
+  process_control_.reset();
   observers_.ClearWithReason(custom_reason, description);
 }
 

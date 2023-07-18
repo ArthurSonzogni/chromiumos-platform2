@@ -11,6 +11,7 @@
 
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/events/stylus_garage_events_impl.h"
+#include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -20,7 +21,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::WithArg;
 
 // Tests for the StylusGarageEventsImpl class.
 class StylusGarageEventsImplTest : public testing::Test {
@@ -32,9 +32,11 @@ class StylusGarageEventsImplTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorStylusGarage(_, _))
-        .WillOnce(WithArg<0>([=](auto stylus_garage_observer) {
-          stylus_garage_observer_.Bind(std::move(stylus_garage_observer));
-        }));
+        .WillOnce(
+            [=](auto stylus_garage_observer, auto pending_process_control) {
+              stylus_garage_observer_.Bind(std::move(stylus_garage_observer));
+              process_control_.BindReceiver(std::move(pending_process_control));
+            });
     stylus_garage_events_impl_.AddObserver(
         event_observer_.BindNewPendingRemote());
   }
@@ -46,12 +48,14 @@ class StylusGarageEventsImplTest : public testing::Test {
 
   void EmitStylusGarageRemoveEvent() { stylus_garage_observer_->OnRemove(); }
 
+  mojo::Remote<mojom::StylusGarageObserver> stylus_garage_observer_;
+  FakeProcessControl process_control_;
+
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   EventObserverTestFuture event_observer_;
   StylusGarageEventsImpl stylus_garage_events_impl_{&mock_context_};
-  mojo::Remote<mojom::StylusGarageObserver> stylus_garage_observer_;
 };
 
 // Test that we can receive stylus garage insert events.
@@ -74,6 +78,20 @@ TEST_F(StylusGarageEventsImplTest, StylusGarageRemoveEvent) {
   const auto& stylus_garage_event_info = info->get_stylus_garage_event_info();
   EXPECT_EQ(stylus_garage_event_info->state,
             mojom::StylusGarageEventInfo::State::kRemoved);
+}
+
+// Test that process control is reset when delegate observer disconnects.
+TEST_F(StylusGarageEventsImplTest,
+       ProcessControlResetWhenDelegateObserverDisconnects) {
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  // Simulate the disconnection of delegate observer.
+  stylus_garage_observer_.FlushForTesting();
+  stylus_garage_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
 }
 
 }  // namespace

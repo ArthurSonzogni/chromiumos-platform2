@@ -11,6 +11,7 @@
 
 #include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
+#include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -20,7 +21,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::WithArg;
 
 // Tests for the AudioJackEventsImpl class.
 class AudioJackEventsImplTest : public testing::Test {
@@ -39,9 +39,10 @@ class AudioJackEventsImplTest : public testing::Test {
 
   void SetExecutorMonitorAudioJack() {
     EXPECT_CALL(*mock_executor(), MonitorAudioJack(_, _))
-        .WillOnce(WithArg<0>([=](auto audio_jack_observer) {
+        .WillOnce([=](auto audio_jack_observer, auto pending_process_control) {
           audio_jack_observer_.Bind(std::move(audio_jack_observer));
-        }));
+          process_control_.BindReceiver(std::move(pending_process_control));
+        });
   }
 
   void EmitAudioJackAddEventMicrophone() {
@@ -64,12 +65,14 @@ class AudioJackEventsImplTest : public testing::Test {
         mojom::AudioJackEventInfo::DeviceType::kHeadphone);
   }
 
+  mojo::Remote<mojom::AudioJackObserver> audio_jack_observer_;
+  FakeProcessControl process_control_;
+
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   EventObserverTestFuture event_observer_;
   AudioJackEventsImpl audio_jack_events_impl_{&mock_context_};
-  mojo::Remote<mojom::AudioJackObserver> audio_jack_observer_;
 };
 
 // Test that we can receive audio jack add events for headphones.
@@ -122,6 +125,20 @@ TEST_F(AudioJackEventsImplTest, AudioJackRemoveEventMicrophone) {
             mojom::AudioJackEventInfo::State::kRemove);
   EXPECT_EQ(audio_jack_event_info->device_type,
             mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+}
+
+// Test that process control is reset when delegate observer disconnects.
+TEST_F(AudioJackEventsImplTest,
+       ProcessControlResetWhenDelegateObserverDisconnects) {
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  // Simulate the disconnection of delegate observer.
+  audio_jack_observer_.FlushForTesting();
+  audio_jack_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
 }
 
 }  // namespace

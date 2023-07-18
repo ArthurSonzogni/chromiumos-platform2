@@ -12,6 +12,7 @@
 
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/events/touchscreen_events_impl.h"
+#include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -21,7 +22,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::WithArg;
 
 // Tests for the TouchscreenEventsImpl class.
 class TouchscreenEventsImplTest : public testing::Test {
@@ -33,9 +33,10 @@ class TouchscreenEventsImplTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorTouchscreen(_, _))
-        .WillOnce(WithArg<0>([=](auto touchscreen_observer) {
+        .WillOnce([=](auto touchscreen_observer, auto pending_process_control) {
           touchscreen_observer_.Bind(std::move(touchscreen_observer));
-        }));
+          process_control_.BindReceiver(std::move(pending_process_control));
+        });
   }
 
   void AddEventObserver(mojo::PendingRemote<mojom::EventObserver> observer) {
@@ -51,13 +52,15 @@ class TouchscreenEventsImplTest : public testing::Test {
     touchscreen_observer_->OnTouch(event.Clone());
   }
 
+  mojo::Remote<mojom::TouchscreenObserver> touchscreen_observer_;
+  FakeProcessControl process_control_;
+
  private:
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   TouchscreenEventsImpl events_impl_{&mock_context_};
-  mojo::Remote<mojom::TouchscreenObserver> touchscreen_observer_;
 };
 
 // Test that we can receive touchscreen touch events.
@@ -119,6 +122,23 @@ TEST_F(TouchscreenEventsImplTest,
 
   check_result(event_observer.WaitForEvent());
   check_result(event_observer2.WaitForEvent());
+}
+
+// Test that process control is reset when delegate observer disconnects.
+TEST_F(TouchscreenEventsImplTest,
+       ProcessControlResetWhenDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  // Simulate the disconnection of delegate observer.
+  touchscreen_observer_.FlushForTesting();
+  touchscreen_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
 }
 
 }  // namespace

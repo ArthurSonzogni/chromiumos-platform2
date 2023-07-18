@@ -69,6 +69,7 @@ void StylusEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
 
 void StylusEventsImpl::CleanUp(uint32_t custom_reason,
                                const std::string& description) {
+  process_control_.reset();
   observers_.ClearWithReason(custom_reason, description);
   cached_connected_event_.reset();
 }

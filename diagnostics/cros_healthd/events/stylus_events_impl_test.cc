@@ -11,6 +11,7 @@
 
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/events/stylus_events_impl.h"
+#include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -20,7 +21,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::WithArg;
 
 // Tests for the StylusEventsImpl class.
 class StylusEventsImplTest : public testing::Test {
@@ -31,9 +31,10 @@ class StylusEventsImplTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorStylus(_, _))
-        .WillOnce(WithArg<0>([=](auto stylus_observer) {
+        .WillOnce([=](auto stylus_observer, auto pending_process_control) {
           stylus_observer_.Bind(std::move(stylus_observer));
-        }));
+          process_control_.BindReceiver(std::move(pending_process_control));
+        });
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
@@ -49,11 +50,13 @@ class StylusEventsImplTest : public testing::Test {
     stylus_observer_->OnTouch(event.Clone());
   }
 
+  mojo::Remote<mojom::StylusObserver> stylus_observer_;
+  FakeProcessControl process_control_;
+
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   StylusEventsImpl stylus_events_impl_{&mock_context_};
-  mojo::Remote<mojom::StylusObserver> stylus_observer_;
 };
 
 // Test that we can receive stylus touch events.
@@ -112,6 +115,23 @@ TEST_F(StylusEventsImplTest, StylusConnectedEventWithMultipleObservers) {
 
   check_result(event_observer.WaitForEvent());
   check_result(event_observer2.WaitForEvent());
+}
+
+// Test that process control is reset when delegate observer disconnects.
+TEST_F(StylusEventsImplTest,
+       ProcessControlResetWhenDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  // Simulate the disconnection of delegate observer.
+  stylus_observer_.FlushForTesting();
+  stylus_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
 }
 
 }  // namespace

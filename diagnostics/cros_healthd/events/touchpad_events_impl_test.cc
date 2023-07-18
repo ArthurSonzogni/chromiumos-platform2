@@ -14,6 +14,7 @@
 
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
+#include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -25,7 +26,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::StrictMock;
-using ::testing::WithArg;
 
 // Tests for the TouchpadEventsImpl class.
 class TouchpadEventsImplTest : public testing::Test {
@@ -56,10 +56,10 @@ class TouchpadEventsImplTest : public testing::Test {
 
   void SetExecutorMonitorTouchpad() {
     EXPECT_CALL(*mock_executor(), MonitorTouchpad(_, _))
-        .WillOnce(WithArg<0>([=](mojo::PendingRemote<mojom::TouchpadObserver>
-                                     touchpad_observer) {
+        .WillOnce([=](auto touchpad_observer, auto pending_process_control) {
           touchpad_observer_.Bind(std::move(touchpad_observer));
-        }));
+          process_control_.BindReceiver(std::move(pending_process_control));
+        });
   }
 
   void EmitTouchpadConnectedEvent(
@@ -73,12 +73,14 @@ class TouchpadEventsImplTest : public testing::Test {
     touchpad_observer_->OnButton(event.Clone());
   }
 
+  mojo::Remote<mojom::TouchpadObserver> touchpad_observer_;
+  FakeProcessControl process_control_;
+
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   std::unique_ptr<StrictMock<MockEventObserver>> event_observer_;
   std::unique_ptr<TouchpadEventsImpl> touchpad_events_impl_;
-  mojo::Remote<mojom::TouchpadObserver> touchpad_observer_;
 };
 
 // Test that we can receive touchpad touch events.
@@ -173,6 +175,20 @@ TEST_F(TouchpadEventsImplTest, TouchpadConnectedEventWithMultipleObservers) {
   EmitTouchpadConnectedEvent(fake_connected_event.Clone());
 
   run_loop.Run();
+}
+
+// Test that process control is reset when delegate observer disconnects.
+TEST_F(TouchpadEventsImplTest,
+       ProcessControlResetWhenDelegateObserverDisconnects) {
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  // Simulate the disconnection of delegate observer.
+  touchpad_observer_.FlushForTesting();
+  touchpad_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
 }
 
 }  // namespace
