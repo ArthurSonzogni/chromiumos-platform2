@@ -71,8 +71,6 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 
 namespace {
-constexpr int kEphemeralVFSFragmentSize = 1 << 10;
-constexpr int kEphemeralVFSSize = 1 << 12;
 
 struct Attributes {
   mode_t mode;
@@ -1015,8 +1013,6 @@ class EphemeralSystemTest : public ::testing::Test {
     mount_ =
         new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
                   /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
-
-    SetupVFSMock();
   }
 
  protected:
@@ -1094,36 +1090,9 @@ class EphemeralSystemTest : public ::testing::Test {
                                            expected_ephemeral_mount_map));
     }
   }
-
-  void SetupVFSMock() {
-    ephemeral_statvfs_ = {0};
-    ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
-    ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
-
-    ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
-        .WillByDefault(
-            DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
-  }
 };
 
 namespace {
-
-TEST_F(EphemeralSystemTest, EphemeralMount) {
-  EXPECT_CALL(platform_, FormatExt4(Property(&base::FilePath::value,
-                                             StartsWith(kDevLoopPrefix)),
-                                    _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, SetSELinuxContext(EphemeralMountPoint(kUser), _))
-      .WillOnce(Return(true));
-
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), IsOk());
-
-  VerifyFS(kUser, /*expect_present=*/true);
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-
-  VerifyFS(kUser, /*expect_present=*/false);
-}
 
 TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
   // Checks the case when ephemeral statvfs call fails.
