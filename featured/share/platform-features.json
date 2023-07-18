@@ -202,5 +202,21 @@
         "path": "/run/featured_test/test_write"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootHighResOff",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/proc/sys/kernel/timer_highres",
+        "value": "0"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/proc/sys/kernel/timer_highres"
+      }
+    ]
   }
 ]
