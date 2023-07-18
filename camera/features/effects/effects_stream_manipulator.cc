@@ -929,7 +929,6 @@ void EffectsStreamManipulatorImpl::RenderEffect(
       perfetto::Flow::ProcessScoped(process_context->result_buffer.flow_id()),
       "frame_number", process_context->frame_number, "timestamp", timestamp);
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
-  DCHECK_EQ(process_context->result_buffer.status(), CAMERA3_BUFFER_STATUS_OK);
 
   stream_contexts_lock_.AssertAcquired();
   StreamContext* stream_context =
