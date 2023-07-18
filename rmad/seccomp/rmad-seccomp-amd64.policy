@@ -62,6 +62,12 @@ sched_getaffinity: 1
 # _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) = 0xc0283a00
 # IIO_GET_EVENT_FD_IOCTL                    = 0x80046990
 # FIONBIO                                   = 0x5421
+# CROS_EC_DEV_IOCEVENTMASK                  = 0xec02
+# UI_SET_EVBIT                              = 0x40045564
+# UI_SET_KEYBIT                             = 0x40045565
+# UI_DEV_SETUP                              = 0x405c5503
+# UI_DEV_CREATE                             = 0x5501
+# UI_DEV_DESTROY                            = 0x5502
 #
 # Driver type 0x3a (":") = CROS_EC_DEV_IOC
 # (Old iotcl format, used by ChromeOS 3.18 and older)
@@ -71,7 +77,10 @@ ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
        arg1 == SIOCSIFFLAGS || arg1 == 0xc0103a01 || \
        arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || \
        arg1 == 0xc014ec00 || arg1 == 0xc0283a00 || \
-       arg1 == 0x80046990 || arg1 == 0x5421
+       arg1 == 0x80046990 || arg1 == 0x5421 || \
+       arg1 == 0xec02 || arg1 == 0x40045564 || \
+       arg1 == 0x40045565 || arg1 == 0x405c5503 || \
+       arg1 == 0x5501 || arg1 == 0x5502
 set_tid_address: 1
 poll: 1
 pipe: 1
