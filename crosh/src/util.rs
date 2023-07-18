@@ -10,8 +10,11 @@ use std::env;
 use std::error;
 use std::fmt::{self, Display};
 use std::fs::read_to_string;
+use std::fs::File;
 use std::io::stdin;
 use std::io::stdout;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -25,12 +28,14 @@ use libchromeos::chromeos;
 use libchromeos::sys::error;
 use libchromeos::sys::{clear_signal_handler, register_signal_handler};
 use regex::Regex;
+use system_api::client::OrgChromiumSessionManagerInterface;
 
 // 25 seconds is the default timeout for dbus-send.
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 // Path to update_engine_client.
 pub const UPDATE_ENGINE: &str = "/usr/bin/update_engine_client";
 
+const BOARD_NAME_PREFIX: &str = "CHROMEOS_RELEASE_BOARD=";
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
 static INCLUDE_DEV: AtomicBool = AtomicBool::new(false);
@@ -41,6 +46,7 @@ pub enum Error {
     DbusChromeFeaturesService(dbus::Error, String),
     DbusConnection(dbus::Error),
     DbusGetUserIdHash(chromeos::Error),
+    DbusGuestSessionActive(dbus::Error),
     NoMatchFound,
     WrappedError(String),
 }
@@ -58,6 +64,13 @@ impl Display for Error {
             DbusConnection(err) => write!(f, "failed to connect to D-Bus: {}", err),
             DbusGetUserIdHash(err) => {
                 write!(f, "failed to get user-id hash over to D-Bus: {:?}", err)
+            }
+            DbusGuestSessionActive(err) => {
+                write!(
+                    f,
+                    "failed to check whether guest session is active over D-Bus: {:?}",
+                    err
+                )
             }
             NoMatchFound => write!(f, "No match found."),
             WrappedError(err) => write!(f, "{}", err),
@@ -192,6 +205,38 @@ pub fn clear_signal_handlers(signums: &[c_int]) {
             error!("sigaction failed for {}", signum);
         }
     }
+}
+
+pub fn board_name() -> String {
+    let file = File::open("/etc/lsb-release").unwrap();
+
+    for line in BufReader::new(file).lines().flatten() {
+         if let Some(board) = line.strip_prefix(BOARD_NAME_PREFIX) {
+             return board.to_string();
+         }
+    }
+
+    "UNKNOWN".to_string()
+}
+
+pub fn is_guest_session_active() -> Result<bool> {
+    let connection = Connection::new_system().map_err(|err| {
+        error!("ERROR: Failed to get D-Bus connection: {}", err);
+        Error::DbusConnection(err)
+    })?;
+
+    let conn_path = connection.with_proxy(
+        "org.chromium.SessionManager",
+        "/org/chromium/SessionManager",
+        DEFAULT_DBUS_TIMEOUT,
+    );
+
+    let guest_session_active = conn_path.is_guest_session_active().map_err(|err| {
+        println!("ERROR: Got unexpected result: {}", err);
+        Error::DbusGuestSessionActive(err)
+    })?;
+
+    Ok(guest_session_active)
 }
 
 fn root_dev() -> Result<String> {

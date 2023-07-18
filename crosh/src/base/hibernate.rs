@@ -5,7 +5,9 @@
 // Provides the command "hibernate" for crosh which tries to hibernate the
 // system (if hibernate is available and enabled).
 
+use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::thread;
 use std::time;
 
@@ -14,6 +16,9 @@ use getopts::{Matches, Options};
 use libchromeos::sys::error;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
+use crate::util::board_name;
+use crate::util::is_chrome_feature_enabled;
+use crate::util::is_guest_session_active;
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 const SUSPEND_FLAVOR_HIBERNATE: u32 = 2;
@@ -49,8 +54,47 @@ fn hibernate(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> 
         dispatcher::Error::CommandReturnedError
     })?;
 
-    let skip_delay = matches.opt_present("n");
+    let delay = if matches.opt_present("n") {
+        None
+    } else {
+        Some(time::Duration::from_secs(2))
+    };
 
+    if !board_supports_hibernate() {
+        println!("  hibernate is not available for {}", board_name());
+        return Ok(());
+    }
+
+    let guest_session_active = is_guest_session_active().map_err(|err| {
+        error!("ERROR: Failed to check if a guest session is active: {err:?}");
+        dispatcher::Error::CommandReturnedError
+    })?;
+
+    if !guest_session_active {
+        println!("  hibernate is not available in guest mode");
+        return Ok(());
+    }
+
+    let hibernate_disabled = !is_chrome_feature_enabled("IsSuspendToDiskEnabled").map_err(|e| {
+        error!("ERROR: Failed to check if Chrome feature is enabled: {}", e);
+        dispatcher::Error::CommandReturnedError
+    })?;
+
+    if hibernate_disabled {
+        println!("  hibernate is supported but disabled. It can be enabled through");
+        println!(r#"  chrome://flags ("Enable Suspend to Disk")."#);
+        return Ok(());
+    }
+
+    if !hiberimage_exists() {
+        println!("  hiberimage does not exist");
+        return Ok(());
+    }
+
+    request_hibernate(delay)
+}
+
+fn request_hibernate(delay: Option<time::Duration>) -> Result<(), dispatcher::Error> {
     let connection = Connection::new_system().map_err(|err| {
         error!("ERROR: Failed to get D-Bus connection: {}", err);
         dispatcher::Error::CommandReturnedError
@@ -68,8 +112,8 @@ fn hibernate(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> 
   system might abort hibernate."#
     );
 
-    if !skip_delay {
-        thread::sleep(time::Duration::from_secs(2));
+    if let Some(delay) = delay {
+        thread::sleep(delay);
     }
 
     let proxy = connection.with_proxy(
@@ -129,4 +173,29 @@ fn hibernate_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
     let usage = hibernate_usage();
     w.write_all(usage.as_bytes()).unwrap();
     w.flush().unwrap();
+}
+
+fn board_supports_hibernate() -> bool {
+    Path::new("/usr/sbin/hiberman").exists()
+}
+
+fn hiberimage_exists() -> bool {
+    let block_dir = Path::new("/sys/class/block");
+
+    for entry in fs::read_dir(block_dir).unwrap().flatten() {
+        let bdev_name = entry.file_name().to_string_lossy().to_string();
+        if !bdev_name.starts_with("dm-") {
+            continue;
+        }
+
+        let dm_name_attr = block_dir.join(bdev_name).join("dm").join("name");
+        let res = fs::read_to_string(dm_name_attr);
+        if let Ok(dm_name) = res {
+            if dm_name.trim() == "hiberimage" {
+                return true;
+            }
+        }
+    }
+
+    false
 }
