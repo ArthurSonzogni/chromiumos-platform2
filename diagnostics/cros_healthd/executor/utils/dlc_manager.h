@@ -6,9 +6,12 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_DLC_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
 #include <base/time/time.h>
@@ -90,10 +93,12 @@ class DlcManager {
   // Pending callbacks that wait for the DLC manager to initialize.
   std::vector<base::OnceClosure> pending_initialized_callbacks_;
 
-  //  The first is DLC ID and the second is pending callbacks for corresponding
-  //  DLC.
-  std::map<std::string, std::vector<DlcRootPathCallback>>
-      pending_root_path_callbacks_;
+  // The first is DLC ID and the second is pending root path callbacks and
+  // cancelable timeout callbacks for corresponding DLC.
+  std::map<std::string,
+           std::vector<std::pair<DlcRootPathCallback,
+                                 std::unique_ptr<base::CancelableOnceClosure>>>>
+      pending_callbacks_map_;
 
   // Used to check the initialize state of the DLC manager.
   InitializeState initialize_state_ = InitializeState::kNotInitialized;

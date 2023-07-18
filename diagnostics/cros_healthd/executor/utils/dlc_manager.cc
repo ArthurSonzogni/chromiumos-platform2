@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
 
 #include <cstdlib>
+#include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -70,14 +71,17 @@ void DlcManager::HandleRegisterDlcStateChangedResponse(
 
 void DlcManager::GetBinaryRootPath(const std::string& dlc_id,
                                    DlcRootPathCallback root_path_cb) {
-  pending_root_path_callbacks_[dlc_id].push_back(std::move(root_path_cb));
+  auto timeout_cb = std::make_unique<base::CancelableOnceClosure>(
+      base::BindOnce(&DlcManager::HandleDlcRootPathCallbackTimeout,
+                     weak_factory_.GetWeakPtr(), dlc_id));
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, timeout_cb->callback(), kGetDlcRootPathTimeout);
+
+  // The |timeout_cb| will be canceled when the |root_path_cb| is invoked.
+  pending_callbacks_map_[dlc_id].emplace_back(std::move(root_path_cb),
+                                              std::move(timeout_cb));
   WaitForInitialized(mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
       &DlcManager::InstallDlc, weak_factory_.GetWeakPtr(), dlc_id)));
-  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&DlcManager::HandleDlcRootPathCallbackTimeout,
-                     weak_factory_.GetWeakPtr(), dlc_id),
-      kGetDlcRootPathTimeout);
 }
 
 void DlcManager::WaitForInitialized(base::OnceClosure on_initialized) {
@@ -106,7 +110,7 @@ void DlcManager::InstallDlc(const std::string& dlc_id) {
   dlcservice::InstallRequest install_request;
   install_request.set_id(dlc_id);
   dlcservice_proxy_->InstallAsync(
-      install_request, /*on_success=*/base::DoNothing(),
+      install_request, /*success_callback=*/base::DoNothing(),
       base::BindOnce(&DlcManager::HandleDlcInstallError,
                      weak_factory_.GetWeakPtr(), dlc_id));
 }
@@ -122,7 +126,7 @@ void DlcManager::HandleDlcInstallError(const std::string& dlc_id,
 
 void DlcManager::OnDlcStateChanged(const dlcservice::DlcState& state) {
   // Skipped state changed if there are no pending callbacks.
-  if (!pending_root_path_callbacks_.count(state.id())) {
+  if (!pending_callbacks_map_.count(state.id())) {
     return;
   }
 
@@ -143,36 +147,40 @@ void DlcManager::OnDlcStateChanged(const dlcservice::DlcState& state) {
 
 void DlcManager::InvokeRootPathCallbacks(
     const std::string& dlc_id, std::optional<base::FilePath> root_path) {
-  const auto iter = pending_root_path_callbacks_.find(dlc_id);
-  if (iter == pending_root_path_callbacks_.end()) {
+  const auto iter = pending_callbacks_map_.find(dlc_id);
+  if (iter == pending_callbacks_map_.end()) {
     return;
   }
 
-  // Invokes all callbacks when the installation completes.
-  for (auto& root_path_cb : iter->second) {
+  // Invokes all root path callbacks and cancels all timeout callbacks when the
+  // installation completes.
+  for (auto& [root_path_cb, timeout_cb] : iter->second) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(root_path_cb), root_path));
+    timeout_cb->Cancel();
   }
-  pending_root_path_callbacks_.erase(iter);
+  pending_callbacks_map_.erase(iter);
 }
 
 void DlcManager::HandleDlcRootPathCallbackTimeout(const std::string& dlc_id) {
-  const auto iter = pending_root_path_callbacks_.find(dlc_id);
-  if (iter == pending_root_path_callbacks_.end()) {
-    return;
-  }
+  // Timeout callback should be existing when the timeout function is triggered.
+  // We can find non-empty callbacks with the key |dlc_id| in
+  // |pending_callbacks_map_|.
+  const auto iter = pending_callbacks_map_.find(dlc_id);
+  CHECK(iter != pending_callbacks_map_.end());
+  auto& pending_callbacks = iter->second;
+  CHECK(!pending_callbacks.empty());
 
-  auto& root_path_callbacks = iter->second;
   LOG(ERROR) << "DLC timeout error (" << dlc_id << ")";
-  // Invokes the earliest callback with null result, which is the first one in
-  // |root_path_callbacks|.
+  // Invokes the earliest root path callback with null result, which is the
+  // first one in |pending_callbacks|.
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
-      base::BindOnce(std::move(root_path_callbacks[0]), std::nullopt));
-  root_path_callbacks.erase(root_path_callbacks.begin());
+      base::BindOnce(std::move(pending_callbacks[0].first), std::nullopt));
+  pending_callbacks.erase(pending_callbacks.begin());
 
-  if (root_path_callbacks.empty()) {
-    pending_root_path_callbacks_.erase(iter);
+  if (pending_callbacks.empty()) {
+    pending_callbacks_map_.erase(iter);
   }
 }
 
