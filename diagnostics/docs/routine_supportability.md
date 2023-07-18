@@ -121,6 +121,16 @@ You can run the following commands on your DUT:
 To configure `side-volume-button/region` in Boxster, you can use
 `create_volume_button` function defined in [hw_topology.star] to set it up.
 
+### LED lit up
+
+Supported only on a device with a CrOS EC.
+
+You can run the following commands on your DUT:
+1. `ls /sys/class/chromeos/cros_ec` This is helpful to understand if the device
+   has a CrOS EC. If not, the output will contain `No such file or directory`.
+2. `cros-health-tool diag led_lit_up --led_name=power --led_color=red --check_supported`
+   Use this to see if healthd reports the correct support status.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

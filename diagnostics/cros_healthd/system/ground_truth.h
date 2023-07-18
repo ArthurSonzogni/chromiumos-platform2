@@ -44,6 +44,8 @@ class GroundTruth final {
   std::string SideVolumeButtonRegion();
   std::string StorageType();
 
+  bool HasCrosEC();
+
  private:
   std::string ReadCrosConfig(const std::string& path,
                              const std::string& property);

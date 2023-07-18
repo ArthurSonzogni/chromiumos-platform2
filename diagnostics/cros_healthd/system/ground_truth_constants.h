@@ -7,6 +7,9 @@
 
 namespace diagnostics {
 
+// Used to determine whether a device has a Google EC.
+constexpr char kCrosEcSysPath[] = "/sys/class/chromeos/cros_ec";
+
 namespace cros_config_path {
 
 inline constexpr char kHardwareProperties[] = "/hardware-properties";
