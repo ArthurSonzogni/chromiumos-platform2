@@ -2,11 +2,33 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/pkg_config.gni")
+
 # For cros_healthd-client package.
 group("all") {
   deps = [
+    ":cros_healthd-client",
     "//diagnostics/mojom/external:network_diagnostics_mojo_bindings",
     "//diagnostics/mojom/external:network_health_mojo_bindings",
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
+}
+
+generate_pkg_config("cros_healthd-client") {
+  description = "Generated Mojo API for communicating with cros_healthd."
+  version = "1.0"
+  requires_private = [
+    "libchrome",
+    "libmojo",
+  ]
+  libs = [
+    "-lnetwork_diagnostics_mojo_bindings",
+    "-lnetwork_health_mojo_bindings",
+    "-lcros_healthd_mojo_bindings",
+  ]
+
+  # This flag will faltten the include space. If need to install files directly,
+  # install path should be `/usr/include/cros_healthd-client/diagnostics`.
+  cflags = [ "-I/usr/include/cros_healthd-client" ]
+  install = true
 }
