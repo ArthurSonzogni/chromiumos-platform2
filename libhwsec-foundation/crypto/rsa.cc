@@ -22,15 +22,9 @@ namespace hwsec_foundation {
 bool CreateRsaKey(size_t key_bits,
                   brillo::SecureBlob* n,
                   brillo::SecureBlob* p) {
-  crypto::ScopedRSA rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new());
-  if (!rsa || !e) {
-    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
-    return false;
-  }
-  if (!BN_set_word(e.get(), kWellKnownExponent) ||
-      !RSA_generate_key_ex(rsa.get(), key_bits, e.get(), nullptr)) {
-    LOG(ERROR) << "RSA key generation failed.";
+  crypto::ScopedRSA rsa = GenerateRsa(key_bits);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to generate RSA";
     return false;
   }
 
@@ -381,6 +375,21 @@ crypto::ScopedRSA CreateRSAFromNumber(const brillo::Blob& modulus,
 
   if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
     LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
+    return nullptr;
+  }
+  return rsa;
+}
+
+crypto::ScopedRSA GenerateRsa(size_t key_bits) {
+  crypto::ScopedRSA rsa(RSA_new());
+  crypto::ScopedBIGNUM e = BigNumFromValue(kWellKnownExponent);
+  if (!rsa || !e) {
+    LOG(ERROR) << __func__ << "Failed to allocate RSA or BIGNUM.";
+    return nullptr;
+  }
+
+  if (!RSA_generate_key_ex(rsa.get(), key_bits, e.get(), nullptr)) {
+    LOG(ERROR) << __func__ << "RSA key generation failed.";
     return nullptr;
   }
   return rsa;

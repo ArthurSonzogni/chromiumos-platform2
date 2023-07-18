@@ -1196,13 +1196,8 @@ bool TrunksClientTest::PerformRSAEncryptAndDecrypt(
 void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
                                           std::string* prime_factor,
                                           std::string* public_key) {
-  crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa);
-  crypto::ScopedBIGNUM exponent(BN_new());
-  CHECK(exponent);
-  CHECK(BN_set_word(exponent.get(), RSA_F4));
-  CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
-      << "Failed to generate RSA key: " << GetOpenSSLError();
+  crypto::ScopedRSA rsa = hwsec_foundation::GenerateRsa(2048);
+  CHECK(rsa) << "Failed to generate RSA key: " << GetOpenSSLError();
   modulus->resize(RSA_size(rsa.get()), 0);
   const BIGNUM* n;
   RSA_get0_key(rsa.get(), &n, nullptr, nullptr);

@@ -99,6 +99,10 @@ CreateRSAFromNumber(const brillo::Blob& modulus, const brillo::Blob& exponent);
 crypto::ScopedRSA HWSEC_FOUNDATION_EXPORT
 CreateRSAFromNumber(const brillo::Blob& modulus, unsigned int exponent);
 
+// Generate an RSA key whose exponent is |kWellKnownExponent| and modulus size
+// is |key_bits|.
+crypto::ScopedRSA HWSEC_FOUNDATION_EXPORT GenerateRsa(size_t key_bits);
+
 }  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_CRYPTO_RSA_H_

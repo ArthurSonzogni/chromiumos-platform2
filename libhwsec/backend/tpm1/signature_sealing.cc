@@ -832,17 +832,9 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
   // using the migration destination key will be performed. The security
   // properties of the migration destination key aren't crucial, besides the
   // reasonable amount of entropy, therefore generating using OpenSSL is fine.
-  crypto::ScopedRSA migration_destination_rsa(RSA_new());
-  crypto::ScopedBIGNUM e(BN_new());
-  if (!migration_destination_rsa || !e) {
-    return MakeStatus<TPMError>(
-        "Failed to allocate the migration destination key",
-        TPMRetryAction::kNoRetry);
-  }
-  if (!BN_set_word(e.get(), kWellKnownExponent) ||
-      !RSA_generate_key_ex(migration_destination_rsa.get(),
-                           kMigrationDestinationKeySizeBits, e.get(),
-                           nullptr)) {
+  crypto::ScopedRSA migration_destination_rsa =
+      hwsec_foundation::GenerateRsa(kMigrationDestinationKeySizeBits);
+  if (!migration_destination_rsa) {
     return MakeStatus<TPMError>(
         "Failed to generate the migration destination key parameters",
         TPMRetryAction::kNoRetry);
