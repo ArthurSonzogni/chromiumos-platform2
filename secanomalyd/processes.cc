@@ -35,6 +35,7 @@
 namespace secanomalyd {
 
 namespace {
+constexpr pid_t kInitPid = 1;
 constexpr pid_t kKThreadDPid = 2;
 constexpr pid_t kKThreadDPPid = 0;
 constexpr char kInitExecutable[] = "/sbin/init";
@@ -278,6 +279,15 @@ MaybeProcEntries ReadProcesses(ProcessFilter filter,
 
   // If we failed to parse any valid processes, return nullopt.
   return entries.empty() ? std::nullopt : MaybeProcEntries(entries);
+}
+
+MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
+  for (auto const& e : proc_entries) {
+    if (e.pid() == kInitPid) {
+      return MaybeProcEntry(e);
+    }
+  }
+  return MaybeProcEntry();
 }
 
 }  // namespace secanomalyd

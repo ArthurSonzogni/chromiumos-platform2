@@ -77,6 +77,7 @@ class Daemon : public brillo::DBusDaemon {
   bool has_emitted_seccomp_coverage_uma_ = false;
   bool has_emitted_nonroot_proc_percentage_uma_ = false;
   bool has_emitted_unpriv_proc_percentage_uma_ = false;
+  bool has_emitted_non_initns_proc_percentage_uma_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;

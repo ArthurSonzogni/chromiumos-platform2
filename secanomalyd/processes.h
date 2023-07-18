@@ -86,6 +86,7 @@ enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly, kNoKernelTasks };
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter,
                                const base::FilePath& proc = kProcPathBase);
+MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries);
 
 }  // namespace secanomalyd
 

@@ -4,6 +4,7 @@
 
 #include "secanomalyd/daemon.h"
 
+#include <sys/types.h>
 #include <sysexits.h>
 
 #include <memory>
@@ -126,6 +127,29 @@ bool EmitUnprivProcPercentageUma(const ProcEntries& proc_entries) {
   VLOG(1) << "Reporting unpriv process percentage UMA metric";
   if (!SendUnprivProcPercentageToUMA(unpriv_proc_percentage)) {
     LOG(WARNING) << "Could not upload unpriv process percentage UMA metric";
+    return false;
+  }
+  return true;
+}
+
+bool EmitNonInitNsProcPercentageUma(const ProcEntries& proc_entries,
+                                    const ino_t& init_pid_ns,
+                                    const ino_t& init_mnt_ns) {
+  size_t total_proc_count = proc_entries.size();
+  size_t non_initns_proc_count = 0;
+  non_initns_proc_count = std::count_if(
+      proc_entries.begin(), proc_entries.end(), [&](const ProcEntry& entry) {
+        return entry.pidns() != init_pid_ns && entry.mntns() != init_mnt_ns;
+      });
+  unsigned int non_initns_proc_percentage = static_cast<unsigned int>(
+      round((static_cast<float>(non_initns_proc_count) /
+             static_cast<float>(total_proc_count)) *
+            100));
+
+  VLOG(1) << "Reporting non-init namespace process percentage UMA metric";
+  if (!SendNonInitNsProcPercentageToUMA(non_initns_proc_percentage)) {
+    LOG(WARNING)
+        << "Could not upload non-init namespace process percentage UMA metric";
     return false;
   }
   return true;
@@ -413,6 +437,18 @@ void Daemon::EmitSandboxingUma() {
     if (!has_emitted_unpriv_proc_percentage_uma_) {
       has_emitted_unpriv_proc_percentage_uma_ =
           EmitUnprivProcPercentageUma(maybe_proc_entries.value());
+    }
+
+    if (!has_emitted_non_initns_proc_percentage_uma_) {
+      if (all_procs_) {
+        MaybeProcEntry init_proc_entry = GetInitProcEntry(all_procs_.value());
+        if (init_proc_entry) {
+          has_emitted_non_initns_proc_percentage_uma_ =
+              EmitNonInitNsProcPercentageUma(maybe_proc_entries.value(),
+                                             init_proc_entry.value().pidns(),
+                                             init_proc_entry.value().mntns());
+        }
+      }
     }
   }
 }
