@@ -28,9 +28,9 @@ namespace patchpanel {
 
 namespace {
 
-// Maximum recorded packet count for the multicast metrics, equivalent to 20
+// Maximum recorded packet count for the multicast metrics, equivalent to 30
 // packets per second.
-constexpr int kPacketCountMax = 20 * kMulticastPollDelay.InSeconds();
+constexpr int kPacketCountMax = 30 * kMulticastPollDelay.InSeconds();
 constexpr int kPacketCountBuckets = 100;
 
 std::optional<MulticastMetrics::Type> ShillDeviceTypeToMulticastMetricsType(
