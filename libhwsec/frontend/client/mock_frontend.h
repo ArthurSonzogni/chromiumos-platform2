@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
+#include "libhwsec/backend/vendor.h"
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/mock_frontend.h"
 
@@ -31,6 +32,7 @@ class MockClientFrontend : public MockFrontend, public ClientFrontend {
   MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (const override));
   MOCK_METHOD(StatusOr<uint32_t>, GetTpmModel, (), (const override));
   MOCK_METHOD(StatusOr<uint64_t>, GetFirmwareVersion, (), (const override));
+  MOCK_METHOD(StatusOr<Vendor::RwVersion>, GetRwVersion, (), (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (const override));
   MOCK_METHOD(StatusOr<IFXFieldUpgradeInfo>,
               GetIFXFieldUpgradeInfo,

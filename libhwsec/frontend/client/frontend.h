@@ -10,6 +10,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "libhwsec/backend/vendor.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/ifx_info.h"
@@ -40,6 +41,9 @@ class ClientFrontend : public Frontend {
 
   // Gets the TPM firmware version.
   virtual StatusOr<uint64_t> GetFirmwareVersion() const = 0;
+
+  // Gets the TPM RW firmware version.
+  virtual StatusOr<Vendor::RwVersion> GetRwVersion() const = 0;
 
   // Gets the vendor specific string.
   virtual StatusOr<brillo::Blob> GetVendorSpecific() const = 0;

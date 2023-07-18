@@ -32,6 +32,9 @@ using BackendVendorTpm2Test = BackendTpm2TestBase;
 TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
   const brillo::Blob kFakeVendorSpecific = {0x78, 0x43, 0x47, 0x20,
                                             0x66, 0x54, 0x50, 0x4D};
+  const uint32_t kFakeEpoch = 0;
+  const uint32_t kFakeMajor = 5;
+  const uint32_t kFakeMinor = 190;
   tpm_manager::GetVersionInfoReply reply;
   reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
   reply.set_family(0x322E3000);
@@ -41,6 +44,9 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
   reply.set_firmware_version(0x8E0F7DC508B56D7C);
   reply.set_vendor_specific(brillo::BlobToString(kFakeVendorSpecific));
   reply.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  reply.set_rw_version(std::to_string(kFakeEpoch) + "." +
+                       std::to_string(kFakeMajor) + "." +
+                       std::to_string(kFakeMinor));
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
@@ -61,6 +67,12 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
 
   EXPECT_THAT(backend_->GetVendorTpm2().GetFingerprint(),
               IsOkAndHolds(0x2A0797FD));
+  hwsec::StatusOr<VendorTpm2::RwVersion> version =
+      backend_->GetVendorTpm2().GetRwVersion();
+  ASSERT_OK(version);
+  EXPECT_EQ(version->epoch, kFakeEpoch);
+  EXPECT_EQ(version->major, kFakeMajor);
+  EXPECT_EQ(version->minor, kFakeMinor);
 }
 
 TEST_F(BackendVendorTpm2Test, IsSrkRocaVulnerable) {

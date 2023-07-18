@@ -15,7 +15,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "libhwsec/backend/vendor.h"
 #include "libhwsec/client/command_helpers.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/factory/factory_impl.h"
@@ -152,6 +154,15 @@ struct GetVersionInfo {
            "vendor_specific %s\n",
            family, spec_level, manufacturer, tpm_model, firmware_version,
            vendor_specific_str.c_str());
+
+    if (tpm_model == tpm_manager::GscVersion::GSC_VERSION_CR50 ||
+        tpm_model == tpm_manager::GscVersion::GSC_VERSION_TI50) {
+      ASSIGN_OR_RETURN(hwsec::Vendor::RwVersion rw_version,
+                       hwsec->GetRwVersion(), _.LogError().As(EXIT_FAILURE));
+      printf("rw_version %" PRId32 ".%" PRId32 ".%" PRId32 "\n",
+             rw_version.epoch, rw_version.major, rw_version.minor);
+    }
+
     return EXIT_SUCCESS;
   }
 };

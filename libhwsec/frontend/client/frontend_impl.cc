@@ -46,6 +46,10 @@ StatusOr<uint64_t> ClientFrontendImpl::GetFirmwareVersion() const {
   return middleware_.CallSync<&Backend::Vendor::GetFirmwareVersion>();
 }
 
+StatusOr<Vendor::RwVersion> ClientFrontendImpl::GetRwVersion() const {
+  return middleware_.CallSync<&Backend::Vendor::GetRwVersion>();
+}
+
 StatusOr<brillo::Blob> ClientFrontendImpl::GetVendorSpecific() const {
   return middleware_.CallSync<&Backend::Vendor::GetVendorSpecific>();
 }

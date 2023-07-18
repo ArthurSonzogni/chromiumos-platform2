@@ -29,6 +29,7 @@ class ClientFrontendImpl : public ClientFrontend, public FrontendImpl {
   StatusOr<uint32_t> GetManufacturer() const override;
   StatusOr<uint32_t> GetTpmModel() const override;
   StatusOr<uint64_t> GetFirmwareVersion() const override;
+  StatusOr<Vendor::RwVersion> GetRwVersion() const override;
   StatusOr<brillo::Blob> GetVendorSpecific() const override;
   StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() const override;
 };
