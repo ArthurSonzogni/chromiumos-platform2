@@ -896,8 +896,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     EXPECT_TRUE(GetPendingTimeout().IsCancelled());
     Mock::VerifyAndClearExpectations(service.get());
 
+    ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
+    EXPECT_FALSE(GetHandshakeTimeout().IsCancelled());
+
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+    EXPECT_TRUE(GetHandshakeTimeout().IsCancelled());
     EXPECT_EQ(service->state(), Service::kStateConfiguring);
     Mock::VerifyAndClearExpectations(service.get());
 
@@ -921,6 +925,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   const base::CancelableOnceClosure& GetPendingTimeout() {
     return wifi_->pending_timeout_callback_;
+  }
+  const base::CancelableOnceClosure& GetHandshakeTimeout() {
+    return wifi_->handshake_timeout_callback_;
   }
   const base::CancelableOnceClosure& GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
@@ -2514,6 +2521,57 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   pending_timeout.callback().Run();
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
+}
+
+TEST_F(WiFiMainTest, HandshakeTimerCancelledByConnectionFailure) {
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+  auto& handshake_timeout = GetHandshakeTimeout();
+  WiFiEndpointRefPtr endpoint;
+  RpcIdentifier bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectingService(RpcIdentifier(""), &endpoint, &bss_path));
+
+  // When 802.11 association finishes, the pending timer stops and the handshake
+  // timer starts. Note the pending timer is stopped by BSS change and the
+  // handshake timers is triggered by supplicant state change.
+  ReportCurrentBSSChanged(bss_path);
+  EXPECT_TRUE(GetPendingTimeout().IsCancelled());
+  EXPECT_TRUE(handshake_timeout.IsCancelled());
+  ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
+  EXPECT_FALSE(handshake_timeout.IsCancelled());
+
+  // When handshake fails, the timer is cancelled.
+  ReportStateChanged(WPASupplicant::kInterfaceStateDisconnected);
+  EXPECT_TRUE(handshake_timeout.IsCancelled());
+}
+
+TEST_F(WiFiMainTest, TimeoutHandshake) {
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+  auto& handshake_timeout = GetHandshakeTimeout();
+  WiFiEndpointRefPtr endpoint;
+  RpcIdentifier bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectingService(RpcIdentifier(""), &endpoint, &bss_path));
+
+  // When 802.11 association finishes, the pending timer stops and the handshake
+  // timer starts. Note the pending timer is stopped by BSS change and the
+  // handshake timers is triggered by supplicant state change.
+  ReportCurrentBSSChanged(bss_path);
+  EXPECT_TRUE(GetPendingTimeout().IsCancelled());
+  EXPECT_TRUE(handshake_timeout.IsCancelled());
+  ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
+  EXPECT_FALSE(handshake_timeout.IsCancelled());
+  EXPECT_EQ(nullptr, GetPendingService());
+  EXPECT_NE(nullptr, GetCurrentService());
+
+  // Handshake timeout initiates disconnection.
+  EXPECT_CALL(*service, Disconnect(_, HasSubstr("HandshakeTimeoutHandler")));
+  handshake_timeout.callback().Run();
+  // Verify expectations now, because WiFi may report other state changes
+  // when WiFi is Stop()-ed (during TearDown()).
+  Mock::VerifyAndClearExpectations(service.get());
 }
 
 TEST_F(WiFiMainTest, DisconnectInvalidService) {

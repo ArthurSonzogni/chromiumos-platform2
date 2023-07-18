@@ -117,6 +117,7 @@ const int32_t kDefaultBgscanSignalThresholdDbm = -72;
 // Delay between scans when supplicant finds "No suitable network".
 const time_t kRescanIntervalSeconds = 1;
 const base::TimeDelta kPendingTimeout = base::Seconds(15);
+const base::TimeDelta kHandshakeTimeout = base::Seconds(15);
 const int kMaxRetryCreateInterfaceAttempts = 6;
 const base::TimeDelta kRetryCreateInterfaceInterval = base::Seconds(10);
 const int16_t kDefaultDisconnectDbm = 0;
@@ -2543,6 +2544,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       }
     }
     has_already_completed_ = true;
+    StopHandshakeTimer();
   } else if (IsWPAStateConnectionInProgress(new_state)) {
     if (new_state == WPASupplicant::kInterfaceStateAssociating) {
       // Ensure auth status is kept up-to-date
@@ -2551,6 +2553,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       // Supplicant does not indicate successful association in assoc status
       // messages, but we know at this point that 802.11 association succeeded
       supplicant_assoc_status_ = IEEE_80211::kStatusCodeSuccessful;
+      StartHandshakeTimer();
     }
 
     if (is_roaming_in_progress_) {
@@ -2577,20 +2580,22 @@ void WiFi::StateChanged(const std::string& new_state) {
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
     // has changed. But there may be cases where that signal is not sent.
     // (crbug.com/206208)
-  } else if (new_state == WPASupplicant::kInterfaceStateDisconnected &&
-             affected_service == current_service_ &&
-             affected_service->IsConnected()) {
-    // This means that wpa_supplicant failed in a re-connect attempt, but
-    // may still be reconnecting.  Give wpa_supplicant a limited amount of
-    // time to transition out this condition by either connecting or changing
-    // CurrentBSS.
-    StartReconnectTimer();
+  } else if (new_state == WPASupplicant::kInterfaceStateDisconnected) {
+    if (affected_service == current_service_ &&
+        affected_service->IsConnected()) {
+      // This means that wpa_supplicant failed in a re-connect attempt, but
+      // may still be reconnecting.  Give wpa_supplicant a limited amount of
+      // time to transition out this condition by either connecting or changing
+      // CurrentBSS.
+      StartReconnectTimer();
+    }
+    // When wpa_supplicant is disconnected, there could be handshake failure and
+    // any scheduled handshake timer should be canceled.
+    StopHandshakeTimer();
+    // Note that we ignore a State change into kInterfaceStateDisconnected, in
+    // favor of observing the corresponding change in CurrentBSS.
   } else {
     // Other transitions do not affect Service state.
-    //
-    // Note in particular that we ignore a State change into
-    // kInterfaceStateDisconnected, in favor of observing the corresponding
-    // change in CurrentBSS.
   }
 }
 
@@ -3218,6 +3223,47 @@ void WiFi::PendingTimeoutHandler() {
     service->SetFailure(failure);
     service->SetState(Service::kStateIdle);
   }
+}
+
+void WiFi::StartHandshakeTimer() {
+  SLOG(this, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  handshake_timeout_callback_.Reset(
+      base::BindOnce(&WiFi::HandshakeTimeoutHandler,
+                     weak_ptr_factory_while_started_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(
+      FROM_HERE, handshake_timeout_callback_.callback(), kHandshakeTimeout);
+}
+
+void WiFi::StopHandshakeTimer() {
+  SLOG(this, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  handshake_timeout_callback_.Cancel();
+}
+
+void WiFi::HandshakeTimeoutHandler() {
+  LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
+  // Handshake starts when 802.11 association finishes, at which point
+  // wpa_supplicant propagates property changes that includes the new BSS and
+  // new state |WPASupplicant::kInterfaceStateAssociated|. The new BSS is
+  // handled by |CurrentBSSChanged|, which further makes the "|pending_service_|
+  // to |current_service_|" transition in |HandleRoam|. Since the BSS is handled
+  // prior to state change, we expect that the effective service is
+  // |current_service_| and terminate on other conditions.
+  auto service = current_service_;
+  if (!service) {
+    LOG(WARNING)
+        << "In " << __func__ << ": "
+        << "current_service_ is not present; don't attempt to disconnect.";
+    return;
+  }
+
+  Error unused_error;
+  // For services that enter the handshake stage, there's no need to handle
+  // cases for wrong hidden ssid's since a wrong hidden ssid is not a valid wifi
+  // service and will trigger |PendingTimeoutHandler|. That is, the service that
+  // turns into |current_service_| must have a valid reference to |this| wifi
+  // device. Therefore, |Service::Disconnect| alone will suffice and there's no
+  // need to handle that case as |PendingTimeoutHandler| does.
+  service->Disconnect(&unused_error, __func__);
 }
 
 void WiFi::StartReconnectTimer() {

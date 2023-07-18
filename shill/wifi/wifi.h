@@ -630,6 +630,16 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Disconnects from the current service that is taking too long
   // to reconnect on its own.
   void ReconnectTimeoutHandler();
+  // Starts a timer in order to limit the length of an attempt to authenticate
+  // with an associated WiFi service. Use "handshake" instead of
+  // "authentication" to avoid ambiguity because of the overload of the latter
+  // term.
+  void StartHandshakeTimer();
+  // Cancels any existing authentication (handshake) timer.
+  void StopHandshakeTimer();
+  // Disconnects from an associated WiFi service that is taking too long to
+  // authenticate (handshake).
+  void HandshakeTimeoutHandler();
   // Sets the current pending service.  If the argument is non-NULL,
   // the Pending timer is started and the associated service is set
   // to "Associating", otherwise it is stopped.
@@ -846,6 +856,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes when a reconnecting service timer expires. Calls
   // ReconnectTimeoutHandler.
   base::CancelableOnceClosure reconnect_timeout_callback_;
+  // Executes when the handshake timer of an associated WiFi service
+  // expires. Calls HandshakeTimeoutHandler.
+  base::CancelableOnceClosure handshake_timeout_callback_;
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
   base::CancelableOnceClosure request_station_info_callback_;
