@@ -137,6 +137,8 @@ pub fn set_game_mode(
                 }
             }
         }
+
+        // Tuning CPU frequency.
         match intel_i7_or_above(Path::new(&root)) {
             Ok(res) => {
                 if res && power_is_ac && double_min_freq(Path::new(&root)).is_err() {
@@ -147,6 +149,11 @@ pub fn set_game_mode(
                 warn! {"Failed to check if device is Intel i7 or above"};
             }
         }
+        // Tuning Transparent huge pages.
+        if let Err(e) = set_tph(THPMode::Always) {
+            warn! {"Failed to tune TPH: {:?}", e};
+        }
+
         return Ok(Some(TuneSwappiness {
             swappiness: TUNED_SWAPPINESS_VALUE,
         }));
@@ -172,6 +179,11 @@ pub fn set_game_mode(
                 warn! {"Failed to check if device is Intel i7 or above"};
             }
         }
+
+        if let Err(e) = set_tph(THPMode::Default) {
+            warn! {"Failed to set TPH to default: {:?}", e};
+        }
+
         return Ok(Some(TuneSwappiness {
             swappiness: DEFAULT_SWAPPINESS_VALUE,
         }));
@@ -281,6 +293,12 @@ impl TryFrom<u8> for BatterySaverMode {
             _ => bail!("Unsupported battery saver mode value"),
         })
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum THPMode {
+    Default = 0,
+    Always = 1,
 }
 
 pub fn update_power_preferences(
@@ -449,6 +467,15 @@ fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
 fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
     let mut gpu_config = intel_device::IntelGpuDeviceConfig::new(root.to_owned(), 100)?;
     gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
+}
+
+fn set_tph(mode: THPMode) -> Result<()> {
+    const TPH_MODE_PATH: &str = "/sys/kernel/mm/transparent_hugepage/enabled";
+    match mode {
+        THPMode::Default => std::fs::write(TPH_MODE_PATH, "madvise")?,
+        THPMode::Always => std::fs::write(TPH_MODE_PATH, "always")?,
+    }
+    Ok(())
 }
 
 #[cfg(test)]
