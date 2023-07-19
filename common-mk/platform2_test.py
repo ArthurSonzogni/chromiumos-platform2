@@ -111,6 +111,12 @@ ENV_PASSTHRU_REGEX_LIST = list(
         r"^T$",
         # Used by unit tests to increase test reproducibility.
         r"^MALLOC_PERTURB_$",
+        # Used by Bazel to pass test initial conditions.
+        # https://bazel.build/reference/test-encyclopedia#initial-conditions
+        r"^TEST_",
+        r"^TESTBRIDGE_TEST_ONLY$",
+        r"^XML_OUTPUT_FILE$",
+        r"^BAZEL_TEST$",
     )
 )
 
@@ -158,6 +164,13 @@ class Platform2Test:
             self.sysroot = sysroot
         else:
             self.sysroot = build_target_lib.get_default_sysroot_path(self.board)
+
+        # SetupSysrootInSysroot expects the sysroot to be in /build.
+        # Would cause pollution in the sysroot otherwise.
+        assert self.sysroot == "/" or self.sysroot.startswith("/build/"), (
+            f"unexpected sysroot {self.sysroot!r}, "
+            "should either be / or starts with /build/"
+        )
 
         self.framework = framework
         if self.framework == "auto":
@@ -514,6 +527,23 @@ class Platform2Test:
                     empty_dir, d, "none", osutils.MS_BIND | osutils.MS_RDONLY
                 )
 
+    def SetupSysrootInSysroot(self) -> None:
+        """Set up /${SYSROOT}/${SYSROOT}.
+
+        Some build tools such as Bazel references absolute paths of the
+        sysroot: https://bazel.build/extending/rules#runfiles.
+        This makes sysroot absolute paths valid inside the sysroot chroot.
+        """
+        if self.sysroot == "/":
+            return
+        osutils.SafeMakedirs(self.sysroot + self.sysroot)
+        osutils.Mount(
+            self.sysroot,
+            self.sysroot + self.sysroot,
+            "none",
+            osutils.MS_BIND | osutils.MS_RDONLY,
+        )
+
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
 
@@ -542,6 +572,8 @@ class Platform2Test:
             osutils.MS_RDONLY,
             "mode=0755,size=1K",
         )
+
+        self.SetupSysrootInSysroot()
 
         for mount in bind_mount_paths:
             path = os.path.join(self.sysroot, mount)
