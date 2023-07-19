@@ -24,6 +24,7 @@
 namespace {
 
 using ::testing::_;
+using ::testing::A;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::InvokeWithoutArgs;
@@ -55,14 +56,20 @@ void SetUpMockObjectProxy(
     const vm_tools::container::ContainerListenerFuzzerSingleAction& action,
     dbus::MockObjectProxy* mock_object_proxy) {
   if (action.return_dbus_response()) {
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlock(_, _))
+    EXPECT_CALL(*mock_object_proxy,
+                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(_, _, _))
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
+                                        A<dbus::MethodCall*>(), A<int>(),
+                                        A<dbus::ScopedDBusError*>()))
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
   } else {
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlock(_, _))
+    EXPECT_CALL(*mock_object_proxy,
+                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(ReturnNull());
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(_, _, _))
+    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
+                                        A<dbus::MethodCall*>(), A<int>(),
+                                        A<dbus::ScopedDBusError*>()))
         .WillRepeatedly(ReturnNull());
   }
 }
