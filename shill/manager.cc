@@ -36,6 +36,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/ip_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #if !defined(DISABLE_FLOSS)
@@ -52,7 +53,6 @@
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_eap_provider.h"
-#include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/event_dispatcher.h"
@@ -2936,7 +2936,7 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
     for (const auto& ns :
          base::SplitString(nameservers.TryGet<std::string>(""), ",",
                            base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
-      if (!IPAddress::CreateFromString(ns).has_value()) {
+      if (!net_base::IPAddress::CreateFromString(ns).has_value()) {
         Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                               "Invalid address: " + ns);
         return false;

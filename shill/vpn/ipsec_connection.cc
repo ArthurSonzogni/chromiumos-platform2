@@ -28,6 +28,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
@@ -983,32 +984,36 @@ void IPsecConnection::ParseLocalVirtualIPs(
   // at first.
   for (const auto& part : base::SplitString(
            matched_part, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
-    const auto addr = IPAddress::CreateFromString(part);
+    const auto addr = net_base::IPAddress::CreateFromString(part);
     if (!addr.has_value()) {
       ClearVirtualIPs();
       LOG(ERROR) << "Failed to parse the virtual IPs, the line is " << line;
       return;
     }
-    if (addr->family() == IPAddress::kFamilyIPv4) {
-      if (local_virtual_ipv4_ != "") {
-        ClearVirtualIPs();
-        LOG(ERROR)
-            << "At most one IPv4 address should be configured as the virtual "
-               "IP, the line is "
-            << line;
-        return;
-      }
-      local_virtual_ipv4_ = part;
-    } else if (addr->family() == IPAddress::kFamilyIPv6) {
-      if (local_virtual_ipv6_ != "") {
-        ClearVirtualIPs();
-        LOG(ERROR)
-            << "At most one IPv6 address should be configured as the virtual "
-               "IP, the line is "
-            << line;
-        return;
-      }
-      local_virtual_ipv6_ = part;
+
+    switch (addr->GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        if (local_virtual_ipv4_ != "") {
+          ClearVirtualIPs();
+          LOG(ERROR)
+              << "At most one IPv4 address should be configured as the virtual "
+                 "IP, the line is "
+              << line;
+          return;
+        }
+        local_virtual_ipv4_ = part;
+        break;
+      case net_base::IPFamily::kIPv6:
+        if (local_virtual_ipv6_ != "") {
+          ClearVirtualIPs();
+          LOG(ERROR)
+              << "At most one IPv6 address should be configured as the virtual "
+                 "IP, the line is "
+              << line;
+          return;
+        }
+        local_virtual_ipv6_ = part;
+        break;
     }
   }
 }

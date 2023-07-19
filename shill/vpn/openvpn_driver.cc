@@ -19,6 +19,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
@@ -27,9 +28,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/process_manager.h"
-#include "shill/net/sockets.h"
 #include "shill/rpc_task.h"
-#include "shill/virtual_device.h"
 #include "shill/vpn/openvpn_management_server.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
@@ -397,15 +396,15 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
         base::StringPrintf("%s/%d", peer.c_str(), max_prefix));
   } else if (properties->subnet_prefix != max_prefix) {
     // --topology subnet will set ifconfig_netmask instead
-    const auto network_addr = IPAddress::CreateFromStringAndPrefix(
+    const auto network_cidr = net_base::IPCIDR::CreateFromStringAndPrefix(
         properties->address, properties->subnet_prefix,
-        properties->address_family);
-    if (!network_addr.has_value()) {
+        net_base::FromSAFamily(properties->address_family));
+    if (!network_cidr.has_value()) {
       LOG(WARNING) << "Error obtaining network address for "
                    << properties->address;
     } else {
       const std::string prefix = base::StringPrintf(
-          "%s/%d", network_addr->GetNetworkPart().ToString().c_str(),
+          "%s/%d", network_cidr->GetPrefixAddress().ToString().c_str(),
           properties->subnet_prefix);
       properties->inclusion_list.push_back(prefix);
     }

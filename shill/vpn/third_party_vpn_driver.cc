@@ -18,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
@@ -30,8 +31,6 @@
 #include "shill/net/io_handler_factory.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
-#include "shill/virtual_device.h"
-#include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -45,18 +44,18 @@ namespace {
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
 constexpr base::TimeDelta kConnectTimeout = base::Minutes(5);
 
-std::string IPAddressFingerprint(const IPAddress& address) {
+std::string IPAddressFingerprint(const net_base::IPv4CIDR& cidr) {
   static const char* const hex_to_bin[] = {
       "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
       "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111"};
   std::string fingerprint;
-  const size_t address_length = address.address().GetLength();
-  const uint8_t* raw_address = address.address().GetConstData();
+  const size_t address_length = cidr.address().kAddressLength;
+  const auto raw_address = cidr.address().data();
   for (size_t i = 0; i < address_length; ++i) {
     fingerprint += hex_to_bin[raw_address[i] >> 4];
     fingerprint += hex_to_bin[raw_address[i] & 0xf];
   }
-  return fingerprint.substr(0, address.prefix());
+  return fingerprint.substr(0, cidr.prefix_length());
 }
 
 }  // namespace
@@ -178,7 +177,7 @@ void ThirdPartyVpnDriver::ProcessIp(
   auto it = parameters.find(key);
   if (it != parameters.end()) {
     const std::string& ip = it->second;
-    if (IPAddress::CreateFromString(ip, IPAddress::kFamilyIPv4).has_value()) {
+    if (net_base::IPv4Address::CreateFromString(ip).has_value()) {
       *target = ip;
     } else {
       error_message->append(key).append(" is not a valid IP;");
@@ -205,8 +204,7 @@ void ThirdPartyVpnDriver::ProcessIPArray(
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
-      const auto addr =
-          IPAddress::CreateFromString(*value, IPAddress::kFamilyIPv4);
+      const auto addr = net_base::IPv4Address::CreateFromString(*value);
       if (!addr.has_value()) {
         warning_message->append(*value + " for " + key + " is invalid;");
         value = string_array.erase(value);
@@ -242,14 +240,13 @@ void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
-      const auto address =
-          IPAddress::CreateFromPrefixString(*value, IPAddress::kFamilyIPv4);
-      if (!address.has_value()) {
+      const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(*value);
+      if (!cidr.has_value()) {
         warning_message->append(*value + " for " + key + " is invalid;");
         value = string_array.erase(value);
         continue;
       }
-      const std::string cidr_key = IPAddressFingerprint(*address);
+      const std::string cidr_key = IPAddressFingerprint(*cidr);
       if (known_cidrs_.find(cidr_key) != known_cidrs_.end()) {
         warning_message->append("Duplicate entry for " + *value + " in " + key +
                                 " found;");
