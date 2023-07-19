@@ -194,9 +194,10 @@ class DlpAdaptorTest : public ::testing::Test {
   }
 
   std::vector<uint8_t> CreateSerializedGetFilesSourcesRequest(
-      std::vector<ino_t> inodes) {
+      std::vector<ino_t> inodes, std::vector<std::string> paths) {
     GetFilesSourcesRequest request;
     *request.mutable_files_inodes() = {inodes.begin(), inodes.end()};
+    *request.mutable_files_paths() = {paths.begin(), paths.end()};
 
     std::vector<uint8_t> proto_blob(request.ByteSizeLong());
     request.SerializeToArray(proto_blob.data(), proto_blob.size());
@@ -300,7 +301,8 @@ class DlpAdaptorTest : public ::testing::Test {
     EXPECT_EQ(expected_result, success);
   }
 
-  GetFilesSourcesResponse GetFilesSources(std::vector<ino_t> inodes) {
+  GetFilesSourcesResponse GetFilesSources(std::vector<ino_t> inodes,
+                                          std::vector<std::string> paths) {
     GetFilesSourcesResponse result;
     std::unique_ptr<
         brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
@@ -317,7 +319,8 @@ class DlpAdaptorTest : public ::testing::Test {
         &result, &run_loop));
 
     GetDlpAdaptor()->GetFilesSources(
-        std::move(response), CreateSerializedGetFilesSourcesRequest(inodes));
+        std::move(response),
+        CreateSerializedGetFilesSourcesRequest(inodes, paths));
     run_loop.Run();
     return result;
   }
@@ -1074,7 +1077,8 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
                     CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2, 123456});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2, 123456}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 
@@ -1088,6 +1092,76 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
   EXPECT_EQ(file_metadata2.source_url(), source2);
   EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
+}
+
+TEST_F(DlpAdaptorTest, GetFilesSourcesByPath) {
+  InitDatabase();
+
+  // Create files to request sources.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+
+  const std::string source1 = "source1";
+  const std::string referrer1 = "referrer1";
+
+  // Add one of the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1)},
+                   /*expected_result=*/true);
+
+  GetFilesSourcesResponse response = GetFilesSources(
+      /*inodes=*/{}, {file_path1.value(), file_path2.value(), "/bad/path"});
+
+  ASSERT_EQ(response.files_metadata_size(), 1u);
+
+  FileMetadata file_metadata1 = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata1.inode(), inode1);
+  EXPECT_EQ(file_metadata1.path(), file_path1.value());
+  EXPECT_EQ(file_metadata1.source_url(), source1);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
+}
+
+TEST_F(DlpAdaptorTest, GetFilesSourcesMixed) {
+  InitDatabase();
+
+  // Create files to request sources.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = DlpAdaptorTestHelper::GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = DlpAdaptorTestHelper::GetInodeValue(file_path2.value());
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
+
+  // Add the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
+                   /*expected_result=*/true);
+
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode2, 123456}, {file_path1.value(), "/bad/path"});
+
+  ASSERT_EQ(response.files_metadata_size(), 2u);
+
+  // First element - requested by inode.
+  FileMetadata file_metadata1 = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata1.inode(), inode2);
+  EXPECT_FALSE(file_metadata1.has_path());
+  EXPECT_EQ(file_metadata1.source_url(), source2);
+  EXPECT_EQ(file_metadata1.referrer_url(), referrer2);
+
+  // Second element - requested by path.
+  FileMetadata file_metadata2 = response.files_metadata()[1];
+  EXPECT_EQ(file_metadata2.inode(), inode1);
+  EXPECT_EQ(file_metadata2.path(), file_path1.value());
+  EXPECT_EQ(file_metadata2.source_url(), source1);
+  EXPECT_EQ(file_metadata2.referrer_url(), referrer1);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
@@ -1110,7 +1184,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
                     CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 
@@ -1118,7 +1193,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   InitDatabase();
 
   // Check that the pending entries were added.
-  response = GetFilesSources({inode1, inode2});
+  response = GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 
@@ -1156,7 +1231,8 @@ TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
                     CreateAddFileRequest(file_path2, source2, "referrer2")},
                    /*expected_result=*/true);
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 
@@ -1166,7 +1242,7 @@ TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
   InitDatabase();
 
   // Check that the pending entries were not added.
-  response = GetFilesSources({inode1, inode2});
+  response = GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 }
@@ -1205,7 +1281,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
                                 run_loop2.QuitClosure());
   run_loop2.Run();
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 1u);
 
@@ -1250,7 +1327,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
                                 run_loop2.QuitClosure());
   run_loop2.Run();
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 
@@ -1294,7 +1372,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   // Notify that file was deleted.
   helper_.OnFileDeleted(inode2);
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 1u);
 
@@ -1312,7 +1391,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   // Notify that file was deleted.
   helper_.OnFileDeleted(inode1);
 
-  response = GetFilesSources({inode1, inode2});
+  response = GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 0u);
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
@@ -1343,7 +1422,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
                     CreateAddFileRequest(file_path2, source2, referrer2)},
                    /*expected_result=*/true);
 
-  GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
+  GetFilesSourcesResponse response =
+      GetFilesSources({inode1, inode2}, /*paths=*/{});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 

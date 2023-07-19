@@ -404,13 +404,26 @@ void DlpAdaptor::GetFilesSources(
     return;
   }
 
-  const std::vector<ino64_t> inodes = {request.files_inodes().begin(),
-                                       request.files_inodes().end()};
+  std::vector<ino64_t> inodes = {request.files_inodes().begin(),
+                                 request.files_inodes().end()};
+  std::vector<std::pair<ino64_t, std::string>> requested_files;
+  for (const auto& inode : request.files_inodes()) {
+    inodes.push_back(inode);
+    requested_files.emplace_back(inode, "");
+  }
+
+  for (const auto& path : request.files_paths()) {
+    const ino64_t inode = GetInodeValue(path);
+    if (inode > 0) {
+      inodes.push_back(inode);
+      requested_files.emplace_back(inode, path);
+    }
+  }
 
   db_->GetFileEntriesByInodes(
-      inodes,
-      base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                     base::Unretained(this), std::move(response), inodes));
+      inodes, base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
+                             base::Unretained(this), std::move(response),
+                             requested_files));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -908,16 +921,19 @@ void DlpAdaptor::ReplyOnCheckFilesTransfer(
 void DlpAdaptor::ProcessGetFilesSourcesWithData(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::vector<ino64_t>& requested_inodes,
+    const std::vector<std::pair<ino64_t, std::string>>& requested_files,
     std::map<ino64_t, FileEntry> file_entries) {
   GetFilesSourcesResponse response_proto;
-  for (const auto& inode : requested_inodes) {
+  for (const auto& [inode, path] : requested_files) {
     auto it = file_entries.find(inode);
     if (it == std::end(file_entries)) {
       continue;
     }
     FileMetadata* file_metadata = response_proto.add_files_metadata();
     file_metadata->set_inode(inode);
+    if (!path.empty()) {
+      file_metadata->set_path(path);
+    }
     file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_referrer_url(it->second.referrer_url);
   }

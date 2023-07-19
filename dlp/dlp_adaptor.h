@@ -195,7 +195,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void ProcessGetFilesSourcesWithData(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<uint8_t>>> response,
-      const std::vector<ino64_t>& requested_inodes,
+      const std::vector<std::pair<ino64_t, std::string>>& requested_files,
       std::map<ino64_t, FileEntry> file_entries);
 
   // Functions and callbacks to handle lifeline fd.
