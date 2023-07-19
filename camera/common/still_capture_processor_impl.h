@@ -64,6 +64,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
     bool has_jpeg = false;
     uint32_t jpeg_blob_size = 0;
     int jpeg_quality = 95;
+    uint32_t orientation = 0;
 
     std::optional<camera3_stream_buffer_t> client_requested_buffer;
   };

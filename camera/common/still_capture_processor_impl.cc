@@ -303,6 +303,12 @@ void StillCaptureProcessorImpl::QueuePendingRequest(
   if (!jpeg_quality.empty()) {
     req.jpeg_quality = jpeg_quality[0];
   }
+  base::span<const int32_t> orientation =
+      request.GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION);
+  if (!orientation.empty()) {
+    req.orientation = orientation[0];
+  }
+
   VLOGFID(1, frame_number) << "Request queued. thumbnail_size = "
                            << req.thumbnail_size.ToString()
                            << " thumbnail_quality=" << req.thumbnail_quality
@@ -550,6 +556,10 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
             ExifUtils exif_utils;
             if (!exif_utils.InitializeWithData(it->second)) {
               LOGF(ERROR) << "Cannot load APPs segments";
+              break;
+            }
+            if (!exif_utils.SetOrientation(context.orientation)) {
+              LOGF(ERROR) << "Cannot set orientation";
               break;
             }
             if (!exif_utils.GenerateApp1(context.thumbnail_buffer.data(),
