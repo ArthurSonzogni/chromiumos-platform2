@@ -311,12 +311,10 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
         net_base::byte_utils::StringToCStringBytes(*entry.oif_name));
   }
   if (!entry.dst.address().IsZero()) {
-    message->SetAttribute(FRA_DST, net_base::byte_utils::ByteStringToBytes(
-                                       entry.dst.address().ToByteString()));
+    message->SetAttribute(FRA_DST, entry.dst.address().ToBytes());
   }
   if (!entry.src.address().IsZero()) {
-    message->SetAttribute(FRA_SRC, net_base::byte_utils::ByteStringToBytes(
-                                       entry.src.address().ToByteString()));
+    message->SetAttribute(FRA_SRC, entry.src.address().ToBytes());
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);

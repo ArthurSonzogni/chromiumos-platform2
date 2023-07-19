@@ -101,8 +101,7 @@ std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
   auto message = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex,
       net_base::ToSAFamily(cidr.GetFamily()));
-  message->SetAttribute(IFA_ADDRESS, net_base::byte_utils::ByteStringToBytes(
-                                         cidr.address().ToByteString()));
+  message->SetAttribute(IFA_ADDRESS, cidr.address().ToBytes());
   message->set_address_status(
       RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
   return message;

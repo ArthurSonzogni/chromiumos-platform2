@@ -501,9 +501,7 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(scope, status.scope);
 
     EXPECT_TRUE(msg->HasAttribute(IFA_ADDRESS));
-    EXPECT_EQ(msg->GetAttribute(IFA_ADDRESS),
-              net_base::byte_utils::ByteStringToBytes(
-                  address.address().ToByteString()));
+    EXPECT_EQ(msg->GetAttribute(IFA_ADDRESS), address.address().ToBytes());
     EXPECT_EQ(msg->GetIfaAddress(), address);
   }
 
@@ -535,26 +533,20 @@ class RTNLMessageTest : public Test {
     if (dst) {
       EXPECT_TRUE(msg->HasAttribute(RTA_DST));
       EXPECT_EQ(status.dst_prefix, dst->prefix_length());
-      EXPECT_EQ(msg->GetAttribute(RTA_DST),
-                net_base::byte_utils::ByteStringToBytes(
-                    dst->address().ToByteString()));
+      EXPECT_EQ(msg->GetAttribute(RTA_DST), dst->address().ToBytes());
       EXPECT_EQ(msg->GetRtaDst(), dst);
     }
 
     if (src) {
       EXPECT_TRUE(msg->HasAttribute(RTA_SRC));
       EXPECT_EQ(status.src_prefix, src->prefix_length());
-      EXPECT_EQ(msg->GetAttribute(RTA_SRC),
-                net_base::byte_utils::ByteStringToBytes(
-                    src->address().ToByteString()));
+      EXPECT_EQ(msg->GetAttribute(RTA_SRC), src->address().ToBytes());
       EXPECT_EQ(msg->GetRtaSrc(), src);
     }
 
     if (gateway) {
       EXPECT_TRUE(msg->HasAttribute(RTA_GATEWAY));
-      EXPECT_EQ(
-          msg->GetAttribute(RTA_GATEWAY),
-          net_base::byte_utils::ByteStringToBytes(gateway->ToByteString()));
+      EXPECT_EQ(msg->GetAttribute(RTA_GATEWAY), gateway->ToBytes());
       EXPECT_EQ(msg->GetRtaGateway(), gateway);
     }
 
@@ -864,12 +856,9 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
 
   msg.set_route_status(RTNLMessage::RouteStatus(
       0, 0, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
-  msg.SetAttribute(RTA_DST, net_base::byte_utils::ByteStringToBytes(
-                                dst.address().ToByteString()));
-  msg.SetAttribute(RTA_SRC, net_base::byte_utils::ByteStringToBytes(
-                                src.address().ToByteString()));
-  msg.SetAttribute(RTA_GATEWAY, net_base::byte_utils::ByteStringToBytes(
-                                    gateway.ToByteString()));
+  msg.SetAttribute(RTA_DST, dst.address().ToBytes());
+  msg.SetAttribute(RTA_SRC, src.address().ToBytes());
+  msg.SetAttribute(RTA_GATEWAY, gateway.ToBytes());
   msg.SetAttribute(RTA_OIF, net_base::byte_utils::ToBytes<uint32_t>(12));
   msg.SetAttribute(RTA_PRIORITY, net_base::byte_utils::ToBytes<uint32_t>(13));
 
@@ -888,10 +877,8 @@ TEST_F(RTNLMessageTest, EncodeRuleAdd) {
   msg.set_route_status(RTNLMessage::RouteStatus(
       dst.prefix_length(), src.prefix_length(), RT_TABLE_MAIN, RTPROT_BOOT,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
-  msg.SetAttribute(FRA_DST, net_base::byte_utils::ByteStringToBytes(
-                                dst.address().ToByteString()));
-  msg.SetAttribute(FRA_SRC, net_base::byte_utils::ByteStringToBytes(
-                                src.address().ToByteString()));
+  msg.SetAttribute(FRA_DST, dst.address().ToBytes());
+  msg.SetAttribute(FRA_SRC, src.address().ToBytes());
 
   msg.SetAttribute(FRA_PRIORITY, net_base::byte_utils::ToBytes<uint32_t>(13));
   msg.SetAttribute(FRA_FWMARK, net_base::byte_utils::ToBytes<uint32_t>(0x1234));

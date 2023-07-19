@@ -270,8 +270,7 @@ void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
   // We don't need to set |ndm_flags| and |ndm_type| for this message.
   msg->set_neighbor_status(shill::RTNLMessage::NeighborStatus(
       NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
-  msg->SetAttribute(NDA_DST, net_base::byte_utils::ByteStringToBytes(
-                                 entry.addr.ToByteString()));
+  msg->SetAttribute(NDA_DST, entry.addr.ToBytes());
 
   if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
     LOG(WARNING) << "Failed to send neighbor probe message for "

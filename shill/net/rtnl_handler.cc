@@ -417,12 +417,10 @@ bool RTNLHandler::AddressRequest(
   msg->set_address_status(
       RTNLMessage::AddressStatus(local.prefix_length(), 0, 0));
 
-  msg->SetAttribute(IFA_LOCAL, net_base::byte_utils::ByteStringToBytes(
-                                   local.address().ToByteString()));
+  msg->SetAttribute(IFA_LOCAL, local.address().ToBytes());
   if (broadcast) {
     CHECK_EQ(local.GetFamily(), net_base::IPFamily::kIPv4);
-    msg->SetAttribute(IFA_BROADCAST, net_base::byte_utils::ByteStringToBytes(
-                                         broadcast->ToByteString()));
+    msg->SetAttribute(IFA_BROADCAST, broadcast->ToBytes());
   }
 
   return SendMessage(std::move(msg), nullptr);

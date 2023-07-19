@@ -186,8 +186,7 @@ class NeighborLinkMonitorTest : public testing::Test {
     shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
                            kTestInterfaceIndex,
                            net_base::ToSAFamily(addr->GetFamily()));
-    msg.SetAttribute(
-        NDA_DST, net_base::byte_utils::ByteStringToBytes(addr->ToByteString()));
+    msg.SetAttribute(NDA_DST, addr->ToBytes());
     if (mode == shill::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(
           shill::RTNLMessage::NeighborStatus(nud_state, 0, 0));
