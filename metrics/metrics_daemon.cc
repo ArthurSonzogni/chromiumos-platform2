@@ -27,6 +27,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -446,13 +447,12 @@ int MetricsDaemon::OnInit() {
     // anyways.
     bus_->AddFilterFunction(&MetricsDaemon::MessageFilter, this);
 
-    DBusError error;
-    dbus_error_init(&error);
+    dbus::Error error;
     bus_->AddMatch(match_rule, &error);
 
-    if (dbus_error_is_set(&error)) {
+    if (error.IsValid()) {
       LOG(ERROR) << "Failed to add match rule \"" << match_rule << "\". Got "
-                 << error.name << ": " << error.message;
+                 << error.name() << ": " << error.message();
       return EX_SOFTWARE;
     }
   } else {
@@ -491,13 +491,12 @@ void MetricsDaemon::OnShutdown(int* return_code) {
 
     bus_->RemoveFilterFunction(&MetricsDaemon::MessageFilter, this);
 
-    DBusError error;
-    dbus_error_init(&error);
+    dbus::Error error;
     bus_->RemoveMatch(match_rule, &error);
 
-    if (dbus_error_is_set(&error)) {
+    if (error.IsValid()) {
       LOG(ERROR) << "Failed to remove match rule \"" << match_rule << "\". Got "
-                 << error.name << ": " << error.message;
+                 << error.name() << ": " << error.message();
     }
   }
   brillo::DBusDaemon::OnShutdown(return_code);
