@@ -1,0 +1,11 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/proto_library.gni")
+
+proto_library("feature_enabled_devices-protos") {
+  proto_in_dir = "."
+  proto_out_dir = "include/rmad"
+  sources = [ "${proto_in_dir}/feature_enabled_devices.proto" ]
+}
