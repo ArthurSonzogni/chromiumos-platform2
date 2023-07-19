@@ -45,6 +45,7 @@ TEST(IPAddressTest, IPv4Constructor) {
   EXPECT_EQ(address.ToIPv6Address(), std::nullopt);
   EXPECT_EQ(address.ToString(), "192.168.10.1");
   EXPECT_EQ(address.ToByteString(), ipv4_addr.ToByteString());
+  EXPECT_EQ(address.ToBytes(), ipv4_addr.ToBytes());
 }
 
 TEST(IPAddressTest, IPv6Constructor) {
@@ -58,6 +59,7 @@ TEST(IPAddressTest, IPv6Constructor) {
   EXPECT_EQ(address.ToIPv6Address(), ipv6_addr);
   EXPECT_EQ(address.ToString(), "11:2233:4455:6677:8899:aabb:ccdd:eeff");
   EXPECT_EQ(address.ToByteString(), ipv6_addr.ToByteString());
+  EXPECT_EQ(address.ToBytes(), ipv6_addr.ToBytes());
 }
 
 TEST(IPAddressTest, CreateFromString) {

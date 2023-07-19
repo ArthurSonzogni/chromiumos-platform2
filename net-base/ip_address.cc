@@ -128,6 +128,12 @@ std::optional<IPv6Address> IPAddress::ToIPv6Address() const {
   return std::nullopt;
 }
 
+std::vector<uint8_t> IPAddress::ToBytes() const {
+  return std::visit(
+      [](auto&& address) -> std::vector<uint8_t> { return address.ToBytes(); },
+      address_);
+}
+
 std::string IPAddress::ToByteString() const {
   return std::visit(
       [](auto&& address) -> std::string { return address.ToByteString(); },

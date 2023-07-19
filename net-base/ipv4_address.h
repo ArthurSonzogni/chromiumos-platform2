@@ -12,6 +12,7 @@
 #include <ostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/containers/span.h>
 
@@ -69,6 +70,7 @@ class NET_BASE_EXPORT IPv4Address {
   const DataType& data() const { return data_; }
 
   // Returns the address in byte, stored in network order (i.e. big endian).
+  std::vector<uint8_t> ToBytes() const;
   std::string ToByteString() const;
 
   // Returns the address in the IPv4 dotted-decimal notation.

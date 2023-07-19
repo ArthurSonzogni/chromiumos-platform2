@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include <base/containers/span.h>
 
@@ -89,6 +90,7 @@ class NET_BASE_EXPORT IPAddress {
   std::optional<IPv6Address> ToIPv6Address() const;
 
   // Returns the address in byte, stored in network order (i.e. big endian).
+  std::vector<uint8_t> ToBytes() const;
   std::string ToByteString() const;
 
   // Returns the address in the IPv4 dotted-decimal notation or IPv6 network

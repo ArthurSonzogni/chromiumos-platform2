@@ -67,6 +67,12 @@ TEST(IPv4AddressTest, ToByteString) {
   EXPECT_EQ(address.ToByteString(), expected);
 }
 
+TEST(IPv4AddressTest, ToBytes) {
+  const std::vector<uint8_t> expected{192, 168, 10, 1};
+  const IPv4Address address(192, 168, 10, 1);
+  EXPECT_EQ(address.ToBytes(), expected);
+}
+
 TEST(IPv4AddressTest, CreateFromBytes) {
   const auto expected = IPv4Address(192, 168, 10, 1);
 

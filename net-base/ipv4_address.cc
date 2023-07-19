@@ -70,6 +70,10 @@ bool IPv4Address::operator<(const IPv4Address& rhs) const {
   return data_ < rhs.data_;
 }
 
+std::vector<uint8_t> IPv4Address::ToBytes() const {
+  return {std::begin(data_), std::end(data_)};
+}
+
 std::string IPv4Address::ToByteString() const {
   return {reinterpret_cast<const char*>(data_.data()), kAddressLength};
 }

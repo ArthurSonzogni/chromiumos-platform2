@@ -60,6 +60,14 @@ TEST(IPv6AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv6Address::CreateFromString("192.168.10.1"));
 }
 
+TEST(IPv4AddressTest, ToBytes) {
+  const std::vector<uint8_t> expected{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+                                      0x7e, 0xbf, 0x14, 0xc5};
+  const IPv6Address address(kGoodData);
+  EXPECT_EQ(address.ToBytes(), expected);
+}
+
 TEST(IPv6AddressTest, ToByteString) {
   const std::string expected = {
       static_cast<char>(0xfe), static_cast<char>(0x80), static_cast<char>(0x00),
