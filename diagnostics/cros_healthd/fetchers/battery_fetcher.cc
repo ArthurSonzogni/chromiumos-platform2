@@ -116,12 +116,8 @@ BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
 std::optional<mojom::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
     mojom::BatteryInfo* info) {
   uint32_t manufacture_date;
-  auto convert_hex_string_to_uint32 =
-      base::BindOnce([](const base::StringPiece& input, uint32_t* output) {
-        return base::HexStringToUInt(input, output);
-      });
   auto error = GetSmartBatteryMetric(kManufactureDateSmart,
-                                     std::move(convert_hex_string_to_uint32),
+                                     base::BindOnce(&base::HexStringToUInt),
                                      &manufacture_date);
   if (error.has_value()) {
     return error;
@@ -129,12 +125,9 @@ std::optional<mojom::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
   info->manufacture_date = ConvertSmartBatteryManufactureDate(manufacture_date);
 
   uint64_t temperature;
-  auto convert_hex_string_to_uint64 =
-      base::BindOnce([](const base::StringPiece& input, uint64_t* output) {
-        return base::HexStringToUInt64(input, output);
-      });
-  error = GetSmartBatteryMetric(
-      kTemperatureSmart, std::move(convert_hex_string_to_uint64), &temperature);
+  error = GetSmartBatteryMetric(kTemperatureSmart,
+                                base::BindOnce(&base::HexStringToUInt64),
+                                &temperature);
   if (error.has_value()) {
     return error;
   }
@@ -146,7 +139,7 @@ std::optional<mojom::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
 template <typename T>
 std::optional<mojom::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
     const std::string& metric_name,
-    base::OnceCallback<bool(const base::StringPiece& input, T* output)>
+    base::OnceCallback<bool(base::StringPiece input, T* output)>
         convert_string_to_num,
     T* metric_value) {
   brillo::ErrorPtr error;

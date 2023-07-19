@@ -47,7 +47,7 @@ class BatteryFetcher final : public BaseFetcher {
   template <typename T>
   OptionalProbeErrorPtr GetSmartBatteryMetric(
       const std::string& metric_name,
-      base::OnceCallback<bool(const base::StringPiece& input, T* output)>
+      base::OnceCallback<bool(base::StringPiece input, T* output)>
           convert_string_to_num,
       T* metric_value);
 };
