@@ -10,6 +10,7 @@ filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_tlsdate_log, 
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_typecd_log, file, "typecd.log")
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_var_log_hypervisor, file, "hypervisor.log")
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_secagentd_log, file, "secagentd.log")
+filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_var_log_extensions, file, "extensions.log")
 
 # TODO: identify all creators
 filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_faillog, file, "faillog")

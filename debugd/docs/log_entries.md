@@ -247,6 +247,11 @@ implementation.
 
 ## eventlog
 
+## extensions.log
+
+Logs collected from extension acting as system extensions (managing login and
+sessions).
+
 ## folder_size_dump
 
 The folder_size_dump helper dumps the actual disk usage (in bytes) of various
