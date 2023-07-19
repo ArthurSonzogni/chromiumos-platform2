@@ -46,6 +46,7 @@ GroundTruth::~GroundTruth() = default;
 mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     mojom::EventCategoryEnum category) {
   // Please update docs/event_supportability.md.
+  // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
   // LINT.IfChange
   switch (category) {
     // UnmappedEnumField.
@@ -151,7 +152,7 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
           nullptr));
     }
   }
-  // LINT.ThenChange(//docs/event_supportability.md)
+  // LINT.ThenChange(//diagnostics/docs/event_supportability.md)
 }
 
 void GroundTruth::IsEventSupported(
@@ -164,6 +165,7 @@ void GroundTruth::IsEventSupported(
 mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     mojom::RoutineArgumentPtr routine_arg) {
   // Please update docs/routine_supportability.md.
+  // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
   // LINT.IfChange
   switch (routine_arg->which()) {
     // UnrecognizedArgument.
@@ -232,7 +234,7 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
       }
     }
   }
-  // LINT.ThenChange(//docs/routine_supportability.md)
+  // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 }
 
 void GroundTruth::IsRoutineSupported(

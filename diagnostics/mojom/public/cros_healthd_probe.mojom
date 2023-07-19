@@ -13,6 +13,10 @@ module ash.cros_healthd.mojom;
 import "diagnostics/mojom/external/network_health_types.mojom";
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 
+// Please update docs/telemetry.md.
+// Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
+// LINT.IfChange
+
 // An enumeration of CPU architectures.
 //
 // NextMinVersion: 1, NextIndex: 4
@@ -2056,3 +2060,4 @@ struct TelemetryInfo {
   // Information about sensor. Only present when kSensor was included.
   [MinVersion=5] SensorResult? sensor_result@21;
 };
+// LINT.ThenChange(//diagnostics/docs/telemetry.md)
