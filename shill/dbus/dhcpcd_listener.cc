@@ -44,9 +44,9 @@ DHCPCDListener::DHCPCDListener(const scoped_refptr<dbus::Bus>& bus,
   bus_->AddFilterFunction(&DHCPCDListener::HandleMessageThunk, this);
 
   // Add match rule to the bus.
-  dbus::ScopedDBusError error;
-  bus_->AddMatch(match_rule_, error.get());
-  if (error.is_set()) {
+  dbus::Error error;
+  bus_->AddMatch(match_rule_, &error);
+  if (error.IsValid()) {
     LOG(FATAL) << "Failed to add match rule: " << error.name() << " "
                << error.message();
   }
@@ -54,9 +54,9 @@ DHCPCDListener::DHCPCDListener(const scoped_refptr<dbus::Bus>& bus,
 
 DHCPCDListener::~DHCPCDListener() {
   bus_->RemoveFilterFunction(&DHCPCDListener::HandleMessageThunk, this);
-  dbus::ScopedDBusError error;
-  bus_->RemoveMatch(match_rule_, error.get());
-  if (error.is_set()) {
+  dbus::Error error;
+  bus_->RemoveMatch(match_rule_, &error);
+  if (error.IsValid()) {
     LOG(FATAL) << "Failed to remove match rule: " << error.name() << " "
                << error.message();
   }
