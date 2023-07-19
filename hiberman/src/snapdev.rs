@@ -38,6 +38,8 @@ ioctl_io_nr!(SNAPSHOT_FREEZE, SNAPSHOT_IOC_MAGIC, 1);
 ioctl_io_nr!(SNAPSHOT_UNFREEZE, SNAPSHOT_IOC_MAGIC, 2);
 ioctl_io_nr!(SNAPSHOT_ATOMIC_RESTORE, SNAPSHOT_IOC_MAGIC, 4);
 ioctl_ior_nr!(SNAPSHOT_GET_IMAGE_SIZE, SNAPSHOT_IOC_MAGIC, 14, u64);
+ioctl_io_nr!(SNAPSHOT_PLATFORM_SUPPORT, SNAPSHOT_IOC_MAGIC, 15);
+ioctl_io_nr!(SNAPSHOT_POWER_OFF, SNAPSHOT_IOC_MAGIC, 16);
 ioctl_iow_nr!(SNAPSHOT_CREATE_IMAGE, SNAPSHOT_IOC_MAGIC, 17, u32);
 ioctl_iow_nr!(SNAPSHOT_SET_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 40, u32);
 ioctl_io_nr!(SNAPSHOT_XFER_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 41);
@@ -47,6 +49,8 @@ const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
 const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
+const PLATFORM_SUPPORT: u64 = SNAPSHOT_PLATFORM_SUPPORT();
+const POWER_OFF: u64 = SNAPSHOT_POWER_OFF();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 const SET_BLOCK_DEVICE: u64 = SNAPSHOT_SET_BLOCK_DEVICE();
 const XFER_BLOCK_DEVICE: u64 = SNAPSHOT_XFER_BLOCK_DEVICE();
@@ -184,6 +188,18 @@ impl SnapshotDevice {
         }
 
         Ok(image_size.try_into().unwrap())
+    }
+
+    /// Power the system down using the platform driver (e.g. ACPI).
+    pub fn power_off_platform_mode(&mut self) -> Result<()> {
+        // This is safe because powering the system off does not violate any
+        // Rust guarantees.
+        unsafe {
+            let rc = ioctl_with_val(&self.file, PLATFORM_SUPPORT, 1);
+            self.evaluate_ioctl_return("PLATFORM_SUPPORT", rc)?;
+
+            self.simple_ioctl(POWER_OFF, "POWER_OFF")
+        }
     }
 
     /// Helper function to send an ioctl with no parameter and return a result.
