@@ -308,15 +308,16 @@ void ShillClient::RegisterIPv6NetworkChangedHandler(
 }
 
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
-  std::set<dbus::ObjectPath> current, added, removed;
+  // All current shill Devices advertised by shill. This set is used
+  // for finding Devices removed by shill.
+  std::set<dbus::ObjectPath> current;
 
-  // Find all new Devices.
+  // Find all new shill Devices not yet tracked by patchpanel.
+  std::vector<Device> added_devices;
   for (const auto& device_path :
        property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
     current.insert(device_path);
-    if (!base::Contains(devices_, device_path)) {
-      added.insert(device_path);
-    }
+
     // Registers handler if we see this shill Device for the first time.
     if (known_device_paths_.insert(device_path).second) {
       org::chromium::flimflam::DeviceProxy proxy(bus_, device_path);
@@ -326,46 +327,39 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
           base::BindOnce(&ShillClient::OnDevicePropertyChangeRegistration,
                          weak_factory_.GetWeakPtr()));
     }
-  }
 
-  // Find all removed Devices.
-  for (const auto& [device_path, _] : devices_) {
-    if (!base::Contains(current, device_path)) {
-      removed.insert(device_path);
+    // Populate ShillClient::Device properties for any new shill Device.
+    if (!base::Contains(devices_, device_path)) {
+      ShillClient::Device new_device;
+      if (!GetDeviceProperties(device_path, &new_device)) {
+        LOG(WARNING) << "Failed to add properties of new Device "
+                     << device_path.value();
+        devices_.erase(device_path);
+        continue;
+      }
+      LOG(INFO) << "New shill Device " << new_device;
+      added_devices.push_back(new_device);
+      devices_[device_path] = new_device;
     }
   }
 
-  // Remove Devices removed by shill.
+  // Find all shill Devices removed by shill.
   std::vector<Device> removed_devices;
-  for (const auto& device_path : removed) {
-    const auto it = devices_.find(device_path);
-    if (it == devices_.end()) {
-      LOG(WARNING) << "Unknown removed Device " << device_path.value();
-      continue;
+  for (auto it = devices_.begin(); it != devices_.end();) {
+    if (!base::Contains(current, it->first)) {
+      LOG(INFO) << "Removed shill Device " << it->second;
+      removed_devices.push_back(it->second);
+      it = devices_.erase(it);
+    } else {
+      it++;
     }
-    LOG(INFO) << "Removed shill Device " << it->second;
-    removed_devices.push_back(it->second);
-    devices_.erase(it);
-  }
-
-  // Populate ShillClient::Device properties for any new shill Device.
-  std::vector<Device> added_devices;
-  for (const auto& device_path : added) {
-    auto* new_device = &devices_[device_path];
-    if (!GetDeviceProperties(device_path, new_device)) {
-      LOG(WARNING) << "Failed to add properties of new Device "
-                   << device_path.value();
-      devices_.erase(device_path);
-      continue;
-    }
-    LOG(INFO) << "New shill Device " << *new_device;
-    added_devices.push_back(*new_device);
   }
 
   // This can happen if the default network switched from one device to another.
   if (added_devices.empty() && removed_devices.empty()) {
     return;
   }
+
   // Update DevicesChangeHandler listeners.
   for (const auto& h : device_handlers_) {
     h.Run(added_devices, removed_devices);
