@@ -7,14 +7,10 @@
 use std::fs::metadata;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Write;
 use std::os::unix::fs::FileTypeExt;
 use std::path::Path;
 
-use anyhow::anyhow;
 use anyhow::Context;
-use anyhow::Error;
 use anyhow::Result;
 use libc::c_int;
 use libc::c_long;
@@ -30,13 +26,11 @@ use libchromeos::sys::ioctl_with_ptr;
 use libchromeos::sys::ioctl_with_val;
 use log::error;
 use log::info;
-use log::warn;
 
 use crate::hiberutil::get_device_id;
 use crate::hiberutil::HibernateError;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
-const HIBERIMAGE_BLOCK_SIZE: usize = 4096;
 
 #[repr(C)]
 #[repr(packed)]
@@ -176,7 +170,7 @@ impl SnapshotDevice {
     }
 
     /// Load a snapshot image from a file into the kernel.
-    pub fn load_image(&mut self, mut image_file: File) -> Result<u64> {
+    pub fn load_image(&mut self) -> Result<u64> {
         if let Err(e) = self.transfer_block_device() {
             error!("Failed to load image: {:?}", e);
             return Err(e);
