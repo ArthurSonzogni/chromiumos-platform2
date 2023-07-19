@@ -1090,7 +1090,7 @@ void RecoveryCryptoImpl::GenerateRecoveryIdProto(
 
 std::vector<std::string> RecoveryCryptoImpl::GetLastRecoveryIdsFromFile(
     const base::FilePath& recovery_id_path, int max_depth) const {
-  DCHECK_GE(max_depth, 1);
+  CHECK_GE(max_depth, 1);
   std::vector<std::string> recovery_id_list;
   CryptoRecoveryIdContainer recovery_id_pb;
   if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {

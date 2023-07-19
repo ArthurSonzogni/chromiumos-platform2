@@ -160,7 +160,7 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     GenerateNewCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK(!callback.is_null());
+  CHECK(!callback.is_null());
 
   // Check if TPM is enabled.
   CryptoStatus status = CheckTPMStatus();
@@ -195,7 +195,7 @@ void ChallengeCredentialsHelperImpl::Decrypt(
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     DecryptCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK(!callback.is_null());
+  CHECK(!callback.is_null());
 
   // Check if TPM is enabled.
   CryptoStatus status = CheckTPMStatus();
@@ -225,7 +225,7 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK(!callback.is_null());
+  CHECK(!callback.is_null());
 
   // Check if TPM is enabled.
   CryptoStatus status = CheckTPMStatus();
@@ -258,7 +258,7 @@ void ChallengeCredentialsHelperImpl::StartDecryptOperation(
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback callback) {
-  DCHECK(!operation_);
+  CHECK(!operation_);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), hwsec_, account_id, public_key_info,
       keyset_challenge_info,
@@ -282,9 +282,6 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
         ErrorActionSet({PossibleAction::kReboot}),
         CryptoError::CE_OTHER_FATAL));
     operation_.reset();
-    // It's illegal for the consumer code to request a new operation in
-    // immediate response to completion of a previous one.
-    DCHECK(!operation_);
   }
 }
 

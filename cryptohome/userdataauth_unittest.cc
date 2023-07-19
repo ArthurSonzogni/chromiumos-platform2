@@ -1632,8 +1632,8 @@ TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
 }
 
 TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {
-  EXPECT_DEBUG_DEATH(userdataauth_->GetSystemSalt(),
-                     "Cannot call GetSystemSalt before initialization");
+  EXPECT_DEATH(userdataauth_->GetSystemSalt(),
+               "Cannot call GetSystemSalt before initialization");
 }
 
 TEST_F(UserDataAuthTest, HwsecReadyCallbackSuccess) {

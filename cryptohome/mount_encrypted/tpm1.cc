@@ -592,7 +592,7 @@ result_code Tpm1SystemKeyLoader::IsEncStatefulSpaceProperlyDefined(
   // and PCR binding. `NvramSpace` should returns either `is_valid()` or
   // `is_writable()` to be true by design; for they are translated from one enum
   // variable.
-  DCHECK_NE(encstateful_space->is_valid(), encstateful_space->is_writable());
+  CHECK_NE(encstateful_space->is_valid(), encstateful_space->is_writable());
   if (encstateful_space->is_valid()) {
     *validity = EncStatefulSpaceValidity::kValid;
   } else {
