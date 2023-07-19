@@ -8,14 +8,22 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <google/protobuf/text_format.h>
 #include <libsegmentation/feature_management.h>
 
+#include "rmad/constants.h"
+#include "rmad/feature_enabled_devices.pb.h"
 #include "rmad/system/tpm_manager_client_impl.h"
+#include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 
 namespace {
+
+constexpr char kDevicesTextProtoFilePath[] = "devices.textproto";
 
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 
@@ -23,23 +31,68 @@ constexpr char kEmptyBoardIdType[] = "ffffffff";
 
 namespace rmad {
 
-SegmentationUtilsImpl::SegmentationUtilsImpl() : feature_management_() {
+SegmentationUtilsImpl::SegmentationUtilsImpl()
+    : config_dir_path_(kDefaultConfigDirPath),
+      feature_enabled_devices_(),
+      feature_management_() {
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+  cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
+  ReadFeatureEnabledDevices();
 }
 
 SegmentationUtilsImpl::SegmentationUtilsImpl(
+    const base::FilePath& config_dir_path,
     std::unique_ptr<segmentation::FeatureManagementInterface>
         feature_management_interface,
     std::unique_ptr<TpmManagerClient> tpm_manager_client,
+    std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<GscUtils> gsc_utils)
-    : feature_management_(std::move(feature_management_interface)),
+    : config_dir_path_(config_dir_path),
+      feature_enabled_devices_(),
+      feature_management_(std::move(feature_management_interface)),
       tpm_manager_client_(std::move(tpm_manager_client)),
-      gsc_utils_(std::move(gsc_utils)) {}
+      cros_config_utils_(std::move(cros_config_utils)),
+      gsc_utils_(std::move(gsc_utils)) {
+  ReadFeatureEnabledDevices();
+}
+
+void SegmentationUtilsImpl::ReadFeatureEnabledDevices() {
+  if (std::string textproto_str;
+      ReadFeatureEnabledDevicesTextProto(&textproto_str)) {
+    if (google::protobuf::TextFormat::ParseFromString(
+            textproto_str, &feature_enabled_devices_)) {
+      DLOG(INFO) << "Successfully get feature enabled device list";
+    } else {
+      DLOG(ERROR) << "Failed to parse feature enabled device list";
+    }
+  }
+}
+
+bool SegmentationUtilsImpl::ReadFeatureEnabledDevicesTextProto(
+    std::string* result) const {
+  std::string model_name;
+  if (!cros_config_utils_->GetModelName(&model_name)) {
+    LOG(ERROR) << "Failed to get model name";
+    return false;
+  }
+  const base::FilePath textproto_file_path =
+      config_dir_path_.Append(model_name).Append(kDevicesTextProtoFilePath);
+  if (!base::PathExists(textproto_file_path)) {
+    // This is expected for projects that don't support features.
+    DLOG(INFO) << textproto_file_path.value() << " doesn't exist";
+    return false;
+  }
+  if (!base::ReadFileToString(textproto_file_path, result)) {
+    LOG(ERROR) << "Failed to read " << textproto_file_path.value();
+    return false;
+  }
+  return true;
+}
 
 bool SegmentationUtilsImpl::IsFeatureEnabled() const {
-  // TODO(chenghan): Get the allowlist from DLM payload.
-  return false;
+  // Feature is enabled if any of the RLZ supports the feature.
+  return !feature_enabled_devices_.devices().empty();
 }
 
 bool SegmentationUtilsImpl::IsFeatureMutable() const {

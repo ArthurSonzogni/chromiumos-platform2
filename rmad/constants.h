@@ -22,6 +22,7 @@ namespace rmad {
 inline constexpr char kRmadInternalMojoPipeName[] = "rmad_internal";
 
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
+inline constexpr char kDefaultConfigDirPath[] = "/etc/rmad";
 inline constexpr char kDefaultJsonStoreFilePath[] =
     "/mnt/stateful_partition/unencrypted/rma-data/state";
 inline constexpr char kDefaultUnencryptedPreservePath[] =

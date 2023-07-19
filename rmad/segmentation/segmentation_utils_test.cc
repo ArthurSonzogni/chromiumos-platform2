@@ -10,11 +10,14 @@
 #include <tuple>
 #include <utility>
 
+#include <base/files/scoped_temp_dir.h>
+#include <base/files/file_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <libsegmentation/feature_management_fake.h>
 
 #include "rmad/system/mock_tpm_manager_client.h"
+#include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 
 using testing::_;
@@ -25,8 +28,18 @@ using testing::SetArgPointee;
 
 namespace {
 
+constexpr char kDevicesTextProtoFilePath[] = "devices.textproto";
+
+constexpr char kTestModelName[] = "test_model";
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kTestBoardIdType[] = "5a5a4352";
+
+constexpr char kEmptyDevicesTextProto[] = "";
+constexpr char kNonEmptyDevicesTextProto[] = R"(
+devices: "abcd"
+devices: "efgh"
+)";
+constexpr char kInvalidDevicesTextProto[] = "abcde";
 
 }  // namespace
 
@@ -35,6 +48,7 @@ namespace rmad {
 class SegmentationUtilsTest : public testing::Test {
  public:
   struct Options {
+    std::optional<std::string> devices_textproto = std::nullopt;
     GscVersion gsc_version = GscVersion::GSC_VERSION_NOT_GSC;
     std::optional<std::string> board_id_type = kEmptyBoardIdType;
     bool is_initial_factory_mode = false;
@@ -49,6 +63,13 @@ class SegmentationUtilsTest : public testing::Test {
 
   std::unique_ptr<SegmentationUtils> CreateSegmentationUtils(
       const Options& options) const {
+    // Set up textproto.
+    if (options.devices_textproto.has_value()) {
+      base::FilePath textproto_file_path =
+          GetTextProtoDirPath().Append(kDevicesTextProtoFilePath);
+      base::WriteFile(textproto_file_path, options.devices_textproto.value());
+    }
+
     auto fake_feature_management_interface =
         std::make_unique<segmentation::fake::FeatureManagementFake>();
     fake_feature_management_interface->SetFeatureLevel(options.feature_level);
@@ -58,6 +79,11 @@ class SegmentationUtilsTest : public testing::Test {
     ON_CALL(*mock_tpm_manager_client, GetGscVersion(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(options.gsc_version), Return(true)));
+
+    auto mock_cros_config_utils =
+        std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    ON_CALL(*mock_cros_config_utils, GetModelName(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kTestModelName), Return(true)));
 
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (options.board_id_type.has_value()) {
@@ -84,13 +110,43 @@ class SegmentationUtilsTest : public testing::Test {
         .WillByDefault(Return(options.set_factory_config_succeeded));
 
     return std::make_unique<SegmentationUtilsImpl>(
-        std::move(fake_feature_management_interface),
-        std::move(mock_tpm_manager_client), std::move(mock_gsc_utils));
+        temp_dir_.GetPath(), std::move(fake_feature_management_interface),
+        std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils),
+        std::move(mock_gsc_utils));
   }
+
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    ASSERT_TRUE(base::CreateDirectory(GetTextProtoDirPath()));
+  }
+  base::FilePath GetTextProtoDirPath() const {
+    return temp_dir_.GetPath().Append(kTestModelName);
+  }
+
+  base::ScopedTempDir temp_dir_;
 };
 
-TEST_F(SegmentationUtilsTest, IsFeatureEnabled) {
+TEST_F(SegmentationUtilsTest, IsFeatureEnabled_NoTextProto) {
   auto segmentation_utils = CreateSegmentationUtils({});
+  EXPECT_FALSE(segmentation_utils->IsFeatureEnabled());
+}
+
+TEST_F(SegmentationUtilsTest, IsFeatureEnabled_EmptyDeviceList) {
+  auto segmentation_utils =
+      CreateSegmentationUtils({.devices_textproto = kEmptyDevicesTextProto});
+  EXPECT_FALSE(segmentation_utils->IsFeatureEnabled());
+}
+
+TEST_F(SegmentationUtilsTest, IsFeatureEnabled_NonEmptyDeviceList) {
+  auto segmentation_utils =
+      CreateSegmentationUtils({.devices_textproto = kNonEmptyDevicesTextProto});
+  EXPECT_TRUE(segmentation_utils->IsFeatureEnabled());
+}
+
+TEST_F(SegmentationUtilsTest, IsFeatureEnabled_InvalidDeviceList) {
+  auto segmentation_utils =
+      CreateSegmentationUtils({.devices_textproto = kInvalidDevicesTextProto});
   EXPECT_FALSE(segmentation_utils->IsFeatureEnabled());
 }
 
