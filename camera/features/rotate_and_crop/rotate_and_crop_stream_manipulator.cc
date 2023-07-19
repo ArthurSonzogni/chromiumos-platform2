@@ -434,8 +434,12 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequestOnThread(
   for (const auto& b : request->GetOutputBuffers()) {
     if (b.stream() == blob_stream_) {
       ctx.has_pending_blob = true;
-      still_capture_processor_->QueuePendingOutputBuffer(
-          request->frame_number(), b.raw_buffer(), *request);
+      still_capture_processor_->QueuePendingRequest(request->frame_number(),
+                                                    *request);
+      if (b.raw_buffer().buffer != nullptr) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            request->frame_number(), b.raw_buffer());
+      }
     } else if (b.stream() == yuv_stream_for_blob_) {
       has_yuv = true;
     }
@@ -492,6 +496,11 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
 
   for (auto& b : result.AcquireOutputBuffers()) {
     if (b.stream() == blob_stream_) {
+      if (!still_capture_processor_->IsPendingOutputBufferQueued(
+              result.frame_number())) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            result.frame_number(), b.mutable_raw_buffer());
+      }
       still_capture_processor_->QueuePendingAppsSegments(
           result.frame_number(), *b.buffer(),
           base::ScopedFD(b.take_release_fence()));

@@ -699,8 +699,12 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
         DCHECK_EQ(request_buffer.stream()->format, HAL_PIXEL_FORMAT_BLOB);
         // Defer the final BLOB buffer to the StillCaptureProcessor as we'll be
         // handling the BLOB metadata and YUV buffer asynchronously.
-        still_capture_processor_->QueuePendingOutputBuffer(
-            request->frame_number(), request_buffer.raw_buffer(), *request);
+        still_capture_processor_->QueuePendingRequest(request->frame_number(),
+                                                      *request);
+        if (request_buffer.raw_buffer().buffer != nullptr) {
+          still_capture_processor_->QueuePendingOutputBuffer(
+              request->frame_number(), request_buffer.mutable_raw_buffer());
+        }
         // Still queue the BLOB buffer so that we can extract the metadata.
         request->AppendOutputBuffer(std::move(request_buffer));
         // Finally queue the HDRnet YUV buffer that will be used to produce the
@@ -1009,6 +1013,11 @@ HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
       if (associated_stream_context && request_info) {
         DCHECK_EQ(associated_stream_context->mode,
                   HdrNetStreamContext::Mode::kAppendWithBlob);
+        if (!still_capture_processor_->IsPendingOutputBufferQueued(
+                result.frame_number())) {
+          still_capture_processor_->QueuePendingOutputBuffer(
+              result.frame_number(), hal_result_buffer.mutable_raw_buffer());
+        }
         still_capture_processor_->QueuePendingAppsSegments(
             result.frame_number(), *hal_result_buffer.buffer(),
             base::ScopedFD(hal_result_buffer.take_release_fence()));

@@ -234,6 +234,13 @@ inline uint8_t* WriteTwoBytes(uint8_t* dst, uint16_t value) {
   return dst + 2;
 }
 
+// Calculates a rough estimate of the upper bound of JPEG buffer size for our
+// use cases.
+inline size_t CalculateJpegSizeUpperBound(uint32_t width, uint32_t height) {
+  // Number of bytes for data and metadata.
+  return width * height * 3 / 2 + 65536;
+}
+
 }  // namespace
 
 StillCaptureProcessorImpl::StillCaptureProcessorImpl(
@@ -266,21 +273,20 @@ void StillCaptureProcessorImpl::Reset() {
   request_contexts_.clear();
 }
 
-void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
-    int frame_number,
-    camera3_stream_buffer_t output_buffer,
-    const Camera3CaptureDescriptor& request) {
+void StillCaptureProcessorImpl::QueuePendingRequest(
+    int frame_number, const Camera3CaptureDescriptor& request) {
+  RequestContext req;
+
   auto buf_mgr = CameraBufferManager::GetInstance();
-  RequestContext req = {
-      .jpeg_blob = buf_mgr->AllocateScopedBuffer(
-          CameraBufferManager::GetPlaneSize(*output_buffer.buffer, 0), 1,
-          HAL_PIXEL_FORMAT_BLOB, output_buffer.stream->usage),
-      .client_requested_buffer = output_buffer,
-  };
-  if (!req.jpeg_blob) {
-    LOGF(ERROR) << "Cannot allocated JPEG buffer";
+  ScopedBufferHandle jpeg_blob = buf_mgr->AllocateScopedBuffer(
+      CalculateJpegSizeUpperBound(blob_stream_->width, blob_stream_->height), 1,
+      HAL_PIXEL_FORMAT_BLOB, blob_stream_->usage);
+  if (!jpeg_blob) {
+    LOGF(ERROR) << "Cannot allocate JPEG buffer";
     return;
   }
+  req.jpeg_blob = std::move(jpeg_blob);
+
   base::span<const int32_t> thumbnail_size =
       request.GetMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE);
   if (thumbnail_size.size() == 2) {
@@ -297,16 +303,23 @@ void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
   if (!jpeg_quality.empty()) {
     req.jpeg_quality = jpeg_quality[0];
   }
-
-  VLOGFID(1, frame_number) << "Output buffer queued. thumbnail_size = "
+  VLOGFID(1, frame_number) << "Request queued. thumbnail_size = "
                            << req.thumbnail_size.ToString()
                            << " thumbnail_quality=" << req.thumbnail_quality
                            << " jpeg_quality=" << req.jpeg_quality;
   thread_.task_runner()->PostTask(
       FROM_HERE,
+      base::BindOnce(&StillCaptureProcessorImpl::QueuePendingRequestOnThread,
+                     base::Unretained(this), frame_number, std::move(req)));
+}
+
+void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
+    int frame_number, camera3_stream_buffer_t output_buffer) {
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::BindOnce(
           &StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread,
-          base::Unretained(this), frame_number, std::move(req)));
+          base::Unretained(this), frame_number, std::move(output_buffer)));
 }
 
 void StillCaptureProcessorImpl::QueuePendingAppsSegments(
@@ -348,14 +361,40 @@ void StillCaptureProcessorImpl::QueuePendingYuvImage(
                      std::move(release_fence)));
 }
 
-void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
+bool StillCaptureProcessorImpl::IsPendingOutputBufferQueued(int frame_number) {
+  if (request_contexts_.count(frame_number) == 0) {
+    return false;
+  }
+  return request_contexts_[frame_number].client_requested_buffer.has_value();
+}
+
+void StillCaptureProcessorImpl::QueuePendingRequestOnThread(
     int frame_number, RequestContext request_context) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON("frame_number", frame_number, "width",
-               request_context.client_requested_buffer.stream->width, "height",
-               request_context.client_requested_buffer.stream->height);
+  TRACE_COMMON("frame_number", frame_number);
 
   request_contexts_.insert({frame_number, std::move(request_context)});
+}
+
+void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
+    int frame_number, camera3_stream_buffer_t client_requested_buffer) {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_COMMON("frame_number", frame_number, "width",
+               client_requested_buffer.stream->width, "height",
+               client_requested_buffer.stream->height);
+
+  if (request_contexts_.count(frame_number) == 0) {
+    LOGF(ERROR) << "No request queued";
+    return;
+  }
+
+  RequestContext& context = request_contexts_[frame_number];
+  CHECK(!context.client_requested_buffer.has_value())
+      << "The pending output buffer has been already queued for frame number "
+      << frame_number;
+  context.client_requested_buffer = std::move(client_requested_buffer);
+
+  MaybeProduceCaptureResultOnThread(frame_number);
 }
 
 void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
@@ -366,7 +405,7 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
   TRACE_COMMON("frame_number", frame_number);
 
   if (request_contexts_.count(frame_number) == 0) {
-    LOGF(ERROR) << "No output buffer queued";
+    LOGF(ERROR) << "No request queued";
     return;
   }
 
@@ -386,7 +425,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
   TRACE_COMMON("frame_number", frame_number);
 
   if (request_contexts_.count(frame_number) == 0) {
-    LOGF(ERROR) << "No output buffer queued";
+    LOGF(ERROR) << "No request queued";
     return;
   }
 
@@ -479,13 +518,14 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
   TRACE_COMMON("frame_number", frame_number);
 
   RequestContext& context = request_contexts_.at(frame_number);
-  if (!(context.has_apps_segments && context.has_jpeg)) {
+  if (!(context.has_apps_segments && context.has_jpeg &&
+        context.client_requested_buffer.has_value())) {
     return;
   }
 
   VLOGFID(1, frame_number) << "Producing JPEG";
   {
-    ScopedMapping result_mapping(*context.client_requested_buffer.buffer);
+    ScopedMapping result_mapping(*context.client_requested_buffer->buffer);
     uint8_t* dst_start = result_mapping.plane(0).addr;
     uint8_t* dst_addr = dst_start;
 
@@ -549,7 +589,7 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
               jpeg_mapping.plane(0).addr + context.jpeg_blob_size, dst_addr);
     dst_addr += (context.jpeg_blob_size - kJpegMarkerSize);
 
-    InsertJpegBlobDescriptor(*context.client_requested_buffer.buffer,
+    InsertJpegBlobDescriptor(*context.client_requested_buffer->buffer,
                              (dst_addr - dst_start));
   }
 
@@ -557,7 +597,7 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
   Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
       .frame_number = static_cast<uint32_t>(frame_number),
       .num_output_buffers = 1,
-      .output_buffers = &context.client_requested_buffer,
+      .output_buffers = &*context.client_requested_buffer,
       .partial_result = 0,
   });
   result_callback_.Run(std::move(blob_result));

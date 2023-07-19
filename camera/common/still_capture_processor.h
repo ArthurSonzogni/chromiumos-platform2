@@ -49,27 +49,35 @@ class StillCaptureProcessor {
   virtual void Reset() = 0;
 
   // Queues a pending still capture request.  |frame_number| is the frame number
-  // as in the HAL3 capture request for the still capture request.
-  // |output_buffer| is the buffer that StillCaptureProcessor will need to fill
-  // with the assembled image data.  |request_settings| are the parameters of
-  // the capture reuquest.
+  // as in the HAL3 capture request for the still capture request |request|.
+  // This needs to be called before QueuePendingOutputBuffer(),
+  // QueuePendingAppsSegments(), and QueuePendingYuvImage().
+  virtual void QueuePendingRequest(int frame_number,
+                                   const Camera3CaptureDescriptor& request) = 0;
+
+  // Queues pending |output_buffer| that StillCaptureProcessor will need to fill
+  // with the assembled image data for result |frame_number|.  This needs to be
+  // called after QueuePendingRequest().
   virtual void QueuePendingOutputBuffer(
-      int frame_number,
-      camera3_stream_buffer_t output_buffer,
-      const Camera3CaptureDescriptor& request) = 0;
+      int frame_number, camera3_stream_buffer_t output_buffer) = 0;
 
   // Queues the pending APPs segments for result |frame_number|, in
-  // |blob_buffer|.
+  // |blob_buffer|.  This needs to be called after QueuePendingRequest().
   virtual void QueuePendingAppsSegments(int frame_number,
                                         buffer_handle_t blob_buffer,
                                         base::ScopedFD release_fence) = 0;
 
   // Queues the pending YUV image data for result |frame_number|, in
   // |yuv_buffer|.  The |yuv_buffer| will be encoded to produce the compressed
-  // image data, and also the thumbnail is requested.
+  // image data, and also the thumbnail is requested.  This needs to be called
+  // after QueuePendingRequest().
   virtual void QueuePendingYuvImage(int frame_number,
                                     buffer_handle_t yuv_buffer,
                                     base::ScopedFD release_fence) = 0;
+
+  // Returns true if the pending output buffer for result |frame_number| has
+  // been queued. Otherwise, returns false.
+  virtual bool IsPendingOutputBufferQueued(int frame_number) = 0;
 };
 
 }  // namespace cros

@@ -36,16 +36,17 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   void Initialize(const camera3_stream_t* const still_capture_stream,
                   CaptureResultCallback result_callback) override;
   void Reset() override;
-  void QueuePendingOutputBuffer(
-      int frame_number,
-      camera3_stream_buffer_t output_buffer,
-      const Camera3CaptureDescriptor& request) override;
+  void QueuePendingRequest(int frame_number,
+                           const Camera3CaptureDescriptor& request) override;
+  void QueuePendingOutputBuffer(int frame_number,
+                                camera3_stream_buffer_t output_buffer) override;
   void QueuePendingAppsSegments(int frame_number,
                                 buffer_handle_t blob_buffer,
                                 base::ScopedFD release_fence) override;
   void QueuePendingYuvImage(int frame_number,
                             buffer_handle_t yuv_buffer,
                             base::ScopedFD release_fence) override;
+  bool IsPendingOutputBufferQueued(int frame_number) override;
 
  private:
   struct RequestContext {
@@ -64,11 +65,13 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
     uint32_t jpeg_blob_size = 0;
     int jpeg_quality = 95;
 
-    camera3_stream_buffer_t client_requested_buffer;
+    std::optional<camera3_stream_buffer_t> client_requested_buffer;
   };
 
-  void QueuePendingOutputBufferOnThread(int frame_number,
-                                        RequestContext request_context);
+  void QueuePendingRequestOnThread(int frame_number,
+                                   RequestContext request_context);
+  void QueuePendingOutputBufferOnThread(
+      int frame_number, camera3_stream_buffer_t client_requested_buffer);
   void QueuePendingAppsSegmentsOnThread(
       int frame_number,
       std::vector<uint8_t> apps_segments_buffer,

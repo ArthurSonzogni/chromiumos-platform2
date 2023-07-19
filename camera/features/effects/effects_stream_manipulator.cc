@@ -730,8 +730,12 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     DCHECK(was_inserted);
     CaptureContext& capture_context = ctx_it->second;
 
-    still_capture_processor_->QueuePendingOutputBuffer(
-        request->frame_number(), output_buffer->raw_buffer(), *request);
+    still_capture_processor_->QueuePendingRequest(request->frame_number(),
+                                                  *request);
+    if (output_buffer->raw_buffer().buffer != nullptr) {
+      still_capture_processor_->QueuePendingOutputBuffer(
+          request->frame_number(), output_buffer->raw_buffer());
+    }
 
     // See if the YUV stream for this blob stream is present.
     bool has_yuv = false;
@@ -839,6 +843,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       CaptureContext& capture_context =
           *stream_context->GetCaptureContext(result.frame_number());
       capture_context.processing_time_start = processing_time_start;
+      if (!still_capture_processor_->IsPendingOutputBufferQueued(
+              result.frame_number())) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            result.frame_number(), result_buffer.mutable_raw_buffer());
+      }
       still_capture_processor_->QueuePendingAppsSegments(
           result.frame_number(), *result_buffer.buffer(),
           base::ScopedFD(result_buffer.take_release_fence()));

@@ -668,8 +668,12 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
       request->AppendOutputBuffer(std::move(b));
     } else if (b.stream() == blob_stream_) {
       ctx->has_pending_blob = true;
-      still_capture_processor_->QueuePendingOutputBuffer(
-          request->frame_number(), b.raw_buffer(), *request);
+      still_capture_processor_->QueuePendingRequest(request->frame_number(),
+                                                    *request);
+      if (b.raw_buffer().buffer != nullptr) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            request->frame_number(), b.mutable_raw_buffer());
+      }
       request->AppendOutputBuffer(std::move(b));
     } else {
       ctx->client_buffers.push_back(b.raw_buffer());
@@ -813,6 +817,11 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
                                   result->frame_number()));
   }
   if (blob_buffer) {
+    if (!still_capture_processor_->IsPendingOutputBufferQueued(
+            result->frame_number())) {
+      still_capture_processor_->QueuePendingOutputBuffer(
+          result->frame_number(), blob_buffer->mutable_raw_buffer());
+    }
     still_capture_processor_->QueuePendingAppsSegments(
         result->frame_number(), *blob_buffer->buffer(),
         base::ScopedFD(blob_buffer->take_release_fence()));

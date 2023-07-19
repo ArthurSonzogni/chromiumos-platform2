@@ -25,16 +25,17 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
   void Initialize(const camera3_stream_t* const still_capture_stream,
                   CaptureResultCallback result_callback) override;
   void Reset() override;
-  void QueuePendingOutputBuffer(
-      int frame_number,
-      camera3_stream_buffer_t output_buffer,
-      const Camera3CaptureDescriptor& request) override;
+  void QueuePendingRequest(int frame_number,
+                           const Camera3CaptureDescriptor& request) override;
+  void QueuePendingOutputBuffer(int frame_number,
+                                camera3_stream_buffer_t output_buffer) override;
   void QueuePendingAppsSegments(int frame_number,
                                 buffer_handle_t blob_buffer,
                                 base::ScopedFD release_fence) override;
   void QueuePendingYuvImage(int frame_number,
                             buffer_handle_t yuv_buffer,
                             base::ScopedFD release_fence) override;
+  bool IsPendingOutputBufferQueued(int frame_number) override;
 
  private:
   void MaybeProduceCaptureResult(int frame_number);
@@ -46,6 +47,7 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
   struct ResultDescriptor {
     bool has_apps_segments = false;
     bool has_yuv_buffer = false;
+    bool has_output_buffer = true;
   };
   std::map<int, ResultDescriptor> result_descriptor_;
 };

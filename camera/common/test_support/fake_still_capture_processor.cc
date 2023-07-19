@@ -26,12 +26,16 @@ void FakeStillCaptureProcessor::Initialize(
 
 void FakeStillCaptureProcessor::Reset() {}
 
-void FakeStillCaptureProcessor::QueuePendingOutputBuffer(
-    int frame_number,
-    camera3_stream_buffer_t output_buffer,
-    const Camera3CaptureDescriptor& request) {
+void FakeStillCaptureProcessor::QueuePendingRequest(
+    int frame_number, const Camera3CaptureDescriptor& request) {
   EXPECT_EQ(result_descriptor_.count(frame_number), 0);
   result_descriptor_.insert({frame_number, ResultDescriptor()});
+}
+void FakeStillCaptureProcessor::QueuePendingOutputBuffer(
+    int frame_number, camera3_stream_buffer_t output_buffer) {
+  ASSERT_EQ(result_descriptor_.count(frame_number), 1);
+  result_descriptor_[frame_number].has_output_buffer = true;
+  MaybeProduceCaptureResult(frame_number);
 }
 
 void FakeStillCaptureProcessor::QueuePendingAppsSegments(
@@ -58,9 +62,14 @@ void FakeStillCaptureProcessor::QueuePendingYuvImage(
   MaybeProduceCaptureResult(frame_number);
 }
 
+bool FakeStillCaptureProcessor::IsPendingOutputBufferQueued(int frame_number) {
+  return result_descriptor_[frame_number].has_output_buffer;
+}
+
 void FakeStillCaptureProcessor::MaybeProduceCaptureResult(int frame_number) {
   if (result_descriptor_[frame_number].has_apps_segments &&
-      result_descriptor_[frame_number].has_yuv_buffer) {
+      result_descriptor_[frame_number].has_yuv_buffer &&
+      result_descriptor_[frame_number].has_output_buffer) {
     camera3_stream_buffer_t stream_buffer = {
         .stream = const_cast<camera3_stream_t*>(stream_),
         .buffer = &fake_buffer_.self,

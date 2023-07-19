@@ -303,8 +303,12 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequestOnThread(
   for (auto& b : request->AcquireOutputBuffers()) {
     if (b.stream() == portrait_blob_stream_) {
       ctx->has_pending_blob = true;
-      still_capture_processor_->QueuePendingOutputBuffer(
-          request->frame_number(), b.raw_buffer(), *request);
+      still_capture_processor_->QueuePendingRequest(request->frame_number(),
+                                                    *request);
+      if (b.raw_buffer().buffer != nullptr) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            request->frame_number(), b.mutable_raw_buffer());
+      }
     } else {
       request->AppendOutputBuffer(std::move(b));
     }
@@ -376,6 +380,11 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
   std::optional<Camera3StreamBuffer> still_yuv_buffer;
   for (auto& b : result->AcquireOutputBuffers()) {
     if (b.stream() == blob_stream_) {
+      if (!still_capture_processor_->IsPendingOutputBufferQueued(
+              result->frame_number())) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            result->frame_number(), b.mutable_raw_buffer());
+      }
       // If this is a blob stream, extract its metadata.
       still_capture_processor_->QueuePendingAppsSegments(
           result->frame_number(), *b.buffer(),
