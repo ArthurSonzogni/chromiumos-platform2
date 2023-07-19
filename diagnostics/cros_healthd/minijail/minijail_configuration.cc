@@ -214,6 +214,14 @@ void EnterExecutorMinijail() {
   PCHECK(0 == minijail_mount(j.get(), "/run/daemon-store/crash",
                              "/run/daemon-store/crash", "none",
                              /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
+  // Used by libmetrics, which is in turned needed by crash_sender. The
+  // directory is bind-mounted and thus mounting /run above is insufficient.
+  PCHECK(0 == minijail_mount(j.get(), "/run/daemon-store/appsync-optin",
+                             "/run/daemon-store/appsync-optin", "none",
+                             /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
+  PCHECK(0 == minijail_mount(j.get(), "/run/daemon-store/uma-consent",
+                             "/run/daemon-store/uma-consent", "none",
+                             /*flags=*/MS_RDONLY | MS_BIND | MS_REC));
   // Used by DLC.
   PCHECK(0 == minijail_mount(j.get(), "/run/imageloader", "/run/imageloader",
                              "none", /*flags=*/MS_BIND | MS_REC));

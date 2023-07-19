@@ -528,6 +528,16 @@ void Executor::FetchCrashFromCrashSender(
   // crash_sender invokes minijail on startup. See `SetUpSandboxForDryRun` in
   // platform2/crash-reporter/crash_sender.cc, which also contains a list of
   // required directories.
+  //
+  // crash_sender needs to read 2 generic directories: /var and /run. /var is
+  // for basic libmetrics functionality (/var/lib/metrics) and logging
+  // (/var/log). /run is needed by libmetrics to determine if the session is a
+  // guest session (/run/state) and metrics are enabled under a guest session
+  // (/run/lockbox). They are mounted in |EnterExecutorMinijail|.
+  //
+  // There are some other directories that are specifically required by
+  // crash_sender, and unlikely by other subprocesses. These directories are
+  // also mounted in |EnterExecutorMinijail| with comments above them.
   auto subprocess = std::make_unique<brillo::ProcessImpl>();
   subprocess->AddArg(path::kCrashSenderBinary);
   subprocess->AddArg("--dry_run");
