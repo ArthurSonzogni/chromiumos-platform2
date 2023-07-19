@@ -589,20 +589,18 @@ void SessionManagerService::InitializeDBus() {
   CHECK(bus_->SetUpAsyncOperations());
 
   bus_->AddFilterFunction(&SessionManagerService::FilterMessage, this);
-  dbus::ScopedDBusError error;
-  bus_->AddMatch(match_rule_, error.get());
-  CHECK(!error.is_set()) << "Failed to add match to bus: " << error.name()
-                         << ", message="
-                         << (error.message() ? error.message() : "unknown.");
+  dbus::Error error;
+  bus_->AddMatch(match_rule_, &error);
+  CHECK(!error.IsValid()) << "Failed to add match to bus: " << error.name()
+                          << ", message=" << error.message();
 }
 
 void SessionManagerService::ShutDownDBus() {
-  dbus::ScopedDBusError error;
-  bus_->RemoveMatch(match_rule_, error.get());
-  if (error.is_set()) {
+  dbus::Error error;
+  bus_->RemoveMatch(match_rule_, &error);
+  if (error.IsValid()) {
     LOG(ERROR) << "Failed to remove match from bus: " << error.name()
-               << ", message="
-               << (error.message() ? error.message() : "unknown.");
+               << ", message=" << error.message();
   }
   bus_->RemoveFilterFunction(&SessionManagerService::FilterMessage, this);
   bus_->ShutdownAndBlock();
