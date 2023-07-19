@@ -15,6 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_reader_thread.h"
+#include "dlp/file_id.h"
 
 namespace dlp {
 
@@ -26,9 +27,9 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   class Delegate {
    public:
     virtual void ProcessFileOpenRequest(
-        ino_t inode, int pid, base::OnceCallback<void(bool)> callback) = 0;
+        FileId id, int pid, base::OnceCallback<void(bool)> callback) = 0;
 
-    virtual void OnFileDeleted(ino_t inode) = 0;
+    virtual void OnFileDeleted(FileId id) = 0;
 
     virtual void OnFanotifyError(FanotifyError error) = 0;
   };

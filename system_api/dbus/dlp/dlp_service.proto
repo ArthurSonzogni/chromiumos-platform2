@@ -178,6 +178,8 @@ message FileMetadata {
   optional string path = 3;
   // Referrer URL from which the download process was initiated.
   optional string referrer_url = 4;
+  // File creation time.
+  optional uint64 crtime = 5;
 }
 
 // File metadata along with the restriction.

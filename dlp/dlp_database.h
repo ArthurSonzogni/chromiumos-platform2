@@ -12,19 +12,18 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "dlp/dlp_metrics.h"
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 
+#include "dlp/dlp_metrics.h"
+#include "dlp/file_id.h"
+
 namespace dlp {
 
 // Database for storing information about DLP-protected files.
-
-// Files are identified by their inode number.
-typedef ino64_t FileId;
 
 // |FileEntry| objects stored in |file_entries| table.
 // A file entry represents a DLP-protected file. |id| identifies the file on

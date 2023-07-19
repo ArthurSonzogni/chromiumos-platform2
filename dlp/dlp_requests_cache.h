@@ -12,11 +12,10 @@
 #include <sys/types.h>
 #include <vector>
 
+#include "dlp/file_id.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
 namespace dlp {
-
-typedef ino64_t FileId;
 
 // In-memory cache of results of IsFilesTransferRestricted evaluation done in
 // Chrome.

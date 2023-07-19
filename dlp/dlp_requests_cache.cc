@@ -12,9 +12,10 @@ DlpRequestsCache::~DlpRequestsCache() = default;
 void DlpRequestsCache::CacheResult(IsFilesTransferRestrictedRequest request,
                                    IsFilesTransferRestrictedResponse response) {
   for (const auto& file : *response.mutable_files_restrictions()) {
-    CacheFileRequest(file.file_metadata().inode(), file.file_metadata().path(),
-                     request.destination_url(), request.destination_component(),
-                     file.restriction_level());
+    CacheFileRequest(
+        {file.file_metadata().inode(), file.file_metadata().crtime()},
+        file.file_metadata().path(), request.destination_url(),
+        request.destination_component(), file.restriction_level());
   }
 }
 

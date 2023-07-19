@@ -53,8 +53,6 @@ class DlpAdaptorTestHelper {
 
   void OnFileDeleted(FileId id);
 
-  static FileId GetFileId(const std::string& path);
-
   bool IsFanotifyWatcherActive() const {
     return adaptor_->fanotify_watcher_->IsActive();
   }

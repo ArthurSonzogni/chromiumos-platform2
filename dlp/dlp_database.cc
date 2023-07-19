@@ -32,7 +32,7 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
     LOG(ERROR) << "FileEntry.id is null";
     return SQLITE_ERROR;
   }
-  if (!base::StringToUint64(row[0], &file_entry.id)) {
+  if (!base::StringToUint64(row[0], &file_entry.id.first)) {
     LOG(ERROR) << "FileEntry.id is not a number";
     return SQLITE_ERROR;
   }
@@ -61,7 +61,7 @@ int GetIdsCallback(void* data, int count, char** row, char** names) {
     return SQLITE_ERROR;
   }
   FileId id;
-  if (!base::StringToUint64(row[0], &id)) {
+  if (!base::StringToUint64(row[0], &id.first)) {
     LOG(ERROR) << "file_entries.id is not a number";
     return SQLITE_ERROR;
   }
@@ -216,7 +216,7 @@ bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
   const std::string sql = base::StringPrintf(
       "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url)"
       " VALUES (%" PRId64 ", '%s', '%s')",
-      file_entry.id, EscapeSQLString(file_entry.source_url).c_str(),
+      file_entry.id.first, EscapeSQLString(file_entry.source_url).c_str(),
       EscapeSQLString(file_entry.referrer_url).c_str());
   ExecResult result = ExecSQL(sql);
   if (result.code != SQLITE_OK) {
@@ -243,7 +243,7 @@ bool DlpDatabase::Core::UpsertFileEntries(
     if (!first) {
       sql += ",";
     }
-    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.id,
+    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.id.first,
                               EscapeSQLString(file_entry.source_url).c_str(),
                               EscapeSQLString(file_entry.referrer_url).c_str());
     first = false;
@@ -273,7 +273,7 @@ std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(id);
+    sql += base::NumberToString(id.first);
     first = false;
   }
   sql += ")";
@@ -295,8 +295,8 @@ bool DlpDatabase::Core::DeleteFileEntryById(FileId id) {
   if (!IsOpen())
     return false;
 
-  const std::string sql =
-      base::StringPrintf("DELETE FROM file_entries WHERE inode = %" PRId64, id);
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM file_entries WHERE inode = %" PRId64, id.first);
   return ExecDeleteSQL(sql) >= 0;
 }
 
@@ -328,7 +328,7 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(id);
+    sql += base::NumberToString(id.first);
     first = false;
   }
   sql += ")";

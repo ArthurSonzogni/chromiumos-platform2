@@ -77,7 +77,7 @@ void FanotifyWatcher::OnFileOpenRequested(
   }
 
   delegate_->ProcessFileOpenRequest(
-      inode, pid,
+      {inode, /*crtime=*/0}, pid,
       base::BindOnce(&FanotifyWatcher::OnRequestProcessed,
                      base::Unretained(this), std::move(fd),
                      std::move(watchdog)));
@@ -86,7 +86,7 @@ void FanotifyWatcher::OnFileOpenRequested(
 void FanotifyWatcher::OnFileDeleted(ino_t inode) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  delegate_->OnFileDeleted(inode);
+  delegate_->OnFileDeleted({inode, /*crtime=*/0});
 }
 
 void FanotifyWatcher::OnFanotifyError(FanotifyError error) {

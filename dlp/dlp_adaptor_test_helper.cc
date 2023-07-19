@@ -87,10 +87,6 @@ void DlpAdaptorTestHelper::OnFileDeleted(FileId id) {
   adaptor_->OnFileDeleted(id);
 }
 
-FileId DlpAdaptorTestHelper::GetFileId(const std::string& path) {
-  return DlpAdaptor::GetFileId(path);
-}
-
 void DlpAdaptorTestHelper::ReCreateAdaptor() {
   ASSERT_NE(adaptor_.get(), nullptr);
   adaptor_.reset();

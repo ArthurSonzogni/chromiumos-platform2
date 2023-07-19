@@ -74,6 +74,7 @@ static_library("libdlp_static") {
     "dlp_requests_cache.cc",
     "fanotify_reader_thread.cc",
     "fanotify_watcher.cc",
+    "file_id.cc",
     "kernel_version_tools.cc",
   ]
   configs += [ ":target_defaults" ]

@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <set>
 #include <string>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <utility>
 #include <vector>
@@ -79,7 +78,9 @@ std::set<std::pair<base::FilePath, FileId>> EnumerateFiles(
                                   base::FileEnumerator::FILES);
   for (base::FilePath entry = enumerator.Next(); !entry.empty();
        entry = enumerator.Next()) {
-    files.insert(std::make_pair(entry, enumerator.GetInfo().stat().st_ino));
+    files.insert(std::make_pair(
+        entry,
+        std::make_pair(enumerator.GetInfo().stat().st_ino, /*crtime=*/0)));
   }
 
   return files;
@@ -212,7 +213,7 @@ void DlpAdaptor::AddFiles(
               << add_file_request.file_path();
 
     const FileId id = GetFileId(add_file_request.file_path());
-    if (!id) {
+    if (!id.first) {
       ReplyOnAddFiles(std::move(response), "Failed to get inode");
       dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
       return;
@@ -275,7 +276,7 @@ void DlpAdaptor::RequestFileAccess(
   std::vector<FileId> ids;
   for (const auto& file_path : request.files_paths()) {
     const FileId id = GetFileId(file_path);
-    if (id > 0) {
+    if (id.first > 0) {
       ids.push_back(id);
     }
   }
@@ -335,7 +336,8 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     request_ids.push_back(id);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
-    file_metadata->set_inode(id);
+    file_metadata->set_inode(id.first);
+    file_metadata->set_crtime(id.second);
     file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
@@ -407,13 +409,14 @@ void DlpAdaptor::GetFilesSources(
   std::vector<FileId> ids;
   std::vector<std::pair<FileId, std::string>> requested_files;
   for (const auto& inode : request.files_inodes()) {
-    ids.push_back(inode);
-    requested_files.emplace_back(inode, "");
+    FileId id = {inode, /*crtime=*/0};
+    ids.push_back(id);
+    requested_files.emplace_back(id, "");
   }
 
   for (const auto& path : request.files_paths()) {
     const FileId id = GetFileId(path);
-    if (id > 0) {
+    if (id.first > 0) {
       ids.push_back(id);
       requested_files.emplace_back(id, path);
     }
@@ -450,7 +453,7 @@ void DlpAdaptor::CheckFilesTransfer(
   std::vector<FileId> ids;
   for (const auto& file_path : request.files_paths()) {
     const FileId file_id = GetFileId(file_path);
-    if (file_id > 0) {
+    if (file_id.first > 0) {
       ids.push_back(file_id);
     }
   }
@@ -639,7 +642,8 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
-  request.mutable_file_metadata()->set_inode(file_entry.id);
+  request.mutable_file_metadata()->set_inode(file_entry.id.first);
+  request.mutable_file_metadata()->set_crtime(file_entry.id.second);
   request.mutable_file_metadata()->set_source_url(file_entry.source_url);
   request.mutable_file_metadata()->set_referrer_url(file_entry.referrer_url);
   // TODO(crbug.com/1357967)
@@ -824,7 +828,8 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     files_to_check.insert(file_path);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
-    file_metadata->set_inode(file_id);
+    file_metadata->set_inode(file_id.first);
+    file_metadata->set_crtime(file_id.second);
     file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_referrer_url(it->second.referrer_url);
     file_metadata->set_path(file_path);
@@ -928,7 +933,8 @@ void DlpAdaptor::ProcessGetFilesSourcesWithData(
       continue;
     }
     FileMetadata* file_metadata = response_proto.add_files_metadata();
-    file_metadata->set_inode(id);
+    file_metadata->set_inode(id.first);
+    file_metadata->set_crtime(id.second);
     if (!path.empty()) {
       file_metadata->set_path(path);
     }
@@ -980,16 +986,6 @@ void DlpAdaptor::OnLifelineFdClosed(int client_fd) {
 
   // Remove the approvals tied to the lifeline fd.
   approved_requests_.erase(client_fd);
-}
-
-// static
-FileId DlpAdaptor::GetFileId(const std::string& path) {
-  struct stat file_stats;
-  if (stat(path.c_str(), &file_stats) != 0) {
-    PLOG(ERROR) << "Could not access " << path;
-    return 0;
-  }
-  return file_stats.st_ino;
 }
 
 void DlpAdaptor::CleanupAndSetDatabase(

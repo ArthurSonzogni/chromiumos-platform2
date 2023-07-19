@@ -25,6 +25,7 @@
 #include "dlp/dlp_metrics.h"
 #include "dlp/dlp_requests_cache.h"
 #include "dlp/fanotify_watcher.h"
+#include "dlp/file_id.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -202,8 +203,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   int AddLifelineFd(int dbus_fd);
   bool DeleteLifelineFd(int fd);
   void OnLifelineFdClosed(int fd);
-
-  static FileId GetFileId(const std::string& path);
 
   // Removes entries from |db| that are not present in |ids| and sets the
   // used database to |db|. |callback| is called if this successfully finishes.
