@@ -10,6 +10,15 @@ declare_args() {
   enable_lfs = true
 }
 
+if (use.pigweed) {
+  # TODO(b/267537074) - This will fix this workaround.
+  # Pigweed defaults to use CXX17 standard, update pw variable
+  # to match platform2 CXX20 standard.
+  dir_pigweed = "//third_party/pigweed"
+  import("$dir_pigweed/pw_toolchain/traits.gni")
+  pw_toolchain_CXX_STANDARD = pw_toolchain_STANDARD.CXX20
+}
+
 _cflags_no_exceptions = [
   "-fno-exceptions",
   "-fno-unwind-tables",

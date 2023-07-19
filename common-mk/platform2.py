@@ -161,6 +161,7 @@ _IUSE = [
     "os_install_service",
     "passive_metrics",
     "pavp_4_3",
+    "pigweed",
     "pinweaver",
     "pinweaver_csme",
     "postinst_metrics",
@@ -496,6 +497,21 @@ class Platform2:
             uses[x.replace("-", "_")] = True
         use_args = ["%s=%s" % (k, str(v).lower()) for k, v in uses.items()]
         gn_args_args += ["use={%s}" % (" ".join(use_args))]
+
+        # TODO(b/306186914):
+        # Identify better solution to override GN build arguments.
+        # Check if project specific args need to be passed to GN.
+        gn_arg_file = os.path.join(
+            self.get_platform2_root(), self.platform_subdir, "GN_ARGS.json"
+        )
+        if os.path.exists(gn_arg_file):
+            with open(gn_arg_file, "rb") as fp:
+                gn_json_object = json.load(fp)
+                custom_gn_args = list(to_gn_args_args(gn_json_object))
+                assert all(
+                    x.startswith("pw_") for x in custom_gn_args
+                ), f"{gn_arg_file}: Only pigweed args allowed"
+                gn_args_args += custom_gn_args
 
         return gn_args_args
 

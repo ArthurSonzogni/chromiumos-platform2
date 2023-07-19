@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build_overrides/pigweed.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -19,6 +20,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libec",
     "libmetrics",
     "re2",
   ]
@@ -31,13 +33,18 @@ static_library("libtimberslide") {
     "timberslide.cc",
   ]
   configs += [ ":target_defaults" ]
+
+  deps = [ "$dir_pw_tokenizer:decoder" ]
 }
 
 executable("timberslide") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
-  deps = [ ":libtimberslide" ]
+  deps = [
+    ":libtimberslide",
+    "$dir_pw_tokenizer:decoder",
+  ]
 }
 
 install_config("install_scripts") {
@@ -74,6 +81,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":libtimberslide",
+      "$dir_pw_tokenizer:decoder",
       "//common-mk/testrunner",
     ]
   }

@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <fcntl.h>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <sysexits.h>
 #include <sys/types.h>
@@ -18,6 +20,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
+#include <libec/ec_command.h>
+#include <libec/get_features_command.h>
 #include "timberslide/log_listener_factory.h"
 #include "timberslide/timberslide.h"
 
@@ -27,6 +31,10 @@ namespace {
 const char kCurrentLogExt[] = ".log";
 const char kPreviousLogExt[] = ".previous";
 const int kMaxCurrentLogSize = 10 * 1024 * 1024;
+
+// This line fails to compile with a static_assert if the database is invalid.
+constexpr pw::tokenizer::TokenDatabase kDefaultDatabase =
+    pw::tokenizer::TokenDatabase();
 
 // String proxy class for dealing with lines.
 class LineExtractor {
@@ -49,8 +57,11 @@ class LineExtractor {
 TimberSlide::TimberSlide(const std::string& ec_type,
                          base::File device_file,
                          base::File uptime_file,
-                         const base::FilePath& log_dir)
+                         const base::FilePath& log_dir,
+                         const base::FilePath& token_db)
     : device_file_(std::move(device_file)),
+      tokens_db_(token_db),
+      detokenizer_(kDefaultDatabase),
       total_size_(0),
       uptime_file_(std::move(uptime_file)),
       uptime_file_valid_(uptime_file_.IsValid()) {
@@ -62,7 +73,9 @@ TimberSlide::TimberSlide(const std::string& ec_type,
 
 TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener,
                          std::unique_ptr<StringTransformer> xfrm)
-    : log_listener_(std::move(log_listener)), xfrm_(std::move(xfrm)) {}
+    : detokenizer_(kDefaultDatabase),
+      log_listener_(std::move(log_listener)),
+      xfrm_(std::move(xfrm)) {}
 
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
@@ -80,6 +93,25 @@ int TimberSlide::OnInit() {
   }
 
   RotateLogs(previous_log_, current_log_);
+
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR | O_CLOEXEC));
+  ec::GetFeaturesCommand getFeaturesCmd;
+  if (getFeaturesCmd.Run(cros_fd.get())) {
+    tokenized_logging_ = getFeaturesCmd.IsFeatureSupported(
+        ec_feature_code::EC_FEATURE_TOKENIZED_LOGGING);
+  }
+
+  if (tokenized_logging_) {
+    LOG(INFO) << "EC logging: tokenized";
+    token_watcher_ = std::make_unique<base::FilePathWatcher>();
+    token_watcher_->Watch(tokens_db_,
+                          base::FilePathWatcher::Type::kNonRecursive,
+                          base::BindRepeating(&TimberSlide::OnEventTokenChange,
+                                              base::Unretained(this)));
+    detokenizer_ = OpenDatabase(tokens_db_);
+  } else {
+    LOG(INFO) << "EC logging: raw text";
+  }
 
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
       device_file_.GetPlatformFile(),
@@ -119,10 +151,29 @@ bool TimberSlide::GetEcUptime(int64_t* ec_uptime_ms) {
   return (*ec_uptime_ms > 0);
 }
 
+pw::tokenizer::Detokenizer TimberSlide::OpenDatabase(
+    const base::FilePath& token_db) {
+  LOG(INFO) << "Loading tokens: " << token_db;
+  base::File tokens(token_db, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  std::vector<uint8_t> data(tokens.GetLength());
+  tokens.ReadAndCheck(0, base::make_span(data));
+
+  pw::tokenizer::TokenDatabase database =
+      pw::tokenizer::TokenDatabase::Create(data);
+
+  // This checks if the file contained a valid database. It is safe to use a
+  // TokenDatabase that failed to load (it will be empty), but it may be
+  // desirable to provide a default database or otherwise handle the error.
+  return pw::tokenizer::Detokenizer(database.ok() ? database
+                                                  : kDefaultDatabase);
+}
+
 std::string TimberSlide::ProcessLogBuffer(const std::string& buffer,
                                           const base::Time& now) {
   int64_t ec_current_uptime_ms = 0;
-  std::istringstream iss(buffer);
+  std::string log =
+      (tokenized_logging_ ? detokenizer_.DetokenizeBase64(buffer) : buffer);
+  std::istringstream iss(log);
 
   if (GetEcUptime(&ec_current_uptime_ms))
     xfrm_->UpdateTimestamps(ec_current_uptime_ms, now);
@@ -174,6 +225,13 @@ void TimberSlide::OnEventReadable() {
     RotateLogs(previous_log_, current_log_);
     total_size_ = 0;
   }
+}
+
+void TimberSlide::OnEventTokenChange(const base::FilePath& file_path,
+                                     bool error) {
+  // Refresh tokens.
+  LOG(INFO) << "Token DB changed: " << file_path;
+  detokenizer_ = OpenDatabase(file_path);
 }
 
 void TimberSlide::RotateLogs(const base::FilePath& previous_log,

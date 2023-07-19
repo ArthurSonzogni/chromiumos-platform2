@@ -1,0 +1,11 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # Location of the Pigweed repository.
+  dir_pigweed = "//third_party/pigweed"
+}
+
+# Import modules.gni, which generates the modules list.
+import("$dir_pigweed/modules.gni")

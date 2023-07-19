@@ -17,6 +17,7 @@ namespace {
 const char kDefaultDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
 const char kDefaultDeviceUptimeFile[] = "/sys/kernel/debug/cros_ec/uptime";
 const char kDefaultLogDirectory[] = "/var/log/";
+const char kDefaultTokenDatabase[] = "/usr/share/misc/tokens.bin";
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -25,6 +26,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(log_directory, kDefaultLogDirectory,
                 "Directory where the output logs should be.");
   DEFINE_string(uptime_file, kDefaultDeviceUptimeFile, "Device uptime file.");
+  DEFINE_string(token_db, kDefaultTokenDatabase, "EC Token database");
   brillo::FlagHelper::Init(
       argc, argv, "timberslide concatenates EC logs for use in debugging.");
 
@@ -42,7 +44,8 @@ int main(int argc, char* argv[]) {
 
   std::string ec_type = path.DirName().BaseName().value();
   TimberSlide ts(ec_type, std::move(device_file), std::move(uptime_file),
-                 base::FilePath(FLAGS_log_directory));
+                 base::FilePath(FLAGS_log_directory),
+                 base::FilePath(FLAGS_token_db));
 
   return ts.Run();
 }
