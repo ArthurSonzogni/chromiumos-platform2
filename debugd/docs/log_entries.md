@@ -65,6 +65,8 @@ Only includes audit events of type=SYSCALL and type=AVC (SELinux denials).
 
 Contains which TPM commands are used and its response when the command failed.
 
+## authpolicy
+
 ## bio_crypto_init.LATEST
 
 ## bio_crypto_init.PREVIOUS
