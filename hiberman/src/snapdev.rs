@@ -20,7 +20,6 @@ use libc::{self};
 use libchromeos::sys::ioctl_io_nr;
 use libchromeos::sys::ioctl_ior_nr;
 use libchromeos::sys::ioctl_iow_nr;
-use libchromeos::sys::ioctl_iowr_nr;
 use libchromeos::sys::ioctl_with_mut_ptr;
 use libchromeos::sys::ioctl_with_ptr;
 use libchromeos::sys::ioctl_with_val;
@@ -31,61 +30,6 @@ use crate::hiberutil::get_device_id;
 use crate::hiberutil::HibernateError;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
-
-#[repr(C)]
-#[repr(packed)]
-#[derive(Copy, Clone)]
-pub struct UswsuspKeyBlob {
-    blob_len: u32,
-    blob: [u8; 512],
-    nonce: [u8; 16],
-}
-
-impl UswsuspKeyBlob {
-    #[allow(dead_code)]
-    pub fn deserialize(bytes: &[u8]) -> Self {
-        // This is safe because the structure is repr(C), packed, and made only
-        // of primitives.
-        unsafe {
-            let result: UswsuspKeyBlob = std::ptr::read_unaligned(
-                bytes[0..::std::mem::size_of::<UswsuspKeyBlob>()].as_ptr() as *const _,
-            );
-            result
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn serialize(&self) -> &[u8] {
-        // This is safe because the structure is repr(C), packed, and made only
-        // of primitives.
-        unsafe {
-            ::std::slice::from_raw_parts(
-                (self as *const UswsuspKeyBlob) as *const u8,
-                ::std::mem::size_of::<UswsuspKeyBlob>(),
-            )
-        }
-    }
-}
-
-// Ideally we'd be able to just derive Default for vectors with >32 elements,
-// but alas, here we are.
-impl Default for UswsuspKeyBlob {
-    fn default() -> Self {
-        Self {
-            blob_len: Default::default(),
-            blob: [0u8; 512],
-            nonce: Default::default(),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Default)]
-pub struct UswsuspUserKey {
-    meta_size: i64,
-    key_len: u32,
-    key: [u8; 32],
-}
 
 // Define snapshot device ioctl numbers.
 const SNAPSHOT_IOC_MAGIC: u32 = '3' as u32;
@@ -99,26 +43,11 @@ ioctl_iow_nr!(SNAPSHOT_SET_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 40, u32);
 ioctl_io_nr!(SNAPSHOT_XFER_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 41);
 ioctl_io_nr!(SNAPSHOT_RELEASE_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 42);
 
-ioctl_iowr_nr!(
-    SNAPSHOT_ENABLE_ENCRYPTION,
-    SNAPSHOT_IOC_MAGIC,
-    21,
-    UswsuspKeyBlob
-);
-ioctl_iowr_nr!(
-    SNAPSHOT_SET_USER_KEY,
-    SNAPSHOT_IOC_MAGIC,
-    22,
-    UswsuspUserKey
-);
-
 const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
 const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
-#[allow(dead_code)]
-const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
 const SET_BLOCK_DEVICE: u64 = SNAPSHOT_SET_BLOCK_DEVICE();
 const XFER_BLOCK_DEVICE: u64 = SNAPSHOT_XFER_BLOCK_DEVICE();
 const RELEASE_BLOCK_DEVICE: u64 = SNAPSHOT_RELEASE_BLOCK_DEVICE();
@@ -255,20 +184,6 @@ impl SnapshotDevice {
         }
 
         Ok(image_size.try_into().unwrap())
-    }
-
-    /// Hand the encryption key to the kernel. This is actually the same ioctl
-    /// as the get call, but only one is successful depending on if the snapdev
-    /// was opened with read or write permission.
-    #[allow(dead_code)]
-    pub fn set_key_blob(&mut self, blob: &UswsuspKeyBlob) -> Result<()> {
-        unsafe {
-            self.ioctl_with_ptr(
-                ENABLE_ENCRYPTION,
-                "ENABLE_ENCRYPTION",
-                blob as *const UswsuspKeyBlob as *const c_void,
-            )
-        }
     }
 
     /// Helper function to send an ioctl with no parameter and return a result.
