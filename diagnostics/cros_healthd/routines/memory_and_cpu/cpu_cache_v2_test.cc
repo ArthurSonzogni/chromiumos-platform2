@@ -125,10 +125,10 @@ class CpuCacheRoutineV2AdapterTest : public CpuCacheRoutineV2TestBase {
     CpuCacheRoutineV2TestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kCpuCache);
-    routine_service_.CreateRoutine(
+    routine_adapter_->SetupAdapter(
         mojom::RoutineArgument::NewCpuCache(
             mojom::CpuCacheRoutineArgument::New(std::nullopt)),
-        routine_adapter_->BindNewPipeAndPassReceiver());
+        &routine_service_);
   }
 
   // A utility function to flush the routine control and process control.
@@ -284,10 +284,10 @@ TEST_F(CpuCacheRoutineV2AdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuCache);
-  routine_service_.CreateRoutine(
+  routine_adapter_->SetupAdapter(
       mojom::RoutineArgument::NewCpuCache(mojom::CpuCacheRoutineArgument::New(
           /*exec_duration=*/base::Seconds(60))),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+      &routine_service_);
 
   routine_adapter_->Start();
   FlushAdapter();

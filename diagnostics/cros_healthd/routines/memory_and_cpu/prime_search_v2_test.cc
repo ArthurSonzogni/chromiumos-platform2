@@ -118,10 +118,10 @@ class PrimeSearchRoutineV2AdapterTest : public PrimeSearchRoutineV2TestBase {
     PrimeSearchRoutineV2TestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kPrimeSearch);
-    routine_service_.CreateRoutine(
+    routine_adapter_->SetupAdapter(
         mojom::RoutineArgument::NewPrimeSearch(
             mojom::PrimeSearchRoutineArgument::New(std::nullopt)),
-        routine_adapter_->BindNewPipeAndPassReceiver());
+        &routine_service_);
   }
 
   // A utility function to flush the routine control and process control.
@@ -290,11 +290,10 @@ TEST_F(PrimeSearchRoutineV2AdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ = std::make_unique<RoutineAdapter>(
       mojom::RoutineArgument::Tag::kPrimeSearch);
-  routine_service_.CreateRoutine(
-      mojom::RoutineArgument::NewPrimeSearch(
-          mojom::PrimeSearchRoutineArgument::New(
-              /*exec_duration=*/base::Seconds(60))),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+  routine_adapter_->SetupAdapter(mojom::RoutineArgument::NewPrimeSearch(
+                                     mojom::PrimeSearchRoutineArgument::New(
+                                         /*exec_duration=*/base::Seconds(60))),
+                                 &routine_service_);
 
   routine_adapter_->Start();
   FlushAdapter();

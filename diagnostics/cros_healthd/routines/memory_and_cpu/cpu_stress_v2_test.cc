@@ -126,10 +126,10 @@ class CpuStressRoutineV2AdapterTest : public CpuStressRoutineV2TestBase {
     CpuStressRoutineV2TestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kCpuStress);
-    routine_service_.CreateRoutine(
+    routine_adapter_->SetupAdapter(
         mojom::RoutineArgument::NewCpuStress(
             mojom::CpuStressRoutineArgument::New(std::nullopt)),
-        routine_adapter_->BindNewPipeAndPassReceiver());
+        &routine_service_);
   }
 
   // A utility function to flush the routine control and process control.
@@ -287,10 +287,10 @@ TEST_F(CpuStressRoutineV2AdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuStress);
-  routine_service_.CreateRoutine(
+  routine_adapter_->SetupAdapter(
       mojom::RoutineArgument::NewCpuStress(mojom::CpuStressRoutineArgument::New(
           /*exec_duration=*/base::Seconds(60))),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+      &routine_service_);
 
   routine_adapter_->Start();
   FlushAdapter();

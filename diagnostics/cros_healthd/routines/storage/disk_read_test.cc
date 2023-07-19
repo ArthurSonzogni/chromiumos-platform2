@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <utility>
@@ -161,13 +162,8 @@ class DiskReadRoutineAdapterTest : public DiskReadRoutineTest {
     SetGetFioTestDirectoryFreeSpaceResponse(
         /*free_space_byte=*/static_cast<uint64_t>(10240 /*MiB*/) * 1024 * 1024);
 
-    routine_adapter_ = std::make_unique<RoutineAdapter>(
-        mojom::RoutineArgument::Tag::kDiskRead);
-    routine_service_.CreateRoutine(
-        mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
-            mojom::DiskReadTypeEnum::kLinearRead,
-            /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64)),
-        routine_adapter_->BindNewPipeAndPassReceiver());
+    SetUpRoutine(mojom::DiskReadTypeEnum::kLinearRead,
+                 /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64);
   }
 
   // Utility function to flush the routine control and process control prepare.
@@ -205,6 +201,17 @@ class DiskReadRoutineAdapterTest : public DiskReadRoutineTest {
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
                                status_message);
+  }
+
+  void SetUpRoutine(mojom::DiskReadTypeEnum read_type,
+                    base::TimeDelta disk_read_duration,
+                    uint32_t file_size_mib) {
+    routine_adapter_ = std::make_unique<RoutineAdapter>(
+        mojom::RoutineArgument::Tag::kDiskRead);
+    routine_adapter_->SetupAdapter(
+        mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+            read_type, disk_read_duration, file_size_mib)),
+        &routine_service_);
   }
 
   RoutineService routine_service_{&mock_context_};
@@ -478,13 +485,9 @@ TEST_F(DiskReadRoutineTest, RoutineCreateErrorZeroDiskReadDuration) {
 // Test that the disk read routine can not be created with zero disk read
 // duration with routine adapter.
 TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorZeroDiskReadDuration) {
-  routine_adapter_ =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
-  routine_service_.CreateRoutine(
-      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
-          mojom::DiskReadTypeEnum::kLinearRead,
-          /*disk_read_duration=*/base::Seconds(0), /*file_size_mib=*/64)),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+  SetUpRoutine(mojom::DiskReadTypeEnum::kLinearRead,
+               /*disk_read_duration=*/base::Seconds(0), /*file_size_mib=*/64);
+
   routine_adapter_->Start();
   // Flush the routine for all request through process control.
   routine_adapter_->FlushRoutineControlForTesting();
@@ -506,13 +509,9 @@ TEST_F(DiskReadRoutineTest, RoutineCreateErrorZeroTestFileSize) {
 // Test that the disk read routine can not be created with zero test file size
 // with routine adapter.
 TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorZeroTestFileSize) {
-  routine_adapter_ =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
-  routine_service_.CreateRoutine(
-      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
-          mojom::DiskReadTypeEnum::kLinearRead,
-          /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/0)),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+  SetUpRoutine(mojom::DiskReadTypeEnum::kLinearRead,
+               /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/0);
+
   routine_adapter_->Start();
   // Flush the routine for all request through process control.
   routine_adapter_->FlushRoutineControlForTesting();
@@ -534,13 +533,9 @@ TEST_F(DiskReadRoutineTest, RoutineCreateErrorUnexpectedDiskReadType) {
 // Test that the disk read routine can not be created with unexpected disk read
 // type with routine adapter.
 TEST_F(DiskReadRoutineAdapterTest, RoutineCreateErrorUnexpectedDiskReadType) {
-  routine_adapter_ =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
-  routine_service_.CreateRoutine(
-      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
-          mojom::DiskReadTypeEnum::kUnmappedEnumField,
-          /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64)),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+  SetUpRoutine(mojom::DiskReadTypeEnum::kUnmappedEnumField,
+               /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64);
+
   routine_adapter_->Start();
   // Flush the routine for all request through process control.
   routine_adapter_->FlushRoutineControlForTesting();

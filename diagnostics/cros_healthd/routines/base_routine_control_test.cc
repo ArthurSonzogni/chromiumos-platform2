@@ -51,37 +51,41 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
   RoutineControlImplPeer& operator=(const RoutineControlImplPeer&) = delete;
   ~RoutineControlImplPeer() override = default;
 
-  int GetObserverSize() { return observers_.size(); }
-
   void OnStart() override { return; }
+
+  void FlushObserverForTesting() {
+    if (observer_.is_bound()) {
+      observer_.FlushForTesting();
+    }
+  }
 
   void SetRunningImpl() {
     SetRunningState();
-    // Flush observes_ to make sure all commands on observer side has been
+    // Flush observer_ to make sure all commands on observer side has been
     // executed.
-    observers_.FlushForTesting();
+    FlushObserverForTesting();
   }
 
   void SetWaitingImpl(mojom::RoutineStateWaiting::Reason reason,
                       const std::string& message) {
     SetWaitingState(reason, message);
-    // Flush observes_ to make sure all commands on observer side has been
+    // Flush observer_ to make sure all commands on observer side has been
     // executed.
-    observers_.FlushForTesting();
+    FlushObserverForTesting();
   }
 
   void SetFinishedImpl(bool passed, mojom::RoutineDetailPtr state) {
     SetFinishedState(passed, std::move(state));
-    // Flush observes_ to make sure all commands on observer side has been
+    // Flush observer_ to make sure all commands on observer side has been
     // executed.
-    observers_.FlushForTesting();
+    FlushObserverForTesting();
   }
 
   void SetPercentageImpl(uint8_t percentage) {
     SetPercentage(percentage);
-    // Flush observes_ to make sure all commands on observer side has been
+    // Flush observer_ to make sure all commands on observer side has been
     // executed.
-    observers_.FlushForTesting();
+    FlushObserverForTesting();
   }
 
   void RaiseException(const std::string& reason) {
@@ -146,9 +150,10 @@ class RoutineAdapterTest : public testing::Test {
     // type.
     routine_adapter_ =
         std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
-
-    routine_control_->receiver()->Bind(
-        routine_adapter_->BindNewPipeAndPassReceiver());
+    auto [routine_control, routine_observer] =
+        routine_adapter_->SetupRoutineControlAndObserver();
+    routine_control_->receiver()->Bind(std::move(routine_control));
+    routine_control_->SetObserver(std::move(routine_observer));
   }
 
   void SetUpWithUnrecognizedRoutineArgument() {
@@ -156,8 +161,11 @@ class RoutineAdapterTest : public testing::Test {
         &RoutineAdapterTest::OnRoutineException, base::Unretained(this)));
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kUnrecognizedArgument);
-    routine_control_->receiver()->Bind(
-        routine_adapter_->BindNewPipeAndPassReceiver());
+    auto [routine_control, routine_observer] =
+        routine_adapter_->SetupRoutineControlAndObserver();
+
+    routine_control_->receiver()->Bind(std::move(routine_control));
+    routine_control_->SetObserver(std::move(routine_observer));
   }
 
   void OnRoutineException(uint32_t error, const std::string& reason) {
@@ -370,6 +378,10 @@ TEST_F(BaseRoutineControlTest, NotifyObserver) {
       .Times(AtLeast(1))
       .WillOnce(testing::WithArg<0>(
           testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+            EXPECT_TRUE(state->state_union->is_initialized());
+          })))
+      .WillOnce(testing::WithArg<0>(
+          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_running());
           })))
       .WillOnce(testing::WithArg<0>(
@@ -390,6 +402,22 @@ TEST_F(BaseRoutineControlTest, NotifyObserver) {
                     "");
   rc.SetRunningImpl();
   rc.SetFinishedImpl(true, nullptr);
+}
+
+TEST_F(BaseRoutineControlTest, SetObserverSendsUpdateImmediately) {
+  auto rc = RoutineControlImplPeer(ExpectNoException());
+  mojo::PendingRemote<mojom::RoutineObserver> observer_remote;
+  auto observer = std::make_unique<StrictMock<MockObserver>>(
+      observer_remote.InitWithNewPipeAndPassReceiver());
+
+  EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
+      .WillOnce(testing::WithArg<0>(
+          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+            EXPECT_TRUE(state->state_union->is_initialized());
+          })));
+
+  rc.SetObserver(std::move(observer_remote));
+  rc.FlushObserverForTesting();
 }
 
 TEST_F(RoutineAdapterTest, RoutinePassed) {

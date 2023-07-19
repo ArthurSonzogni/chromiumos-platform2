@@ -140,10 +140,10 @@ class MemoryRoutineV2AdapterTest : public MemoryRoutineV2TestBase {
     MemoryRoutineV2TestBase::SetUp();
     routine_adapter_ =
         std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
-    routine_service_.CreateRoutine(
+    routine_adapter_->SetupAdapter(
         mojom::RoutineArgument::NewMemory(
             mojom::MemoryRoutineArgument::New(std::nullopt)),
-        routine_adapter_->BindNewPipeAndPassReceiver());
+        &routine_service_);
   }
 
   // A utility function to flush the routine control and process control.
@@ -549,10 +549,10 @@ TEST_F(MemoryRoutineV2AdapterTest, SettingMaxTestingMemKibValue) {
 
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
-  routine_service_.CreateRoutine(
-      mojom::RoutineArgument::NewMemory(
-          mojom::MemoryRoutineArgument::New(1000)),
-      routine_adapter_->BindNewPipeAndPassReceiver());
+  routine_adapter_->SetupAdapter(mojom::RoutineArgument::NewMemory(
+                                     mojom::MemoryRoutineArgument::New(1000)),
+                                 &routine_service_);
+
   routine_adapter_->Start();
   FlushAdapter();
   EXPECT_EQ(received_testing_mem_kib_, 1000);

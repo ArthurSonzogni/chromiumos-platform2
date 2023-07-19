@@ -272,14 +272,12 @@ void CrosHealthdDiagnosticsService::RunCpuCacheRoutine(
   if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
   }
-  auto cpu_cache_routine_v2 =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuCache);
-  routine_service_->CreateRoutine(
-      mojom::RoutineArgument::NewCpuCache(
-          mojom::CpuCacheRoutineArgument::New(exec_duration)),
-      cpu_cache_routine_v2->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(cpu_cache_routine_v2),
-             mojom::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
+
+  auto args = mojom::RoutineArgument::NewCpuStress(
+      mojom::CpuStressRoutineArgument::New(exec_duration));
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kCpuCache,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunCpuStressRoutine(
@@ -289,14 +287,12 @@ void CrosHealthdDiagnosticsService::RunCpuStressRoutine(
   if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
   }
-  auto cpu_stress_routine_v2 =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuStress);
-  routine_service_->CreateRoutine(
-      mojom::RoutineArgument::NewCpuStress(
-          mojom::CpuStressRoutineArgument::New(exec_duration)),
-      cpu_stress_routine_v2->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(cpu_stress_routine_v2),
-             mojom::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
+
+  auto args = mojom::RoutineArgument::NewCpuStress(
+      mojom::CpuStressRoutineArgument::New(exec_duration));
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kCpuStress,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
@@ -304,14 +300,12 @@ void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
-  auto disk_read_routine =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
-  routine_service_->CreateRoutine(
+  auto args =
       mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
-          Convert(type), base::Seconds(length_seconds), file_size_mb)),
-      disk_read_routine->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(disk_read_routine),
-             mojom::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
+          Convert(type), base::Seconds(length_seconds), file_size_mb));
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kDiskRead,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDnsLatencyRoutine(
@@ -386,14 +380,10 @@ void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
 void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     std::optional<uint32_t> max_testing_mem_kib,
     RunMemoryRoutineCallback callback) {
-  auto memory_routine_v2 =
-      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
-  routine_service_->CreateRoutine(
-      mojom::RoutineArgument::NewMemory(
-          mojom::MemoryRoutineArgument::New(max_testing_mem_kib)),
-      memory_routine_v2->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(memory_routine_v2),
-             mojom::DiagnosticRoutineEnum::kMemory, std::move(callback));
+  auto args = mojom::RoutineArgument::NewMemory(
+      mojom::MemoryRoutineArgument::New(max_testing_mem_kib));
+  RunRoutineWithAdapter(std::move(args), mojom::DiagnosticRoutineEnum::kMemory,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunNvmeSelfTestRoutine(
@@ -584,26 +574,20 @@ void CrosHealthdDiagnosticsService::RunPowerButtonRoutine(
 
 void CrosHealthdDiagnosticsService::RunAudioDriverRoutine(
     RunAudioDriverRoutineCallback callback) {
-  auto audio_driver_routine = std::make_unique<RoutineAdapter>(
-      mojom::RoutineArgument::Tag::kAudioDriver);
-  routine_service_->CreateRoutine(
-      mojom::RoutineArgument::NewAudioDriver(
-          mojom::AudioDriverRoutineArgument::New()),
-      audio_driver_routine->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(audio_driver_routine),
-             mojom::DiagnosticRoutineEnum::kAudioDriver, std::move(callback));
+  auto args = mojom::RoutineArgument::NewAudioDriver(
+      mojom::AudioDriverRoutineArgument::New());
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kAudioDriver,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunUfsLifetimeRoutine(
     RunUfsLifetimeRoutineCallback callback) {
-  auto ufs_lifetime_routine = std::make_unique<RoutineAdapter>(
-      mojom::RoutineArgument::Tag::kUfsLifetime);
-  routine_service_->CreateRoutine(
-      mojom::RoutineArgument::NewUfsLifetime(
-          mojom::UfsLifetimeRoutineArgument::New()),
-      ufs_lifetime_routine->BindNewPipeAndPassReceiver());
-  RunRoutine(std::move(ufs_lifetime_routine),
-             mojom::DiagnosticRoutineEnum::kUfsLifetime, std::move(callback));
+  auto args = mojom::RoutineArgument::NewUfsLifetime(
+      mojom::UfsLifetimeRoutineArgument::New());
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kUfsLifetime,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunRoutine(
@@ -633,6 +617,16 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   std::move(callback).Run(
       mojom::RunRoutineResponse::New(id, active_routines_[id]->GetStatus()));
+}
+
+void CrosHealthdDiagnosticsService::RunRoutineWithAdapter(
+    ash::cros_healthd::mojom::RoutineArgumentPtr argument,
+    mojom::DiagnosticRoutineEnum routine_enum,
+    base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
+  auto routine_v2 = std::make_unique<RoutineAdapter>(argument->which());
+  routine_v2->SetupAdapter(std::move(argument), routine_service_);
+
+  RunRoutine(std::move(routine_v2), routine_enum, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse(

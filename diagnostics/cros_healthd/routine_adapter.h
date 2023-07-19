@@ -7,14 +7,17 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
-#include "mojo/public/cpp/bindings/remote.h"
 
 namespace diagnostics {
 
@@ -40,10 +43,17 @@ class RoutineAdapter : public DiagnosticRoutine,
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
   void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
+  // Sets up the adapter and calls to `CreateRoutine`. After calling this
+  // method, it is safe to call `Start`.
+  void SetupAdapter(
+      ash::cros_healthd::mojom::RoutineArgumentPtr arg,
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service);
+
   // Bind the remote for the routine control to a new pipe and return the
   // receiver.
-  mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
-  BindNewPipeAndPassReceiver();
+  std::tuple<mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>,
+             mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>>
+  SetupRoutineControlAndObserver();
 
   // Exported for testing only.
   void FlushRoutineControlForTesting();

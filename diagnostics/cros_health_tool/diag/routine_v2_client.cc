@@ -40,16 +40,17 @@ RoutineV2Client::RoutineV2Client(
 RoutineV2Client::~RoutineV2Client() = default;
 
 void RoutineV2Client::CreateRoutine(mojom::RoutineArgumentPtr argument) {
-  routine_service_->CreateRoutine(
-      std::move(argument), routine_control_.BindNewPipeAndPassReceiver());
+  observer_.SetFormatOutputCallback(
+      base::BindOnce(&FormatJsonOutput, single_line_json_));
+
+  routine_service_->CreateRoutine(std::move(argument),
+                                  routine_control_.BindNewPipeAndPassReceiver(),
+                                  observer_.BindNewPipdAndPassRemote());
   routine_control_.set_disconnect_with_reason_handler(base::BindOnce(
       &RoutineV2Client::OnRoutineDisconnection, weak_factory_.GetWeakPtr()));
 }
 
 void RoutineV2Client::StartAndWaitUntilTerminated() {
-  observer_.SetFormatOutputCallback(
-      base::BindOnce(&FormatJsonOutput, single_line_json_));
-  routine_control_->AddObserver(observer_.BindNewPipdAndPassRemote());
   routine_control_->Start();
   run_loop_.Run();
 }

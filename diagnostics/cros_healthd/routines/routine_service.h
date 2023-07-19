@@ -9,6 +9,7 @@
 #include <string>
 
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -30,7 +31,9 @@ class RoutineService
   void CreateRoutine(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
-          routine_receiver) override;
+          routine_receiver,
+      mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
+          routine_observer) override;
   void IsRoutineSupported(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       ash::cros_healthd::mojom::CrosHealthdRoutinesService::
@@ -42,6 +45,17 @@ class RoutineService
   void AddRoutine(
       std::unique_ptr<BaseRoutineControl> routine,
       mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
+          routine_receiver,
+      mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
+          routine_observer);
+
+  // Helper function that creates a `BaseRoutineControl` object from a
+  // `RoutineArgumentPtr`. If the provided arguments are invalid, the
+  // `PendingReceiver` is reset with a specific error message and this method
+  // returns `nullptr`.
+  std::unique_ptr<BaseRoutineControl> CreateRoutineControl(
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>&
           routine_receiver);
 
   // A function to be run by Routines in CrosHealthdRoutineService. When routine

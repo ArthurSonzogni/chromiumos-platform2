@@ -6,9 +6,11 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
 
 namespace {
 
@@ -38,7 +40,7 @@ void BaseRoutineControl::Start() {
   }
   state_->state_union =
       mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New());
-  NotifyObservers();
+  NotifyObserver();
   OnStart();
 }
 
@@ -54,22 +56,17 @@ void BaseRoutineControl::SetOnExceptionCallback(
 
 void BaseRoutineControl::SetObserver(
     mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer) {
-  // TODO(bkersting): Switch to only supporting one observer.
-  observers_.Add(std::move(observer));
+  observer_.Bind(std::move(observer));
+  NotifyObserver();
 }
 
 const mojom::RoutineStatePtr& BaseRoutineControl::state() {
   return state_;
 }
 
-void BaseRoutineControl::AddObserver(
-    mojo::PendingRemote<mojom::RoutineObserver> observer) {
-  observers_.Add(std::move(observer));
-}
-
-void BaseRoutineControl::NotifyObservers() {
-  for (const auto& observer : observers_) {
-    observer->OnRoutineStateChange(state_->Clone());
+void BaseRoutineControl::NotifyObserver() {
+  if (observer_.is_bound()) {
+    observer_->OnRoutineStateChange(state_->Clone());
   }
 }
 
@@ -88,7 +85,7 @@ void BaseRoutineControl::SetPercentage(uint8_t percentage) {
       << "Percentage should only increase, is between 0 and 99, and can only "
          "be changed in running state";
   state_->percentage = percentage;
-  NotifyObservers();
+  NotifyObserver();
 }
 
 void BaseRoutineControl::SetRunningState() {
@@ -96,7 +93,7 @@ void BaseRoutineControl::SetRunningState() {
       << "Can only set running state from waiting state or running state";
   state_->state_union =
       mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New());
-  NotifyObservers();
+  NotifyObserver();
 }
 
 void BaseRoutineControl::SetWaitingState(
@@ -105,7 +102,7 @@ void BaseRoutineControl::SetWaitingState(
       << "Can only set waiting state from running state";
   state_->state_union = mojom::RoutineStateUnion::NewWaiting(
       mojom::RoutineStateWaiting::New(reason, message));
-  NotifyObservers();
+  NotifyObserver();
 }
 
 void BaseRoutineControl::SetFinishedState(bool has_passed,
@@ -115,6 +112,6 @@ void BaseRoutineControl::SetFinishedState(bool has_passed,
   state_->percentage = 100;
   state_->state_union = mojom::RoutineStateUnion::NewFinished(
       mojom::RoutineStateFinished::New(has_passed, std::move(detail)));
-  NotifyObservers();
+  NotifyObserver();
 }
 }  // namespace diagnostics

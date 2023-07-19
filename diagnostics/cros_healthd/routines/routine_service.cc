@@ -6,6 +6,9 @@
 
 #include <utility>
 
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
@@ -16,6 +19,7 @@
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -30,65 +34,65 @@ RoutineService::~RoutineService() = default;
 
 void RoutineService::CreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
-    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
+    mojo::PendingRemote<mojom::RoutineObserver> routine_observer) {
+  auto routine_control =
+      CreateRoutineControl(std::move(routine_arg), routine_receiver);
+  if (!routine_control) {
+    return;
+  }
+
+  AddRoutine(std::move(routine_control), std::move(routine_receiver),
+             std::move(routine_observer));
+}
+
+std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
+    ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+    mojo::PendingReceiver<mojom::RoutineControl>& routine_receiver) {
   switch (routine_arg->which()) {
     case mojom::RoutineArgument::Tag::kPrimeSearch:
-      AddRoutine(std::make_unique<PrimeSearchRoutineV2>(
-                     context_, routine_arg->get_prime_search()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<PrimeSearchRoutineV2>(
+          context_, routine_arg->get_prime_search());
     case mojom::RoutineArgument::Tag::kMemory:
-      AddRoutine(std::make_unique<MemoryRoutineV2>(context_,
-                                                   routine_arg->get_memory()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<MemoryRoutineV2>(context_,
+                                               routine_arg->get_memory());
     case mojom::RoutineArgument::Tag::kAudioDriver:
-      AddRoutine(std::make_unique<AudioDriverRoutine>(
-                     context_, routine_arg->get_audio_driver()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<AudioDriverRoutine>(
+          context_, routine_arg->get_audio_driver());
     case mojom::RoutineArgument::Tag::kCpuStress:
-      AddRoutine(std::make_unique<CpuStressRoutineV2>(
-                     context_, routine_arg->get_cpu_stress()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<CpuStressRoutineV2>(
+          context_, routine_arg->get_cpu_stress());
     case mojom::RoutineArgument::Tag::kUfsLifetime:
-      AddRoutine(std::make_unique<UfsLifetimeRoutine>(
-                     context_, routine_arg->get_ufs_lifetime()),
-                 std::move(routine_receiver));
-      break;
-    case mojom::RoutineArgument::Tag::kDiskRead:
-      if (auto routine =
-              DiskReadRoutine::Create(context_, routine_arg->get_disk_read());
-          routine.has_value()) {
-        AddRoutine(std::move(routine.value()), std::move(routine_receiver));
-      } else {
-        routine_receiver.ResetWithReason(
-            static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
-            routine.error());
+      return std::make_unique<UfsLifetimeRoutine>(
+          context_, routine_arg->get_ufs_lifetime());
+    case mojom::RoutineArgument::Tag::kDiskRead: {
+      auto routine =
+          DiskReadRoutine::Create(context_, routine_arg->get_disk_read());
+      if (routine.has_value()) {
+        return std::move(routine.value());
       }
-      break;
+      routine_receiver.ResetWithReason(
+          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
+          routine.error());
+
+      return nullptr;
+    }
     case mojom::RoutineArgument::Tag::kCpuCache:
-      AddRoutine(std::make_unique<CpuCacheRoutineV2>(
-                     context_, routine_arg->get_cpu_cache()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<CpuCacheRoutineV2>(context_,
+                                                 routine_arg->get_cpu_cache());
     case mojom::RoutineArgument::Tag::kVolumeButton:
-      AddRoutine(std::make_unique<VolumeButtonRoutine>(
-                     context_, routine_arg->get_volume_button()),
-                 std::move(routine_receiver));
-      break;
+      return std::make_unique<VolumeButtonRoutine>(
+          context_, routine_arg->get_volume_button());
     case mojom::RoutineArgument::Tag::kLedLitUp:
-      AddRoutine(std::make_unique<LedLitUpV2Routine>(
-                     context_, std::move(routine_arg->get_led_lit_up())),
-                 std::move(routine_receiver));
-      break;
-    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
+      return std::make_unique<LedLitUpV2Routine>(
+          context_, std::move(routine_arg->get_led_lit_up()));
+    case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
       LOG(ERROR) << "Routine Argument not recognized/supported";
       routine_receiver.ResetWithReason(
           static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
           "Routine Argument not recognized/supported");
-      break;
+      return nullptr;
+    }
   }
 }
 
@@ -101,13 +105,18 @@ void RoutineService::IsRoutineSupported(
 
 void RoutineService::AddRoutine(
     std::unique_ptr<BaseRoutineControl> routine,
-    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
+    mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
+        routine_observer) {
   auto routine_ptr = routine.get();
   mojo::ReceiverId receiver_id =
       receiver_set_.Add(std::move(routine), std::move(routine_receiver));
   routine_ptr->SetOnExceptionCallback(
       base::BindOnce(&RoutineService::OnRoutineException,
                      weak_ptr_factory_.GetWeakPtr(), receiver_id));
+  if (routine_observer.is_valid()) {
+    routine_ptr->SetObserver(std::move(routine_observer));
+  }
 }
 
 void RoutineService::OnRoutineException(mojo::ReceiverId receiver_id,

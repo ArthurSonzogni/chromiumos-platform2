@@ -168,6 +168,13 @@ class CrosHealthdDiagnosticsService final
       base::OnceCallback<void(ash::cros_healthd::mojom::RunRoutineResponsePtr)>
           callback);
 
+  // Runs a routine using an adapter for the v2 diagnostics API.
+  void RunRoutineWithAdapter(
+      ash::cros_healthd::mojom::RoutineArgumentPtr argument,
+      ash::cros_healthd::mojom::DiagnosticRoutineEnum routine_enum,
+      base::OnceCallback<void(ash::cros_healthd::mojom::RunRoutineResponsePtr)>
+          callback);
+
   // Callback for checking whether nvme-self-test is supported.
   void HandleNvmeSelfTestSupportedResponse(bool supported);
 
