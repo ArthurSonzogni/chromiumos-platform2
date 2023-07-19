@@ -42,7 +42,6 @@
 #include <base/test/simple_test_tick_clock.h>
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
-#include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/errors/error.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>

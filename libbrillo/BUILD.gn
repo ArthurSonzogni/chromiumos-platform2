@@ -531,8 +531,6 @@ if (use.test) {
         "brillo/dbus/data_serialization_test.cc",
         "brillo/dbus/dbus_method_invoker_test.cc",
         "brillo/dbus/dbus_object_test.cc",
-        "brillo/dbus/dbus_param_reader_test.cc",
-        "brillo/dbus/dbus_param_writer_test.cc",
         "brillo/dbus/dbus_signal_handler_test.cc",
         "brillo/dbus/dbus_signature_test.cc",
         "brillo/dbus/exported_object_manager_test.cc",

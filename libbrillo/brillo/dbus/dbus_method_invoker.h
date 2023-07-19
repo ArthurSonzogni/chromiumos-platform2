@@ -73,7 +73,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <brillo/dbus/data_serialization.h>
-#include <brillo/dbus/dbus_param_reader.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
