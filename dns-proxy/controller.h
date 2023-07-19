@@ -126,6 +126,7 @@ class Controller : public brillo::DBusDaemon {
   void OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent event,
                               const patchpanel::Client::VirtualDevice& device);
   void VirtualDeviceAdded(const patchpanel::Client::VirtualDevice& device);
+  void VirtualDeviceRemoved(const patchpanel::Client::VirtualDevice& device);
 
   // Triggered by the Chrome features client in response to checking
   // IsDNSProxyEnabled.

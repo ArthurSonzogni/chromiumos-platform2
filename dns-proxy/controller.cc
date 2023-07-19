@@ -482,12 +482,7 @@ void Controller::OnVirtualDeviceChanged(
       VirtualDeviceAdded(device);
       break;
     case patchpanel::Client::VirtualDeviceEvent::kRemoved:
-      // For b/266496850, we prevented ARC proxies from being terminated in
-      // order to preserve its namespace and IPv6 addresses. This allows less
-      // usage of IPv6 on ARC restarts. For the longer term solution, we'd want
-      // DNS proxy to use less IPv6 address.
-      // TODO(b/266496966): Re-add ARC proxies removal logic on ARC shutdown,
-      // once the IPv6 address limit problem is resolved.
+      VirtualDeviceRemoved(device);
       break;
     default:
       NOTREACHED();
@@ -498,6 +493,34 @@ void Controller::VirtualDeviceAdded(
     const patchpanel::Client::VirtualDevice& device) {
   if (patchpanel::Client::IsArcGuest(device.guest_type)) {
     RunProxy(Proxy::Type::kARC, device.phys_ifname);
+  }
+}
+
+void Controller::VirtualDeviceRemoved(
+    const patchpanel::Client::VirtualDevice& device) {
+  if (!patchpanel::Client::IsArcGuest(device.guest_type)) {
+    return;
+  }
+  // For b/266496850, we prevented ARC proxies from being terminated in
+  // order to preserve its namespace and IPv6 addresses. This allows less
+  // usage of IPv6 on ARC restarts. For the longer term solution, we'd want
+  // DNS proxy to use less IPv6 address.
+  // TODO(b/266496966): Re-add ARC proxies removal logic on ARC shutdown,
+  // once the IPv6 address limit problem is resolved.
+  // b/273741099: Only stops the ARC proxy if the ARC virtual Device is tracking
+  // a shill Cellular Device. b/266496850 does not happen on Cellular networks,
+  // this allows to synchronize the dns-proxy ARC instance and patchpanel for
+  // Cellular networks using multiplexed interfaces.
+  for (const auto& d : shill_->GetDevices()) {
+    // b/273741099: For multiplexed Cellular interfaces, consumers of
+    // patchpanel::VirtualDevice are expected to use the shill's Device
+    // kInterfaceProperty to compare with |phys_ifname|
+    if (d->ifname == device.phys_ifname) {
+      if (d->type == shill::Client::Device::Type::kCellular) {
+        KillProxy(Proxy::Type::kARC, device.phys_ifname);
+      }
+      return;
+    }
   }
 }
 
@@ -528,6 +551,12 @@ void Controller::OnDefaultDeviceChanged(
 
 void Controller::OnDeviceRemoved(const shill::Client::Device* const device) {
   if (!device) {
+    return;
+  }
+  // b/273741099: The ARC proxy for the Cellular Device is already destroyed
+  // when reacting to the patchpanel DBus Client VirtualDeviceEvent::kRemoved
+  // when the ARC Device is removed.
+  if (device->type == shill::Client::Device::Type::kCellular) {
     return;
   }
   KillProxy(Proxy::Type::kARC, device->ifname);
