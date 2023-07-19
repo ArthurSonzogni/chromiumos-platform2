@@ -77,6 +77,9 @@ class MulticastForwarder {
   struct Socket {
     base::ScopedFD fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+
+    // Keep track of last errno to avoid spammy logs.
+    int last_errno = 0;
   };
 
   // Bind will create a multicast socket and return its fd.

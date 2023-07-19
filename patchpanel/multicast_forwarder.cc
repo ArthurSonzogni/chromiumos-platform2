@@ -373,16 +373,17 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
                                 size_t len,
                                 const struct sockaddr* dst,
                                 socklen_t dst_len) {
+  auto* lan_socket = lan_socket_.find(dst->sa_family)->second.get();
   if (src_port == port_) {
-    int lan_fd = lan_socket_.find(dst->sa_family)->second->fd.get();
-    if (sendto(lan_fd, data, len, 0, dst, dst_len) < 0) {
-      // Ignore ENETDOWN: this can happen if the interface is not yet configured
-      if (errno != ENETDOWN) {
+    if (sendto(lan_socket->fd.get(), data, len, 0, dst, dst_len) < 0) {
+      if (lan_socket->last_errno != errno) {
         PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
                       << " from port " << src_port << " failed";
+        lan_socket->last_errno = errno;
       }
       return false;
     }
+    lan_socket->last_errno = 0;
     return true;
   }
 
@@ -435,13 +436,16 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   }
 
   if (temp_socket.SendTo(data, len, dst, dst_len) < 0) {
-    // Ignore ENETDOWN: this can happen if the interface is not yet configured
-    if (errno != ENETDOWN) {
+    // Use |lan_socket_| to track last errno. The only expected difference
+    // between |temp_socket| and |lan_socket_| is port number.
+    if (lan_socket->last_errno != errno) {
       PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
                     << " from port " << src_port << " failed";
+      lan_socket->last_errno = errno;
     }
     return false;
   }
+  lan_socket->last_errno = 0;
   return true;
 }
 
@@ -460,9 +464,14 @@ bool MulticastForwarder::SendToGuests(const void* data,
 
     // Use already created multicast fd.
     if (sendto(fd, data, len, 0, dst, dst_len) < 0) {
-      PLOG(WARNING) << "sendto " << socket.first.second << " failed";
+      if (socket.second->last_errno != errno) {
+        PLOG(WARNING) << "sendto " << socket.first.second << " failed";
+        socket.second->last_errno = errno;
+      }
       success = false;
+      continue;
     }
+    socket.second->last_errno = 0;
   }
   return success;
 }
