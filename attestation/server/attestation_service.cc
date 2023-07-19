@@ -1832,16 +1832,22 @@ bool AttestationService::CreateIdentity(int identity_features) {
             << GetIdentityFeaturesString(identity_features) << " and "
             << GetKeyTypeName(identity_key_type) << " AIK.";
   AttestationDatabase::Identity new_identity_pb;
-
   new_identity_pb.set_features(identity_features);
+
+  ASSIGN_OR_RETURN(
+      const hwsec::AttestationFrontend::CreateIdentityResult& identity_result,
+      hwsec_->CreateIdentity(identity_key_type),
+      _.WithStatus<TPMError>("Failed to create identity").LogError().As(false));
+  new_identity_pb.mutable_identity_key()->CopyFrom(
+      identity_result.identity_key);
+  new_identity_pb.mutable_identity_binding()->CopyFrom(
+      identity_result.identity_binding);
+
   if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     auto* identity_key = new_identity_pb.mutable_identity_key();
     identity_key->set_enrollment_id(database_pb->enrollment_id());
   }
-  if (!tpm_utility_->CreateIdentity(identity_key_type, &new_identity_pb)) {
-    LOG(ERROR) << __func__ << " failed to make a new identity.";
-    return false;
-  }
+
   std::string identity_key_blob_for_quote =
       new_identity_pb.identity_key().identity_key_blob();
 

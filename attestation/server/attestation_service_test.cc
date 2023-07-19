@@ -250,6 +250,23 @@ class AttestationServiceBaseTest : public testing::Test {
         .WillRepeatedly(ReturnValue(fake_mode));
     EXPECT_CALL(mock_hwsec_, CreateCertifiedKey)
         .WillRepeatedly(ReturnValue(CertifiedKey()));
+
+    attestation::IdentityKey identity_key_pb;
+    attestation::IdentityBinding identity_binding_pb;
+    identity_key_pb.set_identity_public_key_der("identity_public_key");
+    identity_key_pb.set_identity_key_blob("identity_key_blob");
+    identity_binding_pb.set_identity_public_key_der("identity_public_key_der");
+    identity_binding_pb.set_identity_public_key_tpm_format(
+        "identity_public_key_tpm_format");
+    identity_binding_pb.set_identity_binding("identity_binding");
+    identity_binding_pb.set_pca_public_key("pca_public_key");
+    identity_binding_pb.set_identity_label("identity_label");
+    hwsec::Attestation::CreateIdentityResult fake_create_identity_result{
+        .identity_key = identity_key_pb,
+        .identity_binding = identity_binding_pb,
+    };
+    EXPECT_CALL(mock_hwsec_, CreateIdentity)
+        .WillRepeatedly(ReturnValue(fake_create_identity_result));
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(
@@ -2530,6 +2547,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
   mock_database_.GetMutableProtobuf()->Clear();
   EXPECT_CALL(mock_tpm_utility_, CreateIdentity(_, _))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, CreateIdentity(_))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
