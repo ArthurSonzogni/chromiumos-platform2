@@ -577,6 +577,91 @@ TEST_F(DlcBaseTest, FactoryInstalledImageDataCorruption) {
   EXPECT_FALSE(base::PathExists(factory_image_path));
 }
 
+TEST_F(DlcBaseTest, UnofficialBuildsDeployDlc) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  // Place deployed images.
+  base::FilePath image_path = SetUpDlcDeployedImage(kThirdDlc);
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(false));
+
+  EXPECT_TRUE(dlc.Deploy(&err_));
+}
+
+TEST_F(DlcBaseTest, OfficialBuildsDoNotDeployDlc) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  // Place deployed images.
+  base::FilePath image_path = SetUpDlcDeployedImage(kThirdDlc);
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(true));
+
+  EXPECT_FALSE(dlc.Deploy(&err_));
+}
+
+TEST_F(DlcBaseTest, DeployingSkippedOnInstalledDLC) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  // Change state to `INSTALLED`.
+  dlc.mount_point_ = base::FilePath("foo-path");
+  EXPECT_CALL(mock_state_change_reporter_,
+              DlcStateChanged(CheckDlcStateProto(DlcState::INSTALLED, 1.0,
+                                                 "foo-path/root")));
+  dlc.ChangeState(DlcState::INSTALLED);
+
+  // Place deployed images.
+  base::FilePath image_path = SetUpDlcDeployedImage(kThirdDlc);
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(dlc.Deploy(&err_));
+}
+
+TEST_F(DlcBaseTest, DeployingSkippedOnInstallingDLC) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  // Change state to `INSTALLED`.
+  dlc.mount_point_ = base::FilePath("foo-path");
+  EXPECT_CALL(mock_state_change_reporter_,
+              DlcStateChanged(CheckDlcStateProto(DlcState::INSTALLING, 0, "")));
+  dlc.ChangeState(DlcState::INSTALLING);
+
+  // Place deployed images.
+  base::FilePath image_path = SetUpDlcDeployedImage(kThirdDlc);
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(dlc.Deploy(&err_));
+}
+
+TEST_F(DlcBaseTest, DeployedImageSizeCorruption) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  base::FilePath deployed_image_path = SetUpDlcDeployedImage(kThirdDlc);
+  EXPECT_TRUE(ResizeFile(deployed_image_path, 1));
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(dlc.Deploy(&err_));
+}
+
+TEST_F(DlcBaseTest, DeployedImageDataCorruption) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  base::FilePath deployed_image_path = SetUpDlcDeployedImage(kThirdDlc);
+  EXPECT_TRUE(WriteToFile(deployed_image_path, "foobar"));
+
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(dlc.Deploy(&err_));
+}
+
 TEST_F(DlcBaseTest, HasContent) {
   DlcBase dlc(kSecondDlc);
   dlc.Initialize();

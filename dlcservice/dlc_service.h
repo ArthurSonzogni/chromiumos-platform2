@@ -26,6 +26,7 @@
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_creator_interface.h"
 #include "dlcservice/system_state.h"
+#include "dlcservice/types.h"
 
 namespace dlcservice {
 
@@ -64,6 +65,14 @@ class DlcServiceInterface {
   //   is a failure. Uninstalling a DLC that is installing is also a failure.
   virtual bool Uninstall(const std::string& id, brillo::ErrorPtr* err) = 0;
 
+  // Create DLC slots and load deployed DLC image into the slots.
+  // Args:
+  //   id: The DLC ID that is to be deployed.
+  //   err: The error that's set when returned false.
+  // Return:
+  //   True on success, otherwise false.
+  virtual bool Deploy(const DlcId& id, brillo::ErrorPtr* err) = 0;
+
   // Returns a reference to a DLC object given a DLC ID. If the ID is not
   // supported, it will set the error and return |nullptr|.
   virtual DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
@@ -99,6 +108,7 @@ class DlcService : public DlcServiceInterface {
   bool Install(const InstallRequest& install_request,
                brillo::ErrorPtr* err) override;
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
+  bool Deploy(const DlcId& id, brillo::ErrorPtr* err) override;
   DlcIdList GetInstalled() override;
   DlcIdList GetExistingDlcs() override;
   DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;

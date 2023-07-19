@@ -332,6 +332,12 @@ bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
   return result;
 }
 
+bool DlcService::Deploy(const DlcId& id, brillo::ErrorPtr* err) {
+  DCHECK(err);
+  auto* dlc = GetDlc(id, err);
+  return dlc && dlc->Deploy(err);
+}
+
 DlcInterface* DlcService::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
   const auto& iter = supported_.find(id);
   if (iter == supported_.end()) {

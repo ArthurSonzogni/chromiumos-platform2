@@ -80,6 +80,10 @@ class BaseTest : public testing::Test {
   // generated factory install image.
   base::FilePath SetUpDlcFactoryImage(const DlcId& id);
 
+  // Will create |path|/|id|/|package|/dlc.img file. Will return the path to the
+  // generated deployed image.
+  base::FilePath SetUpDlcDeployedImage(const DlcId& id);
+
   // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
   void SetUpDlcWithSlots(const DlcId& id);
 
@@ -97,6 +101,7 @@ class BaseTest : public testing::Test {
   base::FilePath manifest_path_;
   base::FilePath preloaded_content_path_;
   base::FilePath factory_install_path_;
+  base::FilePath deployed_content_path_;
   base::FilePath content_path_;
   base::FilePath prefs_path_;
   base::FilePath users_path_;

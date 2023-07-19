@@ -50,6 +50,7 @@ class SystemState {
       const base::FilePath& manifest_dir,
       const base::FilePath& preloaded_content_dir,
       const base::FilePath& factory_install_dir,
+      const base::FilePath& deployed_content_dir,
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
@@ -77,6 +78,7 @@ class SystemState {
   const base::FilePath& manifest_dir() const;
   const base::FilePath& preloaded_content_dir() const;
   const base::FilePath& factory_install_dir() const;
+  const base::FilePath& deployed_content_dir() const;
   const base::FilePath& content_dir() const;
   const base::FilePath& prefs_dir() const;
   base::FilePath dlc_prefs_dir() const;
@@ -122,6 +124,7 @@ class SystemState {
       const base::FilePath& manifest_dir,
       const base::FilePath& preloaded_content_dir,
       const base::FilePath& factory_install_dir,
+      const base::FilePath& deployed_content_dir,
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
@@ -151,6 +154,7 @@ class SystemState {
   base::FilePath manifest_dir_;
   base::FilePath preloaded_content_dir_;
   base::FilePath factory_install_dir_;
+  base::FilePath deployed_content_dir_;
   base::FilePath content_dir_;
   base::FilePath prefs_dir_;
   base::FilePath users_dir_;

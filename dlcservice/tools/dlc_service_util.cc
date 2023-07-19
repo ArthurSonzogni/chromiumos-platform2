@@ -112,6 +112,9 @@ class DlcServiceUtil : public brillo::Daemon {
     // "--purge" related flags.
     DEFINE_bool(purge, false, "Purge a single DLC.");
 
+    // "--deploy" related flags.
+    DEFINE_bool(deploy, false, "Load a deployed DLC.");
+
     // "--install", "--purge", and "--uninstall" related flags.
     DEFINE_string(id, "", "The ID of the DLC.");
 
@@ -130,12 +133,12 @@ class DlcServiceUtil : public brillo::Daemon {
     brillo::FlagHelper::Init(argc_, argv_, "dlcservice_util");
 
     // Enforce mutually exclusive flags.
-    vector<bool> exclusive_flags = {FLAGS_install,   FLAGS_uninstall,
-                                    FLAGS_purge,     FLAGS_list,
-                                    FLAGS_dlc_state, FLAGS_get_existing};
+    vector<bool> exclusive_flags = {
+        FLAGS_install, FLAGS_uninstall, FLAGS_purge,       FLAGS_deploy,
+        FLAGS_list,    FLAGS_dlc_state, FLAGS_get_existing};
     if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
       LOG(ERROR) << "Only one of --install, --uninstall, --purge, --list, "
-                    "--get_existing, --dlc_state must be set.";
+                    "--deploy, --get_existing, --dlc_state must be set.";
       QuitWithExitCode(EX_SOFTWARE);
       return;
     }
@@ -196,6 +199,14 @@ class DlcServiceUtil : public brillo::Daemon {
     // Called with "--purge".
     if (FLAGS_purge) {
       if (Uninstall(true)) {
+        Quit();
+        return;
+      }
+    }
+
+    // Called with "--deploy".
+    if (FLAGS_deploy) {
+      if (Deploy()) {
         Quit();
         return;
       }
@@ -341,6 +352,18 @@ class DlcServiceUtil : public brillo::Daemon {
     }
     LOG(INFO) << "Successfully " << (purge ? "purged" : "uninstalled")
               << " DLC: " << dlc_id_;
+    return true;
+  }
+
+  bool Deploy() {
+    brillo::ErrorPtr err;
+    LOG(INFO) << "Attempting to load deployed DLC image: " << dlc_id_;
+    if (!dlc_service_proxy_->Deploy(dlc_id_, &err)) {
+      LOG(ERROR) << "Failed to load deployed DLC: " << dlc_id_ << ", "
+                 << ErrorPtrStr(err);
+      return false;
+    }
+    LOG(INFO) << "Successfully loaded deployed DLC: " << dlc_id_;
     return true;
   }
 

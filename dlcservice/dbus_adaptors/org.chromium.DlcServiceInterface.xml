@@ -68,6 +68,16 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="Deploy">
+    <tp:docstring>
+      Create DLC slots and load deployed DLC image into the slots.
+    </tp:docstring>
+    <arg name="id" type="s" direction="in">
+      <tp:docstring>
+        ID of the DLC.
+      </tp:docstring>
+    </arg>
+  </method>
   <method name="GetInstalled">
     <tp:docstring>
       Returns a list of installed Downloadable Content (DLC) IDs that are

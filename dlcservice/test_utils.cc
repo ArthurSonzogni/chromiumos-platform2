@@ -100,8 +100,8 @@ void BaseTest::SetUp() {
       &mock_state_change_reporter_, std::move(mock_boot_slot_),
       std::move(mock_metrics), std::move(mock_system_properties),
       manifest_path_, preloaded_content_path_, factory_install_path_,
-      content_path_, prefs_path_, users_path_, verification_file_path_,
-      resume_in_progress_path_, &clock_,
+      deployed_content_path_, content_path_, prefs_path_, users_path_,
+      verification_file_path_, resume_in_progress_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 #if USE_LVM_STATEFUL_PARTITION
@@ -117,6 +117,8 @@ void BaseTest::SetUpFilesAndDirectories() {
       JoinPaths(scoped_temp_dir_.GetPath(), "preloaded_stateful");
   factory_install_path_ =
       JoinPaths(scoped_temp_dir_.GetPath(), "factory_install");
+  deployed_content_path_ =
+      JoinPaths(scoped_temp_dir_.GetPath(), "deployed_stateful");
   content_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "stateful");
   prefs_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "var_lib_dlcservice");
   users_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "users");
@@ -129,6 +131,7 @@ void BaseTest::SetUpFilesAndDirectories() {
   base::CreateDirectory(manifest_path_);
   base::CreateDirectory(preloaded_content_path_);
   base::CreateDirectory(factory_install_path_);
+  base::CreateDirectory(deployed_content_path_);
   base::CreateDirectory(content_path_);
   base::CreateDirectory(prefs_path_);
   base::CreateDirectory(users_path_);
@@ -176,6 +179,10 @@ base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
 
 base::FilePath BaseTest::SetUpDlcFactoryImage(const DlcId& id) {
   return SetUpImage(factory_install_path_, id);
+}
+
+base::FilePath BaseTest::SetUpDlcDeployedImage(const DlcId& id) {
+  return SetUpImage(deployed_content_path_, id);
 }
 
 // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.

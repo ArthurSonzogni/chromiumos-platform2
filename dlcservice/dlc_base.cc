@@ -22,6 +22,7 @@
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include "dlcservice/error.h"
 #include "dlcservice/prefs.h"
@@ -57,6 +58,8 @@ bool DlcBase::Initialize() {
                                     package_, kDlcImageFileName);
   factory_install_image_path_ = JoinPaths(system_state->factory_install_dir(),
                                           id_, package_, kDlcImageFileName);
+  deployed_image_path_ = JoinPaths(system_state->deployed_content_dir(), id_,
+                                   package_, kDlcImageFileName);
 
   state_.set_state(DlcState::NOT_INSTALLED);
   state_.set_id(id_);
@@ -475,6 +478,56 @@ bool DlcBase::FactoryInstallCopier() {
   return true;
 }
 
+bool DlcBase::DeployCopier(ErrorPtr* err) {
+  int64_t deployed_image_size;
+  if (!base::GetFileSize(deployed_image_path_, &deployed_image_size)) {
+    auto err_str = base::StringPrintf("Failed to get deployed DLC (%s) size.",
+                                      id_.c_str());
+    *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
+    return false;
+  }
+  if (deployed_image_size != manifest_->size()) {
+    auto err_str = base::StringPrintf(
+        "Deployed DLC (%s) is (%" PRId64 ") different than the size (%" PRId64
+        ") in the manifest.",
+        id_.c_str(), deployed_image_size, manifest_->size());
+    *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
+    return false;
+  }
+
+  // Before touching the image, we need to mark it as unverified.
+  MarkUnverified();
+
+  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+  vector<uint8_t> image_sha256;
+  if (!CopyAndHashFile(deployed_image_path_, image_path, manifest_->size(),
+                       &image_sha256)) {
+    auto err_str =
+        base::StringPrintf("Failed to copy deployed DLC (%s) into path %s",
+                           id_.c_str(), image_path.value().c_str());
+    *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
+    return false;
+  }
+
+  auto manifest_image_sha256 = manifest_->image_sha256();
+  if (image_sha256 != manifest_image_sha256) {
+    auto err_str = base::StringPrintf(
+        "Image is corrupted or modified for DLC=%s. Expected: %s Found: %s",
+        id_.c_str(),
+        base::HexEncode(manifest_image_sha256.data(),
+                        manifest_image_sha256.size())
+            .c_str(),
+        base::HexEncode(image_sha256.data(), image_sha256.size()).c_str());
+    *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
+    return false;
+  }
+
+  if (!MarkVerified())
+    LOG(ERROR) << "Failed to mark the image verified for DLC=" << id_;
+
+  return true;
+}
+
 bool DlcBase::Install(ErrorPtr* err) {
   switch (state_.state()) {
     case DlcState::NOT_INSTALLED: {
@@ -882,6 +935,50 @@ bool DlcBase::SetReserve(std::optional<bool> reserve) {
     }
   }
   return reserve_;
+}
+
+bool DlcBase::Deploy(ErrorPtr* err) {
+  // Only allow deploy in unofficial build, e.g. test image.
+  if (SystemState::Get()->system_properties()->IsOfficialBuild()) {
+    *err = Error::Create(FROM_HERE, kErrorInternal,
+                         "Deploy is not allowed in official build.");
+    return false;
+  }
+  if (state_.state() == DlcState::NOT_INSTALLED) {
+    // Only deploy not already installed DLC.
+    if (!base::PathExists(deployed_image_path_)) {
+      *err = Error::Create(
+          FROM_HERE, kErrorNoImageFound,
+          base::StringPrintf(
+              "The DLC=%s is not found in deployed image path=%s.", id_.c_str(),
+              deployed_image_path_.value().c_str()));
+      return false;
+    }
+
+    if (!CreateDlc(err)) {
+      ErrorPtr tmp_err;
+      if (!CancelInstall(*err, &tmp_err))
+        LOG(ERROR) << "Failed to cancel deploying DLC=" << id_;
+      return false;
+    }
+
+    if (!DeployCopier(err)) {
+      LOG(ERROR) << "Failed to load deployed image for DLC=" << id_;
+      ErrorPtr tmp_err;
+      if (!CancelInstall(*err, &tmp_err))
+        LOG(ERROR) << "Failed to cancel deploying DLC=" << id_;
+      return false;
+    }
+
+    return true;
+  } else {
+    *err = Error::Create(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Trying to deploy an %s DLC=%s",
+                           DlcState::State_Name(state_.state()).c_str(),
+                           id_.c_str()));
+    return false;
+  }
 }
 
 }  // namespace dlcservice

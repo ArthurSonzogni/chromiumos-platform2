@@ -109,6 +109,9 @@ class DlcInterface {
   // Toggle for DLC to be reserved.
   // Will return the value set, pass `nullptr` to use as getter.
   virtual bool SetReserve(std::optional<bool> reserve) = 0;
+
+  // Create DLC slots and load deployed DLC image into the slots.
+  virtual bool Deploy(brillo::ErrorPtr* err) = 0;
 };
 
 }  // namespace dlcservice

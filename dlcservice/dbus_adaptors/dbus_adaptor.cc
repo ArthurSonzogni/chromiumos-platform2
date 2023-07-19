@@ -54,6 +54,10 @@ bool DBusService::Purge(brillo::ErrorPtr* err, const string& id_in) {
   return dlc_service_->Uninstall(id_in, err);
 }
 
+bool DBusService::Deploy(brillo::ErrorPtr* err, const string& id_in) {
+  return dlc_service_->Deploy(id_in, err);
+}
+
 bool DBusService::GetInstalled(brillo::ErrorPtr* err, vector<string>* ids_out) {
   *ids_out = dlc_service_->GetInstalled();
   return true;

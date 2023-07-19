@@ -62,6 +62,7 @@ class DlcBase : public DlcInterface {
   bool MakeReadyForUpdate() const override;
   void ChangeProgress(double progress) override;
   bool SetReserve(std::optional<bool> reserve) override;
+  bool Deploy(brillo::ErrorPtr* err) override;
 
  protected:
   friend class DBusServiceTest;
@@ -89,6 +90,8 @@ class DlcBase : public DlcInterface {
   FRIEND_TEST(DlcBaseTest, ReserveInstall);
   FRIEND_TEST(DlcBaseTest, UnReservedInstall);
   FRIEND_TEST(DlcBaseTest, IsInstalledButUnmounted);
+  FRIEND_TEST(DlcBaseTest, DeployingSkippedOnInstalledDLC);
+  FRIEND_TEST(DlcBaseTest, DeployingSkippedOnInstallingDLC);
 
   virtual bool MakeReadyForUpdateInternal() const;
 
@@ -118,6 +121,9 @@ class DlcBase : public DlcInterface {
 
   // Helper used to load in (copy + cleanup) factory installed DLC.
   bool FactoryInstallCopier();
+
+  // Helper used to load in (copy + cleanup) deployed DLC.
+  bool DeployCopier(brillo::ErrorPtr* err);
 
   // Mounts the DLC image.
   bool Mount(brillo::ErrorPtr* err);
@@ -167,6 +173,7 @@ class DlcBase : public DlcInterface {
   base::FilePath prefs_package_path_;
   base::FilePath preloaded_image_path_;
   base::FilePath factory_install_image_path_;
+  base::FilePath deployed_image_path_;
 
   base::WeakPtrFactory<DlcBase> weak_ptr_factory_;
 };
