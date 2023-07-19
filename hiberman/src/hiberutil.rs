@@ -559,6 +559,23 @@ pub fn get_ram_size() -> u64 {
     panic!("Could not determine RAM size");
 }
 
+// Returns true if Intel Keylocker is enabled.
+pub fn intel_keylocker_enabled() -> Result<bool> {
+    if !cfg!(target_arch = "x86_64") {
+        return Ok(false);
+    }
+
+    let file = File::open("/proc/crypto")?;
+
+    for line in BufReader::new(file).lines() {
+        if line?.contains("aeskl") {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
 /// Get the time needed by the hibernated kernel to restore the system.
 pub fn get_kernel_restore_time() -> Result<Duration> {
     let output =
