@@ -29,7 +29,7 @@ suggested for users of multiple IMEs.
 From M112, `cros-im` is installed by apt automatically.
 
 ## Building with pdebuild
-.deb packages for bullseye on supported architectures (arm64, armhf, amd64,
+.deb packages for bullseye and bookworm on supported architectures (arm64, amd64,
 i386) can be built and installed using the following commands.
 
 **Crostini users:** Please note that these do not work on a Crostini terminal
@@ -41,8 +41,9 @@ git clone https://chromium.googlesource.com/chromiumos/platform2
 cd platform2/vm_tools/cros_im
 
 # Build for a specific architecture
+DIST=<distribution>
 ARCH=<architecture>
-sudo ./build-packages ${ARCH}
+sudo ./build-packages ${DIST} ${ARCH}
 
 # Install the resultant package for your device
 sudo apt install ./bullseye_cros_im_debs/*${ARCH}.deb
