@@ -770,8 +770,6 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
-  DCHECK(!key_label.empty());
-
   // Identify the key via `key_label` instead of `key_data_.label()`, as the
   // latter can be empty for legacy keysets.
   std::unique_ptr<VaultKeyset> vault_keyset =
@@ -2960,7 +2958,7 @@ void AuthSession::AddAuthFactor(
     const user_data_auth::AddAuthFactorRequest& request,
     StatusCallback on_done) {
   // Preconditions:
-  DCHECK_EQ(request.auth_session_id(), serialized_token_);
+  CHECK_EQ(request.auth_session_id(), serialized_token_);
   if (!authorized_intents_.contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInAddAuthFactor),

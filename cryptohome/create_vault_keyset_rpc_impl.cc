@@ -58,7 +58,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     const user_data_auth::CreateVaultKeysetRequest& request,
     StatusCallback on_done) {
   // Preconditions:
-  DCHECK_EQ(request.auth_session_id(), auth_session_->serialized_token());
+  CHECK_EQ(request.auth_session_id(), auth_session_->serialized_token());
   // At this point AuthSession should be authenticated as it needs
   // FileSystemKeys to wrap the new credentials.
   if (!auth_session_->authorized_intents().contains(AuthIntent::kDecrypt)) {

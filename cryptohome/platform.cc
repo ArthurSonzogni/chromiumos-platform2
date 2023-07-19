@@ -148,11 +148,6 @@ namespace cryptohome {
 
 const char kLoopPrefix[] = "/dev/loop";
 
-void DcheckIsNonemptyAbsolutePath(const base::FilePath& path) {
-  DCHECK(!path.empty());
-  DCHECK(path.IsAbsolute()) << "path=" << path;
-}
-
 // TODO(b/232566569): Pass dependencies (lvm, loop device manager) into platform
 // explicitly instead of creating in place.
 Platform::Platform()
@@ -525,7 +520,7 @@ bool Platform::GetQuotaProjectId(const base::FilePath& path,
                 << static_cast<int>(err);
     return false;
   }
-  DCHECK(fd.is_valid());
+  CHECK(fd.is_valid());
 
   struct fsxattr fsx = {};
   if (ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx) < 0) {
@@ -554,7 +549,7 @@ bool Platform::SetQuotaProjectId(const base::FilePath& path, int project_id) {
                 << static_cast<int>(err);
     return false;
   }
-  DCHECK(fd.is_valid());
+  CHECK(fd.is_valid());
 
   int error = 0;
   return SetQuotaProjectIdWithFd(project_id, fd.get(), &error);

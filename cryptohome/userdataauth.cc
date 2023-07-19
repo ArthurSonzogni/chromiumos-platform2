@@ -1176,11 +1176,6 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
     }
   }
 
-  // |force| and |skipped| cannot be true at the same time. If |force| is true,
-  // then we'll not skip over any stale mount because there are open files, so
-  // |skipped| must be false.
-  DCHECK(!(force && skipped));
-
   return skipped;
 }
 
@@ -2107,7 +2102,7 @@ bool UserDataAuth::RemoveFirmwareManagementParameters() {
 
 const brillo::SecureBlob& UserDataAuth::GetSystemSalt() {
   AssertOnOriginThread();
-  DCHECK_NE(system_salt_.size(), 0)
+  CHECK_NE(system_salt_.size(), 0)
       << "Cannot call GetSystemSalt before initialization";
   return system_salt_;
 }
@@ -2633,7 +2628,7 @@ CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
   MountStatus status = session->MountGuest();
   ReportTimerStop(kMountGuestExTimer);
   if (!status.ok()) {
-    DCHECK(status->mount_error() != MOUNT_ERROR_NONE);
+    CHECK(status->mount_error() != MOUNT_ERROR_NONE);
     LOG(ERROR) << "Finished mounting with status code: "
                << status->mount_error();
     RemoveInactiveUserSession(guest_user_);

@@ -149,7 +149,7 @@ std::string GenerateFuzzedDBusMethodName(
   // The value to return if the code below fails to generate a valid one. It
   // must satisfy D-Bus restrictions on method names (e.g., be nonempty).
   static constexpr char kFallbackName[] = "foo";
-  DCHECK(dbus_validate_member(kFallbackName, /*error=*/nullptr));
+  CHECK(dbus_validate_member(kFallbackName, /*error=*/nullptr));
 
   const brillo::dbus_utils::DBusInterface* const dbus_interface =
       dbus_object.FindInterface(dbus_interface_name);

@@ -26,9 +26,9 @@ bool AddEcryptfsAuthToken(  // NOLINT(runtime/int)
     const brillo::SecureBlob& key,
     const std::string& key_sig,
     const brillo::SecureBlob& salt) {
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_MAX_KEY_BYTES), key.size());
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SIG_SIZE) * 2, key_sig.length());
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SALT_SIZE), salt.size());
+  CHECK_EQ(static_cast<size_t>(ECRYPTFS_MAX_KEY_BYTES), key.size());
+  CHECK_EQ(static_cast<size_t>(ECRYPTFS_SIG_SIZE) * 2, key_sig.length());
+  CHECK_EQ(static_cast<size_t>(ECRYPTFS_SALT_SIZE), salt.size());
 
   struct ecryptfs_auth_tok auth_token;
 

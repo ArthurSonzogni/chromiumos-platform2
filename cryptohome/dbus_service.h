@@ -38,7 +38,7 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
     // Note that the initialization should be done after setting the options.
     CHECK(service_->Initialize(nullptr));
 
-    DCHECK(!dbus_object_);
+    CHECK(!dbus_object_);
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_,
         dbus::ObjectPath(::user_data_auth::kUserDataAuthServicePath));

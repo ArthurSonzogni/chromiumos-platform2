@@ -821,7 +821,7 @@ base::UnguessableToken FakePlatform::CreateUnguessableToken() {
 // Test API
 
 void FakePlatform::SetSystemSaltForLibbrillo(const brillo::SecureBlob& salt) {
-  DCHECK(!old_salt_);
+  CHECK(!old_salt_);
   std::string* brillo_salt = new std::string();
   brillo_salt->resize(salt.size());
   brillo_salt->assign(reinterpret_cast<const char*>(salt.data()), salt.size());

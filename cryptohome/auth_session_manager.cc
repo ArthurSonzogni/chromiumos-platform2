@@ -60,7 +60,7 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   // We should never, ever, be able to get a token collision.
   const auto& token = auth_session->token();
   auto iter = auth_sessions_.lower_bound(token);
-  DCHECK(iter == auth_sessions_.end() || iter->first != token)
+  CHECK(iter == auth_sessions_.end() || iter->first != token)
       << "AuthSession token collision";
 
   // Add an entry to the session map. Note that we're deliberately initializing
