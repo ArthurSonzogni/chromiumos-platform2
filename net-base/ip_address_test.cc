@@ -78,6 +78,20 @@ TEST(IPAddressTest, CreateFromString) {
   EXPECT_EQ(std::nullopt, IPAddress::CreateFromString("::1/10"));
 }
 
+TEST(IPAddressTest, CreateFromStringWithFamily) {
+  // Correct family.
+  EXPECT_NE(std::nullopt, IPAddress::CreateFromString(
+                              "192.168.10.1", net_base::IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt,
+            IPAddress::CreateFromString("::1", net_base::IPFamily::kIPv6));
+
+  // Wrong family.
+  EXPECT_EQ(std::nullopt, IPAddress::CreateFromString(
+                              "192.168.10.1", net_base::IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt,
+            IPAddress::CreateFromString("::1", net_base::IPFamily::kIPv4));
+}
+
 TEST(IPAddressTest, CreateFromBytes) {
   constexpr uint8_t ipv4_bytes[4] = {192, 168, 10, 1};
   const auto ipv4_addr = *IPAddress::CreateFromBytes(ipv4_bytes);
@@ -90,6 +104,25 @@ TEST(IPAddressTest, CreateFromBytes) {
   const auto ipv6_addr = *IPAddress::CreateFromBytes(ipv6_bytes);
   EXPECT_EQ(ipv6_addr.GetFamily(), IPFamily::kIPv6);
   EXPECT_EQ(ipv6_addr.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
+}
+
+TEST(IPAddressTest, CreateFromBytesWithFamily) {
+  constexpr uint8_t ipv4_bytes[4] = {192, 168, 10, 1};
+  constexpr uint8_t ipv6_bytes[16] = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+                                      0x7e, 0xbf, 0x14, 0xc5};
+
+  // Correct family.
+  EXPECT_NE(std::nullopt, net_base::IPAddress::CreateFromBytes(
+                              ipv4_bytes, net_base::IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt, net_base::IPAddress::CreateFromBytes(
+                              ipv6_bytes, net_base::IPFamily::kIPv6));
+
+  // Wrong family.
+  EXPECT_EQ(std::nullopt, net_base::IPAddress::CreateFromBytes(
+                              ipv4_bytes, net_base::IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt, net_base::IPAddress::CreateFromBytes(
+                              ipv6_bytes, net_base::IPFamily::kIPv4));
 }
 
 TEST(IPAddressTest, IsZero) {
@@ -133,7 +166,7 @@ TEST(IPAddressTest, GetAddressLength) {
   EXPECT_EQ(IPAddress(IPFamily::kIPv6).GetAddressLength(), 16);
 }
 
-TEST(IPCIDR, CreateFromCIDRString) {
+TEST(IPCIDRTest, CreateFromCIDRString) {
   const auto cidr1 = IPCIDR::CreateFromCIDRString("192.168.10.1/25");
   ASSERT_TRUE(cidr1);
   EXPECT_EQ(cidr1->GetFamily(), IPFamily::kIPv4);
@@ -148,7 +181,7 @@ TEST(IPCIDR, CreateFromCIDRString) {
   EXPECT_EQ(cidr2->prefix_length(), 25);
 }
 
-TEST(IPCIDR, CreateFromCIDRString_Fail) {
+TEST(IPCIDRTest, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/-1"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10.1/33"));
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("192.168.10/24"));
@@ -156,7 +189,23 @@ TEST(IPCIDR, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/130"));
 }
 
-TEST(IPCIDR, CreateFromStringAndPrefix) {
+TEST(IPCIDRTest, CreateFromCIDRStringWithFamily) {
+  // Correct family.
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromCIDRString(
+                              "192.168.10.1/25", net_base::IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt,
+            IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/25",
+                                         net_base::IPFamily::kIPv6));
+
+  // Wrong family.
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromCIDRString(
+                              "192.168.10.1/25", net_base::IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt,
+            IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/25",
+                                         net_base::IPFamily::kIPv4));
+}
+
+TEST(IPCIDRTest, CreateFromStringAndPrefix) {
   const auto cidr1 = IPCIDR::CreateFromStringAndPrefix("192.168.10.1", 25);
   ASSERT_TRUE(cidr1);
   EXPECT_EQ(cidr1->GetFamily(), IPFamily::kIPv4);
@@ -171,7 +220,21 @@ TEST(IPCIDR, CreateFromStringAndPrefix) {
   EXPECT_EQ(cidr2->prefix_length(), 64);
 }
 
-TEST(IPCIDR, CreateFromAddressAndPrefix) {
+TEST(IPCIDRTest, CreateFromStringAndPrefixWithFamily) {
+  // Correct family.
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
+                              "192.168.10.1", 25, net_base::IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
+                              "fe80:1000::", 64, net_base::IPFamily::kIPv6));
+
+  // Wrong family.
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
+                              "192.168.10.1", 25, net_base::IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
+                              "fe80:1000::", 64, net_base::IPFamily::kIPv4));
+}
+
+TEST(IPCIDRTest, CreateFromAddressAndPrefix) {
   const IPv4Address ipv4_addr(192, 168, 10, 1);
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv4_addr), 0));
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv4_addr), 25));
@@ -183,7 +246,7 @@ TEST(IPCIDR, CreateFromAddressAndPrefix) {
   ASSERT_TRUE(IPCIDR::CreateFromAddressAndPrefix(IPAddress(ipv6_addr), 128));
 }
 
-TEST(IPCIDR, ConstexprConstructor) {
+TEST(IPCIDRTest, ConstexprConstructor) {
   constexpr IPv4Address ipv4_addr(192, 168, 10, 1);
   constexpr IPv4CIDR ipv4_cidr(ipv4_addr);
 
@@ -193,7 +256,7 @@ TEST(IPCIDR, ConstexprConstructor) {
   EXPECT_EQ(cidr2.address().ToString(), ipv4_addr.ToString());
 }
 
-TEST(IPCIDR, FamilyConstructor) {
+TEST(IPCIDRTest, FamilyConstructor) {
   constexpr IPCIDR ipv4_default(IPFamily::kIPv4);
   EXPECT_EQ(ipv4_default.GetFamily(), IPFamily::kIPv4);
   EXPECT_EQ(ipv4_default.ToString(), "0.0.0.0/0");
@@ -203,7 +266,7 @@ TEST(IPCIDR, FamilyConstructor) {
   EXPECT_EQ(ipv6_default.ToString(), "::/0");
 }
 
-TEST(IPCIDR, GetPrefixAddress) {
+TEST(IPCIDRTest, GetPrefixAddress) {
   const auto cidr1 = *IPCIDR::CreateFromCIDRString("192.168.10.123/24");
   const auto prefix1 = cidr1.GetPrefixAddress();
   EXPECT_EQ(prefix1.GetFamily(), IPFamily::kIPv4);
@@ -215,14 +278,14 @@ TEST(IPCIDR, GetPrefixAddress) {
   EXPECT_EQ(prefix2.ToString(), "2401::");
 }
 
-TEST(IPCIDR, GetBroadcast) {
+TEST(IPCIDRTest, GetBroadcast) {
   const auto cidr1 = *IPCIDR::CreateFromCIDRString("192.168.10.123/24");
   const auto broadcast1 = cidr1.GetBroadcast();
   EXPECT_EQ(broadcast1.GetFamily(), IPFamily::kIPv4);
   EXPECT_EQ(broadcast1.ToString(), "192.168.10.255");
 }
 
-TEST(IPCIDR, InSameSubnetWith) {
+TEST(IPCIDRTest, InSameSubnetWith) {
   const auto cidr1 = *IPCIDR::CreateFromCIDRString("192.168.10.123/24");
   EXPECT_TRUE(cidr1.InSameSubnetWith(IPAddress(IPv4Address(192, 168, 10, 1))));
   EXPECT_TRUE(
@@ -247,7 +310,7 @@ TEST(IPCIDR, InSameSubnetWith) {
       cidr2.InSameSubnetWith(IPAddress(*IPv6Address::CreateFromString("::6"))));
 }
 
-TEST(IPCIDR, ToString) {
+TEST(IPCIDRTest, ToString) {
   const std::string cidr_string1 = "192.168.10.123/24";
   const auto cidr1 = *IPCIDR::CreateFromCIDRString(cidr_string1);
   EXPECT_EQ(cidr1.ToString(), cidr_string1);
@@ -261,7 +324,7 @@ TEST(IPCIDR, ToString) {
   LOG(INFO) << "cidr2 = " << cidr2;
 }
 
-TEST(IPCIDR, ToNetmask) {
+TEST(IPCIDRTest, ToNetmask) {
   const auto cidr1 = *IPCIDR::CreateFromCIDRString("192.168.2.1/0");
   EXPECT_EQ(cidr1.ToNetmask(), IPAddress(IPv4Address(0, 0, 0, 0)));
 

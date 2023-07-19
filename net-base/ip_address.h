@@ -45,16 +45,26 @@ class NET_BASE_EXPORT IPAddress {
  public:
   // Creates the IPAddress from IPv4 dotted-decimal notation or IPv6 network
   // address format.
+  // If |family| is not nullopt, then only returns the valid IP address with the
+  // assigned IP family.
   static std::optional<IPAddress> CreateFromString(
-      const std::string& address_string);
-  static std::optional<IPAddress> CreateFromString(const char* address_string);
+      const std::string& address_string,
+      std::optional<IPFamily> family = std::nullopt);
+  static std::optional<IPAddress> CreateFromString(
+      const char* address_string,
+      std::optional<IPFamily> family = std::nullopt);
 
   // Creates the IPAddress from the raw byte buffer |bytes|.
   // Returns std::nullopt if |bytes|'s size is not the same as
   // IPv4Address::kAddressLength or IPv6Address::kAddressLength.
-  static std::optional<IPAddress> CreateFromBytes(base::span<const char> bytes);
+  // If |family| is not nullopt, then only returns the valid IP address with the
+  // assigned IP family.
   static std::optional<IPAddress> CreateFromBytes(
-      base::span<const uint8_t> bytes);
+      base::span<const char> bytes,
+      std::optional<IPFamily> family = std::nullopt);
+  static std::optional<IPAddress> CreateFromBytes(
+      base::span<const uint8_t> bytes,
+      std::optional<IPFamily> family = std::nullopt);
 
   // Creates the IPAddress by the family. The created address is all-zero.
   // (i.e. "0.0.0.0" for IPv4, "::" for IPv6)
@@ -107,12 +117,15 @@ class NET_BASE_EXPORT IPCIDR {
   // Creates the CIDR from either IPv4 or IPv6 CIDR notation.
   // Returns std::nullopt if the string format is invalid.
   static std::optional<IPCIDR> CreateFromCIDRString(
-      const std::string& cidr_string);
+      const std::string& cidr_string,
+      std::optional<IPFamily> family = std::nullopt);
 
   // Creates the CIDR from the IP address notation string and the prefix length.
   // Returns std::nullopt if the string format or the prefix length is invalid.
   static std::optional<IPCIDR> CreateFromStringAndPrefix(
-      const std::string& address_string, int prefix_length);
+      const std::string& address_string,
+      int prefix_length,
+      std::optional<IPFamily> family = std::nullopt);
 
   // Creates the CIDR from the Address and the prefix length. Returns
   // std::nullopt if the prefix length is invalid.

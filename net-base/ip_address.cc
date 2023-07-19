@@ -38,21 +38,25 @@ std::string ToString(IPFamily family) {
 
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
-    const std::string& address_string) {
-  return CreateFromString(address_string.c_str());
+    const std::string& address_string, std::optional<IPFamily> family) {
+  return CreateFromString(address_string.c_str(), family);
 }
 
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
-    const char* address_string) {
-  const auto ipv4 = IPv4Address::CreateFromString(address_string);
-  if (ipv4) {
-    return IPAddress(*ipv4);
+    const char* address_string, std::optional<IPFamily> family) {
+  if (family != net_base::IPFamily::kIPv6) {
+    const auto ipv4 = IPv4Address::CreateFromString(address_string);
+    if (ipv4) {
+      return IPAddress(*ipv4);
+    }
   }
 
-  const auto ipv6 = IPv6Address::CreateFromString(address_string);
-  if (ipv6) {
-    return IPAddress(*ipv6);
+  if (family != net_base::IPFamily::kIPv4) {
+    const auto ipv6 = IPv6Address::CreateFromString(address_string);
+    if (ipv6) {
+      return IPAddress(*ipv6);
+    }
   }
 
   return std::nullopt;
@@ -60,22 +64,28 @@ std::optional<IPAddress> IPAddress::CreateFromString(
 
 // static
 std::optional<IPAddress> IPAddress::CreateFromBytes(
-    base::span<const char> bytes) {
-  return CreateFromBytes(base::span<const uint8_t>(
-      reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()));
+    base::span<const char> bytes, std::optional<IPFamily> family) {
+  return CreateFromBytes(
+      base::span<const uint8_t>(reinterpret_cast<const uint8_t*>(bytes.data()),
+                                bytes.size()),
+      family);
 }
 
 // static
 std::optional<IPAddress> IPAddress::CreateFromBytes(
-    base::span<const uint8_t> bytes) {
-  const auto ipv4 = IPv4Address::CreateFromBytes(bytes);
-  if (ipv4) {
-    return IPAddress(*ipv4);
+    base::span<const uint8_t> bytes, std::optional<IPFamily> family) {
+  if (family != net_base::IPFamily::kIPv6) {
+    const auto ipv4 = IPv4Address::CreateFromBytes(bytes);
+    if (ipv4) {
+      return IPAddress(*ipv4);
+    }
   }
 
-  const auto ipv6 = IPv6Address::CreateFromBytes(bytes);
-  if (ipv6) {
-    return IPAddress(*ipv6);
+  if (family != net_base::IPFamily::kIPv4) {
+    const auto ipv6 = IPv6Address::CreateFromBytes(bytes);
+    if (ipv6) {
+      return IPAddress(*ipv6);
+    }
   }
 
   return std::nullopt;
@@ -148,15 +158,19 @@ std::string IPAddress::ToString() const {
 
 // static
 std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
-    const std::string& cidr_string) {
-  const auto ipv4 = IPv4CIDR::CreateFromCIDRString(cidr_string);
-  if (ipv4) {
-    return IPCIDR(*ipv4);
+    const std::string& cidr_string, std::optional<IPFamily> family) {
+  if (family != net_base::IPFamily::kIPv6) {
+    const auto ipv4 = IPv4CIDR::CreateFromCIDRString(cidr_string);
+    if (ipv4) {
+      return IPCIDR(*ipv4);
+    }
   }
 
-  const auto ipv6 = IPv6CIDR::CreateFromCIDRString(cidr_string);
-  if (ipv6) {
-    return IPCIDR(*ipv6);
+  if (family != net_base::IPFamily::kIPv4) {
+    const auto ipv6 = IPv6CIDR::CreateFromCIDRString(cidr_string);
+    if (ipv6) {
+      return IPCIDR(*ipv6);
+    }
   }
 
   return std::nullopt;
@@ -164,17 +178,23 @@ std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
 
 // static
 std::optional<IPCIDR> IPCIDR::CreateFromStringAndPrefix(
-    const std::string& address_string, int prefix_length) {
-  const auto ipv4 =
-      IPv4CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
-  if (ipv4) {
-    return IPCIDR(*ipv4);
+    const std::string& address_string,
+    int prefix_length,
+    std::optional<IPFamily> family) {
+  if (family != net_base::IPFamily::kIPv6) {
+    const auto ipv4 =
+        IPv4CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
+    if (ipv4) {
+      return IPCIDR(*ipv4);
+    }
   }
 
-  const auto ipv6 =
-      IPv6CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
-  if (ipv6) {
-    return IPCIDR(*ipv6);
+  if (family != net_base::IPFamily::kIPv4) {
+    const auto ipv6 =
+        IPv6CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
+    if (ipv6) {
+      return IPCIDR(*ipv6);
+    }
   }
 
   return std::nullopt;
