@@ -78,7 +78,7 @@ class LedLitUpRoutineV2Test : public testing::Test {
     base::RunLoop run_loop;
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
     routine->SetOnExceptionCallback(base::BindOnce(&OnUnexpectedException));
-    routine->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine->Start();
     run_loop.Run();
     return std::move(observer.state_);

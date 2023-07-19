@@ -98,7 +98,7 @@ class CpuStressRoutineV2Test : public CpuStressRoutineV2TestBase {
               << "An exception has occurred when it shouldn't have.";
         }));
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
-    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
     return std::move(observer.state_);
@@ -263,7 +263,7 @@ TEST_F(CpuStressRoutineV2Test, IncrementalProgress) {
                 << "An exception has occurred when it shouldn't have.";
           }));
   RoutineObserverForTesting observer{base::DoNothing()};
-  routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
   observer.receiver_.FlushForTesting();
   EXPECT_EQ(observer.state_->percentage, 0);

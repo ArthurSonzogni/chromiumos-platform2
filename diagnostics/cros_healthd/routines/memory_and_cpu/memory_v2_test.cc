@@ -265,7 +265,7 @@ class MemoryRoutineV2Test : public MemoryRoutineV2TestBase {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
-    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
     return std::move(observer.state_);
@@ -585,7 +585,7 @@ TEST_F(MemoryRoutineV2Test, IncrementalProgress) {
         CHECK(false) << "An exception has occurred when it shouldn't have.";
       }));
   RoutineObserverForTesting observer{base::DoNothing()};
-  routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
 
   // Fast forward for observer to update percentage.

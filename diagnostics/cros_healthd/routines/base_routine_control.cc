@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
 
 namespace {
 
@@ -48,6 +49,12 @@ void BaseRoutineControl::GetState(
 void BaseRoutineControl::SetOnExceptionCallback(
     ExceptionCallback on_exception) {
   on_exception_ = std::move(on_exception);
+}
+
+void BaseRoutineControl::SetObserver(
+    mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer) {
+  // TODO(bkersting): Switch to only supporting one observer.
+  observers_.Add(std::move(observer));
 }
 
 const mojom::RoutineStatePtr& BaseRoutineControl::state() {

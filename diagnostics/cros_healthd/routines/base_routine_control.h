@@ -71,6 +71,11 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   // mojo message is sent/received.
   void SetOnExceptionCallback(ExceptionCallback on_exception);
 
+  // Sets the observer for this `RoutineControl`. This must be called at most
+  // once per lifetime of a `RoutineControl`.
+  void SetObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer);
+
  protected:
   // Calls the on_exception_ callback.
   void RaiseException(const std::string& reason);

@@ -93,7 +93,7 @@ class AudioDriverRoutineTest : public testing::Test {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
-    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
     return std::move(observer.state_);

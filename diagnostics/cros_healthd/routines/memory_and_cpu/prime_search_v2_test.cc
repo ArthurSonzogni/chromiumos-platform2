@@ -88,7 +88,7 @@ class PrimeSearchRoutineV2Test : public PrimeSearchRoutineV2TestBase {
         }));
     auto observer =
         std::make_unique<RoutineObserverForTesting>(run_loop.QuitClosure());
-    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishPrimeSearchDelegate(passed);
     run_loop.Run();
@@ -265,7 +265,7 @@ TEST_F(PrimeSearchRoutineV2Test, IncrementalProgress) {
       }));
   auto observer =
       std::make_unique<RoutineObserverForTesting>(base::DoNothing());
-  routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+  routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
   observer->receiver_.FlushForTesting();
   EXPECT_EQ(observer->state_->percentage, 0);

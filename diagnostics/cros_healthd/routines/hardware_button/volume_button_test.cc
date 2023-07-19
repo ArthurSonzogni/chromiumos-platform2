@@ -77,7 +77,7 @@ class VolumeButtonRoutineTest : public testing::Test {
     routine->SetOnExceptionCallback(base::BindOnce(&OnUnexpectedException));
     auto observer =
         std::make_unique<RoutineObserverForTesting>(std::move(on_finished));
-    routine->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    routine->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
     routine->Start();
     return observer;
   }

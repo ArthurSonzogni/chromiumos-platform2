@@ -360,13 +360,13 @@ TEST_F(BaseRoutineControlTest, CannotEnterFinishedStateFromFinished) {
 }
 
 // Test that we can successfully notify one observer.
-TEST_F(BaseRoutineControlTest, NotifyOneObserver) {
+TEST_F(BaseRoutineControlTest, NotifyObserver) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_1;
-  auto observer_1 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_1.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_1));
-  EXPECT_CALL(*observer_1.get(), OnRoutineStateChange(_))
+  mojo::PendingRemote<mojom::RoutineObserver> observer_remote;
+  auto observer = std::make_unique<StrictMock<MockObserver>>(
+      observer_remote.InitWithNewPipeAndPassReceiver());
+  rc.SetObserver(std::move(observer_remote));
+  EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
       .Times(AtLeast(1))
       .WillOnce(testing::WithArg<0>(
           testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
@@ -389,62 +389,6 @@ TEST_F(BaseRoutineControlTest, NotifyOneObserver) {
                         kWaitingToBeScheduled,
                     "");
   rc.SetRunningImpl();
-  rc.SetFinishedImpl(true, nullptr);
-}
-
-// Test that we can successfully notify multiple observers.
-TEST_F(BaseRoutineControlTest, NotifyMultipleObservers) {
-  auto rc = RoutineControlImplPeer(ExpectNoException());
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_1;
-  auto observer_1 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_1.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_1));
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_2;
-  auto observer_2 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_2.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_2));
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_3;
-  auto observer_3 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_3.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_3));
-  EXPECT_CALL(*observer_1.get(), OnRoutineStateChange(_)).Times(AtLeast(1));
-  EXPECT_CALL(*observer_2.get(), OnRoutineStateChange(_)).Times(AtLeast(1));
-  EXPECT_CALL(*observer_3.get(), OnRoutineStateChange(_)).Times(AtLeast(1));
-
-  rc.Start();
-  rc.SetFinishedImpl(true, nullptr);
-}
-
-// Test that we can successfully notify other observers after an observer has
-// disconnected.
-TEST_F(BaseRoutineControlTest, DisconnectedObserver) {
-  auto rc = RoutineControlImplPeer(ExpectNoException());
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_1;
-  auto observer_1 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_1.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_1));
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_2;
-  auto observer_2 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_2.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_2));
-
-  mojo::PendingRemote<mojom::RoutineObserver> observer_remote_3;
-  auto observer_3 = std::make_unique<StrictMock<MockObserver>>(
-      observer_remote_3.InitWithNewPipeAndPassReceiver());
-  rc.AddObserver(std::move(observer_remote_3));
-
-  EXPECT_CALL(*observer_1.get(), OnRoutineStateChange(_)).Times(AtLeast(1));
-  EXPECT_CALL(*observer_2.get(), OnRoutineStateChange(_)).Times(AtLeast(1));
-  EXPECT_CALL(*observer_3.get(), OnRoutineStateChange(_)).Times(0);
-
-  // observer disconnected, Remote set should now only notify two observers.
-  observer_3.reset();
-  rc.Start();
   rc.SetFinishedImpl(true, nullptr);
 }
 

@@ -113,7 +113,7 @@ class DiskReadRoutineTest : public testing::Test {
         }));
     base::test::TestFuture<void> signal;
     RoutineObserverForTesting observer{signal.GetCallback()};
-    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     EXPECT_TRUE(signal.Wait());
     return std::move(observer.state_);
