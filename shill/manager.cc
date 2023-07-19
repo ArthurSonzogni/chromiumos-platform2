@@ -2977,6 +2977,15 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
 
+  // TODO(b/245660875): Consider updating the previous credentials.
+  if (wifi_provider_->HasCredentials(creds, profile)) {
+    LOG(INFO) << "Not adding duplicate Passpoint credentials";
+    PasspointCredentials::RecordProvisioningEvent(
+        metrics_, Metrics::kPasspointProvisioningCredentialsAlreadyExist,
+        creds);
+    return true;
+  }
+
   if (!profile->AdoptCredentials(creds)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,

@@ -165,6 +165,13 @@ class WiFiProvider : public ProviderInterface {
   // device.
   virtual void AddCredentials(const PasspointCredentialsRefPtr& credentials);
 
+  // Checks whether or not |credentials| is present either in |profile| storage
+  // or in current active credentials list.
+  // This method only checks equality through PassointCredentials keys, FQDN and
+  // provisioning source (Android package name).
+  virtual bool HasCredentials(const PasspointCredentialsRefPtr& credentials,
+                              const ProfileRefPtr& profile);
+
   // Removes the set of credentials referenced by |credentials| from the
   // provider, the WiFi device and invalidates all the services populated with
   // the set of credentials.

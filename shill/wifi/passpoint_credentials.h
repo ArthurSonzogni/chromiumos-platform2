@@ -64,6 +64,13 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   // Set PKCS#11 slot getter for |eap_|.
   void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
 
+  // Compares whether or not two Passpoint credentials are equal based on
+  // Passpoint credentials' keys of FQDN and provisioning source (Android
+  // package name).
+  // Don't use this to compare equality between Passpoint credentials. Important
+  // fields such as OIs, EAP properties, domains are not checked.
+  bool IsKeyEqual(const PasspointCredentials& rhs) const;
+
   // Creates a set of Passpoint credentials from a dictionary. The content of
   // the dictionary is validated (including EAP credentials) according to
   // the requirements of Passpoint specifications. Returns the valid
@@ -82,11 +89,11 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
 
   // Get the first fully qualified domain name (FQDN) from the FQDNs stored in
   // |domains_|.
-  std::string GetFQDN();
+  std::string GetFQDN() const;
 
   // Get the provisioning source for the credentials. For ARC provisioned
   // credentials, this function returns the App package name inside ARC.
-  std::string GetOrigin();
+  const std::string& GetOrigin() const;
 
   const std::string& id() const { return id_; }
   const std::vector<std::string>& domains() const { return domains_; }

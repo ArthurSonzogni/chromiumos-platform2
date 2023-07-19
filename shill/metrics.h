@@ -1010,6 +1010,7 @@ class Metrics {
     kPasspointProvisioningInvalidOrganizationIdentifier = 5,
     kPasspointProvisioningInvalidExpirationTime = 6,
     kPasspointProvisioningShillProfileError = 7,
+    kPasspointProvisioningCredentialsAlreadyExist = 8,
 
     kPasspointProvisioningMax,
   };

@@ -790,6 +790,30 @@ void WiFiProvider::AddCredentials(
   }
 }
 
+bool WiFiProvider::HasCredentials(const PasspointCredentialsRefPtr& credentials,
+                                  const ProfileRefPtr& profile) {
+  const StoreInterface* storage = profile->GetConstStorage();
+  KeyValueStore args;
+  args.Set<std::string>(PasspointCredentials::kStorageType,
+                        PasspointCredentials::kTypePasspoint);
+  const auto passpoint_credentials = storage->GetGroupsWithProperties(args);
+  // Compare with saved Passpoint credentials.
+  for (const auto& group : passpoint_credentials) {
+    PasspointCredentialsRefPtr tmp_creds = new PasspointCredentials(group);
+    tmp_creds->Load(storage);
+    if (credentials.get()->IsKeyEqual(*tmp_creds.get())) {
+      return true;
+    }
+  }
+  // Compare with active Passpoint credentials.
+  for (const auto& tmp_creds : credentials_by_id_) {
+    if (credentials.get()->IsKeyEqual(*tmp_creds.second.get())) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void WiFiProvider::DeleteUnusedCertificateAndKey(
     const PasspointCredentialsRefPtr& credentials) {
   if (credentials->eap().cert_id().empty()) {

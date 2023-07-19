@@ -604,6 +604,21 @@ class WiFiProviderTest : public testing::Test {
                             const WiFiEndpointConstRefPtr& endpoint) {
     provider_.service_by_endpoint_[endpoint.get()] = service;
   }
+  PasspointCredentialsRefPtr NewCredentials(
+      const std::vector<std::string>& domains,
+      const std::string& realm,
+      const std::vector<uint64_t>& home_ois,
+      const std::vector<uint64_t>& required_home_ois,
+      const std::vector<uint64_t>& roaming_consortia,
+      bool metered_override,
+      const std::string& app_package_name,
+      const std::string& friendly_name,
+      uint64_t expiration_time) {
+    std::string id = PasspointCredentials::GenerateIdentifier();
+    return new PasspointCredentials(
+        id, domains, realm, home_ois, required_home_ois, roaming_consortia,
+        metered_override, app_package_name, friendly_name, expiration_time);
+  }
   std::string AddCredentialsToProfileStorage(
       Profile* profile,
       const std::vector<std::string>& domains,
@@ -2093,6 +2108,78 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
   RemoveCredentials(creds);
   list = provider_.GetCredentials();
   EXPECT_EQ(0, list.size());
+}
+
+TEST_F(WiFiProviderTest, HasActiveCredentials) {
+  std::vector<std::string> domains{"sp-red.com", "sp-blue.com"};
+  std::string realm("sp-red.com");
+  std::vector<uint64_t> ois{0x1122334455, 0x97643165, 0x30};
+  std::string app_name("com.sp-red.app");
+  std::string friendly_name("My Red Provider");
+  uint64_t expiration_time = 1906869610000;
+  bool metered_override = false;
+
+  // Add a set of credentials.
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .Times(1)
+      .WillRepeatedly(Return(nullptr));
+  std::string id =
+      AddCredentialsToProvider(domains, realm, ois, ois, ois, metered_override,
+                               app_name, friendly_name, expiration_time);
+
+  // Check for credentials.
+  PasspointCredentialsRefPtr creds1 =
+      NewCredentials(domains, realm, ois, ois, ois, metered_override, app_name,
+                     friendly_name, expiration_time);
+  EXPECT_TRUE(provider_.HasCredentials(creds1, user_profile_.get()));
+
+  // Mismatched FQDN.
+  PasspointCredentialsRefPtr creds2 = NewCredentials(
+      /*domains=*/{"sp-green.com"}, realm, ois, ois, ois, metered_override,
+      app_name, friendly_name, expiration_time);
+  EXPECT_FALSE(provider_.HasCredentials(creds2, user_profile_.get()));
+
+  // Mismatched provisioning source.
+  PasspointCredentialsRefPtr creds3 = NewCredentials(
+      domains, realm, ois, ois, ois, metered_override,
+      /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
+  EXPECT_FALSE(provider_.HasCredentials(creds3, user_profile_.get()));
+}
+
+TEST_F(WiFiProviderTest, HasSavedCredentials) {
+  std::vector<std::string> domains{"sp-red.com", "sp-blue.com"};
+  std::string realm("sp-red.com");
+  std::vector<uint64_t> ois{0x1122334455, 0x97643165, 0x30};
+  std::string app_name("com.sp-red.app");
+  std::string friendly_name("My Red Provider");
+  uint64_t expiration_time = 1906869610000;
+  bool metered_override = false;
+
+  // Add credentials to profile.
+  std::string id_default = AddCredentialsToProfileStorage(
+      user_profile_.get(), domains, realm,
+      /*home_ois=*/ois,
+      /*required_home_ois=*/ois,
+      /*roaming_consortia=*/ois, metered_override, app_name, friendly_name,
+      expiration_time);
+
+  // Check for credentials.
+  PasspointCredentialsRefPtr creds1 =
+      NewCredentials(domains, realm, ois, ois, ois, metered_override, app_name,
+                     friendly_name, expiration_time);
+  EXPECT_TRUE(provider_.HasCredentials(creds1, user_profile_.get()));
+
+  // Mismatched FQDN.
+  PasspointCredentialsRefPtr creds2 = NewCredentials(
+      /*domains=*/{"sp-green.com"}, realm, ois, ois, ois, metered_override,
+      app_name, friendly_name, expiration_time);
+  EXPECT_FALSE(provider_.HasCredentials(creds2, user_profile_.get()));
+
+  // Mismatched provisioning source.
+  PasspointCredentialsRefPtr creds3 = NewCredentials(
+      domains, realm, ois, ois, ois, metered_override,
+      /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
+  EXPECT_FALSE(provider_.HasCredentials(creds3, user_profile_.get()));
 }
 
 TEST_F(WiFiProviderTest, ForgetCredentials) {

@@ -200,6 +200,11 @@ std::string PasspointCredentials::GenerateIdentifier() {
   return uuid;
 }
 
+bool PasspointCredentials::IsKeyEqual(const PasspointCredentials& rhs) const {
+  return GetFQDN() == rhs.GetFQDN() && GetOrigin() == rhs.GetOrigin() &&
+         eap().method() == rhs.eap().method();
+}
+
 std::pair<PasspointCredentialsRefPtr, Metrics::PasspointProvisioningResult>
 PasspointCredentials::CreatePasspointCredentials(const KeyValueStore& args,
                                                  Error* error) {
@@ -390,14 +395,14 @@ void PasspointCredentials::RecordProvisioningEvent(
                            creds->roaming_consortia().size());
 }
 
-std::string PasspointCredentials::GetFQDN() {
+std::string PasspointCredentials::GetFQDN() const {
   if (domains_.empty())
     return std::string();
 
   return domains_[0];
 }
 
-std::string PasspointCredentials::GetOrigin() {
+const std::string& PasspointCredentials::GetOrigin() const {
   return android_package_name_;
 }
 

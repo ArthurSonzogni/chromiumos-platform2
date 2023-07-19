@@ -74,6 +74,10 @@ class MockWiFiProvider : public WiFiProvider {
               AddCredentials,
               (const PasspointCredentialsRefPtr&),
               (override));
+  MOCK_METHOD(bool,
+              HasCredentials,
+              (const PasspointCredentialsRefPtr&, const ProfileRefPtr& profile),
+              (override));
   MOCK_METHOD(std::vector<PasspointCredentialsRefPtr>,
               GetCredentials,
               (),
