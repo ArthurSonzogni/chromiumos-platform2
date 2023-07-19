@@ -389,6 +389,12 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(brillo::DeletePathRecursively(libassistant_dir));
   CHECK(EnsureDirectoryExists(libassistant_dir, uid, gid, 0700));
 
+  // The directory where Chrome Remote Desktop stores session information to
+  // allow resuming the CRD session after Chrome restarts.
+  // This must be cleared on a device reboot so we use the `/run` tmpfs.
+  base::FilePath crd_storage_dir("/run/crd");
+  CHECK(EnsureDirectoryExists(crd_storage_dir, uid, gid, 0700));
+
   // Create the directory where policies for extensions installed in
   // device-local accounts are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
