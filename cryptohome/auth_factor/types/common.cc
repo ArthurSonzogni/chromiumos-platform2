@@ -55,6 +55,10 @@ bool AfDriverFullAuthUnsupported::IsFullAuthSupported(
   return false;
 }
 
+bool AfDriverFullAuthUnsupported::IsFullAuthRepeatable() const {
+  return false;
+}
+
 CryptohomeStatusOr<base::TimeDelta> AfDriverNoDelay::GetFactorDelay(
     const ObfuscatedUsername& username, const AuthFactor& factor) const {
   return MakeStatus<CryptohomeError>(

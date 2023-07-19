@@ -55,6 +55,7 @@ class PasswordAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::PasswordMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
+      public AfDriverFullAuthIsRepeatable<true>,
       public AfDriverResetCapability<
           AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,

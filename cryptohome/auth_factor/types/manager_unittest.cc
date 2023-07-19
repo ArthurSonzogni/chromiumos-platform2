@@ -192,6 +192,26 @@ TEST_F(AuthFactorDriverManagerTest, IsLightAuthSupported) {
                 "All types of AuthFactorType are not all included here");
 }
 
+// Test AuthFactorDriver::IsFullAuthRepeatable. We do this here
+// instead of in a per-driver test because the check is trivial enough that one
+// test is simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsFullAuthRepeatable) {
+  auto is_repeatable = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsFullAuthRepeatable();
+  };
+
+  EXPECT_THAT(is_repeatable(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kFingerprint), IsFalse());
+  EXPECT_THAT(is_repeatable(AuthFactorType::kUnspecified), IsFalse());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
 // Test AuthFactorDriver::GetIntentConfigurability. We do this here instead of
 // in a per-driver test because the check is trivial enough that one test is
 // simpler to validate than N separate tests.

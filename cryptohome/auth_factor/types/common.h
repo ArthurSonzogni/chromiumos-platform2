@@ -178,6 +178,14 @@ class AfDriverFullAuthDecrypt : public virtual AuthFactorDriver {
 class AfDriverFullAuthUnsupported : public virtual AuthFactorDriver {
  private:
   bool IsFullAuthSupported(AuthIntent auth_intent) const final;
+  bool IsFullAuthRepeatable() const final;
+};
+
+// Common implementation for support of repeating full authentication.
+template <bool is_repeatable>
+class AfDriverFullAuthIsRepeatable : public virtual AuthFactorDriver {
+ private:
+  bool IsFullAuthRepeatable() const { return is_repeatable; }
 };
 
 template <AuthFactorDriver::ResetCapability kCapability>

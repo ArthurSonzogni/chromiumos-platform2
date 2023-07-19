@@ -84,6 +84,16 @@ class AuthFactorDriver {
   virtual bool IsFullAuthSupported(AuthIntent auth_intent) const = 0;
   virtual bool IsLightAuthSupported(AuthIntent auth_intent) const = 0;
 
+  // Specifies if the factor supports repeating the AuthenticateAuthFactor
+  // request with full auth that is transparent to the user (i.e., shouldn't ask
+  // the user to perform auth again, like pressing the FP sensor twice for FP
+  // factor). This is usually `true` for knowledge factors because we can reuse
+  // the user-provided input.
+  // This is used in lightweight authentication: it has lower latency, but can't
+  // reset the LE credentials. Therefore, we want to perform another full auth
+  // after the lightweight auth if the factor supports that.
+  virtual bool IsFullAuthRepeatable() const = 0;
+
   // Specifies if the given intent is configurable for this driver. In general
   // any factor which is configurable should be supported (it doesn't make sense
   // to enable or disable an unsupported intent) but not-configurable intents
