@@ -37,6 +37,7 @@ class CrosConfigUtils {
 
   virtual bool GetRmadConfig(RmadConfig* config) const = 0;
   virtual bool GetModelName(std::string* model_name) const = 0;
+  virtual bool GetBrandCode(std::string* brand_code) const = 0;
   virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
   virtual bool GetSkuId(uint64_t* sku_id) const = 0;
   virtual bool GetCustomLabelTagList(

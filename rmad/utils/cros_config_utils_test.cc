@@ -28,9 +28,12 @@ namespace rmad {
 // cros_config root path.
 constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
+constexpr char kCrosBrandCodeKey[] = "brand-code";
 
 constexpr char kModelName[] = "TestModelName";
 constexpr char kModelNameUnused[] = "TestModelNameUnused";
+
+constexpr char kBrandCode[] = "ZZCR";
 
 // cros_config identity path.
 constexpr char kCrosIdentityPath[] = "/identity";
@@ -127,6 +130,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
       bool set_optional = true) {
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
     fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
+    fake_cros_config->SetString(kCrosRootPath, kCrosBrandCodeKey, kBrandCode);
     fake_cros_config->SetString(std::string(kCrosIdentityPath),
                                 kCrosIdentitySkuKey,
                                 base::NumberToString(kSkuId));
@@ -258,6 +262,14 @@ TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {
   std::string model_name;
   EXPECT_TRUE(cros_config_utils->GetModelName(&model_name));
   EXPECT_EQ(model_name, kModelName);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetBrandCode_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils();
+
+  std::string brand_code;
+  EXPECT_TRUE(cros_config_utils->GetBrandCode(&brand_code));
+  EXPECT_EQ(brand_code, kBrandCode);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {

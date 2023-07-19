@@ -21,6 +21,7 @@ class MockCrosConfigUtils : public CrosConfigUtils {
 
   MOCK_METHOD(bool, GetRmadConfig, (RmadConfig*), (const, override));
   MOCK_METHOD(bool, GetModelName, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetBrandCode, (std::string*), (const, override));
   MOCK_METHOD(bool, GetSkuId, (uint64_t*), (const, override));
   MOCK_METHOD(bool, GetCustomLabelTag, (std::string*), (const, override));
   MOCK_METHOD(bool, GetSkuIdList, (std::vector<uint64_t>*), (const override));

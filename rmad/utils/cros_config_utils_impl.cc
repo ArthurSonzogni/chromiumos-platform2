@@ -36,6 +36,7 @@ const std::string kChromeosConfigsRootPath(
 // cros_config root path.
 constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
+constexpr char kCrosBrandCodeKey[] = "brand-code";
 
 // cros_config identity path.
 constexpr char kCrosIdentityPath[] = "identity";
@@ -93,6 +94,12 @@ bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   DCHECK(model_name);
 
   return cros_config_->GetString(kCrosRootPath, kCrosModelNameKey, model_name);
+}
+
+bool CrosConfigUtilsImpl::GetBrandCode(std::string* brand_code) const {
+  DCHECK(brand_code);
+
+  return cros_config_->GetString(kCrosRootPath, kCrosBrandCodeKey, brand_code);
 }
 
 bool CrosConfigUtilsImpl::GetSkuId(uint64_t* sku_id) const {
