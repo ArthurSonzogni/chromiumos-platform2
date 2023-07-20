@@ -21,6 +21,7 @@ import signal
 import stat
 import sys
 import tempfile
+from typing import List, Optional
 
 import psutil  # pylint: disable=import-error
 
@@ -136,6 +137,8 @@ class Platform2Test:
         bind_mount_dev,
         env_vars,
         test_bin_args,
+        pid_uid,
+        pid_gid,
     ):
         self.env_vars = env_vars
         self.args = test_bin_args
@@ -147,6 +150,8 @@ class Platform2Test:
         (self.gtest_filter, self.user_gtest_filter) = self.generateGtestFilter(
             gtest_filter, user_gtest_filter
         )
+        self.pid_uid = pid_uid
+        self.pid_gid = pid_gid
 
         if sysroot:
             self.sysroot = sysroot
@@ -795,6 +800,14 @@ class Platform2Test:
 
         proctitle.settitle("sysroot watcher", cmd)
 
+        # Switch effective uid before we start the main reaping loop.
+        old_gid = os.getegid()
+        old_uid = os.geteuid()
+        if self.pid_gid is not None:
+            os.setegid(self.pid_gid)
+        if self.pid_uid is not None:
+            os.seteuid(self.pid_uid)
+
         # Mask SIGINT with the assumption that the child will catch &
         # process it.  We'll pass that back up below.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -804,6 +817,12 @@ class Platform2Test:
 
         leaked_children = psutil.Process().children(recursive=True)
         if leaked_children:
+            # If we dropped privs, regain them so we can safely kill any child.
+            if self.pid_uid is not None:
+                os.seteuid(old_uid)
+            if self.pid_gid is not None:
+                os.setegid(old_gid)
+
             # It's possible the child forked and the forked processes are still
             # running.  Kill the forked processes.
             try:
@@ -867,7 +886,13 @@ def _SudoCommand():
     return cmd
 
 
-def _ReExecuteIfNeeded(argv, ns_net=True, ns_pid=True):
+def _ReExecuteIfNeeded(
+    argv: List[str],
+    ns_net: bool = True,
+    ns_pid: bool = True,
+    pid_uid: Optional[int] = None,
+    pid_gid: Optional[int] = None,
+) -> None:
     """Re-execute tests as root.
 
     We often need to do things as root, so make sure we're that.  Like chroot
@@ -888,7 +913,9 @@ def _ReExecuteIfNeeded(argv, ns_net=True, ns_pid=True):
         cmd = _SudoCommand() + ["--"] + argv
         os.execvp(cmd[0], cmd)
     else:
-        namespaces.SimpleUnshare(net=ns_net, pid=ns_pid)
+        namespaces.SimpleUnshare(
+            net=ns_net, pid=ns_pid, pid_uid=pid_uid, pid_gid=pid_gid
+        )
 
 
 def GetParser():
@@ -910,6 +937,16 @@ def GetParser():
         default=True,
         action="store_false",
         help="Do not create a new PID namespace",
+    )
+    group.add_argument(
+        "--pid-uid",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    group.add_argument(
+        "--pid-gid",
+        type=int,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -990,9 +1027,20 @@ def main(argv):
     if options.jobs < 0:
         parser.error("You must specify jobs greater than or equal to 0")
 
+    if options.pid_uid is None:
+        options.pid_uid = os.getuid()
+        argv.insert(0, f"--pid-uid={options.pid_uid}")
+    if options.pid_gid is None:
+        options.pid_gid = os.getgid()
+        argv.insert(0, f"--pid-gid={options.pid_gid}")
+
     # Once we've finished sanity checking args, make sure we're root.
     _ReExecuteIfNeeded(
-        [sys.argv[0]] + argv, ns_net=options.ns_net, ns_pid=options.ns_pid
+        [sys.argv[0]] + argv,
+        ns_net=options.ns_net,
+        ns_pid=options.ns_pid,
+        pid_uid=options.pid_uid,
+        pid_gid=options.pid_gid,
     )
 
     env_vars = {}
@@ -1017,6 +1065,8 @@ def main(argv):
         options.bind_mount_dev,
         env_vars,
         options.cmdline,
+        options.pid_uid,
+        options.pid_gid,
     )
     getattr(p2test, options.action)()
 
