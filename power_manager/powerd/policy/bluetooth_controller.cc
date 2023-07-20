@@ -85,7 +85,7 @@ const char BluetoothController::kLongAutosuspendFeatureName[] =
     "CrOSLateBootLongBluetoothAutosuspend";
 const VariationsFeature kLongAutosuspendFeature{
     BluetoothController::kLongAutosuspendFeatureName,
-    FEATURE_DISABLED_BY_DEFAULT};
+    FEATURE_ENABLED_BY_DEFAULT};
 
 BluetoothController::BluetoothController() = default;
 BluetoothController::~BluetoothController() {
