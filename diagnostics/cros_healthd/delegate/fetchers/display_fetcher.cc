@@ -26,7 +26,7 @@ mojom::DisplayResultPtr GetDisplayInfo() {
   }
 
   auto display_info = mojom::DisplayInfo::New();
-  display_info->edp_info = display_util.GetEmbeddedDisplayInfo();
+  display_info->embedded_display = display_util.GetEmbeddedDisplayInfo();
 
   std::vector<uint32_t> connector_ids =
       display_util.GetExternalDisplayConnectorIDs();
@@ -36,7 +36,7 @@ mojom::DisplayResultPtr GetDisplayInfo() {
       external_display_infos.push_back(
           display_util.GetExternalDisplayInfo(connector_id));
     }
-    display_info->dp_infos = std::move(external_display_infos);
+    display_info->external_displays = std::move(external_display_infos);
   }
 
   return mojom::DisplayResult::NewDisplayInfo(std::move(display_info));

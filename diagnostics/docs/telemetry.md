@@ -481,8 +481,8 @@ event --help`.
 #####  DisplayInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| edp_info | [EmbeddedDisplayInfo](#EmbeddedDisplayInfo) | Embedded display info. |
-| dp_infos | [array&lt;ExternalDisplayInfo&gt;?](#ExternalDisplayInfo) | External display info. |
+| embedded_display | [EmbeddedDisplayInfo](#EmbeddedDisplayInfo) | Embedded display info. |
+| external_displays | [array&lt;ExternalDisplayInfo&gt;?](#ExternalDisplayInfo) | External display info. |
 
 ####  Embedded Display
 

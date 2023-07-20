@@ -271,47 +271,47 @@ void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
     return;
   }
 
-  const auto& edp_info = display->edp_info;
+  const auto& embedded_display = display->embedded_display;
   base::Value::Dict output;
-  base::Value::Dict edp;
-  SET_DICT(privacy_screen_supported, edp_info, &edp);
-  SET_DICT(privacy_screen_enabled, edp_info, &edp);
-  SET_DICT(display_width, edp_info, &edp);
-  SET_DICT(display_height, edp_info, &edp);
-  SET_DICT(resolution_horizontal, edp_info, &edp);
-  SET_DICT(resolution_vertical, edp_info, &edp);
-  SET_DICT(refresh_rate, edp_info, &edp);
-  SET_DICT(manufacturer, edp_info, &edp);
-  SET_DICT(model_id, edp_info, &edp);
-  SET_DICT(serial_number, edp_info, &edp);
-  SET_DICT(manufacture_week, edp_info, &edp);
-  SET_DICT(manufacture_year, edp_info, &edp);
-  SET_DICT(edid_version, edp_info, &edp);
-  SET_DICT(input_type, edp_info, &edp);
-  SET_DICT(display_name, edp_info, &edp);
-  output.Set("edp", std::move(edp));
+  base::Value::Dict embedded_display_dict;
+  SET_DICT(privacy_screen_supported, embedded_display, &embedded_display_dict);
+  SET_DICT(privacy_screen_enabled, embedded_display, &embedded_display_dict);
+  SET_DICT(display_width, embedded_display, &embedded_display_dict);
+  SET_DICT(display_height, embedded_display, &embedded_display_dict);
+  SET_DICT(resolution_horizontal, embedded_display, &embedded_display_dict);
+  SET_DICT(resolution_vertical, embedded_display, &embedded_display_dict);
+  SET_DICT(refresh_rate, embedded_display, &embedded_display_dict);
+  SET_DICT(manufacturer, embedded_display, &embedded_display_dict);
+  SET_DICT(model_id, embedded_display, &embedded_display_dict);
+  SET_DICT(serial_number, embedded_display, &embedded_display_dict);
+  SET_DICT(manufacture_week, embedded_display, &embedded_display_dict);
+  SET_DICT(manufacture_year, embedded_display, &embedded_display_dict);
+  SET_DICT(edid_version, embedded_display, &embedded_display_dict);
+  SET_DICT(input_type, embedded_display, &embedded_display_dict);
+  SET_DICT(display_name, embedded_display, &embedded_display_dict);
+  output.Set("embedded_display", std::move(embedded_display_dict));
 
-  if (display->dp_infos) {
-    const auto& dp_infos = display->dp_infos;
-    base::Value::List dp;
-    for (const auto& dp_info : *dp_infos) {
+  if (display->external_displays) {
+    const auto& external_displays = display->external_displays;
+    base::Value::List external_displays_list;
+    for (const auto& external_display : *external_displays) {
       base::Value::Dict data;
-      SET_DICT(display_width, dp_info, &data);
-      SET_DICT(display_height, dp_info, &data);
-      SET_DICT(resolution_horizontal, dp_info, &data);
-      SET_DICT(resolution_vertical, dp_info, &data);
-      SET_DICT(refresh_rate, dp_info, &data);
-      SET_DICT(manufacturer, dp_info, &data);
-      SET_DICT(model_id, dp_info, &data);
-      SET_DICT(serial_number, dp_info, &data);
-      SET_DICT(manufacture_week, dp_info, &data);
-      SET_DICT(manufacture_year, dp_info, &data);
-      SET_DICT(edid_version, dp_info, &data);
-      SET_DICT(input_type, dp_info, &data);
-      SET_DICT(display_name, dp_info, &data);
-      dp.Append(std::move(data));
+      SET_DICT(display_width, external_display, &data);
+      SET_DICT(display_height, external_display, &data);
+      SET_DICT(resolution_horizontal, external_display, &data);
+      SET_DICT(resolution_vertical, external_display, &data);
+      SET_DICT(refresh_rate, external_display, &data);
+      SET_DICT(manufacturer, external_display, &data);
+      SET_DICT(model_id, external_display, &data);
+      SET_DICT(serial_number, external_display, &data);
+      SET_DICT(manufacture_week, external_display, &data);
+      SET_DICT(manufacture_year, external_display, &data);
+      SET_DICT(edid_version, external_display, &data);
+      SET_DICT(input_type, external_display, &data);
+      SET_DICT(display_name, external_display, &data);
+      external_displays_list.Append(std::move(data));
     }
-    output.Set("dp", std::move(dp));
+    output.Set("external_displays", std::move(external_displays_list));
   }
 
   OutputJson(output);
