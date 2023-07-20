@@ -48,6 +48,9 @@ class EventObserverTestFuture : public ash::cros_healthd::mojom::EventObserver {
     return received_events_.Take();
   }
 
+  // Reset the underlying receiver.
+  void Reset() { receiver_.reset(); }
+
  private:
   mojo::Receiver<ash::cros_healthd::mojom::EventObserver> receiver_{this};
   base::test::RepeatingTestFuture<ash::cros_healthd::mojom::EventInfoPtr>

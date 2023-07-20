@@ -141,5 +141,19 @@ TEST_F(TouchscreenEventsImplTest,
   EXPECT_FALSE(process_control_.IsConnected());
 }
 
+// Test that process control is reset when there is no event observer.
+TEST_F(TouchscreenEventsImplTest, ProcessControlResetWhenNoEventObserver) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  event_observer.Reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
+}
+
 }  // namespace
 }  // namespace diagnostics

@@ -62,6 +62,8 @@ class TouchpadEventsImplTest : public testing::Test {
         });
   }
 
+  void ResetEventObserver() { event_observer_.reset(); }
+
   void EmitTouchpadConnectedEvent(
       const mojom::TouchpadConnectedEventPtr& event) {
     touchpad_observer_->OnConnected(event.Clone());
@@ -186,6 +188,17 @@ TEST_F(TouchpadEventsImplTest,
   // Simulate the disconnection of delegate observer.
   touchpad_observer_.FlushForTesting();
   touchpad_observer_.reset();
+
+  process_control_.receiver().FlushForTesting();
+  EXPECT_FALSE(process_control_.IsConnected());
+}
+
+// Test that process control is reset when there is no event observer.
+TEST_F(TouchpadEventsImplTest, ProcessControlResetWhenNoEventObserver) {
+  process_control_.receiver().FlushForTesting();
+  EXPECT_TRUE(process_control_.IsConnected());
+
+  ResetEventObserver();
 
   process_control_.receiver().FlushForTesting();
   EXPECT_FALSE(process_control_.IsConnected());
