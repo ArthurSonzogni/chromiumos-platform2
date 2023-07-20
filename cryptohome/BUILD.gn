@@ -416,6 +416,7 @@ if (use.test) {
       "storage/mount_stack_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",
+      "user_policy_file_unittest.cc",
       "user_secret_stash/migrator_unittest.cc",
       "user_secret_stash/storage_unittest.cc",
       "user_secret_stash/user_secret_stash_unittest.cc",

@@ -477,6 +477,7 @@ static_library("libcrosplatform") {
     "../storage/keyring/real_keyring.cc",
     "../storage/keyring/utils.cc",
     "../storage/mount_constants.cc",
+    "../user_policy_file.cc",
     "../user_secret_stash/storage.cc",
     "../user_secret_stash/user_metadata.cc",
     "../user_secret_stash/user_secret_stash.cc",

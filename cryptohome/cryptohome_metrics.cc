@@ -214,7 +214,11 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // The time taken to relabel the SELinux context of all files inside the
     // user cryptohome.
     {kSELinuxRelabelTimer, "Cryptohome.TimeToRelabelSELinuxContexts", 0,
-     60 * 1000, 60}};
+     60 * 1000, 60},
+    {kStoreUserPolicyTimer, "Cryptohome.TimeToStoreUserPolicyInFile", 0, 5000,
+     50},
+    {kLoadUserPolicyTimer, "Cryptohome.TimeToLoadUserPolicyFromFile", 0, 5000,
+     50}};
 
 static_assert(std::size(kTimerHistogramParams) == kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");

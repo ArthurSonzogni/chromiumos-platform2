@@ -415,7 +415,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthFinalizeFailedInCreatePersistentUser = 294,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInAuthAuthFactor = 295,
-  /* ./auth_session.cc */
+  /* ./auth_session_manager.cc */
   kLocAuthSessionTimedOutInExtend = 296,
   /* ./auth_session.cc */
   kLocAuthSessionCreateUSSFailedInOnUserCreated = 297,
@@ -1281,6 +1281,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocStoreFileFailedInFlatbufferFile = 727,
   /* ./flatbuffer_file.cc */
   kLocLoadFileFailedInFlatbufferFile = 728,
+  /* ./user_policy_file.cc */
+  kLocUserPolicyStoreEmptyInStoreUserPolicyInFile = 729,
+  /* ./user_policy_file.cc */
+  kLocUserPolicySerializeFailedInStoreUserPolicyInFile = 730,
+  /* ./user_policy_file.cc */
+  kLocStoreFileFailedInStoreUserPolicyInFile = 731,
+  /* ./user_policy_file.cc */
+  kLocLoadFileFailedInLoadUserPolicyFromFile = 732,
+  /* ./user_policy_file.cc */
+  kLocDeserializeFailedInLoadUserPolicyFromFile = 733,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

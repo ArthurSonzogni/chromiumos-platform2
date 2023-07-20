@@ -20,7 +20,6 @@
 namespace cryptohome {
 namespace {
 
-constexpr mode_t kReadWritePermissions = 0600;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
@@ -28,6 +27,8 @@ using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
+
+constexpr mode_t kOwnerReadWritePermissions = 0600;
 
 }  // namespace
 
@@ -39,8 +40,8 @@ FlatbufferFile::~FlatbufferFile() = default;
 CryptohomeStatus FlatbufferFile::StoreFile(const brillo::Blob& buffer,
                                            const TimerType& timer_type) const {
   ReportTimerStart(timer_type);
-  bool write_success =
-      platform_->WriteFileAtomicDurable(path_, buffer, kReadWritePermissions);
+  bool write_success = platform_->WriteFileAtomicDurable(
+      path_, buffer, kOwnerReadWritePermissions);
   ReportTimerStop(timer_type);
 
   if (!write_success) {

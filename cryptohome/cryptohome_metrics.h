@@ -114,6 +114,8 @@ enum TimerType {
   kUSSMigrationTimer = 21,
   kVaultSetupTimer = 22,
   kSELinuxRelabelTimer = 23,
+  kStoreUserPolicyTimer = 24,
+  kLoadUserPolicyTimer = 25,
   kNumTimerTypes  // For the number of timer types.
 };
 
