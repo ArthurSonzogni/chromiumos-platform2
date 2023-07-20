@@ -1377,7 +1377,11 @@ int MetadataHandler::PostHandleRequest(
                         face_rectangles[2] - face_rectangles[0] + 1,
                         face_rectangles[3] - face_rectangles[1] + 1);
       }
-      device_->SetRegionOfInterest(roi);
+      device_->SetRegionOfInterest(roi,
+                                   Rect<int>(active_array_size.data.i32[0],
+                                             active_array_size.data.i32[1],
+                                             active_array_size.data.i32[2],
+                                             active_array_size.data.i32[3]));
     }
   }
 

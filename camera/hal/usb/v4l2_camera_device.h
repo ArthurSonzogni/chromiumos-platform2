@@ -40,13 +40,13 @@ struct ControlInfo {
   std::vector<std::string> menu_items;
 };
 
-struct RoiControl {
-  // ROI auto-controls flags. It is a bitwise flag for
-  // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
-  uint32_t roi_flags;
-  Rect<int> roi_bounds_default;
-  Rect<int> roi_bounds;
-  Size min_roi_size;
+enum class RoiControlApi {
+  // Use VIDIOC_S_SELECTION to set ROI.
+  kSelection,
+  // Use V4L2_CID_UVC_REGION_OF_INTEREST_RECT to set ROI.
+  kUvcRoiRect,
+  // Use V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE to set ROI.
+  kUvcRoiRectRelative,
 };
 
 enum ControlType {
@@ -59,7 +59,14 @@ enum ControlType {
   kControlExposureAutoPriority,  // 0 for constant frame rate
   kControlExposureTime,
   kControlPan,
+
+  // If kernel is not updated to use control selector defined in
+  // go/cros-uvc-xu-spec, use the legacy control selector.
+  kControlRegionOfInterestAutoLegacy,
+
   kControlRegionOfInterestAuto,
+  kControlRegionOfInterestRect,
+  kControlRegionOfInterestRectRelative,
   kControlSaturation,
   kControlSharpness,
   kControlTilt,
@@ -67,6 +74,22 @@ enum ControlType {
   kControlWhiteBalanceTemperature,
   kControlPrivacy,
   kControlPowerLineFrequency
+};
+struct RoiControl {
+  // ROI auto-controls flags. It is a bitwise flag for
+  // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
+  uint32_t roi_flags = 0;
+  Rect<int> roi_bounds_default;
+  Rect<int> roi_bounds;
+  Size min_roi_size;
+
+  // The control we should use to set ROI flags on this device.
+  // Either kControlRegionOfInterestAuto or kControlRegionOfInterestAutoLegacy.
+  ControlType control_region_of_interest_auto =
+      kControlRegionOfInterestAutoLegacy;
+
+  // The API we should use to set ROI on this device.
+  RoiControlApi api = RoiControlApi::kSelection;
 };
 
 constexpr uint32_t kColorTemperatureAuto = 0;
@@ -175,7 +198,8 @@ class V4L2CameraDevice {
   int GetControlValue(ControlType type, int32_t* value);
 
   // Sets the region of interest.
-  int SetRegionOfInterest(const Rect<int>& rectangle);
+  int SetRegionOfInterest(const Rect<int>& roi,
+                          const Rect<int>& active_array_rect);
 
   // Sets SW privacy switch state. If |on| is false, starts streaming. If |on|
   // is true, stops streaming. Note that this function does not change the value
@@ -276,6 +300,11 @@ class V4L2CameraDevice {
   // Call the VIDIOC_STREAMOFF ioctl.
   int StopStreaming();
 
+  // Get coordination transform from active array coordinate to stream
+  // coordinate
+  void TransformFromActiveArrayToStreamCoordinate(const Size& active_array_size,
+                                                  Rect<int>& roi);
+
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
 
@@ -317,6 +346,9 @@ class V4L2CameraDevice {
   // Since V4L2CameraDevice may be called on different threads, this is used to
   // guard all variables.
   base::Lock lock_;
+
+  // The height and width of the stream
+  Size stream_size_;
 };
 
 }  // namespace cros

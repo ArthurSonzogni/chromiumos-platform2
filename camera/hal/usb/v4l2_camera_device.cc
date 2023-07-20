@@ -7,11 +7,15 @@
 #include "hal/usb/v4l2_camera_device.h"
 
 #include <fcntl.h>
+#include <linux/usb/video.h>
+#include <linux/uvcvideo.h>
 #include <linux/videodev2.h>
+
 #include <poll.h>
 #include <sys/ioctl.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 
@@ -80,8 +84,17 @@ const int ControlTypeToCid(ControlType type) {
     case kControlPan:
       return V4L2_CID_PAN_ABSOLUTE;
 
-    case kControlRegionOfInterestAuto:
+    case kControlRegionOfInterestAutoLegacy:
       return V4L2_CID_REGION_OF_INTEREST_AUTO;
+
+    case kControlRegionOfInterestAuto:
+      return V4L2_CID_UVC_REGION_OF_INTEREST_AUTO;
+
+    case kControlRegionOfInterestRect:
+      return V4L2_CID_UVC_REGION_OF_INTEREST_RECT;
+
+    case kControlRegionOfInterestRectRelative:
+      return V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE;
 
     case kControlSaturation:
       return V4L2_CID_SATURATION;
@@ -139,8 +152,17 @@ const std::string ControlTypeToString(ControlType type) {
     case kControlPan:
       return "pan";
 
+    case kControlRegionOfInterestAutoLegacy:
+      return "region of interest auto legacy";
+
     case kControlRegionOfInterestAuto:
       return "region of interest auto";
+
+    case kControlRegionOfInterestRect:
+      return "roi with a global coordinate";
+
+    case kControlRegionOfInterestRectRelative:
+      return "roi with a local coordinate";
 
     case kControlSaturation:
       return "saturation";
@@ -201,6 +223,15 @@ const std::string CidToString(int cid) {
     case V4L2_CID_REGION_OF_INTEREST_AUTO:
       return "V4L2_CID_REGION_OF_INTEREST_AUTO";
 
+    case V4L2_CID_UVC_REGION_OF_INTEREST_AUTO:
+      return "V4L2_CID_UVC_REGION_OF_INTEREST_AUTO";
+
+    case V4L2_CID_UVC_REGION_OF_INTEREST_RECT:
+      return "V4L2_CID_UVC_REGION_OF_INTEREST_RECT";
+
+    case V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE:
+      return "V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE";
+
     case V4L2_CID_SATURATION:
       return "V4L2_CID_SATURATION";
 
@@ -225,6 +256,17 @@ const std::string CidToString(int cid) {
     default:
       NOTREACHED() << "Unexpected cid " << cid;
       return "N/A";
+  }
+}
+
+const std::string RoiControlApiToString(RoiControlApi roi_control_api) {
+  switch (roi_control_api) {
+    case RoiControlApi::kSelection:
+      return "kSelection";
+    case RoiControlApi::kUvcRoiRect:
+      return "kUvcRoiRect";
+    case RoiControlApi::kUvcRoiRectRelative:
+      return "kUvcRoiRectRelative";
   }
 }
 
@@ -416,15 +458,21 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     }
   }
 
+  LOGF(INFO) << "device_info_.enable_face_detection = "
+             << device_info_.enable_face_detection;
   if (device_info_.enable_face_detection) {
     IsRegionOfInterestSupported(device_fd_.get(), &roi_control_);
     if (roi_control_.roi_flags) {
       LOGF(INFO) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
-                 << " " << std::dec
-                 << "ROI bounds default:" << roi_control_.roi_bounds_default;
-      LOGF(INFO) << "ROI bounds:" << roi_control_.roi_bounds
-                 << ", min:" << roi_control_.min_roi_size.ToString();
-      SetControlValue(kControlRegionOfInterestAuto, roi_control_.roi_flags);
+                 << std::dec << ", ROI auto control: "
+                 << CidToString(ControlTypeToCid(
+                        roi_control_.control_region_of_interest_auto))
+                 << ", ROI api: " << RoiControlApiToString(roi_control_.api)
+                 << ", ROI bounds default:" << roi_control_.roi_bounds_default
+                 << ", ROI bounds:" << roi_control_.roi_bounds
+                 << ", ROI min:" << roi_control_.min_roi_size.ToString();
+      SetControlValue(roi_control_.control_region_of_interest_auto,
+                      roi_control_.roi_flags);
     }
   }
 
@@ -466,6 +514,8 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   }
 
   int ret;
+  stream_size_ = Size(width, height);
+  LOGF(INFO) << "stream_size: " << width << " " << height;
 
   // Some drivers use rational time per frame instead of float frame rate, this
   // constant k is used to convert between both: A fps -> [k/k*A] seconds/frame.
@@ -564,6 +614,12 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     hw_privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
                                              device_info_.device_path);
   }
+
+  if (device_info_.enable_face_detection && roi_control_.roi_flags &&
+      roi_control_.api == RoiControlApi::kUvcRoiRectRelative) {
+    roi_control_.roi_bounds = Rect<int>(0, 0, width, height);
+  }
+
   stream_on_ = true;
   return 0;
 }
@@ -800,7 +856,7 @@ int V4L2CameraDevice::SetFrameRate(float frame_rate) {
              << streamparm.parm.capture.timeperframe.numerator;
     float fps =
         static_cast<float>(streamparm.parm.capture.timeperframe.denominator) /
-        streamparm.parm.capture.timeperframe.numerator;
+        static_cast<float>(streamparm.parm.capture.timeperframe.numerator);
     if (std::fabs(fps - frame_rate) > kFpsDifferenceThreshold) {
       LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
       return -EINVAL;
@@ -891,10 +947,24 @@ int V4L2CameraDevice::QueryControl(ControlType type, ControlInfo* info) {
   return QueryControl(device_fd_.get(), type, info);
 }
 
-int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
+int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& roi,
+                                          const Rect<int>& active_array_rect) {
   if (roi_control_.roi_flags == 0) {
     return -EINVAL;
   }
+
+  Rect<int> rectangle(roi.left, roi.top, roi.width, roi.height);
+  if (roi_control_.control_region_of_interest_auto ==
+          kControlRegionOfInterestAuto &&
+      roi_control_.api == RoiControlApi::kUvcRoiRectRelative) {
+    // Transform from pixel array to active array
+    rectangle.left -= active_array_rect.left;
+    rectangle.top -= active_array_rect.top;
+
+    TransformFromActiveArrayToStreamCoordinate(
+        Size(active_array_rect.width, active_array_rect.height), rectangle);
+  }
+
   int left = std::max(rectangle.left, roi_control_.roi_bounds.left);
   int top = std::max(rectangle.top, roi_control_.roi_bounds.top);
   int width = std::max(rectangle.width,
@@ -917,26 +987,58 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
     top -= offset;
     height = bottommost - top;
   }
-  v4l2_selection current = {
-      .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-      .target = static_cast<__u32>(V4L2_SEL_TGT_ROI),
-      .r =
-          {
-              .left = static_cast<__s32>(rectangle.left),
-              .top = static_cast<__s32>(rectangle.top),
-              .width = static_cast<__u32>(width),
-              .height = static_cast<__u32>(height),
-          },
-  };
 
-  int ret = HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_SELECTION, &current));
+  VLOGF(2) << "ROI sent through V4L2 interface with max_width = "
+           << roi_control_.roi_bounds.width
+           << ", max_height = " << roi_control_.roi_bounds.height
+           << ", min_width = " << roi_control_.min_roi_size.width
+           << ", min_height = " << roi_control_.min_roi_size.height
+           << ", left = " << left << ", top = " << top << ". width = " << width
+           << ", height = " << height;
+
+  int ret;
+  if (roi_control_.control_region_of_interest_auto ==
+      kControlRegionOfInterestAutoLegacy) {
+    v4l2_selection current = {
+        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        .target = static_cast<__u32>(V4L2_SEL_TGT_ROI),
+        .r =
+            {
+                .left = static_cast<__s32>(left),
+                .top = static_cast<__s32>(top),
+                .width = static_cast<__u32>(width),
+                .height = static_cast<__u32>(height),
+            },
+    };
+    ret = HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_SELECTION, &current));
+  } else {
+    v4l2_rect rect = {
+        .left = static_cast<__s32>(left),
+        .top = static_cast<__s32>(top),
+        .width = static_cast<__u32>(width),
+        .height = static_cast<__u32>(height),
+    };
+    v4l2_ext_control control = {
+        .id = static_cast<__u32>(
+            (roi_control_.api == RoiControlApi::kUvcRoiRect)
+                ? V4L2_CID_UVC_REGION_OF_INTEREST_RECT
+                : V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE),
+        .size = sizeof(rect),
+        .ptr = &rect,
+    };
+    v4l2_ext_controls controls = {
+        .which = V4L2_CTRL_WHICH_CUR_VAL,
+        .count = 1,
+        .controls = &control,
+    };
+    ret = HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_EXT_CTRLS, &controls));
+  }
   if (ret < 0) {
     ret = ERRNO_OR_RET(ret);
     PLOGF(WARNING) << "Failed to set selection(" << rectangle.left << ","
                    << rectangle.top << "," << width << "," << height << ")";
     return ret;
   }
-
   return 0;
 }
 
@@ -1267,41 +1369,96 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(int fd,
                                                    RoiControl* roi_control) {
   DCHECK(roi_control);
   ControlInfo info;
+  uint32_t max_roi_auto = 0;
 
   roi_control->roi_flags = 0;
+  if (QueryControl(fd, kControlRegionOfInterestAutoLegacy, &info) == 0) {
+    roi_control->control_region_of_interest_auto =
+        kControlRegionOfInterestAutoLegacy;
+    roi_control->api = RoiControlApi::kSelection;
+    max_roi_auto = info.range.maximum;
+    v4l2_selection current = {
+        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+        .target = static_cast<__u32>(V4L2_SEL_TGT_ROI_DEFAULT),
+    };
+    if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+      PLOGF(WARNING) << "Failed to get selection";
+      return false;
+    }
+    roi_control->roi_bounds_default = Rect<int>(
+        current.r.left, current.r.top, current.r.width, current.r.height);
 
-  v4l2_selection current = {
-      .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-      .target = static_cast<__u32>(V4L2_SEL_TGT_ROI_DEFAULT),
-  };
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
-    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
+    current.target = V4L2_SEL_TGT_ROI_BOUNDS_MIN;
+    if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+      PLOGF(WARNING) << "Failed to get selection: ";
+      return false;
+    }
+    roi_control->min_roi_size = Size(current.r.width, current.r.height);
+
+    current.target = V4L2_SEL_TGT_ROI_BOUNDS_MAX;
+    if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
+      PLOGF(WARNING) << "Failed to get selection: ";
+      return false;
+    }
+    roi_control->roi_bounds = Rect<int>(current.r.left, current.r.top,
+                                        current.r.width, current.r.height);
+
+  } else if (QueryControl(fd, kControlRegionOfInterestAuto, &info) == 0) {
+    roi_control->control_region_of_interest_auto = kControlRegionOfInterestAuto;
+    max_roi_auto = info.range.maximum;
+    if (QueryControl(fd, kControlRegionOfInterestRect, &info) == 0) {
+      roi_control->api = RoiControlApi::kUvcRoiRect;
+    } else if (QueryControl(fd, kControlRegionOfInterestRectRelative, &info) ==
+               0) {
+      roi_control->api = RoiControlApi::kUvcRoiRectRelative;
+    } else {
+      LOGF(WARNING) << "At least one of "
+                       "V4L2_CID_UVC_REGION_OF_INTEREST_RECT or "
+                       "V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE "
+                       "shoud be available";
+      return false;
+    }
+
+    v4l2_rect rect;
+    v4l2_ext_control control = {
+        .id = static_cast<uint32_t>(
+            (roi_control->api == RoiControlApi::kUvcRoiRect)
+                ? V4L2_CID_UVC_REGION_OF_INTEREST_RECT
+                : V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE),
+        .size = sizeof(rect),
+        .ptr = &rect,
+    };
+    v4l2_ext_controls controls = {
+        .which = V4L2_CTRL_WHICH_DEF_VAL,
+        .count = 1,
+        .controls = &control,
+    };
+
+    if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls)) < 0) {
+      PLOGF(WARNING) << "V4L2_CTRL_WHICH_DEF_VAL failed: ";
+      return false;
+    }
+    roi_control->roi_bounds_default =
+        Rect<int>(rect.left, rect.top, rect.width, rect.height);
+
+    // The GET_MIN of V4L2_CID_UVC_REGION_OF_INTREST_RECT or
+    // V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE in
+    // go/cros-uvc-xu-spec is undefined.
+    roi_control->min_roi_size = Size(1, 1);
+
+    controls.which = V4L2_CTRL_WHICH_MAX_VAL;
+    if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_EXT_CTRLS, &controls)) < 0) {
+      PLOGF(WARNING) << "V4L2_CTRL_WHICH_MAX_VAL failed: ";
+      return false;
+    }
+    roi_control->roi_bounds =
+        Rect<int>(rect.left, rect.top, rect.width, rect.height);
+  } else {
     return false;
   }
-  roi_control->roi_bounds_default = Rect<int>(
-      current.r.left, current.r.top, current.r.width, current.r.height);
 
-  current.target = V4L2_SEL_TGT_ROI_BOUNDS_MIN;
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
-    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
-    return false;
-  }
-  roi_control->min_roi_size = Size(current.r.width, current.r.height);
-
-  current.target = V4L2_SEL_TGT_ROI_BOUNDS_MAX;
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
-    PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
-    return false;
-  }
-  roi_control->roi_bounds = Rect<int>(current.r.left, current.r.top,
-                                      current.r.width, current.r.height);
-
-  if (QueryControl(fd, kControlRegionOfInterestAuto, &info) != 0) {
-    return false;
-  }
   // enable max auto controls.
-  roi_control->roi_flags = info.range.maximum;
-
+  roi_control->roi_flags = max_roi_auto;
   return true;
 }
 
@@ -1668,6 +1825,36 @@ int V4L2CameraDevice::StopStreaming() {
     PLOGF(ERROR) << "STREAMOFF fails";
   }
   return ret;
+}
+
+// Get coordination transform from active array coordinate to stream
+// coordinate
+void V4L2CameraDevice::TransformFromActiveArrayToStreamCoordinate(
+    const Size& active_array_size, Rect<int>& roi) {
+  float scale_x = static_cast<float>(stream_size_.width) /
+                  static_cast<float>(active_array_size.width);
+  float scale_y = static_cast<float>(stream_size_.height) /
+                  static_cast<float>(active_array_size.height);
+  float scale_ratio = std::max(scale_x, scale_y);
+
+  float offset_x = 0.0f, offset_y = 0.0f;
+  if (scale_x < scale_y) {
+    offset_x = (static_cast<float>(active_array_size.width) -
+                static_cast<float>(stream_size_.width) / scale_ratio) /
+               2.0f;
+  } else {
+    offset_y = (static_cast<float>(active_array_size.height) -
+                static_cast<float>(stream_size_.height) / scale_ratio) /
+               2.0f;
+  }
+
+  roi.left =
+      static_cast<int>((static_cast<float>(roi.left) - offset_x) * scale_ratio);
+  roi.top =
+      static_cast<int>((static_cast<float>(roi.top) - offset_y) * scale_ratio);
+  roi.width = static_cast<int>((static_cast<float>(roi.width) * scale_ratio));
+  roi.height = static_cast<int>((static_cast<float>(roi.height) * scale_ratio));
+  return;
 }
 
 }  // namespace cros
