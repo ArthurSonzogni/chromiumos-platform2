@@ -1247,6 +1247,77 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesMixed) {
   EXPECT_EQ(file_metadata2.referrer_url(), referrer1);
 }
 
+TEST_F(DlpAdaptorTest, GetFilesSourcesDatabaseMigrated) {
+  // Opening the database with the new table.
+  InitDatabase();
+
+  // Create files to request sources by ids.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
+  const FileId id1 = GetFileId(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
+  const FileId id2 = GetFileId(file_path2.value());
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
+
+  // Add first file to the legacy database.
+  helper_.AddFileToLegacyDb(id1, source1, referrer1);
+
+  // Add the second file to the new database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path2, source2, referrer2)},
+                   /*expected_result=*/true);
+
+  GetFilesSourcesResponse response =
+      GetFilesSources({id1.first, id2.first, 123456}, /*paths=*/{});
+
+  // Only the second file is expected as database was not migrated.
+  ASSERT_EQ(response.files_metadata_size(), 1u);
+
+  FileMetadata file_metadata = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata.inode(), id2.first);
+  EXPECT_EQ(file_metadata.crtime(), id2.second);
+  EXPECT_EQ(file_metadata.source_url(), source2);
+  EXPECT_EQ(file_metadata.referrer_url(), referrer2);
+
+  // Reinitialize database to run migration. Do it twice to ensure that second
+  // migration is not kicked out or doesn't change anything.
+  for (int i = 0; i < 2; i++) {
+    GetDlpAdaptor()->CloseDatabaseForTesting();
+    base::RunLoop run_loop;
+    GetDlpAdaptor()->InitDatabase(database_directory_->GetPath(),
+                                  run_loop.QuitClosure());
+    run_loop.Run();
+
+    response = GetFilesSources({id1.first, id2.first, 123456}, /*paths=*/{});
+
+    ASSERT_EQ(response.files_metadata_size(), 2u);
+
+    FileMetadata file_metadata1 = response.files_metadata()[0];
+    EXPECT_EQ(file_metadata1.inode(), id1.first);
+    EXPECT_EQ(file_metadata1.crtime(), id1.second);
+    EXPECT_EQ(file_metadata1.source_url(), source1);
+    EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
+
+    FileMetadata file_metadata2 = response.files_metadata()[1];
+    EXPECT_EQ(file_metadata2.inode(), id2.first);
+    EXPECT_EQ(file_metadata2.crtime(), id2.second);
+    EXPECT_EQ(file_metadata2.source_url(), source2);
+    EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
+  }
+  // There are 4 histogram entries - on the first run when tables were created
+  // (false), after data to migrate was added (true), after it was migrated
+  // (false) and on the next init indicating that no migration is needed anymore
+  // (false).
+  EXPECT_THAT(helper_.GetMetrics(kDlpDatabaseMigrationNeededHistogram),
+              ElementsAre(static_cast<int>(false), static_cast<int>(true),
+                          static_cast<int>(false), static_cast<int>(false)));
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
+}
+
 TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   // Create files to request sources by ids.
   base::FilePath file_path1;
