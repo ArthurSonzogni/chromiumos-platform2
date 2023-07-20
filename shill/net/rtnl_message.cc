@@ -389,33 +389,6 @@ std::string IndexToName(int ifindex) {
   return std::string(buf);
 }
 
-// Creates net_base::IPAddress with Family. It's used to provide similar
-// interface as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we move this logic into the IPAddress.
-std::optional<net_base::IPAddress> CreateIPAddress(
-    base::span<const uint8_t> addr_bytes, sa_family_t family) {
-  const auto ip_family = net_base::FromSAFamily(family);
-  const auto addr = net_base::IPAddress::CreateFromBytes(addr_bytes);
-  if (!addr || (ip_family && addr->GetFamily() != ip_family)) {
-    return std::nullopt;
-  }
-  return addr;
-}
-
-// Creates net_base::IPCIDR with Family. It's used to provide similar interface
-// as shill::IPAddress::CreateFromBytes().
-// TODO(b/279693340): Remove it when we move this logic into the IPCIDR.
-std::optional<net_base::IPCIDR> CreateIPCIDR(
-    base::span<const uint8_t> addr_bytes,
-    int prefix_length,
-    sa_family_t family) {
-  const auto addr = CreateIPAddress(addr_bytes, family);
-  if (!addr) {
-    return std::nullopt;
-  }
-  return net_base::IPCIDR::CreateFromAddressAndPrefix(*addr, prefix_length);
-}
-
 }  // namespace
 
 struct RTNLHeader {
@@ -947,8 +920,9 @@ std::string RTNLMessage::GetIflaIfname() const {
 }
 
 std::optional<net_base::IPCIDR> RTNLMessage::GetIfaAddress() const {
-  return CreateIPCIDR(GetAttribute(IFA_ADDRESS), address_status_.prefix_len,
-                      family_);
+  return net_base::IPCIDR::CreateFromBytesAndPrefix(
+      GetAttribute(IFA_ADDRESS), address_status_.prefix_len,
+      net_base::FromSAFamily(family_));
 }
 
 uint32_t RTNLMessage::GetRtaTable() const {
@@ -956,15 +930,20 @@ uint32_t RTNLMessage::GetRtaTable() const {
 }
 
 std::optional<net_base::IPCIDR> RTNLMessage::GetRtaDst() const {
-  return CreateIPCIDR(GetAttribute(RTA_DST), route_status_.dst_prefix, family_);
+  return net_base::IPCIDR::CreateFromBytesAndPrefix(
+      GetAttribute(RTA_DST), route_status_.dst_prefix,
+      net_base::FromSAFamily(family_));
 }
 
 std::optional<net_base::IPCIDR> RTNLMessage::GetRtaSrc() const {
-  return CreateIPCIDR(GetAttribute(RTA_SRC), route_status_.src_prefix, family_);
+  return net_base::IPCIDR::CreateFromBytesAndPrefix(
+      GetAttribute(RTA_SRC), route_status_.src_prefix,
+      net_base::FromSAFamily(family_));
 }
 
 std::optional<net_base::IPAddress> RTNLMessage::GetRtaGateway() const {
-  return CreateIPAddress(GetAttribute(RTA_GATEWAY), family_);
+  return net_base::IPAddress::CreateFromBytes(GetAttribute(RTA_GATEWAY),
+                                              net_base::FromSAFamily(family_));
 }
 
 uint32_t RTNLMessage::GetRtaOif() const {
@@ -992,11 +971,15 @@ std::string RTNLMessage::GetFraIifname() const {
 }
 
 std::optional<net_base::IPCIDR> RTNLMessage::GetFraSrc() const {
-  return CreateIPCIDR(GetAttribute(FRA_SRC), route_status_.src_prefix, family_);
+  return net_base::IPCIDR::CreateFromBytesAndPrefix(
+      GetAttribute(FRA_SRC), route_status_.src_prefix,
+      net_base::FromSAFamily(family_));
 }
 
 std::optional<net_base::IPCIDR> RTNLMessage::GetFraDst() const {
-  return CreateIPCIDR(GetAttribute(FRA_DST), route_status_.dst_prefix, family_);
+  return net_base::IPCIDR::CreateFromBytesAndPrefix(
+      GetAttribute(FRA_DST), route_status_.dst_prefix,
+      net_base::FromSAFamily(family_));
 }
 
 uint32_t RTNLMessage::GetFraFwmark() const {
