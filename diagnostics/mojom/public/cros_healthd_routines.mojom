@@ -17,9 +17,31 @@ import "diagnostics/mojom/public/cros_healthd_exception.mojom";
 //
 // NextMinVersion: 2, NextIndex: 2
 interface CrosHealthdRoutinesService {
-  // Requests that the a routine using the RoutineControl API is created on the
-  // platform. This function creates different routine based on the
+  // Requests that a routine using the RoutineControl API is created on the
+  // platform. This function creates a different routine based on the
   // RoutineArgument supplied.
+  //
+  // Error Handling:
+  // This method will result in the creation of the routine on the device, which
+  // might require allocation of additional resources and checking preconditions
+  // for the routine, e.g. available hardware, correct arguments, etc.
+  //
+  // All exceptions that occur (either during initialization or while executing
+  // the routine) will close the connection to the provided RoutineControl
+  // with a specific reason (see cros_healthd.mojom.Exception) and a string
+  // message containing human readable information about the exception.
+  // For that reason it is necessary to always setup a disconnect handler on the
+  // RoutineControl remote to be informed about potential exceptions.
+  //
+  // Please note exceptions are different from a routine reporting `has_passed
+  // == false` (in case it failed, see RoutineStateFinished). Exception are
+  // something not intended to happen. The details of the reasons for Exceptions
+  // can be found in cros_healthd.mojom.Exception type and the corresponding
+  // reason enum.
+  //
+  // To know if an exception occurs during the initialization, callers can wait
+  // for the routine being initialized (get via `GetState` or RoutineObserver) on
+  // the RoutineControl remote, before calling the `Start` method.
   //
   // The request:
   // * |routine_argument| - a RoutineArgument type that provides all the
@@ -210,12 +232,21 @@ struct LedLitUpRoutineArgument {
 
 // Interface exposed to clients for controlling a routine.
 //
+// Error Handling:
+// Please check the Error Handling section of CrosHealthdRoutinesService.
+//
 // NextMinVersion: 1, NextIndex: 2
 interface RoutineControl {
-  // Gets the current state of the routine.
+  // Gets the current state of the routine. Note that if the routine fails to
+  // initialize, the RoutineControl may disconnect before the callback is
+  // called.
   GetState@0() => (RoutineState state);
 
-  // Starts the routine. No operation if the routine has already started.
+  // Starts the routine. Each routine can only be started once. Calling this
+  // method multiple times results in no-ops.
+  //
+  // See the error handling section above to know how to handle possible
+  // exceptions that occur before and after the routine has been started.
   Start@1();
 };
 
@@ -223,7 +254,10 @@ interface RoutineControl {
 //
 // NextMinVersion: 1, NextIndex: 1
 interface RoutineObserver {
-  // Is called when the routine state has changed.
+  // Called when the routine state has changed. This is also called as soon
+  // as a routine is initialized (right after calling `CreateRoutine`).
+  // Note that if the routine fails to initialize, the RoutineControl may
+  // disconnect before the first invocation of this observer method.
   OnRoutineStateChange@0(RoutineState state);
 };
 
@@ -241,14 +275,17 @@ struct RoutineState {
 //
 // NextMinVersion: 1, NextIndex: 4
 union RoutineStateUnion {
+  // Default field is required by extensible unions for backward compatibility.
+  // Any unrecognized Mojo field will deserialize to this field. Don't use this.
+  [Default] bool unrecognizedArgument @0;
   // Routine has been initialized but not yet started.
-  RoutineStateInitialized initialized@0;
+  RoutineStateInitialized initialized@1;
   // Routine is running.
-  RoutineStateRunning running@1;
+  RoutineStateRunning running@2;
   // Routine is waiting for something.
-  RoutineStateWaiting waiting@2;
+  RoutineStateWaiting waiting@3;
   // Routine has finished.
-  RoutineStateFinished finished@3;
+  RoutineStateFinished finished@4;
 };
 
 // Routine has been initialized but not yet started.
@@ -293,7 +330,11 @@ struct RoutineStateFinished {
   RoutineDetail? detail@1;
 };
 
+
 union RoutineDetail {
+  // Default field is required by extensible unions for backward compatibility.
+  // Any unrecognized Mojo field will deserialize to this field. Don't use this.
+  [Default] bool unrecognizedArgument;
   MemoryRoutineDetail memory;
   AudioDriverRoutineDetail audio_driver;
   CpuStressRoutineDetail cpu_stress;

@@ -13,6 +13,7 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_health_tool/output_util.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -84,6 +85,11 @@ void RoutineObserver::PrintOutput(const base::Value::Dict& output) {
 void RoutineObserver::OnRoutineStateChange(
     mojom::RoutineStatePtr state_update) {
   switch (state_update->state_union->which()) {
+    case ash::cros_healthd::mojom::RoutineStateUnion::Tag::
+        kUnrecognizedArgument: {
+      CHECK(false) << "Got unrecognized RoutineState";
+      break;
+    }
     case mojom::RoutineStateUnion::Tag::kFinished: {
       auto& finished_state = state_update->state_union->get_finished();
       std::cout << '\r' << "Running Progress: " << int(state_update->percentage)
@@ -92,6 +98,10 @@ void RoutineObserver::OnRoutineStateChange(
           finished_state->has_passed ? "Passed" : "Failed";
       std::cout << ("Status: ") << passed_status << std::endl;
       switch (finished_state->detail->which()) {
+        case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
+          CHECK(false) << "Got unrecognized RoutineDetail";
+          break;
+        }
         // These routines do not produce printable output. Printing passed or
         // failed is enough.
         case mojom::RoutineDetail::Tag::kCpuStress:

@@ -215,6 +215,10 @@ void RoutineAdapter::PopulateStatusUpdate(
   response->progress_percent = cached_state_->percentage;
 
   switch (cached_state_->state_union->which()) {
+    case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument: {
+      CHECK(false) << "Got unrecognized RoutineState";
+      break;
+    }
     case mojom::RoutineStateUnion::Tag::kInitialized: {
       auto update = mojom::NonInteractiveRoutineUpdate::New();
       update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
