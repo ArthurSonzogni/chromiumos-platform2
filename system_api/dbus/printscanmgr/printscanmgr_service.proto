@@ -27,6 +27,7 @@ enum AddPrinterResult {
   ADD_PRINTER_RESULT_DBUS_GENERIC = 12;
   ADD_PRINTER_RESULT_DBUS_NO_REPLY = 13;
   ADD_PRINTER_RESULT_DBUS_TIMEOUT = 14;
+  ADD_PRINTER_RESULT_DBUS_ENCODING_FAILURE = 15;
 };
 
 // Input for the org.chromium.printscanmgr.CupsAddAutoConfiguredPrinter D-Bus
