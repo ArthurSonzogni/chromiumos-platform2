@@ -147,10 +147,9 @@ class DiagActions final {
   // ID of the routine being run.
   int32_t id_ = ash::cros_healthd::mojom::kFailedToStartId;
 
-  // If |force_cancel_| is true, the next routine run will be cancelled when its
-  // progress is greater than or equal to |cancellation_percent_|.
-  bool force_cancel_ = false;
-  uint32_t cancellation_percent_ = 0;
+  // If set, the next routine run will be cancelled when its progress is
+  // greater than or equal to |force_cancellation_percent_|.
+  std::optional<uint32_t> force_cancellation_percent_;
 
   // Tracks the passage of time.
   std::unique_ptr<base::DefaultTickClock> default_tick_clock_;

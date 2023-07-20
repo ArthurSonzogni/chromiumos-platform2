@@ -523,8 +523,7 @@ bool DiagActions::ActionRunUfsLifetimeRoutine() {
 
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
-  force_cancel_ = true;
-  cancellation_percent_ = percent;
+  force_cancellation_percent_ = percent;
 }
 
 bool DiagActions::ProcessRoutineResponse(
@@ -568,12 +567,12 @@ bool DiagActions::PollRoutineAndProcessResult() {
     std::cout << '\r' << "Progress: " << response->progress_percent
               << std::flush;
 
-    if (force_cancel_ && !response.is_null() &&
-        response->progress_percent >= cancellation_percent_) {
+    if (force_cancellation_percent_.has_value() && !response.is_null() &&
+        response->progress_percent >= force_cancellation_percent_.value()) {
       response =
           GetRoutineUpdate(id_, mojom::DiagnosticRoutineCommandEnum::kCancel,
                            true /* include_output */);
-      force_cancel_ = false;
+      force_cancellation_percent_ = std::nullopt;
     }
 
     base::RunLoop run_loop;
