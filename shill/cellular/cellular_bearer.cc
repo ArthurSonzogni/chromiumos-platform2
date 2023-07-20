@@ -106,42 +106,19 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   }
 
   *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
-  ipconfig_properties->reset();
 
-  if (*ipconfig_method != IPConfigMethod::kStatic)
-    return;
-
-  if (!properties.Contains<std::string>(kPropertyAddress) ||
-      !properties.Contains<std::string>(kPropertyGateway)) {
-    SLOG(2) << "Bearer '" << dbus_path_.value()
-            << "' static IP configuration does not specify valid "
-               "address/gateway information.";
-    *ipconfig_method = IPConfigMethod::kUnknown;
+  // Additional settings are only expected in either static or dynamic IP
+  // addressing, so we can bail out early otherwise.
+  if (*ipconfig_method != IPConfigMethod::kStatic &&
+      *ipconfig_method != IPConfigMethod::kDHCP) {
+    ipconfig_properties->reset();
     return;
   }
 
   ipconfig_properties->reset(new IPConfig::Properties);
-  (*ipconfig_properties)->address_family = address_family;
-  (*ipconfig_properties)->address =
-      properties.Get<std::string>(kPropertyAddress);
-  (*ipconfig_properties)->gateway =
-      properties.Get<std::string>(kPropertyGateway);
 
-  // Set method string for kMethodStatic
-  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
-    (*ipconfig_properties)->method = kTypeIPv4;
-  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
-    (*ipconfig_properties)->method = kTypeIPv6;
-  }
-
-  uint32_t prefix;
-  if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
-    prefix = IPAddress::GetMaxPrefixLength(address_family);
-  } else {
-    prefix = properties.Get<uint32_t>(kPropertyPrefix);
-  }
-  (*ipconfig_properties)->subnet_prefix = prefix;
-
+  // DNS servers and MTU are reported by the network via PCOs, so we may have
+  // them both when using static or dynamic IP addressing.
   if (properties.Contains<std::string>(kPropertyDNS1)) {
     (*ipconfig_properties)
         ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS1));
@@ -164,6 +141,39 @@ void CellularBearer::GetIPConfigMethodAndProperties(
       (*ipconfig_properties)->mtu = mtu;
     }
   }
+
+  if (*ipconfig_method != IPConfigMethod::kStatic)
+    return;
+
+  if (!properties.Contains<std::string>(kPropertyAddress) ||
+      !properties.Contains<std::string>(kPropertyGateway)) {
+    SLOG(2) << "Bearer '" << dbus_path_.value()
+            << "' static IP configuration does not specify valid "
+               "address/gateway information.";
+    *ipconfig_method = IPConfigMethod::kUnknown;
+    return;
+  }
+
+  (*ipconfig_properties)->address_family = address_family;
+  (*ipconfig_properties)->address =
+      properties.Get<std::string>(kPropertyAddress);
+  (*ipconfig_properties)->gateway =
+      properties.Get<std::string>(kPropertyGateway);
+
+  // Set method string for kMethodStatic
+  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
+    (*ipconfig_properties)->method = kTypeIPv4;
+  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
+    (*ipconfig_properties)->method = kTypeIPv6;
+  }
+
+  uint32_t prefix;
+  if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
+    prefix = IPAddress::GetMaxPrefixLength(address_family);
+  } else {
+    prefix = properties.Get<uint32_t>(kPropertyPrefix);
+  }
+  (*ipconfig_properties)->subnet_prefix = prefix;
 }
 
 void CellularBearer::ResetProperties() {
