@@ -378,12 +378,6 @@ class Platform2Test:
             self.qemu.Install()
             self.qemu.RegisterBinfmt()
 
-    def post_test(self):
-        """Runs post-test teardown.
-
-        Removes mounts/files copied during pre-test.
-        """
-
     def _remount_ro(self, path: str) -> None:
         """Helper to remount a path as read-only.
 
@@ -798,7 +792,7 @@ def _ReExecuteIfNeeded(argv, ns_net=True, ns_pid=True):
 
 def GetParser():
     """Return a command line parser."""
-    actions = ["pre_test", "post_test", "run"]
+    actions = ["pre_test", "run"]
 
     parser = commandline.ArgumentParser(description=__doc__)
     group = parser.add_argument_group("Namespaces")
