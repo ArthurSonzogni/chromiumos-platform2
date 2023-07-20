@@ -198,6 +198,46 @@ std::optional<CrosHealthdDiagnosticResult> ConvertDiagnosticStatusToUMAEnum(
   }
 }
 
+std::optional<CrosHealthdEventCategory> ConvertEventCategoryToUMAEnum(
+    mojom::EventCategoryEnum event_category) {
+  switch (event_category) {
+    case mojom::EventCategoryEnum::kUnmappedEnumField:
+      return std::nullopt;
+    case mojom::EventCategoryEnum::kUsb:
+      return CrosHealthdEventCategory::kUsb;
+    case mojom::EventCategoryEnum::kThunderbolt:
+      return CrosHealthdEventCategory::kThunderbolt;
+    case mojom::EventCategoryEnum::kLid:
+      return CrosHealthdEventCategory::kLid;
+    case mojom::EventCategoryEnum::kBluetooth:
+      return CrosHealthdEventCategory::kBluetooth;
+    case mojom::EventCategoryEnum::kPower:
+      return CrosHealthdEventCategory::kPower;
+    case mojom::EventCategoryEnum::kAudio:
+      return CrosHealthdEventCategory::kAudio;
+    case mojom::EventCategoryEnum::kAudioJack:
+      return CrosHealthdEventCategory::kAudioJack;
+    case mojom::EventCategoryEnum::kSdCard:
+      return CrosHealthdEventCategory::kSdCard;
+    case mojom::EventCategoryEnum::kNetwork:
+      return CrosHealthdEventCategory::kNetwork;
+    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
+      return CrosHealthdEventCategory::kKeyboardDiagnostic;
+    case mojom::EventCategoryEnum::kTouchpad:
+      return CrosHealthdEventCategory::kTouchpad;
+    case mojom::EventCategoryEnum::kHdmi:
+      return CrosHealthdEventCategory::kHdmi;
+    case mojom::EventCategoryEnum::kTouchscreen:
+      return CrosHealthdEventCategory::kTouchscreen;
+    case mojom::EventCategoryEnum::kStylusGarage:
+      return CrosHealthdEventCategory::kStylusGarage;
+    case mojom::EventCategoryEnum::kStylus:
+      return CrosHealthdEventCategory::kStylus;
+    case mojom::EventCategoryEnum::kCrash:
+      return CrosHealthdEventCategory::kCrash;
+  }
+}
+
 template <typename S>
 void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
@@ -352,6 +392,23 @@ void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
   if (!result) {
     LOG(ERROR) << "Failed to send diagnostic result of " << routine << " ("
                << status << ") to UMA.";
+  }
+}
+
+void SendEventSubscriptionUsageToUMA(MetricsLibraryInterface* metrics,
+                                     mojom::EventCategoryEnum category) {
+  std::optional<CrosHealthdEventCategory> category_enum =
+      ConvertEventCategoryToUMAEnum(category);
+  if (!category_enum.has_value()) {
+    // No need to record unrecognized category.
+    return;
+  }
+
+  bool result = metrics->SendEnumToUMA(metrics_name::kEventSubscription,
+                                       category_enum.value());
+  if (!result) {
+    LOG(ERROR) << "Failed to send event subscription of " << category
+               << " to UMA.";
   }
 }
 

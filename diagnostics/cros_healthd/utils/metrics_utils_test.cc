@@ -41,6 +41,10 @@ class MetricsUtilsTest : public ::testing::Test {
     SendDiagnosticResultToUMA(&metrics_library_, routine, status);
   }
 
+  void SendEventCategory(mojom::EventCategoryEnum category) {
+    SendEventSubscriptionUsageToUMA(&metrics_library_, category);
+  }
+
   testing::StrictMock<MetricsLibraryMock> metrics_library_;
 };
 
@@ -314,6 +318,13 @@ TEST_F(MetricsUtilsTest, SendDiagnosticNotRunResult) {
                       CrosHealthdDiagnosticResult::kNotRun);
   SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
                        mojom::DiagnosticRoutineStatusEnum::kNotRun);
+}
+
+TEST_F(MetricsUtilsTest, SendEventCategory) {
+  // The choice of event category is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kEventSubscription,
+                      CrosHealthdEventCategory::kUsb);
+  SendEventCategory(mojom::EventCategoryEnum::kUsb);
 }
 
 }  // namespace

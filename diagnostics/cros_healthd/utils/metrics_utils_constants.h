@@ -148,6 +148,9 @@ inline constexpr char kDiagnosticResultAudioDriver[] =
 inline constexpr char kDiagnosticResultUfsLifetime[] =
     "ChromeOS.Healthd.DiagnosticResult.UfsLifetime";
 
+inline constexpr char kEventSubscription[] =
+    "ChromeOS.Healthd.EventSubscription";
+
 }  // namespace metrics_name
 }  // namespace diagnostics
 
