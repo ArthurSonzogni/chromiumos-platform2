@@ -86,6 +86,9 @@ using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::OkStatus;
 
+using AuthenticateTestFuture =
+    TestFuture<const AuthSession::PostAuthAction&, CryptohomeStatus>;
+
 constexpr char kUsername[] = "foo@example.com";
 constexpr char kPassword[] = "password";
 constexpr char kPin[] = "1234";
@@ -122,6 +125,15 @@ std::unique_ptr<VaultKeysetFactory> CreateMockVaultKeysetFactory() {
         return vk;
       });
   return factory;
+}
+
+AuthSession::AuthenticateAuthFactorRequest ToAuthenticateRequest(
+    std::vector<std::string> labels, user_data_auth::AuthInput auth_input) {
+  return AuthSession::AuthenticateAuthFactorRequest{
+      .auth_factor_labels = std::move(labels),
+      .auth_input_proto = std::move(auth_input),
+      .flags = {.force_full_auth = AuthSession::ForceFullAuthFlag::kNone},
+  };
 }
 
 }  // namespace
@@ -420,13 +432,16 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                    std::move(auth_block_state));
           return true;
         });
-    std::string auth_factor_labels[] = {label};
+    std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(secret);
-    TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
-                                        authenticate_future.GetCallback());
-    EXPECT_THAT(authenticate_future.Get(), IsOk());
+    AuthenticateTestFuture authenticate_future;
+    auth_session.AuthenticateAuthFactor(
+        ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+        authenticate_future.GetCallback());
+    auto& [action, status] = authenticate_future.Get();
+    EXPECT_THAT(status, IsOk());
+    EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   }
 
   void AddFactor(AuthSession& auth_session,
@@ -479,31 +494,35 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void AuthenticatePasswordFactor(AuthSession& auth_session,
                                   const std::string& label,
                                   const std::string& secret) {
-    std::string auth_factor_labels[] = {label};
+    std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(secret);
-    TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
-                                        authenticate_future.GetCallback());
-    EXPECT_THAT(authenticate_future.Get(), IsOk());
+    AuthenticateTestFuture authenticate_future;
+    auth_session.AuthenticateAuthFactor(
+        ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+        authenticate_future.GetCallback());
+    auto& [action, status] = authenticate_future.Get();
+    EXPECT_THAT(status, IsOk());
+    EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   }
 
   user_data_auth::CryptohomeErrorCode AttemptAuthWithPinFactor(
       AuthSession& auth_session,
       const std::string& label,
       const std::string& secret) {
-    std::string auth_factor_labels[] = {label};
+    std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_pin_input()->set_secret(secret);
-    TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
-                                        authenticate_future.GetCallback());
+    AuthenticateTestFuture authenticate_future;
+    auth_session.AuthenticateAuthFactor(
+        ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+        authenticate_future.GetCallback());
 
-    if (authenticate_future.Get().ok() ||
-        !authenticate_future.Get()->local_legacy_error().has_value()) {
+    auto& [unused_action, status] = authenticate_future.Get();
+    if (status.ok() || !status->local_legacy_error().has_value()) {
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
-    return authenticate_future.Get()->local_legacy_error().value();
+    return status->local_legacy_error().value();
   }
 
   // Standard key blob and TPM state objects to use in testing.

@@ -115,10 +115,14 @@ CryptohomeStatus RunAuthenticateAuthFactor(
       auth_factor_labels.push_back(label);
     }
   }
-  TestFuture<CryptohomeStatus> future;
-  auth_session.AuthenticateAuthFactor(auth_factor_labels, request.auth_input(),
-                                      future.GetCallback());
-  return future.Take();
+  TestFuture<const AuthSession::PostAuthAction&, CryptohomeStatus> future;
+  AuthSession::AuthenticateAuthFactorRequest auth_request{
+      .auth_factor_labels = std::move(auth_factor_labels),
+      .auth_input_proto = request.auth_input(),
+      .flags = {.force_full_auth = AuthSession::ForceFullAuthFlag::kNone},
+  };
+  auth_session.AuthenticateAuthFactor(auth_request, future.GetCallback());
+  return std::get<1>(future.Take());
 }
 
 CryptohomeStatus RunUpdateAuthFactor(

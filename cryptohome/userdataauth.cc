@@ -300,7 +300,7 @@ void GroupDmcryptDeviceMounts(
 }
 
 void ReplyWithAuthenticationResult(
-    InUseAuthSession auth_session,
+    const InUseAuthSession& auth_session,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
     CryptohomeStatus status) {
@@ -315,6 +315,41 @@ void ReplyWithAuthenticationResult(
   }
 
   ReplyWithError(std::move(on_done), std::move(reply), status);
+}
+
+void HandleAuthenticationResult(
+    InUseAuthSession auth_session,
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done,
+    const AuthSession::PostAuthAction& post_auth_action,
+    CryptohomeStatus status) {
+  ReplyWithAuthenticationResult(auth_session, std::move(on_done),
+                                std::move(status));
+  switch (post_auth_action.action_type) {
+    case AuthSession::PostAuthActionType::kNone:
+      return;
+    case AuthSession::PostAuthActionType::kRepeat: {
+      if (!post_auth_action.repeat_request.has_value()) {
+        LOG(DFATAL)
+            << "PostAuthActionType::kRepeat with null repeat_request field.";
+        return;
+      }
+      auth_session->AuthenticateAuthFactor(
+          post_auth_action.repeat_request.value(),
+          // Currently there are no scenarios where a repeated auth will specify
+          // a non-null action. Keep the logic simple here instead of recursing.
+          base::BindOnce([](const AuthSession::PostAuthAction& unused_action,
+                            CryptohomeStatus status) {
+            if (!status.ok()) {
+              LOG(ERROR)
+                  << "Repeated full auth failed while light auth succeeded: "
+                  << std::move(status);
+              // TODO(b/287305183): Send UMA here.
+            }
+          }));
+      break;
+    }
+  }
 }
 
 }  // namespace
@@ -2972,11 +3007,18 @@ void UserDataAuth::AuthenticateAuthFactor(
       auth_factor_labels.push_back(label);
     }
   }
+  AuthSession::AuthenticateAuthFactorRequest authenticate_auth_factor_request{
+      .auth_factor_labels = std::move(auth_factor_labels),
+      .auth_input_proto = std::move(request.auth_input()),
+      .flags =
+          AuthSession::AuthenticateAuthFactorFlags{
+              .force_full_auth = AuthSession::ForceFullAuthFlag::kNone},
+  };
 
   AuthSession* auth_session_ptr = auth_session.Get();
   auth_session_ptr->AuthenticateAuthFactor(
-      auth_factor_labels, request.auth_input(),
-      base::BindOnce(&ReplyWithAuthenticationResult, std::move(auth_session),
+      authenticate_auth_factor_request,
+      base::BindOnce(&HandleAuthenticationResult, std::move(auth_session),
                      std::move(on_done)));
 }
 

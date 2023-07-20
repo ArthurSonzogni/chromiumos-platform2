@@ -111,6 +111,11 @@ constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 // This is the frequency with which a signal is sent for a locked out user,
 // unless the lockout time is less than this.
 const base::TimeDelta kAuthFactorStatusUpdateDelay = base::Seconds(30);
+// This is the post auth action that means no action needs to be taken.
+AuthSession::PostAuthAction kNoPostAction{
+    .action_type = AuthSession::PostAuthActionType::kNone,
+    .repeat_request = std::nullopt,
+};
 
 // Check if a given type of AuthFactor supports Vault Keysets.
 constexpr bool IsFactorTypeSupportedByVk(AuthFactorType auth_factor_type) {
@@ -306,20 +311,26 @@ void ReportRecreateAuthFactorOk(AuthFactorType auth_factor_type) {
   ReportCryptohomeOk(error_bucket_paths);
 }
 
-void ReportAndExecuteCallback(StatusCallback callback,
-                              AuthFactorType auth_factor_type,
-                              const std::string& bucket_name,
-                              CryptohomeStatus status) {
+template <typename... Args>
+void ReportAndExecuteCallback(
+    base::OnceCallback<void(Args..., CryptohomeStatus)> callback,
+    AuthFactorType auth_factor_type,
+    const std::string& bucket_name,
+    Args... args,
+    CryptohomeStatus status) {
   const std::array<std::string, 2> error_bucket_paths{
       bucket_name, AuthFactorTypeToCamelCaseString(auth_factor_type)};
   ReportOperationStatus(status, error_bucket_paths);
-  std::move(callback).Run(std::move(status));
+  std::move(callback).Run(std::move(args)..., std::move(status));
 }
 
-StatusCallback WrapCallbackWithMetricsReporting(StatusCallback callback,
-                                                AuthFactorType auth_factor_type,
-                                                std::string bucket_name) {
-  return base::BindOnce(&ReportAndExecuteCallback, std::move(callback),
+template <typename... Args>
+base::OnceCallback<void(Args..., CryptohomeStatus)>
+WrapCallbackWithMetricsReporting(
+    base::OnceCallback<void(Args..., CryptohomeStatus)> callback,
+    AuthFactorType auth_factor_type,
+    std::string bucket_name) {
+  return base::BindOnce(&ReportAndExecuteCallback<Args...>, std::move(callback),
                         auth_factor_type, std::move(bucket_name));
 }
 
@@ -1116,9 +1127,11 @@ bool AuthSession::MigrateResetSecretToUss() {
 }
 
 void AuthSession::AuthenticateAuthFactor(
-    base::span<const std::string> auth_factor_labels,
-    const user_data_auth::AuthInput& auth_input_proto,
-    StatusCallback on_done) {
+    const AuthenticateAuthFactorRequest& request,
+    AuthenticateAuthFactorCallback callback) {
+  const std::vector<std::string>& auth_factor_labels =
+      request.auth_factor_labels;
+  const user_data_auth::AuthInput& auth_input_proto = request.auth_input_proto;
   std::string label_text = auth_factor_labels.empty()
                                ? "(unlabelled)"
                                : base::JoinString(auth_factor_labels, ",");
@@ -1129,17 +1142,28 @@ void AuthSession::AuthenticateAuthFactor(
       DetermineFactorTypeFromAuthInput(auth_input_proto);
   if (!request_auth_factor_type.has_value()) {
     LOG(ERROR) << "Unexpected AuthInput type.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    std::move(callback).Run(
+        kNoPostAction,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
 
-  on_done = WrapCallbackWithMetricsReporting(
-      std::move(on_done), *request_auth_factor_type,
-      kCryptohomeErrorAuthenticateAuthFactorErrorBucket);
+  auto callback_with_metrics =
+      WrapCallbackWithMetricsReporting<const PostAuthAction&>(
+          std::move(callback), *request_auth_factor_type,
+          kCryptohomeErrorAuthenticateAuthFactorErrorBucket);
+
+  // Currently only lightweight auth might specify a non-null post-auth action,
+  // so use the callback pre-bound with null post-auth action in all other
+  // places to keep code simple.
+  auto [on_done_temp, on_done_with_action] =
+      base::SplitOnceCallback(std::move(callback_with_metrics));
+  StatusCallback on_done =
+      base::BindOnce(std::move(on_done_temp), kNoPostAction);
 
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(*request_auth_factor_type);
@@ -1166,7 +1190,8 @@ void AuthSession::AuthenticateAuthFactor(
       }
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
-      if (!verifier || !factor_driver.IsLightAuthSupported(auth_intent_)) {
+      if (!verifier || !factor_driver.IsLightAuthSupported(auth_intent_) ||
+          request.flags.force_full_auth == ForceFullAuthFlag::kForce) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -1185,9 +1210,10 @@ void AuthSession::AuthenticateAuthFactor(
                 .Wrap(std::move(auth_input).err_status()));
         return;
       }
-      auto verify_callback =
-          base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
-                         weak_factory_.GetWeakPtr(), std::move(on_done));
+      auto verify_callback = base::BindOnce(
+          &AuthSession::CompleteVerifyOnlyAuthentication,
+          weak_factory_.GetWeakPtr(), std::move(on_done_with_action), request,
+          *request_auth_factor_type);
       verifier->Verify(std::move(*auth_input), std::move(verify_callback));
       return;
     }
@@ -1215,7 +1241,8 @@ void AuthSession::AuthenticateAuthFactor(
 
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
-      if (verifier && factor_driver.IsLightAuthSupported(auth_intent_)) {
+      if (verifier && factor_driver.IsLightAuthSupported(auth_intent_) &&
+          request.flags.force_full_auth != ForceFullAuthFlag::kForce) {
         CryptohomeStatusOr<AuthInput> auth_input =
             CreateAuthInputForAuthentication(auth_input_proto,
                                              verifier->auth_factor_metadata());
@@ -1227,9 +1254,10 @@ void AuthSession::AuthenticateAuthFactor(
                   .Wrap(std::move(auth_input).err_status()));
           return;
         }
-        auto verify_callback =
-            base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
-                           weak_factory_.GetWeakPtr(), std::move(on_done));
+        auto verify_callback = base::BindOnce(
+            &AuthSession::CompleteVerifyOnlyAuthentication,
+            weak_factory_.GetWeakPtr(), std::move(on_done_with_action), request,
+            *request_auth_factor_type);
         verifier->Verify(std::move(*auth_input), std::move(verify_callback));
         return;
       }
@@ -2821,8 +2849,11 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   return OkStatus<CryptohomeError>();
 }
 
-void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
-                                                   CryptohomeStatus error) {
+void AuthSession::CompleteVerifyOnlyAuthentication(
+    AuthenticateAuthFactorCallback on_done,
+    AuthenticateAuthFactorRequest original_request,
+    AuthFactorType auth_factor_type,
+    CryptohomeStatus error) {
   // If there was no error then the verify was a success.
   if (error.ok()) {
     const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
@@ -2833,9 +2864,23 @@ void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
       authorized_intents_.insert(AuthIntent::kWebAuthn);
     }
     SetAuthorizedForIntents(lightweight_intents);
+    const AuthFactorDriver& factor_driver =
+        auth_factor_driver_manager_->GetDriver(auth_factor_type);
+    // There is at least 1 AuthFactor that needs full auth to reset, and the
+    // current auth factor used for authentication supports repeating full auth.
+    if (factor_driver.IsFullAuthRepeatable() &&
+        NeedsFullAuthForReset(factor_driver.GetResetCapability())) {
+      original_request.flags.force_full_auth = ForceFullAuthFlag::kForce;
+      PostAuthAction action{
+          .action_type = PostAuthActionType::kRepeat,
+          .repeat_request = std::move(original_request),
+      };
+      std::move(on_done).Run(action, std::move(error));
+      return;
+    }
   }
   // Forward whatever the result was to on_done.
-  std::move(on_done).Run(std::move(error));
+  std::move(on_done).Run(kNoPostAction, std::move(error));
 }
 
 CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
@@ -3640,6 +3685,48 @@ void AuthSession::ResetRateLimiterCredentials(
                    << " with error: " << error;
     }
   }
+}
+
+bool AuthSession::NeedsFullAuthForReset(
+    AuthFactorDriver::ResetCapability capability) {
+  // Check if LE credentials need reset.
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+
+    // Look for only pinweaver backed AuthFactors.
+    auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
+        &(auth_factor.auth_block_state().state));
+    if (!state) {
+      continue;
+    }
+    // Ensure that the AuthFactor has le_label.
+    if (!state->le_label.has_value()) {
+      LOG(WARNING) << "PinWeaver AuthBlock State does not have le_label";
+      continue;
+    }
+    // If the LECredential isn't at 0 attempts, it needs to be reset.
+    if (crypto_->GetWrongAuthAttempts(state->le_label.value()) != 0) {
+      return true;
+    }
+  }
+
+  // Check if the rate-limiter needs reset.
+  CryptohomeStatusOr<UserMetadata> user_metadata =
+      user_metadata_reader_->Load(obfuscated_username_);
+  if (!user_metadata.ok()) {
+    return false;
+  }
+  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+    return false;
+  }
+
+  // If reset expiration is supported, we should always reset.
+  if (capability ==
+      AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration) {
+    return true;
+  }
+  return crypto_->GetWrongAuthAttempts(
+             user_metadata->fingerprint_rate_limiter_id.value()) != 0;
 }
 
 std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {

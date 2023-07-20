@@ -185,13 +185,48 @@ class AuthSession final {
   void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
                      StatusCallback on_done);
 
+  // Whether the AuthenticateAuthFactor request should be forced to perform full
+  // auth.
+  enum class ForceFullAuthFlag : bool {
+    kNone = false,
+    kForce = true,
+  };
+
+  // Flags to adjust behavior of the AuthenticateAuthFactor request.
+  struct AuthenticateAuthFactorFlags {
+    ForceFullAuthFlag force_full_auth;
+  };
+
+  // Packs necessary input parameters of AuthenticateAuthFactor request into a
+  // struct.
+  struct AuthenticateAuthFactorRequest {
+    std::vector<std::string> auth_factor_labels;
+    user_data_auth::AuthInput auth_input_proto;
+    AuthenticateAuthFactorFlags flags;
+  };
+
+  // Action that needs to be performed after an AuthenticateAuthFactor request
+  // is completed.
+  enum class PostAuthActionType {
+    kNone,
+    // Repeat the request with |repeat_request|. This will be used to reset the
+    // credential lockouts.
+    kRepeat,
+  };
+  struct PostAuthAction {
+    PostAuthActionType action_type;
+    std::optional<AuthenticateAuthFactorRequest> repeat_request;
+  };
+
+  using AuthenticateAuthFactorCallback =
+      base::OnceCallback<void(const PostAuthAction&, CryptohomeStatus)>;
+
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
-  void AuthenticateAuthFactor(base::span<const std::string> auth_factor_labels,
-                              const user_data_auth::AuthInput& auth_input_proto,
-                              StatusCallback on_done);
+  void AuthenticateAuthFactor(const AuthenticateAuthFactorRequest& request,
+                              AuthenticateAuthFactorCallback callback);
 
   // RemoveAuthFactor is called when the user wants to remove auth factor
   // provided in the `request`.
@@ -456,10 +491,15 @@ class AuthSession final {
 
   // Process the completion of a verify-only authentication attempt. The
   // |on_done| callback will be called after the results of the verification are
-  // processed. Designed to be used in conjunction with
-  // CredentialVerifier::Verify as the CryptohomeStatusCallback.
-  void CompleteVerifyOnlyAuthentication(StatusCallback on_done,
-                                        CryptohomeStatus error);
+  // processed. This takes |auth_factor_type| parameter because it needs to
+  // determine whether the factor can be used for resetting credentials.
+  // Designed to be used in conjunction with CredentialVerifier::Verify as the
+  // CryptohomeStatusCallback.
+  void CompleteVerifyOnlyAuthentication(
+      AuthenticateAuthFactorCallback on_done,
+      AuthenticateAuthFactorRequest original_request,
+      AuthFactorType auth_factor_type,
+      CryptohomeStatus error);
 
   // Add the new factor into the USS in-memory.
   CryptohomeStatus AddAuthFactorToUssInMemory(
@@ -538,6 +578,9 @@ class AuthSession final {
   // the rate-limiter's.
   void ResetRateLimiterCredentials(
       AuthFactorDriver::ResetCapability capability);
+
+  // Whether there are some credentials that can be reset after a full auth.
+  bool NeedsFullAuthForReset(AuthFactorDriver::ResetCapability capability);
 
   // Authenticate the user with the single given auth factor. Additional
   // parameters are provided to aid legacy vault keyset authentication and
