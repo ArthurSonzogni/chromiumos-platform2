@@ -19,7 +19,6 @@
 #include "shill/network/mock_routing_table.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
-#include "shill/network/routing_policy_entry.h"
 #include "shill/technology.h"
 
 using testing::_;

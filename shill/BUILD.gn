@@ -334,7 +334,6 @@ static_library("libshill") {
     "network/network_config.cc",
     "network/network_priority.cc",
     "network/proc_fs_stub.cc",
-    "network/routing_policy_entry.cc",
     "network/routing_policy_service.cc",
     "network/routing_table.cc",
     "network/routing_table_entry.cc",
