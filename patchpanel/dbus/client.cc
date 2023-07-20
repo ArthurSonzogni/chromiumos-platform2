@@ -149,12 +149,8 @@ ConvertDnsRedirectionRequestType(Client::DnsRedirectionRequestType type) {
 }
 
 std::optional<net_base::IPv4CIDR> ConvertIPv4Subnet(const IPv4Subnet& in) {
-  const auto addr = net_base::IPv4Address::CreateFromBytes(in.addr());
-  if (!addr) {
-    return std::nullopt;
-  }
-  return net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      *addr, static_cast<int>(in.prefix_len()));
+  return net_base::IPv4CIDR::CreateFromBytesAndPrefix(
+      in.addr(), static_cast<int>(in.prefix_len()));
 }
 
 std::optional<Client::TrafficCounter> ConvertTrafficCounter(

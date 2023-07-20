@@ -2275,14 +2275,9 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     info->enable_ipv4_dhcp = true;
     if (ipv4_config.has_ipv4_subnet()) {
       // Fill the parameters from protobuf.
-      const auto ipv4_addr =
-          IPv4Address::CreateFromBytes(ipv4_config.gateway_addr());
-      const auto ipv4_cidr =
-          (ipv4_addr)
-              ? IPv4CIDR::CreateFromAddressAndPrefix(
-                    *ipv4_addr,
-                    static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()))
-              : std::nullopt;
+      const auto ipv4_cidr = IPv4CIDR::CreateFromBytesAndPrefix(
+          ipv4_config.gateway_addr(),
+          static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()));
       const auto ipv4_dhcp_start_addr =
           IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr());
       const auto ipv4_dhcp_end_addr =

@@ -84,17 +84,11 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
   const auto addr_bytes = msg.HasAttribute(IFA_LOCAL)
                               ? msg.GetAttribute(IFA_LOCAL)
                               : msg.GetAttribute(IFA_ADDRESS);
-  const auto ipv6_addr = net_base::IPv6Address::CreateFromBytes(addr_bytes);
-  if (!ipv6_addr) {
-    LOG(ERROR) << "Failed to create IPv6Address: address length="
-               << addr_bytes.size();
-    return;
-  }
-  const auto ipv6_cidr = net_base::IPv6CIDR::CreateFromAddressAndPrefix(
-      *ipv6_addr, status.prefix_len);
+  const auto ipv6_cidr = net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+      addr_bytes, status.prefix_len);
   if (!ipv6_cidr) {
-    LOG(ERROR) << "Failed to create IPv6CIDR: prefix length="
-               << status.prefix_len;
+    LOG(ERROR) << "Failed to create IPv6CIDR: address length="
+               << addr_bytes.size() << ", prefix length=" << status.prefix_len;
     return;
   }
 
