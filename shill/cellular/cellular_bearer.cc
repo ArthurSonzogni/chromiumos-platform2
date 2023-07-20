@@ -117,6 +117,15 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   ipconfig_properties->reset(new IPConfig::Properties);
 
+  // Set address family and method associated to these IP config right away, as
+  // we already know them.
+  (*ipconfig_properties)->address_family = address_family;
+  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
+    (*ipconfig_properties)->method = kTypeIPv4;
+  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
+    (*ipconfig_properties)->method = kTypeIPv6;
+  }
+
   // DNS servers and MTU are reported by the network via PCOs, so we may have
   // them both when using static or dynamic IP addressing.
   if (properties.Contains<std::string>(kPropertyDNS1)) {
@@ -154,18 +163,10 @@ void CellularBearer::GetIPConfigMethodAndProperties(
     return;
   }
 
-  (*ipconfig_properties)->address_family = address_family;
   (*ipconfig_properties)->address =
       properties.Get<std::string>(kPropertyAddress);
   (*ipconfig_properties)->gateway =
       properties.Get<std::string>(kPropertyGateway);
-
-  // Set method string for kMethodStatic
-  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
-    (*ipconfig_properties)->method = kTypeIPv4;
-  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
-    (*ipconfig_properties)->method = kTypeIPv6;
-  }
 
   uint32_t prefix;
   if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
