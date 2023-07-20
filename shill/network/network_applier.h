@@ -19,9 +19,9 @@
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
+#include "shill/network/routing_policy_service.h"
+#include "shill/network/routing_table.h"
 #include "shill/resolver.h"
-#include "shill/routing_policy_service.h"
-#include "shill/routing_table.h"
 #include "shill/technology.h"
 
 namespace shill {

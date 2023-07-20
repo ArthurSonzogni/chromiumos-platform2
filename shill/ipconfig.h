@@ -13,7 +13,6 @@
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/network_config.h"
-#include "shill/routing_policy_entry.h"
 #include "shill/store/property_store.h"
 
 namespace shill {

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ROUTING_TABLE_H_
-#define SHILL_ROUTING_TABLE_H_
+#ifndef SHILL_NETWORK_ROUTING_TABLE_H_
+#define SHILL_NETWORK_ROUTING_TABLE_H_
 
 #include <memory>
 #include <set>
@@ -19,8 +19,7 @@
 
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/refptr_types.h"
-#include "shill/routing_table_entry.h"
+#include "shill/network/routing_table_entry.h"
 
 namespace shill {
 
@@ -161,4 +160,4 @@ class RoutingTable {
 
 }  // namespace shill
 
-#endif  // SHILL_ROUTING_TABLE_H_
+#endif  // SHILL_NETWORK_ROUTING_TABLE_H_

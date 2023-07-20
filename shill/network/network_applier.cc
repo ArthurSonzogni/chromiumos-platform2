@@ -20,9 +20,9 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
-#include "shill/routing_policy_service.h"
-#include "shill/routing_table.h"
-#include "shill/routing_table_entry.h"
+#include "shill/network/routing_policy_service.h"
+#include "shill/network/routing_table.h"
+#include "shill/network/routing_table_entry.h"
 
 namespace shill {
 

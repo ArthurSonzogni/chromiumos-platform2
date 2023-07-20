@@ -9,18 +9,17 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <net-base/ip_address.h>
 
-#include "net-base/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_resolver.h"
-#include "shill/mock_routing_policy_service.h"
-#include "shill/mock_routing_table.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_proc_fs_stub.h"
+#include "shill/network/mock_routing_policy_service.h"
+#include "shill/network/mock_routing_table.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
-#include "shill/routing_policy_entry.h"
+#include "shill/network/routing_policy_entry.h"
 #include "shill/technology.h"
 
 using testing::_;

@@ -26,8 +26,8 @@
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/routing_policy_service.h"
-#include "shill/routing_table.h"
+#include "shill/network/routing_policy_service.h"
+#include "shill/network/routing_table.h"
 #include "shill/shill_config.h"
 
 namespace shill {

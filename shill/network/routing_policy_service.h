@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ROUTING_POLICY_SERVICE_H_
-#define SHILL_ROUTING_POLICY_SERVICE_H_
+#ifndef SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_
+#define SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_
 
 #include <memory>
 #include <set>
@@ -14,7 +14,7 @@
 #include <base/no_destructor.h>
 
 #include "shill/net/rtnl_message.h"
-#include "shill/routing_policy_entry.h"
+#include "shill/network/routing_policy_entry.h"
 
 namespace shill {
 
@@ -87,4 +87,4 @@ class RoutingPolicyService {
 
 }  // namespace shill
 
-#endif  // SHILL_ROUTING_POLICY_SERVICE_H_
+#endif  // SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_

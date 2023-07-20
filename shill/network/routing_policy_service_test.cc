@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/routing_policy_service.h"
+#include "shill/network/routing_policy_service.h"
 
 #include <linux/fib_rules.h>
 #include <linux/rtnetlink.h>

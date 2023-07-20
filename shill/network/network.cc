@@ -30,9 +30,9 @@
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
+#include "shill/network/routing_table.h"
+#include "shill/network/routing_table_entry.h"
 #include "shill/network/slaac_controller.h"
-#include "shill/routing_table.h"
-#include "shill/routing_table_entry.h"
 #include "shill/service.h"
 
 namespace shill {
