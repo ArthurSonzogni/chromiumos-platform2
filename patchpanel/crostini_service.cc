@@ -150,8 +150,8 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   }
 
   datapath_->StartRoutingDeviceAsUser(dev->tap_device_ifname(),
-                                      dev->vm_ipv4_address(),
-                                      TrafficSourceFromVMType(vm_type));
+                                      TrafficSourceFromVMType(vm_type),
+                                      dev->vm_ipv4_address());
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(dev->tap_device_ifname());
   }

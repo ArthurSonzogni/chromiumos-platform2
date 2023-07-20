@@ -377,6 +377,7 @@ bool ArcService::Start(uint32_t id) {
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, kVethArc0Ifname, arc_device_->guest_ifname(),
             arc_device_->config().mac_addr(), guest_cidr,
+            /*remote_ipv6_cidr=*/std::nullopt,
             /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << "Cannot create virtual link for " << kArc0Ifname;
       return false;
@@ -556,6 +557,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
             device->config().mac_addr(), guest_cidr,
+            /*remote_ipv6_cidr=*/std::nullopt,
             IsMulticastInterface(shill_device.ifname))) {
       LOG(ERROR) << "Cannot create veth link for device " << *device;
       return;

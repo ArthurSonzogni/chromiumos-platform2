@@ -63,6 +63,7 @@ class MockDatapath : public Datapath {
                const std::string& peer_ifname,
                const MacAddress& remote_mac_addr,
                const net_base::IPv4CIDR& remote_ipv4_cidr,
+               const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
                bool remote_multicast_flag),
               (override));
   MOCK_METHOD(void, RemoveInterface, (const std::string& ifname), (override));
@@ -70,18 +71,23 @@ class MockDatapath : public Datapath {
               StartRoutingDevice,
               (const ShillClient::Device& shill_device,
                const std::string& int_ifname,
-               TrafficSource source),
+               TrafficSource source,
+               bool static_ipv6),
               (override));
   MOCK_METHOD(void,
               StartRoutingDeviceAsSystem,
-              (const std::string& int_ifname, TrafficSource source),
+              (const std::string& int_ifname,
+               TrafficSource source,
+               bool static_ipv6),
               (override));
   MOCK_METHOD(void,
               StartRoutingDeviceAsUser,
               (const std::string& int_ifname,
-               const net_base::IPv4Address& int_ipv4_addr,
                TrafficSource source,
-               std::optional<net_base::IPv4Address> peer_ipv4_addr),
+               const net_base::IPv4Address& int_ipv4_addr,
+               std::optional<net_base::IPv4Address> peer_ipv4_addr,
+               std::optional<net_base::IPv6Address> int_ipv6_addr,
+               std::optional<net_base::IPv6Address> peer_ipv6_addr),
               (override));
   MOCK_METHOD(void,
               StopRoutingDevice,

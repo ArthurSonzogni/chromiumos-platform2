@@ -34,6 +34,7 @@
 
 using net_base::IPv4Address;
 using net_base::IPv4CIDR;
+using net_base::IPv6CIDR;
 
 using testing::_;
 using testing::DoAll;
@@ -336,7 +337,7 @@ TEST(DatapathTest, Start) {
       {IpFamily::kIPv6, "nat -L snat_user_dns -w"},
       {IpFamily::kIPv6, "nat -F snat_user_dns -w"},
       {IpFamily::kIPv6, "nat -X snat_user_dns -w"},
-      {IpFamily::kIPv4, "nat -F POSTROUTING -w"},
+      {IpFamily::kDual, "nat -F POSTROUTING -w"},
       {IpFamily::kDual, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules of traffic forwarded from downstream interfaces.
       {IpFamily::kIPv4, "filter -N drop_guest_invalid_ipv4 -w"},
@@ -362,7 +363,7 @@ TEST(DatapathTest, Start) {
        "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
        "--tcp-flags FIN,PSH "
        "FIN,PSH -o qmapmux+ -j DROP -w"},
-      {IpFamily::kIPv4,
+      {IpFamily::kDual,
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
        "-w"},
       // Asserts for AddForwardEstablishedRule
@@ -633,7 +634,7 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kIPv6, "nat -L snat_user_dns -w"},
       {IpFamily::kIPv6, "nat -F snat_user_dns -w"},
       {IpFamily::kIPv6, "nat -X snat_user_dns -w"},
-      {IpFamily::kIPv4, "nat -F POSTROUTING -w"},
+      {IpFamily::kDual, "nat -F POSTROUTING -w"},
       {IpFamily::kDual, "nat -F OUTPUT -w"},
   };
   for (const auto& c : iptables_commands) {
@@ -786,7 +787,27 @@ TEST(DatapathTest, ConnectVethPair) {
   Datapath datapath(runner, firewall, &system);
   EXPECT_TRUE(datapath.ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
-      *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"), true));
+      *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
+      /*remote_ipv6_cidr=*/std::nullopt, true));
+}
+
+TEST(DatapathTest, ConnectVethPair_StaticIPv6) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_ip(*runner,
+            "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  Verify_ip(*runner,
+            "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
+  Verify_ip(*runner, "addr add fd11::1234/64 dev peer_foo");
+  Verify_ip(*runner,
+            "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
+  Verify_ip(*runner, "link set veth_foo up");
+  Datapath datapath(runner, firewall, &system);
+  EXPECT_TRUE(datapath.ConnectVethPair(
+      kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
+      *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
+      *IPv6CIDR::CreateFromCIDRString("fd11::1234/64"), true));
 }
 
 TEST(DatapathTest, AddVirtualInterfacePair) {
@@ -823,14 +844,14 @@ TEST(DatapathTest, ConfigureInterface) {
   MacAddress mac_addr = {2, 2, 2, 2, 2, 3};
   EXPECT_TRUE(datapath.ConfigureInterface(
       "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
-      true, true));
+      /*ipv6_cidr=*/std::nullopt, true, true));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_ip(*runner, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
   Verify_ip(*runner, "link set dev test1 up multicast off");
   EXPECT_TRUE(datapath.ConfigureInterface(
       "test1", std::nullopt, *IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"),
-      true, false));
+      /*ipv6_cidr=*/std::nullopt, true, false));
 }
 
 TEST(DatapathTest, RemoveInterface) {
@@ -897,6 +918,7 @@ TEST(DatapathTest, StartRoutingNamespace) {
       base::DoNothing());
   nsinfo.host_cidr = *nsinfo.peer_subnet->CIDRAtOffset(1);
   nsinfo.peer_cidr = *nsinfo.peer_subnet->CIDRAtOffset(2);
+  nsinfo.static_ipv6_config = std::nullopt;
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
   Datapath datapath(runner, firewall, &system);
@@ -934,6 +956,109 @@ TEST(DatapathTest, StopRoutingNamespace) {
   datapath.StopRoutingNamespace(nsinfo);
 }
 
+TEST(DatapathTest, StartRoutingNamespace_StaticIPv6) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
+  MacAddress host_mac = {6, 5, 4, 3, 2, 1};
+
+  Verify_ip_netns_delete(*runner, "netns_foo");
+  Verify_ip_netns_attach(*runner, "netns_foo", kTestPID);
+  Verify_ip(*runner,
+            "link add arc_ns0 type veth peer name veth0 netns netns_foo");
+  Verify_ip(*runner, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  Verify_ip(*runner, "addr add fd11::2/64 dev veth0");
+  Verify_ip(*runner,
+            "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
+  Verify_ip(*runner, "link set arc_ns0 up");
+  Verify_ip(*runner,
+            "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
+  Verify_ip(*runner, "addr add fd11::1/64 dev arc_ns0");
+  Verify_ip(*runner,
+            "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kDual, "mangle -N PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
+                  "0x00000001/0x00000001 -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
+                  "0x00000200/0x00003f00 -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
+                  "--restore-mark --mask 0xffff0000 -w");
+  Verify_iptables(*runner, IpFamily::kIPv4,
+                  "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
+                  "100.115.92.129 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "mangle -A PREROUTING_arc_ns0 -s fd11::2 -d "
+                  "fd11::1 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
+
+  ConnectedNamespace nsinfo = {};
+  nsinfo.pid = kTestPID;
+  nsinfo.netns_name = "netns_foo";
+  nsinfo.source = TrafficSource::kUser;
+  nsinfo.outbound_ifname = "";
+  nsinfo.route_on_vpn = true;
+  nsinfo.host_ifname = "arc_ns0";
+  nsinfo.peer_ifname = "veth0";
+  nsinfo.peer_subnet = std::make_unique<Subnet>(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
+      base::DoNothing());
+  nsinfo.host_cidr = *nsinfo.peer_subnet->CIDRAtOffset(1);
+  nsinfo.peer_cidr = *nsinfo.peer_subnet->CIDRAtOffset(2);
+  nsinfo.static_ipv6_config = {
+      .host_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::1/64"),
+      .peer_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::2/64")};
+  nsinfo.peer_mac_addr = peer_mac;
+  nsinfo.host_mac_addr = host_mac;
+  Datapath datapath(runner, firewall, &system);
+  datapath.StartRoutingNamespace(nsinfo);
+}
+
+TEST(DatapathTest, StopRoutingNamespace_StaticIPv6) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
+  Verify_ip_netns_delete(*runner, "netns_foo");
+  Verify_ip(*runner, "link delete arc_ns0");
+
+  ConnectedNamespace nsinfo = {};
+  nsinfo.pid = kTestPID;
+  nsinfo.netns_name = "netns_foo";
+  nsinfo.source = TrafficSource::kUser;
+  nsinfo.outbound_ifname = "";
+  nsinfo.route_on_vpn = true;
+  nsinfo.host_ifname = "arc_ns0";
+  nsinfo.peer_ifname = "veth0";
+  nsinfo.peer_subnet = std::make_unique<Subnet>(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
+      base::DoNothing());
+  nsinfo.static_ipv6_config = {
+      .host_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::1/64"),
+      .peer_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::2/64")};
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.StopRoutingNamespace(nsinfo);
+}
 TEST(DatapathTest, StartDownstreamTetheredNetwork) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
@@ -1130,8 +1255,9 @@ TEST(DatapathTest, StartRoutingDeviceAsUser) {
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDeviceAsUser("vmtap0", IPv4Address(1, 2, 3, 4),
-                                    TrafficSource::kCrosVM);
+  datapath.StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM,
+                                    IPv4Address(1, 2, 3, 4),
+                                    /*int_ipv4_addr=*/std::nullopt);
 }
 
 TEST(DatapathTest, StopRoutingDevice) {

@@ -43,14 +43,23 @@ void AddFlags(std::ostream& stream,
   }
 }
 
-const flags_info_t kRtentryRTF = {
-    {RTF_UP, "RTF_UP"},           {RTF_GATEWAY, "RTF_GATEWAY"},
-    {RTF_HOST, "RTF_HOST"},       {RTF_REINSTATE, "RTF_REINSTATE"},
-    {RTF_DYNAMIC, "RTF_DYNAMIC"}, {RTF_MODIFIED, "RTF_MODIFIED"},
-    {RTF_MTU, "RTF_MTU"},         {RTF_MSS, "RTF_MSS"},
-    {RTF_WINDOW, "RTF_WINDOW"},   {RTF_IRTT, "RTF_IRTT"},
-    {RTF_REJECT, "RTF_REJECT"},
-};
+const flags_info_t kRtentryRTF = {{RTF_UP, "RTF_UP"},
+                                  {RTF_GATEWAY, "RTF_GATEWAY"},
+                                  {RTF_HOST, "RTF_HOST"},
+                                  {RTF_REINSTATE, "RTF_REINSTATE"},
+                                  {RTF_DYNAMIC, "RTF_DYNAMIC"},
+                                  {RTF_MODIFIED, "RTF_MODIFIED"},
+                                  {RTF_MTU, "RTF_MTU"},
+                                  {RTF_MSS, "RTF_MSS"},
+                                  {RTF_WINDOW, "RTF_WINDOW"},
+                                  {RTF_IRTT, "RTF_IRTT"},
+                                  {RTF_REJECT, "RTF_REJECT"},
+                                  {RTF_DEFAULT, "RTF_DEFAULT"},
+                                  {RTF_NONEXTHOP, "RTF_NONEXTHOP"},
+                                  {RTF_CACHE, "RTF_CACHE"},
+                                  {RTF_FLOW, "RTF_FLOW"},
+                                  {RTF_POLICY, "RTF_POLICY"},
+                                  {RTF_LOCAL, "RTF_LOCAL"}};
 
 }  // namespace
 
@@ -210,6 +219,15 @@ std::ostream& operator<<(std::ostream& stream, const struct rtentry& route) {
          << ", rt_gateway: " << route.rt_gateway << ", rt_dev: " << rt_dev
          << ", rt_flags: ";
   AddFlags(stream, route.rt_flags, kRtentryRTF);
+  return stream << "}";
+}
+
+std::ostream& operator<<(std::ostream& stream, const struct in6_rtmsg& route) {
+  stream << "{rtmsg_dst: " << route.rtmsg_dst
+         << ", rtmsg_dst_len: " << route.rtmsg_dst_len
+         << ", rtmsg_gateway: " << route.rtmsg_gateway
+         << ", rtmsg_ifindex: " << route.rtmsg_ifindex << ", rtmsg_flags: ";
+  AddFlags(stream, route.rtmsg_flags, kRtentryRTF);
   return stream << "}";
 }
 

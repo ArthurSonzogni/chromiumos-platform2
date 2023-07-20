@@ -69,6 +69,8 @@ BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
 
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const struct rtentry& route);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       const struct in6_rtmsg& route);
 
 // Fold 32-bit into 16 bits.
 BRILLO_EXPORT uint16_t FoldChecksum(uint32_t sum);

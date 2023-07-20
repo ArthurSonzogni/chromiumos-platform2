@@ -46,6 +46,15 @@ constexpr char kEgressPortFirewallChain[] = "egress_port_firewall";
 // permission_broker.
 constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
 
+// Struct holding static IPv6 configuration for ConnectedNamespace when NAT66 is
+// used. |host_cidr| and |peer_cidr| prefix CIDR must be the same.
+struct StaticIPv6Config {
+  // IPv6 CIDR of the "local" veth interface visible on the host namespace.
+  net_base::IPv6CIDR host_cidr;
+  // IPv6 CIDR of the "remote" veth interface.
+  net_base::IPv6CIDR peer_cidr;
+};
+
 // Struct holding parameters for Datapath::StartRoutingNamespace requests.
 struct ConnectedNamespace {
   // The special pid which indicates this namespace is not attached to an
@@ -78,6 +87,9 @@ struct ConnectedNamespace {
   net_base::IPv4CIDR host_cidr;
   // IPv4 CIDR of the "remote" veth interface.
   net_base::IPv4CIDR peer_cidr;
+  // Static IPv6 addresses allocated for ConnectNamespace. Only valid if NAT66
+  // is used.
+  std::optional<StaticIPv6Config> static_ipv6_config;
   // MAC address of the "local" veth interface visible on the host namespace.
   MacAddress host_mac_addr;
   // MAC address of the "remote" veth interface.
@@ -178,13 +190,15 @@ class Datapath {
   // Creates a virtual interface pair split across the current namespace and the
   // namespace corresponding to |pid|, and set up the remote interface
   // |peer_ifname| according // to the given parameters.
-  virtual bool ConnectVethPair(pid_t pid,
-                               const std::string& netns_name,
-                               const std::string& veth_ifname,
-                               const std::string& peer_ifname,
-                               const MacAddress& remote_mac_addr,
-                               const net_base::IPv4CIDR& remote_ipv4_cidr,
-                               bool remote_multicast_flag);
+  virtual bool ConnectVethPair(
+      pid_t pid,
+      const std::string& netns_name,
+      const std::string& veth_ifname,
+      const std::string& peer_ifname,
+      const MacAddress& remote_mac_addr,
+      const net_base::IPv4CIDR& remote_ipv4_cidr,
+      const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
+      bool remote_multicast_flag);
 
   // Disable and re-enable IPv6.
   virtual void RestartIPv6();
@@ -213,23 +227,29 @@ class Datapath {
   bool StartDnsRedirection(const DnsRedirectionRule& rule);
   void StopDnsRedirection(const DnsRedirectionRule& rule);
 
-  // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
+  // Sets up IPv4 SNAT, IPv4 forwarding, and traffic marking for the given
   // downstream network interface |int_ifname| associated to |source|. Traffic
   // from the downstream interface is routed to the shill Device |shill_device|
   // regardless of the current default network selection.
+  // IPv6 SNAT and IPv6 forwarding is optionally set up depending on
+  // |static_ipv6|.
   virtual void StartRoutingDevice(const ShillClient::Device& shill_device,
                                   const std::string& int_ifname,
-                                  TrafficSource source);
+                                  TrafficSource source,
+                                  bool static_ipv6 = false);
 
-  // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
+  // Sets up IPv4 SNAT, IPv4 forwarding, and traffic marking for the given
   // downstream network interface |int_ifname| associated to |source|.
   // Traffic from that downstream interface is implicitly routed through the
   // highest priority physical network, follows "system traffic" semantics, and
   // ignores VPN connections.
+  // IPv6 SNAT and IPv6 forwarding is optionally set up depending on
+  // |static_ipv6|.
   virtual void StartRoutingDeviceAsSystem(const std::string& int_ifname,
-                                          TrafficSource source);
+                                          TrafficSource source,
+                                          bool static_ipv6 = false);
 
-  // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
+  // Sets up IPv4 SNAT, IPv4 forwarding, and traffic marking for the given
   // downstream network interface |int_ifname| associated to |source|.
   // Traffic from the downstream interface follows "user traffic" semantics and
   // is implicitly routed through the highest priority logical network which can
@@ -239,11 +259,15 @@ class Datapath {
   // traffic to reach to the IPv4 local source. |peer_ipv4_addr| is the address
   // of the interface inside the connected namespace needed to create this rule.
   // If |peer_ipv4_addr| is undefined, no additional rule will be added.
+  // IPv6 SNAT, IPv6 forwarding, and IPv6 VPN fwmark tagging bypass rule are
+  // optionally set up depending on |int_ipv6_addr| and |peer_ipv6_addr|.
   virtual void StartRoutingDeviceAsUser(
       const std::string& int_ifname,
-      const net_base::IPv4Address& int_ipv4_addr,
       TrafficSource source,
-      std::optional<net_base::IPv4Address> peer_ipv4_addr = std::nullopt);
+      const net_base::IPv4Address& int_ipv4_addr,
+      std::optional<net_base::IPv4Address> peer_ipv4_addr = std::nullopt,
+      std::optional<net_base::IPv6Address> int_ipv6_addr = std::nullopt,
+      std::optional<net_base::IPv6Address> peer_ipv6_addr = std::nullopt);
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
   // given downstream network interface |int_ifname|.
@@ -323,6 +347,10 @@ class Datapath {
                             const net_base::IPv4CIDR& subnet_cidr);
   virtual bool DeleteIPv4Route(const net_base::IPv4Address& gateway_addr,
                                const net_base::IPv4CIDR& subnet_cidr);
+  virtual bool AddIPv6Route(const net_base::IPv6Address& gateway_addr,
+                            const net_base::IPv6CIDR& subnet_cidr);
+  virtual bool DeleteIPv6Route(const net_base::IPv6Address& gateway_addr,
+                               const net_base::IPv6CIDR& subnet_cidr);
 
   // Adds (or deletes) an iptables rule for ADB port forwarding.
   virtual bool AddAdbPortForwardRule(const std::string& ifname);
@@ -431,6 +459,7 @@ class Datapath {
   bool ConfigureInterface(const std::string& ifname,
                           std::optional<MacAddress> mac_addr,
                           const net_base::IPv4CIDR& ipv4_cidr,
+                          const std::optional<net_base::IPv6CIDR>& ipv6_cidr,
                           bool up,
                           bool enable_multicast);
   // Sets the link status.
@@ -440,7 +469,8 @@ class Datapath {
   // any downstream network interface (ARC, Crostini, ConnectNamespace,
   // Tethering, LocalOnlyNetwork).
   void AddDownstreamInterfaceRules(const std::string& int_ifname,
-                                   TrafficSource source);
+                                   TrafficSource source,
+                                   bool static_ipv6 = false);
 
   bool ModifyChromeDnsRedirect(IpFamily family,
                                const DnsRedirectionRule& rule,
@@ -527,6 +557,7 @@ class Datapath {
                                    const std::string& uid,
                                    bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
+  bool ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route);
 
   // Installs the static rules inside the qos_detect chain.
   void SetupQoSDetectChain();

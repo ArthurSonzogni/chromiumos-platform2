@@ -39,6 +39,8 @@ namespace {
 
 using net_base::IPv4Address;
 using net_base::IPv4CIDR;
+using net_base::IPv6Address;
+using net_base::IPv6CIDR;
 
 // TODO(hugobenichi) Consolidate this constant definition in a single place.
 constexpr pid_t kTestPID = -2;
@@ -408,9 +410,17 @@ void Datapath::Start() {
     }
   }
 
-  // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
+  // Set static SNAT rules for any traffic originated from a guest (ARC,
   // Crostini, ...) or a connected namespace.
+  // For IPv6, the SNAT rule is expected to only be triggered when static IPv6
+  // is used (without SLAAC). See AddDownstreamInterfaceRules for the method
+  // that sets up the SNAT mark.
   if (process_runner_->iptables(
+          Iptables::Table::kNat, Iptables::Command::kA, "POSTROUTING",
+          {"-m", "mark", "--mark", snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
+    LOG(ERROR) << "Failed to install SNAT mark rules.";
+  }
+  if (process_runner_->ip6tables(
           Iptables::Table::kNat, Iptables::Command::kA, "POSTROUTING",
           {"-m", "mark", "--mark", snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install SNAT mark rules.";
@@ -597,7 +607,7 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain,
        true},
       {IpFamily::kDual, Iptables::Table::kNat, "OUTPUT", false},
-      {IpFamily::kIPv4, Iptables::Table::kNat, "POSTROUTING", false},
+      {IpFamily::kDual, Iptables::Table::kNat, "POSTROUTING", false},
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain, true},
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain, true},
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain, true},
@@ -807,6 +817,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
                                const std::string& peer_ifname,
                                const MacAddress& remote_mac_addr,
                                const IPv4CIDR& remote_ipv4_cidr,
+                               const std::optional<IPv6CIDR>& remote_ipv6_cidr,
                                bool remote_multicast_flag) {
   // Set up the virtual pair across the current namespace and |netns_name|.
   if (!AddVirtualInterfacePair(netns_name, veth_ifname, peer_ifname)) {
@@ -825,7 +836,8 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
     }
 
     if (!ConfigureInterface(peer_ifname, remote_mac_addr, remote_ipv4_cidr,
-                            /*up=*/true, remote_multicast_flag)) {
+                            remote_ipv6_cidr, /*up=*/true,
+                            remote_multicast_flag)) {
       LOG(ERROR) << "Failed to configure interface " << peer_ifname;
       RemoveInterface(peer_ifname);
       return false;
@@ -866,6 +878,7 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 bool Datapath::ConfigureInterface(const std::string& ifname,
                                   std::optional<MacAddress> mac_addr,
                                   const IPv4CIDR& ipv4_cidr,
+                                  const std::optional<IPv6CIDR>& ipv6_cidr,
                                   bool up,
                                   bool enable_multicast) {
   if (process_runner_->ip(
@@ -874,6 +887,12 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
            "dev", ifname}) != 0) {
     return false;
   }
+  if (ipv6_cidr &&
+      process_runner_->ip("addr", "add",
+                          {ipv6_cidr->ToString(), "dev", ifname}) != 0) {
+    return false;
+  }
+
   std::vector<std::string> iplink_args{
       "dev",
       ifname,
@@ -914,10 +933,13 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConnectVethPair(nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname,
-                       nsinfo.peer_ifname, nsinfo.peer_mac_addr,
-                       nsinfo.peer_cidr,
-                       /*enable_multicast=*/false)) {
+  if (!ConnectVethPair(
+          nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname, nsinfo.peer_ifname,
+          nsinfo.peer_mac_addr, nsinfo.peer_cidr,
+          nsinfo.static_ipv6_config
+              ? std::make_optional(nsinfo.static_ipv6_config->peer_cidr)
+              : std::nullopt,
+          /*enable_multicast=*/false)) {
     LOG(ERROR) << "Failed to create veth pair for"
                   " namespace pid "
                << nsinfo.pid;
@@ -925,9 +947,13 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr,
-                          nsinfo.host_cidr,
-                          /*up=*/true, /*enable_multicast=*/false)) {
+  if (!ConfigureInterface(
+          nsinfo.host_ifname, nsinfo.host_mac_addr, nsinfo.host_cidr,
+          nsinfo.static_ipv6_config
+              ? std::make_optional(nsinfo.static_ipv6_config->host_cidr)
+              : std::nullopt,
+          /*up=*/true,
+          /*enable_multicast=*/false)) {
     LOG(ERROR) << "Cannot configure host interface " << nsinfo.host_ifname;
     RemoveInterface(nsinfo.host_ifname);
     NetnsDeleteName(nsinfo.netns_name);
@@ -950,6 +976,17 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       NetnsDeleteName(nsinfo.netns_name);
       return false;
     }
+
+    if (nsinfo.static_ipv6_config &&
+        !AddIPv6Route(nsinfo.static_ipv6_config->host_cidr.address(),
+                      /*subnet_cidr=*/{})) {
+      LOG(ERROR) << "Failed to add IPv6 default /0 route to "
+                 << nsinfo.host_ifname << " inside namespace pid "
+                 << nsinfo.pid;
+      RemoveInterface(nsinfo.host_ifname);
+      NetnsDeleteName(nsinfo.netns_name);
+      return false;
+    }
   }
 
   // Host namespace routing configuration
@@ -968,12 +1005,20 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       return false;
     }
     StartRoutingDevice(*nsinfo.current_outbound_device, nsinfo.host_ifname,
-                       nsinfo.source);
+                       nsinfo.source, nsinfo.static_ipv6_config.has_value());
   } else if (!nsinfo.route_on_vpn) {
-    StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source);
+    StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source,
+                               nsinfo.static_ipv6_config.has_value());
   } else {
-    StartRoutingDeviceAsUser(nsinfo.host_ifname, nsinfo.host_cidr.address(),
-                             nsinfo.source, nsinfo.peer_cidr.address());
+    StartRoutingDeviceAsUser(
+        nsinfo.host_ifname, nsinfo.source, nsinfo.host_cidr.address(),
+        nsinfo.peer_cidr.address(),
+        nsinfo.static_ipv6_config
+            ? std::make_optional(nsinfo.static_ipv6_config->host_cidr.address())
+            : std::nullopt,
+        nsinfo.static_ipv6_config
+            ? std::make_optional(nsinfo.static_ipv6_config->peer_cidr.address())
+            : std::nullopt);
   }
   return true;
 }
@@ -1183,7 +1228,8 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
 }
 
 void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
-                                           TrafficSource source) {
+                                           TrafficSource source,
+                                           bool static_ipv6) {
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                       int_ifname)) {
@@ -1218,6 +1264,14 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
                     kFwmarkLegacySNAT, kFwmarkLegacySNAT)) {
     LOG(ERROR) << "Failed to add fwmark SNAT tagging rule for " << int_ifname;
   }
+  // IPv6 traffic from all downstream interfaces should be tagged to go through
+  // SNAT if NAT66 is used (see ConnectNamespace |static_ipv6|).
+  if (static_ipv6 &&
+      !ModifyFwmark(IpFamily::kIPv6, subchain, Iptables::Command::kA, "", "", 0,
+                    kFwmarkLegacySNAT, kFwmarkLegacySNAT)) {
+    LOG(ERROR) << "Failed to add fwmark SNAT tagging rule for " << int_ifname;
+  }
+
   if (!ModifyFwmarkSourceTag(subchain, Iptables::Command::kA, source)) {
     LOG(ERROR) << "Failed to add fwmark tagging rule for source " << source
                << " in " << subchain;
@@ -1226,9 +1280,10 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
 
 void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
                                   const std::string& int_ifname,
-                                  TrafficSource source) {
+                                  TrafficSource source,
+                                  bool static_ipv6) {
   const std::string& ext_ifname = shill_device.ifname;
-  AddDownstreamInterfaceRules(int_ifname, source);
+  AddDownstreamInterfaceRules(int_ifname, source, static_ipv6);
   // If |ext_ifname| is not null, mark egress traffic with the
   // fwmark routing tag corresponding to |ext_ifname|.
   int ifindex = system_->IfNametoindex(ext_ifname);
@@ -1251,8 +1306,9 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
 }
 
 void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
-                                          TrafficSource source) {
-  AddDownstreamInterfaceRules(int_ifname, source);
+                                          TrafficSource source,
+                                          bool static_ipv6) {
+  AddDownstreamInterfaceRules(int_ifname, source, static_ipv6);
 
   // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
   // tag saved for the current connection, and rely on implicit routing to the
@@ -1266,10 +1322,12 @@ void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
 
 void Datapath::StartRoutingDeviceAsUser(
     const std::string& int_ifname,
-    const IPv4Address& int_ipv4_addr,
     TrafficSource source,
-    std::optional<net_base::IPv4Address> peer_ipv4_addr) {
-  AddDownstreamInterfaceRules(int_ifname, source);
+    const IPv4Address& int_ipv4_addr,
+    std::optional<net_base::IPv4Address> peer_ipv4_addr,
+    std::optional<IPv6Address> int_ipv6_addr,
+    std::optional<net_base::IPv6Address> peer_ipv6_addr) {
+  AddDownstreamInterfaceRules(int_ifname, source, peer_ipv6_addr.has_value());
 
   // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
   // tag saved for the current connection, and rely on implicit routing to the
@@ -1283,13 +1341,20 @@ void Datapath::StartRoutingDeviceAsUser(
   // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
   // connected namespace. This allows the return traffic to reach the local
   // source. Connected namespace interface can be identified by checking if
-  // the value of |peer_ipv4_addr| is not zero.
+  // the value of |peer_ipv4_addr| or |peer_ipv6_addr| is not empty.
   if (peer_ipv4_addr &&
       process_runner_->iptables(
           Iptables::Table::kMangle, Iptables::Command::kA, subchain,
           {"-s", peer_ipv4_addr->ToString(), "-d", int_ipv4_addr.ToString(),
            "-j", "ACCEPT", "-w"}) != 0) {
     LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
+  }
+  if (peer_ipv6_addr && int_ipv6_addr &&
+      process_runner_->ip6tables(
+          Iptables::Table::kMangle, Iptables::Command::kA, subchain,
+          {"-s", peer_ipv6_addr->ToString(), "-d", int_ipv6_addr->ToString(),
+           "-j", "ACCEPT", "-w"}) != 0) {
+    LOG(ERROR) << "Failed to add connected namespace IPv6 VPN bypass rule";
   }
 
   // The jump rule below should not be applied for traffic from a
@@ -1796,7 +1861,9 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // TODO(b/239559602) Clarify which service, shill or networking, is in charge
   // of IFF_UP and MAC address configuration.
   if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
-                          info.ipv4_cidr, /*up=*/true,
+                          info.ipv4_cidr,
+                          /*ipv6_cidr=*/std::nullopt,
+                          /*up=*/true,
                           /*enable_multicast=*/true)) {
     LOG(ERROR) << __func__ << " " << info
                << ": Cannot configure downstream interface "
@@ -2125,6 +2192,28 @@ bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
   return ModifyRtentry(SIOCDELRT, &route);
 }
 
+bool Datapath::AddIPv6Route(const IPv6Address& gateway_addr,
+                            const IPv6CIDR& subnet_cidr) {
+  struct in6_rtmsg route;
+  memset(&route, 0, sizeof(route));
+  route.rtmsg_gateway = gateway_addr.ToIn6Addr();
+  route.rtmsg_dst = subnet_cidr.GetPrefixCIDR().address().ToIn6Addr();
+  route.rtmsg_dst_len = static_cast<uint16_t>(subnet_cidr.prefix_length());
+  route.rtmsg_flags = RTF_UP | RTF_GATEWAY;
+  return ModifyIPv6Rtentry(SIOCADDRT, &route);
+}
+
+bool Datapath::DeleteIPv6Route(const IPv6Address& gateway_addr,
+                               const IPv6CIDR& subnet_cidr) {
+  struct in6_rtmsg route;
+  memset(&route, 0, sizeof(route));
+  route.rtmsg_gateway = gateway_addr.ToIn6Addr();
+  route.rtmsg_dst = subnet_cidr.GetPrefixCIDR().address().ToIn6Addr();
+  route.rtmsg_dst_len = static_cast<uint16_t>(subnet_cidr.prefix_length());
+  route.rtmsg_flags = RTF_UP | RTF_GATEWAY;
+  return ModifyIPv6Rtentry(SIOCDELRT, &route);
+}
+
 bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
   DCHECK(route);
   if (op != SIOCADDRT && op != SIOCDELRT) {
@@ -2132,6 +2221,31 @@ bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
     return false;
   }
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create socket for adding rtentry " << *route;
+    return false;
+  }
+  if (HANDLE_EINTR(system_->Ioctl(fd.get(), op, route)) != 0) {
+    // b/190119762: Ignore "No such process" errors when deleting a struct
+    // rtentry if some other prior or concurrent operation already resulted in
+    // this route being deleted.
+    if (op == SIOCDELRT && errno == ESRCH) {
+      return true;
+    }
+    std::string opname = op == SIOCADDRT ? "add" : "delete";
+    PLOG(ERROR) << "Failed to " << opname << " rtentry " << *route;
+    return false;
+  }
+  return true;
+}
+
+bool Datapath::ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route) {
+  DCHECK(route);
+  if (op != SIOCADDRT && op != SIOCDELRT) {
+    LOG(ERROR) << "Invalid operation " << op << " for rtentry " << *route;
+    return false;
+  }
+  base::ScopedFD fd(socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to create socket for adding rtentry " << *route;
     return false;

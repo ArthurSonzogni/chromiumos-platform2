@@ -788,6 +788,9 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     nsinfo.current_outbound_device = *current_outbound_device;
   }
 
+  // TODO(jasongustaman): Implement static IPv6 for ConnectNamespace.
+  nsinfo.static_ipv6_config = std::nullopt;
+
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
     if (!DeleteLifelineFd(local_client_fd.release())) {

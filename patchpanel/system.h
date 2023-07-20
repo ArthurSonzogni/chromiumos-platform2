@@ -72,6 +72,7 @@ class System {
   int Ioctl(int fd, ioctl_req_t request, uint64_t arg);
   int Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr);
   int Ioctl(int fd, ioctl_req_t request, struct rtentry* route);
+  int Ioctl(int fd, ioctl_req_t request, struct in6_rtmsg* route);
 
   virtual int SocketPair(int domain, int type, int protocol, int sv[2]);
 

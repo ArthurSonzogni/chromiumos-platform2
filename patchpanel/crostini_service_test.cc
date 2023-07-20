@@ -80,7 +80,8 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kCrosVM,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
 
@@ -133,7 +134,8 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kParallelsVM,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kParallelsVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
@@ -201,7 +203,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kCrosVM,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
@@ -222,7 +225,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       .WillOnce(Return("vmtap1"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap1", _, TrafficSource::kParallelsVM,
+              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kParallelsVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
@@ -246,7 +250,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap2"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap2", _, TrafficSource::kCrosVM,
+              StartRoutingDeviceAsUser("vmtap2", TrafficSource::kCrosVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
@@ -330,10 +335,12 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", _, TrafficSource::kCrosVM,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap1", _, TrafficSource::kParallelsVM,
+              StartRoutingDeviceAsUser("vmtap1", TrafficSource::kParallelsVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   crostini->Start(vm_id1, CrostiniService::VMType::kTermina,

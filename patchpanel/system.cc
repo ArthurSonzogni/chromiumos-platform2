@@ -67,6 +67,10 @@ int System::Ioctl(int fd, ioctl_req_t request, struct rtentry* route) {
   return Ioctl(fd, request, reinterpret_cast<const char*>(route));
 }
 
+int System::Ioctl(int fd, ioctl_req_t request, struct in6_rtmsg* route) {
+  return Ioctl(fd, request, reinterpret_cast<const char*>(route));
+}
+
 int System::SocketPair(int domain, int type, int protocol, int sv[2]) {
   return socketpair(domain, type, protocol, sv);
 }
