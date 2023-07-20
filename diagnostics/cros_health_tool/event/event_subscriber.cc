@@ -154,15 +154,15 @@ std::string EnumToString(mojom::InputTouchButton button) {
   }
 }
 
-std::string EnumToString(mojom::HdmiEventInfo::State state) {
+std::string EnumToString(mojom::ExternalDisplayEventInfo::State state) {
   switch (state) {
-    case mojom::HdmiEventInfo::State::kUnmappedEnumField:
+    case mojom::ExternalDisplayEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
       return "UnmappedEnumField";
-    case mojom::HdmiEventInfo::State::kAdd:
-      return "HDMI added";
-    case mojom::HdmiEventInfo::State::kRemove:
-      return "HDMI removed";
+    case mojom::ExternalDisplayEventInfo::State::kAdd:
+      return "External display added";
+    case mojom::ExternalDisplayEventInfo::State::kRemove:
+      return "External display removed";
   }
 }
 
@@ -369,8 +369,9 @@ void OutputTouchscreenEventInfo(const mojom::TouchscreenEventInfoPtr& info) {
   }
 }
 
-void OutputHdmiEventInfo(const mojom::HdmiEventInfoPtr& info) {
-  std::cout << "Hdmi event received: " << EnumToString(info->state)
+void OutputExternalDisplayEventInfo(
+    const mojom::ExternalDisplayEventInfoPtr& info) {
+  std::cout << "External display event received: " << EnumToString(info->state)
             << std::endl;
   if (!info->display_info.is_null()) {
     if (!info->display_info->display_width.is_null()) {
@@ -576,8 +577,8 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
     case mojom::EventInfo::Tag::kTouchpadEventInfo:
       OutputTouchpadEventInfo(info->get_touchpad_event_info());
       break;
-    case mojom::EventInfo::Tag::kHdmiEventInfo:
-      OutputHdmiEventInfo(info->get_hdmi_event_info());
+    case mojom::EventInfo::Tag::kExternalDisplayEventInfo:
+      OutputExternalDisplayEventInfo(info->get_external_display_event_info());
       break;
     case mojom::EventInfo::Tag::kTouchscreenEventInfo:
       OutputTouchscreenEventInfo(info->get_touchscreen_event_info());

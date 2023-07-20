@@ -274,15 +274,15 @@ TEST_F(GroundTruthTest, HdmiEvent) {
       };
 
   // Test not set the cros_config first to simulate file not found.
-  ExpectEventUnsupported(mojom::EventCategoryEnum::kHdmi);
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kExternalDisplay);
 
   for (const auto& [has_hdmi, supported] : test_combinations) {
     SetCrosConfig(cros_config_path::kHardwareProperties,
                   cros_config_property::kHasHdmi, has_hdmi);
     if (supported) {
-      ExpectEventSupported(mojom::EventCategoryEnum::kHdmi);
+      ExpectEventSupported(mojom::EventCategoryEnum::kExternalDisplay);
     } else {
-      ExpectEventUnsupported(mojom::EventCategoryEnum::kHdmi);
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kExternalDisplay);
     }
   }
 }

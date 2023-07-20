@@ -41,7 +41,7 @@ constexpr std::pair<const char*, mojom::EventCategoryEnum> kCategorySwitches[] =
         {"sd_card", mojom::EventCategoryEnum::kSdCard},
         {"keyboard_diagnostic", mojom::EventCategoryEnum::kKeyboardDiagnostic},
         {"touchpad", mojom::EventCategoryEnum::kTouchpad},
-        {"hdmi", mojom::EventCategoryEnum::kHdmi},
+        {"external_display", mojom::EventCategoryEnum::kExternalDisplay},
         {"touchscreen", mojom::EventCategoryEnum::kTouchscreen},
         {"stylus_garage", mojom::EventCategoryEnum::kStylusGarage},
         {"stylus", mojom::EventCategoryEnum::kStylus},
@@ -107,7 +107,7 @@ int event_main(int argc, char** argv) {
       case mojom::EventCategoryEnum::kThunderbolt:
       case mojom::EventCategoryEnum::kUsb:
       case mojom::EventCategoryEnum::kTouchpad:
-      case mojom::EventCategoryEnum::kHdmi:
+      case mojom::EventCategoryEnum::kExternalDisplay:
       case mojom::EventCategoryEnum::kTouchscreen:
       case mojom::EventCategoryEnum::kStylusGarage:
       case mojom::EventCategoryEnum::kStylus:

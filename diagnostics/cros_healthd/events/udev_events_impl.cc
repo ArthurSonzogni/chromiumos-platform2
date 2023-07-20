@@ -102,19 +102,21 @@ bool UdevEventsImpl::Initialize() {
     return false;
   }
 
+  // TODO(b/292042644): Add support for getting both HDMI and DP connectors.
   context_->executor()->GetConnectedHdmiConnectors(
       base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
                      weak_factory_.GetWeakPtr())
-          .Then(
-              base::BindOnce(&UdevEventsImpl::InitializeConnectedHdmiConnectors,
-                             weak_factory_.GetWeakPtr())));
+          .Then(base::BindOnce(
+              &UdevEventsImpl::InitializeConnectedExternalDisplayConnectors,
+              weak_factory_.GetWeakPtr())));
 
   return true;
 }
 
-void UdevEventsImpl::InitializeConnectedHdmiConnectors() {
-  last_known_hdmi_connectors_ = std::move(current_hdmi_connectors_);
-  current_hdmi_connectors_ = {};
+void UdevEventsImpl::InitializeConnectedExternalDisplayConnectors() {
+  last_known_external_display_connectors_ =
+      std::move(current_external_display_connectors_);
+  current_external_display_connectors_ = {};
 }
 
 void UdevEventsImpl::HandleGetConnectedHdmiConnectors(
@@ -124,9 +126,9 @@ void UdevEventsImpl::HandleGetConnectedHdmiConnectors(
     LOG(ERROR) << "Error from executor call: " << error.value();
     return;
   }
-  current_hdmi_connectors_ = {};
+  current_external_display_connectors_ = {};
   for (auto& [connector_id, display_info] : connected_displays) {
-    current_hdmi_connectors_.insert(connector_id);
+    current_external_display_connectors_.insert(connector_id);
     if (connector_id_to_display_info_.count(connector_id) == 0) {
       connector_id_to_display_info_[connector_id] = std::move(display_info);
     }
@@ -174,7 +176,7 @@ void UdevEventsImpl::OnUdevEvent() {
     }
   } else if (subsystem == "drm" && device_type == "drm_minor") {
     if (action == "change") {
-      OnHdmiChange();
+      OnExternalDisplayChange();
     }
   }
 }
@@ -279,60 +281,66 @@ void UdevEventsImpl::OnSdCardRemove() {
     observer->OnEvent(mojom::EventInfo::NewSdCardEventInfo(info.Clone()));
 }
 
-void UdevEventsImpl::AddHdmiObserver(
+void UdevEventsImpl::AddExternalDisplayObserver(
     mojo::PendingRemote<mojom::EventObserver> observer) {
-  hdmi_observers_.Add(std::move(observer));
+  external_display_observers_.Add(std::move(observer));
 }
 
-void UdevEventsImpl::OnHdmiChange() {
+void UdevEventsImpl::OnExternalDisplayChange() {
   context_->executor()->GetConnectedHdmiConnectors(
       base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
                      weak_factory_.GetWeakPtr())
-          .Then(base::BindOnce(&UdevEventsImpl::UpdateHdmiObservers,
+          .Then(base::BindOnce(&UdevEventsImpl::UpdateExternalDisplayObservers,
                                weak_factory_.GetWeakPtr())));
 }
 
-void UdevEventsImpl::UpdateHdmiObservers() {
+void UdevEventsImpl::UpdateExternalDisplayObservers() {
   std::set<uint32_t> added_connectors;
   std::set<uint32_t> removed_connectors;
 
-  std::set_difference(
-      current_hdmi_connectors_.begin(), current_hdmi_connectors_.end(),
-      last_known_hdmi_connectors_.begin(), last_known_hdmi_connectors_.end(),
-      std::inserter(added_connectors, added_connectors.end()));
+  std::set_difference(current_external_display_connectors_.begin(),
+                      current_external_display_connectors_.end(),
+                      last_known_external_display_connectors_.begin(),
+                      last_known_external_display_connectors_.end(),
+                      std::inserter(added_connectors, added_connectors.end()));
 
   std::set_difference(
-      last_known_hdmi_connectors_.begin(), last_known_hdmi_connectors_.end(),
-      current_hdmi_connectors_.begin(), current_hdmi_connectors_.end(),
+      last_known_external_display_connectors_.begin(),
+      last_known_external_display_connectors_.end(),
+      current_external_display_connectors_.begin(),
+      current_external_display_connectors_.end(),
       std::inserter(removed_connectors, removed_connectors.end()));
 
-  last_known_hdmi_connectors_ = std::move(current_hdmi_connectors_);
-  current_hdmi_connectors_ = {};
+  last_known_external_display_connectors_ =
+      std::move(current_external_display_connectors_);
+  current_external_display_connectors_ = {};
 
   for (auto connector_id : added_connectors) {
-    auto info = mojom::HdmiEventInfo::New();
-    info->state = mojom::HdmiEventInfo::State::kAdd;
+    auto info = mojom::ExternalDisplayEventInfo::New();
+    info->state = mojom::ExternalDisplayEventInfo::State::kAdd;
     if (connector_id_to_display_info_.count(connector_id) == 0) {
       LOG(ERROR) << "Cannot find display info for connector id: "
                  << connector_id;
       continue;
     }
     info->display_info = connector_id_to_display_info_[connector_id].Clone();
-    for (auto& observer : hdmi_observers_) {
-      observer->OnEvent(mojom::EventInfo::NewHdmiEventInfo(std::move(info)));
+    for (auto& observer : external_display_observers_) {
+      observer->OnEvent(
+          mojom::EventInfo::NewExternalDisplayEventInfo(std::move(info)));
     }
   }
   for (auto connector_id : removed_connectors) {
-    auto info = mojom::HdmiEventInfo::New();
-    info->state = mojom::HdmiEventInfo::State::kRemove;
+    auto info = mojom::ExternalDisplayEventInfo::New();
+    info->state = mojom::ExternalDisplayEventInfo::State::kRemove;
     if (connector_id_to_display_info_.count(connector_id) == 0) {
       LOG(ERROR) << "Cannot find display info for connector id: "
                  << connector_id;
       continue;
     }
     info->display_info = connector_id_to_display_info_[connector_id].Clone();
-    for (auto& observer : hdmi_observers_) {
-      observer->OnEvent(mojom::EventInfo::NewHdmiEventInfo(std::move(info)));
+    for (auto& observer : external_display_observers_) {
+      observer->OnEvent(
+          mojom::EventInfo::NewExternalDisplayEventInfo(std::move(info)));
     }
     // Remove the connector from the map in case a new connector with the same
     // ID is received.

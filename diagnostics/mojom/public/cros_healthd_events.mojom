@@ -376,23 +376,23 @@ union TouchpadEventInfo {
   TouchpadConnectedEvent connected_event@3;
 };
 
-// HDMI event info.
+// External display event info.
 //
 // NextMinVersion: 2, NextIndex: 2
-[Stable]
-struct HdmiEventInfo {
+[Stable, RenamedFrom="ash.cros_healthd.mojom.HdmiEventInfo"]
+struct ExternalDisplayEventInfo {
   [Stable, Extensible]
   enum State {
     // This is required for backwards compatibility, should not be used.
     [Default] kUnmappedEnumField,
-    // Hdmi plugs in.
+    // ExternalDisplay plugs in.
     kAdd,
-    // Hdmi plugs out.
+    // ExternalDisplay plugs out.
     kRemove,
   };
 
   State state@0;
-  // On Hdmi plug in event, also report information about the newly added
+  // On ExternalDisplay plug in event, also report information about the newly added
   // display.
   [MinVersion=1] ExternalDisplayInfo? display_info@1;
 };
@@ -582,8 +582,8 @@ union EventInfo {
     keyboard_diagnostic_event_info@9;
   // Touchpad event info.
   [MinVersion=4] TouchpadEventInfo touchpad_event_info@10;
-  // HDMI event info.
-  [MinVersion=5] HdmiEventInfo hdmi_event_info@11;
+  // External display event info.
+  [MinVersion=5] ExternalDisplayEventInfo external_display_event_info@11;
   // Touchscreen event info.
   [MinVersion=6] TouchscreenEventInfo touchscreen_event_info@12;
   // Stylus garagge event info.
@@ -612,7 +612,7 @@ enum EventCategoryEnum {
   [MinVersion=3] kNetwork = 9,
   [MinVersion=4] kKeyboardDiagnostic = 10,
   [MinVersion=5] kTouchpad = 11,
-  [MinVersion=6] kHdmi = 12,
+  [MinVersion=6] kExternalDisplay = 12,
   [MinVersion=7] kTouchscreen = 13,
   [MinVersion=8] kStylusGarage = 14,
   [MinVersion=9] kStylus = 15,

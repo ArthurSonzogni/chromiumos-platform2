@@ -107,7 +107,9 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
                                 has_sd_reader),
           nullptr));
     }
-    case mojom::EventCategoryEnum::kHdmi: {
+    // TODO(b/291902680): Currently external display event only supports HDMI.
+    // Update ground truth check once we also support DP.
+    case mojom::EventCategoryEnum::kExternalDisplay: {
       auto has_hdmi = HasHdmi();
       if (has_hdmi == "true") {
         return mojom::SupportStatus::NewSupported(mojom::Supported::New());

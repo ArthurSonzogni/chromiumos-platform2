@@ -1335,11 +1335,11 @@ event --help`.
 | max_pressure | uint32 | The maximum possible pressure of touch points, or 0 if pressure is not supported. |
 | buttons | [array&lt;InputTouchButton&gt;](#InputTouchButton)
 
-### HDMI
+### External Display
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | state | State | Indicate `kAdd`, `kRemove` event. |
-| display_info | [ExternalDisplayInfo?](#ExternalDisplayInfo) | On Hdmi plug in event, also report information about the newly added display. |
+| display_info | [ExternalDisplayInfo?](#ExternalDisplayInfo) | On display plug in event, also report information about the newly added display. |
 
 ### Touchscreen
 

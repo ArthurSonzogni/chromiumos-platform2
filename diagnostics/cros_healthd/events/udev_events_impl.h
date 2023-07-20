@@ -37,7 +37,7 @@ class UdevEventsImpl final : public UdevEvents {
   void AddSdCardObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
       override;
-  void AddHdmiObserver(
+  void AddExternalDisplayObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
       override;
 
@@ -64,24 +64,26 @@ class UdevEventsImpl final : public UdevEvents {
   void OnSdCardAdd();
   void OnSdCardRemove();
 
-  void OnHdmiChange();
+  void OnExternalDisplayChange();
 
   void HandleGetConnectedHdmiConnectors(
       base::flat_map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
           connected_displays,
       const std::optional<std::string>& error);
-  void InitializeConnectedHdmiConnectors();
-  void UpdateHdmiObservers();
+  void InitializeConnectedExternalDisplayConnectors();
+  void UpdateExternalDisplayObservers();
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-  // Stores the connector_id of the last known connected HDMI connectors.
-  std::set<uint32_t> last_known_hdmi_connectors_;
-  // Stores the connector_id of the current connected HDMI connectors.
-  std::set<uint32_t> current_hdmi_connectors_;
+  // Stores the connector_id of the last known connected external display
+  // connectors.
+  std::set<uint32_t> last_known_external_display_connectors_;
+  // Stores the connector_id of the current connected external display
+  // connectors.
+  std::set<uint32_t> current_external_display_connectors_;
   // Maps the connector_id to its display info.
   std::map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
       connector_id_to_display_info_;
@@ -110,11 +112,12 @@ class UdevEventsImpl final : public UdevEvents {
   // destroyed.
   mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> sd_card_observers_;
 
-  // Each observer in |hdmi_observers_| will be notified of any SD Card
-  // event. The RemoteSet manages the lifetime of the endpoints, which are
-  // automatically destroyed and removed when the pipe they are bound to is
-  // destroyed.
-  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> hdmi_observers_;
+  // Each observer in |external_display_observers_| will be notified of any
+  // external display event. The RemoteSet manages the lifetime of the
+  // endpoints, which are automatically destroyed and removed when the pipe they
+  // are bound to is destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver>
+      external_display_observers_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<UdevEventsImpl> weak_factory_{this};

@@ -34,8 +34,9 @@ class UdevEvents {
   virtual void AddSdCardObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
           observer) = 0;
-  // Adds a new observer to be notified when Hdmi related events occur.
-  virtual void AddHdmiObserver(
+  // Adds a new observer to be notified when external display related events
+  // occur.
+  virtual void AddExternalDisplayObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
           observer) = 0;
 

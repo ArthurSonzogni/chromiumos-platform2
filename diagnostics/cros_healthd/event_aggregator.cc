@@ -86,8 +86,8 @@ void EventAggregator::AddObserver(
     case mojom::EventCategoryEnum::kTouchpad:
       touchpad_events_->AddObserver(std::move(observer));
       break;
-    case mojom::EventCategoryEnum::kHdmi:
-      udev_events_->AddHdmiObserver(std::move(observer));
+    case mojom::EventCategoryEnum::kExternalDisplay:
+      udev_events_->AddExternalDisplayObserver(std::move(observer));
       break;
     case mojom::EventCategoryEnum::kTouchscreen:
       touchscreen_events_->AddObserver(std::move(observer));

@@ -64,9 +64,9 @@ constexpr const char kFakeUsbProduct[] = "47f/430c/1093";
 constexpr uint16_t kFakeUsbVid = 0x47f;
 constexpr uint16_t kFakeUsbPid = 0x430c;
 
-constexpr const char kUdevHdmiAction[] = "change";
-constexpr const char kUdevHdmiSubSystem[] = "drm";
-constexpr const char kUdevHdmiDeviceType[] = "drm_minor";
+constexpr const char kUdevExternalDisplayAction[] = "change";
+constexpr const char kUdevExternalDisplaySubSystem[] = "drm";
+constexpr const char kUdevExternalDisplayDeviceType[] = "drm_minor";
 
 class MockCrosHealthdThunderboltObserver
     : public mojom::CrosHealthdThunderboltObserver {
@@ -247,12 +247,13 @@ class UsbEventTest : public UdevEventsImplTest {
   std::unique_ptr<StrictMock<MockCrosHealthdUsbObserver>> observer_;
 };
 
-// Tests for the HDMI event.
-class HdmiEventsImplTest : public testing::Test {
+// Tests for the External Display event.
+class ExternalDisplayEventsImplTest : public testing::Test {
  protected:
-  HdmiEventsImplTest() = default;
-  HdmiEventsImplTest(const HdmiEventsImplTest&) = delete;
-  HdmiEventsImplTest& operator=(const HdmiEventsImplTest&) = delete;
+  ExternalDisplayEventsImplTest() = default;
+  ExternalDisplayEventsImplTest(const ExternalDisplayEventsImplTest&) = delete;
+  ExternalDisplayEventsImplTest& operator=(
+      const ExternalDisplayEventsImplTest&) = delete;
 
   void SetUp() override {
     udev_events_impl_ = std::make_unique<UdevEventsImpl>(&mock_context_);
@@ -262,12 +263,13 @@ class HdmiEventsImplTest : public testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   void InitializeObserver() {
-    mojo::PendingRemote<mojom::EventObserver> hdmi_observer;
+    mojo::PendingRemote<mojom::EventObserver> external_display_observer;
     mojo::PendingReceiver<mojom::EventObserver> observer_receiver(
-        hdmi_observer.InitWithNewPipeAndPassReceiver());
+        external_display_observer.InitWithNewPipeAndPassReceiver());
     event_observer_ = std::make_unique<StrictMock<MockEventObserver>>(
         std::move(observer_receiver));
-    udev_events_impl_->AddHdmiObserver(std::move(hdmi_observer));
+    udev_events_impl_->AddExternalDisplayObserver(
+        std::move(external_display_observer));
   }
 
   void SetExecutorGetHdmi(
@@ -280,12 +282,15 @@ class HdmiEventsImplTest : public testing::Test {
             }));
   }
 
-  void TriggerHdmiEvent() {
+  void TriggerExternalDisplayEvent() {
     auto monitor = mock_context_.mock_udev_monitor();
     auto device = std::make_unique<brillo::MockUdevDevice>();
-    EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevHdmiAction));
-    EXPECT_CALL(*device, GetSubsystem()).WillOnce(Return(kUdevHdmiSubSystem));
-    EXPECT_CALL(*device, GetDeviceType()).WillOnce(Return(kUdevHdmiDeviceType));
+    EXPECT_CALL(*device, GetAction())
+        .WillOnce(Return(kUdevExternalDisplayAction));
+    EXPECT_CALL(*device, GetSubsystem())
+        .WillOnce(Return(kUdevExternalDisplaySubSystem));
+    EXPECT_CALL(*device, GetDeviceType())
+        .WillOnce(Return(kUdevExternalDisplayDeviceType));
     EXPECT_CALL(*monitor, ReceiveDevice())
         .WillOnce(Return(ByMove(std::move(device))));
 
@@ -401,12 +406,12 @@ TEST_F(UsbEventTest, TestUsbRemoveEvent) {
   run_loop.Run();
 }
 
-TEST_F(HdmiEventsImplTest, TestHdmiAddEvent) {
+TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
   {
     // We did not call UdevEventsImpl::Initialize() function due to the
     // difficulty of setting up udev_monitor dependency. Here we manually set up
-    // the starting state through triggering a hdmi event before initializing
-    // observer.
+    // the starting state through triggering a external_display event before
+    // initializing observer.
     base::RunLoop run_loop;
     EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_))
         .WillOnce(WithArg<0>(
@@ -414,7 +419,7 @@ TEST_F(HdmiEventsImplTest, TestHdmiAddEvent) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   InitializeObserver();
@@ -429,22 +434,22 @@ TEST_F(HdmiEventsImplTest, TestHdmiAddEvent) {
           recv_info = std::move(info);
           run_loop.Quit();
         }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
-    recv_info->is_hdmi_event_info();
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->state,
-              ash::cros_healthd::mojom::HdmiEventInfo::State::kAdd);
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->display_info,
+    recv_info->is_external_display_event_info();
+    EXPECT_EQ(recv_info->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
   }
 }
 
-TEST_F(HdmiEventsImplTest, TestHdmiRemoveEvent) {
+TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
   {
     // We did not call UdevEventsImpl::Initialize() function due to the
     // difficulty of setting up udev_monitor dependency. Here we manually set up
-    // the starting state through triggering a hdmi event before initializing
-    // observer.
+    // the starting state through triggering a external_display event before
+    // initializing observer.
     base::RunLoop run_loop;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
@@ -454,7 +459,7 @@ TEST_F(HdmiEventsImplTest, TestHdmiRemoveEvent) {
               std::move(callback).Run(std::move(connectors), std::nullopt);
               run_loop.Quit();
             }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   InitializeObserver();
@@ -467,22 +472,23 @@ TEST_F(HdmiEventsImplTest, TestHdmiRemoveEvent) {
           recv_info = std::move(info);
           run_loop.Quit();
         }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
-    recv_info->is_hdmi_event_info();
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->state,
-              ash::cros_healthd::mojom::HdmiEventInfo::State::kRemove);
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->display_info,
+    recv_info->is_external_display_event_info();
+    EXPECT_EQ(
+        recv_info->get_external_display_event_info()->state,
+        ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kRemove);
+    EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
   }
 }
 
-TEST_F(HdmiEventsImplTest, TestDuplicateHdmiConnectorId) {
+TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
   {
     // We did not call UdevEventsImpl::Initialize() function due to the
     // difficulty of setting up udev_monitor dependency. Here we manually set up
-    // the starting state through triggering a hdmi event before initializing
-    // observer.
+    // the starting state through triggering a external_display event before
+    // initializing observer.
     base::RunLoop run_loop;
     EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_))
         .WillOnce(WithArg<0>(
@@ -490,7 +496,7 @@ TEST_F(HdmiEventsImplTest, TestDuplicateHdmiConnectorId) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   InitializeObserver();
@@ -501,7 +507,7 @@ TEST_F(HdmiEventsImplTest, TestDuplicateHdmiConnectorId) {
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce(Invoke([&](mojom::EventInfoPtr info) { run_loop.Quit(); }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   {
@@ -510,7 +516,7 @@ TEST_F(HdmiEventsImplTest, TestDuplicateHdmiConnectorId) {
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce(Invoke([&](mojom::EventInfoPtr info) { run_loop.Quit(); }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   {
@@ -524,22 +530,22 @@ TEST_F(HdmiEventsImplTest, TestDuplicateHdmiConnectorId) {
           recv_info = std::move(info);
           run_loop.Quit();
         }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
-    recv_info->is_hdmi_event_info();
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->state,
-              ash::cros_healthd::mojom::HdmiEventInfo::State::kAdd);
-    EXPECT_EQ(recv_info->get_hdmi_event_info()->display_info,
+    recv_info->is_external_display_event_info();
+    EXPECT_EQ(recv_info->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display2"));
   }
 }
 
-TEST_F(HdmiEventsImplTest, TestHdmiAddMultipleDisplay) {
+TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
   {
     // We did not call UdevEventsImpl::Initialize() function due to the
     // difficulty of setting up udev_monitor dependency. Here we manually set up
-    // the starting state through triggering a hdmi event before initializing
-    // observer.
+    // the starting state through triggering a external_display event before
+    // initializing observer.
     base::RunLoop run_loop;
     EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_))
         .WillOnce(WithArg<0>(
@@ -547,7 +553,7 @@ TEST_F(HdmiEventsImplTest, TestHdmiAddMultipleDisplay) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
   }
   InitializeObserver();
@@ -567,19 +573,19 @@ TEST_F(HdmiEventsImplTest, TestHdmiAddMultipleDisplay) {
           run_loop.Quit();
         }));
 
-    TriggerHdmiEvent();
+    TriggerExternalDisplayEvent();
     run_loop.Run();
 
-    recv_info_1->is_hdmi_event_info();
-    EXPECT_EQ(recv_info_1->get_hdmi_event_info()->state,
-              ash::cros_healthd::mojom::HdmiEventInfo::State::kAdd);
-    EXPECT_EQ(recv_info_1->get_hdmi_event_info()->display_info,
+    recv_info_1->is_external_display_event_info();
+    EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
 
-    recv_info_2->is_hdmi_event_info();
-    EXPECT_EQ(recv_info_2->get_hdmi_event_info()->state,
-              ash::cros_healthd::mojom::HdmiEventInfo::State::kAdd);
-    EXPECT_EQ(recv_info_2->get_hdmi_event_info()->display_info,
+    recv_info_2->is_external_display_event_info();
+    EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display2"));
   }
 }
