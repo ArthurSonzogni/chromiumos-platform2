@@ -3534,15 +3534,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv4 configuration from bearer.";
-    // Override the MTU with a given limit for a specific serving operator
-    // if the network doesn't report something lower.
     ipv4_props_ = *bearer->ipv4_config_properties();
-    if (cellular_->mobile_operator_info_ &&
-        cellular_->mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
-        (ipv4_props_->mtu == IPConfig::kUndefinedMTU ||
-         cellular_->mobile_operator_info_->mtu() < ipv4_props_->mtu)) {
-      ipv4_props_->mtu = cellular_->mobile_operator_info_->mtu();
-    }
     ipv4_configured = true;
   } else if (bearer->ipv4_config_method() ==
              CellularBearer::IPConfigMethod::kDHCP) {
@@ -3563,6 +3555,23 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     LOG(WARNING) << LoggingTag()
                  << ": No supported IP configuration found in bearer";
     return false;
+  }
+
+  // Override the MTU with a given limit for a specific serving operator
+  // if the network doesn't report something lower. The setting is applied both
+  // in IPv4 and IPv6 settings.
+  if (cellular_->mobile_operator_info_ &&
+      cellular_->mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU) {
+    if (ipv4_props_ &&
+        (ipv4_props_->mtu == IPConfig::kUndefinedMTU ||
+         cellular_->mobile_operator_info_->mtu() < ipv4_props_->mtu)) {
+      ipv4_props_->mtu = cellular_->mobile_operator_info_->mtu();
+    }
+    if (ipv6_props_ &&
+        (ipv6_props_->mtu == IPConfig::kUndefinedMTU ||
+         cellular_->mobile_operator_info_->mtu() < ipv6_props_->mtu)) {
+      ipv6_props_->mtu = cellular_->mobile_operator_info_->mtu();
+    }
   }
 
   start_opts_.dhcp = dhcp_opts;
