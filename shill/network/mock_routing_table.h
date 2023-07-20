@@ -24,7 +24,7 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD(bool, AddRoute, (int, const RoutingTableEntry&), (override));
   MOCK_METHOD(bool,
               GetDefaultRoute,
-              (int, IPAddress::Family, RoutingTableEntry*),
+              (int, net_base::IPFamily, RoutingTableEntry*),
               (override));
   MOCK_METHOD(bool,
               GetDefaultRouteFromKernel,
@@ -32,15 +32,11 @@ class MockRoutingTable : public RoutingTable {
               (override));
   MOCK_METHOD(bool,
               SetDefaultRoute,
-              (int, const IPAddress&, uint32_t),
+              (int, const net_base::IPAddress&, uint32_t),
               (override));
   MOCK_METHOD(bool,
               CreateBlackholeRoute,
-              (int, IPAddress::Family, uint32_t, uint32_t),
-              (override));
-  MOCK_METHOD(bool,
-              CreateLinkRoute,
-              (int, const IPAddress&, const IPAddress&, uint32_t),
+              (int, net_base::IPFamily, uint32_t, uint32_t),
               (override));
   MOCK_METHOD(void, FlushRoutes, (int), (override));
   MOCK_METHOD(void, FlushRoutesWithTag, (int, net_base::IPFamily), (override));

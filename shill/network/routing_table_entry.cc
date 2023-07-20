@@ -7,30 +7,19 @@
 #include <string>
 
 #include <base/strings/stringprintf.h>
+#include <net-base/ip_address.h>
 
 namespace shill {
 
-RoutingTableEntry::RoutingTableEntry(IPAddress::Family family)
-    : dst(IPAddress::CreateFromFamily_Deprecated(family)),
-      src(IPAddress::CreateFromFamily_Deprecated(family)),
-      gateway(IPAddress::CreateFromFamily_Deprecated(family)) {}
+RoutingTableEntry::RoutingTableEntry(net_base::IPFamily family)
+    : dst(net_base::IPCIDR(family)),
+      src(net_base::IPCIDR(family)),
+      gateway(net_base::IPAddress(family)) {}
 
-RoutingTableEntry::RoutingTableEntry(const IPAddress& dst_in,
-                                     const IPAddress& src_in,
-                                     const IPAddress& gateway_in)
+RoutingTableEntry::RoutingTableEntry(const net_base::IPCIDR& dst_in,
+                                     const net_base::IPCIDR& src_in,
+                                     const net_base::IPAddress& gateway_in)
     : dst(dst_in), src(src_in), gateway(gateway_in) {}
-
-// static
-RoutingTableEntry RoutingTableEntry::Create(IPAddress::Family family) {
-  return RoutingTableEntry(family);
-}
-
-// static
-RoutingTableEntry RoutingTableEntry::Create(const IPAddress& dst_in,
-                                            const IPAddress& src_in,
-                                            const IPAddress& gateway_in) {
-  return RoutingTableEntry(dst_in, src_in, gateway_in);
-}
 
 RoutingTableEntry& RoutingTableEntry::SetMetric(uint32_t metric_in) {
   metric = metric_in;
@@ -72,7 +61,9 @@ bool RoutingTableEntry::operator==(const RoutingTableEntry& b) const {
 
 std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
   std::string dest_address =
-      entry.dst.IsDefault() ? "default" : entry.dst.ToString();
+      entry.dst.address().IsZero() && entry.dst.prefix_length() == 0
+          ? "default"
+          : entry.dst.ToString();
   const char* dest_prefix;
   switch (entry.type) {
     case RTN_LOCAL:
@@ -94,19 +85,19 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
       break;
   }
   std::string gateway;
-  if (!entry.gateway.IsDefault()) {
+  if (!entry.gateway.IsZero()) {
     gateway = " via " + entry.gateway.ToString();
   }
   std::string src;
-  if (!entry.src.IsDefault()) {
+  if (!entry.src.address().IsZero() || entry.src.prefix_length() != 0) {
     src = " src " + entry.src.ToString();
   }
 
-  os << base::StringPrintf(
-      "%s%s%s metric %d %s table %d tag %d%s", dest_prefix,
-      dest_address.c_str(), gateway.c_str(), entry.metric,
-      IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
-      static_cast<int>(entry.table), entry.tag, src.c_str());
+  os << base::StringPrintf("%s%s%s metric %d %s table %d tag %d%s", dest_prefix,
+                           dest_address.c_str(), gateway.c_str(), entry.metric,
+                           net_base::ToString(entry.dst.GetFamily()).c_str(),
+                           static_cast<int>(entry.table), entry.tag,
+                           src.c_str());
   return os;
 }
 

@@ -17,7 +17,6 @@
 #include <base/memory/ref_counted.h>
 #include <net-base/ip_address.h>
 
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/network/routing_table_entry.h"
 
@@ -73,7 +72,7 @@ class RoutingTable {
   // Get the default route associated with an interface of a given addr family.
   // The route is copied into |*entry|.
   virtual bool GetDefaultRoute(int interface_index,
-                               IPAddress::Family family,
+                               net_base::IPFamily family,
                                RoutingTableEntry* entry);
 
   // Get the default IPv6 route associated with an interface which was created
@@ -85,23 +84,15 @@ class RoutingTable {
   // given the IPAddress of the gateway |gateway_address| and priority
   // |metric|.
   virtual bool SetDefaultRoute(int interface_index,
-                               const IPAddress& gateway_address,
+                               const net_base::IPAddress& gateway_address,
                                uint32_t table_id);
 
   // Create a blackhole route for a given IP family.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateBlackholeRoute(int interface_index,
-                                    IPAddress::Family family,
+                                    net_base::IPFamily family,
                                     uint32_t metric,
                                     uint32_t table_id);
-
-  // Create a route to a link-attached remote host.  |remote_address|
-  // must be directly reachable from |local_address|.  Returns true
-  // on successfully sending the route request, false otherwise.
-  virtual bool CreateLinkRoute(int interface_index,
-                               const IPAddress& local_address,
-                               const IPAddress& remote_address,
-                               uint32_t table_id);
 
   // Remove routes associated with interface.
   // Route entries are immediately purged from our copy of the routing table.
@@ -146,7 +137,7 @@ class RoutingTable {
   // Get the default route associated with an interface of a given addr family.
   // A pointer to the route is placed in |*entry|.
   virtual bool GetDefaultRouteInternal(int interface_index,
-                                       IPAddress::Family family,
+                                       net_base::IPFamily family,
                                        RoutingTableEntry** entry);
 
   RouteTables tables_;

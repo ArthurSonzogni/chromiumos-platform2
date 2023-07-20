@@ -93,20 +93,20 @@ MATCHER_P5(IsValidSrcRuleWithUid, family, priority, src, uid, table, "") {
 }
 
 MATCHER_P(IsValidRoute, dst, "") {
-  return dst.Equals(arg.dst);
+  return dst == arg.dst;
 }
 
 MATCHER_P2(IsValidRouteThrough, dst, gateway, "") {
-  return dst.Equals(arg.dst) && gateway.Equals(arg.gateway);
+  return dst == arg.dst && gateway == arg.gateway;
 }
 
 MATCHER_P(IsValidThrowRoute, dst, "") {
-  return dst.Equals(arg.dst) && arg.type == RTN_THROW;
+  return dst == arg.dst && arg.type == RTN_THROW;
 }
 
 MATCHER_P(IsLinkRouteTo, dst, "") {
-  return dst.Equals(arg.dst) && arg.src.IsDefault() &&
-         arg.gateway.IsDefault() && arg.scope == RT_SCOPE_LINK;
+  return dst == arg.dst && arg.src.address().IsZero() && arg.gateway.IsZero() &&
+         arg.scope == RT_SCOPE_LINK;
 }
 
 }  // namespace
@@ -559,11 +559,11 @@ TEST_F(NetworkApplierRouteTest, IPv4Simple) {
   EXPECT_CALL(routing_table_,
               FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
   EXPECT_CALL(routing_table_,
-              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
+              SetDefaultRoute(kInterfaceIndex, *gateway, kTableID))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
-              CreateBlackholeRoute(kInterfaceIndex, IPAddress::kFamilyIPv6, 0,
-                                   kTableID))
+              CreateBlackholeRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                                   0, kTableID))
       .WillOnce(Return(true));
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                gateway, false, true, true, {}, {}, {});
@@ -577,9 +577,8 @@ TEST_F(NetworkApplierRouteTest, IPv4FixGatewayReachability) {
 
   EXPECT_CALL(routing_table_,
               FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
-  EXPECT_CALL(
-      routing_table_,
-      AddRoute(kInterfaceIndex, IsLinkRouteTo(IPAddress(*gateway_cidr))));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex, IsLinkRouteTo(*gateway_cidr)));
 
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                gateway, true, false, false, {}, {}, {});
@@ -601,21 +600,20 @@ TEST_F(NetworkApplierRouteTest, IPv4WithStaticRoutes) {
   EXPECT_CALL(routing_table_,
               FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv4));
   EXPECT_CALL(routing_table_,
-              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      routing_table_,
-      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      routing_table_,
-      AddRoute(kInterfaceIndex, IsValidRouteThrough(IPAddress(*included_dst),
-                                                    IPAddress(*gateway))))
+              SetDefaultRoute(kInterfaceIndex, *gateway, kTableID))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
-              AddRoute(kInterfaceIndex,
-                       IsValidRouteThrough(IPAddress(*rfc3442_dst),
-                                           IPAddress(*rfc3442_gateway))))
+              AddRoute(kInterfaceIndex, IsValidThrowRoute(*excluded_dst)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex, IsValidRouteThrough(*included_dst, *gateway)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRoute(kInterfaceIndex,
+               IsValidRouteThrough(net_base::IPCIDR(*rfc3442_dst),
+                                   net_base::IPAddress(*rfc3442_gateway))))
       .WillOnce(Return(true));
 
   network_applier_->ApplyRoute(
@@ -640,20 +638,19 @@ TEST_F(NetworkApplierRouteTest, IPv4NoGateway) {
   EXPECT_CALL(
       routing_table_,
       SetDefaultRoute(kInterfaceIndex,
-                      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
-                      kTableID))
+                      net_base::IPAddress(net_base::IPFamily::kIPv4), kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex, IsValidThrowRoute(*excluded_dst)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex, IsValidRoute(*included_dst)))
       .WillOnce(Return(true));
   EXPECT_CALL(
       routing_table_,
-      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRoute(kInterfaceIndex, IsValidRoute(IPAddress(*included_dst))))
-      .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRoute(kInterfaceIndex,
-                       IsValidRouteThrough(IPAddress(*rfc3442_dst),
-                                           IPAddress(*rfc3442_gateway))))
+      AddRoute(kInterfaceIndex,
+               IsValidRouteThrough(net_base::IPCIDR(*rfc3442_dst),
+                                   net_base::IPAddress(*rfc3442_gateway))))
       .WillOnce(Return(true));
 
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
@@ -674,16 +671,14 @@ TEST_F(NetworkApplierRouteTest, IPv6) {
   EXPECT_CALL(routing_table_,
               FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv6));
   EXPECT_CALL(routing_table_,
-              SetDefaultRoute(kInterfaceIndex, IPAddress(*gateway), kTableID))
+              SetDefaultRoute(kInterfaceIndex, *gateway, kTableID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              AddRoute(kInterfaceIndex, IsValidThrowRoute(*excluded_dst)))
       .WillOnce(Return(true));
   EXPECT_CALL(
       routing_table_,
-      AddRoute(kInterfaceIndex, IsValidThrowRoute(IPAddress(*excluded_dst))))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      routing_table_,
-      AddRoute(kInterfaceIndex, IsValidRouteThrough(IPAddress(*included_dst),
-                                                    IPAddress(*gateway))))
+      AddRoute(kInterfaceIndex, IsValidRouteThrough(*included_dst, *gateway)))
       .WillOnce(Return(true));
 
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,

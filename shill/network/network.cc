@@ -573,14 +573,10 @@ void Network::OnIPv6AddressChanged() {
   properties.address = primary_address.address().ToString();
   properties.subnet_prefix = primary_address.prefix_length();
 
-  RoutingTableEntry default_route(IPAddress::kFamilyIPv6);
+  RoutingTableEntry default_route(net_base::IPFamily::kIPv6);
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
                                                 &default_route)) {
-    if (!default_route.gateway.IntoString(&properties.gateway)) {
-      LOG(ERROR) << logging_tag_
-                 << ": Unable to convert IPv6 gateway into a string";
-      return;
-    }
+    properties.gateway = default_route.gateway.ToString();
   } else {
     // The kernel normally populates the default route before it performs
     // a neighbor solicitation for the new address, so it shouldn't be

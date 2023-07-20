@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#include "shill/net/ip_address.h"
+#include <net-base/ip_address.h>
 
 namespace shill {
 
@@ -17,15 +17,10 @@ namespace shill {
 struct RoutingTableEntry {
   static constexpr int kDefaultTag = -1;
 
-  explicit RoutingTableEntry(IPAddress::Family family);
-  RoutingTableEntry(const IPAddress& dst_in,
-                    const IPAddress& src_in,
-                    const IPAddress& gateway_in);
-
-  static RoutingTableEntry Create(IPAddress::Family family);
-  static RoutingTableEntry Create(const IPAddress& dst_in,
-                                  const IPAddress& src_in,
-                                  const IPAddress& gateway_in);
+  explicit RoutingTableEntry(net_base::IPFamily family);
+  RoutingTableEntry(const net_base::IPCIDR& dst_in,
+                    const net_base::IPCIDR& src_in,
+                    const net_base::IPAddress& gateway_in);
 
   RoutingTableEntry& SetMetric(uint32_t metric_in);
   RoutingTableEntry& SetScope(unsigned char scope_in);
@@ -35,9 +30,10 @@ struct RoutingTableEntry {
 
   bool operator==(const RoutingTableEntry& b) const;
 
-  IPAddress dst;
-  IPAddress src;
-  IPAddress gateway;
+  net_base::IPCIDR dst;
+  net_base::IPCIDR src;
+  net_base::IPAddress gateway;  // RoutingTableEntry uses all-zero gateway
+                                // address to represent no gateway.
   uint32_t metric = 0;
   unsigned char scope = RT_SCOPE_UNIVERSE;
   uint32_t table = RT_TABLE_MAIN;

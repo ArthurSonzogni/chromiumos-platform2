@@ -1270,7 +1270,8 @@ class NetworkStartTest : public NetworkTest {
   void TriggerSLAACAddressUpdate() {
     EXPECT_CALL(routing_table_, GetDefaultRouteFromKernel(kTestIfindex, _))
         .WillRepeatedly(WithArg<1>([](RoutingTableEntry* entry) {
-          entry->gateway = *IPAddress::CreateFromString(kIPv6SLAACGateway);
+          entry->gateway =
+              *net_base::IPAddress::CreateFromString(kIPv6SLAACGateway);
           return true;
         }));
     const auto cidr = *net_base::IPv6CIDR::CreateFromStringAndPrefix(

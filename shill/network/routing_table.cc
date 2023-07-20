@@ -63,7 +63,6 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
                               int* interface_index,
                               RoutingTableEntry* entry) {
   if (message.type() != RTNLMessage::kTypeRoute ||
-      message.family() == IPAddress::kFamilyUnknown ||
       !message.HasAttribute(RTA_OIF)) {
     return false;
   }
@@ -112,22 +111,14 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
         << "Received RT_TABLE_COMPAT, but message has no RTA_TABLE attribute";
   }
 
-  const auto default_addr = IPAddress::CreateFromFamily(message.family());
-  if (auto addr = message.GetRtaDst(); addr.has_value()) {
-    entry->dst = IPAddress(*addr);
-  } else {
-    entry->dst = default_addr;
+  auto family = net_base::FromSAFamily(message.family());
+  if (!family) {
+    return false;
   }
-  if (auto addr = message.GetRtaSrc(); addr.has_value()) {
-    entry->src = IPAddress(*addr);
-  } else {
-    entry->src = default_addr;
-  }
-  if (auto addr = message.GetRtaGateway(); addr.has_value()) {
-    entry->gateway = IPAddress(*addr);
-  } else {
-    entry->gateway = default_addr;
-  }
+  entry->dst = message.GetRtaDst().value_or(net_base::IPCIDR(*family));
+  entry->src = message.GetRtaSrc().value_or(net_base::IPCIDR(*family));
+  entry->gateway =
+      message.GetRtaGateway().value_or(net_base::IPAddress(*family));
   entry->table = table;
   entry->metric = metric;
   entry->scope = route_status.scope;
@@ -260,7 +251,7 @@ bool RoutingTable::RemoveRoute(int interface_index,
 }
 
 bool RoutingTable::GetDefaultRoute(int interface_index,
-                                   IPAddress::Family family,
+                                   net_base::IPFamily family,
                                    RoutingTableEntry* entry) {
   RoutingTableEntry* found_entry;
   bool ret = GetDefaultRouteInternal(interface_index, family, &found_entry);
@@ -271,10 +262,9 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 }
 
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
-                                           IPAddress::Family family,
+                                           net_base::IPFamily family,
                                            RoutingTableEntry** entry) {
-  SLOG(2) << __func__ << " index " << interface_index << " family "
-          << IPAddress::GetAddressFamilyName(family);
+  SLOG(2) << __func__ << " index " << interface_index << " family " << family;
 
   RouteTables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
@@ -288,8 +278,8 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   // with a lower metric.
   uint32_t lowest_metric = UINT_MAX;
   for (auto& nent : table->second) {
-    if (nent.dst.IsDefault() && nent.dst.family() == family &&
-        nent.metric < lowest_metric) {
+    if (nent.dst.address().IsZero() && nent.dst.prefix_length() == 0 &&
+        nent.dst.GetFamily() == family && nent.metric < lowest_metric) {
       *entry = &nent;
       lowest_metric = nent.metric;
     }
@@ -317,7 +307,8 @@ bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
   }
 
   for (auto& nent : table->second) {
-    if (nent.dst.IsDefault() && nent.dst.family() == IPAddress::kFamilyIPv6 &&
+    if (nent.dst.address().IsZero() && nent.dst.prefix_length() == 0 &&
+        nent.dst.GetFamily() == net_base::IPFamily::kIPv6 &&
         nent.metric == kKernelSlaacRouteMetric) {
       *entry = nent;
       return true;
@@ -327,16 +318,15 @@ bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
-                                   const IPAddress& gateway_address,
+                                   const net_base::IPAddress& gateway_address,
                                    uint32_t table_id) {
   SLOG(2) << __func__ << " index " << interface_index;
 
   RoutingTableEntry* old_entry;
 
-  if (GetDefaultRouteInternal(interface_index, gateway_address.family(),
+  if (GetDefaultRouteInternal(interface_index, gateway_address.GetFamily(),
                               &old_entry)) {
-    if (old_entry->gateway.Equals(gateway_address) &&
-        old_entry->table == table_id) {
+    if (old_entry->gateway == gateway_address && old_entry->table == table_id) {
       return true;
     } else {
       if (!RemoveRoute(interface_index, *old_entry)) {
@@ -346,15 +336,14 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
     }
   }
 
-  const auto default_address =
-      IPAddress::CreateFromFamily(gateway_address.family());
+  const auto default_address = net_base::IPCIDR(gateway_address.GetFamily());
 
-  return AddRoute(interface_index,
-                  RoutingTableEntry::Create(default_address, default_address,
-                                            gateway_address)
-                      .SetMetric(kShillDefaultRouteMetric)
-                      .SetTable(table_id)
-                      .SetTag(interface_index));
+  return AddRoute(
+      interface_index,
+      RoutingTableEntry(default_address, default_address, gateway_address)
+          .SetMetric(kShillDefaultRouteMetric)
+          .SetTable(table_id)
+          .SetTag(interface_index));
 }
 
 void RoutingTable::FlushRoutes(int interface_index) {
@@ -376,8 +365,7 @@ void RoutingTable::FlushRoutesWithTag(int tag, net_base::IPFamily family) {
 
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
-      if (nent->tag == tag &&
-          nent->dst.family() == net_base::ToSAFamily(family)) {
+      if (nent->tag == tag && nent->dst.GetFamily() == family) {
         RemoveRouteFromKernelTable(table.first, *nent);
         nent = table.second.erase(nent);
       } else {
@@ -412,7 +400,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   int interface_index;
   // Initialize it to IPv4, will be set to the real value in
   // ParseRoutingTableMessage().
-  RoutingTableEntry entry(IPAddress::kFamilyIPv4);
+  RoutingTableEntry entry(net_base::IPFamily::kIPv4);
   if (!ParseRoutingTableMessage(message, &interface_index, &entry)) {
     return;
   }
@@ -421,8 +409,9 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     // The kernel sends one of these messages pretty much every time it
     // connects to another IPv6 host.  The only interesting message is the
     // one containing the default gateway.
-    if (!entry.dst.IsDefault())
+    if (!entry.dst.address().IsZero() || entry.dst.prefix_length() != 0) {
       return;
+    }
   } else if (entry.protocol != RTPROT_BOOT) {
     // Responses to route queries come back with a protocol of
     // RTPROT_UNSPEC.  Otherwise, normal route updates that we are
@@ -509,17 +498,16 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
       << "Attempted to apply route: " << entry;
 
-  SLOG(2) << base::StringPrintf(
-      "%s: dst %s/%d src %s/%d index %d mode %d flags 0x%x", __func__,
-      entry.dst.ToString().c_str(), entry.dst.prefix(),
-      entry.src.ToString().c_str(), entry.src.prefix(), interface_index, mode,
-      flags);
+  SLOG(2) << base::StringPrintf("%s: dst %s src %s index %d mode %d flags 0x%x",
+                                __func__, entry.dst.ToString().c_str(),
+                                entry.src.ToString().c_str(), interface_index,
+                                mode, flags);
 
-  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRoute, mode,
-                                               NLM_F_REQUEST | flags, 0, 0, 0,
-                                               entry.dst.family());
+  auto message = std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeRoute, mode, NLM_F_REQUEST | flags, 0, 0, 0,
+      net_base::ToSAFamily(entry.dst.GetFamily()));
   message->set_route_status(RTNLMessage::RouteStatus(
-      entry.dst.prefix(), entry.src.prefix(),
+      entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, entry.protocol,
       entry.scope, entry.type, 0));
 
@@ -528,16 +516,13 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   message->SetAttribute(RTA_PRIORITY,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.metric));
   if (entry.type != RTN_BLACKHOLE) {
-    message->SetAttribute(RTA_DST, {entry.dst.address().GetConstData(),
-                                    entry.dst.address().GetLength()});
+    message->SetAttribute(RTA_DST, entry.dst.address().ToBytes());
   }
-  if (!entry.src.IsDefault()) {
-    message->SetAttribute(RTA_SRC, {entry.src.address().GetConstData(),
-                                    entry.src.address().GetLength()});
+  if (!entry.src.address().IsZero() || entry.src.prefix_length() != 0) {
+    message->SetAttribute(RTA_SRC, entry.src.address().ToBytes());
   }
-  if (!entry.gateway.IsDefault()) {
-    message->SetAttribute(RTA_GATEWAY, {entry.gateway.address().GetConstData(),
-                                        entry.gateway.address().GetLength()});
+  if (!entry.gateway.IsZero()) {
+    message->SetAttribute(RTA_GATEWAY, entry.gateway.ToBytes());
   }
   if (entry.type == RTN_UNICAST) {
     // Note that RouteMsgHandler will ignore anything without RTA_OIF,
@@ -551,44 +536,18 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
 }
 
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
-                                        IPAddress::Family family,
+                                        net_base::IPFamily family,
                                         uint32_t metric,
                                         uint32_t table_id) {
   SLOG(2) << base::StringPrintf("%s: family %s metric %d", __func__,
-                                IPAddress::GetAddressFamilyName(family).c_str(),
-                                metric);
+                                net_base::ToString(family).c_str(), metric);
 
-  auto entry = RoutingTableEntry::Create(family)
+  auto entry = RoutingTableEntry(family)
                    .SetMetric(metric)
                    .SetTable(table_id)
                    .SetType(RTN_BLACKHOLE)
                    .SetTag(interface_index);
   return AddRoute(interface_index, entry);
-}
-
-bool RoutingTable::CreateLinkRoute(int interface_index,
-                                   const IPAddress& local_address,
-                                   const IPAddress& remote_address,
-                                   uint32_t table_id) {
-  if (!local_address.CanReachAddress(remote_address)) {
-    LOG(ERROR) << __func__ << " failed: " << remote_address.ToString()
-               << " is not reachable from " << local_address.ToString();
-    return false;
-  }
-
-  IPAddress default_address =
-      IPAddress::CreateFromFamily(local_address.family());
-  IPAddress destination_address(remote_address);
-  destination_address.set_prefix(
-      IPAddress::GetMaxPrefixLength(remote_address.family()));
-  SLOG(2) << "Creating link route to " << destination_address.ToString()
-          << " from " << local_address.ToString() << " on interface index "
-          << interface_index;
-  return AddRoute(interface_index,
-                  RoutingTableEntry::Create(destination_address, local_address,
-                                            default_address)
-                      .SetScope(RT_SCOPE_LINK)
-                      .SetTable(table_id));
 }
 
 // static

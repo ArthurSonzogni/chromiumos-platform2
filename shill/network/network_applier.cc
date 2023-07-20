@@ -16,7 +16,6 @@
 #include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
@@ -307,8 +306,7 @@ void NetworkApplier::ApplyRoute(
         rfc3442_routes) {
   const uint32_t table_id = RoutingTable::GetInterfaceTableId(interface_index);
   CHECK(!gateway || gateway->GetFamily() == family);
-  IPAddress empty_ip =
-      IPAddress::CreateFromFamily(net_base::ToSAFamily(family));
+  auto empty_ip = net_base::IPCIDR(family);
 
   // 0. Flush existing routes set by shill.
   routing_table_->FlushRoutesWithTag(interface_index, family);
@@ -322,14 +320,14 @@ void NetworkApplier::ApplyRoute(
     net_base::IPv4CIDR gateway_only =
         *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
             *gateway->ToIPv4Address(), 32);
-    auto entry = RoutingTableEntry::Create(
-                     IPAddress(gateway_only),
-                     IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
-                     IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4))
-                     .SetScope(RT_SCOPE_LINK)
-                     .SetTable(table_id)
-                     .SetType(RTN_UNICAST)
-                     .SetTag(interface_index);
+    auto entry =
+        RoutingTableEntry(net_base::IPCIDR(gateway_only),
+                          net_base::IPCIDR(net_base::IPFamily::kIPv4),
+                          net_base::IPAddress(net_base::IPFamily::kIPv4))
+            .SetScope(RT_SCOPE_LINK)
+            .SetTable(table_id)
+            .SetType(RTN_UNICAST)
+            .SetTag(interface_index);
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(ERROR) << "Unable to add link-scoped route to gateway " << entry
                  << ", if " << interface_index;
@@ -339,8 +337,7 @@ void NetworkApplier::ApplyRoute(
   // 2. Default route and IPv6 blackhole route
   if (default_route) {
     if (!routing_table_->SetDefaultRoute(
-            interface_index, gateway ? IPAddress(*gateway) : empty_ip,
-            table_id)) {
+            interface_index, gateway.value_or(empty_ip.address()), table_id)) {
       LOG(ERROR) << "Unable to add default route via "
                  << (gateway ? gateway->ToString() : "onlink") << ", if "
                  << interface_index;
@@ -349,7 +346,7 @@ void NetworkApplier::ApplyRoute(
 
   if (blackhole_ipv6) {
     if (!routing_table_->CreateBlackholeRoute(
-            interface_index, IPAddress::kFamilyIPv6, 0, table_id)) {
+            interface_index, net_base::IPFamily::kIPv6, 0, table_id)) {
       LOG(ERROR) << "Unable to add IPv6 blackhole route, if "
                  << interface_index;
     }
@@ -366,12 +363,12 @@ void NetworkApplier::ApplyRoute(
                    << excluded_prefix;
       continue;
     }
-    auto entry = RoutingTableEntry::Create(empty_ip, empty_ip, empty_ip)
+    auto entry = RoutingTableEntry(family)
                      .SetScope(RT_SCOPE_LINK)
                      .SetTable(table_id)
                      .SetType(RTN_THROW)
                      .SetTag(interface_index);
-    entry.dst = IPAddress(excluded_prefix);
+    entry.dst = excluded_prefix;
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup excluded route " << entry << ", if "
                    << interface_index;
@@ -385,11 +382,10 @@ void NetworkApplier::ApplyRoute(
                    << included_prefix;
       continue;
     }
-    auto entry =
-        RoutingTableEntry::Create(IPAddress(included_prefix), empty_ip,
-                                  gateway ? IPAddress(*gateway) : empty_ip)
-            .SetTable(table_id)
-            .SetTag(interface_index);
+    auto entry = RoutingTableEntry(included_prefix, empty_ip,
+                                   gateway.value_or(empty_ip.address()))
+                     .SetTable(table_id)
+                     .SetTag(interface_index);
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup included route " << entry << ", if "
                    << interface_index;
@@ -398,9 +394,9 @@ void NetworkApplier::ApplyRoute(
 
   // 5. RFC 3442 Static Classless Routes from DHCPv4
   for (const auto& [route_prefix, route_gateway] : rfc3442_routes) {
-    IPAddress empty_ip = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
-    auto entry = RoutingTableEntry::Create(IPAddress(route_prefix), empty_ip,
-                                           IPAddress(route_gateway))
+    auto entry = RoutingTableEntry(net_base::IPCIDR(route_prefix),
+                                   net_base::IPCIDR(net_base::IPFamily::kIPv4),
+                                   net_base::IPAddress(route_gateway))
                      .SetTable(table_id)
                      .SetTag(interface_index);
     if (!routing_table_->AddRoute(interface_index, entry)) {

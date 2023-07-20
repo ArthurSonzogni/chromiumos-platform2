@@ -20,6 +20,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
+#include <net-base/ip_address.h>
 
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
@@ -131,7 +132,8 @@ MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
   const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
       arg->GetAttribute(RTA_PRIORITY));
 
-  return arg->type() == RTNLMessage::kTypeRoute && arg->family() == family &&
+  return arg->type() == RTNLMessage::kTypeRoute &&
+         arg->family() == net_base::ToSAFamily(family) &&
          arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
          status.table == table && status.protocol == RTPROT_BOOT &&
          status.scope == RT_SCOPE_UNIVERSE && status.type == RTN_BLACKHOLE &&
@@ -148,16 +150,17 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
       arg->GetAttribute(RTA_PRIORITY));
 
   return arg->type() == RTNLMessage::kTypeRoute &&
-         arg->family() == entry.gateway.family() &&
+         arg->family() == net_base::ToSAFamily(entry.gateway.GetFamily()) &&
          arg->flags() == (NLM_F_REQUEST | flags) &&
          entry.table == RoutingTable::GetInterfaceTableId(index) &&
          status.protocol == RTPROT_BOOT && status.scope == entry.scope &&
          status.type == RTN_UNICAST && arg->HasAttribute(RTA_DST) &&
-         arg->GetRtaDst() == entry.dst.ToIPCIDR() &&
-         ((!arg->HasAttribute(RTA_SRC) && entry.src.IsDefault()) ||
-          arg->GetRtaSrc() == entry.src.ToIPCIDR()) &&
-         ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsDefault()) ||
-          arg->GetRtaGateway() == entry.gateway.ToIPAddress()) &&
+         arg->GetRtaDst() == entry.dst &&
+         ((!arg->HasAttribute(RTA_SRC) && entry.src.address().IsZero() &&
+           entry.src.prefix_length() == 0) ||
+          arg->GetRtaSrc() == entry.src) &&
+         ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsZero()) ||
+          arg->GetRtaGateway() == entry.gateway) &&
          oif && *oif == index && priority && *priority == entry.metric;
 }
 
@@ -176,22 +179,19 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
     uint32_t seq,
     unsigned char proto) {
   RTNLMessage msg(RTNLMessage::kTypeRoute, mode, 0, seq, 0, 0,
-                  entry.dst.family());
+                  net_base::ToSAFamily(entry.dst.GetFamily()));
 
   msg.set_route_status(RTNLMessage::RouteStatus(
-      entry.dst.prefix(), entry.src.prefix(),
+      entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, proto, entry.scope,
       RTN_UNICAST, 0));
 
-  msg.SetAttribute(RTA_DST, {entry.dst.address().GetConstData(),
-                             entry.dst.address().GetLength()});
-  if (!entry.src.IsDefault()) {
-    msg.SetAttribute(RTA_SRC, {entry.src.address().GetConstData(),
-                               entry.src.address().GetLength()});
+  msg.SetAttribute(RTA_DST, entry.dst.address().ToBytes());
+  if (!entry.src.address().IsZero()) {
+    msg.SetAttribute(RTA_SRC, entry.src.address().ToBytes());
   }
-  if (!entry.gateway.IsDefault()) {
-    msg.SetAttribute(RTA_GATEWAY, {entry.gateway.address().GetConstData(),
-                                   entry.gateway.address().GetLength()});
+  if (!entry.gateway.IsZero()) {
+    msg.SetAttribute(RTA_GATEWAY, entry.gateway.ToBytes());
   }
   msg.SetAttribute(RTA_TABLE,
                    net_base::byte_utils::ToBytes<uint32_t>(entry.table));
@@ -216,16 +216,15 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(0, GetRoutingTables()->size());
 
-  const auto default_address =
-      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
-  const auto gateway_address0 = *IPAddress::CreateFromString(kTestNetAddress0);
+  const auto default_address = net_base::IPCIDR(net_base::IPFamily::kIPv4);
+  const auto gateway_address0 =
+      *net_base::IPAddress::CreateFromString(kTestNetAddress0);
 
   int metric = 10;
 
   // Add a single entry.
   auto entry0 =
-      RoutingTableEntry::Create(default_address, default_address,
-                                gateway_address0)
+      RoutingTableEntry(default_address, default_address, gateway_address0)
           .SetMetric(metric)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry0);
@@ -243,8 +242,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   // Add a second entry for a different interface.
   auto entry1 =
-      RoutingTableEntry::Create(default_address, default_address,
-                                gateway_address0)
+      RoutingTableEntry(default_address, default_address, gateway_address0)
           .SetMetric(metric)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex1));
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex1, entry1);
@@ -258,13 +256,11 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   test_entry = (*tables)[kTestDeviceIndex1][0];
   EXPECT_EQ(entry1, test_entry);
 
-  const auto gateway_address1 = *IPAddress::CreateFromString(kTestNetAddress1);
+  const auto gateway_address1 =
+      *net_base::IPAddress::CreateFromString(kTestNetAddress1);
 
   auto entry2 =
-      RoutingTableEntry::Create(default_address, default_address,
-                                gateway_address1)
-          .SetMetric(metric)
-          .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex1));
+      RoutingTableEntry(default_address, default_address, gateway_address1);
 
   // Add a second gateway route to the second interface.
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex1, entry2);
@@ -303,22 +299,23 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   // Find a matching entry.
   EXPECT_TRUE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex1, IPAddress::kFamilyIPv4, &test_entry));
+      kTestDeviceIndex1, net_base::IPFamily::kIPv4, &test_entry));
   EXPECT_EQ(entry2, test_entry);
 
   // Test that a search for a non-matching family fails.
   EXPECT_FALSE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex1, IPAddress::kFamilyIPv6, &test_entry));
+      kTestDeviceIndex1, net_base::IPFamily::kIPv6, &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail.
   SendRouteEntry(RTNLMessage::kModeDelete, kTestDeviceIndex1, entry2);
   SendRouteEntry(RTNLMessage::kModeDelete, kTestDeviceIndex1, entry3);
 
   EXPECT_FALSE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex1, IPAddress::kFamilyIPv4, &test_entry));
+      kTestDeviceIndex1, net_base::IPFamily::kIPv4, &test_entry));
 
   // Add a route to a gateway address.
-  const auto gateway_address = *IPAddress::CreateFromString(kTestNetAddress0);
+  const auto gateway_address =
+      *net_base::IPAddress::CreateFromString(kTestNetAddress0);
 
   RoutingTableEntry entry4(entry1);
   entry4.SetMetric(RoutingTable::kShillDefaultRouteMetric);
@@ -335,7 +332,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   routing_table_->ResetTable(kTestDeviceIndex1);
   EXPECT_FALSE(base::Contains(*tables, kTestDeviceIndex1));
   EXPECT_FALSE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex1, IPAddress::kFamilyIPv4, &test_entry));
+      kTestDeviceIndex1, net_base::IPFamily::kIPv4, &test_entry));
   EXPECT_EQ(1, GetRoutingTables()->size());
 
   // Ask to flush table0.  We should see a delete message sent.
@@ -357,13 +354,12 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(0, GetRoutingTables()->size());
 
-  const auto default_address =
-      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
-  const auto gateway_address0 = *IPAddress::CreateFromString(kTestNetAddress0);
+  const auto default_address = net_base::IPCIDR(net_base::IPFamily::kIPv4);
+  const auto gateway_address0 =
+      *net_base::IPAddress::CreateFromString(kTestNetAddress0);
 
   auto entry =
-      RoutingTableEntry::Create(default_address, default_address,
-                                gateway_address0)
+      RoutingTableEntry(default_address, default_address, gateway_address0)
           .SetMetric(2)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
 
@@ -377,9 +373,9 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
 
   // Find a matching entry.
-  RoutingTableEntry test_entry(IPAddress::kFamilyIPv4);
+  RoutingTableEntry test_entry(net_base::IPFamily::kIPv4);
   EXPECT_TRUE(routing_table_->GetDefaultRoute(
-      kTestDeviceIndex0, IPAddress::kFamilyIPv4, &test_entry));
+      kTestDeviceIndex0, net_base::IPFamily::kIPv4, &test_entry));
   entry.metric = 1;
   EXPECT_EQ(entry, test_entry);
 }
@@ -388,13 +384,12 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(0, GetRoutingTables()->size());
 
-  const auto default_address =
-      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv6);
-  const auto gateway_address = *IPAddress::CreateFromString(kTestV6NetAddress0);
+  const auto default_address = net_base::IPCIDR(net_base::IPFamily::kIPv6);
+  const auto gateway_address =
+      *net_base::IPAddress::CreateFromString(kTestV6NetAddress0);
 
   auto entry0 =
-      RoutingTableEntry::Create(default_address, default_address,
-                                gateway_address)
+      RoutingTableEntry(default_address, default_address, gateway_address)
           .SetMetric(1024)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
   entry0.protocol = RTPROT_RA;
@@ -420,11 +415,10 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   // not worth tracking.
 
   const auto non_default_address =
-      *IPAddress::CreateFromString(kTestV6NetAddress1);
+      *net_base::IPCIDR::CreateFromStringAndPrefix(kTestV6NetAddress1, 128);
 
   auto entry2 =
-      RoutingTableEntry::Create(non_default_address, default_address,
-                                gateway_address)
+      RoutingTableEntry(non_default_address, default_address, gateway_address)
           .SetMetric(1024)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
 
@@ -457,42 +451,12 @@ TEST_F(RoutingTableTest, CreateBlackholeRoute) {
   const uint32_t kMetric = 2;
   const uint32_t kTestTable = 20;
   EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsBlackholeRoutingPacket(IPAddress::kFamilyIPv6,
+              DoSendMessage(IsBlackholeRoutingPacket(net_base::IPFamily::kIPv6,
                                                      kMetric, kTestTable),
                             _))
       .Times(1);
   EXPECT_TRUE(routing_table_->CreateBlackholeRoute(
-      kTestDeviceIndex0, IPAddress::kFamilyIPv6, kMetric, kTestTable));
-}
-
-TEST_F(RoutingTableTest, CreateLinkRoute) {
-  const auto local_address = *IPAddress::CreateFromStringAndPrefix(
-      kTestNetAddress0, kTestRemotePrefix4);
-  auto remote_address = *IPAddress::CreateFromString(kTestNetAddress1);
-  const auto default_address =
-      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
-  IPAddress remote_address_with_prefix(remote_address);
-  remote_address_with_prefix.set_prefix(
-      IPAddress::GetMaxPrefixLength(remote_address_with_prefix.family()));
-  auto entry =
-      RoutingTableEntry::Create(remote_address_with_prefix, local_address,
-                                default_address)
-          .SetScope(RT_SCOPE_LINK)
-          .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
-  EXPECT_CALL(
-      rtnl_handler_,
-      DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex0,
-                                    entry, NLM_F_CREATE | NLM_F_EXCL),
-                    _))
-      .Times(1);
-  EXPECT_TRUE(routing_table_->CreateLinkRoute(
-      kTestDeviceIndex0, local_address, remote_address,
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
-
-  remote_address = *IPAddress::CreateFromString(kTestRemoteAddress4);
-  EXPECT_FALSE(routing_table_->CreateLinkRoute(
-      kTestDeviceIndex0, local_address, remote_address,
-      RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
+      kTestDeviceIndex0, net_base::IPFamily::kIPv6, kMetric, kTestTable));
 }
 
 }  // namespace shill
