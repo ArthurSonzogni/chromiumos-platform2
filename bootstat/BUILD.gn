@@ -10,6 +10,7 @@ group("all") {
     ":install_bootstat_headers",
     ":install_bootstat_sbin_scripts",
     ":install_bootstat_summary",
+    ":install_tmpfiles_config",
     ":libbootstat",
   ]
   if (use.test) {
@@ -56,6 +57,11 @@ install_config("install_bootstat_summary") {
 install_config("install_bootstat_headers") {
   sources = [ "bootstat.h" ]
   install_path = "/usr/include/metrics"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/bootstat.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.test) {
