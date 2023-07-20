@@ -41,10 +41,11 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
 
   class Delegate {
    public:
-    // Request to process the file |inode| open request from process |pid|.
-    // |fd| is the file descriptor to the file.
+    // Request to process open request for a file identified by |inode| and
+    // |crtime| from process |pid|. |fd| is the file descriptor to the file.
     virtual void OnFileOpenRequested(
         ino_t inode,
+        time_t crtime,
         int pid,
         base::ScopedFD fd,
         std::unique_ptr<FanotifyReplyWatchdog> watchdog) = 0;
@@ -75,6 +76,8 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
   void RunLoop();
 
   void ForwardUMAErrorToParentThread(FanotifyError error);
+
+  void AllowRequest(int fd);
 
   // Task runner from which this thread is started and where the delegate is
   // running.

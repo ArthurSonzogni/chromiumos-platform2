@@ -107,7 +107,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void ProcessFileOpenRequest(FileId id,
                               int pid,
                               base::OnceCallback<void(bool)> callback) override;
-  void OnFileDeleted(FileId id) override;
+  void OnFileDeleted(ino64_t inode) override;
 
   void OnFanotifyError(FanotifyError error) override;
 
