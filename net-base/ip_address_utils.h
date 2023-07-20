@@ -119,6 +119,24 @@ class NET_BASE_EXPORT CIDR {
     return CreateFromAddressAndPrefix(*address, prefix_length);
   }
 
+  // Creates the CIDR from the bytes and the prefix length.
+  // Returns std::nullopt if the bytes length or prefix length is invalid.
+  static std::optional<CIDR> CreateFromBytesAndPrefix(
+      base::span<const char> bytes, int prefix_length) {
+    return CreateFromBytesAndPrefix(
+        base::span<const uint8_t>(
+            reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()),
+        prefix_length);
+  }
+  static std::optional<CIDR> CreateFromBytesAndPrefix(
+      base::span<const uint8_t> bytes, int prefix_length) {
+    const auto address = Address::CreateFromBytes(bytes);
+    if (!address) {
+      return std::nullopt;
+    }
+    return CreateFromAddressAndPrefix(*address, prefix_length);
+  }
+
   // Creates the CIDR from the Address and the prefix length. Returns
   // std::nullopt if the prefix length is invalid.
   static std::optional<CIDR> CreateFromAddressAndPrefix(const Address& address,

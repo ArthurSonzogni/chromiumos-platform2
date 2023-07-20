@@ -176,6 +176,23 @@ TEST(IPv6CIDR, CreateFromStringAndPrefix) {
   EXPECT_EQ(cidr3->prefix_length(), 128);
 }
 
+TEST(IPv6CIDR, CreateFromBytesAndPrefix) {
+  const int prefix_length = 64;
+  const std::vector<uint8_t> bytes = {std::begin(kGoodData),
+                                      std::end(kGoodData)};
+  const std::string byte_string = {reinterpret_cast<const char*>(bytes.data()),
+                                   bytes.size()};
+
+  const auto cidr = *IPv6CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
+  EXPECT_EQ(cidr.address().ToBytes(), bytes);
+  EXPECT_EQ(cidr.prefix_length(), prefix_length);
+  EXPECT_EQ(IPv6CIDR::CreateFromBytesAndPrefix(byte_string, prefix_length),
+            cidr);
+
+  EXPECT_FALSE(IPv6CIDR::CreateFromBytesAndPrefix(kGoodData, 129));
+  EXPECT_FALSE(IPv6CIDR::CreateFromBytesAndPrefix(kGoodData, -1));
+}
+
 TEST(IPv6CIDR, CreateFromAddressAndPrefix) {
   const auto address = *IPv6Address::CreateFromString("::1");
 

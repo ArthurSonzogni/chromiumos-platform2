@@ -127,7 +127,7 @@ TEST(IPv4Address, Uint32_t) {
   EXPECT_EQ(IPv4Address(addr), expected_ipv4_addr);
 }
 
-TEST(IPv4CIDR, CreateFromCIDRString) {
+TEST(IPv4CIDRTest, CreateFromCIDRString) {
   const auto cidr1 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/0");
   ASSERT_TRUE(cidr1);
   EXPECT_EQ(cidr1->address(), IPv4Address(192, 168, 10, 1));
@@ -149,7 +149,7 @@ TEST(IPv4CIDR, CreateFromCIDRString) {
   EXPECT_EQ(cidr4->prefix_length(), 32);
 }
 
-TEST(IPv4CIDR, CreateFromCIDRString_Fail) {
+TEST(IPv4CIDRTest, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/-1"));
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/33"));
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10/24"));
@@ -157,7 +157,7 @@ TEST(IPv4CIDR, CreateFromCIDRString_Fail) {
   EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("::1/24"));
 }
 
-TEST(IPv4CIDR, CreateFromStringAndPrefix) {
+TEST(IPv4CIDRTest, CreateFromStringAndPrefix) {
   const auto cidr1 = IPv4CIDR::CreateFromStringAndPrefix("192.168.10.1", 0);
   ASSERT_TRUE(cidr1);
   EXPECT_EQ(cidr1->address(), IPv4Address(192, 168, 10, 1));
@@ -174,7 +174,23 @@ TEST(IPv4CIDR, CreateFromStringAndPrefix) {
   EXPECT_EQ(cidr3->prefix_length(), 32);
 }
 
-TEST(IPv4CIDR, CreateFromAddressAndPrefix) {
+TEST(IPv4CIDRTest, CreateFromBytesAndPrefix) {
+  const int prefix_length = 25;
+  const std::vector<uint8_t> bytes{192, 168, 10, 1};
+  const std::string byte_string = {reinterpret_cast<const char*>(bytes.data()),
+                                   bytes.size()};
+
+  const auto cidr = *IPv4CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
+  EXPECT_EQ(cidr.address().ToBytes(), bytes);
+  EXPECT_EQ(cidr.prefix_length(), prefix_length);
+  EXPECT_EQ(IPv4CIDR::CreateFromBytesAndPrefix(byte_string, prefix_length),
+            cidr);
+
+  EXPECT_FALSE(IPv4CIDR::CreateFromBytesAndPrefix(bytes, 33));
+  EXPECT_FALSE(IPv4CIDR::CreateFromBytesAndPrefix(bytes, -1));
+}
+
+TEST(IPv4CIDRTest, CreateFromAddressAndPrefix) {
   const IPv4Address address(192, 168, 10, 1);
   ASSERT_TRUE(IPv4CIDR::CreateFromAddressAndPrefix(address, 0));
   ASSERT_TRUE(IPv4CIDR::CreateFromAddressAndPrefix(address, 25));
@@ -184,7 +200,7 @@ TEST(IPv4CIDR, CreateFromAddressAndPrefix) {
   ASSERT_FALSE(IPv4CIDR::CreateFromAddressAndPrefix(address, -1));
 }
 
-TEST(IPv4CIDR, DefaultConstructor) {
+TEST(IPv4CIDRTest, DefaultConstructor) {
   constexpr IPv4CIDR default_cidr;
   EXPECT_EQ(default_cidr.address(), IPv4Address());
   EXPECT_EQ(default_cidr.prefix_length(), 0);
@@ -195,7 +211,7 @@ TEST(IPv4CIDR, DefaultConstructor) {
   EXPECT_EQ(cidr.prefix_length(), 0);
 }
 
-TEST(IPv4CIDR, GetPrefixAddress) {
+TEST(IPv4CIDRTest, GetPrefixAddress) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
   EXPECT_EQ(cidr1.GetPrefixAddress().ToString(), "192.168.10.0");
 
@@ -203,7 +219,7 @@ TEST(IPv4CIDR, GetPrefixAddress) {
   EXPECT_EQ(cidr2.GetPrefixAddress().ToString(), "192.168.240.0");
 }
 
-TEST(IPv4CIDR, GetBroadcast) {
+TEST(IPv4CIDRTest, GetBroadcast) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
   EXPECT_EQ(cidr1.GetBroadcast().ToString(), "192.168.10.255");
 
@@ -211,7 +227,7 @@ TEST(IPv4CIDR, GetBroadcast) {
   EXPECT_EQ(cidr2.GetBroadcast().ToString(), "192.168.15.255");
 }
 
-TEST(IPv4CIDR, InSameSubnetWith) {
+TEST(IPv4CIDRTest, InSameSubnetWith) {
   const auto cidr = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
   EXPECT_TRUE(cidr.InSameSubnetWith(IPv4Address(192, 168, 10, 1)));
   EXPECT_TRUE(cidr.InSameSubnetWith(IPv4Address(192, 168, 10, 123)));
@@ -220,7 +236,7 @@ TEST(IPv4CIDR, InSameSubnetWith) {
   EXPECT_FALSE(cidr.InSameSubnetWith(IPv4Address(193, 168, 10, 123)));
 }
 
-TEST(IPv4CIDR, ToString) {
+TEST(IPv4CIDRTest, ToString) {
   const std::string cidr_string = "192.168.10.123/24";
   const auto cidr = *IPv4CIDR::CreateFromCIDRString(cidr_string);
   EXPECT_EQ(cidr.ToString(), cidr_string);
@@ -228,7 +244,7 @@ TEST(IPv4CIDR, ToString) {
   LOG(INFO) << "cidr = " << cidr;
 }
 
-TEST(IPv4CIDR, GetNetmask) {
+TEST(IPv4CIDRTest, GetNetmask) {
   EXPECT_EQ(*IPv4CIDR::GetNetmask(0), IPv4Address(0, 0, 0, 0));
   EXPECT_EQ(*IPv4CIDR::GetNetmask(1), IPv4Address(128, 0, 0, 0));
   EXPECT_EQ(*IPv4CIDR::GetNetmask(4), IPv4Address(240, 0, 0, 0));
@@ -242,7 +258,7 @@ TEST(IPv4CIDR, GetNetmask) {
   EXPECT_FALSE(IPv4CIDR::GetNetmask(33));
 }
 
-TEST(IPv4CIDR, GetPrefixLength) {
+TEST(IPv4CIDRTest, GetPrefixLength) {
   // GetPrefixLength() should convert the result from GetNetmask().
   for (int prefix_length = 0; prefix_length <= 32; ++prefix_length) {
     const auto netmask = *IPv4CIDR::GetNetmask(prefix_length);
@@ -254,7 +270,7 @@ TEST(IPv4CIDR, GetPrefixLength) {
   EXPECT_EQ(IPv4CIDR::GetPrefixLength({192, 168, 10, 255}), std::nullopt);
 }
 
-TEST(IPv4CIDR, ToNetmask) {
+TEST(IPv4CIDRTest, ToNetmask) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/0");
   EXPECT_EQ(cidr1.ToNetmask(), IPv4Address(0, 0, 0, 0));
 

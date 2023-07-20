@@ -94,16 +94,23 @@ TEST(IPAddressTest, CreateFromStringWithFamily) {
 
 TEST(IPAddressTest, CreateFromBytes) {
   constexpr uint8_t ipv4_bytes[4] = {192, 168, 10, 1};
+  const std::string ipv4_str = {reinterpret_cast<const char*>(ipv4_bytes),
+                                sizeof(ipv4_bytes)};
+
   const auto ipv4_addr = *IPAddress::CreateFromBytes(ipv4_bytes);
   EXPECT_EQ(ipv4_addr.GetFamily(), IPFamily::kIPv4);
   EXPECT_EQ(ipv4_addr.ToString(), "192.168.10.1");
+  EXPECT_EQ(IPAddress::CreateFromBytes(ipv4_str), ipv4_addr);
 
   constexpr uint8_t ipv6_bytes[16] = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
                                       0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
                                       0x7e, 0xbf, 0x14, 0xc5};
+  const std::string ipv6_str = {reinterpret_cast<const char*>(ipv6_bytes),
+                                sizeof(ipv6_bytes)};
   const auto ipv6_addr = *IPAddress::CreateFromBytes(ipv6_bytes);
   EXPECT_EQ(ipv6_addr.GetFamily(), IPFamily::kIPv6);
   EXPECT_EQ(ipv6_addr.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
+  EXPECT_EQ(IPAddress::CreateFromBytes(ipv6_str), ipv6_addr);
 }
 
 TEST(IPAddressTest, CreateFromBytesWithFamily) {
@@ -232,6 +239,46 @@ TEST(IPCIDRTest, CreateFromStringAndPrefixWithFamily) {
                               "192.168.10.1", 25, net_base::IPFamily::kIPv6));
   EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
                               "fe80:1000::", 64, net_base::IPFamily::kIPv4));
+}
+
+TEST(IPCIDRTest, CreateFromBytesAndPrefix) {
+  const std::vector<uint8_t> ipv4_bytes{192, 168, 10, 1};
+  const std::vector<uint8_t> ipv6_bytes{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                        0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+                                        0x7e, 0xbf, 0x14, 0xc5};
+  const std::string ipv4_str = {
+      reinterpret_cast<const char*>(ipv4_bytes.data()), ipv4_bytes.size()};
+  const std::string ipv6_str = {
+      reinterpret_cast<const char*>(ipv6_bytes.data()), ipv6_bytes.size()};
+
+  const auto ipv4_cidr = *IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25);
+  EXPECT_EQ(ipv4_cidr.address().ToBytes(), ipv4_bytes);
+  EXPECT_EQ(ipv4_cidr.prefix_length(), 25);
+  EXPECT_EQ(IPCIDR::CreateFromBytesAndPrefix(ipv4_str, 25), ipv4_cidr);
+
+  const auto ipv6_cidr = *IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64);
+  EXPECT_EQ(ipv6_cidr.address().ToBytes(), ipv6_bytes);
+  EXPECT_EQ(ipv6_cidr.prefix_length(), 64);
+  EXPECT_EQ(IPCIDR::CreateFromBytesAndPrefix(ipv6_str, 64), ipv6_cidr);
+}
+
+TEST(IPCIDRTest, CreateFromBytesAndPrefixWithFamily) {
+  constexpr uint8_t ipv4_bytes[4] = {192, 168, 10, 1};
+  constexpr uint8_t ipv6_bytes[16] = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+                                      0x7e, 0xbf, 0x14, 0xc5};
+
+  // Correct family.
+  EXPECT_TRUE(IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25,
+                                               net_base::IPFamily::kIPv4));
+  EXPECT_TRUE(IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64,
+                                               net_base::IPFamily::kIPv6));
+
+  // Wrong family.
+  EXPECT_FALSE(IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25,
+                                                net_base::IPFamily::kIPv6));
+  EXPECT_FALSE(IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64,
+                                                net_base::IPFamily::kIPv4));
 }
 
 TEST(IPCIDRTest, CreateFromAddressAndPrefix) {

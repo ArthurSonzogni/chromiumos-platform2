@@ -201,6 +201,39 @@ std::optional<IPCIDR> IPCIDR::CreateFromStringAndPrefix(
 }
 
 // static
+std::optional<IPCIDR> IPCIDR::CreateFromBytesAndPrefix(
+    base::span<const char> bytes,
+    int prefix_length,
+    std::optional<IPFamily> family) {
+  return CreateFromBytesAndPrefix(
+      base::span<const uint8_t>(reinterpret_cast<const uint8_t*>(bytes.data()),
+                                bytes.size()),
+      prefix_length, family);
+}
+
+// static
+std::optional<IPCIDR> IPCIDR::CreateFromBytesAndPrefix(
+    base::span<const uint8_t> bytes,
+    int prefix_length,
+    std::optional<IPFamily> family) {
+  if (family != net_base::IPFamily::kIPv6) {
+    const auto ipv4 = IPv4CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
+    if (ipv4) {
+      return IPCIDR(*ipv4);
+    }
+  }
+
+  if (family != net_base::IPFamily::kIPv4) {
+    const auto ipv6 = IPv6CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
+    if (ipv6) {
+      return IPCIDR(*ipv6);
+    }
+  }
+
+  return std::nullopt;
+}
+
+// static
 std::optional<IPCIDR> IPCIDR::CreateFromAddressAndPrefix(
     const IPAddress& address, int prefix_length) {
   if (address.GetFamily() == IPFamily::kIPv4) {
