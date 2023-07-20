@@ -1305,6 +1305,9 @@ properties:
                 has-lid-light-sensor:
                   description: Is there a light sensor in the lid of the device.
                   type: boolean
+                has-camera-light-sensor:
+                  description: Is there a light sensor in the camera of the device.
+                  type: boolean
                 has-touchscreen:
                   description: Does the device have a touchscreen.
                   type: boolean

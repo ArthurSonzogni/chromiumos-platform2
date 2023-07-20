@@ -582,7 +582,9 @@ def _build_derived_panel_power_prefs(config: Config) -> dict:
         ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
 
     light_sensor = hw_features.light_sensor
-    if light_sensor.lid_lightsensor == present:
+    if present in (light_sensor.lid_lightsensor,
+                   light_sensor.base_lightsensor,
+                   light_sensor.camera_lightsensor):
         if hw_features.screen.panel_properties.als_steps:
             _check_als_steps(
                 hw_features.screen.panel_properties.als_steps,
@@ -654,6 +656,7 @@ def _build_derived_power_prefs(config: Config) -> dict:
     result["has-ambient-light-sensor"] = (
         light_sensor.lid_lightsensor,
         light_sensor.base_lightsensor,
+        light_sensor.camera_lightsensor,
     ).count(present)
 
     result["has-keyboard-backlight"] = hw_features.keyboard.backlight == present
@@ -674,7 +677,9 @@ def _build_derived_power_prefs(config: Config) -> dict:
             "keyboard-backlight-user-steps"
         ] = hw_features.keyboard.backlight_user_steps
 
-    if present in (light_sensor.lid_lightsensor, light_sensor.base_lightsensor):
+    if present in (light_sensor.lid_lightsensor,
+                   light_sensor.base_lightsensor,
+                   light_sensor.camera_lightsensor):
         if hw_features.keyboard.als_steps:
             _check_lux_threshold(
                 [step.lux_threshold for step in hw_features.keyboard.als_steps],
@@ -1196,7 +1201,8 @@ def _build_mtk_config(mtk_config):
                 or power.limit_6g_6 == 0
             ):
                 raise Exception(
-                    "6GHz SAR table partially and improperly set up.  Please add values for limits in all bands (1-6)."
+                    "6GHz SAR table partially and improperly set up.  "
+                    "Please add values for limits in all bands (1-6)."
                 )
             chain["limit-6g-1"] = power.limit_6g_1
             chain["limit-6g-2"] = power.limit_6g_2
@@ -1214,7 +1220,8 @@ def _build_mtk_config(mtk_config):
                 or power.limit_6g_6 != 0
             ):
                 raise Exception(
-                    "6GHz SAR table partially and improperly set up.  Please add values for limits in all bands (1-6)."
+                    "6GHz SAR table partially and improperly set up.  "
+                    "Please add values for limits in all bands (1-6)."
                 )
         return chain
 
@@ -1806,6 +1813,8 @@ def _build_hardware_properties(hw_topology):
         result["has-base-light-sensor"] = True
     if light_sensor.lid_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
         result["has-lid-light-sensor"] = True
+    if light_sensor.camera_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-camera-light-sensor"] = True
 
     return result
 
@@ -3039,6 +3048,7 @@ def _generate_arc_hardware_features(hw_features, sw_config, _program):
                     [
                         light_sensor.lid_lightsensor,
                         light_sensor.base_lightsensor,
+                        light_sensor.camera_lightsensor,
                     ]
                 ),
             ),
@@ -3727,7 +3737,8 @@ def wrds_ewrd_encode(sar_table_config):
         return bytearray(0)
     else:
         raise Exception(
-            f"ERROR: Invalid power table revision {sar_table_config.sar_table_version}"
+            f"ERROR: Invalid power table revision "
+            f"{sar_table_config.sar_table_version}"
         )
 
     if is_zero_filled(sar_table):
@@ -3791,7 +3802,8 @@ def wgds_encode(wgds_config):
         return bytearray(0)
     else:
         raise Exception(
-            f"ERROR: Invalid geo offset table revision {wgds_config.wgds_version}"
+            f"ERROR: Invalid geo offset table revision "
+            f"{wgds_config.wgds_version}"
         )
 
     return (

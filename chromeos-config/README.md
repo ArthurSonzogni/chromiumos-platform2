@@ -819,6 +819,7 @@ In the tables below,
 | has-base-gyroscope | boolean |  | False |  | False | Is there a gyroscope in the base of the device. |
 | has-base-light-sensor | boolean |  | False |  | False | Is there a light sensor in the base of the device. |
 | has-base-magnetometer | boolean |  | False |  | False | Is there a magnetometer in the base of the device. |
+| has-camera-light-sensor | boolean |  | False |  | False | Is there a light sensor in the camera of the device. |
 | has-hdmi | boolean |  | False |  | False | True if the device has an HDMI port. |
 | has-lid-accelerometer | boolean |  | False |  | False | Is there an accelerometer in the lid of the device. |
 | has-lid-gyroscope | boolean |  | False |  | False | Is there a gyroscope in the lid of the device. |
