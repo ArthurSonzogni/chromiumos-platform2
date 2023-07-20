@@ -77,7 +77,6 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprintAlive},
     {"privacy_screen",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPrivacyScreen},
-    {"led_lit_up", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kLedLitUp},
     {"emmc_lifetime",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kEmmcLifetime},
     {"audio_set_volume",

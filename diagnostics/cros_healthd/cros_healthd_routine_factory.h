@@ -153,14 +153,6 @@ class CrosHealthdRoutineFactory {
   // diagnostics/routines/privacy_screen for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakePrivacyScreenRoutine(
       bool target_state) = 0;
-  // Constructs a new instance of the LED lit up routine. See
-  // diagnostics/routines/led_lit_up for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeLedLitUpRoutine(
-      ash::cros_healthd::mojom::DEPRECATED_LedName name,
-      ash::cros_healthd::mojom::DEPRECATED_LedColor color,
-      mojo::PendingRemote<
-          ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier>
-          replier) = 0;
   // Constructs a new instance of the eMMC lifetime routine. See
   // diagnostics/routines/emmc_lifetime for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(

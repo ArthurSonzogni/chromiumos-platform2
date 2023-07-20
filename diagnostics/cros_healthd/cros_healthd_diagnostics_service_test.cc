@@ -83,7 +83,6 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kFingerprint,
       mojom::DiagnosticRoutineEnum::kFingerprintAlive,
       mojom::DiagnosticRoutineEnum::kPrivacyScreen,
-      mojom::DiagnosticRoutineEnum::kLedLitUp,
       mojom::DiagnosticRoutineEnum::kEmmcLifetime,
       mojom::DiagnosticRoutineEnum::kAudioSetVolume,
       mojom::DiagnosticRoutineEnum::kAudioSetGain,

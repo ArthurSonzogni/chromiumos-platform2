@@ -28,7 +28,6 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
-#include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h"
@@ -287,16 +286,6 @@ CrosHealthdRoutineFactoryImpl::MakeFingerprintAliveRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakePrivacyScreenRoutine(bool target_state) {
   return std::make_unique<PrivacyScreenRoutine>(context_, target_state);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeLedLitUpRoutine(
-    ash::cros_healthd::mojom::DEPRECATED_LedName name,
-    ash::cros_healthd::mojom::DEPRECATED_LedColor color,
-    mojo::PendingRemote<
-        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier) {
-  return std::make_unique<LedLitUpRoutine>(context_, name, color,
-                                           std::move(replier));
 }
 
 std::unique_ptr<DiagnosticRoutine>

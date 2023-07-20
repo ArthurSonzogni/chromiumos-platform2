@@ -127,6 +127,17 @@ mojom::DiskReadTypeEnum Convert(mojom::DiskReadRoutineTypeEnum type) {
   }
 }
 
+void ReportUnsupportedRoutine(
+    mojom::DiagnosticRoutineEnum routine_enum,
+    base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
+  LOG(ERROR) << routine_enum << " is not supported on this device";
+  SendResultToUMA(routine_enum,
+                  mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+  std::move(callback).Run(mojom::RunRoutineResponse::New(
+      mojom::kFailedToStartId,
+      mojom::DiagnosticRoutineStatusEnum::kUnsupported));
+}
+
 }  // namespace
 
 CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
@@ -501,9 +512,9 @@ void CrosHealthdDiagnosticsService::DEPRECATED_RunLedLitUpRoutine(
     mojom::DEPRECATED_LedColor color,
     mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
     DEPRECATED_RunLedLitUpRoutineCallback callback) {
-  RunRoutine(
-      routine_factory_->MakeLedLitUpRoutine(name, color, std::move(replier)),
-      mojom::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));
+  // Always unsupported. The routine is deprecated.
+  ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kLedLitUp,
+                           std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunEmmcLifetimeRoutine(
@@ -602,12 +613,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
   DCHECK(routine);
 
   if (!available_routines_.count(routine_enum)) {
-    LOG(ERROR) << routine_enum << " is not supported on this device";
-    SendResultToUMA(routine_enum,
-                    mojom::DiagnosticRoutineStatusEnum::kUnsupported);
-    std::move(callback).Run(mojom::RunRoutineResponse::New(
-        mojom::kFailedToStartId,
-        mojom::DiagnosticRoutineStatusEnum::kUnsupported));
+    ReportUnsupportedRoutine(routine_enum, std::move(callback));
     return;
   }
 
@@ -721,10 +727,6 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
 
   if (context_->system_config()->MmcSupported()) {
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kEmmcLifetime);
-  }
-
-  if (context_->system_config()->HasChromiumEC()) {
-    available_routines_.insert(mojom::DiagnosticRoutineEnum::kLedLitUp);
   }
 
   if (ground_truth_->StorageType() == cros_config_value::kStorageTypeUfs) {

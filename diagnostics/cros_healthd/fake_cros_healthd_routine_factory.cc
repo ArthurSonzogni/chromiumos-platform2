@@ -397,15 +397,6 @@ FakeCrosHealthdRoutineFactory::MakeEmmcLifetimeRoutine(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeLedLitUpRoutine(
-    ash::cros_healthd::mojom::DEPRECATED_LedName name,
-    ash::cros_healthd::mojom::DEPRECATED_LedColor color,
-    mojo::PendingRemote<
-        ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeAudioSetVolumeRoutine(uint64_t node_id,
                                                          uint8_t volume,
                                                          bool mute_on) {
