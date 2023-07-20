@@ -151,23 +151,18 @@ void CellularBearer::GetIPConfigMethodAndProperties(
     }
   }
 
-  if (*ipconfig_method != IPConfigMethod::kStatic)
-    return;
-
-  if (!properties.Contains<std::string>(kPropertyAddress) ||
-      !properties.Contains<std::string>(kPropertyGateway)) {
-    SLOG(2) << "Bearer '" << dbus_path_.value()
-            << "' static IP configuration does not specify valid "
-               "address/gateway information.";
-    *ipconfig_method = IPConfigMethod::kUnknown;
+  // If the modem didn't do its own IPv6 SLAAC, it may still report a link-local
+  // address that we need to configure before running host SLAAC. Therefore,
+  // always try to process kPropertyAddress if given. There is not much benefit
+  // in ensuring the method is kStatic or kDHCP, because ModemManager will never
+  // set the IP address unless it's one of those two.
+  if (!properties.Contains<std::string>(kPropertyAddress)) {
     return;
   }
-
   (*ipconfig_properties)->address =
       properties.Get<std::string>(kPropertyAddress);
-  (*ipconfig_properties)->gateway =
-      properties.Get<std::string>(kPropertyGateway);
 
+  // Set network prefix.
   uint32_t prefix;
   if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
     prefix = IPAddress::GetMaxPrefixLength(address_family);
@@ -175,6 +170,12 @@ void CellularBearer::GetIPConfigMethodAndProperties(
     prefix = properties.Get<uint32_t>(kPropertyPrefix);
   }
   (*ipconfig_properties)->subnet_prefix = prefix;
+
+  // If we have an IP address, we may also have a gateway.
+  if (properties.Contains<std::string>(kPropertyGateway)) {
+    (*ipconfig_properties)->gateway =
+        properties.Get<std::string>(kPropertyGateway);
+  }
 }
 
 void CellularBearer::ResetProperties() {
