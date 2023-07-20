@@ -1659,6 +1659,11 @@ void Cellular::RunTetheringOperationDunAsDefault() {
 void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
   explicit_disconnect_ = false;
 
+  // If tethering operation was aborted already, do nothing.
+  if (!tethering_operation_) {
+    return;
+  }
+
   // A failure in the disconnection is assumed fatal.
   if (!error.IsSuccess()) {
     CompleteTetheringOperation(error);
