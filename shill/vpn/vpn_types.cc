@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_types.h"
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/notreached.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 namespace shill {
