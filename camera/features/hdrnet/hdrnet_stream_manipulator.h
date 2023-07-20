@@ -146,6 +146,11 @@ class HdrNetStreamManipulator : public StreamManipulator {
     // GAMMA_VALUE or PRESET_CURVE, we need to disable HDRnet per the API
     // requirement.
     bool skip_hdrnet_processing = false;
+
+    // Indicator for whether the input HDRnet buffer returned by the camera HAL
+    // is marked as error, in which case we should skip the HDRnet processing
+    // and return the client requested buffers with error.
+    bool buffer_error = false;
   };
 
   using HdrNetBufferInfoList = std::vector<HdrNetRequestBufferInfo>;

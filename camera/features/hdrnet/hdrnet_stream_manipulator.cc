@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <cros-camera/spatiotemporal_denoiser.h>
+#include <hardware/camera3.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -829,17 +830,23 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   // Process each HDRnet buffer in this capture result and produce the client
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
-    TRACE_HDRNET_EVENT("HdrNetStreamManipulator::ProcessHdrnetBuffer",
-                       "frame_number", result.frame_number(), "width",
-                       hdrnet_buffer.stream()->width, "height",
-                       hdrnet_buffer.stream()->height, "format",
-                       hdrnet_buffer.stream()->format,
-                       perfetto::Flow::ProcessScoped(hdrnet_buffer.flow_id()));
+    TRACE_HDRNET_EVENT(
+        "HdrNetStreamManipulator::ProcessHdrnetBuffer", "frame_number",
+        result.frame_number(), "width", hdrnet_buffer.stream()->width, "height",
+        hdrnet_buffer.stream()->height, "format",
+        hdrnet_buffer.stream()->format, "status", hdrnet_buffer.status(),
+        perfetto::Flow::ProcessScoped(hdrnet_buffer.flow_id()));
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream());
     auto request_buffer_info =
         FindMatchingBufferInfo(&pending_request_buffers, stream_context);
     DCHECK(request_buffer_info != pending_request_buffers.end());
+
+    if (hdrnet_buffer.status() == CAMERA3_BUFFER_STATUS_ERROR) {
+      request_buffer_info->buffer_error = true;
+      OnBuffersRendered(result, stream_context, &(*request_buffer_info));
+      continue;
+    }
 
     if (options_.denoiser_enable) {
       TRACE_HDRNET_EVENT(
@@ -950,6 +957,7 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
             request_buffer_info_[error.frame_number];
         auto it = FindMatchingBufferInfo(&buf_info, stream_context);
         if (it != buf_info.end()) {
+          msg->message.error.error_stream = it->stream_context->original_stream;
           buf_info.erase(it);
         }
         if (buf_info.empty()) {
@@ -1109,6 +1117,9 @@ void HdrNetStreamManipulator::OnBuffersRendered(
         }
         requested_buffer.release_fence =
             DupWithCloExec(request_buffer_info->release_fence.get()).release();
+        if (request_buffer_info->buffer_error) {
+          requested_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+        }
         result.AppendOutputBuffer(
             Camera3StreamBuffer::MakeResultOutput(requested_buffer));
       }
