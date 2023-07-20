@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/test/test_future.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlp/dbus-constants.h>
@@ -114,6 +115,21 @@ std::vector<int> DlpAdaptorTestHelper::GetMetrics(
     return metrics_library_->GetCalls(metrics_name);
   }
   return {};
+}
+
+void DlpAdaptorTestHelper::AddFileToLegacyDb(FileId id,
+                                             const std::string& source_url,
+                                             const std::string& referrer_url) {
+  ASSERT_NE(adaptor_.get(), nullptr);
+  ASSERT_NE(adaptor_->db_.get(), nullptr);
+  FileEntry file_entry;
+  file_entry.id = id;
+  file_entry.source_url = source_url;
+  file_entry.referrer_url = referrer_url;
+  base::test::TestFuture<bool> future;
+  adaptor_->db_->UpsertLegacyFileEntryForTesting(file_entry,
+                                                 future.GetCallback());
+  ASSERT_TRUE(future.Get());
 }
 
 }  // namespace dlp

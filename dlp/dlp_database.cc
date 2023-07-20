@@ -24,16 +24,19 @@ namespace dlp {
 
 namespace {
 
-int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
+int GetLegacyFileEntriesCallback(void* data,
+                                 int count,
+                                 char** row,
+                                 char** names) {
   auto* file_entries_out = static_cast<std::map<FileId, FileEntry>*>(data);
   FileEntry file_entry;
 
   if (!row[0]) {
-    LOG(ERROR) << "FileEntry.id is null";
+    LOG(ERROR) << "FileEntry.inode is null";
     return SQLITE_ERROR;
   }
   if (!base::StringToUint64(row[0], &file_entry.id.first)) {
-    LOG(ERROR) << "FileEntry.id is not a number";
+    LOG(ERROR) << "FileEntry.inode is not a number";
     return SQLITE_ERROR;
   }
 
@@ -53,15 +56,54 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
   return SQLITE_OK;
 }
 
+int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
+  auto* file_entries_out = static_cast<std::map<FileId, FileEntry>*>(data);
+  FileEntry file_entry;
+
+  if (!row[0]) {
+    LOG(ERROR) << "FileEntry.inode is null";
+    return SQLITE_ERROR;
+  }
+  if (!base::StringToUint64(row[0], &file_entry.id.first)) {
+    LOG(ERROR) << "FileEntry.inode is not a number";
+    return SQLITE_ERROR;
+  }
+
+  if (!row[1]) {
+    LOG(ERROR) << "FileEntry.crtime is null";
+    return SQLITE_ERROR;
+  }
+  if (!base::StringToInt64(row[1], &file_entry.id.second)) {
+    LOG(ERROR) << "FileEntry.crtime is not a number";
+    return SQLITE_ERROR;
+  }
+
+  if (!row[2]) {
+    LOG(ERROR) << "FileEntry.source_url is null";
+    return SQLITE_ERROR;
+  }
+  file_entry.source_url = row[2];
+
+  if (!row[3]) {
+    LOG(ERROR) << "FileEntry.referrer_url is null";
+    return SQLITE_ERROR;
+  }
+  file_entry.referrer_url = row[3];
+
+  file_entries_out->insert_or_assign(file_entry.id, std::move(file_entry));
+  return SQLITE_OK;
+}
+
 int GetIdsCallback(void* data, int count, char** row, char** names) {
   auto* ids_out = static_cast<std::set<FileId>*>(data);
 
-  if (!row[0]) {
+  if (!row[0] || !row[1]) {
     LOG(ERROR) << "file_entries.id is null";
     return SQLITE_ERROR;
   }
   FileId id;
-  if (!base::StringToUint64(row[0], &id.first)) {
+  if (!base::StringToUint64(row[0], &id.first) &&
+      !base::StringToInt64(row[1], &id.second)) {
     LOG(ERROR) << "file_entries.id is not a number";
     return SQLITE_ERROR;
   }
@@ -93,13 +135,15 @@ class DlpDatabase::Core {
   ~Core();
 
   // Implements the functionality from main class.
-  int Init();
+  std::pair<int, bool> Init();
   bool UpsertFileEntry(const FileEntry& file_entry);
+  bool UpsertLegacyFileEntryForTesting(const FileEntry& file_entry);
   bool UpsertFileEntries(const std::vector<FileEntry>& file_entries);
   std::map<FileId, FileEntry> GetFileEntriesByIds(
       std::vector<FileId> ids) const;
   bool DeleteFileEntryById(FileId id);
   bool DeleteFileEntriesWithIdsNotInSet(std::set<FileId> ids_to_keep);
+  bool MigrateDatabase(const std::vector<FileId>& existing_files);
 
  private:
   // Returns true if the database connection is open.
@@ -109,8 +153,10 @@ class DlpDatabase::Core {
   int Close();
   // Returns true if file entries table exists.
   bool FileEntriesTableExists() const;
+  bool FileEntriesLegacyTableExists() const;
   // Creates new file entries table. Returns true if no error occurred.
   bool CreateFileEntriesTable();
+  bool CreateFileEntriesLegacyTableForTesting();
 
   using SqliteCallback = int (*)(void*, int, char**, char**);
   // Struct holding the result of a call to Sqlite.
@@ -154,7 +200,7 @@ DlpDatabase::Core::~Core() {
   Close();
 }
 
-int DlpDatabase::Core::Init() {
+std::pair<int, bool> DlpDatabase::Core::Init() {
   sqlite3* db_ptr;
   int result = sqlite3_open(db_path_.MaybeAsASCII().c_str(), &db_ptr);
   db_ = std::unique_ptr<sqlite3, decltype(&sqlite3_close)>(db_ptr,
@@ -170,7 +216,8 @@ int DlpDatabase::Core::Init() {
     ForwardUMAErrorToParentThread(DatabaseError::kCreateTableError);
     db_ = nullptr;
   }
-  return result;
+  return {result, /*migration_needed=*/result == SQLITE_OK &&
+                      FileEntriesLegacyTableExists()};
 }
 
 bool DlpDatabase::Core::IsOpen() const {
@@ -189,11 +236,34 @@ int DlpDatabase::Core::Close() {
 }
 
 bool DlpDatabase::Core::FileEntriesTableExists() const {
+  const ExecResult result =
+      ExecSQL("SELECT id FROM file_entries_crtime LIMIT 1");
+  return result.error_msg.find("no such table") == std::string::npos;
+}
+
+bool DlpDatabase::Core::FileEntriesLegacyTableExists() const {
   const ExecResult result = ExecSQL("SELECT id FROM file_entries LIMIT 1");
   return result.error_msg.find("no such table") == std::string::npos;
 }
 
 bool DlpDatabase::Core::CreateFileEntriesTable() {
+  const std::string sql =
+      "CREATE TABLE file_entries_crtime ("
+      " inode INTEGER NOT NULL,"
+      " crtime INTEGER NOT NULL,"
+      " source_url TEXT NOT NULL,"
+      " referrer_url TEXT NOT NULL,"
+      "PRIMARY KEY(inode, crtime))";
+  const ExecResult result = ExecSQL(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to create table: " << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kCreateTableError);
+    return false;
+  }
+  return true;
+}
+
+bool DlpDatabase::Core::CreateFileEntriesLegacyTableForTesting() {
   const std::string sql =
       "CREATE TABLE file_entries ("
       " inode INTEGER PRIMARY KEY NOT NULL,"
@@ -211,6 +281,28 @@ bool DlpDatabase::Core::CreateFileEntriesTable() {
 
 bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
   if (!IsOpen())
+    return false;
+
+  const std::string sql = base::StringPrintf(
+      "INSERT OR REPLACE INTO file_entries_crtime (inode, crtime, source_url, "
+      "referrer_url)"
+      " VALUES (%" PRId64 ", %" PRId64 ", '%s', '%s')",
+      file_entry.id.first, file_entry.id.second,
+      EscapeSQLString(file_entry.source_url).c_str(),
+      EscapeSQLString(file_entry.referrer_url).c_str());
+  ExecResult result = ExecSQL(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to insert file entry: (" << result.code << ") "
+               << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kInsertIntoTableError);
+    return false;
+  }
+  return true;
+}
+
+bool DlpDatabase::Core::UpsertLegacyFileEntryForTesting(
+    const FileEntry& file_entry) {
+  if (!IsOpen() || !CreateFileEntriesLegacyTableForTesting())
     return false;
 
   const std::string sql = base::StringPrintf(
@@ -236,14 +328,16 @@ bool DlpDatabase::Core::UpsertFileEntries(
   }
 
   std::string sql =
-      "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url) "
+      "INSERT OR REPLACE INTO file_entries_crtime (inode, crtime, source_url, "
+      "referrer_url) "
       "VALUES";
   bool first = true;
   for (const auto& file_entry : file_entries) {
     if (!first) {
       sql += ",";
     }
-    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.id.first,
+    sql += base::StringPrintf("(%" PRId64 ", %" PRId64 ", '%s', '%s')",
+                              file_entry.id.first, file_entry.id.second,
                               EscapeSQLString(file_entry.source_url).c_str(),
                               EscapeSQLString(file_entry.referrer_url).c_str());
     first = false;
@@ -267,13 +361,15 @@ std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
     return file_entries;
 
   std::string sql =
-      "SELECT inode,source_url,referrer_url FROM file_entries WHERE inode IN (";
+      "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime "
+      "WHERE (inode, crtime) IN (";
   bool first = true;
   for (FileId id : ids) {
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(id.first);
+    sql += "(" + base::NumberToString(id.first) + ", " +
+           base::NumberToString(id.second) + ")";
     first = false;
   }
   sql += ")";
@@ -296,7 +392,9 @@ bool DlpDatabase::Core::DeleteFileEntryById(FileId id) {
     return false;
 
   const std::string sql = base::StringPrintf(
-      "DELETE FROM file_entries WHERE inode = %" PRId64, id.first);
+      "DELETE FROM file_entries_crtime WHERE (inode, crtime) = (%" PRId64
+      ", %" PRId64 ")",
+      id.first, id.second);
   return ExecDeleteSQL(sql) >= 0;
 }
 
@@ -306,8 +404,8 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     return false;
 
   std::set<FileId> ids;
-  ExecResult result =
-      ExecSQL("SELECT inode FROM file_entries", GetIdsCallback, &ids);
+  ExecResult result = ExecSQL("SELECT inode, crtime FROM file_entries_crtime",
+                              GetIdsCallback, &ids);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
@@ -322,13 +420,15 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     return true;
   }
 
-  std::string sql = "DELETE FROM file_entries WHERE inode IN (";
+  std::string sql =
+      "DELETE FROM file_entries_crtime WHERE (inode, crtime) IN (";
   bool first = true;
   for (FileId id : ids) {
     if (!first) {
       sql += ",";
     }
-    sql += base::NumberToString(id.first);
+    sql += "(" + base::NumberToString(id.first) + ", " +
+           base::NumberToString(id.second) + ")";
     first = false;
   }
   sql += ")";
@@ -337,6 +437,61 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
   if (deleted != ids.size()) {
     LOG(ERROR) << "Failed to cleanup database, deleted: " << deleted
                << ", instead of: " << ids.size();
+    return false;
+  }
+  return true;
+}
+
+bool DlpDatabase::Core::MigrateDatabase(
+    const std::vector<FileId>& existing_files) {
+  // The old database is already migrated and removed.
+  if (!IsOpen() || !FileEntriesLegacyTableExists()) {
+    return true;
+  }
+  std::map<FileId, FileEntry> old_file_entries;
+
+  std::string sql = "SELECT inode,source_url,referrer_url FROM file_entries";
+  ExecResult result =
+      ExecSQL(sql, GetLegacyFileEntriesCallback, &old_file_entries);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to query: (" << result.code << ") "
+               << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kQueryError);
+    return false;
+  }
+  LOG(INFO) << "Found " << old_file_entries.size() << " entries to migrate";
+
+  std::map<ino64_t, time_t> inode_to_crtime;
+  for (const auto& file_id : existing_files) {
+    inode_to_crtime[file_id.first] = file_id.second;
+  }
+
+  std::vector<FileEntry> entries_to_add;
+  for (const auto& [old_file_id, old_entry] : old_file_entries) {
+    auto iter = inode_to_crtime.find(old_file_id.first);
+    if (iter != inode_to_crtime.end()) {
+      FileEntry entry;
+      entry.id = {old_file_id.first, iter->second};
+      entry.source_url = old_entry.source_url;
+      entry.referrer_url = old_entry.referrer_url;
+      entries_to_add.emplace_back(entry);
+    } else {
+      LOG(ERROR) << "Not found file while migrating, inode="
+                 << old_file_id.first;
+    }
+  }
+
+  if (entries_to_add.size() > 0 && !UpsertFileEntries(entries_to_add)) {
+    return false;
+  }
+  LOG(INFO) << "Migrated " << entries_to_add.size() << " entries";
+
+  result = ExecSQL("DROP TABLE file_entries");
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to delete legacy table: (" << result.code << ") "
+               << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kQueryError);
     return false;
   }
   return true;
@@ -397,7 +552,8 @@ DlpDatabase::~DlpDatabase() {
   database_thread_.Stop();
 }
 
-void DlpDatabase::Init(base::OnceCallback<void(int)> callback) {
+void DlpDatabase::Init(
+    base::OnceCallback<void(std::pair<int, bool>)> callback) {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
@@ -411,6 +567,16 @@ void DlpDatabase::UpsertFileEntry(const FileEntry& file_entry,
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::UpsertFileEntry,
+                     base::Unretained(core_.get()), file_entry),
+      std::move(callback));
+}
+
+void DlpDatabase::UpsertLegacyFileEntryForTesting(
+    const FileEntry& file_entry, base::OnceCallback<void(bool)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::UpsertLegacyFileEntryForTesting,
                      base::Unretained(core_.get()), file_entry),
       std::move(callback));
 }
@@ -453,6 +619,16 @@ void DlpDatabase::DeleteFileEntriesWithIdsNotInSet(
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet,
                      base::Unretained(core_.get()), ids_to_keep),
+      std::move(callback));
+}
+
+void DlpDatabase::MigrateDatabase(const std::vector<FileId>& existing_files,
+                                  base::OnceCallback<void(bool)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::MigrateDatabase,
+                     base::Unretained(core_.get()), existing_files),
       std::move(callback));
 }
 

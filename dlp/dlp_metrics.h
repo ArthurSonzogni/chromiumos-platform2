@@ -21,6 +21,8 @@ constexpr char kDlpFanotifyErrorHistogram[] = "Enterprise.Dlp.Errors.Fanotify";
 constexpr char kDlpFileDatabaseErrorHistogram[] =
     "Enterprise.Dlp.Errors.FileDatabase";
 constexpr char kDlpAdaptorErrorHistogram[] = "Enterprise.Dlp.Errors.Adaptor";
+constexpr char kDlpDatabaseMigrationNeededHistogram[] =
+    "Enterprise.Dlp.DatabaseMigrationNeeded";
 
 // Type of errors triggered during the initialization of the DLP daemon.
 enum class InitError {
@@ -105,8 +107,10 @@ enum class AdaptorError {
   kFileDescriptorCloseError = 9,
   // Files were not added because DB failed to be created on time.
   kAddFileNotCompleteBeforeDestruction = 10,
+  // Error while migrating from legacy database.
+  kDatabaseMigrationError = 11,
   // For SendEnumToUMA() usage.
-  kMaxValue = kAddFileNotCompleteBeforeDestruction,
+  kMaxValue = kDatabaseMigrationError,
 };
 
 // Sends UMAs related to the DLP daemon.
