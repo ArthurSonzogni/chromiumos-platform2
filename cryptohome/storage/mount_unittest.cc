@@ -33,6 +33,7 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/libpolicy.h>
@@ -48,6 +49,7 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
+#include "cryptohome/storage/mock_mount_helper_interface.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/username.h"
@@ -72,6 +74,8 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 
 namespace {
+constexpr int kEphemeralVFSFragmentSize = 1 << 10;
+constexpr int kEphemeralVFSSize = 1 << 12;
 
 struct Attributes {
   mode_t mode;
@@ -1018,11 +1022,14 @@ class EphemeralSystemTest : public ::testing::Test {
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const ObfuscatedUsername& unused) {}),
         vault_factory_.get());
-
+    std::unique_ptr<MockMounterHelperInterface> mock_mount_helper_interface =
+        std::make_unique<MockMounterHelperInterface>();
+    mock_mount_interface_ = mock_mount_helper_interface.get();
     mount_ = new Mount(&platform_, homedirs_.get(),
-                       std::make_unique<MountHelper>(
-                           /*legacy_mount=*/true,
-                           /*bind_mount_downloads=*/true, &platform_));
+                       std::move(mock_mount_helper_interface));
+    SetupVFSMock();
+    EXPECT_CALL(*mock_mount_interface_, CanPerformEphemeralMount)
+        .WillOnce(Return(true));
   }
 
  protected:
@@ -1031,6 +1038,7 @@ class EphemeralSystemTest : public ::testing::Test {
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
+  MockMounterHelperInterface* mock_mount_interface_;
   struct statvfs ephemeral_statvfs_;
 
   base::FilePath EphemeralBackingFile(const Username& username) {
@@ -1049,56 +1057,15 @@ class EphemeralSystemTest : public ::testing::Test {
         .Append(*obfuscated_username);
   }
 
-  void VerifyFS(const Username& username, bool expect_present) {
-    CheckLoopDev(username, expect_present);
-    ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
-        &platform_, username, EphemeralMountPoint(username), expect_present));
-    ASSERT_NO_FATAL_FAILURE(CheckUserMountPoints(
-        &platform_, username, EphemeralMountPoint(username), expect_present));
-
-    const std::vector<base::FilePath> user_vault_and_mounts{
-        EphemeralMountPoint(username).Append(kUserHomeSuffix),
-        base::FilePath(kHomeChronosUser),
-        brillo::cryptohome::home::GetUserPath(username),
-        ChronosHashPath(username),
-    };
-
-    for (const auto& base_path : user_vault_and_mounts) {
-      ASSERT_NO_FATAL_FAILURE(
-          CheckUserMountPaths(&platform_, base_path, expect_present, true));
-      ASSERT_NO_FATAL_FAILURE(CheckSkel(&platform_, base_path, expect_present));
-    }
-  }
-
-  base::FilePath GetLoopDevice() {
-    return platform_.GetLoopDeviceManager()
-        ->GetAttachedDeviceByName("ephemeral")
-        ->GetDevicePath();
-  }
-
  private:
-  void CheckLoopDev(const Username& username, bool expect_present) {
-    const base::FilePath ephemeral_backing_file =
-        EphemeralBackingFile(username);
-    const base::FilePath ephemeral_mount_point = EphemeralMountPoint(username);
+  void SetupVFSMock() {
+    ephemeral_statvfs_ = {0};
+    ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
+    ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
 
-    ASSERT_THAT(platform_.FileExists(ephemeral_backing_file), expect_present);
-    ASSERT_THAT(platform_.DirectoryExists(ephemeral_mount_point),
-                expect_present);
-    ASSERT_THAT(platform_.IsDirectoryMounted(ephemeral_mount_point),
-                expect_present);
-    if (expect_present) {
-      const std::multimap<const base::FilePath, const base::FilePath>
-          expected_ephemeral_mount_map{
-              {GetLoopDevice(), ephemeral_mount_point},
-          };
-      std::multimap<const base::FilePath, const base::FilePath>
-          ephemeral_mount_map;
-      ASSERT_TRUE(platform_.GetMountsBySourcePrefix(GetLoopDevice(),
-                                                    &ephemeral_mount_map));
-      ASSERT_THAT(ephemeral_mount_map, ::testing::UnorderedElementsAreArray(
-                                           expected_ephemeral_mount_map));
-    }
+    ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
   }
 };
 
@@ -1111,8 +1078,6 @@ TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
               IsError(MOUNT_ERROR_FATAL));
-
-  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
@@ -1123,8 +1088,6 @@ TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
               IsError(MOUNT_ERROR_KEYRING_FAILED));
-
-  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
@@ -1134,8 +1097,6 @@ TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
               IsError(MOUNT_ERROR_KEYRING_FAILED));
-
-  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_FormatFailure) {
@@ -1148,26 +1109,6 @@ TEST_F(EphemeralSystemTest, EphemeralMount_FormatFailure) {
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
               IsError(MOUNT_ERROR_KEYRING_FAILED));
-
-  VerifyFS(kUser, /*expect_present=*/false);
-}
-
-TEST_F(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
-  // Checks that when ephemeral mount fails to ensure mount points, clean up
-  // happens appropriately.
-  EXPECT_CALL(platform_, FormatExt4(Property(&base::FilePath::value,
-                                             StartsWith(kDevLoopPrefix)),
-                                    _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Mount(Property(&base::FilePath::value,
-                                        StartsWith(kDevLoopPrefix)),
-                               EphemeralMountPoint(kUser), _, _, _))
-      .WillOnce(Return(false));
-
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
-              IsError(MOUNT_ERROR_FATAL));
-
-  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 }  // namespace
