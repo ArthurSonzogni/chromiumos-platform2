@@ -25,6 +25,12 @@ class DeviceUserTestFixture;
 class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
  public:
   virtual void RegisterSessionChangeHandler() = 0;
+  virtual void RegisterScreenLockedHandler(
+      base::RepeatingClosure signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+  virtual void RegisterScreenUnlockedHandler(
+      base::RepeatingClosure signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
   virtual std::string GetDeviceUser() = 0;
 
   virtual ~DeviceUserInterface() = default;
@@ -46,6 +52,14 @@ class DeviceUser : public DeviceUserInterface {
   // Start monitoring for login/out events.
   // Called when XDR reporting becomes enabled.
   void RegisterSessionChangeHandler() override;
+  // Registers for signal when the screen is locked.
+  void RegisterScreenLockedHandler(
+      base::RepeatingClosure signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
+  // Registers for signal when the screen is Unlocked.
+  void RegisterScreenUnlockedHandler(
+      base::RepeatingClosure signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
   // Retrieves the current device user.
   std::string GetDeviceUser() override;
 

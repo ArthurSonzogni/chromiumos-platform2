@@ -17,7 +17,7 @@ extern "C" int indirect_c_callback(void* ctx, void* data, size_t size);
 
 namespace Types {
 enum class BpfSkeleton { kProcess, kNetwork };
-enum class Plugin { kAgent, kNetwork, kProcess };
+enum class Plugin { kAgent, kNetwork, kProcess, kAuthenticate };
 
 absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
 AbslFormatConvert(const BpfSkeleton& type,

@@ -7,19 +7,16 @@
 #include <string>
 #include <utility>
 
-#include "absl/strings/str_format.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
-#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 
@@ -89,6 +86,11 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
       rv = std::make_unique<NetworkPlugin>(
           bpf_skeleton_factory_, message_sender, process_cache,
           policies_features_broker, device_user, batch_interval_s);
+      break;
+    case Types::Plugin::kAuthenticate:
+      rv = std::make_unique<AuthenticationPlugin>(
+          message_sender, policies_features_broker, device_user,
+          batch_interval_s);
       break;
 
     default:

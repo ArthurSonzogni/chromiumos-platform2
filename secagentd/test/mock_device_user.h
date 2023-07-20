@@ -15,6 +15,16 @@ namespace secagentd::testing {
 class MockDeviceUser : public DeviceUserInterface {
  public:
   MOCK_METHOD(void, RegisterSessionChangeHandler, (), (override));
+  MOCK_METHOD(void,
+              RegisterScreenLockedHandler,
+              (base::RepeatingClosure signal_callback,
+               dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
+              (override));
+  MOCK_METHOD(void,
+              RegisterScreenUnlockedHandler,
+              (base::RepeatingClosure signal_callback,
+               dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
+              (override));
   MOCK_METHOD(std::string, GetDeviceUser, (), (override));
 };
 }  // namespace secagentd::testing

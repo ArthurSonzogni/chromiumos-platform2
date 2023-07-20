@@ -15,6 +15,7 @@
 #include "base/files/file_util.h"
 #include "base/files/important_file_writer.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/uuid.h"
 #include "bindings/device_management_backend.pb.h"
@@ -45,6 +46,19 @@ void DeviceUser::RegisterSessionChangeHandler() {
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&DeviceUser::HandleRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DeviceUser::RegisterScreenLockedHandler(
+    base::RepeatingClosure signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+  session_manager_->RegisterScreenIsLockedSignalHandler(
+      std::move(signal_callback), std::move(on_connected_callback));
+}
+void DeviceUser::RegisterScreenUnlockedHandler(
+    base::RepeatingClosure signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+  session_manager_->RegisterScreenIsUnlockedSignalHandler(
+      std::move(signal_callback), std::move(on_connected_callback));
 }
 
 void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,

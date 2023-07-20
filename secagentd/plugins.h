@@ -40,6 +40,7 @@ namespace testing {
 class AgentPluginTestFixture;
 class ProcessPluginTestFixture;
 class NetworkPluginTestFixture;
+class AuthenticationPluginTestFixture;
 }  // namespace testing
 
 class PluginInterface {
@@ -288,6 +289,28 @@ class ProcessPlugin : public PluginInterface {
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
   std::unique_ptr<BatchSenderType> batch_sender_;
+};
+
+class AuthenticationPlugin : public PluginInterface {
+ public:
+  AuthenticationPlugin(
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
+      uint32_t batch_interval_s);
+  // Starts reporting user authentication events.
+  absl::Status Activate() override;
+  absl::Status Deactivate() override;
+  bool IsActive() const override;
+  std::string GetName() const override;
+
+ private:
+  friend class testing::AuthenticationPluginTestFixture;
+
+  base::WeakPtrFactory<AuthenticationPlugin> weak_ptr_factory_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
+  bool is_active_{false};
 };
 
 class AgentPlugin : public PluginInterface {

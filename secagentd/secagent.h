@@ -9,21 +9,14 @@
 #include <memory>
 #include <vector>
 
-#include "attestation/proto_bindings/interface.pb.h"
-#include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
-#include "dbus/mock_bus.h"
 #include "featured/feature_library.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
-#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
-#include "secagentd/proto/security_xdr_events.pb.h"
-#include "session_manager/dbus-proxies.h"
 #include "tpm_manager/dbus-proxies.h"
-#include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
 
 namespace secagentd {
@@ -58,9 +51,9 @@ class SecAgent {
 
  protected:
   // Activate or deactivate BPF plugins based on any applicable feature gates.
-  void ActivateOrDeactivateBpfPlugins();
+  void ActivateOrDeactivatePlugins();
   // Create and activate all BPF plugins.
-  void CreateAndActivateBpfPlugins();
+  void CreateAndActivatePlugins();
   // Starts the plugin loading process. First creates the agent plugin and
   // waits for a successfully sent heartbeat before creating and running
   // the BPF plugins.
@@ -74,7 +67,7 @@ class SecAgent {
     std::unique_ptr<PluginInterface> plugin;
   };
 
-  std::vector<PluginConfig> bpf_plugins_;
+  std::vector<PluginConfig> plugins_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;

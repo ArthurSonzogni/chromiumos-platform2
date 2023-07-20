@@ -31,6 +31,7 @@ class PoliciesFeaturesBrokerInterface
     kCrOSLateBootSecagentdXDRReporting,
     kCrOSLateBootSecagentdCoalesceTerminates,
     kCrOSLateBootSecagentdXDRNetworkEvents,
+    kCrOSLateBootSecagentdXDRAuthenticateEvents,
   };
 
   // Starts polling the watched features and policies. Runs the first watch

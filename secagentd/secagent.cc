@@ -15,16 +15,10 @@
 
 #include "absl/status/status.h"
 #include "attestation-client/attestation/dbus-proxies.h"
-#include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/task/thread_pool/thread_pool_instance.h"
-#include "brillo/daemons/daemon.h"
-#include "brillo/daemons/dbus_daemon.h"
-#include "missive/client/missive_client.h"
-#include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
@@ -121,7 +115,7 @@ void SecAgent::CheckPolicyAndFeature() {
              xdr_reporting_policy) {
     // BPF plugins were activated in the past. Repoll features and
     // activate/deactivate relevant plugins.
-    ActivateOrDeactivateBpfPlugins();
+    ActivateOrDeactivatePlugins();
   } else if (first_visit) {
     LOG(INFO) << "Not reporting yet.";
   }
@@ -135,7 +129,7 @@ void SecAgent::StartXDRReporting() {
   MetricsSender::GetInstance().InitBatchedMetrics();
 
   using CbType = base::OnceCallback<void()>;
-  CbType cb_for_agent = base::BindOnce(&SecAgent::CreateAndActivateBpfPlugins,
+  CbType cb_for_agent = base::BindOnce(&SecAgent::CreateAndActivatePlugins,
                                        weak_ptr_factory_.GetWeakPtr());
   CbType cb_for_now = base::DoNothing();
   if (bypass_enq_ok_wait_for_testing_) {
@@ -160,7 +154,7 @@ void SecAgent::StartXDRReporting() {
       FROM_HERE, std::move(cb_for_now));
 }
 
-void SecAgent::ActivateOrDeactivateBpfPlugins() {
+void SecAgent::ActivateOrDeactivatePlugins() {
   absl::Status result;
   std::string action;
   auto activate = [&action](PluginConfig& pc) {
@@ -178,7 +172,7 @@ void SecAgent::ActivateOrDeactivateBpfPlugins() {
     return absl::OkStatus();
   };
 
-  for (auto& plugin_config : bpf_plugins_) {
+  for (auto& plugin_config : plugins_) {
     auto& feature = plugin_config.gated_by_feature;
     auto& plugin = plugin_config.plugin;
     action = "";
@@ -200,25 +194,27 @@ void SecAgent::ActivateOrDeactivateBpfPlugins() {
   }
 }
 
-void SecAgent::CreateAndActivateBpfPlugins() {
+void SecAgent::CreateAndActivatePlugins() {
   using Feature = PoliciesFeaturesBrokerInterface::Feature;
   using Plugin = Types::Plugin;
-  static const std::vector<std::pair<Plugin, std::optional<Feature>>>
-      bpf_plugins = {
-          std::make_pair(
-              Plugin::kNetwork,
-              std::optional(Feature::kCrOSLateBootSecagentdXDRNetworkEvents)),
-          std::make_pair(Plugin::kProcess, std::nullopt)};
+  static const std::vector<std::pair<Plugin, std::optional<Feature>>> plugins =
+      {std::make_pair(
+           Plugin::kAuthenticate,
+           std::optional(Feature::kCrOSLateBootSecagentdXDRAuthenticateEvents)),
+       std::make_pair(
+           Plugin::kNetwork,
+           std::optional(Feature::kCrOSLateBootSecagentdXDRNetworkEvents)),
+       std::make_pair(Plugin::kProcess, std::nullopt)};
   std::unique_ptr<PluginInterface> plugin;
-  for (const auto& p : bpf_plugins) {
+  for (const auto& p : plugins) {
     plugin = plugin_factory_->Create(p.first, message_sender_, process_cache_,
                                      policies_features_broker_, device_user_,
                                      plugin_batch_interval_s_);
     if (!plugin) {
       std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
     }
-    bpf_plugins_.push_back({p.second, std::move(plugin)});
+    plugins_.push_back({p.second, std::move(plugin)});
   }
-  ActivateOrDeactivateBpfPlugins();
+  ActivateOrDeactivatePlugins();
 }
 }  // namespace secagentd

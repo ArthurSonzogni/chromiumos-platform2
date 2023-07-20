@@ -43,6 +43,10 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
                       {Feature::kCrOSLateBootSecagentdXDRNetworkEvents,
                        {{.name = "CrOSLateBootSecagentdXDRNetworkEvents",
                          .default_state = FEATURE_DISABLED_BY_DEFAULT},
+                        false}},
+                      {Feature::kCrOSLateBootSecagentdXDRAuthenticateEvents,
+                       {{.name = "CrOSLateBootSecagentdXDRAuthenticateEvents",
+                         .default_state = FEATURE_DISABLED_BY_DEFAULT},
                         false}}} {
   for (const auto& [k, v] : feature_values_) {
     variations_to_query_.push_back(&v.variation);
