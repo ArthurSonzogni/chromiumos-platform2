@@ -36,10 +36,10 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
+#include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_dispatcher.h"

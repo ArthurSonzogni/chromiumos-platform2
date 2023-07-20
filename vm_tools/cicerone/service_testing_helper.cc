@@ -13,6 +13,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
@@ -187,8 +188,7 @@ void ServiceTestingHelper::VerifyAndClearMockExpectations() {
 }
 
 void ServiceTestingHelper::ExpectNoDBusMessages() {
-  EXPECT_CALL(*mock_bus_, SendWithReplyAndBlock(A<DBusMessage*>(), A<int>(),
-                                                A<DBusError*>()))
+  EXPECT_CALL(*mock_bus_, SendWithReplyAndBlock(A<DBusMessage*>(), A<int>()))
       .Times(0);
   EXPECT_CALL(*mock_bus_, SendWithReply(A<DBusMessage*>(),
                                         A<DBusPendingCall**>(), A<int>()))
@@ -200,9 +200,9 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
         mock_chunneld_service_proxy_, mock_crosdns_service_proxy_,
         mock_concierge_service_proxy_, mock_vm_sk_forwarding_service_proxy_,
         mock_vm_disk_management_service_proxy_}) {
-    EXPECT_CALL(*object_proxy, CallMethodAndBlockWithErrorDetails(
-                                   A<dbus::MethodCall*>(), A<int>(),
-                                   A<dbus::ScopedDBusError*>()))
+    EXPECT_CALL(*object_proxy,
+                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                   A<int>(), A<dbus::Error*>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
                 CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))

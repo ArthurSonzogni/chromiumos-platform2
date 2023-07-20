@@ -44,9 +44,9 @@
 #include <brillo/scoped_mount_namespace.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 #include <install_attributes/libinstallattributes.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -1548,7 +1548,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
   auto env_vars = CreateUpgradeArcEnvVars(request, account_id, pid);
   const base::TimeTicks arc_continue_boot_impulse_time = base::TimeTicks::Now();
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> response =
       init_controller_->TriggerImpulseWithTimeoutAndError(
           kContinueArcBootImpulse, env_vars,
@@ -2134,13 +2134,12 @@ void SessionManagerImpl::OnAndroidContainerStopped(
 }
 
 LoginMetrics::ArcContinueBootImpulseStatus
-SessionManagerImpl::GetArcContinueBootImpulseStatus(
-    dbus::ScopedDBusError* dbus_error) {
+SessionManagerImpl::GetArcContinueBootImpulseStatus(dbus::Error* dbus_error) {
   DCHECK(dbus_error);
-  if (dbus_error->is_set()) {
+  if (dbus_error->IsValid()) {
     // In case of timeout we see DBUS_ERROR_NO_REPLY
     // as mentioned in dbus-protocol.h
-    if (strcmp(dbus_error->name(), DBUS_ERROR_NO_REPLY) == 0) {
+    if (dbus_error->name() == DBUS_ERROR_NO_REPLY) {
       return LoginMetrics::ArcContinueBootImpulseStatus::
           kArcContinueBootImpulseStatusTimedOut;
     }

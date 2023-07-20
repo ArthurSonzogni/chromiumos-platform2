@@ -15,9 +15,9 @@
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/vm_wl/dbus-constants.h>
 #include <dbus/bus.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <vm_wl/wl.pb.h>
@@ -132,13 +132,13 @@ VmWlInterface::Result VmWlInterface::CreateWaylandServer(
   }
   writer.AppendFileDescriptor(socket_fd.get());
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, GetVmWlProxy(bus.get()), &method_call,
           dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
   if (!dbus_response) {
-    if (dbus_error.is_set()) {
+    if (dbus_error.IsValid()) {
       return base::unexpected(std::string("ListenOnSocket call failed: ") +
                               dbus_error.name() + " (" + dbus_error.message() +
                               ")");

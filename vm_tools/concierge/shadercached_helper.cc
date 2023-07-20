@@ -9,8 +9,8 @@
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_proxy_util.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
-#include <dbus/scoped_dbus_error.h>
 #include <dbus/shadercached/dbus-constants.h>
 
 #include "vm_tools/concierge/vm_util.h"
@@ -58,7 +58,7 @@ PrepareShaderCache(const std::string& owner_id,
   prepare_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(prepare_request);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
       bus_, shadercached_proxy_, &method_call,
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
@@ -66,7 +66,7 @@ PrepareShaderCache(const std::string& owner_id,
   if (!dbus_response) {
     return base::unexpected(
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           error.name(), error.message()));
+                           error.name().c_str(), error.message().c_str()));
   }
 
   shadercached::PrepareShaderCacheResponse response;
@@ -90,14 +90,14 @@ std::string PurgeShaderCache(const std::string& owner_id,
   purge_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(purge_request);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
       bus_, shadercached_proxy_, &method_call,
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
 
   if (!dbus_response) {
     return base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                              error.name(), error.message());
+                              error.name().c_str(), error.message().c_str());
   }
 
   return "";

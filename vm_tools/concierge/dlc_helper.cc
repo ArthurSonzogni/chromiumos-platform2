@@ -11,7 +11,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <dbus/scoped_dbus_error.h>
+#include <brillo/errors/error.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 // Needs to be included after dlcservice.pb.h

@@ -16,7 +16,10 @@
 
 namespace base {
 class TimeDelta;
-class ScopedDBusError;
+}
+
+namespace dbus {
+class Error;
 }
 
 namespace login_manager {
@@ -39,7 +42,7 @@ class MockInitDaemonController : public InitDaemonController {
                const std::vector<std::string>&,
                TriggerMode,
                base::TimeDelta timeout,
-               dbus::ScopedDBusError* error),
+               dbus::Error* error),
               (override));
 };
 

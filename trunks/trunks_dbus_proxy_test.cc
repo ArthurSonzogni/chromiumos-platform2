@@ -10,6 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <base/threading/thread.h>
+#include <dbus/error.h>
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -40,7 +41,7 @@ class FakeObjectProxy : public dbus::ObjectProxy {
       int timeout_ms,
       dbus::ObjectProxy::ResponseCallback callback,
       dbus::ObjectProxy::ErrorCallback error_callback) override {
-    dbus::ScopedDBusError error;
+    dbus::Error error;
     std::unique_ptr<dbus::Response> response =
         CallMethodAndBlockWithErrorDetails(method_call, timeout_ms, &error);
     if (response) {
@@ -57,7 +58,7 @@ class FakeObjectProxy : public dbus::ObjectProxy {
   std::unique_ptr<dbus::Response> CallMethodAndBlockWithErrorDetails(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
-      dbus::ScopedDBusError* error) override {
+      dbus::Error* error) override {
     dbus::MessageReader reader(method_call);
     trunks::SendCommandRequest command_proto;
     brillo::dbus_utils::PopValueFromReader(&reader, &command_proto);

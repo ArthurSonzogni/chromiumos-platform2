@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 
+#include <dbus/error.h>
+
 namespace brillo {
 namespace dbus_utils {
 
@@ -41,7 +43,7 @@ std::unique_ptr<dbus::Response> CallDBusMethodWithErrorResponseInDbusThread(
     dbus::ObjectProxy* proxy,
     dbus::MethodCall* method_call,
     int timeout_ms,
-    dbus::ScopedDBusError* error) {
+    dbus::Error* error) {
   std::unique_ptr<dbus::Response> response;
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -51,7 +53,7 @@ std::unique_ptr<dbus::Response> CallDBusMethodWithErrorResponseInDbusThread(
       base::BindOnce(
           [](dbus::ObjectProxy* proxy, dbus::MethodCall* method_call,
              int timeout_ms, std::unique_ptr<dbus::Response>* response,
-             dbus::ScopedDBusError* error, base::WaitableEvent* event) {
+             dbus::Error* error, base::WaitableEvent* event) {
             *response = proxy->CallMethodAndBlockWithErrorDetails(
                 method_call, timeout_ms, error);
             event->Signal();
@@ -82,7 +84,7 @@ std::unique_ptr<dbus::Response> CallDBusMethodWithErrorResponse(
     dbus::ObjectProxy* proxy,
     dbus::MethodCall* method_call,
     int timeout_ms,
-    dbus::ScopedDBusError* error) {
+    dbus::Error* error) {
   if (bus->HasDBusThread() &&
       !bus->GetDBusTaskRunner()->RunsTasksInCurrentSequence()) {
     return CallDBusMethodWithErrorResponseInDbusThread(

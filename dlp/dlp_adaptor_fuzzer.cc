@@ -5,6 +5,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <dbus/error.h>
 #include <gtest/gtest.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 
@@ -41,10 +42,9 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   // cap_sys_admin capability.
   adaptor->SetFanotifyWatcherStartedForTesting(true);
 
-  EXPECT_CALL(
-      *helper.mock_session_manager_proxy(),
-      CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(), A<int>(),
-                                         A<dbus::ScopedDBusError*>()))
+  EXPECT_CALL(*helper.mock_session_manager_proxy(),
+              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                 A<int>(), A<dbus::Error*>()))
       .WillRepeatedly(::testing::ReturnNull());
 
   adaptor->SetDlpFilesPolicy(

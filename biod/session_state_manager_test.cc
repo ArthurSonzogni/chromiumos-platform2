@@ -12,11 +12,11 @@
 #include <base/test/task_environment.h>
 #include <biod/mock_biod_metrics.h>
 #include <biod/session_state_manager.h>
+#include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
-#include <dbus/scoped_dbus_error.h>
 
 namespace biod {
 namespace {
@@ -151,14 +151,12 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorNoReply) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms,
-             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
-            dbus_set_error(error->get(), dbus_constants::kDBusErrorNoReply,
-                           "Timeout");
-            return nullptr;
-          });
+          A<int>(), A<dbus::Error*>()))
+      .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
+                   dbus::Error* error) -> std::unique_ptr<dbus::Response> {
+        *error = dbus::Error(dbus_constants::kDBusErrorNoReply, "Timeout");
+        return nullptr;
+      });
 
   EXPECT_CALL(*mock_metrics_,
               SendSessionRetrievePrimarySessionResult(
@@ -173,15 +171,13 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorServiceUnknown) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms,
-             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
-            dbus_set_error(error->get(),
-                           dbus_constants::kDBusErrorServiceUnknown,
-                           "Service unknown");
-            return nullptr;
-          });
+          A<int>(), A<dbus::Error*>()))
+      .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
+                   dbus::Error* error) -> std::unique_ptr<dbus::Response> {
+        *error = dbus::Error(dbus_constants::kDBusErrorServiceUnknown,
+                             "Service unknown");
+        return nullptr;
+      });
 
   EXPECT_CALL(
       *mock_metrics_,
@@ -197,13 +193,12 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorOther) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms,
-             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
-            dbus_set_error(error->get(), "TestError", "This is a test error");
-            return nullptr;
-          });
+          A<int>(), A<dbus::Error*>()))
+      .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
+                   dbus::Error* error) -> std::unique_ptr<dbus::Response> {
+        *error = dbus::Error("TestError", "This is a test error");
+        return nullptr;
+      });
 
   EXPECT_CALL(*mock_metrics_,
               SendSessionRetrievePrimarySessionResult(
@@ -219,7 +214,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNullResponse) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(nullptr)));
 
   EXPECT_CALL(
@@ -239,7 +234,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoDataInResponse) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -261,7 +256,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoSanitizedUsername) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -285,7 +280,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserUsernameNotString) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -309,7 +304,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserSanitizedUsernameNotString) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -329,7 +324,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoSessionAvailable) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -351,7 +346,7 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserSuccess) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   EXPECT_CALL(*mock_metrics_,
@@ -366,9 +361,9 @@ TEST_F(SessionStateManagerTest, TestRetrievePrimarySessionCallDuration) {
   ON_CALL(*proxy_,
           CallMethodAndBlockWithErrorDetails(
               IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-              A<int>(), A<dbus::ScopedDBusError*>()))
+              A<int>(), A<dbus::Error*>()))
       .WillByDefault([this](dbus::MethodCall* method, int delay,
-                            dbus::ScopedDBusError* error) {
+                            dbus::Error* error) {
         // Prepare response with information about primary user.
         std::unique_ptr<dbus::Response> response =
             RetrievePrimarySessionResponse(kUsername, kSanitizedUsername);
@@ -400,7 +395,7 @@ TEST_F(SessionStateManagerTest, TestRefreshPrimarySessionNotifies) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))))
       .WillOnce(Return(ByMove(std::move(response_no_user))));
 
@@ -428,7 +423,7 @@ TEST_F(SessionStateManagerTest, TestRefreshPrimarySessionNoChangeLogin) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response1))))
       .WillOnce(Return(ByMove(std::move(response2))));
 
@@ -457,7 +452,7 @@ TEST_F(SessionStateManagerTest, TestRefreshPrimarySessionNoChangeLogout) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response_no_user1))))
       .WillOnce(Return(ByMove(std::move(response_no_user2))));
 
@@ -477,7 +472,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStarted) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
 
   manager_->AddObserver(&observer_);
@@ -492,7 +487,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStarted) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .Times(0);
   EXPECT_CALL(observer_, OnUserLoggedIn).Times(0);
 
@@ -521,7 +516,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStartedStoppedStarted) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
   EXPECT_CALL(observer_, OnUserLoggedIn(kSanitizedUsername, true)).Times(1);
 
@@ -543,7 +538,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStartedStoppedStarted) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response2))));
   EXPECT_CALL(observer_, OnUserLoggedIn(kSanitizedUsername, true)).Times(1);
 
@@ -565,7 +560,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStartedNoUser) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
   EXPECT_CALL(observer_, OnUserLoggedIn).Times(0);
 
@@ -581,7 +576,7 @@ TEST_F(SessionStateManagerTest, TestStateChangeStartedNoUser) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response2))));
   EXPECT_CALL(observer_, OnUserLoggedIn(kSanitizedUsername, true)).Times(1);
 
@@ -602,7 +597,7 @@ TEST_F(SessionStateManagerTest, TestAddRemoveObserver) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))))
       .WillOnce(Return(ByMove(std::move(response2))));
   EXPECT_CALL(observer_, OnUserLoggedIn).Times(1);
@@ -628,7 +623,7 @@ TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerEmpty) {
       *proxy_,
       CallMethodAndBlockWithErrorDetails(
           IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-          A<int>(), A<dbus::ScopedDBusError*>()))
+          A<int>(), A<dbus::Error*>()))
       .WillOnce(Return(ByMove(std::move(response))));
   manager_->RefreshPrimaryUser();
   EXPECT_EQ(manager_->GetPrimaryUser(), kSanitizedUsername);

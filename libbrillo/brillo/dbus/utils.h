@@ -12,7 +12,6 @@
 #include <brillo/errors/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
-#include <dbus/scoped_dbus_error.h>
 
 namespace brillo {
 namespace dbus_utils {

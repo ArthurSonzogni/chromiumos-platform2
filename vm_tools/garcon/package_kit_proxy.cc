@@ -26,9 +26,9 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
-#include <dbus/scoped_dbus_error.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools {
@@ -234,7 +234,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     // of this yet, but it seems like a good idea to set it if it does occur.
     // Set locale with UTF-8 to support unicode in control files.  This is
     // what 'pkcon get-details-local <file>' does.
-    dbus::ScopedDBusError error;
+    dbus::Error error;
     dbus::MethodCall sethints_call(kPackageKitTransactionInterface,
                                    kSetHintsMethod);
     dbus::MessageWriter sethints_writer(&sethints_call);
@@ -322,7 +322,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   }
 
   void GeneralErrorInternal(const std::string& details) {
-    if (dbus_error_.is_set()) {
+    if (dbus_error_.IsValid()) {
       GeneralError(details + "(error=" + dbus_error_.name() + ": " +
                    dbus_error_.message() + ")");
     } else {
@@ -486,7 +486,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
 
  protected:
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ScopedDBusError dbus_error_;
+  dbus::Error dbus_error_;
   PackageKitProxy* packagekit_proxy_;                          // Not owned.
   scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy_;  // Not owned.
 

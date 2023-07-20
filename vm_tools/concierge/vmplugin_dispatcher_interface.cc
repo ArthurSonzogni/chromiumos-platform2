@@ -13,10 +13,10 @@
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 #include <vm_plugin_dispatcher/vm_plugin_dispatcher.pb.h>
 
@@ -289,19 +289,19 @@ VmOpResult ShutdownVm(scoped_refptr<dbus::Bus> bus,
     return VmOpResult::INTERNAL_ERROR;
   }
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, proxy, &method_call, kVmShutdownTimeout.InMilliseconds(),
           &dbus_error);
   if (!dbus_response) {
-    if (dbus_error.is_set() &&
-        strcmp(dbus_error.name(), DBUS_ERROR_SERVICE_UNKNOWN) == 0) {
+    if (dbus_error.IsValid() &&
+        dbus_error.name() == DBUS_ERROR_SERVICE_UNKNOWN) {
       LOG(ERROR) << "Failed to send ShutdownVm request to dispatcher: service "
                     "unavailable";
       return VmOpResult::DISPATCHER_NOT_AVAILABLE;
-    } else if (dbus_error.is_set() &&
-               strcmp(dbus_error.name(), DBUS_ERROR_NO_REPLY) == 0) {
+    } else if (dbus_error.IsValid() &&
+               dbus_error.name() == DBUS_ERROR_NO_REPLY) {
       LOG(ERROR) << "ShutdownVm request to dispatcher timed out";
       return VmOpResult::DISPATCHER_TIMEOUT;
     } else {
@@ -340,17 +340,17 @@ VmOpResult SuspendVm(scoped_refptr<dbus::Bus> bus,
     return VmOpResult::INTERNAL_ERROR;
   }
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, proxy, &method_call, kVmSuspendTimeout.InMilliseconds(),
           &dbus_error);
   if (!dbus_response) {
-    if (dbus_error.is_set() &&
-        strcmp(dbus_error.name(), DBUS_ERROR_SERVICE_UNKNOWN) == 0) {
+    if (dbus_error.IsValid() &&
+        dbus_error.name() == DBUS_ERROR_SERVICE_UNKNOWN) {
       return VmOpResult::DISPATCHER_NOT_AVAILABLE;
-    } else if (dbus_error.is_set() &&
-               strcmp(dbus_error.name(), DBUS_ERROR_NO_REPLY) == 0) {
+    } else if (dbus_error.IsValid() &&
+               dbus_error.name() == DBUS_ERROR_NO_REPLY) {
       return VmOpResult::DISPATCHER_TIMEOUT;
     } else {
       LOG(ERROR) << "Failed to send SuspendVm message to dispatcher service";

@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <dbus/error.h>
 #include <dbus/util.h>
 
 #include "shill/event_dispatcher.h"

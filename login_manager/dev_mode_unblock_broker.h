@@ -24,7 +24,6 @@ namespace dbus {
 class Bus;
 class ObjectProxy;
 class Response;
-class ScopedDBusError;
 }  // namespace dbus
 
 namespace login_manager {

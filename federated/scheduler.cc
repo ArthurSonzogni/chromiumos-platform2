@@ -14,7 +14,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
-#include <dbus/scoped_dbus_error.h>
 #include <dlcservice/dbus-proxies.h>
 
 #include "federated/device_status_monitor.h"

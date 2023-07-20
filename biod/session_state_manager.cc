@@ -7,10 +7,9 @@
 
 #include <base/logging.h>
 #include <dbus/bus.h>
-#include <dbus/message.h>
-#include <dbus/scoped_dbus_error.h>
-
+#include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
+#include <dbus/message.h>
 
 #include "biod/session_state_manager.h"
 #include "biod/utils.h"
@@ -64,7 +63,7 @@ bool SessionStateManager::RefreshPrimaryUser() {
 }
 
 std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   std::string sanitized_username;
 
   dbus::MethodCall method_call(
@@ -82,7 +81,7 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
   biod_metrics_->SendSessionRetrievePrimarySessionDuration(
       call_duration.InMilliseconds());
 
-  if (error.is_set()) {
+  if (error.IsValid()) {
     std::string error_name = error.name();
     LOG(ERROR) << "Calling "
                << login_manager::kSessionManagerRetrievePrimarySession

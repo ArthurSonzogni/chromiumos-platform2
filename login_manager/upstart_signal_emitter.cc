@@ -9,9 +9,9 @@
 
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 namespace login_manager {
 
@@ -35,7 +35,7 @@ std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
     const std::string& name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   return this->TriggerImpulseWithTimeoutAndError(name, args_keyvals, mode,
                                                  kDefaultTimeout, &error);
 }
@@ -46,7 +46,7 @@ UpstartSignalEmitter::TriggerImpulseWithTimeoutAndError(
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode,
     base::TimeDelta timeout,
-    dbus::ScopedDBusError* error) {
+    dbus::Error* error) {
   DLOG(INFO) << "Emitting " << name << " Upstart signal";
 
   dbus::MethodCall method_call(kInterface, kMethodName);

@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <dbus/object_proxy.h>
 
 #include "vm_tools/concierge/vm_util.h"
 

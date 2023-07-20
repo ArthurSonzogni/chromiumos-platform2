@@ -10,8 +10,8 @@
 #include <vector>
 
 namespace dbus {
+class Error;
 class Response;
-class ScopedDBusError;
 }
 
 namespace base {
@@ -50,7 +50,7 @@ class InitDaemonController {
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode,
       base::TimeDelta timeout,
-      dbus::ScopedDBusError* error) = 0;
+      dbus::Error* error) = 0;
 };
 
 }  // namespace login_manager

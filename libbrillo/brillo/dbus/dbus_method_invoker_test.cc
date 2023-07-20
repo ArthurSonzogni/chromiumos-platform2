@@ -12,9 +12,9 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <dbus/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -88,10 +88,9 @@ class DBusMethodInvokerTest : public testing::Test {
                 GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    EXPECT_CALL(*mock_object_proxy_,
-                CallMethodAndBlockWithErrorDetails(
-                    An<dbus::MethodCall*>(), def_timeout_ms,
-                    An<dbus::ScopedDBusError*>()))
+    EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockWithErrorDetails(
+                                         An<dbus::MethodCall*>(),
+                                         def_timeout_ms, An<dbus::Error*>()))
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
@@ -99,7 +98,7 @@ class DBusMethodInvokerTest : public testing::Test {
 
   std::unique_ptr<Response> CreateResponse(dbus::MethodCall* method_call,
                                            int /* timeout_ms */,
-                                           dbus::ScopedDBusError* dbus_error) {
+                                           dbus::Error* dbus_error) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -114,7 +113,7 @@ class DBusMethodInvokerTest : public testing::Test {
         }
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
-        dbus_set_error(dbus_error->get(), "org.MyError", "My error message");
+        *dbus_error = dbus::Error("org.MyError", "My error message");
         return std::unique_ptr<dbus::Response>();
       } else if (method_call->GetMember() == kTestMethod3) {
         MessageReader reader(method_call);

@@ -14,6 +14,7 @@
 #include <base/test/task_environment.h>
 #include <base/run_loop.h>
 #include <brillo/asan.h>
+#include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -112,7 +113,7 @@ TResponse ParseResponse(const ByteArray& response_blob) {
 std::unique_ptr<dbus::Response> StubRetrievePrimarySession(
     dbus::MethodCall* method_call,
     int /* timeout_ms */,
-    dbus::ScopedDBusError* /* error */) {
+    dbus::Error* /* error */) {
   // Respond with username = kUser and sanitized_username = kUserHash.
   method_call->SetSerial(kDBusSerial);
   auto response = dbus::Response::FromMethodCall(method_call);
@@ -281,9 +282,9 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
               GetObjectProxy(login_manager::kSessionManagerServiceName,
                              A<const ObjectPath&>()))
       .WillOnce(Return(mock_session_manager_proxy.get()));
-  EXPECT_CALL(*mock_session_manager_proxy, CallMethodAndBlockWithErrorDetails(
-                                               A<dbus::MethodCall*>(), A<int>(),
-                                               A<dbus::ScopedDBusError*>()))
+  EXPECT_CALL(*mock_session_manager_proxy,
+              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                 A<int>(), A<dbus::Error*>()))
       .WillOnce(Invoke(&StubRetrievePrimarySession));
 
   // Recreate an adaptor, but don't call set_storage_dir_for_testing().

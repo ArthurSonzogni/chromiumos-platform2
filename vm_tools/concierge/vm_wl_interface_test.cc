@@ -7,11 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
-#include <dbus/scoped_dbus_error.h>
 #include <dbus/vm_wl/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -52,18 +52,16 @@ class VmWlInterfaceTest : public testing::Test {
 }  // namespace
 
 TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
-  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(
-                                      A<dbus::MethodCall*>(), A<int>(),
-                                      A<dbus::ScopedDBusError*>()))
-      .WillOnce(
-          testing::Invoke([](dbus::MethodCall* method_call, int timeout_ms,
-                             dbus::ScopedDBusError* error) {
-            EXPECT_EQ(method_call->GetMember(),
-                      wl::kVmWlServiveListenOnSocketMethod);
-            error->get()->name = DBUS_ERROR_FAILED;
-            error->get()->message = "test error";
-            return nullptr;
-          }));
+  EXPECT_CALL(*mock_proxy_.get(),
+              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                 A<int>(), A<dbus::Error*>()))
+      .WillOnce(testing::Invoke([](dbus::MethodCall* method_call,
+                                   int timeout_ms, dbus::Error* error) {
+        EXPECT_EQ(method_call->GetMember(),
+                  wl::kVmWlServiveListenOnSocketMethod);
+        *error = dbus::Error(DBUS_ERROR_FAILED, "test error");
+        return nullptr;
+      }));
 
   VmId id("test_owner_id", "test_vm_name");
   VmWlInterface::Result socket = VmWlInterface::CreateWaylandServer(
@@ -72,16 +70,15 @@ TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
 }
 
 TEST_F(VmWlInterfaceTest, SuccessfulCreateAndDestroy) {
-  EXPECT_CALL(*mock_proxy_.get(), CallMethodAndBlockWithErrorDetails(
-                                      A<dbus::MethodCall*>(), A<int>(),
-                                      A<dbus::ScopedDBusError*>()))
-      .WillOnce(
-          testing::Invoke([](dbus::MethodCall* method_call, int timeout_ms,
-                             dbus::ScopedDBusError* error) {
-            EXPECT_EQ(method_call->GetMember(),
-                      wl::kVmWlServiveListenOnSocketMethod);
-            return dbus::Response::CreateEmpty();
-          }));
+  EXPECT_CALL(*mock_proxy_.get(),
+              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                 A<int>(), A<dbus::Error*>()))
+      .WillOnce(testing::Invoke([](dbus::MethodCall* method_call,
+                                   int timeout_ms, dbus::Error* error) {
+        EXPECT_EQ(method_call->GetMember(),
+                  wl::kVmWlServiveListenOnSocketMethod);
+        return dbus::Response::CreateEmpty();
+      }));
 
   VmId id("test_owner_id", "test_vm_name");
 

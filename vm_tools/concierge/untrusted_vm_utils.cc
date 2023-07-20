@@ -17,8 +17,6 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/message.h>
-#include <dbus/scoped_dbus_error.h>
 #include <vboot/crossystem.h>
 
 #include "vm_tools/concierge/vm_util.h"

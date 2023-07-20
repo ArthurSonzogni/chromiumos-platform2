@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <dbus/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include "fuzzer/FuzzedDataProvider.h"
@@ -74,9 +75,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
                                       IsMethod("IsGuestSessionActive"),
-                                      A<int>(), A<dbus::ScopedDBusError*>()))
+                                      A<int>(), A<dbus::Error*>()))
       .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout,
-                           dbus::ScopedDBusError* error) {
+                           dbus::Error* error) {
         // We can set an arbitrary serial number.
         method_call->SetSerial(123);
         std::unique_ptr<dbus::Response> response =

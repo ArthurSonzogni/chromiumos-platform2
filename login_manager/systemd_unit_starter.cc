@@ -13,9 +13,9 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 namespace {
 
@@ -75,7 +75,7 @@ std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
     const std::string& unit_name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   return this->TriggerImpulseWithTimeoutAndError(unit_name, args_keyvals, mode,
                                                  kDefaultTimeout, &dbus_error);
 }
@@ -86,7 +86,7 @@ SystemdUnitStarter::TriggerImpulseWithTimeoutAndError(
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode,
     base::TimeDelta timeout,
-    dbus::ScopedDBusError* error) {
+    dbus::Error* error) {
   DLOG(INFO) << "Starting " << unit_name << " unit";
 
   // If we are not able to properly set the environment for the

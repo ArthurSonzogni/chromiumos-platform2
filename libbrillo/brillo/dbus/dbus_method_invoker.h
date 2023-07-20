@@ -77,6 +77,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/brillo_export.h>
+#include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -105,15 +106,15 @@ inline std::unique_ptr<::dbus::Response> CallMethodAndBlockWithTimeout(
   // Add method arguments to the message buffer.
   ::dbus::MessageWriter writer(&method_call);
   WriteDBusArgs(&writer, args...);
-  ::dbus::ScopedDBusError dbus_error;
+  ::dbus::Error dbus_error;
   auto response = object->CallMethodAndBlockWithErrorDetails(
       &method_call, timeout_ms, &dbus_error);
   if (!response) {
-    if (dbus_error.is_set()) {
+    if (dbus_error.IsValid()) {
       Error::AddToPrintf(
           error, FROM_HERE, errors::dbus::kDomain, dbus_error.name(),
           "Error calling D-Bus method: %s.%s: %s", interface_name.c_str(),
-          method_name.c_str(), dbus_error.message());
+          method_name.c_str(), dbus_error.message().c_str());
     } else {
       Error::AddToPrintf(error, FROM_HERE, errors::dbus::kDomain,
                          DBUS_ERROR_FAILED,

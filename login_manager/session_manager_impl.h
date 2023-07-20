@@ -48,9 +48,9 @@ class UpgradeArcContainerRequest;
 
 namespace dbus {
 class Bus;
+class Error;
 class ObjectProxy;
 class Response;
-class ScopedDBusError;
 }  // namespace dbus
 
 namespace login_manager {
@@ -467,7 +467,7 @@ class SessionManagerImpl
   void OnAndroidContainerStopped(pid_t pid, ArcContainerStopReason reason);
 
   LoginMetrics::ArcContinueBootImpulseStatus GetArcContinueBootImpulseStatus(
-      dbus::ScopedDBusError* dbus_error);
+      dbus::Error* dbus_error);
 #endif
 
   bool session_started_ = false;

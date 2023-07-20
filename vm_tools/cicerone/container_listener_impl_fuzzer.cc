@@ -10,6 +10,7 @@
 #include <base/at_exit.h>
 #include <base/notreached.h>
 #include <brillo/syslog_logging.h>
+#include <dbus/error.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <gmock/gmock.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
@@ -59,17 +60,17 @@ void SetUpMockObjectProxy(
     EXPECT_CALL(*mock_object_proxy,
                 CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                        A<dbus::MethodCall*>(), A<int>(),
-                                        A<dbus::ScopedDBusError*>()))
+    EXPECT_CALL(*mock_object_proxy,
+                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                   A<int>(), A<dbus::Error*>()))
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
   } else {
     EXPECT_CALL(*mock_object_proxy,
                 CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(ReturnNull());
-    EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                        A<dbus::MethodCall*>(), A<int>(),
-                                        A<dbus::ScopedDBusError*>()))
+    EXPECT_CALL(*mock_object_proxy,
+                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
+                                                   A<int>(), A<dbus::Error*>()))
         .WillRepeatedly(ReturnNull());
   }
 }

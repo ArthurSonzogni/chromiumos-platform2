@@ -11,7 +11,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <dbus/message.h>
-#include <dbus/scoped_dbus_error.h>
+#include <dbus/error.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -101,14 +101,14 @@ void ShadercachedHelper::InstallShaderCache(
   shader_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   std::unique_ptr<dbus::Response> dbus_response =
       shadercached_proxy->CallMethodAndBlockWithErrorDetails(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
   if (!dbus_response) {
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           error.name(), error.message());
+                           error.name().c_str(), error.message().c_str());
     if (request->wait()) {
       mount_callbacks_.erase(condition);
     }
@@ -161,14 +161,14 @@ void ShadercachedHelper::UninstallShaderCache(
   shader_request.set_steam_app_id(request->steam_app_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   std::unique_ptr<dbus::Response> dbus_response =
       shadercached_proxy_->CallMethodAndBlockWithErrorDetails(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
   if (!dbus_response) {
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           error.name(), error.message());
+                           error.name().c_str(), error.message().c_str());
     event->Signal();
     return;
   }
@@ -216,14 +216,14 @@ void ShadercachedHelper::UnmountShaderCache(
   shader_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   std::unique_ptr<dbus::Response> dbus_response =
       shadercached_proxy->CallMethodAndBlockWithErrorDetails(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
   if (!dbus_response) {
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           error.name(), error.message());
+                           error.name().c_str(), error.message().c_str());
     if (request->wait()) {
       mount_callbacks_.erase(condition);
     }

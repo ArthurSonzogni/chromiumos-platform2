@@ -9,10 +9,10 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"

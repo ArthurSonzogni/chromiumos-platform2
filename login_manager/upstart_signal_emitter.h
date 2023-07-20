@@ -16,8 +16,8 @@ class TimeDelta;
 }
 
 namespace dbus {
+class Error;
 class ObjectProxy;
-class ScopedDBusError;
 }
 
 namespace login_manager {
@@ -59,7 +59,7 @@ class UpstartSignalEmitter : public InitDaemonController {
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode,
       base::TimeDelta timeout,
-      dbus::ScopedDBusError* error) override;
+      dbus::Error* error) override;
 
  private:
   dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.

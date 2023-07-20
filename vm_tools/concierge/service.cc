@@ -80,6 +80,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crosvm/qcow_utils.h>
+#include <dbus/error.h>
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
@@ -1197,11 +1198,11 @@ std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(feature_name);
 
-  dbus::ScopedDBusError error;
+  dbus::Error error;
   auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
       bus_, chrome_features_service_proxy_, &method_call,
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (error.is_set()) {
+  if (error.IsValid()) {
     *error_out = error.message();
     return std::nullopt;
   }

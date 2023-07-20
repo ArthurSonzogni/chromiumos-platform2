@@ -10,10 +10,10 @@
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 #include <vm_permission_service/vm_permission_service.pb.h>
 
@@ -47,13 +47,13 @@ bool QueryVmPermission(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
           &dbus_error);
   if (!dbus_response) {
-    if (dbus_error.is_set()) {
+    if (dbus_error.IsValid()) {
       LOG(ERROR) << "Getpermissions call failed: " << dbus_error.name() << " ("
                  << dbus_error.message() << ")";
     } else {
@@ -119,15 +119,15 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
           &dbus_error);
   if (!dbus_response) {
-    if (!dbus_error.is_set()) {
+    if (!dbus_error.IsValid()) {
       LOG(ERROR) << "Failed to send RegisterVm message to permission service";
-    } else if (strcmp(dbus_error.name(), DBUS_ERROR_NOT_SUPPORTED) == 0) {
+    } else if (dbus_error.name() == DBUS_ERROR_NOT_SUPPORTED) {
       // TODO(dtor): remove when we remove Camera/Mic Chrome flags stop
       // returning DBUS_ERROR_NOT_SUPPORTED.
       *token = std::string();
@@ -174,13 +174,13 @@ bool UnregisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::ScopedDBusError dbus_error;
+  dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethodWithErrorResponse(
           bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
           &dbus_error);
   if (!dbus_response) {
-    if (dbus_error.is_set()) {
+    if (dbus_error.IsValid()) {
       LOG(ERROR) << "UnregisterVm call failed: " << dbus_error.name() << " ("
                  << dbus_error.message() << ")";
     } else {

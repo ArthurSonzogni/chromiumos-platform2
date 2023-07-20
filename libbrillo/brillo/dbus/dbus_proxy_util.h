@@ -16,6 +16,10 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+namespace dbus {
+class Error;
+}  // namespace dbus
+
 namespace brillo {
 namespace dbus_utils {
 
@@ -32,7 +36,7 @@ BRILLO_EXPORT std::unique_ptr<dbus::Response> CallDBusMethodWithErrorResponse(
     dbus::ObjectProxy* proxy,
     dbus::MethodCall* method_call,
     int timeout_ms,
-    dbus::ScopedDBusError* error);
+    dbus::Error* error);
 
 }  // namespace dbus_utils
 }  // namespace brillo
