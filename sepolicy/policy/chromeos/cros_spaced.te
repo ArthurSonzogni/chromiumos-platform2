@@ -42,6 +42,22 @@ allow cros_spaced cros_home_shadow_uid_user:dir { getattr };
 # Needed for quota-related D-Bus methods.
 allow cros_spaced labeledfs:filesystem { quotaget };
 
+# Needed for passing fd from crosvm over D-Bus call.
+allow cros_spaced cros_vm_concierge:fd { use };
+
+# Needed for calling SetProjectId and SetProjectInheritanceFlag for ARC files
+# and dirs.
+has_arc(`
+  allow cros_spaced media_rw_data_file:file { read write ioctl };
+  allow cros_spaced media_rw_data_file:dir { read write ioctl getattr setattr };
+  allowxperm cros_spaced media_rw_data_file:{ file dir } ioctl {
+    FS_IOC_FSGETXATTR
+    FS_IOC_FSSETXATTR
+    FS_IOC_GETFLAGS
+    FS_IOC_SETFLAGS
+  };
+');
+
 # Spaced/LVM iterates through /dev and will try to access the following devices.
 dontaudit cros_spaced {
   audio_device

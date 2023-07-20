@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/task/task_runner.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/blkdev_utils/lvm.h>
@@ -43,6 +44,10 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
                                      uint32_t gid) override;
   int64_t GetQuotaCurrentSpaceForProjectId(const std::string& path,
                                            uint32_t project_id) override;
+  SetProjectIdReply SetProjectId(const base::ScopedFD& fd,
+                                 uint32_t project_id) override;
+  SetProjectInheritanceFlagReply SetProjectInheritanceFlag(
+      const base::ScopedFD& fd, bool enable) override;
 
   void StatefulDiskSpaceUpdateCallback(const StatefulDiskSpaceUpdate& state);
 

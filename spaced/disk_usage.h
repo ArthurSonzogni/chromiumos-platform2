@@ -6,6 +6,7 @@
 #define SPACED_DISK_USAGE_H_
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 
 namespace spaced {
 // Abstract class that defines the interface for both disk usage util and its
@@ -26,6 +27,12 @@ class DiskUsageUtil {
                                              uint32_t gid) = 0;
   virtual int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                                    uint32_t project_id) = 0;
+  virtual bool SetProjectId(const base::ScopedFD& path,
+                            uint32_t project_id,
+                            int* out_error) = 0;
+  virtual bool SetProjectInheritanceFlag(const base::ScopedFD& path,
+                                         bool enable,
+                                         int* out_error) = 0;
 };
 
 }  // namespace spaced

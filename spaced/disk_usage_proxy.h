@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/observer_list.h>
 #include <brillo/brillo_export.h>
@@ -49,6 +50,12 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
                                      uint32_t gid) override;
   int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                            uint32_t project_id) override;
+  bool SetProjectId(const base::ScopedFD& fd,
+                    uint32_t project_id,
+                    int* out_error) override;
+  bool SetProjectInheritanceFlag(const base::ScopedFD& fd,
+                                 bool enable,
+                                 int* out_error) override;
 
   void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& space);
 

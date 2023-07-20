@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_util.h>
 #include <base/task/task_runner.h>
@@ -130,6 +131,25 @@ int64_t DBusAdaptor::GetQuotaCurrentSpaceForProjectId(const std::string& path,
                                                       uint32_t project_id) {
   return disk_usage_util_->GetQuotaCurrentSpaceForProjectId(
       base::FilePath(path), project_id);
+}
+
+SetProjectIdReply DBusAdaptor::SetProjectId(const base::ScopedFD& fd,
+                                            uint32_t project_id) {
+  SetProjectIdReply reply;
+  int error = 0;
+  reply.set_success(disk_usage_util_->SetProjectId(fd, project_id, &error));
+  reply.set_error(error);
+  return reply;
+}
+
+SetProjectInheritanceFlagReply DBusAdaptor::SetProjectInheritanceFlag(
+    const base::ScopedFD& fd, bool enable) {
+  SetProjectInheritanceFlagReply reply;
+  int error = 0;
+  reply.set_success(
+      disk_usage_util_->SetProjectInheritanceFlag(fd, enable, &error));
+  reply.set_error(error);
+  return reply;
 }
 
 void DBusAdaptor::StatefulDiskSpaceUpdateCallback(

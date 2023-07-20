@@ -20,6 +20,8 @@ const char kGetQuotaCurrentSpaceForUidMethod[] = "GetQuotaCurrentSpaceForUid";
 const char kGetQuotaCurrentSpaceForGidMethod[] = "GetQuotaCurrentSpaceForGid";
 const char kGetQuotaCurrentSpaceForProjectIdMethod[] =
     "GetQuotaCurrentSpaceForProjectId";
+const char kSetProjectIdMethod[] = "SetProjectId";
+const char kSetProjectInheritanceFlagMethod[] = "SetProjectInheritanceFlag";
 
 // Signals.
 const char kStatefulDiskSpaceUpdate[] = "StatefulDiskSpaceUpdate";

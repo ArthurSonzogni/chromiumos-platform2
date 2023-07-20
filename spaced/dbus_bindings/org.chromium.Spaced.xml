@@ -76,5 +76,29 @@
       <arg name="reply" type="x" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetProjectId">
+      <tp:docstring>
+        Sets the project ID to the given file.
+      </tp:docstring>
+      <arg name="fd" type="h" direction="in"/>
+      <arg name="project_id" type="u" direction="in"/>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced::SetProjectIdReply" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="SetProjectInheritanceFlag">
+      <tp:docstring>
+        Sets the project inheritance flag to the given file.
+      </tp:docstring>
+      <arg name="fd" type="h" direction="in"/>
+      <arg name="enable" type="b" direction="in"/>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced::SetProjectInheritanceFlagReply" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

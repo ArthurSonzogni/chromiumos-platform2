@@ -57,7 +57,9 @@ io_getevents: 1
 io_setup: 1
 io_submit: 1
 ioctl: arg1 == 0xc138fd00 || arg1 == 0xc138fd07 || arg1 == 0xc138fd0c || \
-       arg1 == BLKGETSIZE64
+       arg1 == BLKGETSIZE64 || \
+       arg1 == FS_IOC_FSGETXATTR || arg1 == FS_IOC_FSSETXATTR || \
+       arg1 == FS_IOC_GETFLAGS || arg1 == FS_IOC_SETFLAGS
 lseek: 1
 lstat64: 1
 lstat: 1

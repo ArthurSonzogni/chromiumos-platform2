@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -150,6 +151,35 @@ int64_t DiskUsageProxy::GetQuotaCurrentSpaceForProjectId(
     return -1;
   }
   return current_space;
+}
+
+bool DiskUsageProxy::SetProjectId(const base::ScopedFD& fd,
+                                  uint32_t project_id,
+                                  int* out_error) {
+  SetProjectIdReply result;
+  brillo::ErrorPtr error;
+  // Return false if call fails.
+  if (!spaced_proxy_->SetProjectId(fd, project_id, &result, &error)) {
+    *out_error = result.error();
+    LOG(ERROR) << "Failed to call SetProjectId, error: " << error->GetMessage();
+    return false;
+  }
+  return result.success();
+}
+
+bool DiskUsageProxy::SetProjectInheritanceFlag(const base::ScopedFD& fd,
+                                               bool enable,
+                                               int* out_error) {
+  SetProjectInheritanceFlagReply result;
+  brillo::ErrorPtr error;
+  // Return false if call fails.
+  if (!spaced_proxy_->SetProjectInheritanceFlag(fd, enable, &result, &error)) {
+    *out_error = result.error();
+    LOG(ERROR) << "Failed to call SetProjectInheritanceFlag, error: "
+               << error->GetMessage();
+    return false;
+  }
+  return result.success();
 }
 
 void DiskUsageProxy::OnStatefulDiskSpaceUpdate(

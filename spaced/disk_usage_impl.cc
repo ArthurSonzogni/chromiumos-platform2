@@ -19,11 +19,16 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <rootdev/rootdev.h>
+
+extern "C" {
+#include <linux/fs.h>
+}
 
 namespace spaced {
 
@@ -40,6 +45,10 @@ int DiskUsageUtilImpl::QuotaCtl(int cmd,
                                 int id,
                                 struct dqblk* dq) {
   return quotactl(cmd, device.value().c_str(), id, reinterpret_cast<char*>(dq));
+}
+
+int DiskUsageUtilImpl::Ioctl(int fd, uint32_t request, void* ptr) {
+  return ioctl(fd, request, ptr);
 }
 
 base::FilePath DiskUsageUtilImpl::GetDevice(const base::FilePath& path) {
@@ -90,7 +99,7 @@ int64_t DiskUsageUtilImpl::GetBlockDeviceSize(const base::FilePath& device) {
   }
 
   int64_t size;
-  if (ioctl(fd.get(), BLKGETSIZE64, &size)) {
+  if (Ioctl(fd.get(), BLKGETSIZE64, &size)) {
     PLOG(ERROR) << "ioctl(BLKGETSIZE): " << device.value();
     return -1;
   }
@@ -144,6 +153,60 @@ int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForId(const base::FilePath& path,
     return -1;
   }
   return dq.dqb_curspace;
+}
+
+bool DiskUsageUtilImpl::SetProjectId(const base::ScopedFD& fd,
+                                     uint32_t project_id,
+                                     int* out_error) {
+  if (!fd.is_valid()) {
+    *out_error = EBADF;
+    LOG(ERROR) << "SetProjectId: Invalid fd";
+    return false;
+  }
+
+  struct fsxattr fsx = {};
+  if (Ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
+    return false;
+  }
+  fsx.fsx_projid = project_id;
+  if (Ioctl(fd.get(), FS_IOC_FSSETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSSETXATTR) failed: project_id=" << project_id;
+    return false;
+  }
+  return true;
+}
+
+bool DiskUsageUtilImpl::SetProjectInheritanceFlag(const base::ScopedFD& fd,
+                                                  bool enable,
+                                                  int* out_error) {
+  if (!fd.is_valid()) {
+    *out_error = EBADF;
+    LOG(ERROR) << "SetProjectInheritanceFlag: Invalid fd";
+    return false;
+  }
+
+  uint32_t flags = 0;
+  if (Ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_GETFLAGS) failed";
+    return false;
+  }
+
+  if (enable) {
+    flags |= FS_PROJINHERIT_FL;
+  } else {
+    flags &= ~FS_PROJINHERIT_FL;
+  }
+
+  if (Ioctl(fd.get(), FS_IOC_SETFLAGS, reinterpret_cast<void*>(&flags)) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_SETFLAGS) failed: flags=" << std::hex << flags;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace spaced

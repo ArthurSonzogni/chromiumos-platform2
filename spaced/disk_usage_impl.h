@@ -14,6 +14,7 @@
 
 #include <base/task/task_runner.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/brillo_export.h>
 
@@ -37,6 +38,12 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
                                      uint32_t gid) override;
   int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                            uint32_t project_id) override;
+  bool SetProjectId(const base::ScopedFD& fd,
+                    uint32_t project_id,
+                    int* out_error) override;
+  bool SetProjectInheritanceFlag(const base::ScopedFD& fd,
+                                 bool enable,
+                                 int* out_error) override;
 
  protected:
   // Runs statvfs() on a given path.
@@ -47,6 +54,9 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
                        const base::FilePath& device,
                        int id,
                        struct dqblk* dq);
+
+  // Runs ioctl() for the given request on the given fd.
+  virtual int Ioctl(int fd, uint32_t request, void* ptr);
 
   // Get backing device for a given file path.
   virtual base::FilePath GetDevice(const base::FilePath& path);

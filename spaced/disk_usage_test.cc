@@ -4,6 +4,7 @@
 
 #include <spaced/disk_usage_impl.h>
 
+#include <fcntl.h>
 #include <sys/quota.h>
 #include <sys/statvfs.h>
 
@@ -14,8 +15,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
+
+extern "C" {
+#include <linux/fs.h>
+}
 
 using testing::_;
 using testing::DoAll;
@@ -195,6 +201,39 @@ class DiskUsageQuotaMock : public DiskUsageUtilImpl {
     project_id_to_current_space_[project_id] = space;
   }
 
+  int Ioctl(int fd, uint32_t request, void* ptr) override {
+    switch (request) {
+      case FS_IOC_FSGETXATTR: {
+        auto iter = fd_to_project_id_.find(fd);
+        if (iter == fd_to_project_id_.end()) {
+          (reinterpret_cast<struct fsxattr*>(ptr))->fsx_projid = 0;
+          return 0;
+        }
+        (reinterpret_cast<struct fsxattr*>(ptr))->fsx_projid = iter->second;
+        return 0;
+      }
+      case FS_IOC_FSSETXATTR:
+        fd_to_project_id_[fd] =
+            (reinterpret_cast<struct fsxattr*>(ptr))->fsx_projid;
+        return 0;
+      case FS_IOC_GETFLAGS: {
+        auto iter = fd_to_ext_flags_.find(fd);
+        if (iter == fd_to_ext_flags_.end()) {
+          *(reinterpret_cast<int*>(ptr)) = 0;
+          return 0;
+        }
+        *(reinterpret_cast<int*>(ptr)) = iter->second;
+        return 0;
+      }
+      case FS_IOC_SETFLAGS:
+        fd_to_ext_flags_[fd] = *(reinterpret_cast<int*>(ptr));
+        return 0;
+      default:
+        LOG(ERROR) << "Unsupported request in ioctl: " << request;
+        return -1;
+    }
+  }
+
  protected:
   base::FilePath GetDevice(const base::FilePath& path) override {
     return home_device_;
@@ -228,6 +267,8 @@ class DiskUsageQuotaMock : public DiskUsageUtilImpl {
   std::map<uint32_t, uint64_t> uid_to_current_space_;
   std::map<uint32_t, uint64_t> gid_to_current_space_;
   std::map<uint32_t, uint64_t> project_id_to_current_space_;
+  std::map<int, int> fd_to_project_id_;
+  std::map<int, int> fd_to_ext_flags_;
 };
 
 TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMounted) {
@@ -264,6 +305,48 @@ TEST(DiskUsageUtilTest, QuotaSupported) {
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 11), -1);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 100), 30);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 101), -1);
+}
+
+TEST(DiskUsageUtilTest, SetProjectId) {
+  DiskUsageQuotaMock disk_usage_mock(base::FilePath("/dev/foo"));
+  const base::ScopedFD fd(open("/dev/null", O_RDONLY));
+  constexpr int kProjectId = 1003;
+
+  // Set the project ID.
+  int error = 0;
+  ASSERT_TRUE(disk_usage_mock.SetProjectId(fd, kProjectId, &error));
+
+  // Verify that the fd has the expected project ID.
+  struct fsxattr fsx_out = {};
+  ASSERT_EQ(disk_usage_mock.Ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx_out), 0);
+  EXPECT_EQ(fsx_out.fsx_projid, kProjectId);
+}
+
+TEST(DiskUsageUtilTest, SetProjectInheritanceFlag) {
+  DiskUsageQuotaMock disk_usage_mock(base::FilePath("/dev/foo"));
+  const base::ScopedFD fd(open("/dev/null", O_RDONLY));
+  constexpr int kOriginalFlags = FS_ENCRYPT_FL | FS_EXTENT_FL;
+  int old_flags = kOriginalFlags;
+
+  // Set FS_ENCRYPT_FL and FS_EXTENT_FL to the file.
+  ASSERT_EQ(disk_usage_mock.Ioctl(fd.get(), FS_IOC_SETFLAGS, &old_flags), 0);
+
+  // Set the project inheritance flag.
+  int error = 0;
+  ASSERT_TRUE(
+      disk_usage_mock.SetProjectInheritanceFlag(fd, true /* enable */, &error));
+
+  // Check that the flag is enabled and the original flags are preserved.
+  int flags = 0;
+  ASSERT_EQ(disk_usage_mock.Ioctl(fd.get(), FS_IOC_GETFLAGS, &flags), 0);
+  EXPECT_EQ(flags, kOriginalFlags | FS_PROJINHERIT_FL);
+
+  // Unset the project inheritance flag and check the flags.
+  ASSERT_TRUE(disk_usage_mock.SetProjectInheritanceFlag(fd, false /* enable */,
+                                                        &error));
+  flags = 0;
+  ASSERT_EQ(disk_usage_mock.Ioctl(fd.get(), FS_IOC_GETFLAGS, &flags), 0);
+  EXPECT_EQ(flags, kOriginalFlags);
 }
 
 }  // namespace spaced
