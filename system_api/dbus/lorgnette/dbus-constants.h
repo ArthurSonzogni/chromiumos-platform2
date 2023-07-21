@@ -14,6 +14,8 @@ const char kManagerServiceError[] = "org.chromium.lorgnette.Error";
 // Methods.
 const char kListScannersMethod[] = "ListScanners";
 const char kGetScannerCapabilitiesMethod[] = "GetScannerCapabilities";
+const char kOpenScannerMethod[] = "OpenScanner";
+const char kCloseScannerMethod[] = "CloseScanner";
 const char kScanImageMethod[] = "ScanImage";
 const char kStartScanMethod[] = "StartScan";
 const char kCancelScanMethod[] = "CancelScan";

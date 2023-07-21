@@ -172,6 +172,80 @@ enum ScanFailureMode {
   SCAN_FAILURE_MODE_IO_ERROR = 6;
 }
 
+// The result of a requested operation.  This captures both the potential SANE
+// errors and other internal errors.
+enum OperationResult {
+  // An unknown or generic failure occurred.
+  OPERATION_RESULT_UNKNOWN = 0;
+
+  // Operation succeeded.
+  OPERATION_RESULT_SUCCESS = 1;
+
+  // The operation is not supported.
+  OPERATION_RESULT_UNSUPPORTED = 2;
+
+  // The operation was cancelled.
+  OPERATION_RESULT_CANCELLED = 3;
+
+  // The device is busy.
+  OPERATION_RESULT_DEVICE_BUSY = 4;
+
+  // Data or argument is invalid.
+  OPERATION_RESULT_INVALID = 5;
+
+  // Value is the wrong type for the underlying option.
+  OPERATION_RESULT_WRONG_TYPE = 6;
+
+  // No more data is available.
+  OPERATION_RESULT_EOF = 7;
+
+  // The document feeder is jammed.
+  OPERATION_RESULT_ADF_JAMMED = 8;
+
+  // The document feeder is empty.
+  OPERATION_RESULT_ADF_EMPTY = 9;
+
+  // The flatbed cover is open.
+  OPERATION_RESULT_COVER_OPEN = 10;
+
+  // An error occurred while communicating with the device.
+  OPERATION_RESULT_IO_ERROR = 11;
+
+  // The device requires authentication.
+  OPERATION_RESULT_ACCESS_DENIED = 12;
+
+  // Not enough memory was available to complete the operation.
+  OPERATION_RESULT_NO_MEMORY = 13;
+
+  // The device was not reachable.
+  OPERATION_RESULT_UNREACHABLE = 14;
+
+  // The requested handle was not found.
+  OPERATION_RESULT_MISSING = 15;
+
+  // An internal error occurred.
+  OPERATION_RESULT_INTERNAL_ERROR = 16;
+}
+
+// Identifier of a scanner that can be passed to OpenScanner.  ScannerId values
+// are returned in ScannerInfo during discovery.
+message ScannerId {
+  // The SANE scanner string, e.g. airscan:escl:Scanner:https://...
+  string connection_string = 1;
+}
+
+// Unguessable token referring to an open scanner handle.  Scanner handles
+// are returned by OpenScanner and are passed to other functions that operate
+// on an open scanner.
+message ScannerHandle {
+  string token = 1;
+}
+
+// The available scanner options and their current values.
+message ScannerConfig {
+  ScannerHandle scanner = 1;
+}
+
 // Information passed to a StartScan D-Bus request.
 // Used by lorgnette to initialize a new scan job.
 message StartScanRequest {
@@ -360,4 +434,45 @@ message StopScannerDiscoveryResponse {
   // found or an error happened.  No further signals will be sent for the
   // stopped session even if this returns false.
   bool stopped = 1;
+}
+
+// Input parameter for the OpenScanner d-bus method.
+message OpenScannerRequest {
+  // Identifier of the scanner to be opened.  This should have been returned
+  // from a previous ScannerListChanged signal.
+  ScannerId scanner_id = 1;
+
+  // Identifier of the client opening the scanner.  This is used to ensure that
+  // the same scanner is not opened for two clients simultaneously.
+  string client_id = 2;
+}
+
+// Response from the OpenScanner d-bus method.
+message OpenScannerResponse {
+  // Identifier of the scanner passed to OpenScanner.
+  ScannerId scanner_id = 1;
+
+  // Result of opening the scanner.
+  OperationResult result = 2;
+
+  // If result is OPERATION_RESULT_SUCCESS, the current configuration of the
+  // scanner, including a handle to be used for future operations.
+  optional ScannerConfig config = 3;
+}
+
+// Input parameter for the CloseScanner d-bus method.
+message CloseScannerRequest {
+  // Scanner to be closed.  Must have been returned from a previous call to
+  // OpenScanner.
+  ScannerHandle scanner = 1;
+}
+
+// Response from the CloseScanner d-bus method.
+message CloseScannerResponse {
+  // Scanner handle that was passed to CloseScanner.
+  ScannerHandle scanner = 1;
+
+  // The result of closing the handle.  The handle should be assumed to be no
+  // longer valid even if the result is not OPERATION_RESULT_SUCCESS.
+  OperationResult result = 2;
 }
