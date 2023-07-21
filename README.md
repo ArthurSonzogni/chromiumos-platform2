@@ -68,6 +68,7 @@ copies.
 | [federated](./federated/) | Federated computation service (Federated Analytics & Federated Learning) |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
 | [flex_bluetooth](./flex_bluetooth/) | Updates Floss overrides for ChromeOS Flex |
+| [flex_hwis](./flex_hwis/) | Utility for collecting hardware information and sending it to a remote API |
 | [flex_id](./flex_id/) | Utility for generating flex_id, a machine identifier for devices without VPD info |
 | [foomatic_shell](./foomatic_shell/) | Simple shell used by the foomatic-rip package |
 | [fusebox](./fusebox/) | FuseBox service |
