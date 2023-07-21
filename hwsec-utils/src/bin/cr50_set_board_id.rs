@@ -54,16 +54,16 @@ fn main() {
         }
         rlz = "0xffffffff";
         0x3f80
-    } else if phase == "whitelabel_dev_flags" {
+    } else if phase == "whitelabel_dev_flags" || phase == "two_stages_dev_flags" {
         if GSC_NAME == "cr50" {
             exit_if_not_support_partial_board_id(&mut real_ctx);
         }
         rlz = "0xffffffff";
         // Per discussion in b/179626571
         0x3f7f
-    } else if phase == "whitelabel_pvt" {
+    } else if phase == "whitelabel_pvt" || phase == "two_stages_pvt" {
         0x3f80
-    } else if phase == "whitelabel_dev" {
+    } else if phase == "whitelabel_dev" || phase == "two_stages_dev" {
         // Per discussion in b/179626571
         0x3f7f
     } else if phase == "unknown" {
