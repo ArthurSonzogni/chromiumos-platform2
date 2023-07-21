@@ -42,7 +42,7 @@ class FeatureCommand {
   // of an abstract class. See PlatformFeature class definition.
   virtual ~FeatureCommand() = default;
 
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   virtual bool Execute() = 0;
 
  private:
@@ -120,6 +120,12 @@ class PlatformFeature {
 
   // Execute a sequence of commands to enable a feature
   bool Execute() const;
+
+  // Get the names of the exec commands. Used for testing.
+  std::vector<std::string> ExecCommandNamesForTesting() const;
+
+  // Get the names of the support check commands. Used for testing.
+  std::vector<std::string> SupportCheckCommandNamesForTesting() const;
 
  private:
   std::vector<std::unique_ptr<FeatureCommand>> exec_cmds_;

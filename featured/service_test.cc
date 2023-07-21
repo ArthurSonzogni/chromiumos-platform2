@@ -23,6 +23,7 @@
 #include "featured/store_interface.h"
 
 using ::testing::_;
+using ::testing::ElementsAre;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrictMock;
@@ -328,6 +329,30 @@ reply_serial: 123
 
   HandleSeedFetched(&method_call,
                     base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+TEST(JsonParser, PlatformFeaturesJsonParses) {
+  const char kFeatureFileName[] = "share/platform-features.json";
+  base::FilePath platform_features =
+      base::FilePath(getenv("SRC")).Append(kFeatureFileName);
+
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(platform_features, &contents));
+
+  JsonFeatureParser parser;
+  ASSERT_TRUE(parser.ParseFileContents(contents));
+
+  const FeatureParserBase::FeatureMap* map = parser.GetFeatureMap();
+  auto it = map->find("CrOSLateBootTestFeature");
+  ASSERT_NE(it, map->end());
+  EXPECT_EQ(it->second.name(), "CrOSLateBootTestFeature");
+
+  std::vector<std::string> support_cmds =
+      it->second.SupportCheckCommandNamesForTesting();
+  EXPECT_THAT(support_cmds, ElementsAre("FileExists"));
+
+  std::vector<std::string> exec_cmds = it->second.ExecCommandNamesForTesting();
+  EXPECT_THAT(exec_cmds, ElementsAre("WriteFile"));
 }
 
 }  // namespace featured

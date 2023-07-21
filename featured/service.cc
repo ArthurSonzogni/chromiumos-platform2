@@ -130,6 +130,23 @@ bool PlatformFeature::IsSupported() const {
   return true;
 }
 
+std::vector<std::string> PlatformFeature::ExecCommandNamesForTesting() const {
+  std::vector<std::string> out;
+  for (const auto& cmd : exec_cmds_) {
+    out.push_back(cmd->name());
+  }
+  return out;
+}
+
+std::vector<std::string> PlatformFeature::SupportCheckCommandNamesForTesting()
+    const {
+  std::vector<std::string> out;
+  for (const auto& cmd : support_check_cmds_) {
+    out.push_back(cmd->name());
+  }
+  return out;
+}
+
 bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
   if (features_parsed_)
     return true;
