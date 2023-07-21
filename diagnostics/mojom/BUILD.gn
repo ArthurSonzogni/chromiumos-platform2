@@ -10,6 +10,7 @@ group("all") {
     ":cros_healthd-client",
     "//diagnostics/mojom/external:network_diagnostics_mojo_bindings",
     "//diagnostics/mojom/external:network_health_mojo_bindings",
+    "//diagnostics/mojom/external:public_dependencies",
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
 }
@@ -25,6 +26,7 @@ generate_pkg_config("cros_healthd-client") {
     "-lnetwork_diagnostics_mojo_bindings",
     "-lnetwork_health_mojo_bindings",
     "-lcros_healthd_mojo_bindings",
+    "-lpublic_dependencies",
   ]
 
   # This flag will faltten the include space. If need to install files directly,
