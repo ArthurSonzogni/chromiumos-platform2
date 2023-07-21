@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
@@ -60,7 +61,7 @@ static bool ReadFileRelativeToDirFD(const int dir_fd,
     return false;
   }
 
-  absl::Cleanup close_file = [=] {
+  absl::Cleanup close_fd = [=] {
     if (close(fd) == -1)
       PLOG(ERROR) << "Failed to close file " << filename;
   };
@@ -70,6 +71,13 @@ static bool ReadFileRelativeToDirFD(const int dir_fd,
     PLOG(ERROR) << "Failed to obtain FD for " << filename << " file";
     return false;
   }
+
+  // If fdopen succeeds, replaces close() with fclose() for cleanup.
+  std::move(close_fd).Cancel();
+  absl::Cleanup close_fs = [=] {
+    if (fclose(fs) == -1)
+      PLOG(ERROR) << "Failed to close stream " << filename;
+  };
 
   if (!base::ReadStreamToString(fs, content_ptr)) {
     LOG(ERROR) << "ReadStreamToString failed on " << filename;
