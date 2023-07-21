@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":flex_hwis_tool",
+    ":install_tmpfiles_config",
     ":libflex_hwis",
   ]
   if (use.test) {
@@ -31,6 +32,11 @@ executable("flex_hwis_tool") {
   install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libflex_hwis" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "init/tmpfiles.d/flex-hwis.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.test) {
