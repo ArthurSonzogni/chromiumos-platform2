@@ -465,13 +465,9 @@
         and triggers a reboot), except it is called due to
         the powerwash remote command. Verifies the remote command,
         assuming it is signed with the SHA256_RSA algorithm.
-
-        TODO(b/226330226): Taking |method_call| to ensure
-        backwards compatibility. Revert the method to <arg /> instead of raw,
-        once the clients are migrated back to a single argument call.
     -->
     <method name="StartRemoteDeviceWipe">
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
+      <arg type="ay" name="signed_command" direction="in" />
     </method>
 
     <!--

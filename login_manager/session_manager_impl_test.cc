@@ -2215,92 +2215,36 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
-class StartRemoteDeviceWipeTest : public SessionManagerImplTest,
-                                  public testing::WithParamInterface<
-                                      em::PolicyFetchRequest::SignatureType> {
- public:
-  std::unique_ptr<dbus::MethodCall> ConstructMethodCall() {
-    constexpr uint32_t kSerial = 123;
-    auto method_call = std::make_unique<dbus::MethodCall>(
-        login_manager::kSessionManagerInterface,
-        login_manager::kSessionManagerStartRemoteDeviceWipe);
-    method_call->SetSerial(kSerial);
-
-    return method_call;
-  }
-};
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NoParameterShouldFail) {
-  ExpectDeviceRestart(0);
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_EmptyArrayShouldFail) {
-  ExpectDeviceRestart(0);
-  std::vector<uint8_t> in_signed_command;
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NotArrayShouldFail) {
-  ExpectDeviceRestart(0);
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  writer.AppendByte(1);
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest,
+TEST_F(SessionManagerImplTest,
        StartRemoteDeviceWipe_CorrectlySignedShouldPowerwash) {
   ExpectDeviceRestart(1);
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
   EXPECT_CALL(
       *device_policy_service_,
       ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
       .WillOnce(Return(true));
 
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, signed_command));
 
-  EXPECT_TRUE(sender.Get()->GetErrorName().empty());
+  EXPECT_FALSE(error.get());
 }
 
-TEST_F(StartRemoteDeviceWipeTest,
+TEST_F(SessionManagerImplTest,
        StartRemoteDeviceWipe_IncorrectlySignedShouldFail) {
   ExpectDeviceRestart(0);
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> signed_command;
+  signed_command.push_back(1);
   EXPECT_CALL(
       *device_policy_service_,
       ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
       .WillOnce(Return(false));
 
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+  EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, signed_command));
 
-  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
+  EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {

@@ -290,12 +290,9 @@ class SessionManagerImpl
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
 
-  // TODO(b/226330226): Taking |method_call| to ensure backwards compatibility.
-  // Revert the method to <arg /> instead of raw, once the clients are
-  // migrated back to a single argument call.
-  void StartRemoteDeviceWipe(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender sender) override;
+  bool StartRemoteDeviceWipe(
+      brillo::ErrorPtr* error,
+      const std::vector<uint8_t>& signed_command) override;
 
   void ClearForcedReEnrollmentVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)

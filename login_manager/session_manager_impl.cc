@@ -1148,44 +1148,20 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   return true;
 }
 
-void SessionManagerImpl::StartRemoteDeviceWipe(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender sender) {
-  dbus::MessageReader reader(method_call);
-
-  const uint8_t* output_bytes = nullptr;
-  size_t length = 0;
-
-  if (reader.GetDataSignature() != "ay" ||
-      !reader.PopArrayOfBytes(&output_bytes, &length) || length <= 0) {
-    std::unique_ptr<dbus::ErrorResponse> error_response =
-        dbus::ErrorResponse::FromMethodCall(
-            method_call, dbus_error::kInvalidParameter,
-            "First parameter is required and should be a serialized remote "
-            "command.");
-    std::move(sender).Run(std::move(error_response));
-    return;
-  }
-
-  std::vector<uint8_t> signed_command(&output_bytes[0], &output_bytes[length]);
-
+bool SessionManagerImpl::StartRemoteDeviceWipe(
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& signed_command) {
   if (!device_policy_->ValidateRemoteDeviceWipeCommand(
           signed_command,
           enterprise_management::PolicyFetchRequest_SignatureType_SHA256_RSA)) {
-    brillo::ErrorPtr error =
-        CreateError(dbus_error::kInvalidArgs,
-                    "Remote wipe command validation failed, aborting.");
-    std::unique_ptr<dbus::Response> response =
-        brillo::dbus_utils::GetDBusError(method_call, error.get());
-    std::move(sender).Run(std::move(response));
-    return;
+    *error = CreateError(dbus_error::kInvalidParameter,
+                         "Invalid remote device wipe command signature type.");
+
+    return false;
   }
 
   InitiateDeviceWipe("remote_wipe_request");
 
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  std::move(sender).Run(std::move(response));
+  return true;
 }
 
 void SessionManagerImpl::ClearForcedReEnrollmentVpd(
