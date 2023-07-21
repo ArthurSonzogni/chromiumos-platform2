@@ -84,8 +84,6 @@ class DiagActions final {
   bool ActionRunFingerprintRoutine();
   bool ActionRunFingerprintAliveRoutine();
   bool ActionRunPrivacyScreenRoutine(bool target_state);
-  bool ActionRunLedRoutine(ash::cros_healthd::mojom::DEPRECATED_LedName name,
-                           ash::cros_healthd::mojom::DEPRECATED_LedColor color);
   bool ActionRunEmmcLifetimeRoutine();
   bool ActionRunAudioSetVolumeRoutine(uint64_t node_id,
                                       uint8_t volume,
