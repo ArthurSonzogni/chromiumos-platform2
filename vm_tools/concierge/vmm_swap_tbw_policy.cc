@@ -83,6 +83,7 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
     LOG(INFO) << "Old tbw history file is found. Recreate a new history file.";
     base::File old_file = base::File(
         old_file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+    base::SetCloseOnExec(old_file.GetPlatformFile());
     // Remove the old file whether it succeeds to load history or not.
     brillo::DeleteFile(old_file_path);
     if (old_file.IsValid()) {
@@ -102,12 +103,14 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
                            base::File::FLAG_WRITE);
   if (file.IsValid()) {
     LOG(INFO) << "Tbw history file is created at: " << path;
+    base::SetCloseOnExec(file.GetPlatformFile());
     history_file_ = std::move(file);
   } else if (file.error_details() == base::File::FILE_ERROR_EXISTS) {
     LOG(INFO) << "Load tbw history from: " << path;
     file = base::File(history_file_path_, base::File::FLAG_OPEN |
                                               base::File::FLAG_READ |
                                               base::File::FLAG_WRITE);
+    base::SetCloseOnExec(file.GetPlatformFile());
     if (LoadFromFile(file, now)) {
       history_file_ = std::move(file);
       // Resume reporting only when the previous tbw policy has started
@@ -356,6 +359,7 @@ bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
   history_file_ = base::File(tmp_file_path, base::File::FLAG_CREATE_ALWAYS |
                                                 base::File::FLAG_READ |
                                                 base::File::FLAG_WRITE);
+  base::SetCloseOnExec(history_file_->GetPlatformFile());
   if (!history_file_->IsValid()) {
     LOG(ERROR) << "Failed to create new tbw history file: "
                << history_file_->ErrorToString(history_file_->error_details());
