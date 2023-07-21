@@ -51,6 +51,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         BindingsType::Client(OPTS),
     ),
     (
+        "org_chromium_printscanmgr",
+        "printscanmgr/dbus_bindings/org.chromium.printscanmgr.xml",
+        BindingsType::Client(OPTS),
+    ),
+    (
         "org_chromium_sessionmanagerinterface",
         "login_manager/dbus_bindings/org.chromium.SessionManagerInterface.xml",
         BindingsType::Client(OPTS),
