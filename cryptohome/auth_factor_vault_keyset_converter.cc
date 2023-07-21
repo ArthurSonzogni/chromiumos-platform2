@@ -163,9 +163,9 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
         out_label_to_auth_factor,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor_backup_vks) {
-  out_label_to_auth_factor.clear();
-  out_label_to_auth_factor_backup_vks.clear();
-  migrated_labels.clear();
+  DCHECK(out_label_to_auth_factor.empty());
+  DCHECK(out_label_to_auth_factor_backup_vks.empty());
+  DCHECK(migrated_labels.empty());
 
   std::vector<int> keyset_indices;
   if (!keyset_management_->GetVaultKeysets(obfuscated_username,

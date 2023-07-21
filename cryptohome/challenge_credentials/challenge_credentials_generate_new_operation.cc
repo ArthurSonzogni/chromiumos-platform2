@@ -44,6 +44,7 @@ constexpr int kSecretSizeBytes = 32;
 std::optional<structure::ChallengeSignatureAlgorithm>
 ChooseSaltSignatureAlgorithm(
     const structure::ChallengePublicKeyInfo& public_key_info) {
+  DCHECK(public_key_info.signature_algorithm.size());
   std::optional<structure::ChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
@@ -173,7 +174,8 @@ CryptoStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
         .Wrap(MakeStatus<CryptohomeTPMError>(
             std::move(salt_random_bytes).err_status()));
   }
-  CHECK_EQ(kChallengeCredentialsSaltRandomByteCount, salt_random_bytes->size());
+  DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount,
+            salt_random_bytes->size());
   // IMPORTANT: Make sure the salt is prefixed with a constant. See the comment
   // on GetChallengeCredentialsSaltConstantPrefix() for details.
   salt_ = CombineBlobs(
@@ -183,7 +185,7 @@ CryptoStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
 
 CryptoStatus
 ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
-  CHECK(!salt_.empty());
+  DCHECK(!salt_.empty());
   std::optional<structure::ChallengeSignatureAlgorithm>
       chosen_salt_signature_algorithm =
           ChooseSaltSignatureAlgorithm(public_key_info_);

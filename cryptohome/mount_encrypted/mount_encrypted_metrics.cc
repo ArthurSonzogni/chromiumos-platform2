@@ -30,19 +30,19 @@ MountEncryptedMetrics::MountEncryptedMetrics(const std::string& output_file) {
 
 // static
 void MountEncryptedMetrics::Initialize(const std::string& output_file) {
-  CHECK(!g_metrics);
+  DCHECK_EQ(g_metrics, nullptr);
   g_metrics = new MountEncryptedMetrics(output_file);
 }
 
 // static
 MountEncryptedMetrics* MountEncryptedMetrics::Get() {
-  CHECK(g_metrics);
+  DCHECK_NE(g_metrics, nullptr);
   return g_metrics;
 }
 
 // static
 void MountEncryptedMetrics::Reset() {
-  CHECK(g_metrics);
+  DCHECK_NE(g_metrics, nullptr);
   delete g_metrics;
   g_metrics = nullptr;
 }

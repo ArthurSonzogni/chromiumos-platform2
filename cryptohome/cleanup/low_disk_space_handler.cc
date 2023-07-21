@@ -44,10 +44,7 @@ LowDiskSpaceHandler::LowDiskSpaceHandler(
       update_user_activity_timestamp_period_(kUpdateUserActivityPeriod) {}
 
 LowDiskSpaceHandler::~LowDiskSpaceHandler() {
-  if (!stopped_) {
-    LOG(WARNING)
-        << "Low disk space handler was destroyed without being stopped";
-  }
+  DCHECK(stopped_);
 }
 
 void LowDiskSpaceHandler::Stop() {

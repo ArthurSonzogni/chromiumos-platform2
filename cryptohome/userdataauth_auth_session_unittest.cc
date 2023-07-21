@@ -374,6 +374,35 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
         .WillByDefault(Return(true));
   }
 
+  void ExpectVaultKeyset(int num_of_keysets) {
+    // Assert parameter num_of_calls cannot be negative.
+    DCHECK_GT(num_of_keysets, 0);
+
+    // Setup expectations for GetVaultKeyset to return an initialized
+    // VaultKeyset Construct the vault keyset with credentials for
+    // AuthBlockType::kTpmNotBoundToPcrAuthBlockState.
+    const brillo::SecureBlob blob16(16, 'A');
+    brillo::SecureBlob passkey(20, 'A');
+    brillo::SecureBlob system_salt_ =
+        brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
+
+    SerializedVaultKeyset serialized;
+    serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+    serialized.set_salt(system_salt_.data(), system_salt_.size());
+    serialized.set_le_chaps_iv(blob16.data(), blob16.size());
+    serialized.set_le_label(0);
+    serialized.set_le_fek_iv(blob16.data(), blob16.size());
+
+    EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+        .Times(num_of_keysets)
+        .WillRepeatedly([=](const ObfuscatedUsername& obfuscated_username,
+                            const std::string& key_label) {
+          auto vk = std::make_unique<VaultKeyset>();
+          vk->InitializeFromSerialized(serialized);
+          return vk;
+        });
+  }
+
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 

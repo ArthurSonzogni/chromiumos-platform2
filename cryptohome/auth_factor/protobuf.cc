@@ -169,18 +169,12 @@ bool AuthFactorPropertiesFromProto(
   // metadata. Returns false if this fails.
   switch (auth_factor.type()) {
     case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
-      if (!auth_factor.has_password_metadata()) {
-        LOG(ERROR) << "Password auth factor does not have password metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_password_metadata());
       GetPasswordMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPassword;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_PIN:
-      if (!auth_factor.has_pin_metadata()) {
-        LOG(ERROR) << "PIN auth factor does not have PIN metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_pin_metadata());
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
       if (features.IsFeatureEnabled(Features::kModernPin) &&
@@ -192,41 +186,28 @@ bool AuthFactorPropertiesFromProto(
       }
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
-      if (!auth_factor.has_cryptohome_recovery_metadata()) {
-        LOG(ERROR) << "Recovery auth factor does not have recovery metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_cryptohome_recovery_metadata());
       GetCryptohomeRecoveryMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kCryptohomeRecovery;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_KIOSK:
-      if (!auth_factor.has_kiosk_metadata()) {
-        LOG(ERROR) << "Kiosk auth factor does not have kiosk metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_kiosk_metadata());
       GetKioskMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kKiosk;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
-      if (!auth_factor.has_smart_card_metadata()) {
-        LOG(ERROR)
-            << "Smart card auth factor does not have smart card metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_smart_card_metadata());
       GetSmartCardMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kSmartCard;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT:
+      DCHECK(auth_factor.has_legacy_fingerprint_metadata());
       // Legacy fingerprint factor has empty metadata, skip the metadata
       // extraction.
       out_auth_factor_type = AuthFactorType::kLegacyFingerprint;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT:
-      if (!auth_factor.has_fingerprint_metadata()) {
-        LOG(ERROR)
-            << "Fingerprint auth factor does not have fingerprint metadata.";
-        return false;
-      }
+      DCHECK(auth_factor.has_fingerprint_metadata());
       GetFingerprintMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kFingerprint;
       break;

@@ -115,7 +115,7 @@ base::FilePath VaultKeysetPath(const ObfuscatedUsername& obfuscated,
 
 base::FilePath UserSecretStashPath(
     const ObfuscatedUsername& obfuscated_username, int slot) {
-  CHECK_GE(slot, 0);
+  DCHECK_GE(slot, 0);
   return UserPath(obfuscated_username)
       .Append(kUserSecretStashDir)
       .Append(kUserSecretStashFileBase)
@@ -131,7 +131,7 @@ base::FilePath AuthFactorPath(const ObfuscatedUsername& obfuscated_username,
                               const std::string& auth_factor_type_string,
                               const std::string& auth_factor_label) {
   // The caller must make sure the label was sanitized.
-  CHECK(IsValidAuthFactorLabel(auth_factor_label));
+  DCHECK(IsValidAuthFactorLabel(auth_factor_label));
   return UserPath(obfuscated_username)
       .Append(kAuthFactorsDir)
       .Append(auth_factor_type_string)

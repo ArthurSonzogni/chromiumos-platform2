@@ -360,7 +360,7 @@ void ReportTimerDuration(
   }
   // Check that timer_type is a valid timer.
   TimerType timer_type = auth_session_performance_timer->type;
-  CHECK_LT(timer_type, kNumTimerTypes);
+  DCHECK_LT(timer_type, kNumTimerTypes);
 
   // Compute the name, parameterizing by AuthBlockType if needed.
   std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
@@ -386,7 +386,7 @@ void ReportTimerDuration(const TimerType& timer_type,
     return;
   }
   // Check that timer_type is a valid timer.
-  CHECK_LT(timer_type, kNumTimerTypes);
+  DCHECK_LT(timer_type, kNumTimerTypes);
 
   std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
   metric_name.append(parameter_string);

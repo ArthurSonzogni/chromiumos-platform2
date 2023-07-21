@@ -68,8 +68,8 @@ std::string SerializeSignatures(const std::vector<Signature> signatures) {
 // splitting point between them is where paths to leaves |index| and |size-1|
 // diverge. Returns lengths of the bottom proof parts.
 int CalculateInnerProofSize(int index, int size) {
-  CHECK_GT(index, -1);
-  CHECK_GT(size, 0);
+  DCHECK_GT(index, -1);
+  DCHECK_GT(size, 0);
   int xor_number = index ^ (size - 1);
   int bits_number = 0;
   while (xor_number > 0) {

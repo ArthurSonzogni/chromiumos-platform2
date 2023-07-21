@@ -91,7 +91,7 @@ void BuildFscryptKeySpec(const KeyReference& key_reference,
   switch (key_reference.policy_version) {
     case FSCRYPT_POLICY_V1:
       key_spec->type = FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR;
-      CHECK_EQ(FSCRYPT_KEY_DESCRIPTOR_SIZE, key_reference.reference.size());
+      DCHECK_EQ(FSCRYPT_KEY_DESCRIPTOR_SIZE, key_reference.reference.size());
       memcpy(key_spec->u.descriptor, key_reference.reference.char_data(),
              key_reference.reference.size());
       break;
@@ -269,8 +269,8 @@ bool SetDirectoryKey(const base::FilePath& dir,
 
   switch (key_reference.policy_version) {
     case FSCRYPT_POLICY_V1:
-      CHECK_EQ(static_cast<size_t>(FSCRYPT_KEY_DESCRIPTOR_SIZE),
-               key_reference.reference.size());
+      DCHECK_EQ(static_cast<size_t>(FSCRYPT_KEY_DESCRIPTOR_SIZE),
+                key_reference.reference.size());
       policy.v1.version = FSCRYPT_POLICY_V1;
       policy.v1.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
       policy.v1.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
@@ -279,8 +279,8 @@ bool SetDirectoryKey(const base::FilePath& dir,
              key_reference.reference.data(), key_reference.reference.size());
       break;
     case FSCRYPT_POLICY_V2:
-      CHECK_EQ(static_cast<size_t>(FSCRYPT_KEY_IDENTIFIER_SIZE),
-               key_reference.reference.size());
+      DCHECK_EQ(static_cast<size_t>(FSCRYPT_KEY_IDENTIFIER_SIZE),
+                key_reference.reference.size());
       policy.v2.version = FSCRYPT_POLICY_V2;
       policy.v2.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
       policy.v2.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
