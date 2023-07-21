@@ -5,9 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_REPLIERS_LED_LIT_UP_ROUTINE_REPLIER_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_REPLIERS_LED_LIT_UP_ROUTINE_REPLIER_H_
 
+#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-
-#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 

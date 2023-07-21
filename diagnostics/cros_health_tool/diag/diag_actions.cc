@@ -21,13 +21,13 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h>
+#include <diagnostics/mojom/public/nullable_primitives.mojom.h>
 #include <mojo/service_constants.h>
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 

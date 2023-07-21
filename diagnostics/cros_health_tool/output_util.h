@@ -12,12 +12,11 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-
-#include "diagnostics/mojom/external/network_health_types.mojom.h"
-#include "diagnostics/mojom/external/network_types.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include <diagnostics/mojom/external/network_health_types.mojom.h>
+#include <diagnostics/mojom/external/network_types.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_exception.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 
 namespace diagnostics {
 

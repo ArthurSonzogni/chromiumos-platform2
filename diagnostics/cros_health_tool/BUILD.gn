@@ -4,6 +4,7 @@
 
 pkg_config("cros_health_tool_pkg_deps") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
     "libmojo",
@@ -18,6 +19,7 @@ executable("cros-health-tool") {
     "output_util.cc",
   ]
   configs += [ ":cros_health_tool_pkg_deps" ]
+  assert_no_deps = [ "//diagnostics/mojom/*" ]
   deps = [
     "diag:libdiag",
     "event:libevent",

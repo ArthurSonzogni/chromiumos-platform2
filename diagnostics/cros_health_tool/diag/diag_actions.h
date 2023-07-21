@@ -13,9 +13,8 @@
 
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
-
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

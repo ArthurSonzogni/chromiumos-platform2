@@ -9,10 +9,10 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
+#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
-#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 

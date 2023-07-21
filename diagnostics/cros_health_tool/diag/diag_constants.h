@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_DIAG_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_DIAG_CONSTANTS_H_
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include <diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h>
 
 namespace diagnostics {
 
