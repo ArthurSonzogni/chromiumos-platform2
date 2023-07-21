@@ -26,10 +26,6 @@ use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::files::increment_file_counter;
-use crate::files::open_attempts_file;
-use crate::files::open_hiber_fails_file;
-use crate::files::open_resume_failures_file;
 use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateError;
 
@@ -275,21 +271,6 @@ fn metrics_send_enum_sample(sample: &MetricsSample) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn log_hibernate_attempt() -> Result<()> {
-    let mut f = open_attempts_file()?;
-    increment_file_counter(&mut f)
-}
-
-pub fn log_hibernate_failure() -> Result<()> {
-    let mut f = open_hiber_fails_file()?;
-    increment_file_counter(&mut f)
-}
-
-pub fn log_resume_failure() -> Result<()> {
-    let mut f = open_resume_failures_file()?;
-    increment_file_counter(&mut f)
 }
 
 pub fn read_and_send_metrics() {

@@ -38,7 +38,6 @@ use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
 use crate::hiberutil::TimestampFile;
-use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
 use crate::metrics::DurationMetricUnit;
 use crate::metrics::HibernateEvent;
@@ -108,10 +107,6 @@ impl SuspendConductor {
     /// after the system has resumed from a successful hibernation.
     fn hibernate_inner(&mut self) -> Result<()> {
         let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
-
-        if let Err(e) = log_hibernate_attempt() {
-            warn!("Failed to log hibernate attempt: \n {}", e);
-        }
 
         if !self.volume_manager.hiberimage_exists() {
             Self::log_suspend_abort(SuspendAbortReason::NoHiberimage);

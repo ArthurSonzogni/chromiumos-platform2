@@ -7,15 +7,12 @@
 use getopts::Options;
 use getopts::{self};
 use hiberman::cookie::HibernateCookieValue;
-use hiberman::metrics::log_hibernate_failure;
-use hiberman::metrics::log_resume_failure;
 use hiberman::AbortResumeOptions;
 use hiberman::HibernateOptions;
 use hiberman::ResumeInitOptions;
 use hiberman::ResumeOptions;
 use hiberman::{self};
 use log::error;
-use log::warn;
 
 fn print_usage(message: &str, error: bool) {
     if error {
@@ -187,9 +184,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     };
 
     if let Err(e) = hiberman::hibernate(options) {
-        if let Err(e) = log_hibernate_failure() {
-            warn!("Failed to log hibernate failure: {}", e);
-        }
         error!("Failed to hibernate: {:?}", e);
         return Err(());
     }
@@ -333,9 +327,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     };
 
     if let Err(e) = hiberman::resume(options) {
-        if let Err(e) = log_resume_failure() {
-            warn!("Failed to log resume: {}", e);
-        }
         error!("Failed to resume: {:#?}", e);
         return Err(());
     }
