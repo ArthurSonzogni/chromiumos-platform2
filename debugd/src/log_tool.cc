@@ -317,6 +317,8 @@ const std::array kCommandLogs {
   Log{kCommand, "lsmod", "lsmod"},
   Log{kCommand, "lsusb", "lsusb -tvv"},
   Log{kCommand, "lsusb_verbose", "lsusb --verbose", kRoot, kRoot},
+  Log{kFile, "ltr_show", "/sys/kernel/debug/pmc_core/ltr_show",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "lvs", "lvs --all --readonly --reportformat json -o lv_all",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB */, LogTool::Encoding::kUtf8, true},
   Log{kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
@@ -332,7 +334,12 @@ const std::array kCommandLogs {
   Log{kFile, "nvmap_iovmm", "/sys/kernel/debug/nvmap/iovmm/allocations",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot},
+  Log{kFile, "package_cstate_show", "/sys/kernel/debug/pmc_core/"
+    "package_cstate_show", SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "pagetypeinfo", "/proc/pagetypeinfo", kRoot},
+  Log{kFile, "pch_ip_power_gating_status", "/sys/kernel/debug/pmc_core/"
+    "pch_ip_power_gating_status",
+     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "pchg_info", "/usr/share/userfeedback/scripts/pchg_info",
     kRoot, kRoot},
   Log{kFile, "platform_identity_customization_id",
@@ -361,6 +368,13 @@ const std::array kCommandLogs {
   Log{kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
   Log{kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
   Log{kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
+  Log{kFile, "substate_live_status_registers", "/sys/kernel/debug/pmc_core/"
+    "substate_live_status_registers",
+     SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kFile, "substate_residencies", "/sys/kernel/debug/pmc_core/"
+    "substate_residencies", SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kFile, "substate_status_registers", "/sys/kernel/debug/pmc_core/"
+    "substate_status_registers", SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "swap_info",
     "dbus-send --system --print-reply --fixed"
     " --dest=org.chromium.SwapManagement /org/chromium/SwapManagement"

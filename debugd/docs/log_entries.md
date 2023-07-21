@@ -379,6 +379,11 @@ Lists USB devices. Contains output for `lsusb` and `lsusb -t` for topology.
 Verbose output of the lsusb tool. Provides more detailed information including
 decoded common descriptors of all currently enumerated USB devices.
 
+## ltr_show
+
+[Latency Tolerance Reporting] value of each external components in the
+[Intel PCH (Platform Controller Hub)].
+
 ## lvs
 
 Information about LVM logical volumes.
@@ -426,7 +431,16 @@ it means.
 
 ## oemdata
 
+## package_cstate_show
+
+Each of [Package Cstate] residencies timer count value.
+
 ## pagetypeinfo
+
+## pch_ip_power_gating_status
+
+Whether the Intel proprietary components within the
+[Intel PCH (Platform Controller Hub)] is power gated.
 
 ## pchg_info
 
@@ -508,6 +522,23 @@ explanation of each field.
 ## stateful_trim_state
 
 ## storage_info
+
+## substate_live_status_registers
+
+The [Modern Standby (S0ix)] is one state of [ACPI]. Also called
+"S0 idle low power mode". [Modern Standby (S0ix)] and [Intel S0ix Sub-states]
+are triggered when specific conditions within the SoC have been achieved.
+Show the status of the low power mode requirements at the time of reading.
+
+## substate_residencies
+
+Each of [Intel S0ix Sub-states] residencies timer count.
+
+## substate_status_registers
+
+Show the status of [Modern Standby (S0ix)] and [Intel S0ix Sub-states]
+requirements. They are latched on every [Package Cstate] 10 entry & exit and
+[Intel S0ix Sub-states] entry & exit as well
 
 ## swap_info
 
@@ -618,13 +649,19 @@ at https://www.kernel.org/doc/html/latest/admin-guide/blockdev/zram.html#stats
 
 Useful to know how much memory is being stored compressed in zram.
 
+[ACPI]: https://en.wikipedia.org/wiki/ACPI
 [auditd(8)]: https://man7.org/linux/man-pages/man8/auditd.8.html
 [FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
 [fwupd]: https://github.com/fwupd/fwupd
+[Intel PCH (Platform Controller Hub)]: https://en.wikipedia.org/wiki/Platform_Controller_Hub
+[Latency Tolerance Reporting]: https://pcisig.com/latency-tolerance-reporting
 [Memory PSI]: https://docs.kernel.org/accounting/psi.html
 [Memory PSI code]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v6.1/kernel/sched/psi.c#1143
+[Modern Standby (S0ix)]: https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby
+[Package Cstate]: https://edc.intel.com/content/www/us/en/design/ipla/software-development-platforms/client/platforms/alder-lake-desktop/12th-generation-intel-core-processors-datasheet-volume-1-of-2/001/package-c-states/
 [Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo
 [proc(5)]: https://man7.org/linux/man-pages/man5/proc.5.html
+[Intel S0ix Sub-states]: https://edc.intel.com/content/www/tw/zh/design/ipla/software-development-platforms/client/platforms/tiger-lake-mobile-y/intel-500-series-chipset-family-on-package-platform-controller-hub-datasheet-v/005/power-management-sub-state/
 [segmentation library]: /libsegmentation/README.md
 [slabinfo(5)]: https://man7.org/linux/man-pages/man5/slabinfo.5.html
 [uname(1)]: https://man7.org/linux/man-pages/man1/uname.1.html
