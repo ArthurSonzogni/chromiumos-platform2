@@ -18,14 +18,20 @@ class SaneOption {
  public:
   SaneOption(const SANE_Option_Descriptor& opt, int index);
 
+  bool Set(bool b);
   bool Set(double d);
   bool Set(int i);
   bool Set(const std::string& s);
+  bool Set(const char* s);
 
   template <typename T>
   std::optional<T> Get() const = delete;
   template <>
+  std::optional<bool> Get() const;
+  template <>
   std::optional<int> Get() const;
+  template <>
+  std::optional<double> Get() const;
   template <>
   std::optional<std::string> Get() const;
 
@@ -36,15 +42,18 @@ class SaneOption {
   int GetIndex() const;
   std::string GetName() const;
   std::string DisplayValue() const;
+  SANE_Value_Type GetType() const;
 
  private:
   std::string name_;
   int index_;
   SANE_Value_Type type_;  // The type that the backend uses for the option.
+  bool active_;           // Inactive options don't contain a value.
 
   // The integer data, if this is an int option.
   union {
     SANE_Int i;
+    SANE_Word b;
     SANE_Fixed f;
   } int_data_;
 
