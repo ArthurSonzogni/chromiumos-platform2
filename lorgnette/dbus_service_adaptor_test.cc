@@ -26,15 +26,6 @@ namespace lorgnette {
 
 namespace {
 
-MATCHER_P(EqualsProto,
-          message,
-          "Match a proto Message equal to the matcher's argument.") {
-  std::string expected_serialized, actual_serialized;
-  message.SerializeToString(&expected_serialized);
-  arg.SerializeToString(&actual_serialized);
-  return expected_serialized == actual_serialized;
-}
-
 class MockManager : public Manager {
  public:
   MockManager(base::RepeatingCallback<void(base::TimeDelta)> callback,
@@ -82,6 +73,29 @@ class MockDeviceTracker : public DeviceTracker {
               StopScannerDiscovery,
               (const StopScannerDiscoveryRequest&),
               (override));
+  MOCK_METHOD(OpenScannerResponse,
+              OpenScanner,
+              (const OpenScannerRequest&),
+              (override));
+  MOCK_METHOD(CloseScannerResponse,
+              CloseScanner,
+              (const CloseScannerRequest&),
+              (override));
+};
+
+class DBusServiceAdaptorTest : public ::testing::Test {
+ public:
+  DBusServiceAdaptorTest()
+      : sane_client_(new SaneClientFake()),
+        libusb_(new LibusbWrapperFake()),
+        manager_(new MockManager({}, sane_client_.get())),
+        tracker_(new MockDeviceTracker(sane_client_.get(), libusb_.get())) {}
+
+ protected:
+  std::unique_ptr<SaneClient> sane_client_;
+  std::unique_ptr<LibusbWrapper> libusb_;
+  MockManager* manager_;  // Owned by DBusServiceAdapator in tests.
+  std::unique_ptr<MockDeviceTracker> tracker_;
 };
 
 // The adaptor functions contain no real logic and just pass through to the
@@ -89,138 +103,111 @@ class MockDeviceTracker : public DeviceTracker {
 // test here to verify that the correct implementation function gets called for
 // each d-bus entry point.
 
-TEST(DBusServiceAdaptorTest, ListScanners) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, ListScanners) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   brillo::ErrorPtr error;
   ListScannersResponse response;
-  EXPECT_CALL(*manager, ListScanners(&error, &response));
+  EXPECT_CALL(*manager_, ListScanners(&error, &response));
   dbus_service.ListScanners(&error, &response);
 }
 
-TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, GetScannerCapabilities) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   brillo::ErrorPtr error;
   ScannerCapabilities response;
-  EXPECT_CALL(*manager,
+  EXPECT_CALL(*manager_,
               GetScannerCapabilities(&error, "test_device", &response));
   dbus_service.GetScannerCapabilities(&error, "test_device", &response);
 }
 
-TEST(DBusServiceAdaptorTest, StartScan) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, StartScan) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   StartScanRequest request;
-  EXPECT_CALL(*manager, StartScan(EqualsProto(request)));
+  EXPECT_CALL(*manager_, StartScan(EqualsProto(request)));
   dbus_service.StartScan(request);
 }
 
-TEST(DBusServiceAdaptorTest, GetNextImage) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, GetNextImage) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   GetNextImageRequest request;
   std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> response;
   base::ScopedFD out_fd;
-  EXPECT_CALL(*manager, GetNextImage(_, EqualsProto(request), _));
+  EXPECT_CALL(*manager_, GetNextImage(_, EqualsProto(request), _));
   dbus_service.GetNextImage(std::move(response), request, std::move(out_fd));
 }
 
-TEST(DBusServiceAdaptorTest, CancelScan) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, CancelScan) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   CancelScanRequest request;
-  EXPECT_CALL(*manager, CancelScan(EqualsProto(request)));
+  EXPECT_CALL(*manager_, CancelScan(EqualsProto(request)));
   dbus_service.CancelScan(request);
 }
 
-TEST(DBusServiceAdaptorTest, ToggleDebugging) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
+TEST_F(DBusServiceAdaptorTest, ToggleDebugging) {
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager),
-                                         tracker.get(), callback);
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), callback);
   SetDebugConfigRequest request;
   request.set_enabled(true);
   SetDebugConfigResponse response = dbus_service.SetDebugConfig(request);
   EXPECT_TRUE(callback_called);
 }
 
-TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
+TEST_F(DBusServiceAdaptorTest, UnchangedDebugging) {
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager),
-                                         tracker.get(), callback);
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), callback);
   SetDebugConfigRequest request;
   request.set_enabled(false);
   SetDebugConfigResponse response = dbus_service.SetDebugConfig(request);
   EXPECT_FALSE(callback_called);
 }
 
-TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, StartScannerDiscovery) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   StartScannerDiscoveryRequest request;
-  EXPECT_CALL(*tracker.get(), StartScannerDiscovery(EqualsProto(request)));
+  EXPECT_CALL(*tracker_.get(), StartScannerDiscovery(EqualsProto(request)));
   StartScannerDiscoveryResponse response =
       dbus_service.StartScannerDiscovery(request);
   EXPECT_THAT(response, EqualsProto(StartScannerDiscoveryResponse()));
 }
 
-TEST(DBusServiceAdaptorTest, StopScannerDiscovery) {
-  auto sane_client = std::make_unique<SaneClientFake>();
-  auto libusb = std::make_unique<LibusbWrapperFake>();
-  MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker =
-      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
-  auto dbus_service =
-      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
+TEST_F(DBusServiceAdaptorTest, StopScannerDiscovery) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
   StopScannerDiscoveryRequest request;
-  EXPECT_CALL(*tracker.get(), StopScannerDiscovery(EqualsProto(request)));
+  EXPECT_CALL(*tracker_.get(), StopScannerDiscovery(EqualsProto(request)));
   StopScannerDiscoveryResponse response =
       dbus_service.StopScannerDiscovery(request);
   EXPECT_THAT(response, EqualsProto(StopScannerDiscoveryResponse()));
+}
+
+TEST_F(DBusServiceAdaptorTest, OpenScanner) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  OpenScannerRequest request;
+  EXPECT_CALL(*tracker_.get(), OpenScanner(EqualsProto(request)));
+  OpenScannerResponse response = dbus_service.OpenScanner(request);
+  EXPECT_THAT(response, EqualsProto(OpenScannerResponse()));
+}
+
+TEST_F(DBusServiceAdaptorTest, CloseScanner) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  CloseScannerRequest request;
+  EXPECT_CALL(*tracker_.get(), CloseScanner(EqualsProto(request)));
+  CloseScannerResponse response = dbus_service.CloseScanner(request);
+  EXPECT_THAT(response, EqualsProto(CloseScannerResponse()));
 }
 
 }  // namespace

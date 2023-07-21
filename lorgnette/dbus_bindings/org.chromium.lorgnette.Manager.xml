@@ -31,6 +31,47 @@
                     value="::lorgnette::ScannerCapabilities" />
       </arg>
     </method>
+    <method name="OpenScanner">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Starts a session with the scanner specified in |request| and returns the
+        current scanner configuration.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized OpenScannerRequest proto specifying the scanner to open.
+        </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::OpenScannerRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized OpenScannerResponse proto.
+        </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::OpenScannerResponse" />
+      </arg>
+    </method>
+    <method name="CloseScanner">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Close a previously opened scanner handle identified by |request|.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized CloseScannerRequest proto specifying the scanner to close.
+        </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::CloseScannerRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized CloseScannerResponse proto.
+        </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::CloseScannerResponse" />
+      </arg>
+    </method>
     <method name="StartScan">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
       <tp:docstring>

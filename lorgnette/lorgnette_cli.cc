@@ -99,6 +99,46 @@ std::optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
   return capabilities;
 }
 
+std::optional<lorgnette::ScannerConfig> GetScannerConfig(
+    ManagerProxy* manager, const std::string& scanner_name) {
+  brillo::ErrorPtr error;
+  lorgnette::OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string(scanner_name);
+  open_request.set_client_id("lorgnette_cli");
+  lorgnette::OpenScannerResponse open_response;
+  if (!manager->OpenScanner(open_request, &open_response, &error)) {
+    LOG(ERROR) << "OpenScanner failed: " << error->GetMessage();
+    return std::nullopt;
+  }
+  if (open_response.result() != lorgnette::OPERATION_RESULT_SUCCESS) {
+    LOG(ERROR) << "OpenScanner returned error result "
+               << lorgnette::OperationResult_Name(open_response.result());
+    return std::nullopt;
+  }
+
+  // Immediately close the scanner because the response already includes the
+  // config.
+  lorgnette::CloseScannerRequest close_request;
+  *close_request.mutable_scanner() = open_response.config().scanner();
+  lorgnette::CloseScannerResponse close_response;
+  if (!manager->CloseScanner(close_request, &close_response, &error)) {
+    LOG(WARNING) << "CloseScanner failed: " << error->GetMessage();
+    return open_response.config();
+  }
+  if (close_response.result() != lorgnette::OPERATION_RESULT_SUCCESS) {
+    LOG(WARNING) << "CloseScanner returned error result "
+                 << lorgnette::OperationResult_Name(close_response.result());
+    // Fall through.
+  }
+
+  return open_response.config();
+}
+
+void PrintScannerConfig(const lorgnette::ScannerConfig& config) {
+  std::cout << "--- Scanner Config --- " << std::endl;
+  // TODO(bmgordon): Print the config once parsing is working.
+}
+
 // RoundThousandth will round the input number at the thousandth place
 double RoundThousandth(double num) {
   return round(num * 1000) / 1000.0;
@@ -464,10 +504,11 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 ||
-      (args[0] != "scan" && args[0] != "cancel_scan" && args[0] != "list" &&
-       args[0] != "get_json_caps" && args[0] != "discover")) {
-    std::cerr << "usage: lorgnette_cli [list|scan|cancel_scan|get_json_caps] "
+  if (args.size() != 1 || (args[0] != "scan" && args[0] != "cancel_scan" &&
+                           args[0] != "list" && args[0] != "get_json_caps" &&
+                           args[0] != "discover" && args[0] != "show_config")) {
+    std::cerr << "usage: lorgnette_cli "
+                 "[list|scan|cancel_scan|get_json_caps|show_config] "
                  "[FLAGS...]"
               << std::endl;
     return 1;
@@ -612,5 +653,23 @@ int main(int argc, char** argv) {
 
     std::cout << ScannerCapabilitiesToJson(capabilities.value());
     return 0;
+  } else if (command == "show_config") {
+    if (FLAGS_scanner.empty()) {
+      LOG(ERROR) << "Must specify scanner to get its config";
+      return 1;
+    }
+
+    std::optional<lorgnette::ScannerConfig> config =
+        GetScannerConfig(manager.get(), FLAGS_scanner);
+    if (!config.has_value()) {
+      LOG(ERROR) << "Unable to open scanner " << FLAGS_scanner;
+      return 1;
+    }
+
+    PrintScannerConfig(config.value());
+    return 0;
   }
+
+  NOTREACHED();
+  return 1;
 }

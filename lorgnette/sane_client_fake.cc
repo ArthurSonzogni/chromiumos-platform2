@@ -29,6 +29,9 @@ std::unique_ptr<SaneDevice> SaneClientFake::ConnectToDeviceInternal(
 
   brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                        "No device");
+  if (sane_status) {
+    *sane_status = SANE_STATUS_INVAL;
+  }
   return nullptr;
 }
 

@@ -73,6 +73,15 @@ MATCHER_P(EqualsDocumentSource, expected, "") {
                             arg.color_modes(), result_listener);
 }
 
+MATCHER_P(EqualsProto,
+          message,
+          "Match a proto Message equal to the matcher's argument.") {
+  std::string expected_serialized, actual_serialized;
+  message.SerializeToString(&expected_serialized);
+  arg.SerializeToString(&actual_serialized);
+  return expected_serialized == actual_serialized;
+}
+
 libusb_device_descriptor MakeMinimalDeviceDescriptor();
 std::unique_ptr<libusb_interface_descriptor> MakeIppUsbInterfaceDescriptor();
 

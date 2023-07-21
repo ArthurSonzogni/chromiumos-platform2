@@ -44,6 +44,7 @@ using ScannerListChangedSignalSender =
 class FirewallManager;
 class LibusbWrapper;
 class SaneClient;
+class SaneDevice;
 class UsbDevice;
 
 // DeviceTracker is responsible for keeping track of which scanners are
@@ -86,6 +87,19 @@ class DeviceTracker {
   virtual StopScannerDiscoveryResponse StopScannerDiscovery(
       const StopScannerDiscoveryRequest& request);
 
+  // OpenScanner opens a handle to a scanner previously discovered in a
+  // discovery session.  If the scanner is not in use, it returns the handle and
+  // the current scanner config.  If the scanner is already opened by another
+  // client, OpenScanner returns a response containing an error result and an
+  // empty config.  If the scanner is already open by the same client, any
+  // pending jobs and previous handles are closed and a new handle to the same
+  // scanner is returned as though it was freshly opened.
+  virtual OpenScannerResponse OpenScanner(const OpenScannerRequest& request);
+
+  // CloseScanner closes a scanner handle previously opened by OpenScanner.
+  // Any in-progress jobs will be canceled and the handle is no longer valid.
+  virtual CloseScannerResponse CloseScanner(const CloseScannerRequest& request);
+
  private:
   struct DiscoverySessionState {
     std::string client_id;
@@ -97,8 +111,21 @@ class DeviceTracker {
     bool preferred_only;
   };
 
+  struct OpenScannerState {
+    std::string client_id;
+    std::string connection_string;
+    std::string locale;
+    std::string handle;
+    base::Time start_time;
+    base::Time last_activity;
+    std::unique_ptr<PortToken> port_token;
+    std::unique_ptr<SaneDevice> device;
+  };
+
   std::optional<DiscoverySessionState*> GetSession(
       const std::string& session_id);
+
+  std::optional<OpenScannerState*> GetScanner(const std::string& handle);
 
   // Individual phases of discovery.  Each function is posted as a separate task
   // on the event loop to break up the amount of time spent blocking.
@@ -152,6 +179,10 @@ class DeviceTracker {
   // The buses and device addresses in the format bus:dev of all previously
   // discovered devices. Cached to avoid parsing `known_devices_` repeatedly.
   base::flat_set<std::string> known_bus_devs_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Mapping from scanner handles to open scanner state.
+  base::flat_map<std::string, OpenScannerState> open_scanners_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.

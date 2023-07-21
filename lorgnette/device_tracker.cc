@@ -26,6 +26,43 @@
 
 namespace lorgnette {
 
+namespace {
+
+lorgnette::OperationResult ToOperationResult(SANE_Status status) {
+  switch (status) {
+    case SANE_STATUS_GOOD:
+      return lorgnette::OPERATION_RESULT_SUCCESS;
+    case SANE_STATUS_UNSUPPORTED:
+      return lorgnette::OPERATION_RESULT_UNSUPPORTED;
+    case SANE_STATUS_CANCELLED:
+      return lorgnette::OPERATION_RESULT_CANCELLED;
+    case SANE_STATUS_DEVICE_BUSY:
+      return lorgnette::OPERATION_RESULT_DEVICE_BUSY;
+    case SANE_STATUS_INVAL:
+      return lorgnette::OPERATION_RESULT_INVALID;
+    case SANE_STATUS_EOF:
+      return lorgnette::OPERATION_RESULT_EOF;
+    case SANE_STATUS_JAMMED:
+      return lorgnette::OPERATION_RESULT_ADF_JAMMED;
+    case SANE_STATUS_NO_DOCS:
+      return lorgnette::OPERATION_RESULT_ADF_EMPTY;
+    case SANE_STATUS_COVER_OPEN:
+      return lorgnette::OPERATION_RESULT_COVER_OPEN;
+    case SANE_STATUS_IO_ERROR:
+      return lorgnette::OPERATION_RESULT_IO_ERROR;
+    case SANE_STATUS_NO_MEM:
+      return lorgnette::OPERATION_RESULT_NO_MEMORY;
+    case SANE_STATUS_ACCESS_DENIED:
+      return lorgnette::OPERATION_RESULT_ACCESS_DENIED;
+    default:
+      LOG(ERROR) << "Unexpected SANE_Status " << status << ": "
+                 << sane_strstatus(status);
+      return lorgnette::OPERATION_RESULT_INTERNAL_ERROR;
+  }
+}
+
+}  // namespace
+
 DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
     : sane_client_(sane_client), libusb_(libusb) {
   DCHECK(sane_client_);
@@ -366,4 +403,110 @@ void DeviceTracker::SendSessionEndingSignal(std::string session_id) {
   signal.set_session_id(session_id);
   signal_sender_.Run(signal);
 }
+
+OpenScannerResponse DeviceTracker::OpenScanner(
+    const OpenScannerRequest& request) {
+  const std::string& connection_string =
+      request.scanner_id().connection_string();
+  LOG(INFO) << __func__ << ": Opening device: " << connection_string;
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  OpenScannerResponse response;
+  *response.mutable_scanner_id() = request.scanner_id();
+  response.set_result(OPERATION_RESULT_INVALID);
+  if (connection_string.empty()) {
+    LOG(ERROR) << __func__ << ": OpenScannerRequest missing connection_string";
+    return response;
+  }
+  if (request.client_id().empty()) {
+    LOG(ERROR) << __func__ << ": OpenScannerRequest missing client_id";
+    return response;
+  }
+
+  for (const auto& scanner : open_scanners_) {
+    if (scanner.second.connection_string != connection_string) {
+      continue;
+    }
+
+    if (scanner.second.client_id != request.client_id()) {
+      LOG(WARNING) << __func__ << ": Device is already open by client "
+                   << scanner.second.client_id;
+      response.set_result(OPERATION_RESULT_DEVICE_BUSY);
+      return response;
+    }
+
+    LOG(WARNING) << __func__
+                 << ": Closing existing handle owned by same client: "
+                 << scanner.first;
+    // TODO(bmgordon): Cancel outstanding jobs.
+    open_scanners_.erase(scanner);
+    break;
+  }
+
+  OpenScannerState state;
+  state.client_id = request.client_id();
+  state.connection_string = connection_string;
+  state.handle = GenerateUUID();
+  state.start_time = base::Time::Now();
+  // TODO(bmgordon): Request the PortToken from the firewall if needed.
+  brillo::ErrorPtr error;
+  SANE_Status status;
+  auto device =
+      sane_client_->ConnectToDevice(&error, &status, connection_string);
+  if (!device) {
+    LOG(ERROR) << __func__ << ": Failed to open device " << connection_string
+               << ": " << error->GetMessage();
+    response.set_result(ToOperationResult(status));
+    return response;
+  }
+
+  ScannerConfig config;
+  config.mutable_scanner()->set_token(state.handle);
+  // TODO(b/274860707): Fill in the actual scanner config.
+
+  LOG(INFO) << __func__ << ": Started tracking open scanner " << state.handle
+            << " for client " << state.client_id
+            << ".  Active scanners: " << open_scanners_.size() + 1;
+  state.device = std::move(device);
+  state.last_activity = base::Time::Now();
+  open_scanners_.emplace(state.handle, std::move(state));
+
+  response.set_result(OPERATION_RESULT_SUCCESS);
+  *response.mutable_config() = std::move(config);
+  return response;
+}
+
+CloseScannerResponse DeviceTracker::CloseScanner(
+    const CloseScannerRequest& request) {
+  LOG(INFO) << __func__ << ": Closing device: " << request.scanner().token();
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  CloseScannerResponse response;
+  *response.mutable_scanner() = request.scanner();
+
+  if (!request.has_scanner() || request.scanner().token().empty()) {
+    LOG(ERROR) << __func__ << ": CloseScannerRequest is missing scanner handle";
+    response.set_result(OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& handle = request.scanner().token();
+
+  if (!base::Contains(open_scanners_, handle)) {
+    LOG(WARNING) << __func__
+                 << ": Attempting to close handle that does not exist: "
+                 << handle;
+    response.set_result(OPERATION_RESULT_MISSING);
+    return response;
+  }
+
+  // TODO(bmgordon): Cancel any outstanding scan jobs.
+  open_scanners_.erase(handle);
+  LOG(INFO) << __func__ << ": Stopped tracking scanner " << handle
+            << ".  Active scanners: " << open_scanners_.size();
+  response.set_result(OPERATION_RESULT_SUCCESS);
+  return response;
+}
+
 }  // namespace lorgnette

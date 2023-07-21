@@ -146,4 +146,18 @@ StopScannerDiscoveryResponse DBusServiceAdaptor::StopScannerDiscovery(
   return device_tracker_->StopScannerDiscovery(request);
 }
 
+OpenScannerResponse DBusServiceAdaptor::OpenScanner(
+    const OpenScannerRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::OpenScanner");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return device_tracker_->OpenScanner(request);
+}
+
+CloseScannerResponse DBusServiceAdaptor::CloseScanner(
+    const CloseScannerRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::CloseScanner");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return device_tracker_->CloseScanner(request);
+}
+
 }  // namespace lorgnette

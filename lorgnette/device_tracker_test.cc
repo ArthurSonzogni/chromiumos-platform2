@@ -29,6 +29,7 @@
 
 using ::testing::_;
 using ::testing::ElementsAre;
+using ::testing::Not;
 
 namespace lorgnette {
 
@@ -345,6 +346,256 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   EXPECT_EQ(scanner->model(), "eSCL Scanner 3000");
   EXPECT_EQ(second_scanner->manufacturer(), "GoogleTest");
   EXPECT_EQ(second_scanner->model(), "SANE Scanner 4000");
+}
+
+TEST(DeviceTrackerTest, OpenScannerEmptyDevice) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  OpenScannerRequest request;
+  request.set_client_id("DeviceTrackerTest");
+  auto response = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+}
+
+TEST(DeviceTrackerTest, OpenScannerEmptyString) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  OpenScannerRequest request;
+  request.mutable_scanner_id()->set_connection_string("Test");
+  OpenScannerResponse response = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+}
+
+TEST(DeviceTrackerTest, OpenScannerNoDevice) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  OpenScannerRequest request;
+  request.mutable_scanner_id()->set_connection_string("Test");
+  request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_NE(response.result(), OPERATION_RESULT_SUCCESS);
+}
+
+TEST(DeviceTrackerTest, OpenScannerFirstClientSucceeds) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest request;
+  request.mutable_scanner_id()->set_connection_string("Test");
+  request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response.config().scanner(), Not(EqualsProto(ScannerHandle())));
+}
+
+TEST(DeviceTrackerTest, OpenScannerSameClientSucceedsTwice) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest request;
+  request.mutable_scanner_id()->set_connection_string("Test");
+  request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker->OpenScanner(request);
+
+  // Re-insert the test device because the fake SANE client deletes it after one
+  // connection.
+  auto scanner2 = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner2));
+
+  OpenScannerResponse response2 = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response1.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response1.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response1.config().scanner(), Not(EqualsProto(ScannerHandle())));
+
+  EXPECT_THAT(response2.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response2.config().scanner(), Not(EqualsProto(ScannerHandle())));
+
+  EXPECT_THAT(response2.config().scanner(),
+              Not(EqualsProto(response1.config().scanner())));
+}
+
+TEST(DeviceTrackerTest, OpenScannerSecondClientFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest request;
+  request.mutable_scanner_id()->set_connection_string("Test");
+  request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker->OpenScanner(request);
+
+  // Re-insert the test device because the fake SANE client deletes it after one
+  // connection.
+  auto scanner2 = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner2));
+
+  request.set_client_id("DeviceTrackerTest2");
+  OpenScannerResponse response2 = tracker->OpenScanner(request);
+
+  EXPECT_THAT(response1.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response1.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response1.config().scanner(), Not(EqualsProto(ScannerHandle())));
+
+  EXPECT_THAT(response2.scanner_id(), EqualsProto(request.scanner_id()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_DEVICE_BUSY);
+  EXPECT_THAT(response2.config().scanner(), EqualsProto(ScannerHandle()));
+}
+
+TEST(DeviceTrackerTest, CloseScannerMissingHandle) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  CloseScannerRequest request;
+  CloseScannerResponse response = tracker->CloseScanner(request);
+
+  EXPECT_THAT(request.scanner(), EqualsProto(response.scanner()));
+  EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+}
+
+TEST(DeviceTrackerTest, CloseScannerInvalidHandle) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  CloseScannerRequest request;
+  request.mutable_scanner()->set_token("NoSuchScanner");
+  CloseScannerResponse response = tracker->CloseScanner(request);
+
+  EXPECT_THAT(request.scanner(), EqualsProto(response.scanner()));
+  EXPECT_EQ(response.result(), OPERATION_RESULT_MISSING);
+}
+
+TEST(DeviceTrackerTest, CloseScannerSuccess) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest request1;
+  request1.mutable_scanner_id()->set_connection_string("Test");
+  request1.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker->OpenScanner(request1);
+
+  CloseScannerRequest request2;
+  *request2.mutable_scanner() = response1.config().scanner();
+  CloseScannerResponse response2 = tracker->CloseScanner(request2);
+
+  EXPECT_THAT(request2.scanner(), EqualsProto(response2.scanner()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
+}
+
+TEST(DeviceTrackerTest, CloseScannerTwiceFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest request1;
+  request1.mutable_scanner_id()->set_connection_string("Test");
+  request1.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker->OpenScanner(request1);
+
+  CloseScannerRequest request2;
+  *request2.mutable_scanner() = response1.config().scanner();
+  CloseScannerResponse response2 = tracker->CloseScanner(request2);
+  CloseScannerResponse response3 = tracker->CloseScanner(request2);
+
+  EXPECT_THAT(request2.scanner(), EqualsProto(response2.scanner()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(request2.scanner(), EqualsProto(response3.scanner()));
+  EXPECT_EQ(response3.result(), OPERATION_RESULT_MISSING);
+}
+
+TEST(DeviceTrackerTest, CloseScannerFreesDevice) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  // First client succeeds.
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker->OpenScanner(open_request);
+
+  // Re-insert the test device because the fake SANE client deletes it after one
+  // connection.
+  auto scanner2 = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("Test", std::move(scanner2));
+
+  // This will fail because the device is still open.
+  open_request.set_client_id("DeviceTrackerTest2");
+  OpenScannerResponse response2 = tracker->OpenScanner(open_request);
+
+  // Close first client's handle to free up the device.
+  CloseScannerRequest close_request;
+  *close_request.mutable_scanner() = response1.config().scanner();
+  CloseScannerResponse response3 = tracker->CloseScanner(close_request);
+
+  // Now the second client can open the device.
+  OpenScannerResponse response4 = tracker->OpenScanner(open_request);
+
+  EXPECT_THAT(response1.scanner_id(), EqualsProto(open_request.scanner_id()));
+  EXPECT_EQ(response1.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response1.config().scanner(), Not(EqualsProto(ScannerHandle())));
+
+  EXPECT_THAT(response2.scanner_id(), EqualsProto(open_request.scanner_id()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_DEVICE_BUSY);
+  EXPECT_THAT(response2.config().scanner(), EqualsProto(ScannerHandle()));
+
+  EXPECT_THAT(response3.scanner(), EqualsProto(close_request.scanner()));
+  EXPECT_EQ(response3.result(), OPERATION_RESULT_SUCCESS);
+
+  EXPECT_THAT(response4.scanner_id(), EqualsProto(open_request.scanner_id()));
+  EXPECT_EQ(response4.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(response4.config().scanner(), Not(EqualsProto(ScannerHandle())));
+  EXPECT_THAT(response4.config().scanner(),
+              Not(EqualsProto(response1.config().scanner())));
 }
 
 }  // namespace
