@@ -762,7 +762,17 @@ void Camera3Service::Camera3DeviceService::
   VLOGF(1) << "  Frame " << request->frame_number;
   VLOGF(1) << "  Index " << capture_request_idx;
   for (size_t i = 0; i < request->num_output_buffers; i++) {
-    VLOGF(1) << "  Buffer " << *request->output_buffers[i].buffer
+    // If the buffer management APIs are enabled, the buffer handle in output
+    // buffers is set to nullptr.
+    // See b/226688669, b/292194220 for details.
+    std::ostringstream buffer_adr;
+    if (request->output_buffers[i].buffer != nullptr) {
+      buffer_adr << *request->output_buffers[i].buffer;
+    } else {
+      buffer_adr << "nullptr";
+    }
+
+    VLOGF(1) << "  Buffer " << buffer_adr.str()
              << " (format:" << request->output_buffers[i].stream->format << ","
              << request->output_buffers[i].stream->width << "x"
              << request->output_buffers[i].stream->height << ")";
