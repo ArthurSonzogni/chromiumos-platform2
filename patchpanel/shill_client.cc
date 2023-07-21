@@ -546,7 +546,10 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
       interface_it->second.TryGet<std::string>();
   output->ifname = interface_it->second.TryGet<std::string>();
 
-  // Ensure that |primary_multiplexed_interface| is nullopt when not defined.
+  // Ensure that |primary_multiplexed_interface| is nullopt when:
+  //   - kPrimaryMultiplexedInterfaceProperty is not defined for Cellular
+  //   Devices,
+  //   - the Device is not a Cellular Device.
   output->primary_multiplexed_interface = std::nullopt;
   if (output->type == Device::Type::kCellular) {
     const auto& it = props.find(shill::kPrimaryMultiplexedInterfaceProperty);
@@ -561,6 +564,10 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
         output->primary_multiplexed_interface = primary_multiplexed_interface;
       }
     }
+    // b/267111163: ensure for Cellular Device that the network interface
+    // |ifname| used for the datapath setup is set to the primary multiplexed
+    // interface.
+    output->ifname = output->primary_multiplexed_interface.value_or("");
   }
 
   // When the datapath interface exists and has an interface index, cache the
@@ -578,14 +585,22 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   } else {
     const auto it =
         datapath_interface_cache_.find(output->shill_device_interface_property);
-    if (it == datapath_interface_cache_.end()) {
+    if (it != datapath_interface_cache_.end()) {
+      output->ifname = it->second.first;
+      output->ifindex = it->second.second;
+    } else if (output->type == Device::Type::kCellular) {
+      // When a Cellular shill Device is inactive, it is expected that the
+      // datapath interface name and interface index are undefined. Furthermore
+      // if the Device has never been active, there is no cache entry in
+      // |datapath_interface_cache_| yet.
+      output->ifname = "";
+      output->ifindex = -1;
+    } else {
       LOG(ERROR)
           << "No datapath interface name and index entry for shill Device "
           << output->shill_device_interface_property;
       return false;
     }
-    output->ifname = it->second.first;
-    output->ifindex = it->second.second;
   }
 
   const auto& ipconfigs_it = props.find(shill::kIPConfigsProperty);
