@@ -61,6 +61,8 @@ class SaneDeviceImpl : public SaneDevice {
 
   std::optional<ValidOptionValues> GetValidOptionValues(
       brillo::ErrorPtr* error) override;
+  std::optional<ScannerConfig> GetCurrentConfig(
+      brillo::ErrorPtr* error) override;
 
   std::optional<int> GetScanResolution(brillo::ErrorPtr* error) override;
   bool SetScanResolution(brillo::ErrorPtr* error, int resolution) override;
@@ -128,6 +130,8 @@ class SaneDeviceImpl : public SaneDevice {
   std::string name_;
   std::shared_ptr<DeviceSet> open_devices_;
   std::unordered_map<ScanOption, SaneOption> known_options_;
+  std::unordered_map<std::string, SaneOption> all_options_;
+  std::vector<lorgnette::OptionGroup> option_groups_;
   // This is true if we are currently acquiring an image frame (i.e. page) from
   // SANE. Once we've reached EOF for a frame, this will be false until
   // another call is made to StartScan().

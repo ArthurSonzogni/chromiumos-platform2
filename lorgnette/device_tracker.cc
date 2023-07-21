@@ -477,9 +477,14 @@ OpenScannerResponse DeviceTracker::OpenScanner(
     return response;
   }
 
-  ScannerConfig config;
-  config.mutable_scanner()->set_token(state.handle);
-  // TODO(b/274860707): Fill in the actual scanner config.
+  std::optional<ScannerConfig> config = device->GetCurrentConfig(&error);
+  if (!config.has_value()) {
+    LOG(ERROR) << __func__ << ": Unable to get current scanner config: "
+               << error->GetMessage();
+    response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+    return response;
+  }
+  config->mutable_scanner()->set_token(state.handle);
 
   LOG(INFO) << __func__ << ": Started tracking open scanner " << state.handle
             << " for client " << state.client_id
@@ -488,8 +493,8 @@ OpenScannerResponse DeviceTracker::OpenScanner(
   state.last_activity = base::Time::Now();
   open_scanners_.emplace(state.handle, std::move(state));
 
+  *response.mutable_config() = std::move(config.value());
   response.set_result(OPERATION_RESULT_SUCCESS);
-  *response.mutable_config() = std::move(config);
   return response;
 }
 

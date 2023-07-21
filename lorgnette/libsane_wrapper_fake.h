@@ -6,8 +6,10 @@
 #define LORGNETTE_LIBSANE_WRAPPER_FAKE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "lorgnette/libsane_wrapper.h"
 
@@ -44,10 +46,22 @@ class LibsaneWrapperFake : public LibsaneWrapper {
   // Creates a handle that will be returned by sane_open(`name`).
   SANE_Handle CreateScanner(const std::string& name);
 
+  // Sets descriptors that will be returned by sane_get_option_descriptor().
+  void SetDescriptors(SANE_Handle handle,
+                      const std::vector<SANE_Option_Descriptor>& descriptors);
+
+  // Assigns memory for option `field` on `handle`.  The memory pointed to by
+  // `value` must be large enough to contain whatever the option type demands
+  // and must remain valid until this object is destroyed.  The contents of
+  // `value` will be set and retrieved through sane_control_option().
+  void SetOptionValue(SANE_Handle handle, size_t field, void* value);
+
  protected:
   struct FakeScanner {
     std::string name;
     SANE_Handle handle;
+    std::vector<SANE_Option_Descriptor> descriptors;
+    std::vector<std::optional<void*>> values;
   };
 
   std::unordered_map<SANE_Handle, FakeScanner> scanners_;

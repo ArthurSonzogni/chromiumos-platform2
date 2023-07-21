@@ -277,6 +277,34 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
   return values;
 }
 
+std::optional<ScannerConfig> SaneDeviceImpl::GetCurrentConfig(
+    brillo::ErrorPtr* error) {
+  if (!handle_) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "No scanner connected");
+    return std::nullopt;
+  }
+
+  ScannerConfig config;
+  for (const auto& kv : all_options_) {
+    std::optional<ScannerOption> option = kv.second.ToScannerOption();
+    if (!option.has_value()) {
+      LOG(ERROR) << "Unable to convert option " << kv.second.GetName()
+                 << " to ScannerOption proto";
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kDbusDomain, kManagerServiceError,
+          "Unable to convert option %s to ScannerOption proto",
+          kv.second.GetName().c_str());
+      continue;
+    }
+    (*config.mutable_options())[kv.first] = std::move(*option);
+  }
+  for (const auto& group : option_groups_) {
+    *config.add_option_groups() = group;
+  }
+  return config;
+}
+
 std::optional<int> SaneDeviceImpl::GetScanResolution(brillo::ErrorPtr* error) {
   return GetOption<int>(error, kResolution);
 }
@@ -496,15 +524,15 @@ SaneDeviceImpl::SaneDeviceImpl(LibsaneWrapper* libsane,
 }
 
 bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
-  LOG(INFO) << "Loading device options";
   // First we get option descriptor 0, which contains the total count of
   // options. We don't strictly need the descriptor, but it's "Good form" to
   // do so according to 'scanimage'.
   const SANE_Option_Descriptor* desc =
       libsane_->sane_get_option_descriptor(handle_, 0);
   if (!desc) {
+    LOG(ERROR) << __func__ << ": Unable to retrieve option descriptor 0";
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Unable to get option count for device");
+                         "Unable to get option count descriptor for device");
     return false;
   }
 
@@ -512,10 +540,15 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   SANE_Status status = libsane_->sane_control_option(
       handle_, 0, SANE_ACTION_GET_VALUE, &num_options, nullptr);
   if (status != SANE_STATUS_GOOD) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Unable to get option count for device");
+    LOG(ERROR) << __func__ << ": Unable to retrieve value from option 0: "
+               << sane_strstatus(status);
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to get option count for device: %s", sane_strstatus(status));
     return false;
   }
+  LOG(INFO) << __func__ << ": Expected option count: "
+            << num_options - 1;  // -1 to ignore option 0.
 
   base::flat_map<std::string, ScanOption> region_options = {
       {SANE_NAME_SCAN_TL_X, kTopLeftX},
@@ -527,17 +560,34 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   };
 
   known_options_.clear();
+  all_options_.clear();
+  all_options_.reserve(num_options);
+  option_groups_.clear();
+  lorgnette::OptionGroup* current_group = nullptr;
+  size_t active_options = 0;
+  size_t inactive_options = 0;
+
   // Start at 1, since we've already checked option 0 above.
   for (int i = 1; i < num_options; i++) {
     const SANE_Option_Descriptor* opt =
         libsane_->sane_get_option_descriptor(handle_, i);
     if (!opt) {
-      brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
-                                 kManagerServiceError,
-                                 "Unable to get option %d for device", i);
+      LOG(ERROR) << __func__ << ": Unable to get option descriptor " << i;
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kDbusDomain, kManagerServiceError,
+          "Unable to get option descriptor %d for device", i);
       return false;
     }
 
+    // Don't track group options in the main option list.
+    if (opt->type == SANE_TYPE_GROUP) {
+      lorgnette::OptionGroup& group = option_groups_.emplace_back();
+      group.set_title(opt->title ? opt->title : "Untitled");
+      current_group = &group;
+      continue;
+    }
+
+    // Check for known options used by the simplified API.
     std::optional<ScanOption> known_option_name;
     if ((opt->type == SANE_TYPE_INT || opt->type == SANE_TYPE_FIXED) &&
         opt->size == sizeof(SANE_Int) && opt->unit == SANE_UNIT_DPI &&
@@ -557,33 +607,63 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
       auto enum_value = region_options.find(opt->name);
       if (enum_value != region_options.end()) {
         // Do not support the case where scan dimensions are specified in
-        // pixels.
-        if (opt->unit != SANE_UNIT_MM) {
-          LOG(WARNING) << "Found dimension option " << opt->name
+        // pixels.  Don't stop parsing the option because the advanced API
+        // still can make use of this case.
+        if (opt->unit == SANE_UNIT_MM) {
+          known_option_name = enum_value->second;
+        } else {
+          LOG(WARNING) << __func__ << ": Found dimension option " << opt->name
                        << " with incompatible unit: " << opt->unit;
-          continue;
         }
-        known_option_name = enum_value->second;
       }
     }
 
-    if (known_option_name.has_value()) {
-      SaneOption sane_option(*opt, i);
+    // For options that are supposed to have a value, retrieve the value.
+    SaneOption sane_option(*opt, i);
+    if (sane_option.IsActive() && sane_option.GetSize() > 0) {
       SANE_Status status = libsane_->sane_control_option(
           handle_, i, SANE_ACTION_GET_VALUE, sane_option.GetPointer(), NULL);
       if (status != SANE_STATUS_GOOD) {
+        std::string name = known_option_name.has_value()
+                               ? OptionDisplayName(known_option_name.value())
+                               : sane_option.GetName();
+        LOG(ERROR) << __func__ << ": Unable to read value of option "
+                   << sane_option.GetName() << " at index " << i << ": "
+                   << sane_strstatus(status);
         brillo::Error::AddToPrintf(
             error, FROM_HERE, kDbusDomain, kManagerServiceError,
-            "Unable to read value of %s option for device",
-            OptionDisplayName(known_option_name.value()));
+            "Unable to read value of %s option for device", name.c_str());
         return false;
       }
-      known_options_.insert(
-          {known_option_name.value(), std::move(sane_option)});
     }
+
+    if (sane_option.IsActive()) {
+      active_options++;
+    } else {
+      inactive_options++;
+    }
+
+    // known_options gets a copy of the option, not a pointer to the same
+    // object.  There are fewer than a dozen known options and they don't
+    // interact directly with all_options, so this duplication shouldn't be a
+    // problem.
+    if (known_option_name.has_value()) {
+      known_options_.insert({known_option_name.value(), sane_option});
+    }
+
+    if (current_group) {
+      current_group->add_members(sane_option.GetName());
+    } else {
+      LOG(WARNING) << __func__ << ": Option " << sane_option.GetName()
+                   << " is not part of any group";
+    }
+    all_options_.emplace(sane_option.GetName(), std::move(sane_option));
   }
 
-  LOG(INFO) << "Device options loaded successfully";
+  LOG(INFO) << __func__ << ": Successfully loaded " << active_options
+            << " active and " << inactive_options
+            << " inactive device options in " << option_groups_.size()
+            << " groups";
   return true;
 }
 
@@ -609,7 +689,6 @@ bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
   if (result_flags & (SANE_INFO_RELOAD_OPTIONS | SANE_INFO_INEXACT)) {
     return LoadOptions(error);
   }
-
   return true;
 }
 

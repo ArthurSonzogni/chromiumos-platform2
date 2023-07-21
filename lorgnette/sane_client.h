@@ -57,6 +57,8 @@ class SaneDevice {
   virtual bool SetColorMode(brillo::ErrorPtr* error, ColorMode color_mode) = 0;
   virtual bool SetScanRegion(brillo::ErrorPtr* error,
                              const ScanRegion& region) = 0;
+  virtual std::optional<ScannerConfig> GetCurrentConfig(
+      brillo::ErrorPtr* error) = 0;
   virtual SANE_Status StartScan(brillo::ErrorPtr* error) = 0;
   virtual std::optional<ScanParameters> GetScanParameters(
       brillo::ErrorPtr* error) = 0;

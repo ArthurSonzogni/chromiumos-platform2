@@ -87,7 +87,10 @@ class SaneDeviceFake : public SaneDevice {
                            size_t count,
                            size_t* read_out) override;
   bool CancelScan(brillo::ErrorPtr* error) override;
+  std::optional<ScannerConfig> GetCurrentConfig(
+      brillo::ErrorPtr* error) override;
 
+  void SetScannerConfig(const std::optional<ScannerConfig>& config);
   void SetValidOptionValues(const std::optional<ValidOptionValues>& values);
   void SetStartScanResult(SANE_Status status);
   void SetScanParameters(const std::optional<ScanParameters>& params);
@@ -98,6 +101,7 @@ class SaneDeviceFake : public SaneDevice {
   int resolution_;
   std::string source_name_;
   ColorMode color_mode_;
+  std::optional<ScannerConfig> config_;
   std::optional<ValidOptionValues> values_;
   SANE_Status start_scan_result_;
   SANE_Status read_scan_data_result_;

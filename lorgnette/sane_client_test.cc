@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -24,6 +25,30 @@
 using ::testing::ElementsAre;
 
 namespace lorgnette {
+
+namespace {
+
+SANE_Option_Descriptor MakeOptionCountDescriptor() {
+  return {
+      .name = nullptr,
+      .title = nullptr,
+      .desc = nullptr,
+      .type = SANE_TYPE_INT,
+      .size = sizeof(SANE_Word),
+  };
+}
+
+SANE_Option_Descriptor MakeGroupOptionDescriptor(const char* title) {
+  return {
+      .name = nullptr,
+      .title = title,
+      .desc = nullptr,
+      .type = SANE_TYPE_GROUP,
+      .size = 0,
+  };
+}
+
+}  // namespace
 
 class SaneDeviceImplTest : public testing::Test {
  protected:
@@ -242,6 +267,17 @@ class SaneDeviceImplPeer : public SaneDeviceImpl {
       : SaneDeviceImpl(libsane, handle, name, open_devices) {}
 
   using SaneDeviceImpl::LoadOptions;
+  using SaneDeviceImpl::ScanOption;
+
+  std::unordered_map<std::string, SaneOption> GetAllOptions() {
+    return all_options_;
+  }
+  std::vector<lorgnette::OptionGroup> GetOptionGroups() {
+    return option_groups_;
+  }
+  std::unordered_map<SaneDeviceImpl::ScanOption, SaneOption> GetKnownOptions() {
+    return known_options_;
+  }
 };
 
 TEST(SaneDeviceImplFakeSaneTest, LoadOptionsNoOptionZero) {
@@ -253,7 +289,336 @@ TEST(SaneDeviceImplFakeSaneTest, LoadOptionsNoOptionZero) {
   ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
   SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
   EXPECT_FALSE(device.LoadOptions(&error));
+  ASSERT_NE(error, nullptr);
   EXPECT_TRUE(error->HasError(kDbusDomain, kManagerServiceError));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsMissingOptionCountValue) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      {
+          .name = nullptr,
+          .title = nullptr,
+          .desc = nullptr,
+          .type = SANE_TYPE_INT,
+          // No size to cause a failure in sane_control_option().
+      },
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_FALSE(device.LoadOptions(&error));
+  ASSERT_NE(error, nullptr);
+  EXPECT_TRUE(error->HasError(kDbusDomain, kManagerServiceError));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsZeroOptionCount) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 0;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(device.GetAllOptions().size(), 0);
+  EXPECT_EQ(device.GetOptionGroups().size(), 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsZeroRealOptions) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 1;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(device.GetAllOptions().size(), 0);
+  EXPECT_EQ(device.GetOptionGroups().size(), 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsExcessOptions) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;  // One option claimed, but none available.
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_FALSE(device.LoadOptions(&error));
+  ASSERT_NE(error, nullptr);
+  EXPECT_TRUE(error->HasError(kDbusDomain, kManagerServiceError));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsOneRealOptionMissingValue) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "first-option",
+          .title = "First Option",
+          .desc = "First option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  // Leave index 1 unset.  Will fail when sane_control_option is called.
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_FALSE(device.LoadOptions(&error));
+  ASSERT_NE(error, nullptr);
+  EXPECT_TRUE(error->HasError(kDbusDomain, kManagerServiceError));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsOneRealOptionNoGroup) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "first-option",
+          .title = "First Option",
+          .desc = "First option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int first_option = 42;
+  libsane.SetOptionValue(h, 1, &first_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(device.GetAllOptions().size(), 1);
+  EXPECT_EQ(device.GetOptionGroups().size(), 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsMultipleOptionsInGroups) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      MakeGroupOptionDescriptor("First Group"),
+      {
+          .name = "first-option",
+          .title = "First Option",
+          .desc = "First option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      },
+      MakeGroupOptionDescriptor("Second Group"),
+      {
+          .name = "second-option",
+          .title = "Second Option",
+          .desc = "Second option description",
+          .type = SANE_TYPE_BOOL,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap =
+              SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT | SANE_CAP_INACTIVE,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      },
+      MakeGroupOptionDescriptor("Third Group"),
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 6;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int first_option = 42;
+  libsane.SetOptionValue(h, 2, &first_option);
+
+  SANE_Bool second_option = SANE_TRUE;
+  libsane.SetOptionValue(h, 4, &second_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  // Just look up the names.  Assume the actual option parsing has been tested
+  // in SaneOption tests.
+  EXPECT_EQ(device.GetAllOptions().size(), 2);
+  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "first-option"));
+  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "second-option"));
+
+  ASSERT_EQ(device.GetOptionGroups().size(), 3);
+  EXPECT_EQ(device.GetOptionGroups()[0].title(), "First Group");
+  EXPECT_THAT(device.GetOptionGroups()[0].members(),
+              ElementsAre("first-option"));
+  EXPECT_EQ(device.GetOptionGroups()[1].title(), "Second Group");
+  EXPECT_THAT(device.GetOptionGroups()[1].members(),
+              ElementsAre("second-option"));
+  EXPECT_EQ(device.GetOptionGroups()[2].title(), "Third Group");
+  EXPECT_EQ(device.GetOptionGroups()[2].members().size(), 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsOneKnownOption) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "resolution",
+          .title = "Resolution",
+          .desc = "Scanning resolution in DPI",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_DPI,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int resolution_value = 150;
+  libsane.SetOptionValue(h, 1, &resolution_value);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(device.GetAllOptions().size(), 1);
+  EXPECT_TRUE(base::Contains(device.GetAllOptions(), "resolution"));
+  EXPECT_EQ(device.GetKnownOptions().size(), 1);
+  EXPECT_TRUE(base::Contains(device.GetKnownOptions(),
+                             SaneDeviceImplPeer::ScanOption::kResolution));
+  EXPECT_EQ(device.GetOptionGroups().size(), 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, GetCurrentConfiguration) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      MakeGroupOptionDescriptor("First Group"),
+      {
+          .name = "first-option",
+          .title = "First Option",
+          .desc = "First option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      },
+      MakeGroupOptionDescriptor("Second Group"),
+      {
+          .name = "second-option",
+          .title = "Second Option",
+          .desc = "Second option description",
+          .type = SANE_TYPE_BOOL,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap =
+              SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT | SANE_CAP_INACTIVE,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      },
+      MakeGroupOptionDescriptor("Third Group"),
+  };
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 6;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int first_option = 42;
+  libsane.SetOptionValue(h, 2, &first_option);
+
+  SANE_Bool second_option = SANE_TRUE;
+  libsane.SetOptionValue(h, 4, &second_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  std::optional<ScannerConfig> config = device.GetCurrentConfig(&error);
+  ASSERT_TRUE(config.has_value());
+  EXPECT_EQ(error, nullptr);
+
+  // Verify option names are present.  The structure of option parsing has been
+  // checked by other tests.
+  EXPECT_EQ(config->options().size(), 2);
+  EXPECT_TRUE(config->options().contains("first-option"));
+  EXPECT_TRUE(config->options().contains("second-option"));
+
+  // Make sure group memberships are correct.
+  ASSERT_EQ(config->option_groups_size(), 3);
+  EXPECT_EQ(config->option_groups(0).title(), "First Group");
+  EXPECT_THAT(config->option_groups(0).members(), ElementsAre("first-option"));
+  EXPECT_EQ(config->option_groups(1).title(), "Second Group");
+  EXPECT_THAT(config->option_groups(1).members(), ElementsAre("second-option"));
+  EXPECT_EQ(config->option_groups(2).title(), "Third Group");
+  EXPECT_EQ(config->option_groups(2).members_size(), 0);
 }
 
 class SaneClientTest : public testing::Test {

@@ -80,6 +80,7 @@ SaneDeviceFake::SaneDeviceFake()
     : resolution_(100),
       source_name_("Fake source name"),
       color_mode_(MODE_COLOR),
+      config_(ScannerConfig()),
       start_scan_result_(SANE_STATUS_GOOD),
       read_scan_data_result_(SANE_STATUS_GOOD),
       scan_running_(false),
@@ -210,6 +211,16 @@ bool SaneDeviceFake::CancelScan(brillo::ErrorPtr* error) {
 
   cancelled_ = true;
   return true;
+}
+
+std::optional<ScannerConfig> SaneDeviceFake::GetCurrentConfig(
+    brillo::ErrorPtr* error) {
+  return config_;
+}
+
+void SaneDeviceFake::SetScannerConfig(
+    const std::optional<ScannerConfig>& config) {
+  config_ = config;
 }
 
 void SaneDeviceFake::SetValidOptionValues(
