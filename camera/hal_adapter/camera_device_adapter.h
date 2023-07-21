@@ -160,6 +160,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
                          const std::vector<uint32_t>& offsets,
                          uint64_t modifier);
 
+  // Close the camera and return all inflight requests.
   int32_t Close();
 
   int32_t ConfigureStreamsAndGetAllocatedBuffers(
@@ -274,6 +275,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   bool IsBufferManagementSupported() const;
 
+  // Wait for the pending requests in |inflight_requests_| to finish.
+  int32_t WaitForPendingRequests(base::TimeDelta timeout);
+
   // The thread that all the camera3 device ops operate on.
   base::Thread camera_device_ops_thread_;
 
@@ -373,6 +377,11 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   const bool async_capture_request_call_ = false;
 
   uint32_t partial_result_count_ = 0;
+
+  // Whether to allow a capture result metadata loss from the HAL. The HAL
+  // can choose not to send any result metadata with non-zero |partial_result|
+  // once Close() has been called. This is used to count inflight requests.
+  bool allow_result_metadata_loss_ = false;
 
   struct InflightRequestInfo {
     base::flat_set<const camera3_stream_t*> pending_streams;

@@ -215,6 +215,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
+  TRACE_HAL_ADAPTER();
   // Make sure that the camera is closed when the device adapter is destructed.
   camera_device_ops_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(base::IgnoreResult(&CameraDeviceAdapter::Close),
@@ -313,6 +314,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     base::AutoLock l(inflight_requests_lock_);
     inflight_requests_.clear();
   }
+  allow_result_metadata_loss_ = false;
 
   base::AutoLock l(streams_lock_);
 
@@ -739,16 +741,41 @@ int32_t CameraDeviceAdapter::Flush() {
   }
   stream_manipulator_manager_->Flush();
 
-  {
-    base::AutoLock l(inflight_requests_lock_);
-    while (!inflight_requests_.empty()) {
-      const base::TimeDelta elapsed_time = timer.Elapsed();
-      if (elapsed_time >= kFlushTimeout) {
-        LOGF(ERROR) << "Flushing pending requests timed out";
-        return -ENODEV;
+  return WaitForPendingRequests(kFlushTimeout - timer.Elapsed());
+}
+
+int32_t CameraDeviceAdapter::WaitForPendingRequests(base::TimeDelta timeout) {
+  TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  VLOGF(1) << "Waiting for pending requests with timeout: " << timeout;
+
+  base::ElapsedTimer timer;
+  base::AutoLock l(inflight_requests_lock_);
+
+  // Clear pending requests with lost result metadata.
+  if (allow_result_metadata_loss_) {
+    for (auto it = inflight_requests_.begin();
+         it != inflight_requests_.end();) {
+      if (it->second.pending_streams.empty()) {
+        it = inflight_requests_.erase(it);
+        DVLOGF(2) << "Inflight requests --: " << inflight_requests_.size();
+        if (inflight_requests_.empty()) {
+          inflight_requests_empty_cv_.Signal();
+        }
+      } else {
+        it->second.has_pending_metadata = false;
+        it++;
       }
-      inflight_requests_empty_cv_.TimedWait(kFlushTimeout - elapsed_time);
     }
+  }
+
+  while (!inflight_requests_.empty()) {
+    const base::TimeDelta elapsed_time = timer.Elapsed();
+    if (elapsed_time >= timeout) {
+      LOGF(ERROR) << "Waiting for pending requests timed out";
+      return -ENODEV;
+    }
+    inflight_requests_empty_cv_.TimedWait(timeout - elapsed_time);
   }
   return 0;
 }
@@ -786,12 +813,21 @@ int32_t CameraDeviceAdapter::Close() {
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kRequestsMonitor);
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kResultsMonitor);
 
+  allow_result_metadata_loss_ = true;
+
   int32_t ret = 0;
   {
     TRACE_HAL_ADAPTER_EVENT("HAL::Close");
     ret = camera_device_->common.close(&camera_device_->common);
     DCHECK_EQ(ret, 0);
   }
+
+  // We can return the pending buffers with error from this point.
+  stream_manipulator_manager_->StopProcessing();
+  // We should not wait too long as Camera3 API requires Close()
+  // to return in 500ms.
+  WaitForPendingRequests(base::Milliseconds(300));
+
   {
     base::AutoLock l(fence_sync_thread_lock_);
     fence_sync_thread_.Stop();
@@ -849,6 +885,7 @@ void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
   TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
     ctx.AddDebugAnnotation("frame_number", result->frame_number);
+    ctx.AddDebugAnnotation("partial_result", result->partial_result);
     if (result->input_buffer != nullptr) {
       perfetto::Flow::ProcessScoped(
           reinterpret_cast<uintptr_t>(*result->input_buffer->buffer))(ctx);
@@ -899,7 +936,8 @@ void CameraDeviceAdapter::ReturnResultToClient(
       for (const auto& b : result_descriptor.GetOutputBuffers()) {
         info.pending_streams.erase(b.stream());
       }
-      if (result_descriptor.partial_result() == self->partial_result_count_) {
+      if (self->allow_result_metadata_loss_ ||
+          result_descriptor.partial_result() == self->partial_result_count_) {
         info.has_pending_metadata = false;
       }
       if (info.pending_streams.empty() && !info.has_pending_metadata) {

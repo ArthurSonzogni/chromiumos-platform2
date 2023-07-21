@@ -238,12 +238,8 @@ StreamManipulatorManager::StreamManipulatorManager(
 }
 
 StreamManipulatorManager::~StreamManipulatorManager() {
-  // Wait for in-flight result processing to finish.
-  if (!all_results_returned_.TimedWait(base::Milliseconds(300))) {
-    LOGF(ERROR)
-        << "Timed out waiting for in-flight result processing to finish";
-  }
-
+  TRACE_COMMON();
+  StopProcessing();
   // Destruct stream manipulators in the reverse order to ensure that
   // ProcessCaptureResultOnStreamManipulator() does not post tasks to destructed
   // stream manipulators.
@@ -258,6 +254,7 @@ bool StreamManipulatorManager::Initialize(
   TRACE_COMMON();
 
   callbacks_ = std::move(callbacks);
+  stop_processing_ = false;
 
   int partial_result_count = [&]() {
     camera_metadata_ro_entry entry;
@@ -366,14 +363,22 @@ bool StreamManipulatorManager::Flush() {
   return true;
 }
 
+void StreamManipulatorManager::StopProcessing() {
+  stop_processing_ = true;
+  DVLOGF(1) << "Start setting future output buffers status to error";
+}
+
 void StreamManipulatorManager::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_COMMON("frame_number", result.frame_number());
 
-  {
-    base::AutoLock l(inflight_result_count_lock_);
-    if (++inflight_result_count_ == 1) {
-      all_results_returned_.Reset();
+  if (stop_processing_) {
+    for (auto& result_buffer : result.AcquireOutputBuffers()) {
+      auto output_buffer = result_buffer.mutable_raw_buffer();
+      output_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+      DVLOGF(3) << "Set output buffer status to error for frame: "
+                << result.frame_number()
+                << ", stream: " << result_buffer.stream();
     }
   }
 
@@ -446,11 +451,6 @@ void StreamManipulatorManager::ReturnResultToClient(
   DCHECK(!callbacks_.result_callback.is_null());
   InspectResult(0, result);
   callbacks_.result_callback.Run(std::move(result));
-
-  base::AutoLock l(inflight_result_count_lock_);
-  if (--inflight_result_count_ == 0) {
-    all_results_returned_.Signal();
-  }
 }
 
 void StreamManipulatorManager::InspectResult(int position,

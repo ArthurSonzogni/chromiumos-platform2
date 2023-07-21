@@ -63,25 +63,24 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
       android::CameraMetadata* default_request_settings, int type);
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request);
   bool Flush();
+  // Send capture results to the stream manipulator pipeline.
+  // When |stop_processing_| is true, set all future output buffers status
+  // to CAMERA3_BUFFER_STATUS_ERROR before sending them to the pipeline.
   void ProcessCaptureResult(Camera3CaptureDescriptor result);
   void Notify(camera3_notify_msg_t msg);
+  void StopProcessing();
 
  private:
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
   StreamManipulator::Callbacks callbacks_;
 
+  // Flag to track if we should set future buffers status to
+  // CAMERA3_BUFFER_STATUS_ERROR.
+  std::atomic<bool> stop_processing_ = false;
+
   // The metadata inspector to dump capture requests / results in realtime
   // for debugging if enabled.
   std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
-
-  base::Lock inflight_result_count_lock_;
-  int inflight_result_count_ GUARDED_BY(inflight_result_count_lock_) = 0;
-
-  // An event signals no in-flight results. Wait for this event before
-  // destructing |stream_manipulators_|.
-  base::WaitableEvent all_results_returned_{
-      base::WaitableEvent::ResetPolicy::MANUAL,
-      base::WaitableEvent::InitialState::SIGNALED};
 
   // A thread where StreamManipulator::ProcessCaptureResult() runs if
   // StreamManipulator does not specify a thread for the task via
