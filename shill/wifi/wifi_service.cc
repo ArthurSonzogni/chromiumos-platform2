@@ -947,6 +947,33 @@ void WiFiService::SendPostReadyStateMetrics(
         Metrics::kTimerHistogramMillisecondsMin,
         Metrics::kTimerHistogramMillisecondsMax,
         Metrics::kTimerHistogramNumBuckets);
+
+    if (wifi_ && !wifi_->pre_suspend_bssid().empty() &&
+        bssid() == wifi_->pre_suspend_bssid()) {
+      std::string metric_name;
+      Metrics::WiFiChannel channel =
+          Metrics::WiFiFrequencyToChannel(frequency_);
+      Metrics::WiFiFrequencyRange range =
+          Metrics::WiFiChannelToFrequencyRange(channel);
+      if (range == Metrics::kWiFiFrequencyRange24) {
+        metric_name = Metrics::kMetricsWiFiTimeResumeToReadyLBMilliseconds;
+      } else if (range == Metrics::kWiFiFrequencyRange5) {
+        metric_name = Metrics::kMetricsWiFiTimeResumeToReadyHBMilliseconds;
+      } else if (range == Metrics::kWiFiFrequencyRange6) {
+        metric_name = Metrics::kMetricsWiFiTimeResumeToReadyUHBMilliseconds;
+      } else {
+        LOG(WARNING) << "Invalid frequency: " << frequency_;
+      }
+      if (!metric_name.empty()) {
+        metrics()->SendToUMA(metric_name, time_resume_to_ready_milliseconds,
+                             Metrics::kTimerHistogramMillisecondsMin,
+                             Metrics::kTimerHistogramMillisecondsMax,
+                             Metrics::kTimerHistogramNumBuckets);
+      }
+    }
+  }
+  if (wifi_) {
+    wifi_->reset_pre_suspend_bssid();
   }
 }
 

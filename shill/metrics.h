@@ -1249,6 +1249,12 @@ class Metrics {
   static constexpr int kMetricTimeToInitializeMillisecondsNumBuckets = 30;
   static constexpr char kMetricTimeResumeToReadyMillisecondsSuffix[] =
       "TimeResumeToReady";
+  static constexpr char kMetricsWiFiTimeResumeToReadyLBMilliseconds[] =
+      "Network.Shill.WiFi.TimeResumeToReadyLB";
+  static constexpr char kMetricsWiFiTimeResumeToReadyHBMilliseconds[] =
+      "Network.Shill.WiFi.TimeResumeToReadyHB";
+  static constexpr char kMetricsWiFiTimeResumeToReadyUHBMilliseconds[] =
+      "Network.Shill.WiFi.TimeResumeToReadyUHB";
   static constexpr char kMetricTimeToConfigMillisecondsSuffix[] =
       "TimeToConfig";
   static constexpr char kMetricTimeToJoinMillisecondsSuffix[] = "TimeToJoin";
@@ -2146,6 +2152,10 @@ class Metrics {
   FRIEND_TEST(MetricsTest, TimeToPortal);
   FRIEND_TEST(MetricsTest, TimeToScanIgnore);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Success);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Failure);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);

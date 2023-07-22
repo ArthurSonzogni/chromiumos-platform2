@@ -338,6 +338,10 @@ class WiFiService : public Service {
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_

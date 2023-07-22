@@ -929,6 +929,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->selected_service();
   }
   const RpcIdentifier& GetSupplicantBSS() { return wifi_->supplicant_bss_; }
+  const std::string& GetPreSuspendBSSID() { return wifi_->pre_suspend_bssid_; }
   void SetSupplicantBSS(const RpcIdentifier& bss) {
     wifi_->supplicant_bss_ = bss;
   }
@@ -1873,6 +1874,15 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenDisabled) {
   OnBeforeSuspend();
   OnAfterResume();
   event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, PreSuspendBSSIDSet) {
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  SetupConnectedService(RpcIdentifier(""), &endpoint, nullptr);
+  std::string bssid = GetCurrentService()->bssid();
+  OnBeforeSuspend();
+  EXPECT_EQ(GetPreSuspendBSSID(), bssid);
 }
 
 TEST_F(WiFiMainTest, ResumeWithCurrentService) {

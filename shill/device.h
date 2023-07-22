@@ -324,6 +324,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
 
   virtual ~Device();

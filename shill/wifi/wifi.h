@@ -223,6 +223,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return service == pending_service_.get();
   }
 
+  std::string pre_suspend_bssid() const { return pre_suspend_bssid_; }
+  void reset_pre_suspend_bssid() { pre_suspend_bssid_.clear(); }
+  void set_pre_suspend_bssid_for_test(const std::string& bssid) {
+    pre_suspend_bssid_ = bssid;
+  }
+
   const WiFiEndpointConstRefPtr GetCurrentEndpoint() const;
 
   // Overridden from Device superclass
@@ -320,6 +326,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
   friend class WiFiMainTest;    // wifi_state_
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange);
@@ -959,6 +969,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Managed supplicant listener, for watching service (re)start.
   std::unique_ptr<SupplicantManager::ScopedSupplicantListener>
       scoped_supplicant_listener_;
+
+  // The BSSID of the connected AP right before a system suspend.
+  std::string pre_suspend_bssid_;
 
   // For weak pointers that will be invalidated in Stop().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;
