@@ -4,10 +4,13 @@
 
 #include "lorgnette/sane_option.h"
 
+#include <algorithm>
 #include <optional>
 #include <math.h>
 
+#include <absl/strings/str_join.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 
@@ -84,6 +87,22 @@ std::string ShortestStringForSaneFixed(double d) {
   return result;
 }
 
+// JoinFixed is a version of StrJoin that uses our custom SANE_Fixed formatting
+// instead of the %g equivalent that StrJoin normally uses.
+std::string JoinFixed(const std::vector<double>& fs,
+                      const std::string& delimiter) {
+  if (fs.empty()) {
+    return "";
+  }
+
+  std::vector<std::string> strs;
+  strs.reserve(fs.size());
+  for (auto f : fs) {
+    strs.push_back(ShortestStringForSaneFixed(f));
+  }
+  return absl::StrJoin(strs, delimiter);
+}
+
 }  // namespace
 
 SaneOption::SaneOption(const SANE_Option_Descriptor& opt, int index) {
@@ -91,10 +110,69 @@ SaneOption::SaneOption(const SANE_Option_Descriptor& opt, int index) {
   index_ = index;
   type_ = opt.type;
   active_ = SANE_OPTION_IS_ACTIVE(opt.cap);
-  if (type_ == SANE_TYPE_STRING) {
-    // opt.size is the maximum size of the string option, including the null
-    // terminator (which is mandatory).
-    string_data_.resize(opt.size);
+
+  size_t size = 0;
+  switch (type_) {
+    case SANE_TYPE_BOOL:
+      // opt.size must be set to sizeof(SANE_Word) and always represents a
+      // single Boolean value.
+      if (opt.size != sizeof(SANE_Word)) {
+        LOG(WARNING) << "Boolean option " << name_ << " has invalid size "
+                     << opt.size;
+      }
+      size = 1;
+      break;
+
+    case SANE_TYPE_INT:
+    case SANE_TYPE_FIXED:
+      // opt.size is a multiple of sizeof(SANE_Word).  The number of elements
+      // can be found by dividing it back out.
+      if (opt.size % sizeof(SANE_Word)) {
+        LOG(WARNING) << "Numeric option " << name_ << " has size " << opt.size
+                     << " that is not a multiple of " << sizeof(SANE_Word);
+      }
+      size = opt.size / sizeof(SANE_Word);  // Truncates if needed as specified
+                                            // in the upstream formula.
+      if (!size) {
+        LOG(WARNING) << "Numeric option " << name_ << " has size 0";
+      }
+      break;
+
+    case SANE_TYPE_STRING:
+      // opt.size is the maximum size of the string option, including the null
+      // terminator (which is mandatory).
+      size = opt.size / sizeof(SANE_Char);
+      if (!size) {
+        LOG(WARNING) << "String option " << name_ << " has size 0";
+      }
+      break;
+
+    case SANE_TYPE_BUTTON:
+    case SANE_TYPE_GROUP:
+      // These contain no value.  The size is ignored.
+      if (opt.size != 0) {
+        LOG(WARNING) << "Non-value option " << name_
+                     << " has non-zero size that will be ignored";
+      }
+      break;
+
+    default:
+      NOTREACHED();
+  }
+
+  switch (type_) {
+    case SANE_TYPE_STRING:
+      string_data_.emplace(size);
+      break;
+    case SANE_TYPE_INT:
+      int_data_.emplace(size, 0);
+      break;
+    case SANE_TYPE_FIXED:
+      fixed_data_.emplace(size, 0);
+      break;
+    default:
+      // No data setup needed.
+      break;
   }
 }
 
@@ -106,7 +184,7 @@ bool SaneOption::Set(bool b) {
     return false;
   }
 
-  int_data_.b = b ? SANE_TRUE : SANE_FALSE;
+  bool_data_ = b ? SANE_TRUE : SANE_FALSE;
   return true;
 }
 
@@ -120,17 +198,38 @@ bool SaneOption::Set(int i) {
       if (i != SANE_TRUE && i != SANE_FALSE) {
         return false;
       }
-      int_data_.b = i == SANE_TRUE ? SANE_TRUE : SANE_FALSE;
+      bool_data_ = i == SANE_TRUE ? SANE_TRUE : SANE_FALSE;
       return true;
     case SANE_TYPE_INT:
-      int_data_.i = i;
-      return true;
+      if (GetSize() > 0) {
+        int_data_->at(0) = i;
+        return true;
+      }
+      return false;
     case SANE_TYPE_FIXED:
-      int_data_.f = SANE_FIX(static_cast<double>(i));
-      return true;
+      if (GetSize() > 0) {
+        fixed_data_->at(0) = SANE_FIX(static_cast<double>(i));
+        return true;
+      }
+      return false;
     default:
       return false;
   }
+}
+
+bool SaneOption::Set(const std::vector<int>& i) {
+  if (!active_) {
+    return false;
+  }
+  if (type_ != SANE_TYPE_INT) {
+    return false;
+  }
+  if (i.size() != GetSize()) {
+    return false;
+  }
+
+  std::copy(i.begin(), i.end(), int_data_->begin());
+  return true;
 }
 
 bool SaneOption::Set(double d) {
@@ -140,14 +239,37 @@ bool SaneOption::Set(double d) {
 
   switch (type_) {
     case SANE_TYPE_INT:
-      int_data_.i = static_cast<int>(d);
-      return true;
+      if (GetSize() > 0) {
+        int_data_->at(0) = static_cast<int>(d);
+        return true;
+      }
+      return false;
     case SANE_TYPE_FIXED:
-      int_data_.f = SANE_FIX(d);
-      return true;
+      if (GetSize() > 0) {
+        fixed_data_->at(0) = SANE_FIX(d);
+        return true;
+      }
+      return false;
     default:
       return false;
   }
+}
+
+bool SaneOption::Set(const std::vector<double>& d) {
+  if (!active_) {
+    return false;
+  }
+  if (type_ != SANE_TYPE_FIXED) {
+    return false;
+  }
+  if (d.size() != GetSize()) {
+    return false;
+  }
+
+  for (int i = 0; i < d.size(); i++) {
+    fixed_data_->at(i) = SANE_FIX(d[i]);
+  }
+  return true;
 }
 
 bool SaneOption::Set(const std::string& s) {
@@ -161,13 +283,13 @@ bool SaneOption::Set(const std::string& s) {
   }
 
   size_t size_with_null = s.size() + 1;
-  if (size_with_null > string_data_.size()) {
+  if (size_with_null > string_data_->size()) {
     LOG(ERROR) << "String size " << size_with_null
-               << " exceeds maximum option size " << string_data_.size();
+               << " exceeds maximum option size " << string_data_->size();
     return false;
   }
 
-  memcpy(string_data_.data(), s.c_str(), size_with_null);
+  memcpy(string_data_->data(), s.c_str(), size_with_null);
   return true;
 }
 
@@ -182,15 +304,35 @@ std::optional<int> SaneOption::Get() const {
 
   switch (type_) {
     case SANE_TYPE_INT:
-      return int_data_.i;
+      if (GetSize() > 0) {
+        return int_data_->at(0);
+      }
+      return std::nullopt;
     case SANE_TYPE_FIXED:
-      return static_cast<int>(SANE_UNFIX(int_data_.f));
+      if (GetSize() > 0) {
+        return static_cast<int>(SANE_UNFIX(fixed_data_->at(0)));
+      }
+      return std::nullopt;
     case SANE_TYPE_BOOL:
-      return int_data_.b == SANE_TRUE ? SANE_TRUE : SANE_FALSE;
+      return bool_data_ == SANE_TRUE ? SANE_TRUE : SANE_FALSE;
     default:
       LOG(ERROR) << "Requested int from option type " << type_;
       return std::nullopt;
   }
+}
+
+template <>
+std::optional<std::vector<int>> SaneOption::Get() const {
+  if (!active_) {
+    return std::nullopt;
+  }
+
+  if (type_ != SANE_TYPE_INT) {
+    LOG(ERROR) << "Requested list of SANE_Int from option type " << type_;
+    return std::nullopt;
+  }
+
+  return int_data_;
 }
 
 template <>
@@ -200,13 +342,38 @@ std::optional<double> SaneOption::Get() const {
 
   switch (type_) {
     case SANE_TYPE_INT:
-      return int_data_.i;
+      if (GetSize() > 0) {
+        return int_data_->at(0);
+      }
+      return std::nullopt;
     case SANE_TYPE_FIXED:
-      return SANE_UNFIX(int_data_.f);
+      if (GetSize() > 0) {
+        return SANE_UNFIX(fixed_data_->at(0));
+      }
+      return std::nullopt;
     default:
       LOG(ERROR) << "Requested double from option type " << type_;
       return std::nullopt;
   }
+}
+
+template <>
+std::optional<std::vector<double>> SaneOption::Get() const {
+  if (!active_) {
+    return std::nullopt;
+  }
+
+  if (type_ != SANE_TYPE_FIXED) {
+    LOG(ERROR) << "Requested list of SANE_Fixed from option type " << type_;
+    return std::nullopt;
+  }
+
+  std::vector<double> result;
+  result.reserve(fixed_data_->size());
+  for (auto f : fixed_data_.value()) {
+    result.push_back(SANE_UNFIX(f));
+  }
+  return result;
 }
 
 template <>
@@ -219,7 +386,7 @@ std::optional<bool> SaneOption::Get() const {
     return std::nullopt;
   }
 
-  return int_data_.b == SANE_TRUE;
+  return bool_data_ == SANE_TRUE;
 }
 
 template <>
@@ -232,18 +399,18 @@ std::optional<std::string> SaneOption::Get() const {
     return std::nullopt;
   }
 
-  return std::string(string_data_.data());
+  return std::string(string_data_->data());
 }
 
 void* SaneOption::GetPointer() {
   if (type_ == SANE_TYPE_STRING)
-    return string_data_.data();
+    return string_data_->data();
   else if (type_ == SANE_TYPE_INT)
-    return &int_data_.i;
+    return int_data_->data();
   else if (type_ == SANE_TYPE_FIXED)
-    return &int_data_.f;
+    return fixed_data_->data();
   else if (type_ == SANE_TYPE_BOOL)
-    return &int_data_.b;
+    return &bool_data_;
   else
     return nullptr;
 }
@@ -260,6 +427,24 @@ SANE_Value_Type SaneOption::GetType() const {
   return type_;
 }
 
+size_t SaneOption::GetSize() const {
+  switch (type_) {
+    case SANE_TYPE_BOOL:
+      return 1;
+    case SANE_TYPE_INT:
+      return int_data_->size();
+    case SANE_TYPE_FIXED:
+      return fixed_data_->size();
+    case SANE_TYPE_STRING:
+      return string_data_->size();
+    case SANE_TYPE_BUTTON:
+    case SANE_TYPE_GROUP:
+      return 0;
+    default:
+      NOTREACHED();
+  }
+}
+
 std::string SaneOption::DisplayValue() const {
   if (!active_) {
     return "[inactive]";
@@ -269,9 +454,15 @@ std::string SaneOption::DisplayValue() const {
     case SANE_TYPE_BOOL:
       return Get<bool>().value() ? "true" : "false";
     case SANE_TYPE_INT:
-      return std::to_string(int_data_.i);
+      if (GetSize() > 0) {
+        return absl::StrJoin(Get<std::vector<int>>().value(), ", ");
+      }
+      return "[no value]";
     case SANE_TYPE_FIXED:
-      return ShortestStringForSaneFixed(Get<double>().value());
+      if (GetSize() > 0) {
+        return JoinFixed(Get<std::vector<double>>().value(), ", ");
+      }
+      return "[no value]";
     case SANE_TYPE_STRING:
       return Get<std::string>().value();
     default:

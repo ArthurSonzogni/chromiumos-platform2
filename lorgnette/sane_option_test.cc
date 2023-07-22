@@ -106,6 +106,51 @@ TEST(SaneOptionsIntTest, InactiveFails) {
   EXPECT_EQ(option.Get<int>(), std::nullopt);
 }
 
+TEST(SaneOptionIntTest, MultiValueEmpty) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_INT, 0), 2);
+  EXPECT_EQ(option.GetSize(), 0);
+  EXPECT_FALSE(option.Set(42));
+  EXPECT_EQ(option.Get<bool>(), std::nullopt);
+  EXPECT_EQ(option.Get<int>(), std::nullopt);
+  EXPECT_EQ(option.Get<double>(), std::nullopt);
+}
+
+TEST(SaneOptionIntTest, MultiValueSingleValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_TRUE(option.Set(42));
+  EXPECT_EQ(option.Get<int>(), 42);
+  EXPECT_EQ(option.Get<double>(), 42.0);
+}
+
+TEST(SaneOptionIntTest, MultiValueRoundsDown) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word) - 1),
+      2);
+  EXPECT_EQ(option.GetSize(), 1);
+  EXPECT_TRUE(option.Set(42));
+  EXPECT_EQ(option.Get<int>(), 42);
+  EXPECT_EQ(option.DisplayValue(), "42");
+}
+
+TEST(SaneOptionIntTest, MultiValueListRightSize) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_TRUE(option.Set(std::vector<int>{42, 43}));
+  EXPECT_THAT(option.Get<std::vector<int>>().value(), ElementsAre(42, 43));
+  EXPECT_EQ(option.DisplayValue(), "42, 43");
+}
+
+TEST(SaneOptionIntTest, MultiValueListWrongSize) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_FALSE(option.Set(std::vector<int>{42}));
+  EXPECT_FALSE(option.Set(std::vector<int>{42, 43, 44}));
+}
+
 TEST(SaneOptionFixedTest, SetIntSucceeds) {
   SaneOption option(
       CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word)), 7);
@@ -314,6 +359,53 @@ TEST(SaneOptionsFixedTest, InactiveFails) {
   EXPECT_EQ(option.Get<double>(), std::nullopt);
   EXPECT_FALSE(option.Set(1));
   EXPECT_EQ(option.Get<double>(), std::nullopt);
+}
+
+TEST(SaneOptionFixedTest, MultiValueEmpty) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_FIXED, 0), 2);
+  EXPECT_EQ(option.GetSize(), 0);
+  EXPECT_FALSE(option.Set(42.0));
+  EXPECT_EQ(option.Get<bool>(), std::nullopt);
+  EXPECT_EQ(option.Get<int>(), std::nullopt);
+  EXPECT_EQ(option.Get<double>(), std::nullopt);
+}
+
+TEST(SaneOptionFixedTest, MultiValueSingleValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_TRUE(option.Set(42.25));
+  EXPECT_EQ(option.Get<int>(), 42);
+  EXPECT_EQ(option.Get<double>(), 42.25);
+}
+
+TEST(SaneOptionFixedTest, MultiValueRoundsDown) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word) - 1),
+      2);
+  EXPECT_EQ(option.GetSize(), 1);
+  EXPECT_TRUE(option.Set(1.25));
+  EXPECT_EQ(option.Get<int>(), 1);
+  EXPECT_EQ(option.Get<double>(), 1.25);
+  EXPECT_EQ(option.DisplayValue(), "1.25");
+}
+
+TEST(SaneOptionFixedTest, MultiValueListRightSize) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_TRUE(option.Set(std::vector<double>{42.0, 43.0}));
+  EXPECT_THAT(option.Get<std::vector<double>>().value(),
+              ElementsAre(42.0, 43.0));
+  EXPECT_EQ(option.DisplayValue(), "42.0, 43.0");
+}
+
+TEST(SaneOptionFixedTest, MultiValueListWrongSize) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 2);
+  EXPECT_EQ(option.GetSize(), 2);
+  EXPECT_FALSE(option.Set(std::vector<double>{42.0}));
+  EXPECT_FALSE(option.Set(std::vector<double>{42.0, 43.0, 44.0}));
 }
 
 TEST(SaneOptionStringTest, SetStringSucceeds) {

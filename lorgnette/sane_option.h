@@ -20,7 +20,9 @@ class SaneOption {
 
   bool Set(bool b);
   bool Set(double d);
+  bool Set(const std::vector<double>& d);
   bool Set(int i);
+  bool Set(const std::vector<int>& i);
   bool Set(const std::string& s);
   bool Set(const char* s);
 
@@ -31,7 +33,11 @@ class SaneOption {
   template <>
   std::optional<int> Get() const;
   template <>
+  std::optional<std::vector<int>> Get() const;
+  template <>
   std::optional<double> Get() const;
+  template <>
+  std::optional<std::vector<double>> Get() const;
   template <>
   std::optional<std::string> Get() const;
 
@@ -43,6 +49,7 @@ class SaneOption {
   std::string GetName() const;
   std::string DisplayValue() const;
   SANE_Value_Type GetType() const;
+  size_t GetSize() const;
 
  private:
   std::string name_;
@@ -50,15 +57,11 @@ class SaneOption {
   SANE_Value_Type type_;  // The type that the backend uses for the option.
   bool active_;           // Inactive options don't contain a value.
 
-  // The integer data, if this is an int option.
-  union {
-    SANE_Int i;
-    SANE_Word b;
-    SANE_Fixed f;
-  } int_data_;
-
-  // The buffer containing string data, if this is a string option.
-  std::vector<char> string_data_;
+  // Only one of these will be set, depending on type_.
+  std::optional<std::vector<SANE_Int>> int_data_;
+  std::optional<std::vector<SANE_Fixed>> fixed_data_;
+  SANE_Bool bool_data_;
+  std::optional<std::vector<SANE_Char>> string_data_;
 };
 
 // Represents the possible values for an option.

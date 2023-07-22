@@ -23,6 +23,7 @@ group("all") {
 
 pkg_config("target_defaults_deps") {
   pkg_deps = [
+    "absl",
     "libbrillo",
     "libchrome",
     "libjpeg",
