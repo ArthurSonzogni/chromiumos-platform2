@@ -5,6 +5,10 @@
 #ifndef FLEX_HWIS_FLEX_HWIS_H_
 #define FLEX_HWIS_FLEX_HWIS_H_
 
+#include "flex_hwis/flex_hwis_check.h"
+
+#include <memory>
+
 #include <base/files/file_path.h>
 
 namespace flex_hwis {
@@ -23,14 +27,15 @@ enum class Result {
 class FlexHwisSender {
  public:
   // |base_path| is normally "/" but can be adjusted for testing.
-  explicit FlexHwisSender(const base::FilePath& base_path);
+  explicit FlexHwisSender(const base::FilePath& base_path,
+                          std::unique_ptr<policy::PolicyProvider> provider);
   // Collect and send the device hardware information.
-  // Currently only response "Sent" for testing.
   Result CollectAndSend();
 
  private:
   // The base FilePath, adjustable for testing.
   base::FilePath base_path_;
+  flex_hwis::FlexHwisCheck check_;
 };
 
 }  // namespace flex_hwis

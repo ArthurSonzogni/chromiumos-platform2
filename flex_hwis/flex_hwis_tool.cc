@@ -4,13 +4,16 @@
 
 #include "flex_hwis/flex_hwis.h"
 
+#include <memory>
+
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog);
 
-  flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"));
+  flex_hwis::FlexHwisSender flex_hwis_sender(
+      base::FilePath("/"), std::make_unique<policy::PolicyProvider>());
   auto flex_hwis_res = flex_hwis_sender.CollectAndSend();
 
   switch (flex_hwis_res) {

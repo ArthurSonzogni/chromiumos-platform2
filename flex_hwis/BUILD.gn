@@ -11,7 +11,10 @@ group("all") {
     ":libflex_hwis",
   ]
   if (use.test) {
-    deps += [ ":flex_hwis_test" ]
+    deps += [
+      ":flex_hwis_check_test",
+      ":flex_hwis_test",
+    ]
   }
 }
 
@@ -23,8 +26,12 @@ pkg_config("target_defaults") {
 }
 
 static_library("libflex_hwis") {
-  sources = [ "flex_hwis.cc" ]
+  sources = [
+    "flex_hwis.cc",
+    "flex_hwis_check.cc",
+  ]
   configs += [ ":target_defaults" ]
+  libs = [ "policy" ]
 }
 
 executable("flex_hwis_tool") {
@@ -42,6 +49,20 @@ install_config("install_tmpfiles_config") {
 if (use.test) {
   pkg_config("flex_hwis_test_config") {
     pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("flex_hwis_check_test") {
+    sources = [ "flex_hwis_check_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":flex_hwis_test_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libflex_hwis",
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("flex_hwis_test") {

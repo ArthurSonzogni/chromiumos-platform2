@@ -2,11 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flex_hwis/flex_hwis.h"
-
-#include <memory>
-#include <optional>
-#include <string>
+#include "flex_hwis/flex_hwis_check.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -29,11 +25,9 @@ ACTION_P(SetEnterpriseEnrolled, managed) {
   return managed;
 }
 
-class FlexHwisTest : public ::testing::Test {
+class FlexHwisCheckTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    constexpr char kUuid[] = "reven-uuid";
-
     CHECK(test_dir_.CreateUniqueTempDir());
     test_path_ = test_dir_.GetPath();
 
@@ -67,12 +61,10 @@ class FlexHwisTest : public ::testing::Test {
     EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
         .Times(AtMost(1))
         .WillOnce(SetEnterpriseEnrolled(true));
-    flex_hwis_sender_ = flex_hwis::FlexHwisSender(
+    flex_hwis_check_ = flex_hwis::FlexHwisCheck(
         test_path_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
-
-    CreateUuid(kUuid);
   }
 
   void CreateTimeStamp(const std::string& timestamp) {
@@ -87,39 +79,92 @@ class FlexHwisTest : public ::testing::Test {
     CHECK(base::WriteFile(uuid_path.Append("uuid"), uuid));
   }
 
-  std::optional<flex_hwis::FlexHwisSender> flex_hwis_sender_;
+  void EmptyHwisUuid() {
+    base::FilePath uuid_path = test_path_.Append("var/lib/flex_hwis_tool");
+    CHECK(base::WriteFile(uuid_path.Append("uuid"), ""));
+  }
+
+  std::optional<flex_hwis::FlexHwisCheck> flex_hwis_check_;
   policy::MockDevicePolicy* device_policy_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
 };
 
-TEST_F(FlexHwisTest, HasRunRecently) {
-  CreateTimeStamp(base::TimeFormatHTTP(base::Time::Now()));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::HasRunRecently);
+TEST_F(FlexHwisCheckTest, CheckTime) {
+  flex_hwis_check_->RecordSendTime();
+  EXPECT_TRUE(flex_hwis_check_->HasRunRecently());
 }
 
-TEST_F(FlexHwisTest, ManagedWithoutPermission) {
+TEST_F(FlexHwisCheckTest, CheckTimeEmpty) {
+  EXPECT_FALSE(flex_hwis_check_->HasRunRecently());
+}
+
+TEST_F(FlexHwisCheckTest, CheckUuid) {
+  constexpr char kUuid[] = "reven-uuid";
+  CreateUuid(kUuid);
+  UuidInfo info = flex_hwis_check_->GetOrCreateUuid();
+  EXPECT_FALSE(info.already_exists);
+  EXPECT_EQ(kUuid, info.uuid);
+  info = flex_hwis_check_->GetOrCreateUuid();
+  EXPECT_TRUE(info.already_exists);
+
+  EmptyHwisUuid();
+  info = flex_hwis_check_->GetOrCreateUuid();
+  EXPECT_FALSE(info.already_exists);
+  EXPECT_EQ(kUuid, info.uuid);
+}
+
+TEST_F(FlexHwisCheckTest, CheckManagedPermission) {
+  EXPECT_TRUE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckUnManagedPermission) {
+  EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
+      .WillOnce(SetEnterpriseEnrolled(false));
+  EXPECT_TRUE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableSystemInfo) {
   EXPECT_CALL(*device_policy_, GetReportSystemInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::NotAuthorized);
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
 }
 
-TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
+TEST_F(FlexHwisCheckTest, CheckDisableCpuInfo) {
+  EXPECT_CALL(*device_policy_, GetReportCpuInfo(_)).WillOnce(SetEnabled(false));
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableVersionInfo) {
+  EXPECT_CALL(*device_policy_, GetReportVersionInfo(_))
+      .WillOnce(SetEnabled(false));
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableGraphicsStatus) {
+  EXPECT_CALL(*device_policy_, GetReportGraphicsStatus(_))
+      .WillOnce(SetEnabled(false));
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableMemoryInfo) {
+  EXPECT_CALL(*device_policy_, GetReportMemoryInfo(_))
+      .WillOnce(SetEnabled(false));
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableNetworkConfig) {
+  EXPECT_CALL(*device_policy_, GetReportNetworkConfig(_))
+      .WillOnce(SetEnabled(false));
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
+}
+
+TEST_F(FlexHwisCheckTest, CheckDisableHwDataUsage) {
   EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
   EXPECT_CALL(*device_policy_, GetHwDataUsageEnabled(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::NotAuthorized);
-}
-
-TEST_F(FlexHwisTest, ManagedWithPermission) {
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::Sent);
-}
-
-TEST_F(FlexHwisTest, UnManagedWithPermission) {
-  EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
-      .WillOnce(SetEnterpriseEnrolled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::Sent);
+  EXPECT_FALSE(flex_hwis_check_->CheckPermission());
 }
 
 }  // namespace flex_hwis
