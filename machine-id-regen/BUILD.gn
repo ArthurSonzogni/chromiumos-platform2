@@ -1,0 +1,86 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":lib-machine-id-regen",
+    ":machine-id-regen",
+    ":tmpfile_confs",
+  ]
+  if (!use.systemd) {
+    deps += [ ":init_confs" ]
+  }
+
+  if (use.test) {
+    deps += [ ":machine-id-regen-test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "libmetrics",
+  ]
+}
+
+generate_dbus_proxies("upstart_proxies") {
+  upstart_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
+  proxy_output_file = "include/upstart/dbus-proxies.h"
+  sources = [ "${upstart_in_dir}/com.ubuntu.Upstart.xml" ]
+}
+
+static_library("lib-machine-id-regen") {
+  sources = [
+    "file_auto_lock.cc",
+    "machine_id_regen.cc",
+    "timestamp.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":upstart_proxies" ]
+}
+
+executable("machine-id-regen") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":lib-machine-id-regen" ]
+  install_path = "sbin"
+}
+
+install_config("init_confs") {
+  sources = [
+    "init/machine-id-regen-network.conf",
+    "init/machine-id-regen-periodic.conf",
+  ]
+  install_path = "/etc/init"
+}
+
+install_config("tmpfile_confs") {
+  sources = [ "tmpfiles.d/machine_id_regen.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("machine-id-regen-test") {
+    sources = [ "machine_id_regen_test.cc" ]
+    run_test = true
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":lib-machine-id-regen",
+      "//common-mk/testrunner",
+    ]
+  }
+}
