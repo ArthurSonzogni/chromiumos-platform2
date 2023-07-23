@@ -119,18 +119,20 @@ void FlexHwisCheck::RecordSendTime() {
   }
 }
 
-bool FlexHwisCheck::CheckPermission() {
+PermissionInfo FlexHwisCheck::CheckPermission() {
   bool permission = true;
+  PermissionInfo info;
 
   policy_provider_.Reload();
   if (!policy_provider_.device_policy_is_loaded()) {
     LOG(INFO) << "No device policy available on this device";
-    return false;
+    return info;
   }
+  info.loaded = true;
 
   const policy::DevicePolicy* policy = &policy_provider_.GetDevicePolicy();
-
-  if (policy->IsEnterpriseEnrolled()) {
+  info.managed = policy->IsEnterpriseEnrolled();
+  if (info.managed) {
     LOG(INFO) << "The device is managed";
     auto system_fn = std::bind(&policy::DevicePolicy::GetReportSystemInfo,
                                policy, std::placeholders::_1);
@@ -156,7 +158,7 @@ bool FlexHwisCheck::CheckPermission() {
                                 policy, std::placeholders::_1);
     permission = permission && CheckPolicy(hw_data_fn, "HardwareDataUsage");
   }
-
-  return permission;
+  info.permission = permission;
+  return info;
 }
 }  // namespace flex_hwis

@@ -12,6 +12,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <metrics/metrics_library.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -31,9 +32,11 @@ int main(int argc, char** argv) {
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 
+  MetricsLibrary metrics_library;
   auto provider = std::make_unique<policy::PolicyProvider>();
   flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"), *provider);
   auto flex_hwis_res = flex_hwis_sender.CollectAndSend(
+      metrics_library,
       FLAGS_debug ? flex_hwis::Debug::Print : flex_hwis::Debug::None);
 
   switch (flex_hwis_res) {

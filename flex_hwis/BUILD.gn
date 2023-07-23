@@ -30,6 +30,10 @@ pkg_config("target_defaults") {
   ]
 }
 
+pkg_config("metrics") {
+  pkg_deps = [ "libmetrics" ]
+}
+
 proto_library("hwis_data_proto") {
   proto_in_dir = "./proto"
   proto_out_dir = "include/flex_hwis"
@@ -43,9 +47,12 @@ static_library("libflex_hwis") {
     "flex_hwis_mojo.cc",
     "mock_mojo.cc",
   ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":metrics",
+  ]
   libs = [ "policy" ]
-  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
+  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
 }
 
 executable("flex_hwis_tool") {

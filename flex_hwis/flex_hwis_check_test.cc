@@ -129,7 +129,10 @@ TEST_F(FlexHwisCheckTest, CheckUuid) {
 TEST_F(FlexHwisCheckTest, CheckManagedPermission) {
   auto flex_hwis_check_ =
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
-  EXPECT_TRUE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_TRUE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckUnManagedPermission) {
@@ -137,7 +140,10 @@ TEST_F(FlexHwisCheckTest, CheckUnManagedPermission) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
-  EXPECT_TRUE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_FALSE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_TRUE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableSystemInfo) {
@@ -145,7 +151,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableSystemInfo) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableCpuInfo) {
@@ -153,7 +162,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableCpuInfo) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportCpuInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableVersionInfo) {
@@ -161,7 +173,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableVersionInfo) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportVersionInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableGraphicsStatus) {
@@ -169,7 +184,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableGraphicsStatus) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportGraphicsStatus(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableMemoryInfo) {
@@ -177,7 +195,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableMemoryInfo) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportMemoryInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableNetworkConfig) {
@@ -185,7 +206,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableNetworkConfig) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
   EXPECT_CALL(mock_device_policy_, GetReportNetworkConfig(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_TRUE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 TEST_F(FlexHwisCheckTest, CheckDisableHwDataUsage) {
@@ -195,7 +219,10 @@ TEST_F(FlexHwisCheckTest, CheckDisableHwDataUsage) {
       .WillOnce(SetEnterpriseEnrolled(false));
   EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_FALSE(flex_hwis_check_.CheckPermission());
+  PermissionInfo info = flex_hwis_check_.CheckPermission();
+  EXPECT_FALSE(info.managed);
+  EXPECT_TRUE(info.loaded);
+  EXPECT_FALSE(info.permission);
 }
 
 }  // namespace flex_hwis

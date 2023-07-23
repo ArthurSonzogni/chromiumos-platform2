@@ -20,6 +20,19 @@ class UuidInfo {
   bool already_exists = false;
 };
 
+class PermissionInfo {
+ public:
+  // If the device is managed, the value of this field is true.
+  bool managed = false;
+  // If the device policy is successfully loaded to this device,
+  // the value of this field is true.
+  bool loaded = false;
+  // The value of this field is true if all required device management
+  // policies are enabled in managed devices, or consent has been granted
+  // through OOBE in unmanaged devices.
+  bool permission = false;
+};
+
 // This class is for processing management checking items utilized in HWIS.
 class FlexHwisCheck {
  public:
@@ -30,7 +43,7 @@ class FlexHwisCheck {
   // current version, there is no fine-grained control. If one of the policies
   // is disabled, hardware data will not be uploaded. In the unmanaged case,
   // hardware_data_usage_enabled should be checked.
-  bool CheckPermission();
+  PermissionInfo CheckPermission();
 
   // Check if the HWIS has run in the last 24 hours.
   bool HasRunRecently();

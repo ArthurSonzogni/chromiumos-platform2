@@ -9,6 +9,7 @@
 #include "flex_hwis/flex_hwis_mojo.h"
 
 #include <base/files/file_path.h>
+#include <metrics/metrics_library.h>
 
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -28,6 +29,25 @@ enum class Debug {
   None,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class [[nodiscard]] PermissionResult {
+  // The device is managed and all required device management policies
+  // are enabled.
+  kPolicySuccess = 0,
+  // The device is managed but not all the required device management
+  // policies are enabled.
+  kPolicyDenial = 1,
+  // The device is not managed but the consent has been granted via the OOBE.
+  kOptInSuccess = 2,
+  // The device is not managed and the consent hasn't been granted via the OOBE.
+  kOptInDenial = 3,
+  // An error occurred while getting the policy value.
+  kError = 4,
+
+  kMax = kError,
+};
+
 // This class is responsible for collecting device hardware information,
 // evaluating management policies and device settings,
 // and then sending the data to a remote API.
@@ -37,7 +57,7 @@ class FlexHwisSender {
   explicit FlexHwisSender(const base::FilePath& base_path,
                           policy::PolicyProvider& provider);
   // Collect and send the device hardware information.
-  Result CollectAndSend(Debug debug);
+  Result CollectAndSend(MetricsLibraryInterface& metrics, Debug debug);
   // This function is used by tests only to set the telemetry info.
   void SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info);
 
