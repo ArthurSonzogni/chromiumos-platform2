@@ -1,0 +1,98 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+package hwis_proto;
+
+message Device {
+  enum BusType {
+    UNDEFINED = 0;
+    PCI = 1;
+    USB = 2;
+    THUNDERBOLT = 3;
+  }
+
+  message DmiInfo {
+    string vendor = 1;
+    string product_name = 2;
+    string product_version = 3;
+  }
+
+  message Bios {
+    string bios_version = 1;
+    bool secureboot = 2;
+    bool uefi = 3;
+  }
+
+  message Cpu {
+    string name = 1;
+  }
+
+  message Memory {
+    int64 total_kib = 1;
+  }
+
+  message EthernetAdapter {
+    string name = 1;
+    string id = 2;
+    BusType bus = 3;
+    repeated string driver = 4;
+  }
+
+  message WirelessAdapter {
+    string name = 1;
+    string id = 2;
+    BusType bus = 3;
+    repeated string driver = 4;
+  }
+
+  message BluetoothAdapter {
+    string name = 1;
+    string id = 2;
+    BusType bus = 3;
+    repeated string driver = 4;
+  }
+
+  message Gpu {
+    string name = 1;
+    string id = 2;
+    BusType bus = 3;
+    repeated string driver = 4;
+  }
+
+  message GraphicsInfo {
+    string gl_version = 1;
+    string gl_shading_version = 2;
+    string gl_vendor = 3;
+    string gl_renderer = 4;
+    repeated string gl_extensions = 5;
+  }
+
+  message Touchpad {
+    string stack = 1;
+  }
+
+  message TPM {
+    string tpm_version = 1;
+    uint64 spec_level = 2;
+    uint32 manufacturer = 3;
+    string did_vid = 4;
+    bool tpm_allow_listed = 5;
+    bool tpm_owned = 6;
+  }
+
+  string name = 1;
+  string uuid = 2;
+  DmiInfo dmi_info = 3;
+  Bios bios = 4;
+  repeated Cpu cpu = 5;
+  Memory memory = 6;
+  repeated EthernetAdapter ethernet_adapter = 7;
+  repeated WirelessAdapter wireless_adapter = 8;
+  repeated BluetoothAdapter bluetooth_adapter = 9;
+  repeated Gpu gpu = 10;
+  GraphicsInfo graphics_info = 11;
+  Touchpad touchpad = 12;
+  TPM tpm = 13;
+}

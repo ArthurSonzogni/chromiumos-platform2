@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -13,6 +14,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":flex_hwis_check_test",
+      ":flex_hwis_mojo_test",
       ":flex_hwis_test",
     ]
   }
@@ -22,23 +24,38 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmojo",
+    "mojo_service_manager",
+    "protobuf",
   ]
+}
+
+proto_library("hwis_data_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/flex_hwis"
+  sources = [ "${proto_in_dir}/hwis_data.proto" ]
 }
 
 static_library("libflex_hwis") {
   sources = [
     "flex_hwis.cc",
     "flex_hwis_check.cc",
+    "flex_hwis_mojo.cc",
+    "mock_mojo.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "policy" ]
+  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
 }
 
 executable("flex_hwis_tool") {
   sources = [ "flex_hwis_tool.cc" ]
   install_path = "bin"
   configs += [ ":target_defaults" ]
-  deps = [ ":libflex_hwis" ]
+  deps = [
+    ":hwis_data_proto",
+    ":libflex_hwis",
+  ]
 }
 
 install_config("install_tmpfiles_config") {
@@ -49,6 +66,21 @@ install_config("install_tmpfiles_config") {
 if (use.test) {
   pkg_config("flex_hwis_test_config") {
     pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("flex_hwis_mojo_test") {
+    sources = [ "flex_hwis_mojo_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":flex_hwis_test_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":hwis_data_proto",
+      ":libflex_hwis",
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("flex_hwis_check_test") {
@@ -74,6 +106,7 @@ if (use.test) {
     ]
     run_test = true
     deps = [
+      ":hwis_data_proto",
       ":libflex_hwis",
       "//common-mk/testrunner",
     ]

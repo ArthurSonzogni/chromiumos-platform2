@@ -3,20 +3,22 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis.h"
+#include "flex_hwis/mock_mojo.h"
 
-#include <memory>
-#include <optional>
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
+#include <policy/mock_libpolicy.h>
 
 using ::testing::_;
 using ::testing::AtMost;
 using ::testing::Return;
+using ::testing::StrictMock;
 
 namespace flex_hwis {
 
@@ -39,40 +41,45 @@ class FlexHwisTest : public ::testing::Test {
 
     // The default setting is for the device to be managed and
     // all device policies to be enabled.
-    device_policy_ = new policy::MockDevicePolicy();
-    EXPECT_CALL(*device_policy_, LoadPolicy(false))
+    EXPECT_CALL(mock_device_policy_, LoadPolicy(false))
         .Times(AtMost(1))
         .WillOnce(Return(true));
-    EXPECT_CALL(*device_policy_, GetHwDataUsageEnabled(_))
+    EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportSystemInfo(_))
+    EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportCpuInfo(_))
+    EXPECT_CALL(mock_device_policy_, GetReportCpuInfo(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportGraphicsStatus(_))
+    EXPECT_CALL(mock_device_policy_, GetReportGraphicsStatus(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportMemoryInfo(_))
+    EXPECT_CALL(mock_device_policy_, GetReportMemoryInfo(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportVersionInfo(_))
+    EXPECT_CALL(mock_device_policy_, GetReportVersionInfo(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, GetReportNetworkConfig(_))
+    EXPECT_CALL(mock_device_policy_, GetReportNetworkConfig(_))
         .Times(AtMost(1))
         .WillOnce(SetEnabled(true));
-    EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
+    EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
         .Times(AtMost(1))
         .WillOnce(SetEnterpriseEnrolled(true));
-    flex_hwis_sender_ = flex_hwis::FlexHwisSender(
-        test_path_,
-        std::make_unique<policy::PolicyProvider>(
-            std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
+    EXPECT_CALL(mock_policy_provider_, Reload())
+        .Times(AtMost(1))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mock_policy_provider_, GetDevicePolicy())
+        .Times(AtMost(1))
+        .WillOnce(ReturnRef(mock_device_policy_));
+    EXPECT_CALL(mock_policy_provider_, device_policy_is_loaded())
+        .Times(AtMost(1))
+        .WillOnce(Return(true));
 
     CreateUuid(kUuid);
+    info_ = mock_mojo_.MockTelemetryInfo();
   }
 
   void CreateTimeStamp(const std::string& timestamp) {
@@ -87,39 +94,59 @@ class FlexHwisTest : public ::testing::Test {
     CHECK(base::WriteFile(uuid_path.Append("uuid"), uuid));
   }
 
-  std::optional<flex_hwis::FlexHwisSender> flex_hwis_sender_;
-  policy::MockDevicePolicy* device_policy_;
+  StrictMock<policy::MockPolicyProvider> mock_policy_provider_;
+  StrictMock<policy::MockDevicePolicy> mock_device_policy_;
+  mojom::TelemetryInfoPtr info_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
+  flex_hwis::MockMojo mock_mojo_;
 };
 
 TEST_F(FlexHwisTest, HasRunRecently) {
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
   CreateTimeStamp(base::TimeFormatHTTP(base::Time::Now()));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::HasRunRecently);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(Debug::None),
+            Result::HasRunRecently);
 }
 
 TEST_F(FlexHwisTest, ManagedWithoutPermission) {
-  EXPECT_CALL(*device_policy_, GetReportSystemInfo(_))
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::NotAuthorized);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(Debug::None),
+            Result::NotAuthorized);
 }
 
 TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
-  EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
-  EXPECT_CALL(*device_policy_, GetHwDataUsageEnabled(_))
+  EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
       .WillOnce(SetEnabled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::NotAuthorized);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(Debug::None),
+            Result::NotAuthorized);
 }
 
 TEST_F(FlexHwisTest, ManagedWithPermission) {
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::Sent);
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(Debug::None), Result::Sent);
 }
 
 TEST_F(FlexHwisTest, UnManagedWithPermission) {
-  EXPECT_CALL(*device_policy_, IsEnterpriseEnrolled())
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
-  EXPECT_EQ(flex_hwis_sender_->CollectAndSend(), Result::Sent);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(Debug::None), Result::Sent);
 }
 
 }  // namespace flex_hwis

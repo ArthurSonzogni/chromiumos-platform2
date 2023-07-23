@@ -9,12 +9,19 @@
 #include <base/logging.h>
 
 namespace flex_hwis {
+namespace mojom = ::ash::cros_healthd::mojom;
 
 FlexHwisSender::FlexHwisSender(const base::FilePath& base_path,
-                               std::unique_ptr<policy::PolicyProvider> provider)
-    : base_path_(base_path), check_(base_path, std::move(provider)) {}
+                               policy::PolicyProvider& provider)
+    : base_path_(base_path), check_(base_path, provider) {}
 
-Result FlexHwisSender::CollectAndSend() {
+void FlexHwisSender::SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info) {
+  mojo_.SetTelemetryInfoForTesting(std::move(info));
+}
+
+Result FlexHwisSender::CollectAndSend(Debug debug) {
+  hwis_proto::Device data;
+
   // Exit if HWIS runs successfully within 24 hours.
   if (check_.HasRunRecently()) {
     return Result::HasRunRecently;
@@ -26,7 +33,9 @@ Result FlexHwisSender::CollectAndSend() {
     return Result::NotAuthorized;
   }
 
+  mojo_.SetHwisInfo(&data);
   const UuidInfo info = check_.GetOrCreateUuid();
+  mojo_.SetHwisUuid(&data, info.uuid);
 
   // If the UUID was just generated this should be a POST request.
   // If the UUID already exists, then it should be a PUT request.
@@ -39,6 +48,10 @@ Result FlexHwisSender::CollectAndSend() {
   }
 
   check_.RecordSendTime();
+
+  if (debug == Debug::Print) {
+    LOG(INFO) << data.DebugString();
+  }
   return Result::Sent;
 }
 

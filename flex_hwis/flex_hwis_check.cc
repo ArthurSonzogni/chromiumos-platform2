@@ -4,8 +4,6 @@
 
 #include "flex_hwis/flex_hwis_check.h"
 
-#include <utility>
-
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
@@ -45,8 +43,8 @@ constexpr char kHwisUuidFile[] = "var/lib/flex_hwis_tool/uuid";
 constexpr char kHwisTimeStampFile[] = "var/lib/flex_hwis_tool/time";
 
 FlexHwisCheck::FlexHwisCheck(const base::FilePath& base_path,
-                             std::unique_ptr<policy::PolicyProvider> provider)
-    : base_path_(base_path), policy_provider_(std::move(provider)) {}
+                             policy::PolicyProvider& provider)
+    : base_path_(base_path), policy_provider_(provider) {}
 
 UuidInfo FlexHwisCheck::GetOrCreateUuid() {
   UuidInfo info;
@@ -124,13 +122,13 @@ void FlexHwisCheck::RecordSendTime() {
 bool FlexHwisCheck::CheckPermission() {
   bool permission = true;
 
-  policy_provider_->Reload();
-  if (!policy_provider_->device_policy_is_loaded()) {
+  policy_provider_.Reload();
+  if (!policy_provider_.device_policy_is_loaded()) {
     LOG(INFO) << "No device policy available on this device";
     return false;
   }
 
-  const policy::DevicePolicy* policy = &policy_provider_->GetDevicePolicy();
+  const policy::DevicePolicy* policy = &policy_provider_.GetDevicePolicy();
 
   if (policy->IsEnterpriseEnrolled()) {
     LOG(INFO) << "The device is managed";

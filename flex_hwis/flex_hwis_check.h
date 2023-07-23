@@ -5,7 +5,6 @@
 #ifndef FLEX_HWIS_FLEX_HWIS_CHECK_H_
 #define FLEX_HWIS_FLEX_HWIS_CHECK_H_
 
-#include <memory>
 #include <optional>
 #include <string>
 
@@ -25,7 +24,7 @@ class UuidInfo {
 class FlexHwisCheck {
  public:
   explicit FlexHwisCheck(const base::FilePath& base_path,
-                         std::unique_ptr<policy::PolicyProvider> provider);
+                         policy::PolicyProvider& provider);
   // Verify if the device is authorized to send hardware data to the server.
   // In the managed case, management policies should be checked. In the
   // current version, there is no fine-grained control. If one of the policies
@@ -55,7 +54,7 @@ class FlexHwisCheck {
   base::FilePath base_path_;
 
   // The device policy provider, used to get device policy data.
-  std::unique_ptr<policy::PolicyProvider> policy_provider_;
+  policy::PolicyProvider& policy_provider_;
 };
 
 }  // namespace flex_hwis
