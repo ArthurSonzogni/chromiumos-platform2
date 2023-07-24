@@ -200,21 +200,24 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
   }
 
   // Commands for querying if device is supported
-  const base::Value::List* support_cmd_list_obj =
-      feature_obj.FindList("support_check_commands");
+  const base::Value* support_cmd_obj =
+      feature_obj.Find("support_check_commands");
 
   std::vector<std::unique_ptr<FeatureCommand>> query_cmds;
-  if (!support_cmd_list_obj) {
+  if (!support_cmd_obj) {
     // Feature is assumed to be always supported, such as a kernel parameter
     // that is on all device kernels.
     query_cmds.push_back(std::make_unique<AlwaysSupportedCommand>());
   } else {
-    // A support check command was provided, add it to the feature object.
-    if (support_cmd_list_obj->size() == 0) {
+    // Verify that the supplied value is actually a list.
+    const base::Value::List* support_cmd_list_obj =
+        support_cmd_obj->GetIfList();
+    if (!support_cmd_list_obj || support_cmd_list_obj->size() == 0) {
       LOG(ERROR) << "Invalid format for support_check_commands commands";
       return std::nullopt;
     }
 
+    // A support check command was provided, add it to the feature object.
     for (const auto& item : *support_cmd_list_obj) {
       if (!item.is_dict()) {
         LOG(ERROR) << "support_check_commands is not list of dicts.";

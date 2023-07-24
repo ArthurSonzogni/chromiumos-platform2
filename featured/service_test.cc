@@ -331,6 +331,8 @@ reply_serial: 123
                     base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
 }
 
+// Verify that platform-features.json parses and has a feature used for
+// integration tests.
 TEST(JsonParser, PlatformFeaturesJsonParses) {
   const char kFeatureFileName[] = "share/platform-features.json";
   base::FilePath platform_features =
@@ -340,7 +342,9 @@ TEST(JsonParser, PlatformFeaturesJsonParses) {
   ASSERT_TRUE(base::ReadFileToString(platform_features, &contents));
 
   JsonFeatureParser parser;
+  ASSERT_FALSE(parser.AreFeaturesParsed());
   ASSERT_TRUE(parser.ParseFileContents(contents));
+  ASSERT_TRUE(parser.AreFeaturesParsed());
 
   const FeatureParserBase::FeatureMap* map = parser.GetFeatureMap();
   auto it = map->find("CrOSLateBootTestFeature");
@@ -355,4 +359,330 @@ TEST(JsonParser, PlatformFeaturesJsonParses) {
   EXPECT_THAT(exec_cmds, ElementsAre("WriteFile"));
 }
 
+// Verify that the json parsing succeeds in a basic case.
+TEST(JsonParser, Success_Basic) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir", "path": "/c/d"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_TRUE(parser.ParseFileContents(contents));
+  ASSERT_TRUE(parser.AreFeaturesParsed());
+}
+
+// Verify that the json parsing succeeds without support_check_commands.
+TEST(JsonParser, Success_NoSupportCommands) {
+  std::string contents = R"([{
+    "name": "foo",
+    "commands" : [{"name": "Mkdir", "path": "/a/b"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_TRUE(parser.ParseFileContents(contents));
+  ASSERT_TRUE(parser.AreFeaturesParsed());
+}
+
+// Verify that the json parsing succeeds with multiple commands.
+TEST(JsonParser, Success_MultiCommands) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir", "path": "/c/d"},
+                  {"name": "Mkdir", "path": "/e/f"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_TRUE(parser.ParseFileContents(contents));
+  ASSERT_TRUE(parser.AreFeaturesParsed());
+}
+
+// Verify that the json parsing succeeds with multiple support-check commands.
+TEST(JsonParser, Success_MultiSupportChecks) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"},
+                               {"name": "FileNotExists", "path": "/c/d"}],
+    "commands" : [{"name": "Mkdir", "path": "/e/f"},
+                  {"name": "Mkdir", "path": "/g/h"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_TRUE(parser.ParseFileContents(contents));
+  ASSERT_TRUE(parser.AreFeaturesParsed());
+}
+
+// Verify that invalid json doesn't parse.
+TEST(JsonParser, Invalid_JsonParse) {
+  std::string contents = "{";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that json that isn't a list at the top level doesn't parse.
+TEST(JsonParser, Invalid_NotList) {
+  std::string contents = "{}";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that an empty list doesn't parse.
+TEST(JsonParser, Invalid_EmptyList) {
+  std::string contents = "[]";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a list of something that isn't a dict doesn't parse.
+TEST(JsonParser, Invalid_ListOfNotDict) {
+  std::string contents = "[1, 2]";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a feature missing a name doesn't parse.
+TEST(JsonParser, Invalid_MissingFeatureName) {
+  std::string contents = R"([{
+    "notName": "foo",
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands that isn't a list fails to parse.
+TEST(JsonParser, Invalid_SupportCommandsNotList) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": 1,
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands that isn't a list of dicts fails.
+TEST(JsonParser, Invalid_SupportCommandsNotListOfDict) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [1],
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands that is missing a name fails.
+TEST(JsonParser, Invalid_SupportCommandsNoName) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"notName": "foo", "path": "/a/b"}],
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands that is has an invalid name fails.
+TEST(JsonParser, Invalid_SupportCommandsBadName) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "foo", "path": "/a/b"}],
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands with FileExists and no path fails.
+TEST(JsonParser, Invalid_SupportCommandsFileExistsNoPath) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists"}],
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a support_check_commands with FileNotExists and no path fails.
+TEST(JsonParser, Invalid_SupportCommandsFileNotExistsNoPath) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileNotExists"}],
+    "commands" : [{"name": "WriteFile", "path": "/a/b", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that a missing commands entry fails to parse.
+TEST(JsonParser, Invalid_NoCommands) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if it's a list.
+TEST(JsonParser, Invalid_CommandsInt) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands": 1
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if it's a non-empty list.
+TEST(JsonParser, Invalid_CommandsEmpty) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands": []
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if it's a list of dicts
+TEST(JsonParser, Invalid_CommandsNotDict) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands": [1]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if commands have names.
+TEST(JsonParser, Invalid_CommandMissingName) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"notName": "WriteFile", "path": "/c/d", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if commands have valid names.
+TEST(JsonParser, Invalid_CommandInvalidName) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "invalid", "path": "/c/d", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if WriteFile has a path.
+TEST(JsonParser, Invalid_CommandWriteFileNoPath) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "WriteFile", "value": "1"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if WriteFile has a value.
+TEST(JsonParser, Invalid_CommandWriteFileNoValue) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "WriteFile", "path": "/a/b"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if WriteFile has a value.
+TEST(JsonParser, Invalid_CommandMkdirNoPath) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that commands only parses if all commands are valid.
+TEST(JsonParser, Invalid_OneCommand) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir", "path": "/c/d"}, {"name": "invalid"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
+
+// Verify that the json only parses without duplicate names.
+TEST(JsonParser, Invalid_DuplicateNames) {
+  std::string contents = R"([{
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir", "path": "/c/d"}]
+  },
+  {
+    "name": "foo",
+    "support_check_commands": [{"name": "FileExists", "path": "/a/b"}],
+    "commands" : [{"name": "Mkdir", "path": "/c/d"}]
+  }])";
+
+  JsonFeatureParser parser;
+  ASSERT_FALSE(parser.ParseFileContents(contents));
+  ASSERT_FALSE(parser.AreFeaturesParsed());
+}
 }  // namespace featured
