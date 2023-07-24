@@ -91,6 +91,27 @@ bool EmitSeccompCoverageUma(const ProcEntries& proc_entries) {
   return true;
 }
 
+bool EmitNnpProcPercentageUma(const ProcEntries& proc_entries) {
+  size_t total_proc_count = proc_entries.size();
+  size_t nnp_proc_count = 0;
+  nnp_proc_count = std::count_if(
+      proc_entries.begin(), proc_entries.end(), [](const ProcEntry& entry) {
+        return entry.sandbox_status()[ProcEntry::kNoNewPrivsBit] == 1;
+      });
+  unsigned int nnp_proc_percentage =
+      static_cast<unsigned int>(round((static_cast<float>(nnp_proc_count) /
+                                       static_cast<float>(total_proc_count)) *
+                                      100));
+
+  VLOG(1) << "Reporting no_new_privs process percentage UMA metric";
+  if (!SendNnpProcPercentageToUMA(nnp_proc_percentage)) {
+    LOG(WARNING)
+        << "Could not upload no_new_privs process percentage UMA metric";
+    return false;
+  }
+  return true;
+}
+
 bool EmitNonRootProcPercentageUma(const ProcEntries& proc_entries) {
   size_t total_proc_count = proc_entries.size();
   size_t nonroot_proc_count = 0;
@@ -427,6 +448,11 @@ void Daemon::EmitSandboxingUma() {
     if (!has_emitted_seccomp_coverage_uma_) {
       has_emitted_seccomp_coverage_uma_ =
           EmitSeccompCoverageUma(maybe_proc_entries.value());
+    }
+
+    if (!has_emitted_nnp_proc_percentage_uma_) {
+      has_emitted_nnp_proc_percentage_uma_ =
+          EmitNnpProcPercentageUma(maybe_proc_entries.value());
     }
 
     if (!has_emitted_nonroot_proc_percentage_uma_) {

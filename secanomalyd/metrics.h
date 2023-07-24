@@ -28,6 +28,8 @@ bool SendLandlockStatusToUMA(bool enabled);
 
 bool SendSecCompCoverageToUMA(unsigned int coverage_percentage);
 
+bool SendNnpProcPercentageToUMA(unsigned int proc_percentage);
+
 bool SendNonRootProcPercentageToUMA(unsigned int proc_percentage);
 
 bool SendUnprivProcPercentageToUMA(unsigned int proc_percentage);

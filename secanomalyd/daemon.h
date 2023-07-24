@@ -75,6 +75,7 @@ class Daemon : public brillo::DBusDaemon {
   // Following sandboxing metrics are sent only once per execution of
   // secanomalyd and only in the logged-in state.
   bool has_emitted_seccomp_coverage_uma_ = false;
+  bool has_emitted_nnp_proc_percentage_uma_ = false;
   bool has_emitted_nonroot_proc_percentage_uma_ = false;
   bool has_emitted_unpriv_proc_percentage_uma_ = false;
   bool has_emitted_non_initns_proc_percentage_uma_ = false;
