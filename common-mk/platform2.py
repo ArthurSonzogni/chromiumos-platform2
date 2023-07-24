@@ -620,6 +620,8 @@ class Platform2(object):
                 options += ["--host"]
             if os.environ.get("PLATFORM_HOST_DEV_TEST") == "yes":
                 options += ["--bind-mount-dev"]
+            if self.jobs is not None:
+                options += [f"--jobs={self.jobs}"]
             p2_test_filter = os.environ.get("P2_TEST_FILTER")
             if p2_test_filter:
                 options += ["--user_gtest_filter=%s" % p2_test_filter]
