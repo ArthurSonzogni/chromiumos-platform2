@@ -285,7 +285,11 @@ class SingleDecryptionContext {
 };
 
 class LegacyStorageTest
-    : public ::testing::TestWithParam<::testing::tuple<bool, size_t>> {
+    : public ::testing::TestWithParam<
+          ::testing::tuple<bool /*is_encryption_enabled*/,
+                           size_t /*single_file_size_limit*/,
+                           bool /*is_debugging*/>> {
+ private:
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
   // should have that digest already recorded. Only the first record in a
@@ -1152,6 +1156,7 @@ class LegacyStorageTest
   size_t single_file_size_limit() const {
     return ::testing::get<1>(GetParam());
   }
+  bool is_debugging() const { return ::testing::get<2>(GetParam()); }
 
   void ResetExpectedUploadsCount() { expected_uploads_count_ = 0u; }
 
@@ -2359,9 +2364,10 @@ INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     LegacyStorageTest,
     ::testing::Combine(::testing::Bool() /* true - encryption enabled */,
-                       ::testing::Values(128u * 1024uLL * 1024uLL,
-                                         256u /* two records in file */,
-                                         1u /* single record in file */)));
+                       ::testing::Values(128 * 1024LL * 1024LL,
+                                         256 /* two records in file */,
+                                         1 /* single record in file */),
+                       ::testing::Bool() /* true - debugging enabled */));
 
 }  // namespace
 }  // namespace reporting

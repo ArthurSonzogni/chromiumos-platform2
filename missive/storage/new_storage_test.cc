@@ -284,6 +284,7 @@ class SingleDecryptionContext {
 
 class NewStorageTest
     : public ::testing::TestWithParam<::testing::tuple<bool, size_t>> {
+ private:
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
   // should have that digest already recorded. Only the first record in a

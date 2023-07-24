@@ -50,6 +50,8 @@
 #include "missive/analytics/metrics.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/health/health_module.h"
+#include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_managed_buffer.h"
 #include "missive/resources/resource_manager.h"
@@ -1492,13 +1494,17 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
 class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
  public:
   WriteContext(Record record,
+               HealthModule::Recorder recorder,
                base::OnceCallback<void(Status)> write_callback,
                scoped_refptr<StorageQueue> storage_queue)
       : TaskRunnerContext<Status>(std::move(write_callback),
                                   storage_queue->sequenced_task_runner_),
         storage_queue_(storage_queue),
-        record_(std::move(record)) {
-    CHECK(storage_queue_);
+        record_(std::move(record)),
+        recorder_(std::move(recorder)),
+        // Set iterator to `end` in case early exit is required.
+        in_contexts_queue_(storage_queue->write_contexts_queue_.end()) {
+    CHECK(storage_queue.get());
   }
 
  private:
@@ -1538,8 +1544,10 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
 
-    // Set iterator to `end` in case early exit is required.
-    in_contexts_queue_ = storage_queue_->write_contexts_queue_.end();
+    if (recorder_) {
+      // Expected enqueue action.
+      recorder_->mutable_storage_queue_action()->mutable_storage_enqueue();
+    }
 
     // Make sure the record is valid.
     if (!record_.has_destination()) {
@@ -1856,6 +1864,13 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       return;
     }
 
+    if (recorder_) {
+      auto* const write_queue_record =
+          recorder_->mutable_storage_queue_action()->mutable_storage_enqueue();
+      write_queue_record->set_sequencing_id(
+          storage_queue_->next_sequencing_id_);
+    }
+
     // Write header and block. Store current_record_digest_ with the queue,
     // increment next_sequencing_id_
     write_result = storage_queue_->WriteHeaderAndBlock(
@@ -1944,6 +1959,13 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   }
 
   void OnCompletion(const Status& status) override {
+    if (recorder_) {
+      auto* const write_queue_record =
+          recorder_->mutable_storage_queue_action();
+      if (!status.ok()) {
+        status.SaveTo(write_queue_record->mutable_status());
+      }
+    }
     if (storage_queue_->active_write_reservation_size_ > 0u) {
       CHECK(!status.ok());
       storage_queue_->options_.disk_space_resource()->Discard(
@@ -1956,6 +1978,12 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   Record record_
       GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
+  HealthModule::Recorder recorder_;
+
+  // Position in the |storage_queue_|->|write_contexts_queue_|.
+  // We use it in order to detect whether the context is in the queue
+  // and to remove it from the queue, when the time comes.
+  std::list<base::WeakPtr<WriteContext>>::iterator in_contexts_queue_;
 
   // Digest of the current record.
   std::string current_record_digest_
@@ -1975,20 +2003,16 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   std::optional<Record> record_copy_
       GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
 
-  // Position in the `storage_queue_`->`write_contexts_queue_`.
-  // We use it in order to detect whether the context is in the queue
-  // and to remove it from the queue, when the time comes.
-  std::list<base::WeakPtr<WriteContext>>::iterator in_contexts_queue_
-      GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_);
-
   // Factory for the `context_queue_`.
   base::WeakPtrFactory<WriteContext> weak_ptr_factory_
       GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_){this};
 };
 
 void StorageQueue::Write(Record record,
+                         HealthModule::Recorder recorder,
                          base::OnceCallback<void(Status)> completion_cb) {
-  Start<WriteContext>(std::move(record), std::move(completion_cb), this);
+  Start<WriteContext>(std::move(record), std::move(recorder),
+                      std::move(completion_cb), this);
 }
 
 Status StorageQueue::ReserveNewRecordDiskSpace(size_t total_size) {
@@ -2148,12 +2172,14 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
  public:
   ConfirmContext(SequenceInformation sequence_information,
                  bool force,
+                 HealthModule::Recorder recorder,
                  base::OnceCallback<void(Status)> end_callback,
                  scoped_refptr<StorageQueue> storage_queue)
       : TaskRunnerContext<Status>(std::move(end_callback),
                                   storage_queue->sequenced_task_runner_),
         sequence_information_(std::move(sequence_information)),
         force_(force),
+        recorder_(std::move(recorder)),
         storage_queue_(storage_queue) {
     CHECK(storage_queue);
   }
@@ -2165,6 +2191,13 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   void OnStart() override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
+    if (recorder_) {
+      // Expect dequeue action.
+      auto* storage_dequeue_action =
+          recorder_->mutable_storage_queue_action()->mutable_storage_dequeue();
+      storage_dequeue_action->set_sequencing_id(
+          sequence_information_.sequencing_id());
+    }
     if (sequence_information_.generation_id() !=
         storage_queue_->generation_id_) {
       Response(Status(
@@ -2182,7 +2215,17 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
       Response(Status::StatusOK());
     } else {
       Response(storage_queue_->RemoveConfirmedData(
-          sequence_information_.sequencing_id()));
+          sequence_information_.sequencing_id(), recorder_));
+    }
+  }
+
+  void OnCompletion(const Status& status) override {
+    if (recorder_) {
+      auto* const write_queue_record =
+          recorder_->mutable_storage_queue_action();
+      if (!status.ok()) {
+        status.SaveTo(write_queue_record->mutable_status());
+      }
     }
   }
 
@@ -2192,17 +2235,21 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   // Force-confirm flag.
   const bool force_;
 
+  HealthModule::Recorder recorder_;
+
   const scoped_refptr<StorageQueue> storage_queue_;
 };
 
 void StorageQueue::Confirm(SequenceInformation sequence_information,
                            bool force,
+                           HealthModule::Recorder recorder,
                            base::OnceCallback<void(Status)> completion_cb) {
   Start<ConfirmContext>(std::move(sequence_information), force,
-                        std::move(completion_cb), this);
+                        std::move(recorder), std::move(completion_cb), this);
 }
 
-Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id) {
+Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id,
+                                         HealthModule::Recorder& recorder) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Update first unconfirmed id, unless new one is lower.
   if (!first_unconfirmed_sequencing_id_.has_value() ||
@@ -2234,6 +2281,17 @@ Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id) {
       break;
     }
     // Current file holds only ids <= sequencing_id.
+    if (recorder) {
+      auto* const queue_action_record =
+          recorder->mutable_storage_queue_action()->mutable_storage_dequeue();
+      if (!queue_action_record->has_sequencing_id()) {
+        queue_action_record->set_sequencing_id(files_.begin()->first);
+      }
+      queue_action_record->set_records_count(
+          queue_action_record->records_count() +
+          (next_it->first - files_.begin()->first));
+    }
+
     // Delete it.
     files_.begin()->second->Close();
     files_.begin()->second->DeleteWarnIfFailed();

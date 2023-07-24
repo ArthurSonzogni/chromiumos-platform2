@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdint>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <queue>
 #include <unordered_map>
@@ -37,6 +38,8 @@
 #include "missive/compression/compression_module.h"
 #include "missive/compression/decompression.h"
 #include "missive/encryption/test_encryption_module.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_impl.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
@@ -94,8 +97,9 @@ void EnsureDeletingFiles(FileEnumeratorParams... file_enum_params) {
 }
 
 class StorageQueueTest
-    : public ::testing::TestWithParam<
-          testing::tuple<size_t /*file_size*/, std::string /*dm_token*/>> {
+    : public ::testing::TestWithParam<testing::tuple<size_t /*file_size*/,
+                                                     std::string /*dm_token*/,
+                                                     bool /*is_debugging*/>> {
  protected:
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
@@ -649,6 +653,11 @@ class StorageQueueTest
             return init_status;  // Do not allow initialization retries.
           })) {
     CreateTestEncryptionModuleOrDie();
+    health_module_ =
+        HealthModule::Create(std::make_unique<HealthModuleDelegateImpl>(
+            options_.directory().Append(HealthModule::kHealthSubdirectory)));
+    // Just to check everything works identically with debugging active.
+    health_module_->SetDebugging(testing::get<2>(GetParam()));
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
@@ -679,6 +688,7 @@ class StorageQueueTest
           &test::TestCallbackAutoWaiter::Signal, base::Unretained(&waiter)));
       storage_queue_.reset();
     }
+    health_module_.reset();
     // Let remaining asynchronous activity finish.
     // TODO(b/254418902): The next line is not logically necessary, but for
     // unknown reason the tests becomes flaky without it, keeping it for now.
@@ -712,6 +722,8 @@ class StorageQueueTest
     }
     return inject;
   }
+
+  HealthModule::Recorder NewRecorder() { return health_module_->NewRecorder(); }
 
   QueueOptions BuildStorageQueueOptionsImmediate() const {
     return QueueOptions(options_)
@@ -784,7 +796,7 @@ class StorageQueueTest
     EXPECT_TRUE(storage_queue_) << "StorageQueue not created yet";
     test::TestEvent<Status> write_event;
     LOG(ERROR) << "Write data='" << record.data() << "'";
-    storage_queue_->Write(std::move(record), write_event.cb());
+    storage_queue_->Write(std::move(record), NewRecorder(), write_event.cb());
     return write_event.result();
   }
 
@@ -808,7 +820,7 @@ class StorageQueueTest
     seq_info.set_generation_id(last_upload_generation_id_.value());
     // Do not set priority!
     test::TestEvent<Status> c;
-    storage_queue_->Confirm(std::move(seq_info), force, c.cb());
+    storage_queue_->Confirm(std::move(seq_info), force, NewRecorder(), c.cb());
     const Status c_result = c.result();
     ASSERT_OK(c_result) << c_result;
   }
@@ -840,6 +852,7 @@ class StorageQueueTest
   }
 
   std::string dm_token_;
+  scoped_refptr<HealthModule> health_module_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // Sequenced task runner where all EXPECTs will happen.
@@ -1531,7 +1544,8 @@ TEST_P(StorageQueueTest, WriteAndUploadWithBadConfirmation) {
   seq_info.set_sequencing_id(/*sequencing_id=*/0);
   // Do not set priority and generation!
   LOG(ERROR) << "Bad confirm seq=" << seq_info.sequencing_id();
-  storage_queue_->Confirm(std::move(seq_info), /*force=*/false, c.cb());
+  storage_queue_->Confirm(std::move(seq_info), /*force=*/false, NewRecorder(),
+                          c.cb());
   const Status c_result = c.result();
   ASSERT_FALSE(c_result.ok()) << c_result;
 }
@@ -2391,7 +2405,7 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithRetry) {
   }
   test::TestEvent<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
+  storage_queue_->Write(std::move(record), NewRecorder(), write_event.cb());
   Status write_result = write_event.result();
   EXPECT_OK(write_result) << write_result;
   EXPECT_THAT(attempts, Eq(kAttempts));
@@ -2427,7 +2441,7 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithFailure) {
   }
   test::TestEvent<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
+  storage_queue_->Write(std::move(record), NewRecorder(), write_event.cb());
   Status write_result = write_event.result();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
@@ -2468,7 +2482,7 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithRetry) {
   }
   test::TestEvent<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
+  storage_queue_->Write(std::move(record), NewRecorder(), write_event.cb());
   Status write_result = write_event.result();
   EXPECT_OK(write_result) << write_result;
   EXPECT_THAT(attempts, Eq(kAttempts));
@@ -2505,7 +2519,7 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithFailure) {
   }
   test::TestEvent<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
+  storage_queue_->Write(std::move(record), NewRecorder(), write_event.cb());
   Status write_result = write_event.result();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
@@ -2654,10 +2668,11 @@ TEST_P(StorageQueueTest, WriteWithUnencryptedCopy) {
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     StorageQueueTest,
-    testing::Combine(testing::Values(128u * 1024uLL * 1024uLL,
-                                     256u /* two records in file */,
-                                     1u /* single record in file */),
-                     testing::Values("DM TOKEN", "")));
+    testing::Combine(testing::Values(128 * 1024LL * 1024LL,
+                                     256 /* two records in file */,
+                                     1 /* single record in file */),
+                     testing::Values("DM TOKEN", ""),
+                     testing::Bool()));
 
 }  // namespace
 }  // namespace reporting

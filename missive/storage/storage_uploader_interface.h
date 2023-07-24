@@ -43,9 +43,6 @@ class UploaderInterface {
     MAX_REASON = 8,        // Anything beyond this is illegal
   };
 
-  // using AsyncStartUploaderCb =
-  //     base::RepeatingCallback<StatusOr<std::unique_ptr<UploaderInterface>>(
-  //         bool need_encryption_key)>;
   // Asynchronous callback that instantiates uploader.
   // To start upload, call |AsyncStartUploaderCb| on a thread pool. Once
   // uploader is instantiated, |AsyncStartUploaderCb| calls its parameter

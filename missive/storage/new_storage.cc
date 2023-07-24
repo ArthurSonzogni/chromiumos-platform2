@@ -46,6 +46,8 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_impl.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -107,8 +109,8 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
             // Note: the callback below belongs to the Queue and does not
             // outlive NewStorage, so it cannot refer to `storage_` itself!
             .async_start_upload_cb = base::BindRepeating(
-                &QueueUploaderInterface::AsyncProvideUploader,
-                /*priority=*/priority, storage_->async_start_upload_cb_,
+                &QueueUploaderInterface::AsyncProvideUploader, priority,
+                storage_->health_module_, storage_->async_start_upload_cb_,
                 storage_->encryption_module_),
             // `queues_container_` refers a weak pointer only, so that its
             // callback does not hold a reference to it.
@@ -303,11 +305,16 @@ void NewStorage::Create(
 }
 
 NewStorage::NewStorage(const NewStorage::Settings& settings)
-    : StorageInterface(settings.queues_container,
-                       settings.queues_container->sequenced_task_runner()),
+    : StorageInterface(
+          settings.queues_container,
+          HealthModule::Create(std::make_unique<HealthModuleDelegateImpl>(
+              settings.options.directory().Append(
+                  HealthModule::kHealthSubdirectory))),
+          settings.queues_container->sequenced_task_runner()),
       options_(settings.options),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(settings.encryption_module,
+                                        health_module_,
                                         settings.async_start_upload_cb)),
       compression_module_(settings.compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
@@ -369,11 +376,41 @@ void NewStorage::Write(Priority priority,
       base::BindOnce(
           [](scoped_refptr<NewStorage> self, Priority priority, Record record,
              base::OnceCallback<void(Status)> completion_cb) {
+            // Provide health module recorded, if debugging is enabled.
+            if (auto recorder = self->health_module_->NewRecorder()) {
+              auto* const enqueue_record =
+                  recorder->mutable_enqueue_record_call();
+              enqueue_record->set_priority(priority);
+              enqueue_record->set_destination(record.destination());
+              completion_cb = base::BindOnce(
+                  [](HealthModule::Recorder recorder,
+                     base::OnceCallback<void(Status)> completion_cb,
+                     Status status) {
+                    if (!status.ok()) {
+                      status.SaveTo(recorder->mutable_enqueue_record_call()
+                                        ->mutable_status());
+                    }
+                    std::move(completion_cb).Run(status);
+                  },
+                  std::move(recorder), std::move(completion_cb));
+            }
+
             const DMtoken& dm_token = record.dm_token();
 
+            // Provide health module recorded, if debugging is enabled.
+            auto recorder = self->health_module_->NewRecorder();
+            if (recorder) {
+              auto* const queue_action_record =
+                  recorder->mutable_storage_queue_action();
+              queue_action_record->set_priority(priority);
+              queue_action_record
+                  ->mutable_storage_enqueue();  // Expected enqueue action.
+            }
+
             // Callback that writes to the queue.
-            auto queue_action = base::BindOnce(&NewStorage::WriteToQueue, self,
-                                               std::move(record));
+            auto queue_action =
+                base::BindOnce(&NewStorage::WriteToQueue, self,
+                               std::move(record), std::move(recorder));
 
             // Callback for `AsyncGetQueue` so that we can either run it here or
             // have it run after we create any necessary queues. We attach
@@ -419,6 +456,7 @@ void NewStorage::Write(Priority priority,
 }
 
 void NewStorage::WriteToQueue(Record record,
+                              HealthModule::Recorder recorder,
                               scoped_refptr<StorageQueue> queue,
                               base::OnceCallback<void(Status)> completion_cb) {
   if (encryption_module_->is_enabled() &&
@@ -430,19 +468,28 @@ void NewStorage::WriteToQueue(Record record,
     // key). After that we will resume the write into the queue.
     KeyDelivery::RequestCallback action = base::BindOnce(
         [](scoped_refptr<StorageQueue> queue, Record record,
+           HealthModule::Recorder recorder,
            base::OnceCallback<void(Status)> completion_cb, Status status) {
           if (!status.ok()) {
+            if (recorder) {
+              auto* const write_queue_record =
+                  recorder->mutable_storage_queue_action();
+              status.SaveTo(write_queue_record->mutable_status());
+            }
             std::move(completion_cb).Run(status);
             return;
           }
-          queue->Write(std::move(record), std::move(completion_cb));
+          queue->Write(std::move(record), std::move(recorder),
+                       std::move(completion_cb));
         },
-        queue, std::move(record), std::move(completion_cb));
+        queue, std::move(record), std::move(recorder),
+        std::move(completion_cb));
     key_delivery_->Request(std::move(action));
     return;
   }
   // Otherwise we can write into the queue right away.
-  queue->Write(std::move(record), std::move(completion_cb));
+  queue->Write(std::move(record), std::move(recorder),
+               std::move(completion_cb));
 }
 
 void NewStorage::Confirm(SequenceInformation sequence_information,
@@ -454,16 +501,40 @@ void NewStorage::Confirm(SequenceInformation sequence_information,
   const GenerationGuid generation_guid = sequence_information.generation_guid();
   const Priority priority = sequence_information.priority();
 
+  if (auto recorder = health_module_->NewRecorder()) {
+    auto* const record = recorder->mutable_confirm_record_upload_call();
+    record->set_priority(sequence_information.priority());
+    record->set_sequencing_id(sequence_information.sequencing_id());
+    record->set_force_confirm(force);
+    completion_cb = base::BindOnce(
+        [](HealthModule::Recorder recorder,
+           base::OnceCallback<void(Status)> completion_cb, Status status) {
+          if (!status.ok()) {
+            status.SaveTo(recorder->mutable_confirm_record_upload_call()
+                              ->mutable_status());
+          }
+          std::move(completion_cb).Run(status);
+        },
+        std::move(recorder), std::move(completion_cb));
+  }
+
+  auto recorder = health_module_->NewRecorder();
+  if (recorder) {
+    auto* const queue_action_record = recorder->mutable_storage_queue_action();
+    queue_action_record->set_priority(sequence_information.priority());
+    queue_action_record->mutable_storage_dequeue();  // expected dequeue action
+  }
+
   AsyncGetQueueAndProceed(
       priority,
       base::BindOnce(
           [](SequenceInformation sequence_information, bool force,
-             scoped_refptr<StorageQueue> queue,
+             HealthModule::Recorder recorder, scoped_refptr<StorageQueue> queue,
              base::OnceCallback<void(Status)> completion_cb) {
             queue->Confirm(std::move(sequence_information), force,
-                           std::move(completion_cb));
+                           std::move(recorder), std::move(completion_cb));
           },
-          std::move(sequence_information), force),
+          std::move(sequence_information), force, std::move(recorder)),
       std::move(completion_cb), generation_guid);
 }
 

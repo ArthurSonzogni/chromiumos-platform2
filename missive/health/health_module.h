@@ -5,6 +5,7 @@
 #ifndef MISSIVE_HEALTH_HEALTH_MODULE_H_
 #define MISSIVE_HEALTH_HEALTH_MODULE_H_
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -26,6 +27,9 @@ namespace reporting {
 // are done with mutual exclusion
 class HealthModule : public base::RefCountedThreadSafe<HealthModule> {
  public:
+  // Default subdirectory for health data to be stored.
+  static constexpr char kHealthSubdirectory[] = "Health";
+
   // Instance of `Recorder` class provides an easy to use access for
   // the caller to compose a single history record, which is posted when
   // the instance is destructed.
@@ -37,31 +41,19 @@ class HealthModule : public base::RefCountedThreadSafe<HealthModule> {
    public:
     // Recorder constructor is associated with health module;
     // nullptr is used only when debugging not enabled.
-    explicit Recorder(scoped_refptr<HealthModule> health_module = nullptr)
-        : health_module_(health_module) {
-      if (health_module_) {
-        // Time in seconds since Epoch.
-        history_.set_timestamp_seconds(base::Time::Now().ToTimeT());
-      }
-    }
+    explicit Recorder(scoped_refptr<HealthModule> health_module = nullptr);
+    Recorder(Recorder&& other);
+    Recorder& operator=(Recorder&& other);
+    Recorder(const Recorder&) = delete;
+    ~Recorder();
 
-    Recorder(Recorder&& other) = default;
-    Recorder& operator=(Recorder&& other) = default;
-    ~Recorder() {
-      if (health_module_) {
-        health_module_->PostHealthRecord(std::move(history_));
-      }
-    }
-
-    // Returns true if debuggung is active (health_module is present).
+    // Returns true if debugging is active (health_module is present).
     // When the result is false, other actions are not doing anything.
-    explicit operator bool() const noexcept {
-      return health_module_.get() != nullptr;
-    }
+    explicit operator bool() const noexcept;
 
-    // Acccessors that present history record to be set up.
-    HealthDataHistory& operator*() noexcept { return history_; }
-    HealthDataHistory* operator->() noexcept { return &history_; }
+    // Accessors that present history record to be set up.
+    HealthDataHistory& operator*() noexcept;
+    HealthDataHistory* operator->() noexcept;
 
    private:
     HealthDataHistory history_;
@@ -81,6 +73,13 @@ class HealthModule : public base::RefCountedThreadSafe<HealthModule> {
   // Gets health data and send to |cb|.
   void GetHealthData(HealthCallback cb);
 
+  // Sets or resets debugging. Safe to be called at any time, will only affect
+  // future activity, will not stop debugging action being already in progress.
+  void SetDebugging(bool is_debugging = true);
+
+  // Creates new `Recorder` instance if debugging is on.
+  HealthModule::Recorder NewRecorder();
+
  protected:
   // Constructor can only be called by |Create| factory method.
   HealthModule(std::unique_ptr<HealthModuleDelegate> delegate,
@@ -96,6 +95,9 @@ class HealthModule : public base::RefCountedThreadSafe<HealthModule> {
 
   // Task Runner which tasks are posted to.
   const scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  // "Debugging active" flag. Can be set or reset at any time.
+  std::atomic<bool> is_debugging_{false};
 };
 }  // namespace reporting
 

@@ -31,6 +31,7 @@
 
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_managed_buffer.h"
 #include "missive/storage/storage_configuration.h"
@@ -142,7 +143,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // large, it is closed and new file is created.
   // Helper methods: AssignLastFile, WriteHeaderAndBlock, OpenNewWriteableFile,
   // WriteMetadata, DeleteOutdatedMetadata.
-  void Write(Record record, base::OnceCallback<void(Status)> completion_cb);
+  void Write(Record record,
+             HealthModule::Recorder recorder,
+             base::OnceCallback<void(Status)> completion_cb);
 
   // Confirms acceptance of the records up to
   // |sequence_information.sequencing_id()| (inclusively), if the
@@ -158,6 +161,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Helper methods: RemoveConfirmedData.
   void Confirm(SequenceInformation sequence_information,
                bool force,
+               HealthModule::Recorder recorder,
                base::OnceCallback<void(Status)> completion_cb);
 
   // Initiates upload of collected records. Called periodically by timer, based
@@ -416,7 +420,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Helper method for Confirm: Moves |first_sequencing_id_| to
   // (|sequencing_id|+1) and removes files that only have records with seq
   // ids below or equal to |sequencing_id| (below |first_sequencing_id_|).
-  Status RemoveConfirmedData(int64_t sequencing_id);
+  Status RemoveConfirmedData(int64_t sequencing_id,
+                             HealthModule::Recorder& recorder);
 
   // Helper method to release all file instances held by the queue.
   // Files on the disk remain as they were.

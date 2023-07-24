@@ -36,6 +36,8 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
+#include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_configuration.h"
@@ -49,9 +51,11 @@ namespace reporting {
 
 StorageInterface::StorageInterface(
     scoped_refptr<QueuesContainer> queues_container,
+    scoped_refptr<HealthModule> health_module,
     const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
     : queues_container_(queues_container),
-      sequenced_task_runner_(sequenced_task_runner) {}
+      sequenced_task_runner_(sequenced_task_runner),
+      health_module_(std::move(health_module)) {}
 
 StorageInterface::~StorageInterface() {
   // Drop all queues inside `queues_container_`. This will
@@ -63,24 +67,36 @@ StorageInterface::~StorageInterface() {
 
 QueueUploaderInterface::QueueUploaderInterface(
     Priority priority,
+    HealthModule::Recorder recorder,
     std::unique_ptr<UploaderInterface> storage_uploader_interface)
     : priority_(priority),
+      recorder_(std::move(recorder)),
       storage_uploader_interface_(std::move(storage_uploader_interface)) {}
 
 // Factory method.
 void QueueUploaderInterface::AsyncProvideUploader(
     Priority priority,
+    const scoped_refptr<HealthModule> health_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::UploadReason reason,
     UploaderInterfaceResultCb start_uploader_cb) {
-  async_start_upload_cb.Run(
+  const auto upload_reason =
       (/*need_encryption_key=*/encryption_module->is_enabled() &&
        encryption_module->need_encryption_key())
           ? UploaderInterface::UploadReason::KEY_DELIVERY
-          : reason,
+          : reason;
+  auto recorder = health_module->NewRecorder();
+  if (recorder) {
+    auto* const record = recorder->mutable_upload_encrypted_record_call();
+    record->set_upload_reason(
+        std::string(UploaderInterface::ReasonToString(upload_reason)));
+  }
+  async_start_upload_cb.Run(
+      upload_reason,
       base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
-                     priority, std::move(start_uploader_cb)));
+                     priority, std::move(recorder),
+                     std::move(start_uploader_cb)));
 }
 
 void QueueUploaderInterface::ProcessRecord(
@@ -91,6 +107,11 @@ void QueueUploaderInterface::ProcessRecord(
   SequenceInformation* const sequence_info =
       encrypted_record.mutable_sequence_information();
   sequence_info->set_priority(priority_);
+  if (recorder_) {
+    auto* const record = recorder_->mutable_upload_encrypted_record_call();
+    auto* const data = record->add_items()->mutable_record();
+    data->set_sequencing_id(sequence_info->sequencing_id());
+  }
   storage_uploader_interface_->ProcessRecord(std::move(encrypted_record),
                                              std::move(scoped_reservation),
                                              std::move(processed_cb));
@@ -100,6 +121,12 @@ void QueueUploaderInterface::ProcessGap(
     SequenceInformation start,
     uint64_t count,
     base::OnceCallback<void(bool)> processed_cb) {
+  if (recorder_) {
+    auto* const record = recorder_->mutable_upload_encrypted_record_call();
+    auto* const gap = record->add_items()->mutable_gap();
+    gap->set_sequencing_id(start.sequencing_id());
+    gap->set_count(count);
+  }
   // Update sequence information: add Priority.
   start.set_priority(priority_);
   storage_uploader_interface_->ProcessGap(std::move(start), count,
@@ -107,20 +134,32 @@ void QueueUploaderInterface::ProcessGap(
 }
 
 void QueueUploaderInterface::Completed(Status final_status) {
+  if (recorder_) {
+    auto* const record = recorder_->mutable_upload_encrypted_record_call();
+    record->set_priority(priority_);
+    final_status.SaveTo(record->mutable_status());
+  }
   storage_uploader_interface_->Completed(final_status);
 }
 
 void QueueUploaderInterface::WrapInstantiatedUploader(
     Priority priority,
+    HealthModule::Recorder recorder,
     UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.ok()) {
+    if (recorder) {
+      auto* const record = recorder->mutable_upload_encrypted_record_call();
+      record->set_priority(priority);
+      uploader_result.status().SaveTo(record->mutable_status());
+    }
     std::move(start_uploader_cb).Run(uploader_result.status());
     return;
   }
   std::move(start_uploader_cb)
       .Run(std::make_unique<QueueUploaderInterface>(
-          priority, std::move(uploader_result.ValueOrDie())));
+          priority, std::move(recorder),
+          std::move(uploader_result.ValueOrDie())));
 }
 
 // static
@@ -306,12 +345,13 @@ QueuesContainer::sequenced_task_runner() const {
 // Factory method, returns smart pointer with deletion on sequence.
 std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> KeyDelivery::Create(
     scoped_refptr<EncryptionModuleInterface> encryption_module,
+    scoped_refptr<HealthModule> health_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb) {
   auto sequence_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
       {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   return std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter>(
-      new KeyDelivery(encryption_module, async_start_upload_cb,
-                      sequence_task_runner),
+      new KeyDelivery(encryption_module, std::move(health_module),
+                      async_start_upload_cb, sequence_task_runner),
       base::OnTaskRunnerDeleter(sequence_task_runner));
 }
 
@@ -324,8 +364,10 @@ KeyDelivery::~KeyDelivery() {
 
 void KeyDelivery::Request(RequestCallback callback) {
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&KeyDelivery::EuqueueRequestAndPossiblyStart,
-                                base::Unretained(this), std::move(callback)));
+      FROM_HERE,
+      base::BindOnce(&KeyDelivery::EuqueueRequestAndPossiblyStart,
+                     base::Unretained(this), health_module_->NewRecorder(),
+                     std::move(callback)));
 }
 
 void KeyDelivery::OnCompletion(Status status) {
@@ -354,11 +396,13 @@ void KeyDelivery::StartPeriodicKeyUpdate(const base::TimeDelta period) {
 
 KeyDelivery::KeyDelivery(
     scoped_refptr<EncryptionModuleInterface> encryption_module,
+    scoped_refptr<HealthModule> health_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
     : sequenced_task_runner_(sequenced_task_runner),
       async_start_upload_cb_(async_start_upload_cb),
-      encryption_module_(encryption_module) {
+      encryption_module_(encryption_module),
+      health_module_(std::move(health_module)) {
   CHECK(encryption_module_) << "Encryption module pointer not set";
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
@@ -379,7 +423,8 @@ void KeyDelivery::RequestKeyIfNeeded() {
   }));
 }
 
-void KeyDelivery::EuqueueRequestAndPossiblyStart(RequestCallback callback) {
+void KeyDelivery::EuqueueRequestAndPossiblyStart(
+    HealthModule::Recorder recorder, RequestCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(callback);
   callbacks_.push_back(std::move(callback));
@@ -392,7 +437,8 @@ void KeyDelivery::EuqueueRequestAndPossiblyStart(RequestCallback callback) {
   async_start_upload_cb_.Run(
       UploaderInterface::UploadReason::KEY_DELIVERY,
       base::BindOnce(&KeyDelivery::WrapInstantiatedKeyUploader,
-                     /*priority=*/MANUAL_BATCH, std::move(start_uploader_cb)));
+                     /*priority=*/MANUAL_BATCH, std::move(recorder),
+                     std::move(start_uploader_cb)));
 }
 
 void KeyDelivery::PostResponses(Status status) {
@@ -405,6 +451,7 @@ void KeyDelivery::PostResponses(Status status) {
 
 void KeyDelivery::WrapInstantiatedKeyUploader(
     Priority priority,
+    HealthModule::Recorder recorder,
     UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.ok()) {
@@ -413,7 +460,8 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
   }
   std::move(start_uploader_cb)
       .Run(std::make_unique<QueueUploaderInterface>(
-          priority, std::move(uploader_result.ValueOrDie())));
+          priority, std::move(recorder),
+          std::move(uploader_result.ValueOrDie())));
 }
 
 void KeyDelivery::EncryptionKeyReceiverReady(
@@ -667,5 +715,4 @@ KeyInStorage::LocateValidKeyAndParse(
   // Not found, return error.
   return std::nullopt;
 }
-
 }  // namespace reporting

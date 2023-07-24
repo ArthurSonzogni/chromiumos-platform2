@@ -67,7 +67,11 @@ class StorageModuleTest : public ::testing::Test {
  protected:
   StorageModuleTest() = default;
 
-  void SetUp() override { storage_module_.reset(); }
+  void SetUp() override {
+    ASSERT_TRUE(location_.CreateUniqueTempDir());
+    options_.set_directory(location_.GetPath());
+    storage_module_.reset();
+  }
 
   void CreateStorageModule(base::StringPiece legacy_storage_enabled) {
     test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
@@ -113,7 +117,10 @@ class StorageModuleTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
+  base::ScopedTempDir location_;
   StorageOptions options_;
+  scoped_refptr<HealthModule> health_module_;
+
   scoped_refptr<StorageModule> storage_module_;
 };
 

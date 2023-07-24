@@ -26,6 +26,7 @@
 
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_configuration.h"
@@ -174,6 +175,7 @@ class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
   // No constructor. Only instantiated via implementation/subclass constructors
   StorageInterface(
       scoped_refptr<QueuesContainer> queues_container,
+      scoped_refptr<HealthModule> health_module,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   virtual ~StorageInterface();
@@ -188,6 +190,10 @@ class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
   // Task runner for storage-wide operations (initialized in
   // `queues_container_`).
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+
+  // Health module for debugging support. Exists always, but active only when
+  // the `is_debugging_` flag is set.
+  const scoped_refptr<HealthModule> health_module_;
 };
 
 // Bridge class for uploading records from a queue to storage.
@@ -195,11 +201,13 @@ class QueueUploaderInterface : public UploaderInterface {
  public:
   QueueUploaderInterface(
       Priority priority,
+      HealthModule::Recorder recorder,
       std::unique_ptr<UploaderInterface> storage_uploader_interface);
 
   // Factory method.
   static void AsyncProvideUploader(
       Priority priority,
+      const scoped_refptr<HealthModule> health_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::UploadReason reason,
@@ -218,10 +226,12 @@ class QueueUploaderInterface : public UploaderInterface {
  private:
   static void WrapInstantiatedUploader(
       Priority priority,
+      HealthModule::Recorder recorder,
       UploaderInterfaceResultCb start_uploader_cb,
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result);
 
   const Priority priority_;
+  HealthModule::Recorder recorder_;
   const std::unique_ptr<UploaderInterface> storage_uploader_interface_;
 };
 
@@ -233,6 +243,7 @@ class KeyDelivery {
   // Factory method, returns smart pointer with deletion on sequence.
   static std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> Create(
       scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<HealthModule> health_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
 
   ~KeyDelivery();
@@ -247,17 +258,20 @@ class KeyDelivery {
   // Constructor called by factory only.
   explicit KeyDelivery(
       scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<HealthModule> health_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   void RequestKeyIfNeeded();
 
-  void EuqueueRequestAndPossiblyStart(RequestCallback callback);
+  void EuqueueRequestAndPossiblyStart(HealthModule::Recorder recorder,
+                                      RequestCallback callback);
 
   void PostResponses(Status status);
 
   static void WrapInstantiatedKeyUploader(
       Priority priority,
+      HealthModule::Recorder recorder,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result);
 
@@ -276,6 +290,9 @@ class KeyDelivery {
   // Used to check whether or not encryption is enabled and if we need to
   // request the key.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;
+
+  // Used for recording key delivery upload call, when debugging is enabled.
+  const scoped_refptr<HealthModule> health_module_;
 
   // Used to periodically trigger check for encryption key
   base::RepeatingTimer upload_timer_ GUARDED_BY_CONTEXT(sequence_checker_);

@@ -26,6 +26,7 @@
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_base.h"
@@ -176,6 +177,7 @@ class NewStorage : public StorageInterface {
 
   // Writes a record to the given queue.
   void WriteToQueue(Record record,
+                    HealthModule::Recorder recorder,
                     scoped_refptr<StorageQueue> queue,
                     base::OnceCallback<void(Status)> completion_cb);
 

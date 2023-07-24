@@ -20,7 +20,9 @@ HealthModuleDelegateImpl::HealthModuleDelegateImpl(
     base::StringPiece file_base_name)
     : directory_(directory),
       file_base_name_(file_base_name),
-      max_history_storage_(max_history_storage) {}
+      max_history_storage_(max_history_storage) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
 
 HealthModuleDelegateImpl::~HealthModuleDelegateImpl() {
   // Because of weak ptr factory, must be on the same sequence.

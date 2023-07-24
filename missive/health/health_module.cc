@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include "base/memory/scoped_refptr.h"
 
 #include <base/functional/bind.h>
 #include <base/sequence_checker.h>
@@ -14,6 +15,40 @@
 #include <base/thread_annotations.h>
 
 namespace reporting {
+
+// Recorder implementation
+
+HealthModule::Recorder::Recorder(scoped_refptr<HealthModule> health_module)
+    : health_module_(std::move(health_module)) {
+  if (health_module_) {
+    // Time in seconds since Epoch.
+    history_.set_timestamp_seconds(base::Time::Now().ToTimeT());
+  }
+}
+
+HealthModule::Recorder::Recorder(HealthModule::Recorder&& other) = default;
+
+HealthModule::Recorder& HealthModule::Recorder::operator=(
+    HealthModule::Recorder&& other) = default;
+
+HealthModule::Recorder::~Recorder() {
+  if (health_module_) {
+    health_module_->PostHealthRecord(std::move(history_));
+  }
+}
+
+HealthModule::Recorder::operator bool() const noexcept {
+  return health_module_.get() != nullptr;
+}
+
+HealthDataHistory& HealthModule::Recorder::operator*() noexcept {
+  return history_;
+}
+HealthDataHistory* HealthModule::Recorder::operator->() noexcept {
+  return &history_;
+}
+
+// HealthModule implementation
 
 // static
 scoped_refptr<HealthModule> HealthModule::Create(
@@ -47,5 +82,15 @@ void HealthModule::GetHealthData(HealthCallback cb) {
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&HealthModuleDelegate::GetERPHealthData,
                                 delegate_->GetWeakPtr(), std::move(cb)));
+}
+
+HealthModule::Recorder HealthModule::NewRecorder() {
+  // Debugging enabled, create actual recorder to be used.
+  return HealthModule::Recorder(is_debugging_ ? base::WrapRefCounted(this)
+                                              : nullptr);
+}
+
+void HealthModule::SetDebugging(bool is_debugging) {
+  is_debugging_ = is_debugging;
 }
 }  // namespace reporting
