@@ -1024,8 +1024,8 @@ event --help`.
 #####  StatefulPartitionInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| available_space | uint64 | Available space for user data storage in the device in bytes. |
-| total_space | uint64 | Total space for user data storage in the device in bytes. |
+| available_space | uint64 | Available space in bytes for stateful partition. |
+| total_space | uint64 | Total space in bytes for stateful partition. |
 | filesystem | string | File system on stateful partition. e.g. ext4. |
 | mount_source | string | Source of stateful partition. e.g. /dev/mmcblk0p1. |
 
