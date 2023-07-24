@@ -7,6 +7,7 @@
 #include <linux/capability.h>
 #include <stdlib.h>
 
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "debugd/src/helper_utils.h"
@@ -36,9 +37,10 @@ string ICMPTool::TestICMPWithOptions(const string& host,
   ProcessWithOutput p;
   p.SetSeccompFilterPolicyFile(kSeccompPolicy);
   p.SetCapabilities(kCapabilities);
+  p.set_separate_stderr(true);
   // "--ambient" is required to allow the subprocess ("/bin/ping" in this case)
   // to inherit capabilities.
-  if (!p.Init({"--ambient"}))
+  if (!p.Init(/*minijail_extra_args=*/{"--ambient"}))
     return "<can't create process>";
   p.AddArg(path);
 
@@ -52,8 +54,15 @@ string ICMPTool::TestICMPWithOptions(const string& host,
 
   p.AddArg(host);
   p.Run();
-  string out;
+  string out, err;
   p.GetOutput(&out);
+  p.GetError(&err);
+  if (!err.empty()) {
+    LOG(ERROR) << "icmp failed: " << err << "; host: " << host;
+  }
+  if (out.empty()) {
+    return err;
+  }
   return out;
 }
 

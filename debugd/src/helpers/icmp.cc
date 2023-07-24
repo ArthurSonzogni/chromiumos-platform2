@@ -41,7 +41,7 @@ static const char kHelpMessage[] =
 static const char kIPv4v6Chars[] = "ABCDEFabcdef0123456789.:";
 
 static void Die(const string& why) {
-  printf("<%s>\n", why.c_str());
+  fprintf(stderr, "<%s>\n", why.c_str());
   exit(1);
 }
 
