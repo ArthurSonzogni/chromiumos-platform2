@@ -10,6 +10,7 @@
 #include <brillo/syslog_logging.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/oobe_config/frontend.h>
+#include <oobe_config/metrics/enterprise_rollback_metrics_handler.h>
 
 #include "oobe_config/filesystem/file_handler.h"
 
@@ -54,5 +55,9 @@ int main(int argc, char* argv[]) {
   file_handler.RemoveOpensslEncryptedRollbackData();
   file_handler.RemoveTpmEncryptedRollbackData();
   ZeroTpmSpaceIfExists();
+  oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
+  if (metrics_handler.IsTrackingRollbackEvents()) {
+    metrics_handler.StopTrackingRollback();
+  }
   return 0;
 }
