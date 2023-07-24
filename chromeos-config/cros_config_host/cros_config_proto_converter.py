@@ -1797,6 +1797,9 @@ def _build_hardware_properties(hw_topology):
     if sd_reader.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-sd-reader"] = True
 
+    if hw_topology.HasField("volume_button"):
+        result["has-side-volume-button"] = True
+
     sensors = hw_topology.accelerometer_gyroscope_magnetometer.hardware_feature
     acc = sensors.accelerometer
     if acc.base_accelerometer == topology_pb2.HardwareFeatures.PRESENT:

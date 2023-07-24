@@ -829,6 +829,7 @@ In the tables below,
 | has-poe-peripheral-support | boolean |  | False |  | False | Does the device have hardware for connecting PoE peripherals. |
 | has-privacy-screen | boolean |  | False |  | False | Does the device have a privacy screen. |
 | has-sd-reader | boolean |  | False |  | False | True if the device has an SD card reader. |
+| has-side-volume-button | boolean |  | False |  | False | True if the device has a side volume button. |
 | has-touchscreen | boolean |  | False |  | False | Does the device have a touchscreen. |
 | is-lid-convertible | boolean |  | False |  | False | Can the lid be rotated 360 degrees. |
 | psu-type | string |  | False |  | False | Type of PSU the device has: - battery: the device has a battery intended for primary use - AC_primary: the device has a battery, but it is not intended for primary use - AC_only: the device has no battery - no_power: the device does not receive power in any direct manner (e.g., it is virtualized)  |

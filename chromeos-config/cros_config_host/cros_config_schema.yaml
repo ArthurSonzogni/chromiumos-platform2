@@ -1333,6 +1333,9 @@ properties:
                 has-sd-reader:
                   description: True if the device has an SD card reader.
                   type: boolean
+                has-side-volume-button:
+                  description: True if the device has a side volume button.
+                  type: boolean
                 display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type
