@@ -66,7 +66,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 
   // There are 5 paths:
   // 1. Same owner + replaced components require WP disabling + CCD blocked:
-  //    Go to WipeSelection state.
+  //    Go to RSU state. WP can only be disabled by RSU when CCD is blocked.
   // 2. Same owner + replaced components require WP disabling + CCD not blocked:
   //    Go to WipeSelection state.
   // 3. Same owner + replaced components don't require WP disabling:
@@ -94,7 +94,8 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       if (cryptohome_client_->IsCcdBlocked()) {
         // Case 1.
         json_store_->SetValue(kCcdBlocked, true);
-        return NextStateCaseWrapper(RmadState::StateCase::kWipeSelection);
+        json_store_->SetValue(kWipeDevice, true);
+        return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
       } else {
         // Case 2.
         json_store_->SetValue(kCcdBlocked, false);

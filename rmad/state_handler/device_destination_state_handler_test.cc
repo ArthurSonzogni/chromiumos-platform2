@@ -58,6 +58,8 @@ TEST_F(DeviceDestinationStateHandlerTest, InitializeState_Success) {
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableRequired_MlbRepair_CcdBlocked) {
+  // MLB repair implies "different owner" so this test case should not happen in
+  // practice. Still add this test just for safety.
   auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -69,7 +71,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWipeSelection);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -84,7 +86,8 @@ TEST_F(DeviceDestinationStateHandlerTest,
   EXPECT_TRUE(ccd_blocked);
 
   bool wipe_device;
-  EXPECT_FALSE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(wipe_device);
 
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
@@ -114,7 +117,7 @@ TEST_F(
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWipeSelection);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -129,7 +132,8 @@ TEST_F(
   EXPECT_TRUE(ccd_blocked);
 
   bool wipe_device;
-  EXPECT_FALSE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(wipe_device);
 
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
