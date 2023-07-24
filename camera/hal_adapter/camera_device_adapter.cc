@@ -1077,7 +1077,7 @@ camera3_buffer_request_status_t CameraDeviceAdapter::RequestStreamBuffers(
 
   using RequestStreamBuffersReturn =
       std::pair<mojom::Camera3BufferRequestStatus,
-                std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>>;
+                std::vector<mojom::Camera3StreamBufferRetPtr>>;
   auto future = cros::Future<RequestStreamBuffersReturn>::Create(nullptr);
   if (self->callback_ops_delegate_) {
     auto request = self->PrepareBufferRequest(num_buffer_reqs, buffer_reqs);
@@ -1086,8 +1086,7 @@ camera3_buffer_request_status_t CameraDeviceAdapter::RequestStreamBuffers(
     }
     auto cb = [](base::OnceCallback<void(RequestStreamBuffersReturn)> future_cb,
                  mojom::Camera3BufferRequestStatus req_status,
-                 std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>
-                     ret_ptrs) {
+                 std::vector<mojom::Camera3StreamBufferRetPtr> ret_ptrs) {
       std::move(future_cb).Run(std::pair{req_status, std::move(ret_ptrs)});
     };
     self->callback_ops_delegate_->RequestStreamBuffers(
@@ -1412,18 +1411,14 @@ CameraDeviceAdapter::PrepareBufferRequest(
 camera3_buffer_request_status_t
 CameraDeviceAdapter::DeserializeReturnedBufferRequest(
     mojom::Camera3BufferRequestStatus req_status,
-    std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>& ret_ptrs,
+    std::vector<mojom::Camera3StreamBufferRetPtr>& ret_ptrs,
     uint32_t* num_returned_buf_reqs,
     camera3_stream_buffer_ret_t* returned_buf_reqs) {
   auto status = static_cast<camera3_buffer_request_status_t>(req_status);
-  if (!ret_ptrs.has_value()) {
-    *num_returned_buf_reqs = 0;
-    return status;
-  }
 
-  *num_returned_buf_reqs = ret_ptrs->size();
-  for (size_t i = 0; i < ret_ptrs->size(); ++i) {
-    mojom::Camera3StreamBufferRetPtr& ret_ptr = ret_ptrs.value()[i];
+  *num_returned_buf_reqs = ret_ptrs.size();
+  for (size_t i = 0; i < ret_ptrs.size(); ++i) {
+    mojom::Camera3StreamBufferRetPtr& ret_ptr = ret_ptrs[i];
     camera3_stream_buffer_ret_t& ret = returned_buf_reqs[i];
     ret.status =
         static_cast<camera3_stream_buffer_req_status_t>(ret_ptr->status);

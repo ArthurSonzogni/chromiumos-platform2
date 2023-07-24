@@ -234,7 +234,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   camera3_buffer_request_status_t DeserializeReturnedBufferRequest(
       mojom::Camera3BufferRequestStatus req_status,
-      std::optional<std::vector<mojom::Camera3StreamBufferRetPtr>>& ret_ptrs,
+      std::vector<mojom::Camera3StreamBufferRetPtr>& ret_ptrs,
       uint32_t* num_returned_buf_reqs,
       camera3_stream_buffer_ret_t* returned_buf_reqs);
 
