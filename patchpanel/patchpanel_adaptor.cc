@@ -7,6 +7,7 @@
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <shill/net/process_manager.h>
 
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/proto_utils.h"
 
 namespace patchpanel {
@@ -117,6 +118,8 @@ LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
+  metrics_->SendEnumToUMA(kCreateLocalOnlyNetworkUmaEventMetrics,
+                          DownstreamNetworkResultToUMAEvent(response_code));
 
   LocalOnlyNetworkResponse response;
   response.set_response_code(response_code);
@@ -132,6 +135,8 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
+  metrics_->SendEnumToUMA(kCreateTetheredNetworkUmaEventMetrics,
+                          DownstreamNetworkResultToUMAEvent(response_code));
 
   TetheredNetworkResponse response;
   response.set_response_code(response_code);

@@ -74,12 +74,12 @@ class DHCPServerControllerTest : public ::testing::Test {
         .value();
   }
 
-  void ExpectMetrics(TetheringDHCPServerUmaEvent event, int times) {
+  void ExpectMetrics(DHCPServerUmaEvent event, int times) {
     EXPECT_CALL(
         metrics_,
-        SendEnumToUMA(
-            kTetheringDHCPServerUmaEventMetrics, static_cast<int>(event),
-            static_cast<int>(TetheringDHCPServerUmaEvent::kMaxValue) + 1))
+        SendEnumToUMA(kTetheringDHCPServerUmaEventMetrics,
+                      static_cast<int>(event),
+                      static_cast<int>(DHCPServerUmaEvent::kMaxValue) + 1))
         .Times(times)
         .WillRepeatedly(Return(true));
   }
@@ -183,11 +183,11 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
   constexpr pid_t pid = 5;
 
   // Start() is called twice, but only the first time is successful.
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 2);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 2);
+  ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
   // Stop() is called once at destructor, and it is successful.
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStopSuccess, 1);
 
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
                                     _, cmd_path, cmd_args, _, _, _, _))
@@ -207,7 +207,7 @@ TEST_F(DHCPServerControllerTest, StartFailed) {
   const auto config = CreateValidConfig();
   constexpr pid_t invalid_pid = shill::ProcessManager::kInvalidPID;
 
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
       .WillOnce(Return(invalid_pid));
 
@@ -220,10 +220,10 @@ TEST_F(DHCPServerControllerTest, StartAndStop) {
   const auto config = CreateValidConfig();
   constexpr pid_t pid = 5;
 
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStopSuccess, 1);
 
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
       .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
@@ -253,8 +253,8 @@ TEST_F(DHCPServerControllerTest, OnProcessExited) {
                   return pid;
                 })));
 
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
 
   // The callback from caller should be called with exit status when the process
   // is exited unexpectedly.
@@ -273,15 +273,15 @@ TEST_F(DHCPServerControllerTest, Metric) {
   const auto config = CreateValidConfig();
   constexpr pid_t pid = 5;
 
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStart, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStartSuccess, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStop, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kStopSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStopSuccess, 1);
 
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageRequest, 2);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageAck, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageNak, 1);
-  ExpectMetrics(TetheringDHCPServerUmaEvent::kDHCPMessageDecline, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageRequest, 2);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageAck, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageNak, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageDecline, 1);
 
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
       .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));

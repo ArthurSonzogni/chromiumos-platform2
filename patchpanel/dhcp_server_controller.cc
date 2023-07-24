@@ -28,11 +28,11 @@ constexpr char kDHCPRequest[] = "DHCPREQUEST";
 constexpr char kDHCPAck[] = "DHCPACK";
 constexpr char kDHCPNak[] = "DHCPNAK";
 constexpr char kDHCPDecline[] = "DHCPDECLINE";
-constexpr std::pair<const char*, TetheringDHCPServerUmaEvent> kEventTable[] = {
-    {kDHCPRequest, TetheringDHCPServerUmaEvent::kDHCPMessageRequest},
-    {kDHCPAck, TetheringDHCPServerUmaEvent::kDHCPMessageAck},
-    {kDHCPNak, TetheringDHCPServerUmaEvent::kDHCPMessageNak},
-    {kDHCPDecline, TetheringDHCPServerUmaEvent::kDHCPMessageDecline},
+constexpr std::pair<const char*, DHCPServerUmaEvent> kEventTable[] = {
+    {kDHCPRequest, DHCPServerUmaEvent::kDHCPMessageRequest},
+    {kDHCPAck, DHCPServerUmaEvent::kDHCPMessageAck},
+    {kDHCPNak, DHCPServerUmaEvent::kDHCPMessageNak},
+    {kDHCPDecline, DHCPServerUmaEvent::kDHCPMessageDecline},
 };
 
 }  // namespace
@@ -114,8 +114,7 @@ DHCPServerController::~DHCPServerController() {
 
 bool DHCPServerController::Start(const Config& config,
                                  ExitCallback exit_callback) {
-  metrics_->SendEnumToUMA(dhcp_events_metric_name_,
-                          TetheringDHCPServerUmaEvent::kStart);
+  metrics_->SendEnumToUMA(dhcp_events_metric_name_, DHCPServerUmaEvent::kStart);
   if (IsRunning()) {
     LOG(ERROR) << "DHCP server is still running: " << ifname_
                << ", old config=" << *config_;
@@ -195,7 +194,7 @@ bool DHCPServerController::Start(const Config& config,
   config_ = config;
   exit_callback_ = std::move(exit_callback);
   metrics_->SendEnumToUMA(dhcp_events_metric_name_,
-                          TetheringDHCPServerUmaEvent::kStartSuccess);
+                          DHCPServerUmaEvent::kStartSuccess);
   return true;
 }
 
@@ -204,12 +203,11 @@ void DHCPServerController::Stop() {
     return;
   }
 
-  metrics_->SendEnumToUMA(dhcp_events_metric_name_,
-                          TetheringDHCPServerUmaEvent::kStop);
+  metrics_->SendEnumToUMA(dhcp_events_metric_name_, DHCPServerUmaEvent::kStop);
   LOG(INFO) << "Stopping DHCP server at: " << ifname_;
   if (process_manager_->StopProcess(*pid_)) {
     metrics_->SendEnumToUMA(dhcp_events_metric_name_,
-                            TetheringDHCPServerUmaEvent::kStopSuccess);
+                            DHCPServerUmaEvent::kStopSuccess);
   } else {
     LOG(WARNING) << "The DHCP server process cannot be terminated";
   }

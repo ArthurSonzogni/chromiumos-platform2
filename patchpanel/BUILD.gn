@@ -120,6 +120,7 @@ static_library("libpatchpanel") {
     "datapath.cc",
     "device.cc",
     "dhcp_server_controller.cc",
+    "downstream_network_service.cc",
     "firewall.cc",
     "guest_ipv6_service.cc",
     "iptables.cc",

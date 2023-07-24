@@ -11,10 +11,20 @@ namespace patchpanel {
 constexpr char kDbusUmaEventMetrics[] = "Network.Patchpanel.Dbus";
 // UMA metrics name for ArcService events.
 constexpr char kArcServiceUmaEventMetrics[] = "Network.Patchpanel.ArcService";
-// UMA metrics name for DHCP server events, which is used at tethering
-// feature.
+
+// UMA metrics name for results of a CreateTetheredNetwork request.
+constexpr char kCreateTetheredNetworkUmaEventMetrics[] =
+    "Network.Patchpanel.Tethering.CreateTetheredNetwork";
+// UMA metrics name for DHCP server events when used by CreateTetheredNetwork.
 constexpr char kTetheringDHCPServerUmaEventMetrics[] =
     "Network.Patchpanel.Tethering.DHCPServer";
+// UMA metrics name for results of a CreateLocalOnlyNetwork request.
+constexpr char kCreateLocalOnlyNetworkUmaEventMetrics[] =
+    "Network.Patchpanel.LocalOnlyNetwork.CreateLocalOnlyNetwork";
+// UMA metrics name for DHCP server events when used by CreateLocalOnlyNetwork.
+constexpr char kLocalOnlyNetworkDHCPServerUmaEventMetrics[] =
+    "Network.Patchpanel.LocalOnlyNetwork.DHCPServer";
+
 // UMA metrics name for ARC WiFi multicast active time.
 constexpr char kMulticastActiveTimeMetrics[] =
     "Network.Multicast.ARC.ActiveTime";
@@ -101,8 +111,10 @@ enum class ArcServiceUmaEvent {
   kMaxValue,
 };
 
-// UMA metrics events for |kTetheringDHCPServerUmaEventMetrics|;
-enum class TetheringDHCPServerUmaEvent {
+// UMA metrics events for |kTetheringDHCPServerUmaEventMetrics| and
+// |kLocalOnlyNetworkDHCPServerUmaEventMetrics| (the same DHCP server
+// implementation is reused).
+enum class DHCPServerUmaEvent {
   kUnknown = 0,
   kStart = 1,
   kStartSuccess = 2,
@@ -112,6 +124,23 @@ enum class TetheringDHCPServerUmaEvent {
   kDHCPMessageAck = 6,
   kDHCPMessageNak = 7,
   kDHCPMessageDecline = 8,
+
+  kMaxValue,
+};
+
+// UMA metrics events for both |kCreateTetheredNetworkUmaEventMetrics| and
+// |kCreateLocalOnlyNetworkUmaEventMetrics| (the same implementation is
+// reused).
+enum class CreateDownstreamNetworkResult {
+  kUnknown = 0,
+  kSuccess = 1,
+  kInternalError = 2,
+  kInvalidRequest = 3,
+  kInvalidArgument = 4,
+  kDownstreamUsed = 5,
+  kUpstreamUnknown = 6,
+  kDHCPServerFailure = 7,
+  kDatapathError = 8,
 
   kMaxValue,
 };
