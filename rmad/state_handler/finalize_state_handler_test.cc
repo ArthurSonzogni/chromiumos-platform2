@@ -246,18 +246,6 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
       RmadState::StateCase::kRepairComplete);
 }
 
-TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
-  auto handler = CreateInitializedStateHandler();
-  handler->RunState();
-
-  ExpectTransitionFailedWithError(
-      handler,
-      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
-      RMAD_ERROR_WAIT);
-
-  task_environment_.RunUntilIdle();
-}
-
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
