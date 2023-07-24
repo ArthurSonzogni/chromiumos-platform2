@@ -1832,7 +1832,9 @@ def _build_storage(hw_topology):
         component_pb2.Component.Storage.StorageType.NVME: "NVME",
         component_pb2.Component.Storage.StorageType.SATA: "SATA",
         component_pb2.Component.Storage.StorageType.UFS: "UFS",
-        component_pb2.Component.Storage.StorageType.BRIDGED_EMMC: "BRIDGED_EMMC",
+        component_pb2.Component.Storage.StorageType.BRIDGED_EMMC: (
+            "BRIDGED_EMMC"
+        ),
     }
     result = {}
     if storage_type in storage_type_names:
