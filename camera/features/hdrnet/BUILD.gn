@@ -13,7 +13,7 @@ pkg_config("target_defaults") {
   ]
 }
 
-if (use.ipu6 || use.ipu6ep) {
+if (use.ipu6 || use.ipu6ep || use.ipu6epmtl) {
   cc_embed_data("embedded_hdrnet_processor_shaders_ipu6") {
     sources = [
       "//camera/features/hdrnet/shaders/postprocess_ipu6.frag",
@@ -40,7 +40,7 @@ source_set("hdrnet") {
     "//camera/gpu:image_processor",
   ]
 
-  if (use.ipu6 || use.ipu6ep) {
+  if (use.ipu6 || use.ipu6ep || use.ipu6epmtl) {
     sources += [
       "//camera/features/hdrnet/hdrnet_processor_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/ipu6_gamma.cc",

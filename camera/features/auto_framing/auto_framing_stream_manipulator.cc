@@ -46,7 +46,7 @@ constexpr int32_t kRequiredVideoFrameRate = 30;
 constexpr uint32_t kFullFrameBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
                                            GRALLOC_USAGE_HW_TEXTURE |
                                            GRALLOC_USAGE_SW_READ_OFTEN;
-#if USE_IPU6 || USE_IPU6EP
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the camera
 // HAL to process the stream using the still pipe for higher quality output.
 constexpr uint32_t kStillYuvBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
@@ -55,7 +55,7 @@ constexpr uint32_t kStillYuvBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
 #else
 constexpr uint32_t kStillYuvBufferUsage =
     GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
-#endif  // USE_IPU6 || USE_IPU6EP
+#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 constexpr int kSyncWaitTimeoutMs = 300;
 
 // Find the largest (video, still) stream resolutions with full FOV.

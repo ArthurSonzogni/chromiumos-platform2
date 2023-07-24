@@ -6,7 +6,7 @@
 
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
-#if USE_IPU6 || USE_IPU6EP
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 #include "features/hdrnet/hdrnet_processor_device_adapter_ipu6.h"
 #endif
 
@@ -17,7 +17,7 @@ std::unique_ptr<HdrNetProcessorDeviceAdapter>
 HdrNetProcessorDeviceAdapter::CreateInstance(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
-#if USE_IPU6 || USE_IPU6EP
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
   return std::make_unique<HdrNetProcessorDeviceAdapterIpu6>(static_info,
                                                             task_runner);
 #else

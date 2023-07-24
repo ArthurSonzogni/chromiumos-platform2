@@ -39,6 +39,7 @@ config("cros_camera_common") {
     "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
     "USE_IPU6=${use.ipu6}",
     "USE_IPU6EP=${use.ipu6ep}",
+    "USE_IPU6EPMTL=${use.ipu6epmtl}",
   ]
 
   # Uncomment to enable DVLOGF*() logs.

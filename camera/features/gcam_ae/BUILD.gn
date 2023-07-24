@@ -26,7 +26,7 @@ source_set("gcam_ae") {
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
 
-  if (use.ipu6 || use.ipu6ep) {
+  if (use.ipu6 || use.ipu6ep || use.ipu6epmtl) {
     sources += [ "//camera/features/gcam_ae/gcam_ae_device_adapter_ipu6.cc" ]
   }
   deps = [ "//camera/common:libcros_camera_mojom" ]

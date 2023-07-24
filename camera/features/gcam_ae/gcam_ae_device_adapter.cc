@@ -6,7 +6,7 @@
 
 #include "features/gcam_ae/gcam_ae_device_adapter.h"
 
-#if USE_IPU6 || USE_IPU6EP
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 #include "features/gcam_ae/gcam_ae_device_adapter_ipu6.h"
 #endif
 
@@ -14,7 +14,7 @@ namespace cros {
 
 // static
 std::unique_ptr<GcamAeDeviceAdapter> GcamAeDeviceAdapter::CreateInstance() {
-#if USE_IPU6 || USE_IPU6EP
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
   return std::make_unique<GcamAeDeviceAdapterIpu6>();
 #else
   return std::make_unique<GcamAeDeviceAdapter>();
