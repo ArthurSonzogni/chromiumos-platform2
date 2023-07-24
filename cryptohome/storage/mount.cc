@@ -44,7 +44,7 @@
 #include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/storage/mount_helper_interface.h"
 #include "cryptohome/storage/out_of_process_mount_helper.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -68,24 +68,13 @@ namespace cryptohome {
 
 Mount::Mount(Platform* platform,
              HomeDirs* homedirs,
-             bool legacy_mount,
-             bool bind_mount_downloads,
-             bool use_local_mounter)
+             std::unique_ptr<MountHelperInterface> mount_helper)
     : platform_(platform),
       homedirs_(homedirs),
-      legacy_mount_(legacy_mount),
-      bind_mount_downloads_(bind_mount_downloads),
-      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
-  if (use_local_mounter) {
-    active_mounter_ = std::make_unique<MountHelper>(
-        legacy_mount_, bind_mount_downloads_, platform_);
-  } else {
-    active_mounter_ = std::make_unique<OutOfProcessMountHelper>(
-        legacy_mount_, bind_mount_downloads_, platform_);
-  }
-}
+      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_),
+      active_mounter_(std::move(mount_helper)) {}
 
-Mount::Mount() : Mount(nullptr, nullptr) {}
+Mount::Mount() : Mount(nullptr, nullptr, nullptr) {}
 
 Mount::~Mount() {
   if (IsMounted())

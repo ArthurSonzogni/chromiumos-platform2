@@ -58,9 +58,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   Mount();
   Mount(Platform* platform,
         HomeDirs* homedirs,
-        bool legacy_mount = true,
-        bool bind_mount_downloads = true,
-        bool use_local_mounter = false);
+        std::unique_ptr<MountHelperInterface> mount_helper);
   Mount(const Mount&) = delete;
   Mount& operator=(const Mount&) = delete;
 
@@ -204,12 +202,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Name of the user the mount belongs to.
   Username username_;
-
-  // Whether to mount the legacy homedir or not (see MountLegacyHome)
-  bool legacy_mount_;
-
-  // Whether to bind mount Downloads/.
-  bool bind_mount_downloads_;
 
   data_migrator::MigrationHelper* active_dircrypto_migrator_ = nullptr;
   bool is_dircrypto_migration_cancelled_ = false;

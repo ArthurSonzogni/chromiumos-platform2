@@ -131,13 +131,11 @@ std::unique_ptr<MountFactory> CreateMountFactory() {
   auto* mount_factory_ptr = mount_factory.get();
   // Configure the usage of in-process mount helper, as out-of-process
   // mounting is not fuzzing-compatible.
-  EXPECT_CALL(*mount_factory, New(_, _, _, _, _))
+  EXPECT_CALL(*mount_factory, New(_, _, _, _))
       .WillRepeatedly([=](Platform* platform, HomeDirs* homedirs,
-                          bool legacy_mount, bool bind_mount_downloads,
-                          bool /*use_local_mounter*/) {
+                          bool legacy_mount, bool bind_mount_downloads) {
         return mount_factory_ptr->NewConcrete(platform, homedirs, legacy_mount,
-                                              bind_mount_downloads,
-                                              /*use_local_mounter=*/true);
+                                              bind_mount_downloads);
       });
   return mount_factory;
 }

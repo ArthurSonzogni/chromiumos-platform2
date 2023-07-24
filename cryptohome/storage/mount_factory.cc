@@ -4,9 +4,12 @@
 
 #include "cryptohome/storage/mount_factory.h"
 
+#include <memory>
+
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/storage/out_of_process_mount_helper.h"
 
 namespace cryptohome {
 
@@ -16,9 +19,9 @@ MountFactory::~MountFactory() {}
 Mount* MountFactory::New(Platform* platform,
                          HomeDirs* homedirs,
                          bool legacy_mount,
-                         bool bind_mount_downloads,
-                         bool use_local_mounter) {
-  return new Mount(platform, homedirs, legacy_mount, bind_mount_downloads,
-                   use_local_mounter);
+                         bool bind_mount_downloads) {
+  return new Mount(platform, homedirs,
+                   std::make_unique<OutOfProcessMountHelper>(
+                       legacy_mount, bind_mount_downloads, platform));
 }
 }  // namespace cryptohome

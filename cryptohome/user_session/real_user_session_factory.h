@@ -43,7 +43,7 @@ class RealUserSessionFactory : public UserSessionFactory {
         username, homedirs_, keyset_management_,
         user_activity_timestamp_manager_, pkcs11_token_factory_,
         mount_factory_->New(platform_, homedirs_, legacy_mount,
-                            bind_mount_downloads, /*use_local_mounter=*/false));
+                            bind_mount_downloads));
   }
 
  private:

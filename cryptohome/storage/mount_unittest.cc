@@ -49,6 +49,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
+#include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -464,9 +465,10 @@ class PersistentSystemTest : public ::testing::Test {
         base::BindRepeating([](const ObfuscatedUsername& unused) {}),
         vault_factory_.get());
 
-    mount_ =
-        new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
-                  /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+    mount_ = new Mount(&platform_, homedirs_.get(),
+                       std::make_unique<MountHelper>(
+                           /*legacy_mount=*/true,
+                           /*bind_mount_downloads=*/true, &platform_));
   }
 
  protected:
@@ -799,8 +801,11 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
   // migration on unmount.
   // TODO(dlunev): fix the behaviour.
   scoped_refptr<Mount> new_mount =
-      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
-                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+      new Mount(&platform_, homedirs_.get(),
+                std::make_unique<MountHelper>(
+                    /*legacy_mount=*/true,
+                    /*bind_mount_downloads=*/true, &platform_));
+
   options = {
       .migrate = true,
   };
@@ -872,8 +877,10 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
   // migration on unmount.
   // TODO(dlunev): fix the behaviour.
   scoped_refptr<Mount> new_mount =
-      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
-                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+      new Mount(&platform_, homedirs_.get(),
+                std::make_unique<MountHelper>(
+                    /*legacy_mount=*/true,
+                    /*bind_mount_downloads=*/true, &platform_));
   options = {
       .migrate = true,
   };
@@ -943,8 +950,10 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
   // migration on unmount.
   // TODO(dlunev): fix the behaviour.
   scoped_refptr<Mount> new_mount =
-      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
-                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+      new Mount(&platform_, homedirs_.get(),
+                std::make_unique<MountHelper>(
+                    /*legacy_mount=*/true,
+                    /*bind_mount_downloads=*/true, &platform_));
   options = {
       .migrate = true,
   };
@@ -1010,9 +1019,10 @@ class EphemeralSystemTest : public ::testing::Test {
         base::BindRepeating([](const ObfuscatedUsername& unused) {}),
         vault_factory_.get());
 
-    mount_ =
-        new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
-                  /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+    mount_ = new Mount(&platform_, homedirs_.get(),
+                       std::make_unique<MountHelper>(
+                           /*legacy_mount=*/true,
+                           /*bind_mount_downloads=*/true, &platform_));
   }
 
  protected:

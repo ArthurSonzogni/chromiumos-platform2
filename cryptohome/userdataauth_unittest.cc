@@ -4752,19 +4752,18 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   void SetupMountFactory() {
     userdataauth_->set_mount_factory_for_testing(&mount_factory_);
 
-    ON_CALL(mount_factory_, New(_, _, _, _, _))
-        .WillByDefault(
-            Invoke([this](Platform* platform, HomeDirs* homedirs,
-                          bool legacy_mount, bool bind_mount_downloads,
-                          bool use_local_mounter) -> Mount* {
-              if (new_mounts_.empty()) {
-                ADD_FAILURE() << "Not enough objects in new_mounts_";
-                return nullptr;
-              }
-              Mount* result = new_mounts_[0];
-              new_mounts_.pop_front();
-              return result;
-            }));
+    ON_CALL(mount_factory_, New(_, _, _, _))
+        .WillByDefault(Invoke([this](Platform* platform, HomeDirs* homedirs,
+                                     bool legacy_mount,
+                                     bool bind_mount_downloads) -> Mount* {
+          if (new_mounts_.empty()) {
+            ADD_FAILURE() << "Not enough objects in new_mounts_";
+            return nullptr;
+          }
+          Mount* result = new_mounts_[0];
+          new_mounts_.pop_front();
+          return result;
+        }));
   }
 
   // Simply the Sync() version of StartAuthSession(). Caller should check that
