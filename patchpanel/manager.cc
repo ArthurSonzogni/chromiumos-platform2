@@ -14,6 +14,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"

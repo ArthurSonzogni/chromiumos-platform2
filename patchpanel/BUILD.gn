@@ -285,6 +285,7 @@ if (use.test) {
       "dhcp_server_controller_test.cc",
       "dns/dns_query_test.cc",
       "dns/dns_response_test.cc",
+      "downstream_network_service_test.cc",
       "firewall_test.cc",
       "guest_ipv6_service_test.cc",
       "mac_address_generator_test.cc",

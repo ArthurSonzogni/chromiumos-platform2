@@ -24,6 +24,7 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/dhcp_server_controller.h"
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/multicast_counters_service.h"
