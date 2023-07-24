@@ -19,6 +19,8 @@
 namespace cryptohome {
 namespace {
 
+constexpr char kPublicKeyStr[] = "1a2b3c4d5e6f";
+
 using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -32,6 +34,34 @@ using ::testing::Optional;
 class CryptohomeRecoveryDriverTest : public AuthFactorDriverGenericTest {};
 
 TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
+  // Setup
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+  AuthFactorMetadata metadata =
+      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(
+          {.mediator_pub_key = brillo::BlobFromString(kPublicKeyStr)});
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      driver.ConvertToProto(kLabel, metadata);
+
+  // Verify
+  ASSERT_THAT(proto, Optional(_));
+  EXPECT_THAT(proto.value().type(),
+              Eq(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
+  EXPECT_THAT(proto.value().label(), Eq(kLabel));
+  EXPECT_THAT(proto->common_metadata().chromeos_version_last_updated(),
+              Eq(kChromeosVersion));
+  EXPECT_THAT(proto->common_metadata().chrome_version_last_updated(),
+              Eq(kChromeVersion));
+  EXPECT_THAT(proto->common_metadata().lockout_policy(),
+              Eq(user_data_auth::LOCKOUT_POLICY_NONE));
+  EXPECT_THAT(proto.value().has_cryptohome_recovery_metadata(), IsTrue());
+  EXPECT_THAT(proto.value().cryptohome_recovery_metadata().mediator_pub_key(),
+              Eq(kPublicKeyStr));
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNoMetadata) {
   // Setup
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
@@ -54,6 +84,8 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
   EXPECT_THAT(proto->common_metadata().lockout_policy(),
               Eq(user_data_auth::LOCKOUT_POLICY_NONE));
   EXPECT_THAT(proto.value().has_cryptohome_recovery_metadata(), IsTrue());
+  EXPECT_THAT(proto.value().cryptohome_recovery_metadata().mediator_pub_key(),
+              Eq(std::string()));
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNullOpt) {

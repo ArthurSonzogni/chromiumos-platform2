@@ -52,7 +52,10 @@ table PasswordMetadata {}
 table PinMetadata {}
 
 // Metadata for a `Recovery` auth factor.
-table CryptohomeRecoveryMetadata {}
+table CryptohomeRecoveryMetadata {
+  // Public key of the mediator for Cryptohome recovery flow.
+  mediator_pub_key:[ubyte] (id: 0);
+}
 
 // Metadata for a `KIOSK` auth factor.
 table KioskMetadata {}

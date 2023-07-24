@@ -34,11 +34,13 @@ void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
   out_auth_factor_metadata.metadata = auth_factor::PinMetadata();
 }
 
-// Set cryptohome recovery metadata here, which happens to be empty.
+// Set cryptohome recovery metadata here, which includes mediator_pub_key.
 void GetCryptohomeRecoveryMetadata(
     const user_data_auth::AuthFactor& auth_factor,
     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = auth_factor::CryptohomeRecoveryMetadata();
+  out_auth_factor_metadata.metadata = auth_factor::CryptohomeRecoveryMetadata{
+      .mediator_pub_key = brillo::BlobFromString(
+          auth_factor.cryptohome_recovery_metadata().mediator_pub_key())};
 }
 
 // Set kiosk metadata here.

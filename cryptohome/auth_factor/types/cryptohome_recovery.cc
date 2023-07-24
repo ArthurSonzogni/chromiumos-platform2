@@ -36,9 +36,8 @@ CryptohomeRecoveryAuthFactorDriver::TypedConvertToProto(
     const auth_factor::CryptohomeRecoveryMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-  // TODO(b/232896212): There's no metadata for recovery auth factor
-  // currently.
-  proto.mutable_cryptohome_recovery_metadata();
+  proto.mutable_cryptohome_recovery_metadata()->set_mediator_pub_key(
+      brillo::BlobToString(typed_metadata.mediator_pub_key));
   return proto;
 }
 
