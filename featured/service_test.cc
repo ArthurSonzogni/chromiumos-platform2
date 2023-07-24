@@ -9,7 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include "base/test/bind.h"
+#include <base/test/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -37,46 +37,239 @@ void ResponseSenderCallback(const std::string& expected_message,
 }
 }  // namespace
 
-TEST(FeatureCommand, FileExistsTest) {
+TEST(SupportCheckCommand, FileExistsTest) {
   base::FilePath file;
   ASSERT_TRUE(base::CreateTemporaryFile(&file));
 
   FileExistsCommand c(file.MaybeAsASCII());
-  ASSERT_TRUE(c.Execute());
+  ASSERT_TRUE(c.IsSupported());
 
   FileNotExistsCommand c2(file.MaybeAsASCII());
-  ASSERT_FALSE(c2.Execute());
+  ASSERT_FALSE(c2.IsSupported());
 }
 
-TEST(FeatureCommand, FileNotExistsTest) {
+TEST(SupportCheckCommand, FileNotExistsTest) {
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
 
   base::FilePath file(dir.GetPath().Append("non-existent"));
 
   FileNotExistsCommand c(file.MaybeAsASCII());
-  ASSERT_TRUE(c.Execute());
+  ASSERT_TRUE(c.IsSupported());
 
   FileExistsCommand c2(file.MaybeAsASCII());
-  ASSERT_FALSE(c2.Execute());
+  ASSERT_FALSE(c2.IsSupported());
 }
 
-TEST(FeatureCommand, MkdirTest) {
-  if (base::PathExists(base::FilePath("/sys/kernel/tracing/instances/"))) {
-    const std::string sys_path = "/sys/kernel/tracing/instances/unittest";
-    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
-    EXPECT_TRUE(featured::MkdirCommand(sys_path).Execute());
-    EXPECT_TRUE(base::PathExists(base::FilePath(sys_path)));
-    EXPECT_TRUE(base::DeleteFile(base::FilePath(sys_path)));
-    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
-  }
+// Verify that the AlwaysSupported command is always supported.
+TEST(SupportCheckCommand, AlwaysSupported) {
+  ASSERT_TRUE(AlwaysSupportedCommand().IsSupported());
+}
 
-  if (base::PathExists(base::FilePath("/mnt"))) {
-    const std::string mnt_path = "/mnt/notallowed";
-    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
-    EXPECT_FALSE(featured::MkdirCommand(mnt_path).Execute());
-    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
-  }
+// Verify that Mkdir succeeds in a basic case.
+TEST(FeatureCommand, Mkdir_Allowed) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("sys")));
+
+  base::FilePath sys_path(temp_dir.GetPath().Append("sys/foo"));
+  EXPECT_FALSE(base::PathExists(sys_path));
+
+  MkdirCommand mkdir("/sys/foo");
+  mkdir.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_TRUE(mkdir.Execute());
+  EXPECT_TRUE(base::PathExists(sys_path));
+
+  // Executing *twice* should succeed since the path already exists.
+  EXPECT_TRUE(mkdir.Execute());
+}
+
+// Verify that Mkdir fails if the prefix isn't allowed.
+TEST(FeatureCommand, Mkdir_NotAllowed) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("mnt")));
+
+  base::FilePath mnt_path(temp_dir.GetPath().Append("mnt/foo"));
+  EXPECT_FALSE(base::PathExists(mnt_path));
+
+  MkdirCommand mkdir("/mnt/foo");
+  mkdir.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_FALSE(base::PathExists(mnt_path));
+  EXPECT_FALSE(mkdir.Execute());
+  EXPECT_FALSE(base::PathExists(mnt_path));
+}
+
+// Verify that Mkdir fails if directory creation fails.
+TEST(FeatureCommand, Mkdir_CreateFails) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("sys")));
+
+  base::FilePath sys_path(temp_dir.GetPath().Append("sys/foo"));
+  ASSERT_TRUE(base::WriteFile(sys_path, "2"));
+
+  MkdirCommand mkdir("/sys/foo");
+  mkdir.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_TRUE(base::PathExists(sys_path));
+  EXPECT_FALSE(mkdir.Execute());
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(sys_path, &contents));
+  EXPECT_EQ(contents, "2");
+}
+
+// Verify that WriteFile succeeds in a basic case.
+TEST(FeatureCommand, WriteFile_Success) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("sys")));
+
+  base::FilePath sys_path(temp_dir.GetPath().Append("sys/foo"));
+  EXPECT_FALSE(base::PathExists(sys_path));
+
+  WriteFileCommand write("/sys/foo", "1");
+  write.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_TRUE(write.Execute());
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(sys_path, &contents));
+  EXPECT_EQ(contents, "1");
+}
+
+// Verify that WriteFile fails if the prefix isn't allowed.
+TEST(FeatureCommand, WriteFile_NotAllowed) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("mnt")));
+
+  base::FilePath mnt_path(temp_dir.GetPath().Append("mnt/foo"));
+  EXPECT_FALSE(base::PathExists(mnt_path));
+
+  WriteFileCommand write("/mnt/foo", "1");
+  write.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+  EXPECT_FALSE(write.Execute());
+  EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+}
+
+// Verify that WriteFile fails if file writing fails.
+TEST(FeatureCommand, WriteFile_Fails) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Do *not* create the sys directory.
+
+  base::FilePath sys_path(temp_dir.GetPath().Append("sys/foo"));
+  EXPECT_FALSE(base::PathExists(sys_path));
+
+  WriteFileCommand write("/sys/foo", "1");
+  write.SetPrefixForTesting(temp_dir.GetPath());
+
+  EXPECT_FALSE(write.Execute());
+  EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
+}
+
+// Verify that PlatformFeature::Execute runs all commands.
+TEST(PlatformFeature, ExecuteBasic) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("sys")));
+
+  base::FilePath sys_dir_path(temp_dir.GetPath().Append("sys/foo"));
+  EXPECT_FALSE(base::PathExists(sys_dir_path));
+  base::FilePath sys_file_path(temp_dir.GetPath().Append("sys/foo/bar"));
+  EXPECT_FALSE(base::PathExists(sys_file_path));
+
+  auto mkdir = std::make_unique<MkdirCommand>("/sys/foo");
+  mkdir->SetPrefixForTesting(temp_dir.GetPath());
+  auto write = std::make_unique<WriteFileCommand>("/sys/foo/bar", "1");
+  write->SetPrefixForTesting(temp_dir.GetPath());
+
+  std::vector<std::unique_ptr<FeatureCommand>> commands;
+  commands.push_back(std::move(mkdir));
+  commands.push_back(std::move(write));
+
+  PlatformFeature foo("foo", {}, std::move(commands));
+
+  EXPECT_TRUE(foo.Execute());
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(sys_file_path, &contents));
+  EXPECT_EQ(contents, "1");
+}
+
+// Verify that PlatformFeature::Execute stops as soon as one command fails.
+TEST(PlatformFeature, ExecuteFail) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("sys")));
+
+  base::FilePath sys_dir_path(temp_dir.GetPath().Append("sys/foo/bar"));
+  EXPECT_FALSE(base::PathExists(sys_dir_path));
+  base::FilePath sys_file_path(temp_dir.GetPath().Append("sys/baz"));
+  EXPECT_FALSE(base::PathExists(sys_file_path));
+
+  auto write = std::make_unique<WriteFileCommand>("/sys/foo/bar", "1");
+  write->SetPrefixForTesting(temp_dir.GetPath());
+  auto mkdir = std::make_unique<MkdirCommand>("/sys/baz");
+  mkdir->SetPrefixForTesting(temp_dir.GetPath());
+
+  std::vector<std::unique_ptr<FeatureCommand>> commands;
+  commands.push_back(std::move(write));
+  commands.push_back(std::move(mkdir));
+
+  PlatformFeature foo("foo", {}, std::move(commands));
+
+  EXPECT_FALSE(foo.Execute());
+  EXPECT_FALSE(base::PathExists(sys_file_path));
+  EXPECT_FALSE(base::PathExists(sys_dir_path));
+}
+
+// Test that IsSupported returns true if all commands return true.
+TEST(PlatformFeature, IsSupported) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath foo = temp_dir.GetPath().Append("foo");
+  ASSERT_TRUE(base::CreateDirectory(foo));
+  EXPECT_TRUE(base::PathExists(foo));
+  base::FilePath bar = temp_dir.GetPath().Append("bar");
+  EXPECT_FALSE(base::PathExists(bar));
+
+  auto exist = std::make_unique<FileExistsCommand>(foo.value());
+  auto not_exist = std::make_unique<FileNotExistsCommand>(bar.value());
+
+  std::vector<std::unique_ptr<SupportCheckCommand>> commands;
+  commands.push_back(std::move(exist));
+  commands.push_back(std::move(not_exist));
+
+  PlatformFeature features("foo", std::move(commands), {});
+
+  EXPECT_TRUE(features.IsSupported());
+}
+
+// Test that IsSupported returns false if one command returns false.
+TEST(PlatformFeature, IsSupported_Unsupported) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath foo = temp_dir.GetPath().Append("foo");
+  ASSERT_TRUE(base::CreateDirectory(foo));
+  EXPECT_TRUE(base::PathExists(foo));
+  base::FilePath bar = temp_dir.GetPath().Append("bar");
+  EXPECT_FALSE(base::PathExists(bar));
+
+  auto exist_foo = std::make_unique<FileExistsCommand>(foo.value());
+  auto exist_bar = std::make_unique<FileExistsCommand>(bar.value());
+
+  std::vector<std::unique_ptr<SupportCheckCommand>> commands;
+  // This has to be first to make sure we short circuit
+  commands.push_back(std::move(exist_bar));
+  commands.push_back(std::move(exist_foo));
+
+  PlatformFeature features("foo", std::move(commands), {});
+
+  EXPECT_FALSE(features.IsSupported());
 }
 
 // A base class to set up dbus objects, etc, needed for all tests.

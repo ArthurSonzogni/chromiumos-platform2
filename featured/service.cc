@@ -64,6 +64,12 @@ bool WriteFileCommand::Execute() {
     return false;
   }
 
+  if (!prefix_.empty()) {
+    // Remove the leading "/" in order to be able to append.
+    CHECK(file_name_.starts_with('/'));
+    fpath = prefix_.Append(file_name_.substr(1));
+  }
+
   if (!base::WriteFile(fpath, value_)) {
     PLOG(ERROR) << "Unable to write to " << file_name_;
     return false;
@@ -81,33 +87,35 @@ bool MkdirCommand::Execute() {
     return false;
   }
 
-  if (base::PathExists(path_)) {
-    PLOG(ERROR) << "Path already exists, cannot create directory: " << path_;
-    return false;
+  base::FilePath path = path_;
+  if (!prefix_.empty()) {
+    // Remove the leading "/" in order to be able to append.
+    CHECK(path_.value().starts_with('/'));
+    path = prefix_.Append(path_.value().substr(1));
   }
 
-  if (!base::CreateDirectory(path_)) {
-    PLOG(ERROR) << "Unable to create directory: " << path_;
+  if (!base::CreateDirectory(path)) {
+    PLOG(ERROR) << "Unable to create directory: " << path;
     return false;
   }
   return true;
 }
 
 FileExistsCommand::FileExistsCommand(const std::string& file_name)
-    : FeatureCommand("FileExists") {
+    : SupportCheckCommand("FileExists") {
   file_name_ = file_name;
 }
 
-bool FileExistsCommand::Execute() {
+bool FileExistsCommand::IsSupported() {
   return base::PathExists(base::FilePath(file_name_));
 }
 
 FileNotExistsCommand::FileNotExistsCommand(const std::string& file_name)
-    : FeatureCommand("FileNotExists") {
+    : SupportCheckCommand("FileNotExists") {
   file_name_ = file_name;
 }
 
-bool FileNotExistsCommand::Execute() {
+bool FileNotExistsCommand::IsSupported() {
   return !base::PathExists(base::FilePath(file_name_));
 }
 
@@ -123,7 +131,7 @@ bool PlatformFeature::Execute() const {
 
 bool PlatformFeature::IsSupported() const {
   for (auto& cmd : support_check_cmds_) {
-    if (!cmd->Execute()) {
+    if (!cmd->IsSupported()) {
       return false;
     }
   }
@@ -203,7 +211,7 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
   const base::Value* support_cmd_obj =
       feature_obj.Find("support_check_commands");
 
-  std::vector<std::unique_ptr<FeatureCommand>> query_cmds;
+  std::vector<std::unique_ptr<SupportCheckCommand>> query_cmds;
   if (!support_cmd_obj) {
     // Feature is assumed to be always supported, such as a kernel parameter
     // that is on all device kernels.
@@ -240,7 +248,7 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
           return std::nullopt;
         }
 
-        std::unique_ptr<FeatureCommand> cmd;
+        std::unique_ptr<SupportCheckCommand> cmd;
         if (*cmd_name == "FileExists") {
           cmd = std::make_unique<FileExistsCommand>(*file_name);
         } else {

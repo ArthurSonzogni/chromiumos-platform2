@@ -34,6 +34,8 @@
 #include "featured/tmp_storage_interface.h"
 
 namespace featured {
+
+// FeatureCommand is the base class for all commands to enable a feature.
 class FeatureCommand {
  public:
   explicit FeatureCommand(const std::string& name) : name_(name) {}
@@ -43,65 +45,102 @@ class FeatureCommand {
   virtual ~FeatureCommand() = default;
 
   std::string name() const { return name_; }
+
+  // Run the command to enable the feature, returning true on success.
   virtual bool Execute() = 0;
 
  private:
   std::string name_;
 };
 
+// Write a specified value to a specified path.
 class WriteFileCommand : public FeatureCommand {
  public:
   WriteFileCommand(const std::string& file_name, const std::string& value);
   WriteFileCommand(WriteFileCommand&& other) = default;
+
+  // Attempt to write the file, returning true on success.
   bool Execute() override;
+
+  void SetPrefixForTesting(const base::FilePath& prefix) { prefix_ = prefix; }
 
  private:
   std::string file_name_;
   std::string value_;
+  base::FilePath prefix_;
 };
 
+// Create a directory at a specified path, and all parent directories.
 class MkdirCommand : public FeatureCommand {
  public:
   explicit MkdirCommand(const std::string& path);
   MkdirCommand(MkdirCommand&& other) = default;
+
+  // Attempt to make the directory, returning true on success.
   bool Execute() override;
+
+  void SetPrefixForTesting(const base::FilePath& prefix) { prefix_ = prefix; }
 
  private:
   base::FilePath path_;
+  base::FilePath prefix_;
 };
 
-class FileExistsCommand : public FeatureCommand {
+// SupportCheckCommand is the base class for all commands to check whether a
+// feature is supported.
+class SupportCheckCommand {
+ public:
+  explicit SupportCheckCommand(const std::string& name) : name_(name) {}
+  SupportCheckCommand(SupportCheckCommand&& other) = default;
+  // virtual destructor is required because we create a unique pointer
+  // of an abstract class. See PlatformFeature class definition.
+  virtual ~SupportCheckCommand() = default;
+
+  std::string name() const { return name_; }
+
+  // Return true if the feature is supported on this device. (false otherwise)
+  virtual bool IsSupported() = 0;
+
+ private:
+  std::string name_;
+};
+
+// Mark the device as supported if a file at a given path exists.
+class FileExistsCommand : public SupportCheckCommand {
  public:
   explicit FileExistsCommand(const std::string& file_name);
   FileExistsCommand(FileExistsCommand&& other) = default;
-  bool Execute() override;
+  bool IsSupported() override;
 
  private:
   std::string file_name_;
 };
 
-class FileNotExistsCommand : public FeatureCommand {
+// Mark the device as supported if a file at a given path *does not* exist.
+class FileNotExistsCommand : public SupportCheckCommand {
  public:
   explicit FileNotExistsCommand(const std::string& file_name);
   FileNotExistsCommand(FileNotExistsCommand&& other) = default;
-  bool Execute() override;
+  bool IsSupported() override;
 
  private:
   std::string file_name_;
 };
 
-class AlwaysSupportedCommand : public FeatureCommand {
+// Trivial support check command that always returns true.
+class AlwaysSupportedCommand : public SupportCheckCommand {
  public:
-  AlwaysSupportedCommand() : FeatureCommand("AlwaysSupported") {}
+  AlwaysSupportedCommand() : SupportCheckCommand("AlwaysSupported") {}
   AlwaysSupportedCommand(AlwaysSupportedCommand&& other) = default;
-  bool Execute() override { return true; }
+  bool IsSupported() override { return true; }
 };
 
 class PlatformFeature {
  public:
-  PlatformFeature(const std::string& name,
-                  std::vector<std::unique_ptr<FeatureCommand>>&& query_cmds,
-                  std::vector<std::unique_ptr<FeatureCommand>>&& feature_cmds)
+  PlatformFeature(
+      const std::string& name,
+      std::vector<std::unique_ptr<SupportCheckCommand>>&& query_cmds,
+      std::vector<std::unique_ptr<FeatureCommand>>&& feature_cmds)
       : exec_cmds_(std::move(feature_cmds)),
         support_check_cmds_(std::move(query_cmds)),
         name_(std::make_unique<std::string>(name)),
@@ -129,7 +168,7 @@ class PlatformFeature {
 
  private:
   std::vector<std::unique_ptr<FeatureCommand>> exec_cmds_;
-  std::vector<std::unique_ptr<FeatureCommand>> support_check_cmds_;
+  std::vector<std::unique_ptr<SupportCheckCommand>> support_check_cmds_;
   // The string in this unique_ptr must not be modified since feature_ contains
   // a pointer to the underlying c_str().
   std::unique_ptr<const std::string> name_;
