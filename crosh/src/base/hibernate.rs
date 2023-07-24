@@ -70,7 +70,7 @@ fn hibernate(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> 
         dispatcher::Error::CommandReturnedError
     })?;
 
-    if !guest_session_active {
+    if guest_session_active {
         println!("  hibernate is not available in guest mode");
         return Ok(());
     }
