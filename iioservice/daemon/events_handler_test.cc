@@ -23,35 +23,6 @@ namespace {
 
 constexpr int kNumFailures = 10;
 
-// An observer that does nothing to events or errors. Instead, it simply waits
-// for the mojo disconnection and calls |quit_closure|.
-class FakeObserver : cros::mojom::SensorDeviceEventsObserver {
- public:
-  explicit FakeObserver(base::RepeatingClosure quit_closure)
-      : quit_closure_(std::move(quit_closure)) {}
-
-  mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> GetRemote() {
-    CHECK(!receiver_.is_bound());
-    auto pending_remote = receiver_.BindNewPipeAndPassRemote();
-    receiver_.set_disconnect_handler(base::BindOnce(
-        &FakeObserver::OnObserverDisconnect, base::Unretained(this)));
-    return pending_remote;
-  }
-
-  // cros::mojom::SensorDeviceEventsObserver overrides:
-  void OnEventUpdated(cros::mojom::IioEventPtr event) override {}
-  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {}
-
- private:
-  void OnObserverDisconnect() {
-    receiver_.reset();
-    quit_closure_.Run();
-  }
-
-  base::RepeatingClosure quit_closure_;
-  mojo::Receiver<cros::mojom::SensorDeviceEventsObserver> receiver_{this};
-};
-
 class EventsHandlerTest : public ::testing::Test,
                           public cros::mojom::SensorDeviceEventsObserver {
  public:
