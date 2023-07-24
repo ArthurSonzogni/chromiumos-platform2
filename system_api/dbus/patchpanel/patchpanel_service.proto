@@ -601,12 +601,20 @@ enum DownstreamNetworkResult {
   SUCCESS = 0;
   // The request was invalid.
   INVALID_ARGUMENT = 1;
-  // The network interfaces specified for the request are already in use.
+  // The network interface specified for the downstream network is already in
+  // use.
   INTERFACE_USED = 2;
-  // The request failed.
+  // The request failed due to an internal error.
   ERROR = 3;
-  // Fails to start the DHCP server.
+  // The DHCP server could not start successfully.
   DHCP_SERVER_FAILURE = 4;
+  // The network interface specified for the upstream network is unknown
+  // (tethering only).
+  UPSTREAM_UNKNOWN = 5;
+  // The datapath could not be configured.
+  DATAPATH_ERROR = 6;
+  // The request could not be parsed.
+  INVALID_REQUEST = 7;
 }
 
 message DownstreamNetwork {

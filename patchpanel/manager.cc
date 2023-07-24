@@ -573,12 +573,12 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
       shill_client_->GetDevice(request.upstream_ifname());
   if (!shill_device) {
     LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+    return patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN;
   }
   const auto info = DownstreamNetworkInfo::Create(request, *shill_device);
   if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+    return patchpanel::DownstreamNetworkResult::INVALID_REQUEST;
   }
 
   return HandleDownstreamNetworkInfo(client_fd, *info);
@@ -590,7 +590,7 @@ patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
       DownstreamNetworkInfo::Create(request);
   if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+    return patchpanel::DownstreamNetworkResult::INVALID_REQUEST;
   }
 
   return HandleDownstreamNetworkInfo(client_fd, *info);
@@ -971,7 +971,7 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   if (!datapath_->StartDownstreamNetwork(info)) {
     LOG(ERROR) << __func__ << " " << info
                << ": Failed to configure forwarding to downstream network";
-    return patchpanel::DownstreamNetworkResult::ERROR;
+    return patchpanel::DownstreamNetworkResult::DATAPATH_ERROR;
   }
 
   // Start the DHCP server at downstream.
