@@ -50,7 +50,7 @@ void DHCPCDProxy::LogDBusError(const brillo::ErrorPtr& error,
       error->GetCode() == DBUS_ERROR_NO_REPLY) {
     LOG(INFO) << method << ": dhcpcd daemon appears to have exited.";
   } else {
-    LOG(FATAL) << "DBus error: " << method << " " << interface << ": "
+    LOG(ERROR) << "DBus error: " << method << " " << interface << ": "
                << error->GetCode() << ": " << error->GetMessage();
   }
 }
