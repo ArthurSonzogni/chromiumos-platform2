@@ -68,7 +68,7 @@ fn mock_install_request(
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_mount_single() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -102,7 +102,7 @@ async fn install_mount_single() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_mount_multiple_vm_and_owners() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 3, 0);
@@ -159,7 +159,7 @@ async fn install_mount_multiple_vm_and_owners() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_nomount_single() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -192,7 +192,7 @@ async fn install_nomount_single() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_nomount_multiple() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -235,7 +235,7 @@ async fn install_nomount_multiple() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_nomount_too_many() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -275,7 +275,7 @@ async fn install_nomount_too_many() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_nomount_identical() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -311,7 +311,7 @@ async fn install_nomount_identical() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_mixed_mounted_unmounted_owners() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 3, 0);
@@ -390,7 +390,7 @@ async fn install_mixed_mounted_unmounted_owners() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_mount_too_many() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -433,7 +433,7 @@ async fn install_mount_too_many() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_mount_identical() -> Result<()> {
     let mock_gpu_cache = mock_gpucache().expect("Failed to create mock gpu cache");
     let mock_conn = mock_concierge_connection(&mock_gpu_cache, 1, 0);
@@ -470,7 +470,7 @@ async fn install_mount_identical() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn install_dlc_already_installed() -> Result<()> {
     let game_id = mock_shader_cache_dlc()?;
 
@@ -505,7 +505,7 @@ async fn install_dlc_already_installed() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, bind_mount)]
+#[serial]
 async fn install_mount_already_installed() -> Result<()> {
     let game_id = mock_shader_cache_dlc()?;
 

@@ -209,7 +209,7 @@ async fn dlc_install_one_at_a_time() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn dlc_uninstall_one_not_mounted() -> Result<()> {
     let mount_map = new_mount_map();
     let dlc_queue = new_queue();
@@ -241,7 +241,7 @@ async fn dlc_uninstall_one_not_mounted() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn dlc_uninstall_many_not_mounted() -> Result<()> {
     let mock_gpu_cache = mock_gpucache()?;
     let mount_map = new_mount_map();
@@ -282,7 +282,7 @@ async fn dlc_uninstall_many_not_mounted() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn dlc_uninstall_many_mounted() -> Result<()> {
     let mock_gpu_cache = mock_gpucache()?;
     let mount_map = new_mount_map();
@@ -340,7 +340,7 @@ async fn dlc_uninstall_many_mounted() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn dlc_uninstall_until_unmount_completed() -> Result<()> {
     let mock_gpu_cache = mock_gpucache()?;
     let mount_map = new_mount_map();
@@ -398,7 +398,7 @@ async fn dlc_uninstall_until_unmount_completed() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list)]
+#[serial]
 async fn dlc_uninstall_one_mount_queued() -> Result<()> {
     let mock_gpu_cache = mock_gpucache()?;
     let mount_map = new_mount_map();

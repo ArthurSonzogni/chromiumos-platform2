@@ -66,7 +66,7 @@ fn precompiled_cache_empty(vm_id: &VmId) -> Result<bool> {
 }
 
 #[tokio::test]
-#[serial(mount_list, precompiled_cache)]
+#[serial]
 async fn purge_one_vm() -> Result<()> {
     let vm_id = VmId::new("vm", "owner");
     let mock_gpu_cache = mock_gpucache()?;
@@ -98,7 +98,7 @@ async fn purge_one_vm() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, precompiled_cache)]
+#[serial]
 async fn purge_no_vm_in_mount_map() -> Result<()> {
     let vm_id = VmId::new("vm", "owner");
     let _mock_gpu_cache = mock_gpucache()?;
@@ -126,7 +126,7 @@ async fn purge_no_vm_in_mount_map() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, precompiled_cache)]
+#[serial]
 async fn purge_many_vms() -> Result<()> {
     let vm_id = VmId::new("vm", "owner");
     let vm_id2 = VmId::new("vm", "owner2");

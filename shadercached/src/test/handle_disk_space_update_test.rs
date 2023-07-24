@@ -86,7 +86,7 @@ fn precompiled_cache_empty_for_vm(vm_id: &VmId) -> Result<bool> {
 }
 
 #[tokio::test]
-#[serial(handle_disk_space)]
+#[serial]
 async fn state_normal_no_updates() -> Result<()> {
     reset_static_vars().await;
     let mount_map = new_mount_map();
@@ -113,7 +113,7 @@ async fn state_normal_no_updates() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, precompiled_cache, handle_disk_space)]
+#[serial]
 async fn state_low_cleanup_check() -> Result<()> {
     reset_static_vars().await;
     let game_with_dlc1 = mock_shader_cache_dlc()?;
@@ -165,7 +165,7 @@ async fn state_low_cleanup_check() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, precompiled_cache, handle_disk_space)]
+#[serial]
 async fn state_low_then_normal() -> Result<()> {
     reset_static_vars().await;
     let mock_gpu_cache = mock_gpucache()?;

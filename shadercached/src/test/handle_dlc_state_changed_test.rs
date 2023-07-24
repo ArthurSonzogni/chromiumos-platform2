@@ -118,7 +118,7 @@ async fn dlc_install_failed() -> Result<()> {
 }
 
 #[tokio::test]
-#[serial(mount_list, bind_mount)]
+#[serial]
 async fn dlc_installed_mount() -> Result<()> {
     let game_id = mock_shader_cache_dlc()?;
 
