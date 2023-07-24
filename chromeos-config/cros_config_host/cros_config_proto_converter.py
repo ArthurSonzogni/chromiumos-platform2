@@ -1529,6 +1529,11 @@ def _build_rma(config: Config):
     _upsert(rma_config.enabled, result, "enabled")
     _upsert(rma_config.has_cbi, result, "has-cbi")
     _upsert(_build_ssfc_config(rma_config), result, "ssfc")
+    _upsert(
+        rma_config.use_legacy_custom_label,
+        result,
+        "use-legacy-custom-label",
+    )
     return result
 
 

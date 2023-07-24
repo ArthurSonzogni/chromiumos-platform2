@@ -1906,6 +1906,7 @@ In the tables below,
 | enabled | boolean |  | False |  | False | Whether enable Shimless RMA. |
 | has-cbi | boolean |  | False |  | False | Whether the device has CBI. |
 | ssfc | [ssfc](#ssfc) |  | False |  | False | Configs to generate the SSFC value on a device. |
+| use-legacy-custom-label | boolean |  | False |  | False | Whether use the legacy custom label key in VPD. |
 
 ### ssfc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

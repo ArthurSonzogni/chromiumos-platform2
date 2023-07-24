@@ -257,7 +257,8 @@
               }
             ],
             "mask": 4026531840
-          }
+          },
+          "use-legacy-custom-label": true
         },
         "scheduler-tune": {
           "boost-arcvm": 0.5,

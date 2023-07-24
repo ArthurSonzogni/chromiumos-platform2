@@ -1595,6 +1595,9 @@ properties:
                               additionalProperties: false
                         additionalProperties: false
                   additionalProperties: false
+                use-legacy-custom-label:
+                  type: boolean
+                  description: Whether use the legacy custom label key in VPD.
               additionalProperties: false
             scheduler-tune:
               type: object
