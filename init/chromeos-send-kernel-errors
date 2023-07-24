@@ -36,7 +36,7 @@ gather_battery_errors() {
 
 gather_wifi_error() {
   local count
-  count=$(grep "^DEVTYPE=wlan" /sys/class/net/*/uevent | wc -l)
+  count=$(grep -l "^DEVTYPE=wlan" /sys/class/net/*/uevent | wc -l)
   if [ "${count}" -gt 9 ]; then
     count=9
   fi
@@ -49,13 +49,16 @@ gather_fs_error() {
   local DEV_Stateful
   local DEV_EncStateful
 
+  # shellcheck disable=SC2034
   DEV_Stateful="$(
     get_stateful_df_data | awk '{print $1}' | sed -e 's#^/dev/##')"
   if [ -e /dev/mapper/encstateful ] || \
       [ "${FLAGS_test}" -eq "${FLAGS_TRUE}" ]; then
+    # shellcheck disable=SC2034
     DEV_EncStateful="$(printf "dm-%d" \
                        "$(stat -c "%T" /dev/mapper/encstateful)")"
   else
+    # shellcheck disable=SC2034
     DEV_EncStateful=""
   fi
 
@@ -73,7 +76,7 @@ gather_fs_error() {
       "$(dmesg_matches \
         "EXT4-fs (${dev_name}): warning: mounting fs with errors")" 2
 
-    fs_error_count="$(dumpe2fs -h "/dev/$dev_name" 2>/dev/null | \
+    fs_error_count="$(dumpe2fs -h "/dev/${dev_name}" 2>/dev/null | \
                       sed -En '/FS Error count/s/.* +([0-9]+)$/\1/p')"
     : "${fs_error_count:=0}"
     metrics_client "Platform.FileSystem.${dev}_ErrorCount" \
