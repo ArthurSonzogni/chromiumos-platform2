@@ -268,18 +268,6 @@ message AuthenticateEventAtomicVariant {
   }
 }
 
-// This should follow the Cryptohome AuthFactorType.
-// https://chromium.googlesource.com/chromiumos/platform2/+/main/cryptohome/auth_factor/auth_factor_type.h#13
-enum AuthenticationType {
-  UNKNOWN = 0;
-  PASSWORD = 1;
-  PIN = 2;
-  ONLINE_RECOVERY = 3;
-  KIOSK = 4;
-  SMART_CARD = 5;
-  FINGERPRINT = 6;
-}
-
 // authentication field only used for entry events.
 message AuthenticateEvent {
   optional Authentication authentication = 1;
@@ -287,6 +275,17 @@ message AuthenticateEvent {
 
 // num_failed_attempts only used for the "failure" AuthenticateEvent.
 message Authentication {
-  repeated AuthenticationType auth_factor = 1;
+  // This should follow the Cryptohome AuthFactorType.
+  // https://chromium.googlesource.com/chromiumos/platform2/+/main/cryptohome/auth_factor/auth_factor_type.h#13
+  enum AuthenticationType {
+    AUTH_TYPE_UNKNOWN = 0;
+    AUTH_PASSWORD = 1;
+    AUTH_PIN = 2;
+    AUTH_ONLINE_RECOVERY = 3;
+    AUTH_KIOSK = 4;
+    AUTH_SMART_CARD = 5;
+    AUTH_FINGERPRINT = 6;
+  }
+  repeated AuthenticationType auth_factor = 1 [packed = true];
   optional uint64 num_failed_attempts = 2;
 }
