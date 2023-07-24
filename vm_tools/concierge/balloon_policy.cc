@@ -469,20 +469,19 @@ std::optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo) {
 
 BalloonWorkingSet SumWorkingSets(const BalloonWorkingSet& lhs,
                                  const BalloonWorkingSet& rhs) {
-  WSSBucketFfi bins[BalloonWorkingSet::kWorkingSetNumBins];
+  WorkingSetBucketFfi bins[BalloonWorkingSet::kWorkingSetNumBins];
   for (int i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
-    LOG_ASSERT(lhs.working_set_ffi.wss[i].age ==
-               rhs.working_set_ffi.wss[i].age);
-    bins[i] = {lhs.working_set_ffi.wss[i].age,
-               {lhs.working_set_ffi.wss[i].bytes[0] +
-                    rhs.working_set_ffi.wss[i].bytes[0],
-                lhs.working_set_ffi.wss[i].bytes[1] +
-                    rhs.working_set_ffi.wss[i].bytes[1]}};
+    LOG_ASSERT(lhs.working_set_ffi.ws[i].age == rhs.working_set_ffi.ws[i].age);
+    bins[i] = {lhs.working_set_ffi.ws[i].age,
+               {lhs.working_set_ffi.ws[i].bytes[0] +
+                    rhs.working_set_ffi.ws[i].bytes[0],
+                lhs.working_set_ffi.ws[i].bytes[1] +
+                    rhs.working_set_ffi.ws[i].bytes[1]}};
   }
 
-  BalloonWSSFfi ffi;
+  BalloonWSFfi ffi;
   for (int i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
-    ffi.wss[i] = bins[i];
+    ffi.ws[i] = bins[i];
   }
 
   return {ffi, 0};

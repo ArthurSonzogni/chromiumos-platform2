@@ -144,14 +144,14 @@ class CrosvmControl {
   // Set working set config in guest.
   // The function returns true on success or false if an error occurred.
   virtual bool SetBalloonWorkingSetConfig(
-      const std::string& socket_path, const BalloonWssConfigFfi* config) = 0;
+      const std::string& socket_path, const BalloonWSRConfigFfi* config) = 0;
 
   // Returns guest working set of the crosvm instance whose control socket is
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
   virtual bool BalloonWorkingSet(const std::string& socket_path,
-                                 struct BalloonWSSFfi* wss,
+                                 struct BalloonWSFfi* ws,
                                  uint64_t* actual) = 0;
 
   // Enable vmm-swap of crosvm and move all the guest memory to the staging

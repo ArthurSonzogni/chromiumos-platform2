@@ -98,7 +98,7 @@ bool FakeCrosvmControl::BalloonStats(const std::string& socket_path,
 }
 
 bool FakeCrosvmControl::BalloonWorkingSet(const std::string& socket_path,
-                                          struct BalloonWSSFfi* wss,
+                                          struct BalloonWSFfi* wss,
                                           uint64_t* actual) {
   target_socket_path_ = socket_path;
   *actual = actual_balloon_size_;
@@ -107,7 +107,7 @@ bool FakeCrosvmControl::BalloonWorkingSet(const std::string& socket_path,
 }
 
 bool FakeCrosvmControl::SetBalloonWorkingSetConfig(
-    const std::string& socket_path, const BalloonWssConfigFfi* config) {
+    const std::string& socket_path, const BalloonWSRConfigFfi* config) {
   target_socket_path_ = socket_path;
   return true;
 }

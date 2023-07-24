@@ -22,7 +22,7 @@ struct BalloonStats {
 };
 
 struct BalloonWorkingSet {
-  BalloonWSSFfi working_set_ffi;
+  BalloonWSFfi working_set_ffi;
   uint64_t balloon_actual;
   static constexpr int64_t kWorkingSetNumBins = 4;
 
@@ -30,7 +30,7 @@ struct BalloonWorkingSet {
   uint64_t TotalAnonMemory() const {
     uint64_t total = 0;
     for (int i = 0; i < kWorkingSetNumBins; ++i) {
-      total += working_set_ffi.wss[i].bytes[0];
+      total += working_set_ffi.ws[i].bytes[0];
     }
 
     return total;
@@ -40,7 +40,7 @@ struct BalloonWorkingSet {
   uint64_t TotalFileMemory() const {
     uint64_t total = 0;
     for (int i = 0; i < kWorkingSetNumBins; ++i) {
-      total += working_set_ffi.wss[i].bytes[1];
+      total += working_set_ffi.ws[i].bytes[1];
     }
 
     return total;
@@ -49,9 +49,9 @@ struct BalloonWorkingSet {
   // Returns sum of all memory in this working set.
   uint64_t TotalMemory() const { return TotalAnonMemory() + TotalFileMemory(); }
   // Returns anonymous memory count for the given bin in this working set.
-  uint64_t AnonMemoryAt(int i) const { return working_set_ffi.wss[i].bytes[0]; }
+  uint64_t AnonMemoryAt(int i) const { return working_set_ffi.ws[i].bytes[0]; }
   // Returns file-backed memory count for the given bin in this working set.
-  uint64_t FileMemoryAt(int i) const { return working_set_ffi.wss[i].bytes[1]; }
+  uint64_t FileMemoryAt(int i) const { return working_set_ffi.ws[i].bytes[1]; }
 };
 
 // Add the respective bins for two working sets and return a new one.

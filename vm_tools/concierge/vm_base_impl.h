@@ -136,7 +136,7 @@ class VmBaseImpl {
   virtual bool SetBalloonSize(int64_t byte_size);
 
   // Set the working set config.
-  virtual bool SetBalloonWorkingSetConfig(const BalloonWssConfigFfi* config);
+  virtual bool SetBalloonWorkingSetConfig(const BalloonWSRConfigFfi* config);
 
   // Get the virtio_balloon sizing policy for this VM.
   virtual const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(

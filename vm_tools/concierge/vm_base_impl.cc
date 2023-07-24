@@ -50,7 +50,7 @@ bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   return result;
 }
 
-bool VmBaseImpl::SetBalloonWorkingSetConfig(const BalloonWssConfigFfi* config) {
+bool VmBaseImpl::SetBalloonWorkingSetConfig(const BalloonWSRConfigFfi* config) {
   return CrosvmControl::Get()->SetBalloonWorkingSetConfig(GetVmSocketPath(),
                                                           config);
 }

@@ -52,9 +52,9 @@ class CrosvmControlImpl : public CrosvmControl {
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
   bool SetBalloonWorkingSetConfig(const std::string& socket_path,
-                                  const BalloonWssConfigFfi* config) override;
+                                  const BalloonWSRConfigFfi* config) override;
   bool BalloonWorkingSet(const std::string& socket_path,
-                         struct BalloonWSSFfi* stats,
+                         struct BalloonWSFfi* stats,
                          uint64_t* actual) override;
   bool EnableVmmSwap(const std::string& socket_path) override;
   bool VmmSwapOut(const std::string& socket_path) override;

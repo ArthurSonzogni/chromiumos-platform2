@@ -90,14 +90,15 @@ bool CrosvmControlImpl::BalloonStats(const std::string& socket_path,
 }
 
 bool CrosvmControlImpl::SetBalloonWorkingSetConfig(
-    const std::string& socket_path, const BalloonWssConfigFfi* config) {
-  return crosvm_client_balloon_wss_config(socket_path.c_str(), config);
+    const std::string& socket_path, const BalloonWSRConfigFfi* config) {
+  return crosvm_client_balloon_wsr_config(socket_path.c_str(), config);
 }
 
 bool CrosvmControlImpl::BalloonWorkingSet(const std::string& socket_path,
-                                          struct BalloonWSSFfi* working_set,
+                                          struct BalloonWSFfi* working_set,
                                           uint64_t* actual) {
-  return crosvm_client_balloon_wss(socket_path.c_str(), working_set, actual);
+  return crosvm_client_balloon_working_set(socket_path.c_str(), working_set,
+                                           actual);
 }
 
 bool CrosvmControlImpl::EnableVmmSwap(const std::string& socket_path) {

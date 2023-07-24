@@ -620,23 +620,23 @@ TEST(BalloonPolicyTest, LimitCacheBalloonDeflationLimits) {
 // Test that SumWorkingSets properly adds WorkingSet bins.
 TEST(BalloonPolicyTest, BalloonWorkingSetSum) {
   uint64_t actual = 0;
-  WSSBucketFfi bins1[BalloonWorkingSet::kWorkingSetNumBins];
+  WorkingSetBucketFfi bins1[BalloonWorkingSet::kWorkingSetNumBins];
   for (unsigned i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
     bins1[i] = {0, {250 * i + 1, 300 * i + 3}};
   }
-  BalloonWSSFfi ffi1;
+  BalloonWSFfi ffi1;
   for (unsigned i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
-    ffi1.wss[i] = bins1[i];
+    ffi1.ws[i] = bins1[i];
   }
 
-  WSSBucketFfi bins2[BalloonWorkingSet::kWorkingSetNumBins];
+  WorkingSetBucketFfi bins2[BalloonWorkingSet::kWorkingSetNumBins];
   for (unsigned i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
     bins2[i] = {0, {43 * i, 44 * i}};
   }
 
-  BalloonWSSFfi ffi2;
+  BalloonWSFfi ffi2;
   for (unsigned i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
-    ffi2.wss[i] = bins2[i];
+    ffi2.ws[i] = bins2[i];
   }
 
   BalloonWorkingSet ws1 = {ffi1, actual};
@@ -646,8 +646,8 @@ TEST(BalloonPolicyTest, BalloonWorkingSetSum) {
   // Assert that the result working set is the sum of the
   // ws1 and ws2.
   for (unsigned i = 0; i < BalloonWorkingSet::kWorkingSetNumBins; ++i) {
-    ASSERT_EQ(result.working_set_ffi.wss[i].bytes[0], 293 * i + 1);
-    ASSERT_EQ(result.working_set_ffi.wss[i].bytes[1], 344 * i + 3);
+    ASSERT_EQ(result.working_set_ffi.ws[i].bytes[0], 293 * i + 1);
+    ASSERT_EQ(result.working_set_ffi.ws[i].bytes[1], 344 * i + 3);
   }
 }
 
