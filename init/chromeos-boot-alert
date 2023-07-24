@@ -56,7 +56,7 @@ show_assets_message() {
   # Starting from R34, the initial_locale from VPD may have multiple values,
   # separated by ',' -- and we only want to try the primary one.
   locale="${locale%%,*}"
-  locale_list="$locale"
+  locale_list="${locale}"
   while [ "${locale%[-_]*}" != "${locale}" ]; do
     locale="${locale%[-_]*}"
     locale_list="${locale_list} ${locale}"
