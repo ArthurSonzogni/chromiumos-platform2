@@ -54,6 +54,8 @@ const QuirksMap& GetQuirksMap() {
       {{"0c45", "636b"}, kQuirkPreferLargePreviewResolution},
       // Sunplus Innovation Technology Inc. USB2.0 UVC HD Webcam (b/269094788)
       {{"1bcf", "2cb5"}, kQuirkRestartOnTimeout},
+      // Chicony ACER QHD User Facing (b/289006377)
+      {{"04f2", "b7da"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
