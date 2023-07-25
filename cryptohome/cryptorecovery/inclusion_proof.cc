@@ -5,6 +5,7 @@
 #include "cryptohome/cryptorecovery/inclusion_proof.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <absl/strings/numbers.h>
@@ -16,6 +17,7 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>
@@ -43,6 +45,14 @@ constexpr int kCheckpointSize = 3;
 constexpr int kSignatureHashSize = 4;
 // This value is reflecting to the value from the server side.
 constexpr int kMaxSignatureNumber = 100;
+// Allowed difference between the timestamp in the logged record and
+// now.
+// The value is the length of two epochs (one epoch is 15 minutes) + one minute
+// tolerance.
+constexpr base::TimeDelta kTimestampCheckAllowedDelta = base::Minutes(31);
+// Allowed difference between the timestamp and calculated public timestamp.
+constexpr base::TimeDelta kPublicTimestampConversionAllowedDelta =
+    base::Days(1);
 
 struct Signature {
   std::string name;
@@ -373,6 +383,25 @@ bool VerifyMetadata(const LoggedRecord& logged_record,
       brillo::Blob(logged_record.serialized_private_log_entry));
   if (private_log_hash != logged_record.public_ledger_entry.log_entry_hash) {
     LOG(ERROR) << "Log entry hash in public ledger entry doesn't match.";
+    return false;
+  }
+
+  auto now = base::Time::Now();
+  auto timestamp =
+      base::Time::FromTimeT(logged_record.private_log_entry.timestamp);
+  auto public_timestamp =
+      base::Time::FromTimeT(logged_record.private_log_entry.public_timestamp);
+  if ((timestamp.UTCMidnight() - public_timestamp).magnitude() >
+      kPublicTimestampConversionAllowedDelta) {
+    LOG(ERROR) << "Public timestamp " << public_timestamp
+               << " doesn't match the timestamp " << timestamp;
+    return false;
+  }
+  auto time_diff = (timestamp - now).magnitude();
+  if (time_diff > kTimestampCheckAllowedDelta) {
+    LOG(ERROR) << "The timestamp " << timestamp
+               << " doesn't match the current time " << now
+               << ", the difference is " << time_diff;
     return false;
   }
 

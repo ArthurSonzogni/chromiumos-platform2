@@ -89,6 +89,9 @@ constexpr char kRecoveryLabel[] = "fake-recovery-label";
 constexpr char kUserGaiaId[] = "fake-gaia-id";
 constexpr char kDeviceUserId[] = "fake-device-user-id";
 
+// 01 Jan 2020 13:00:41 GMT+0000.
+constexpr base::Time kFakeTimestamp = base::Time::FromTimeT(1577883641);
+
 CryptohomeStatus MakeFakeCryptohomeError() {
   CryptohomeError::ErrorLocationPair fake_error_location(
       static_cast<CryptohomeError::ErrorLocation>(1), "FakeErrorLocation");
@@ -430,6 +433,9 @@ class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
 // was added and used as well.
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
        CompleteUssMigrationAfterRecoveryMidWay) {
+  // Move time to `kFakeTimestamp`.
+  task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
+
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
                                user_data_auth::AUTH_SESSION_FLAGS_NONE,
@@ -488,6 +494,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
 // USS-only factor) was added and used as well.
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
        CompleteLockedPinUssMigrationAfterRecoveryMidWay) {
+  // Move time to `kFakeTimestamp`.
+  task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
+
   constexpr char kWrongPin[] = "0000";
   static_assert(base::StringPiece(kWrongPin) != base::StringPiece(kPin),
                 "Bad kWrongPin");
@@ -655,6 +664,9 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
 // recovery factor.
 TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
        UpdatePasswordAfterRecoveryAuth) {
+  // Move time to `kFakeTimestamp`.
+  task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
+
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
                                user_data_auth::AUTH_SESSION_FLAGS_NONE,

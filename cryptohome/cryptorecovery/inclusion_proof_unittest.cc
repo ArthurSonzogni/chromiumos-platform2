@@ -10,6 +10,8 @@
 
 #include <base/base64url.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
@@ -104,6 +106,9 @@ const char* kFakeInclusionProof[] = {
     "6FF294619FF205B18BA3CA72DE41A6A7C02B7004535B98B87F376886D79E3445",
     "BE3AA0DAFC1996A14A342F39A6CF0947E6E6DFB07FB59CBDF7A6A8E2AC68171D",
     "8608FB09D409AF849A9074D306A4FF5A3ABBE2DBACF0EE9EDC540854C3437EA9"};
+// 22 Aug 2022 10:00:18 GMT+0000.
+constexpr base::Time kFakeLoggedRecordTimestamp =
+    base::Time::FromTimeT(1661162418);
 constexpr uint64_t kFakeLeafIndex = 55228;
 const OnboardingMetadata kFakeMetadata{
     .cryptohome_user_type = UserType::kGaiaId,
@@ -115,6 +120,8 @@ const OnboardingMetadata kFakeMetadata{
     .recovery_id =
         "50aac70f6240d40132f6c53b3fd067532c62313e7bab1a6251eba69dd428bf55",
 };
+// 01 Jan 2020 13:00:41 GMT+0000.
+constexpr base::Time kFakeTimestamp = base::Time::FromTimeT(1577883641);
 
 bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
   std::string str;
@@ -220,7 +227,22 @@ bool GetLedgerPublicKeyEncoded(const crypto::ScopedEC_KEY& key,
 
 }  // namespace
 
-TEST(InclusionProofTest, SuccessFromGeneratedData) {
+class InclusionProofTest : public testing::Test {
+ public:
+  InclusionProofTest() = default;
+  ~InclusionProofTest() = default;
+
+  void SetUp() override {
+    // Move time to `kFakeTimestamp`.
+    task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
+  }
+
+ protected:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+};
+
+TEST_F(InclusionProofTest, SuccessFromGeneratedData) {
   auto generated_ledger_keys = GenerateKeyPair();
   brillo::SecureBlob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
@@ -233,7 +255,25 @@ TEST(InclusionProofTest, SuccessFromGeneratedData) {
   EXPECT_TRUE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
 }
 
-TEST(InclusionProofTest, FailedWithWrongMetadata) {
+TEST_F(InclusionProofTest, FailedWithWrongTimestamp) {
+  auto generated_ledger_keys = GenerateKeyPair();
+  brillo::SecureBlob public_key;
+  ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
+  LedgerInfo info{.name = "fake-ledger-name",
+                  .key_hash = 1234567890,
+                  .public_key = public_key};
+  LedgerSignedProof generated_proof;
+  ASSERT_TRUE(GenerateFakeLedgerSignedProofForTesting(
+      {generated_ledger_keys.get()}, info, kFakeMetadata, &generated_proof));
+  // Fast forward 30 minutes.
+  task_environment_.FastForwardBy(base::Minutes(30));
+  EXPECT_TRUE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
+  // Fast forward 2 minutes.
+  task_environment_.FastForwardBy(base::Minutes(2));
+  EXPECT_FALSE(VerifyInclusionProof(generated_proof, info, kFakeMetadata));
+}
+
+TEST_F(InclusionProofTest, FailedWithWrongMetadata) {
   auto generated_ledger_keys = GenerateKeyPair();
   brillo::SecureBlob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
@@ -248,7 +288,7 @@ TEST(InclusionProofTest, FailedWithWrongMetadata) {
   EXPECT_FALSE(VerifyInclusionProof(generated_proof, info, verify_metadata));
 }
 
-TEST(InclusionProofTest, FailedWithWrongSignature) {
+TEST_F(InclusionProofTest, FailedWithWrongSignature) {
   auto generated_ledger_keys = GenerateKeyPair();
   brillo::SecureBlob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
@@ -284,7 +324,7 @@ TEST(InclusionProofTest, FailedWithWrongSignature) {
 }
 
 // Can successfully verify inclusion proof if it's signed with multiple keys.
-TEST(InclusionProofTest, SuccessWithMultipleSignatures) {
+TEST_F(InclusionProofTest, SuccessWithMultipleSignatures) {
   auto old_generated_ledger_keys = GenerateKeyPair();
   brillo::SecureBlob old_public_key;
   ASSERT_TRUE(
@@ -316,9 +356,12 @@ TEST(InclusionProofTest, SuccessWithMultipleSignatures) {
   }
 }
 
-TEST(InclusionProofTest, SuccessFromHardcodedData) {
+TEST_F(InclusionProofTest, SuccessFromHardcodedData) {
   LedgerSignedProof proof;
   ASSERT_TRUE(GetDevLedgerSignedProof(&proof));
+  // Move time to `kFakeLoggedRecordTimestamp`.
+  task_environment_.FastForwardBy(
+      (kFakeLoggedRecordTimestamp - base::Time::Now()));
   EXPECT_TRUE(VerifyInclusionProof(proof, GetDevLedgerInfo(), kFakeMetadata));
 }
 

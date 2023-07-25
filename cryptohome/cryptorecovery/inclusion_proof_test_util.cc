@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/big_endian.h>
+#include <base/time/time.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>
@@ -147,14 +148,18 @@ bool MarshalAndSignCheckPointForTesting(
 
 std::optional<LoggedRecord> CreateLoggedRecord(
     const OnboardingMetadata& metadata) {
-  // TODO(b/281486839): Generate the timestamps.
+  auto time = base::Time::Now();
+  auto today = time.UTCMidnight() - base::Time::UnixEpoch();
+  CHECK(today.is_positive()) << "Today must be later than Unix epoch.";
+  auto now = time - base::Time::UnixEpoch();
+  CHECK(now.is_positive()) << "Now must be later than Unix epoch.";
   PrivateLogEntry priv_entry{
       .onboarding_meta_data = metadata,
-      .public_timestamp = 0,
-      .timestamp = 0,
+      .public_timestamp = today.InSeconds(),
+      .timestamp = now.InSeconds(),
   };
   PublicLedgerEntry pub_entry{
-      .public_timestamp = 0,
+      .public_timestamp = priv_entry.public_timestamp,
       .recovery_id = metadata.recovery_id,
   };
   brillo::Blob serialized_priv_entry;
