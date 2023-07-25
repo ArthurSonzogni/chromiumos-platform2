@@ -46,14 +46,12 @@ void PrintAddrMap(void* vaddr) {
          (page_data & (1LL << 63)) >> 63);
 }
 
-int Suspend(uint64_t wakeup_count,
-            int32_t wakeup_timeout,
-            int32_t suspend_for_sec) {
-  return system(base::StringPrintf(
-                    "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64
-                    " --wakeup_timeout=%" PRIi32 " --suspend_for_sec=%" PRIi32,
-                    wakeup_count, wakeup_timeout, suspend_for_sec)
-                    .c_str());
+int Suspend(uint64_t wakeup_count, int32_t suspend_for_sec) {
+  return system(
+      base::StringPrintf("powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64
+                         " --suspend_for_sec=%" PRIi32,
+                         wakeup_count, suspend_for_sec)
+          .c_str());
 }
 
 uint32_t* Allocate(size_t size) {
@@ -120,10 +118,6 @@ int main(int argc, char* argv[]) {
                "Amount of memory to allocate "
                "(0 means as much as possible)");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
-  DEFINE_int32(wakeup_timeout, 0,
-               "Sets an RTC alarm immediately that fires after the given "
-               "interval. This ensures that device resumes while testing "
-               "remotely.");
   DEFINE_int32(suspend_for_sec, 0,
                "Ask powerd to suspend the device for this many seconds."
                " Powerd then sets an alarm just before going to suspend"
@@ -157,8 +151,7 @@ int main(int argc, char* argv[]) {
   CHECK(ptr);
 
   Fill(ptr, size);
-  if (Suspend(FLAGS_wakeup_count, FLAGS_wakeup_timeout,
-              FLAGS_suspend_for_sec)) {
+  if (Suspend(FLAGS_wakeup_count, FLAGS_suspend_for_sec)) {
     printf("Error suspending\n");
     return 1;
   }
