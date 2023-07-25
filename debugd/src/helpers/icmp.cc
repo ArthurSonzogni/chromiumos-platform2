@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
 using base::StringPrintf;
 using std::string;
@@ -34,11 +35,20 @@ static const char kHelpMessage[] =
     "Usage: icmp [<switches>] <ip>\n\n"
     "Available switches:\n"
     "  --count=<number of packets> (default: 4)\n"
+    "  --interface=<interface name>\n"
     "  --size=<packet size>\n"
     "  --ttl=<IP Time to Live>\n"
     "  --timeout=<time to wait for response>";
 
 static const char kIPv4v6Chars[] = "ABCDEFabcdef0123456789.:";
+
+// Interface names must be shorter than `IFNAMSIZ` chars and have only
+// alphanumeric characters (embedded hyphens and periods are also permitted).
+// See https://man7.org/linux/man-pages/man7/netdevice.7.html
+// `IFNAMSIZ` is 16 in recent kernels. See
+// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/if.h?h=v4.14#n33
+constexpr char kPingInterfaceArgRegex[] =
+    R"(^[A-Za-z0-9]([\w.]{0,13}[A-Za-z0-9])?$)";
 
 static void Die(const string& why) {
   fprintf(stderr, "<%s>\n", why.c_str());
@@ -59,6 +69,14 @@ static int GetIntSwitch(const base::CommandLine* cl,
   return val;
 }
 
+static std::optional<string> GetStringSwitch(const base::CommandLine* cl,
+                                             const string& name) {
+  if (cl->HasSwitch(name)) {
+    return cl->GetSwitchValueASCII(name);
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -72,6 +90,11 @@ int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int count = GetIntSwitch(cl, "count", 4);
+  auto interface = GetStringSwitch(cl, "interface");
+  if (interface.has_value() &&
+      !RE2::FullMatch(interface.value(), kPingInterfaceArgRegex)) {
+    Die("invalid interface argument");
+  }
   int size = GetIntSwitch(cl, "size", 0);
   int ttl = GetIntSwitch(cl, "ttl", 0);
   int timeout = GetIntSwitch(cl, "timeout", 0);
@@ -86,11 +109,15 @@ int main(int argc, char* argv[]) {
 
   // Construct command.
   string size_out = size ? StringPrintf("-s %d", size) : "";
+  string interface_out = interface.has_value()
+                             ? StringPrintf("-I %s", interface.value().c_str())
+                             : "";
   string ttl_out = ttl ? StringPrintf("-t %d", ttl) : "";
   string timeout_out = timeout ? StringPrintf("-W %d", timeout) : "";
-  string command = StringPrintf("/bin/ping -c %d -w 10 -n %s %s %s %s", count,
-                                ttl_out.c_str(), size_out.c_str(),
-                                timeout_out.c_str(), ip_addr.c_str());
+  string command =
+      StringPrintf("/bin/ping -c %d -w 10 -n %s %s %s %s %s", count,
+                   ttl_out.c_str(), size_out.c_str(), interface_out.c_str(),
+                   timeout_out.c_str(), ip_addr.c_str());
 
   // Execute!
   out = popen(command.c_str(), "r");
