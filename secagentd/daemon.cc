@@ -24,6 +24,7 @@
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "brillo/daemons/dbus_daemon.h"
 #include "missive/client/missive_client.h"
+#include "secagentd/common.h"
 #include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
@@ -52,7 +53,7 @@ int Daemon::OnInit() {
     return rv;
   }
   CHECK(feature::PlatformFeatures::Initialize(bus_));
-
+  common::SetDBus(bus_);
   secagent_ = std::make_unique<SecAgent>(
       base::BindOnce(&Daemon::QuitDaemon, weak_ptr_factory_.GetWeakPtr()),
       base::MakeRefCounted<MessageSender>(),

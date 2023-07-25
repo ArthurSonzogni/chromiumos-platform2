@@ -252,6 +252,8 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
       break;
   }
   FillProcessTree(listen_proto.get(), l.common.process);
+  LOG(INFO) << "Listen Event:";
+  LOG(INFO) << listen_proto->DebugString();
   return listen_proto;
 }
 

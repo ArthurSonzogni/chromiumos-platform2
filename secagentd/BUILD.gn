@@ -72,6 +72,8 @@ pkg_config("target_defaults") {
     "libmetrics",
     "libmissiveclient",
     "libsession_manager-client",
+    "libshill-client",
+    "libshill-dbus-client",
     "libtpm_manager-client",
     "openssl",
     "protobuf",

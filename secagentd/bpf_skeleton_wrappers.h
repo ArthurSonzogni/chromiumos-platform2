@@ -25,6 +25,7 @@
 #include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
+#include "shill/dbus/client/client.h"
 
 namespace secagentd {
 
@@ -182,7 +183,8 @@ class BpfSkeleton : public BpfSkeletonInterface {
 
 class NetworkBpfSkeleton : public BpfSkeletonInterface {
  public:
-  explicit NetworkBpfSkeleton(uint32_t batch_interval_s);
+  explicit NetworkBpfSkeleton(uint32_t batch_interval_s,
+                              std::unique_ptr<shill::Client> shill);
   int ConsumeEvent() override;
 
  protected:
@@ -192,6 +194,13 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
   void RegisterCallbacks(BpfCallbacks cbs) override;
 
  private:
+  std::unique_ptr<shill::Client> shill_;
+  void OnShillProcessChanged(bool process_changed);
+  void OnShillAvailable(bool is_available);
+  void OnShillDeviceAdded(const shill::Client::Device* const device);
+  void OnShillDeviceRemoved(const shill::Client::Device* const device);
+  void AddExternalDevice(const shill::Client::Device* device);
+  void RemoveExternalDevice(const shill::Client::Device* device);
   uint32_t batch_interval_s_;
   std::unique_ptr<BpfSkeleton<network_bpf>> default_bpf_skeleton_;
   // Timer to periodically scan the BPF map and generate synthetic flow

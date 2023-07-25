@@ -41,7 +41,9 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
       if (di_.network) {
         rv = std::move(di_.network);
       } else {
-        rv = std::make_unique<NetworkBpfSkeleton>(batch_interval_s);
+        rv = std::make_unique<NetworkBpfSkeleton>(
+            batch_interval_s,
+            std::make_unique<shill::Client>(common::GetDBus()));
       }
       break;
     default:

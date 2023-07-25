@@ -151,6 +151,7 @@ struct cros_process_event {
 #define CROS_IANA_TCP (6)
 #define CROS_IANA_UDP (17)
 #define CROS_IANA_ICMP6 (58)
+#define CROS_IPPROTO_RAW (255)
 
 enum cros_network_protocol {
   CROS_PROTOCOL_TCP = CROS_IANA_TCP,
