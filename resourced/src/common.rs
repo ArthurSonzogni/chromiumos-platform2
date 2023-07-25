@@ -434,7 +434,7 @@ fn set_rps_thresholds(up: u64, down: u64) -> Result<()> {
         let path_rps_down = Path::new(&DEVICE_RPS_PATH_DOWN);
         std::fs::write(path_rps_down, down.to_string().as_bytes())?;
     } else {
-        warn!("Failed to find path to RPS up/down nodes.")
+        bail!("Failed to find path to RPS up/down nodes.")
     }
     Ok(())
 }
