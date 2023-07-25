@@ -651,5 +651,44 @@ TEST_F(CrosFpRecordManagerTest, TestDeleteAllRecordsOneFailed) {
   EXPECT_FALSE(record_manager_->UserHasInvalidRecords(kUserID1));
 }
 
+TEST_F(CrosFpRecordManagerTest, UpdateRecordMetadataMismatchRecordID) {
+  const RecordMetadata record_metadata1{kRecordFormatVersion, kRecordID1,
+                                        kUserID1, kLabel,
+                                        kFakeValidationValue1};
+
+  const RecordMetadata record_metadata2{kRecordFormatVersion, kRecordID2,
+                                        kUserID1, kLabel,
+                                        kFakeValidationValue1};
+
+  EXPECT_CALL(*mock_biod_storage_, WriteRecord(record_metadata1, _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(record_manager_->CreateRecord(
+      record_metadata1, std::make_unique<VendorTemplate>()));
+
+  EXPECT_DEATH(record_manager_->UpdateRecordMetadata(record_metadata2), "");
+}
+
+TEST_F(CrosFpRecordManagerTest, UpdateRecordMetadataReadSingleRecordNullptr) {
+  const RecordMetadata record_metadata1{kRecordFormatVersion, kRecordID1,
+                                        kUserID1, kLabel,
+                                        kFakeValidationValue1};
+
+  EXPECT_CALL(*mock_biod_storage_, WriteRecord(record_metadata1, _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(record_manager_->CreateRecord(
+      record_metadata1, std::make_unique<VendorTemplate>()));
+
+  std::optional<Record> record1;
+
+  EXPECT_CALL(*mock_biod_storage_, ReadSingleRecord(kUserID1, kRecordID1))
+      .WillOnce(Return(record1));
+
+  EXPECT_FALSE(record_manager_->UpdateRecordMetadata(record_metadata1));
+
+  auto metadata = record_manager_->GetRecordMetadata(kRecordID1);
+  EXPECT_TRUE(metadata);
+  EXPECT_EQ(record_metadata1, *metadata);
+}
+
 }  // namespace
 }  // namespace biod
