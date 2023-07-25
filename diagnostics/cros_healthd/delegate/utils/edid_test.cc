@@ -62,7 +62,7 @@ TEST_F(EdidTestDelegate, ParseEdpEdid) {
   EXPECT_EQ(info.value().manufacture_week.value(), 20);
   EXPECT_EQ(info.value().manufacture_year.value(), 2018);
   EXPECT_EQ(info.value().edid_version, "1.4");
-  EXPECT_EQ(info.value().is_degital_input, true);
+  EXPECT_EQ(info.value().is_digital_input, true);
   EXPECT_FALSE(info.value().display_name.has_value());
 }
 
@@ -75,7 +75,7 @@ TEST_F(EdidTestDelegate, ParseDpEdid) {
   EXPECT_EQ(info.value().manufacture_week.value(), 3);
   EXPECT_EQ(info.value().manufacture_year.value(), 2022);
   EXPECT_EQ(info.value().edid_version, "1.4");
-  EXPECT_EQ(info.value().is_degital_input, true);
+  EXPECT_EQ(info.value().is_digital_input, true);
   EXPECT_EQ(info.value().display_name.value(), "DELL U2722DE");
 }
 

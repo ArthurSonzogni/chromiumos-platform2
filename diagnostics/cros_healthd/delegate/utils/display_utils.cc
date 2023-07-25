@@ -356,7 +356,7 @@ mojom::EmbeddedDisplayInfoPtr DisplayUtil::GetEmbeddedDisplayInfo() {
       info->manufacture_year =
           mojom::NullableUint16::New(edid_info.manufacture_year.value());
     info->edid_version = edid_info.edid_version;
-    if (edid_info.is_degital_input)
+    if (edid_info.is_digital_input)
       info->input_type = mojom::DisplayInputType::kDigital;
     else
       info->input_type = mojom::DisplayInputType::kAnalog;
@@ -403,7 +403,7 @@ mojom::ExternalDisplayInfoPtr DisplayUtil::GetExternalDisplayInfo(
       info->manufacture_year =
           mojom::NullableUint16::New(edid_info.manufacture_year.value());
     info->edid_version = edid_info.edid_version;
-    if (edid_info.is_degital_input)
+    if (edid_info.is_digital_input)
       info->input_type = mojom::DisplayInputType::kDigital;
     else
       info->input_type = mojom::DisplayInputType::kAnalog;

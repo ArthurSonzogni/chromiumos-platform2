@@ -20,7 +20,7 @@ struct EdidInfo {
   std::optional<uint8_t> manufacture_week;
   std::optional<uint16_t> manufacture_year;
   std::string edid_version;
-  bool is_degital_input;
+  bool is_digital_input;
   std::optional<std::string> display_name;
 };
 

@@ -133,7 +133,7 @@ Edid::Edid(const EdidRaw& edid_raw) {
   // Format of |edid_raw.input|:
   //   Bit 7: 1 for digital input and 0 for analog input.
   //   Bits 0-6: Other input parameters.
-  is_degital_input = edid_raw.input & 0x80;
+  is_digital_input = edid_raw.input & 0x80;
 
   // For each display descriptor, the pixel_clock should be 0.
   // Mapping of |display_descriptor.type|:
