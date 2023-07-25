@@ -56,31 +56,22 @@ constexpr uint64_t kCapSysAdminMask = 1 << 21;
 static bool ReadFileRelativeToDirFD(const int dir_fd,
                                     const base::FilePath& filename,
                                     std::string* content_ptr) {
-  int fd = HANDLE_EINTR(openat(dir_fd, filename.value().c_str(), O_RDONLY));
+  int fd = HANDLE_EINTR(
+      openat(dir_fd, filename.value().c_str(), O_RDONLY, O_CLOEXEC));
   if (fd == -1) {
     PLOG(ERROR) << "openat(" << filename << ") failed";
     return false;
   }
 
-  absl::Cleanup close_fd = [=] {
-    if (close(fd) == -1)
-      PLOG(ERROR) << "Failed to close file " << filename;
-  };
-
-  FILE* fs = fdopen(fd, "r");
+  // Convert the fd to FILE immediately to avoid leaking fd.
+  base::ScopedFILE fs = base::ScopedFILE(fdopen(fd, "r"));
   if (!fs) {
     PLOG(ERROR) << "Failed to obtain FD for " << filename << " file";
+    close(fd);
     return false;
   }
 
-  // If fdopen succeeds, replaces close() with fclose() for cleanup.
-  std::move(close_fd).Cancel();
-  absl::Cleanup close_fs = [=] {
-    if (fclose(fs) == -1)
-      PLOG(ERROR) << "Failed to close stream " << filename;
-  };
-
-  if (!base::ReadStreamToString(fs, content_ptr)) {
+  if (!base::ReadStreamToString(fs.get(), content_ptr)) {
     LOG(ERROR) << "ReadStreamToString failed on " << filename;
     return false;
   }
