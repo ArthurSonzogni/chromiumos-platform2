@@ -55,6 +55,7 @@ constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
 constexpr char kCrosRmadPath[] = "/rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
+constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
 
 constexpr char kTrueStr[] = "true";
 
@@ -159,6 +160,8 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kCrosRmadEnabledKey, kTrueStr);
       fake_cros_config->SetString(std::string(kCrosRmadPath),
                                   kCrosRmadHasCbiKey, kTrueStr);
+      fake_cros_config->SetString(std::string(kCrosRmadPath),
+                                  kCrosRmadUseLegacyCustomLabelKey, kTrueStr);
       if (set_optional) {
         fake_cros_config->SetString(std::string(kCrosRmadSsfcPath),
                                     kCrosRmadSsfcMaskKey,
@@ -212,6 +215,7 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, kSsfcMask);
+  EXPECT_TRUE(config.use_legacy_custom_label);
 
   const auto& component_type_configs = config.ssfc.component_type_configs;
   EXPECT_EQ(component_type_configs.size(), 1);
@@ -233,6 +237,7 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalValues) {
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, 0);
+  EXPECT_TRUE(config.use_legacy_custom_label);
 
   const auto& component_type_configs = config.ssfc.component_type_configs;
   EXPECT_EQ(component_type_configs.size(), 1);
@@ -255,6 +260,7 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
   EXPECT_FALSE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, 0);
   EXPECT_EQ(config.ssfc.component_type_configs.size(), 0);
+  EXPECT_FALSE(config.use_legacy_custom_label);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {

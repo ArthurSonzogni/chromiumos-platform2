@@ -28,6 +28,7 @@ struct RmadConfig {
   bool enabled;
   bool has_cbi;
   SsfcConfig ssfc;
+  bool use_legacy_custom_label;
 };
 
 class CrosConfigUtils {

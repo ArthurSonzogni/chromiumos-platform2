@@ -47,6 +47,7 @@ constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 constexpr char kCrosRmadPath[] = "/rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
+constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
 
 // cros_config rmad/ssfc path.
 constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
@@ -86,6 +87,8 @@ bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
   config->has_cbi =
       GetBooleanWithDefault(kCrosRmadPath, kCrosRmadHasCbiKey, false);
   config->ssfc = GetSsfc();
+  config->use_legacy_custom_label = GetBooleanWithDefault(
+      kCrosRmadPath, kCrosRmadUseLegacyCustomLabelKey, false);
 
   return true;
 }
