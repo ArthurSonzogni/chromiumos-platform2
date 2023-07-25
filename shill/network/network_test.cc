@@ -413,8 +413,10 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   EXPECT_CALL(*proc_fs_,
               SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
+  auto link_protocol_properties = std::make_unique<IPConfig::Properties>();
+  link_protocol_properties->address = "2001:db8:abcd::1234";
   network_->set_link_protocol_ipv6_properties(
-      std::make_unique<IPConfig::Properties>());
+      std::move(link_protocol_properties));
   network_->Start(Network::StartOptions{});
 }
 

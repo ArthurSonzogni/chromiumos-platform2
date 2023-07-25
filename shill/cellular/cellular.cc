@@ -3588,7 +3588,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
 
 void Cellular::NetworkInfo::Start() {
   if (ipv6_props_) {
-    network_->set_ipv6_static_properties(
+    network_->set_link_protocol_ipv6_properties(
         std::make_unique<IPConfig::Properties>(ipv6_props_.value()));
   }
   if (ipv4_props_) {

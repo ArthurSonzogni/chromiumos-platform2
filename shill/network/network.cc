@@ -99,9 +99,6 @@ void Network::Start(const Network::StartOptions& opts) {
 
   probing_configuration_ = opts.probing_configuration;
 
-  // accept_ra and link_protocol_ipv6 should not be set at the same time.
-  DCHECK(!(opts.accept_ra && link_protocol_ipv6_properties_));
-
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
     LOG(INFO) << logging_tag_
@@ -127,8 +124,8 @@ void Network::Start(const Network::StartOptions& opts) {
       ConfigureLinkLocalAddress(*opts.link_local_address);
     }
     ipv6_started = true;
-  }
-  if (link_protocol_ipv6_properties_) {
+  } else if (link_protocol_ipv6_properties_ &&
+             !link_protocol_ipv6_properties_->address.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                         ProcFsStub::kIPFlagDisableIPv6, "0");
     set_ip6config(
@@ -191,10 +188,6 @@ void Network::Start(const Network::StartOptions& opts) {
   if (link_protocol_ipv4_properties_) {
     LOG(INFO) << logging_tag_ << ": has IPv4 link properties "
               << *link_protocol_ipv4_properties_;
-  }
-  if (ipv6_static_properties_) {
-    LOG(INFO) << logging_tag_ << ": has IPv6 static properties "
-              << *ipv6_static_properties_;
   }
   if (link_protocol_ipv6_properties_) {
     LOG(INFO) << logging_tag_ << ": has IPv6 link properties "
@@ -617,9 +610,9 @@ void Network::OnIPv6AddressChanged() {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config()->properties().dns_servers;
-  if (ipv6_static_properties_ &&
-      !ipv6_static_properties_->dns_servers.empty()) {
-    properties.dns_servers = ipv6_static_properties_->dns_servers;
+  if (link_protocol_ipv6_properties_ &&
+      !link_protocol_ipv6_properties_->dns_servers.empty()) {
+    properties.dns_servers = link_protocol_ipv6_properties_->dns_servers;
   }
   ip6config()->set_properties(properties);
   for (auto* ev : event_handlers_) {

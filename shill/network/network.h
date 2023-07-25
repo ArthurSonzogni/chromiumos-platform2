@@ -228,9 +228,6 @@ class Network {
   // Invalidate the IPv6 config kept in shill and wait for the new config from
   // the kernel.
   mockable void InvalidateIPv6Config();
-  void set_ipv6_static_properties(std::unique_ptr<IPConfig::Properties> props) {
-    ipv6_static_properties_ = std::move(props);
-  }
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -485,15 +482,6 @@ class Network {
 
   // The technology-specific IPv6 config properties.
   std::unique_ptr<IPConfig::Properties> link_protocol_ipv6_properties_;
-
-  // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
-  // from SLAAC and this separated |ipv6_static_properties_| for static
-  // configurations from cellular. This is temporary and only works because we
-  // always expect a SLAAC config to be available (which will not be true for
-  // VPN). Will come back to rework after the Device-Network refactor. Note that
-  // in the current implementation this variable will not be reset by Network
-  // class itself.
-  std::unique_ptr<IPConfig::Properties> ipv6_static_properties_;
 
   // The static NetworkConfig from the associated Service.
   NetworkConfig static_network_config_;
