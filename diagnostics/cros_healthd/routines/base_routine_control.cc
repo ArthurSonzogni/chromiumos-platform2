@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 
@@ -77,8 +78,7 @@ void BaseRoutineControl::RaiseException(const std::string& reason) {
       << "Must call SetOnExceptionCallback before starting the routine, and "
          "exception can only be raised once";
   std::move(on_exception_)
-      .Run(static_cast<uint32_t>(
-               mojom::RoutineControlExceptionEnum::kRuntimeError),
+      .Run(static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected),
            reason);
 }
 

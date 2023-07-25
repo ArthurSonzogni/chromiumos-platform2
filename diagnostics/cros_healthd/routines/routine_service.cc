@@ -64,8 +64,7 @@ void RoutineService::CreateRoutine(
         AddRoutine(std::move(routine.value()), std::move(routine_receiver));
       } else {
         routine_receiver.ResetWithReason(
-            static_cast<uint32_t>(
-                mojom::RoutineControlExceptionEnum::kNotSupported),
+            static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
             routine.error());
       }
       break;
@@ -87,8 +86,7 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
       LOG(ERROR) << "Routine Argument not recognized/supported";
       routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(
-              mojom::RoutineControlExceptionEnum::kNotSupported),
+          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
           "Routine Argument not recognized/supported");
       break;
   }

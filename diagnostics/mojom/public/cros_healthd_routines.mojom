@@ -436,23 +436,6 @@ struct VolumeButtonRoutineDetail {};
 // NextMinVersion: 1, NextIndex: 0
 struct LedLitUpRoutineDetail {};
 
-// This will be used as the disconnect reason of the RoutineControl interface
-// when an exception occurs.
-//
-// NextMinVersion: 1, NextIndex: 4
-[Extensible]
-enum RoutineControlExceptionEnum{
-  [Default] kUnmappedEnumField = 1,
-  // This is the default value of the mojo disconnect reason.
-  kMojoDisconnectWithoutReason = 0,
-  // The routine is not supported on this device. RoutineControl raises this
-  // error before any other methods are invoked.
-  kNotSupported = 2,
-  // Any other exceptions happen after creating the routine. E.g. No resource to
-  // run the routine / the required device is currently unavailable.
-  kRuntimeError = 3,
-};
-
 // Enumeration of the possible DiskRead routine's command type.
 //
 // NextMinVersion: 1, NextIndex: 3
