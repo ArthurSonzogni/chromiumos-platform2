@@ -79,7 +79,7 @@ FeatureManagementImpl::FeatureManagementImpl(
   brillo::data_encoding::Base64Decode(feature_db, &decoded_pb);
   feature_bundle_.ParseFromString(decoded_pb);
   brillo::data_encoding::Base64Decode(selection_db, &decoded_pb);
-  selection_bundle_.ParseFromString(selection_db);
+  selection_bundle_.ParseFromString(decoded_pb);
 
 #if USE_FEATURE_MANAGEMENT
   std::string version(os_version);

@@ -105,7 +105,7 @@ libsegmentation::DeviceInfo FeatureManagementHwid::GetDeviceInfo(
           HwComplianceVersionToFeatureLevel(hw_compliance_version));
       device_info_result.set_scope_level(HwComplianceVersionToScopeLevel(true));
     } else {
-      if (get_selection(false)) {
+      if (get_selection(/* check_prefix_only */ true)) {
         device_info_result.set_feature_level(
             HwComplianceVersionToFeatureLevel(hw_compliance_version));
       } else {
@@ -117,7 +117,8 @@ libsegmentation::DeviceInfo FeatureManagementHwid::GetDeviceInfo(
           HwComplianceVersionToScopeLevel(false));
     }
   } else {
-    std::optional<DeviceSelection> selection = get_selection(true);
+    std::optional<DeviceSelection> selection =
+        get_selection(/* check_prefix_only */ false);
     if (selection) {
       device_info_result.set_feature_level(
           HwComplianceVersionToFeatureLevel(selection->feature_level()));
