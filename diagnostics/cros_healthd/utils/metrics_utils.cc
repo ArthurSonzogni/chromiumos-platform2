@@ -225,8 +225,8 @@ std::optional<CrosHealthdEventCategory> ConvertEventCategoryToUMAEnum(
       return CrosHealthdEventCategory::kKeyboardDiagnostic;
     case mojom::EventCategoryEnum::kTouchpad:
       return CrosHealthdEventCategory::kTouchpad;
-    case mojom::EventCategoryEnum::kHdmi:
-      return CrosHealthdEventCategory::kHdmi;
+    case mojom::EventCategoryEnum::kExternalDisplay:
+      return CrosHealthdEventCategory::kExternalDisplay;
     case mojom::EventCategoryEnum::kTouchscreen:
       return CrosHealthdEventCategory::kTouchscreen;
     case mojom::EventCategoryEnum::kStylusGarage:

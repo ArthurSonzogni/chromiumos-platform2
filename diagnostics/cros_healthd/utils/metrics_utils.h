@@ -62,7 +62,7 @@ enum class CrosHealthdEventCategory {
   kNetwork = 9,
   kKeyboardDiagnostic = 10,
   kTouchpad = 11,
-  kHdmi = 12,
+  kExternalDisplay = 12,
   kTouchscreen = 13,
   kStylusGarage = 14,
   kStylus = 15,
