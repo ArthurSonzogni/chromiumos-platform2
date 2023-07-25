@@ -254,20 +254,12 @@ void OutputTouchpadButtonEventInfo(
 
 base::Value::Dict TouchPointInfoToDict(const mojom::TouchPointInfoPtr& point) {
   base::Value::Dict point_dict;
-  point_dict.Set("tracking_id", static_cast<double>(point->tracking_id));
-  point_dict.Set("x", static_cast<double>(point->x));
-  point_dict.Set("y", static_cast<double>(point->y));
-  if (point->pressure) {
-    point_dict.Set("pressure", static_cast<double>(point->pressure->value));
-  }
-  if (point->touch_major) {
-    point_dict.Set("touch_major",
-                   static_cast<double>(point->touch_major->value));
-  }
-  if (point->touch_minor) {
-    point_dict.Set("touch_minor",
-                   static_cast<double>(point->touch_minor->value));
-  }
+  SET_DICT(tracking_id, point, &point_dict);
+  SET_DICT(x, point, &point_dict);
+  SET_DICT(y, point, &point_dict);
+  SET_DICT(pressure, point, &point_dict);
+  SET_DICT(touch_major, point, &point_dict);
+  SET_DICT(touch_minor, point, &point_dict);
   return point_dict;
 }
 
@@ -281,19 +273,16 @@ void OutputTouchpadTouchEventInfo(
   output.Set("touch_points", std::move(touch_points));
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Touchpad touch event received: " << json << std::endl;
 }
 
 void OutputTouchpadConnectedEventInfo(
     const mojom::TouchpadConnectedEventPtr& connected_event) {
   base::Value::Dict output;
-  output.Set("max_x", static_cast<double>(connected_event->max_x));
-  output.Set("max_y", static_cast<double>(connected_event->max_y));
-  output.Set("max_pressure",
-             static_cast<double>(connected_event->max_pressure));
+  SET_DICT(max_x, connected_event, &output);
+  SET_DICT(max_y, connected_event, &output);
+  SET_DICT(max_pressure, connected_event, &output);
 
   auto* buttons = output.Set("buttons", base::Value::List{});
   for (const auto& button : connected_event->buttons) {
@@ -301,9 +290,7 @@ void OutputTouchpadConnectedEventInfo(
   }
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Touchpad connected event received: " << json << std::endl;
 }
 
@@ -334,24 +321,19 @@ void OutputTouchscreenTouchEventInfo(
   output.Set("touch_points", std::move(touch_points));
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Touchscreen touch event received: " << json << std::endl;
 }
 
 void OutputTouchscreenConnectedEventInfo(
     const mojom::TouchscreenConnectedEventPtr& connected_event) {
   base::Value::Dict output;
-  output.Set("max_x", static_cast<double>(connected_event->max_x));
-  output.Set("max_y", static_cast<double>(connected_event->max_y));
-  output.Set("max_pressure",
-             static_cast<double>(connected_event->max_pressure));
+  SET_DICT(max_x, connected_event, &output);
+  SET_DICT(max_y, connected_event, &output);
+  SET_DICT(max_pressure, connected_event, &output);
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Touchscreen connected event received: " << json << std::endl;
 }
 
@@ -438,33 +420,26 @@ void OutputStylusTouchEventInfo(const mojom::StylusTouchEventPtr& touch_event) {
   if (touch_event->touch_point) {
     base::Value::Dict point_dict;
     const auto& point = touch_event->touch_point;
-    point_dict.Set("x", static_cast<double>(point->x));
-    point_dict.Set("y", static_cast<double>(point->y));
-    if (point->pressure) {
-      point_dict.Set("pressure", static_cast<double>(point->pressure->value));
-    }
+    SET_DICT(x, point, &point_dict);
+    SET_DICT(y, point, &point_dict);
+    SET_DICT(pressure, point, &point_dict);
     output.Set("touch_point", std::move(point_dict));
   }
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Stylus touch event received: " << json << std::endl;
 }
 
 void OutputStylusConnectedEventInfo(
     const mojom::StylusConnectedEventPtr& connected_event) {
   base::Value::Dict output;
-  output.Set("max_x", static_cast<double>(connected_event->max_x));
-  output.Set("max_y", static_cast<double>(connected_event->max_y));
-  output.Set("max_pressure",
-             static_cast<double>(connected_event->max_pressure));
+  SET_DICT(max_x, connected_event, &output);
+  SET_DICT(max_y, connected_event, &output);
+  SET_DICT(max_pressure, connected_event, &output);
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
-      &json);
+  base::JSONWriter::Write(output, &json);
   std::cout << "Stylus connected event received: " << json << std::endl;
 }
 
