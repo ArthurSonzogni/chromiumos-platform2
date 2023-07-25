@@ -386,7 +386,8 @@ void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
 
 void KeyMintServer::DestroyAttestationIds(
     DestroyAttestationIdsCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Implement this when needed.
+  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED);
 }
 
 void KeyMintServer::Begin(arc::mojom::keymint::BeginRequestPtr request,
@@ -459,22 +460,26 @@ void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
 void KeyMintServer::ConvertStorageKeyToEphemeral(
     const std::vector<uint8_t>& storage_key_blob,
     ConvertStorageKeyToEphemeralCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Implement this when needed.
+  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
 }
 
 void KeyMintServer::GetRootOfTrustChallenge(
     GetRootOfTrustChallengeCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Implement this when needed.
+  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
 }
 
 void KeyMintServer::GetRootOfTrust(const std::vector<uint8_t>& challenge,
                                    GetRootOfTrustCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Implement this when needed.
+  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
 }
 
 void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
                                     SendRootOfTrustCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Implement this when needed.
+  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED);
 }
 
 void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
