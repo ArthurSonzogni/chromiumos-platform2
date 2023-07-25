@@ -96,16 +96,21 @@ uint64_t SuspendConfigurator::PrepareForSuspend(
     return 0;
   }
 
+  if (!base::WriteFile(base::FilePath(kWakealarmPath), "0")) {
+    PLOG(ERROR) << "Couldn't reset wakealarm";
+    return 0;
+  }
+
   if (!base::WriteFile(base::FilePath(kWakealarmPath),
                        std::string("+" + base::NumberToString(
                                              suspend_duration.InSeconds())))) {
-    LOG(ERROR) << "Couldn't program wakealarm";
+    PLOG(ERROR) << "Couldn't program wakealarm";
     return 0;
   }
 
   std::string wakealarm_str;
   if (!base::ReadFileToString(base::FilePath(kWakealarmPath), &wakealarm_str)) {
-    LOG(ERROR) << "Couldn't read wakealarm";
+    PLOG(ERROR) << "Couldn't read wakealarm";
     return 0;
   }
 
