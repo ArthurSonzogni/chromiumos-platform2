@@ -173,7 +173,7 @@ bool MapperRemove(const std::string& name, bool deferred = false) {
     return false;
   }
 
-  if (deferred && dm_task_deferred_remove(task.get())) {
+  if (deferred && !dm_task_deferred_remove(task.get())) {
     LOG(ERROR) << "dm_task_deferred_remove failed!";
     return false;
   }
@@ -491,7 +491,8 @@ bool Unmount(const base::FilePath& mount_point) {
 
 bool LazyUnmount(const base::FilePath& mount_point) {
   return umount2(mount_point.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW) ==
-         0;
+             0 ||
+         errno == EBUSY;
 }
 
 // Returns (mount point, source path) pairs visible to this process. The order
