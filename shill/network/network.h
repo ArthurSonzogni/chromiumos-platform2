@@ -410,10 +410,6 @@ class Network {
   void OnDHCPDrop(bool is_voluntary);
 
   // Functions for IPv6.
-  // Configures link local IPv6 address received from cellular bearer.
-  // TODO(b/292048101): Link local address should be configured before SLAAC to
-  // ensure RS were sent with the provided link local address.
-  void ConfigureLinkLocalAddress(net_base::IPv6Address link_local_address);
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
 

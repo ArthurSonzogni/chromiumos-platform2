@@ -40,7 +40,9 @@ class SLAACController {
 
   // Start monitoring SLAAC RTNL from kernel. Note that we force flap
   // disable-IPv6 state on this call so that netdevice IPv6 state are refreshed.
-  mockable void Start();
+  // If |link_local_address| is present, it is configured before SLAAC starts.
+  mockable void Start(
+      std::optional<net_base::IPv6Address> link_local_address = std::nullopt);
   // Stop monitoring SLAAC address on the netdevice and stop the DNS timer. The
   // SLAAC process itself in the kernel is not stopped.
   mockable void Stop();
@@ -79,11 +81,17 @@ class SLAACController {
   // Called when the lifetime for RDNSS expires.
   void RDNSSExpired();
 
+  void ConfigureLinkLocalAddress();
+  void SendRouterSolicitation();
+
   const int interface_index_;
+  std::optional<net_base::IPv6Address> link_local_address_;
 
+  // Cache of kernel SLAAC data collected through RTNL.
   std::vector<AddressData> slaac_addresses_;
-
   std::vector<net_base::IPv6Address> rdnss_addresses_;
+
+  // Internal timer for RDNSS expiration.
   base::CancelableOnceClosure rdnss_expired_callback_;
 
   // Callbacks registered by RegisterCallbacks().

@@ -20,6 +20,7 @@ class ProcFsStub {
   static constexpr char kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
   static constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
   static constexpr char kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
+  static constexpr char kIPFlagAcceptRouterAdvertisementsNever[] = "0";
   static constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
   static constexpr char kIPFlagDisableIPv6[] = "disable_ipv6";
   static constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";

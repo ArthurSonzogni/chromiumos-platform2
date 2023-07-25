@@ -256,4 +256,25 @@ TEST_F(SLAACControllerTest, StartIPv6Flags) {
   slaac_controller_.Start();
 }
 
+TEST_F(SLAACControllerTest, StartIPv6FlagsWithLinkLocal) {
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6, "accept_dad", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6, "accept_ra", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6, "accept_ra", "2"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_,
+              SetIPFlag(net_base::IPFamily::kIPv6, "use_tempaddr", "2"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _))
+      .WillOnce(Return(true));
+  slaac_controller_.Start(net_base::IPv6Address::CreateFromString("fe80::5"));
+}
+
 }  // namespace shill

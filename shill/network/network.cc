@@ -119,10 +119,7 @@ void Network::Start(const Network::StartOptions& opts) {
     slaac_controller_ = CreateSLAACController();
     slaac_controller_->RegisterCallback(
         base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
-    slaac_controller_->Start();
-    if (opts.link_local_address) {
-      ConfigureLinkLocalAddress(*opts.link_local_address);
-    }
+    slaac_controller_->Start(opts.link_local_address);
     ipv6_started = true;
   } else if (link_protocol_ipv6_properties_ &&
              !link_protocol_ipv6_properties_->address.empty()) {
@@ -516,24 +513,6 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
     return std::nullopt;
   }
   return dhcp_controller_->TimeToLeaseExpiry();
-}
-
-void Network::ConfigureLinkLocalAddress(
-    net_base::IPv6Address link_local_address) {
-  const auto link_local_mask =
-      *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
-  if (!link_local_mask.InSameSubnetWith(link_local_address)) {
-    LOG(ERROR) << logging_tag_ << ": Address " << link_local_address
-               << " is not a link local address";
-    return;
-  }
-  LOG(INFO) << logging_tag_ << ": configuring link local address "
-            << link_local_address;
-  rtnl_handler_->AddInterfaceAddress(
-      interface_index_,
-      net_base::IPCIDR(*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
-          link_local_address, 64)),
-      std::nullopt);
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {

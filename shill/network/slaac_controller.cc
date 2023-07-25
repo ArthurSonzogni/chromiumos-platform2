@@ -5,12 +5,15 @@
 #include "shill/network/slaac_controller.h"
 
 #include <linux/rtnetlink.h>
+#include <netinet/icmp6.h>
+#include <sys/socket.h>
 
 #include <algorithm>
 #include <memory>
 #include <utility>
 
 #include <base/logging.h>
+#include <net-base/ip_address.h>
 
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
@@ -28,7 +31,8 @@ SLAACController::SLAACController(int interface_index,
 
 SLAACController::~SLAACController() = default;
 
-void SLAACController::Start() {
+void SLAACController::Start(
+    std::optional<net_base::IPv6Address> link_local_address) {
   address_listener_ = std::make_unique<RTNLListener>(
       RTNLHandler::kRequestAddr,
       base::BindRepeating(&SLAACController::AddressMsgHandler,
@@ -40,22 +44,42 @@ void SLAACController::Start() {
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
 
+  link_local_address_ = link_local_address;
+
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagUseTempAddr,
+                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
   proc_fs_->SetIPFlag(
       net_base::IPFamily::kIPv6,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagUseTempAddr,
-                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
 
-  // Flip kIPFlagDisableIPv6, forcing kernel to send an RS. Note this needs to
-  // be done after setting kIPFlagAcceptRouterAdvertisements.
+  // Temporarily disable IPv6 to remove all existing addresses.
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "1");
+  if (link_local_address_) {
+    // Temporarily disable accepting RA so we get a time to configure link local
+    // address.
+    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsNever);
+  } else {
+    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
+  }
+
+  // Re-enable IPv6.
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "0");
+  if (link_local_address_) {
+    ConfigureLinkLocalAddress();
+    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
+  }
+  // Turning on accept_ra does not force sending RS so we need to do it
+  // ourselves.
+  SendRouterSolicitation();
 }
 
 void SLAACController::RegisterCallback(UpdateCallback update_callback) {
@@ -204,6 +228,55 @@ std::vector<net_base::IPv6CIDR> SLAACController::GetAddresses() const {
 
 std::vector<net_base::IPv6Address> SLAACController::GetRDNSSAddresses() const {
   return rdnss_addresses_;
+}
+
+void SLAACController::ConfigureLinkLocalAddress() {
+  if (!link_local_address_) {
+    return;
+  }
+  const auto link_local_mask =
+      *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
+  if (!link_local_mask.InSameSubnetWith(*link_local_address_)) {
+    LOG(WARNING) << "interface " << interface_index_ << ": Address "
+                 << *link_local_address_ << " is not a link local address";
+    return;
+  }
+  LOG(INFO) << "interface " << interface_index_
+            << ": configuring link local address " << *link_local_address_;
+  rtnl_handler_->AddInterfaceAddress(
+      interface_index_,
+      net_base::IPCIDR(*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+          *link_local_address_, 64)),
+      std::nullopt);
+}
+
+void SLAACController::SendRouterSolicitation() {
+  auto sockfd = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+  struct sockaddr_in6 src_addr;
+  bzero(&src_addr, sizeof(src_addr));
+  src_addr.sin6_family = AF_INET6;
+  src_addr.sin6_scope_id = interface_index_;
+  if (link_local_address_) {
+    src_addr.sin6_addr = link_local_address_->ToIn6Addr();
+  }
+  if (bind(sockfd, reinterpret_cast<sockaddr*>(&src_addr), sizeof(src_addr)) <
+      0) {
+    PLOG(WARNING) << "interface " << interface_index_
+                  << ": Error binding address for sending RS";
+  }
+
+  struct sockaddr_in6 dst_addr;
+  bzero(&dst_addr, sizeof(dst_addr));
+  dst_addr.sin6_addr = {
+      {{0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}}};  // ff02::2
+
+  nd_router_solicit packet;
+  bzero(&packet, sizeof(packet));
+  packet.nd_rs_hdr.icmp6_type = ND_ROUTER_SOLICIT;
+  if (sendto(sockfd, &packet, sizeof(packet), 0,
+             reinterpret_cast<sockaddr*>(&dst_addr), sizeof(dst_addr)) < 0) {
+    PLOG(WARNING) << "interface " << interface_index_ << ": Error sending RS.";
+  }
 }
 
 }  // namespace shill

@@ -22,7 +22,7 @@ class MockSLAACController : public SLAACController {
 
   ~MockSLAACController() override;
 
-  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Start, (std::optional<net_base::IPv6Address>), (override));
   MOCK_METHOD(void, Stop, (), (override));
 
   MOCK_METHOD(std::vector<net_base::IPv6CIDR>,
