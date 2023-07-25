@@ -34,6 +34,9 @@
 #include <dbus/dbus.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
+#include <dbus/object_proxy.h>
+#include <featured/feature_library.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/logging.h>
@@ -96,6 +99,9 @@ class Environment {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
+  Environment(const Environment&) = delete;
+  Environment& operator=(const Environment&) = delete;
+
   base::test::TaskEnvironment& task_environment() { return task_environment_; }
 
  private:
@@ -110,6 +116,24 @@ class Environment {
   // Suppress log spam from protobuf helpers that complain about malformed
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
+};
+
+// Performs any global state setup and teardown that need to happen for input
+// the fuzzer is tested with.
+class PerInputEnvironment {
+ public:
+  PerInputEnvironment() = default;
+
+  PerInputEnvironment(const PerInputEnvironment&) = delete;
+  PerInputEnvironment& operator=(const PerInputEnvironment&) = delete;
+
+  ~PerInputEnvironment() {
+    // Tear down the singleton platform features. This will get created by the
+    // UDA instance with the dbus buses it uses and we don't want those to keep
+    // being used in every run. Instead, shut it down after each run at the the
+    // global get re-created with new buses.
+    feature::PlatformFeatures::ShutdownForTesting();
+  }
 };
 
 std::unique_ptr<CryptohomeVaultFactory> CreateVaultFactory(
@@ -139,6 +163,37 @@ std::unique_ptr<MountFactory> CreateMountFactory() {
       });
   return mount_factory;
 }
+
+// Set up a mock dbus object that will also create mock object proxy objects as
+// needed if GetObjectProxy is called on it.
+struct MockDbusWithProxies {
+  // Aliases to make the mocked types a little easier to read.
+  using BusType = NiceMock<dbus::MockBus>;
+  using KeyType = std::pair<std::string, std::string>;
+  using ProxyType = NiceMock<dbus::MockObjectProxy>;
+
+  MockDbusWithProxies()
+      : refptr(base::MakeRefCounted<BusType>(dbus::Bus::Options())) {
+    EXPECT_CALL(*refptr, GetObjectProxy(_, _))
+        .WillRepeatedly(
+            [this](const std::string& service_name,
+                   const dbus::ObjectPath& object_path) -> dbus::ObjectProxy* {
+              KeyType key(service_name, object_path.value());
+              auto iter = proxies.find(key);
+              if (iter == proxies.end()) {
+                auto proxy = base::MakeRefCounted<ProxyType>(
+                    refptr.get(), service_name, object_path);
+                iter = proxies.emplace(key, std::move(proxy)).first;
+              }
+              return iter->second.get();
+            });
+  }
+
+  // The mock dbus object.
+  scoped_refptr<BusType> refptr;
+  // A map of any mock object proxies, by service name + object path.
+  std::map<KeyType, scoped_refptr<ProxyType>> proxies;
+};
 
 std::string GenerateFuzzedDBusMethodName(
     const brillo::dbus_utils::DBusObject& dbus_object,
@@ -288,6 +343,7 @@ void SimulateDeviceLocking(UserDataAuth& userdataauth,
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
+  PerInputEnvironment per_input_env;
   FuzzedDataProvider provider(data, size);
 
   // Prepare global singletons with per-test-case parameters.
@@ -301,10 +357,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
-  auto bus =
-      base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
-  auto mount_thread_bus =
-      base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
+  MockDbusWithProxies bus, mount_thread_bus;
+
   // Set the USS experiment value to a "random" value. This is done in addition
   // to using `MockUssExperimentConfigFetcher` as the latter is a no-op.
   SetUssExperimentOverride uss_experiment_override(provider.ConsumeBool());
@@ -318,7 +372,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
   userdataauth->set_hwsec_factory(&hwsec_factory);
-  if (!userdataauth->Initialize(mount_thread_bus)) {
+  if (!userdataauth->Initialize(mount_thread_bus.refptr)) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;
   }
@@ -327,7 +381,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // registered on the given stub D-Bus object.
   brillo::dbus_utils::DBusObject dbus_object(
       /*object_manager=*/nullptr, /*bus=*/nullptr, /*object_path=*/{});
-  UserDataAuthAdaptor userdataauth_adaptor(bus, &dbus_object,
+  UserDataAuthAdaptor userdataauth_adaptor(bus.refptr, &dbus_object,
                                            userdataauth.get());
   userdataauth_adaptor.RegisterAsync();
 
