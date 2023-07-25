@@ -45,6 +45,7 @@ bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
                            base::File::FLAG_WRITE);
   if (file.IsValid()) {
     LOG(INFO) << "Usage history file is created at: " << path;
+    base::SetCloseOnExec(file.GetPlatformFile());
     history_file_ = std::move(file);
     return true;
   }
@@ -63,6 +64,7 @@ bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
                << file.ErrorToString(file.error_details());
     return false;
   }
+  base::SetCloseOnExec(file.GetPlatformFile());
 
   // Load entries in the file and move the file offset to the tail
   if (LoadFromFile(file, time)) {
@@ -353,6 +355,7 @@ bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
     DeleteFile();
     return false;
   }
+  base::SetCloseOnExec(history_file_->GetPlatformFile());
   bool success = true;
 
   for (auto iter = usage_history_.Begin(); success && iter; ++iter) {
