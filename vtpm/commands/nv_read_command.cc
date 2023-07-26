@@ -61,8 +61,8 @@ trunks::TPM_RC NvReadCommand::RunInternal(const std::string& command,
     return trunks::TPM_RC_HANDLE;
   }
 
-  // Only support the case that the nv index itself as the auth handle.
-  if (auth_handle != nv_index) {
+  // Only support owner or nv index itself as the auth handle.
+  if (auth_handle != nv_index && auth_handle != trunks::TPM_RH_OWNER) {
     LOG(ERROR) << __func__ << ": Unsupported or wrong auth handle.";
     return trunks::TPM_RC_NV_AUTHORIZATION;
   }
