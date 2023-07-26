@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/hash/hash.h>
 
 #include "net-base/export.h"
 #include "net-base/ip_address_utils.h"
@@ -91,4 +92,24 @@ NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
 using IPv4CIDR = CIDR<IPv4Address>;
 
 }  // namespace net_base
+
+namespace std {
+
+template <>
+struct hash<net_base::IPv4Address> {
+  size_t operator()(const net_base::IPv4Address& addr) const {
+    return base::FastHash(addr.data());
+  }
+};
+
+template <>
+struct hash<net_base::IPv4CIDR> {
+  size_t operator()(const net_base::IPv4CIDR& cidr) const {
+    return base::FastHash(cidr.address().data()) ^
+           std::hash<int>()(cidr.prefix_length());
+  }
+};
+
+}  // namespace std
+
 #endif  // NET_BASE_IPV4_ADDRESS_H_
