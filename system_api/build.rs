@@ -56,6 +56,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         BindingsType::Client(OPTS),
     ),
     (
+        "org_chromium_spaced",
+        "spaced/dbus_bindings/org.chromium.Spaced.xml",
+        BindingsType::Client(OPTS),
+    ),
+    (
         "org_chromium_userdataauth",
         "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
         BindingsType::Client(OPTS),
