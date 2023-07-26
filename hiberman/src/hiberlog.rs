@@ -16,6 +16,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
+use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::time::Instant;
 
@@ -30,7 +31,6 @@ use log::Log;
 use log::Metadata;
 use log::Record;
 use once_cell::sync::OnceCell;
-use sync::Mutex;
 use syslog::BasicLogger;
 use syslog::Facility;
 use syslog::Formatter3164;
@@ -56,7 +56,7 @@ fn get_state() -> Result<&'static Mutex<Hiberlog>> {
 }
 
 fn lock() -> Result<MutexGuard<'static, Hiberlog>> {
-    get_state().map(Mutex::lock)
+    get_state().map(|m| m.lock().unwrap())
 }
 
 /// Initialize the syslog connection and internal variables.

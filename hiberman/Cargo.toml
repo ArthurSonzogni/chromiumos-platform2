@@ -31,7 +31,6 @@ regex = "1.6"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 stderrlog = "0.5.0"
-sync = "0.1.99"
 syslog = "6.0.1"
 system_api = { path = "../../platform2/system_api" } # provided by ebuild
 thiserror = "1.0.20"

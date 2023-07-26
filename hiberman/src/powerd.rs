@@ -5,6 +5,7 @@
 //! Implements a basic power_manager client.
 
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -16,7 +17,6 @@ use dbus::blocking::Connection;
 use log::debug;
 use log::error;
 use log::info;
-use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
 
 use crate::hiberutil::log_duration;
@@ -117,7 +117,7 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
     let signals_copy = signals.clone();
     proxy.match_signal(
         move |signal: HibernateResumeReady, _: &Connection, _: &dbus::Message| {
-            signals_copy.lock().push(signal);
+            signals_copy.lock().unwrap().push(signal);
 
             // Return false to abandon the match.
             false
@@ -132,7 +132,7 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
             // Wait for signals.
             conn.process(POWERD_PROCESS_PERIOD).unwrap();
 
-            if signals.lock().len() != 0 {
+            if signals.lock().unwrap().len() != 0 {
                 let duration = start.elapsed();
                 log_duration("Got powerd HibernateResumeReady signal", duration);
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
