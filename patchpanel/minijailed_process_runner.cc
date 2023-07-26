@@ -172,7 +172,28 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
                                       std::string* output) {
-  std::vector<std::string> args = {kIptablesPath, "-t",
+  return RunIptables(kIptablesPath, table, command, chain, argv, log_failures,
+                     output);
+}
+
+int MinijailedProcessRunner::ip6tables(Iptables::Table table,
+                                       Iptables::Command command,
+                                       base::StringPiece chain,
+                                       const std::vector<std::string>& argv,
+                                       bool log_failures,
+                                       std::string* output) {
+  return RunIptables(kIp6tablesPath, table, command, chain, argv, log_failures,
+                     output);
+}
+
+int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
+                                         Iptables::Table table,
+                                         Iptables::Command command,
+                                         std::string_view chain,
+                                         const std::vector<std::string>& argv,
+                                         bool log_failures,
+                                         std::string* output) {
+  std::vector<std::string> args = {std::string(iptables_path), "-t",
                                    Iptables::TableName(table),
                                    Iptables::CommandName(command)};
   // TODO(b/278486416): Datapath::DumpIptables() needs support for passing an
@@ -183,27 +204,11 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
     args.push_back(std::string(chain));
   }
   args.insert(args.end(), argv.begin(), argv.end());
-  return RunSync(args, log_failures, output);
-}
 
-int MinijailedProcessRunner::ip6tables(Iptables::Table table,
-                                       Iptables::Command command,
-                                       base::StringPiece chain,
-                                       const std::vector<std::string>& argv,
-                                       bool log_failures,
-                                       std::string* output) {
-  std::vector<std::string> args = {kIp6tablesPath, "-t",
-                                   Iptables::TableName(table),
-                                   Iptables::CommandName(command)};
-  // TODO(b/278486416): Datapath::DumpIptables() needs support for passing an
-  // empty chain. However, we cannot pass an empty argument to ip6tables
-  // directly, so |chain| must be skipped in that case. Remove this temporary
-  // work-around once chains are passed with an enum or a better data type.
-  if (!chain.empty()) {
-    args.push_back(std::string(chain));
-  }
-  args.insert(args.end(), argv.begin(), argv.end());
-  return RunSync(args, log_failures, output);
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, output);
 }
 
 int MinijailedProcessRunner::modprobe_all(

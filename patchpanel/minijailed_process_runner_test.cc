@@ -110,8 +110,8 @@ TEST(MinijailProcessRunnerTest, iptables) {
 
   pid_t pid = 123;
   EXPECT_CALL(mj, New());
-  EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
-  EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
+  EXPECT_CALL(mj, DropRoot(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, _));
   EXPECT_CALL(mj, RunPipesAndDestroy(
                       _,
                       ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"),
@@ -133,8 +133,8 @@ TEST(MinijailProcessRunnerTest, ip6tables) {
 
   pid_t pid = 123;
   EXPECT_CALL(mj, New());
-  EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
-  EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
+  EXPECT_CALL(mj, DropRoot(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, _));
   EXPECT_CALL(mj, RunPipesAndDestroy(
                       _,
                       ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),

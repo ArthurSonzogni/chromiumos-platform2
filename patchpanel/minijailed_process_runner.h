@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/strings/string_piece.h>
@@ -100,6 +101,14 @@ class MinijailedProcessRunner {
                      minijail* jail,
                      bool log_failures,
                      std::string* output);
+
+  int RunIptables(std::string_view iptables_path,
+                  Iptables::Table table,
+                  Iptables::Command command,
+                  std::string_view chain,
+                  const std::vector<std::string>& argv,
+                  bool log_failures,
+                  std::string* output);
 
   brillo::Minijail* mj_;
   std::unique_ptr<System> system_;
