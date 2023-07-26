@@ -43,6 +43,11 @@ constexpr char kBorealisAudioUsedSubdevices[] = "Borealis.Audio.UsedSubdevices";
 constexpr char kBorealisAudioUsedSubdevicesGuest[] =
     "borealis-audio-used-subdevices";
 
+constexpr char kBorealisAudioXrunAlsaOutput[] =
+    "Borealis.Audio.Xrun.Alsa.Output";
+constexpr char kBorealisAudioXrunAlsaOutputGuest[] =
+    "borealis-audio-xrun-alsa-output";
+
 constexpr char kBorealisDiskHighestDirtyPagesDaily[] =
     "Borealis.Disk.HighestDirtyPagesDaily";
 constexpr char kBorealisDiskHighestDirtyPagesDailyGuest[] =
@@ -268,6 +273,9 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
       metrics_lib_->SendToUMA(kBorealisStartupFsckTime, value, 0, 60000, 60);
     } else if (name == kBorealisAudioUsedSubdevicesGuest) {
       metrics_lib_->SendToUMA(kBorealisAudioUsedSubdevices, value, 0, 50, 51);
+    } else if (name == kBorealisAudioXrunAlsaOutputGuest) {
+      metrics_lib_->SendToUMA(kBorealisAudioXrunAlsaOutput, value, 0, 300000,
+                              100);
     } else {
       LOG(ERROR) << "Unknown Borealis metric " << name;
       return false;
