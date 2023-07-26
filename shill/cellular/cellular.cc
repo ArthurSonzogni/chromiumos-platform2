@@ -1295,10 +1295,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
     iccid_len = service_->iccid().length();
     use_apn_revamp_ui = service_->custom_apn_list().has_value();
     // If EID is not empty, report as eSIM else report as pSIM
-    if (!service_->eid().empty())
-      sim_type = kSimTypeEsim;
-    else
-      sim_type = kSimTypePsim;
+    sim_type = service_->eid().empty() ? kSimTypePsim : kSimTypeEsim;
   }
 
   if (capability_) {
