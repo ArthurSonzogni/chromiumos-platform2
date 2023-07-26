@@ -114,6 +114,10 @@ class NET_BASE_EXPORT IPAddress {
 // Represents an family-agnostic IP CIDR, either a IPv4 or a IPv6 CIDR.
 class NET_BASE_EXPORT IPCIDR {
  public:
+  // Returns the maximum prefix length for address family |family|, i.e.,
+  // the length of this address type in bits.
+  static int GetMaxPrefixLength(IPFamily family);
+
   // Creates the CIDR from either IPv4 or IPv6 CIDR notation.
   // Returns std::nullopt if the string format is invalid.
   // If |family| is not nullopt, then only returns the valid result with the

@@ -173,6 +173,11 @@ TEST(IPAddressTest, GetAddressLength) {
   EXPECT_EQ(IPAddress(IPFamily::kIPv6).GetAddressLength(), 16);
 }
 
+TEST(IPCIDRTest, GetMaxPrefixLength) {
+  EXPECT_EQ(IPCIDR::GetMaxPrefixLength(IPFamily::kIPv4), 32);
+  EXPECT_EQ(IPCIDR::GetMaxPrefixLength(IPFamily::kIPv6), 128);
+}
+
 TEST(IPCIDRTest, CreateFromCIDRString) {
   const auto cidr1 = IPCIDR::CreateFromCIDRString("192.168.10.1/25");
   ASSERT_TRUE(cidr1);

@@ -157,6 +157,16 @@ std::string IPAddress::ToString() const {
 }
 
 // static
+int IPCIDR::GetMaxPrefixLength(IPFamily family) {
+  switch (family) {
+    case IPFamily::kIPv4:
+      return IPv4CIDR::kMaxPrefixLength;
+    case IPFamily::kIPv6:
+      return IPv6CIDR::kMaxPrefixLength;
+  }
+}
+
+// static
 std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
     const std::string& cidr_string, std::optional<IPFamily> family) {
   if (family != net_base::IPFamily::kIPv6) {
