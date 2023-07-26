@@ -559,17 +559,29 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
     }
   }
 
+  // When the datapath interface exists and has an interface index, cache the
+  // datapath interface name |ifname| and interface index |ifindex| keyed by the
+  // shill Device property (|shill_device_interface_property|). For Cellular
+  // Devices this ensures that the name of the primary multiplexed interface is
+  // known after the network has disconnected. Knowing the datapath interface
+  // name is necessary for mutliple cleanup operations. If the interface index
+  // cannot be obtained from the kernel, look up the cache to obtain the
+  // interface name and datapath interface index from the cache.
   output->ifindex = system_->IfNametoindex(output->ifname);
   if (output->ifindex > 0) {
-    if_nametoindex_[output->ifname] = output->ifindex;
+    datapath_interface_cache_[output->shill_device_interface_property] = {
+        output->ifname, output->ifindex};
   } else {
-    const auto it = if_nametoindex_.find(output->ifname);
-    if (it == if_nametoindex_.end()) {
-      LOG(ERROR) << "Could not obtain the interface index of "
-                 << output->ifname;
+    const auto it =
+        datapath_interface_cache_.find(output->shill_device_interface_property);
+    if (it == datapath_interface_cache_.end()) {
+      LOG(ERROR)
+          << "No datapath interface name and index entry for shill Device "
+          << output->shill_device_interface_property;
       return false;
     }
-    output->ifindex = it->second;
+    output->ifname = it->second.first;
+    output->ifindex = it->second.second;
   }
 
   const auto& ipconfigs_it = props.find(shill::kIPConfigsProperty);
