@@ -335,6 +335,7 @@ constexpr char kMinimalMigration[] = "minimal_migration";
 constexpr char kPublicMount[] = "public_mount";
 constexpr char kUseDBus[] = "use_dbus";
 constexpr char kAuthSessionId[] = "auth_session_id";
+constexpr char kBroadcastId[] = "broadcast_id";
 constexpr char kChallengeAlgorithm[] = "challenge_alg";
 constexpr char kChallengeSPKI[] = "challenge_spki";
 constexpr char kKeyDelegateName[] = "key_delegate_name";
@@ -377,7 +378,7 @@ bool GetAttrName(Printer& printer,
                  std::string* name_out) {
   *name_out = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
 
-  if (name_out->length() == 0) {
+  if (name_out->empty()) {
     printer.PrintHumanOutput(
         "No install attribute name specified (--name=<name>)\n");
     return false;
@@ -390,7 +391,7 @@ bool GetAttrValue(Printer& printer,
                   std::string* value_out) {
   *value_out = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
 
-  if (value_out->length() == 0) {
+  if (value_out->empty()) {
     printer.PrintHumanOutput(
         "No install attribute value specified (--value=<value>)\n");
     return false;
@@ -404,7 +405,7 @@ bool GetAccountId(Printer& printer,
   user_out =
       cryptohome::Username(cl->GetSwitchValueASCII(switches::kUserSwitch));
 
-  if (user_out->length() == 0) {
+  if (user_out->empty()) {
     printer.PrintHumanOutput("No user specified (--user=<account_id>)\n");
     return false;
   }
@@ -416,9 +417,22 @@ bool GetAuthSessionId(Printer& printer,
                       std::string* session_id_out) {
   *session_id_out = cl->GetSwitchValueASCII(switches::kAuthSessionId);
 
-  if (session_id_out->length() == 0) {
+  if (session_id_out->empty()) {
     printer.PrintHumanOutput(
         "No auth_session_id specified (--auth_session_id=<auth_session_id>)\n");
+    return false;
+  }
+  return true;
+}
+
+bool GetBroadcastId(Printer& printer,
+                    const base::CommandLine* cl,
+                    std::string* broadcast_id_out) {
+  *broadcast_id_out = cl->GetSwitchValueASCII(switches::kBroadcastId);
+
+  if (broadcast_id_out->empty()) {
+    printer.PrintHumanOutput(
+        "No broadcast_id specified (--broadcast_id=<broadcast_id>)\n");
     return false;
   }
   return true;
@@ -530,7 +544,8 @@ bool BuildStartAuthSessionRequest(
 int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
                      Printer* printer,
                      const base::CommandLine* cl,
-                     int timeout_ms) {
+                     int timeout_ms,
+                     std::string* broadcast_id) {
   user_data_auth::StartAuthSessionRequest req;
   if (!BuildStartAuthSessionRequest(*printer, *cl, req)) {
     return 1;
@@ -548,6 +563,9 @@ int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     printer->PrintHumanOutput("Auth session failed to start.\n");
     return static_cast<int>(reply.error());
+  }
+  if (broadcast_id) {
+    *broadcast_id = reply.broadcast_id();
   }
 
   printer->PrintReplyProtobuf(reply);
@@ -1040,9 +1058,12 @@ int DoAuthenticateAuthFactor(
 void OnAuthFactorStatusUpdateSignal(
     Printer* printer,
     base::RunLoop* run_loop,
+    const std::string* broadcast_id,
     const user_data_auth::AuthFactorStatusUpdate& auth_factor_status_update) {
-  printer->PrintReplyProtobuf(auth_factor_status_update);
-  run_loop->Quit();
+  if (*broadcast_id == auth_factor_status_update.broadcast_id()) {
+    printer->PrintReplyProtobuf(auth_factor_status_update);
+    run_loop->Quit();
+  }
 }
 
 void OnAuthFactorStatusUpdateSignalConnected(
@@ -1073,13 +1094,21 @@ int StartAuthSessionWithStatusUpdate(
   // will be sent once the signal is connected. In order to receive the signal
   // properly, the CLI will be blocked until the signal is received.
   int ret_code = 1;
+  // Fetching the correct status update signal requires providing the broadcast
+  // id, which is only known after the signal is connected and auth session
+  // started. It is guaranteed that status update signals will only be sent
+  // after StartAuthSession reply is sent, and hence we always have the
+  // broadcast id ready.
+  std::string broadcast_id;
   base::RunLoop run_loop;
   proxy->RegisterAuthFactorStatusUpdateSignalHandler(
-      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, printer, &run_loop),
-      base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
-                     &ret_code, printer,
-                     base::BindRepeating(StartAuthSession, proxy, printer, cl,
-                                         start_auth_session_timeout_ms)));
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, printer, &run_loop,
+                          &broadcast_id),
+      base::BindOnce(
+          &OnAuthFactorStatusUpdateSignalConnected, &run_loop, &ret_code,
+          printer,
+          base::BindRepeating(StartAuthSession, proxy, printer, cl,
+                              start_auth_session_timeout_ms, &broadcast_id)));
   run_loop.Run();
   return ret_code;
 }
@@ -1088,7 +1117,8 @@ int DoAuthenticateWithStatusUpdate(
     Printer& printer,
     base::CommandLine* cl,
     org::chromium::UserDataAuthInterfaceProxy& proxy,
-    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
+    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy,
+    const std::string& broadcast_id) {
   // Because signals might be emitted as soon as AuthenticateAuthFactor is
   // called, we need to ensure the signal is connected first. Therefore, the
   // actual request will be sent in |OnAuthFactorStatusUpdateSignalConnected|.
@@ -1099,7 +1129,8 @@ int DoAuthenticateWithStatusUpdate(
   int ret_code = 1;
   base::RunLoop run_loop;
   proxy.RegisterAuthFactorStatusUpdateSignalHandler(
-      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop),
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop,
+                          &broadcast_id),
       base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
                      &ret_code, &printer,
                      base::BindRepeating(DoAuthenticateAuthFactor, &printer, cl,
@@ -1109,12 +1140,14 @@ int DoAuthenticateWithStatusUpdate(
 }
 
 int FetchStatusUpdateSignal(Printer& printer,
-                            org::chromium::UserDataAuthInterfaceProxy& proxy) {
+                            org::chromium::UserDataAuthInterfaceProxy& proxy,
+                            const std::string& broadcast_id) {
   // A run loop is created to wait for the next signal.
   int ret_code = 1;
   base::RunLoop run_loop;
   proxy.RegisterAuthFactorStatusUpdateSignalHandler(
-      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop),
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop,
+                          &broadcast_id),
       base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
                      &ret_code, &printer,
                      base::BindRepeating([] { return 0; })));
@@ -2326,7 +2359,8 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
-    int ret = StartAuthSession(&userdataauth_proxy, &printer, cl, timeout_ms);
+    int ret = StartAuthSession(&userdataauth_proxy, &printer, cl, timeout_ms,
+                               nullptr);
     if (ret > 0) {
       return ret;
     }
@@ -2560,8 +2594,13 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_AUTHENTICATE_WITH_STATUS_UPDATE],
                      action.c_str())) {
+    std::string broadcast_id_hex, broadcast_id;
+
+    if (!GetBroadcastId(printer, cl, &broadcast_id_hex))
+      return 1;
+    base::HexStringToString(broadcast_id_hex, &broadcast_id);
     return DoAuthenticateWithStatusUpdate(printer, cl, userdataauth_proxy,
-                                          misc_proxy);
+                                          misc_proxy, broadcast_id);
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_START_AUTH_SESSION_WITH_STATUS_UPDATE],
@@ -2570,7 +2609,12 @@ int main(int argc, char** argv) {
                                             timeout_ms);
   } else if (!strcmp(switches::kActions[switches::ACTION_FETCH_STATUS_UPDATE],
                      action.c_str())) {
-    return FetchStatusUpdateSignal(printer, userdataauth_proxy);
+    std::string broadcast_id_hex, broadcast_id;
+
+    if (!GetBroadcastId(printer, cl, &broadcast_id_hex))
+      return 1;
+    base::HexStringToString(broadcast_id_hex, &broadcast_id);
+    return FetchStatusUpdateSignal(printer, userdataauth_proxy, broadcast_id);
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::UpdateAuthFactorRequest req;
