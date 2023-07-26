@@ -204,7 +204,7 @@ _IUSE_TRUE = [
 ]
 
 
-class Platform2(object):
+class Platform2:
     """Main builder logic for platform2"""
 
     def __init__(
