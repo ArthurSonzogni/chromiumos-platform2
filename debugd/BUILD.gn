@@ -24,16 +24,20 @@ group("all") {
     ":folder_size_dump",
     ":generate_logs",
     ":icmp",
+    ":install_helper_scripts",
+    ":install_tmpfilesd",
     ":install_tmpfilesd_dev",
     ":libdebugd",
     ":modetest_helper",
     ":netif",
     ":network_status",
     ":power_manager-proto",
-    ":scheduler_configuration_helper",
     ":typec_connector_class_helper",
     ":usb4_devinfo_helper",
   ]
+  if (use.amd64) {
+    deps += [ ":scheduler_configuration_helper" ]
+  }
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
   }
@@ -41,6 +45,8 @@ group("all") {
     deps += [ ":debugd_cups_uri_helper_utils_fuzzer" ]
   }
 }
+
+debugd_helpers_install_path = "/usr/libexec/debugd/helpers"
 
 pkg_config("target_defaults") {
   defines = [
@@ -193,6 +199,7 @@ install_config("debugd_share_config") {
 
 executable("debugd") {
   sources = [ "src/main.cc" ]
+  install_path = "/sbin"
   configs += [
     ":debugd_config",
     ":target_defaults",
@@ -201,6 +208,11 @@ executable("debugd") {
     ":debugd_share_config",
     ":libdebugd",
   ]
+}
+
+install_config("install_tmpfilesd") {
+  sources = [ "tmpfiles.d/debugd.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 install_config("install_tmpfilesd_dev") {
@@ -218,6 +230,7 @@ executable("capture_packets") {
     ":capture_packets_config",
     ":target_defaults",
   ]
+  install_path = debugd_helpers_install_path
   libs = [ "pcap" ]
 }
 
@@ -226,11 +239,13 @@ executable("cups_uri_helper") {
     "src/helpers/cups_uri_helper.cc",
     "src/helpers/cups_uri_helper_utils.cc",
   ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
 }
 
 executable("dev_features_chrome_remote_debugging") {
   sources = [ "src/helpers/dev_features_chrome_remote_debugging.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
@@ -240,12 +255,14 @@ executable("dev_features_password") {
     "src/helpers/dev_features_password.cc",
     "src/helpers/dev_features_password_utils.cc",
   ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
 
 executable("dev_features_rootfs_verification") {
   sources = [ "src/helpers/dev_features_rootfs_verification.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
   deps = [ ":libdebugd" ]
@@ -253,6 +270,7 @@ executable("dev_features_rootfs_verification") {
 
 executable("dev_features_ssh") {
   sources = [ "src/helpers/dev_features_ssh.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":libdebugd" ]
 }
@@ -263,6 +281,7 @@ pkg_config("dev_features_usb_boot_config") {
 
 executable("dev_features_usb_boot") {
   sources = [ "src/helpers/dev_features_usb_boot.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":dev_features_usb_boot_config",
     ":target_defaults",
@@ -279,6 +298,7 @@ executable("audit_log_filter") {
     "src/helpers/audit_log_filter.cc",
     "src/helpers/audit_log_utils.cc",
   ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":target_defaults",
     ":audit_log_utils_config",
@@ -292,6 +312,7 @@ pkg_config("folder_size_dump_config") {
 
 executable("folder_size_dump") {
   sources = [ "src/helpers/folder_size_dump.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":target_defaults",
     ":folder_size_dump_config",
@@ -300,11 +321,13 @@ executable("folder_size_dump") {
 
 executable("generate_logs") {
   sources = [ "tools/generate_logs.cc" ]
+  install_path = "bin"
   configs += [ ":target_defaults" ]
 }
 
 executable("icmp") {
   sources = [ "src/helpers/icmp.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
 }
 
@@ -313,24 +336,28 @@ executable("modetest_helper") {
     "src/helpers/modetest_helper.cc",
     "src/helpers/modetest_helper_utils.cc",
   ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   pkg_deps = [ "re2" ]
 }
 
 executable("netif") {
   sources = [ "src/helpers/netif.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":debugd_dbus_utils" ]
 }
 
 executable("network_status") {
   sources = [ "src/helpers/network_status.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":debugd_dbus_utils" ]
 }
 
 executable("scheduler_configuration_helper") {
   sources = [ "src/helpers/scheduler_configuration_helper.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [ ":target_defaults" ]
   deps = [ ":scheduler_configuration_utils" ]
 }
@@ -341,6 +368,7 @@ pkg_config("usb4_devinfo_helper_config") {
 
 executable("usb4_devinfo_helper") {
   sources = [ "src/helpers/usb4_devinfo_helper.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":target_defaults",
     ":usb4_devinfo_helper_config",
@@ -356,6 +384,7 @@ executable("typec_connector_class_helper") {
     "src/helpers/typec_connector_class_helper.cc",
     "src/helpers/typec_connector_class_helper_utils.cc",
   ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":target_defaults",
     ":typec_connector_class_helper_config",
@@ -368,10 +397,21 @@ pkg_config("bt_usb_disconnect_helper_config") {
 
 executable("bt_usb_disconnect_helper") {
   sources = [ "src/helpers/bt_usb_disconnect_helper.cc" ]
+  install_path = debugd_helpers_install_path
   configs += [
     ":target_defaults",
     ":bt_usb_disconnect_helper_config",
   ]
+}
+
+install_config("install_helper_scripts") {
+  sources = [
+    "src/helpers/capture_utility.sh",
+    "src/helpers/minijail-setuid-hack.sh",
+    "src/helpers/systrace.sh",
+  ]
+  install_path = debugd_helpers_install_path
+  options = "-m755"
 }
 
 if (use.test) {
