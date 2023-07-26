@@ -350,25 +350,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
-  FRIEND_TEST(WiFiMainTest, EnsuredScan);             // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueueEnsuredScan);  // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScan);  // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanFoundNothing);  // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanBackgroundScanFinished);  // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanInterruptedByConnect);  // wifi_state_
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanInterruptedByConnecting);  // wifi_state_
-  FRIEND_TEST(
-      WiFiMainTest,
-      QueuedEnsuredScanInterruptedByTransitionToConnecting);  // wifi_state_
-  FRIEND_TEST(
-      WiFiMainTest,
-      QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, RekeyInvokesNotifyRekeyStart);
   FRIEND_TEST(WiFiMainTest, ScanRejected);               // wifi_state_
   FRIEND_TEST(WiFiMainTest, ScanResults);                // EndpointMap
@@ -704,7 +685,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Note: This is an internal method designed only to be called when the phy
   // is idle.  Calling this from contexts in which the phy is not idle will
   // have unexpected behavior (the scan may not actually occur).
-  void HandleEnsuredScan(WiFiState::PhyState old_state);
+  void HandleEnsuredScan();
   void ReportScanResultToUma(WiFiState::PhyState state,
                              WiFiState::ScanMethod method);
 

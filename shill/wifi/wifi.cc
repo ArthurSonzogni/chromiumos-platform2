@@ -3628,7 +3628,7 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
 
   // Always handle ensured scans on idle transitions.
   if (new_state == WiFiState::PhyState::kIdle) {
-    HandleEnsuredScan(old_state);
+    HandleEnsuredScan();
   }
 
   // Avoid reporting metrics if nothing changed.
@@ -3675,7 +3675,7 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
   }
 }
 
-void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
+void WiFi::HandleEnsuredScan() {
   if (wifi_state_->GetEnsuredScanState() ==
       WiFiState::EnsuredScanState::kIdle) {
     return;
@@ -3695,25 +3695,14 @@ void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
       Scan(nullptr, "Previous scan complete. Starting ensured scan.");
       break;
     case WiFiState::EnsuredScanState::kScanning:
-      // If the last state was a scanning-related state, the scan actually
-      // executed.  Otherwise there was a race condition for the radio, and
-      // a new scan should be started.
-      switch (old_phy_state) {
-        case WiFiState::PhyState::kScanning:
-        case WiFiState::PhyState::kBackgroundScanning:
-        case WiFiState::PhyState::kFoundNothing:
-          wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
-          manager()->ConnectToBestWiFiService();
-          break;
-        case WiFiState::PhyState::kTransitionToConnecting:
-        case WiFiState::PhyState::kConnecting:
-        case WiFiState::PhyState::kConnected:
-        case WiFiState::PhyState::kIdle:
-          // This starts a scan in the event loop, allowing SetPhyState
-          // to complete before proceeding.
-          Scan(nullptr, "Ensured scan didn't occur. Requesting another scan.");
-          break;
-      }
+      // Valid states after a scan are:
+      // * scanning -> idle
+      // * scanning -> connecting -> idle
+      // * scanning -> connecting -> connected -> idle
+      // Each of the above indicates a scan completed.
+      wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
+      manager()->ConnectToBestWiFiService();
+      break;
       break;
     case WiFiState::EnsuredScanState::kIdle:
       break;
