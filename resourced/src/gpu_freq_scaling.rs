@@ -314,7 +314,7 @@ pub mod amd_device {
 
     use anyhow::{bail, Context, Result};
     use glob::glob;
-    use libchromeos::sys::{error, info};
+    use log::{error, info};
     use std::fs;
     use std::fs::File;
     use std::io::{BufRead, BufReader};

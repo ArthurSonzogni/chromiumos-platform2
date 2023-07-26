@@ -5,7 +5,7 @@
 use std::{collections::HashSet, path::Path, sync::Arc};
 
 use anyhow::{Context, Result};
-use libchromeos::sys::debug;
+use log::debug;
 use rand::Rng;
 use tempfile::TempDir;
 

@@ -110,7 +110,7 @@ pub fn dlc_to_steam_app_id(dlc_name: &str) -> Result<SteamAppId> {
 
 #[cfg(not(test))]
 fn get_gpu_device_id() -> Result<u16> {
-    use libchromeos::sys::warn;
+    use log::warn;
     use std::process::{Command, Stdio};
     // This function is called only once to initialize pub lazy static constant
     // GPU_DEVICE_ID, so we don't need to make the Regex object static.

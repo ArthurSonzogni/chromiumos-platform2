@@ -12,7 +12,7 @@ use crate::shader_cache_mount::ShaderCacheMountMapPtr;
 use crate::{common::*, dlc_queue::DlcQueuePtr};
 
 use anyhow::{anyhow, Result};
-use libchromeos::sys::{debug, error, info, warn};
+use log::{debug, error, info, warn};
 use std::collections::HashSet;
 use std::sync::Arc;
 use system_api::{

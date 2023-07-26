@@ -4,7 +4,7 @@
 
 use std::io::{self, Read, Write};
 
-use libchromeos::sys::{debug, error};
+use log::{debug, error};
 
 /// A Read adapter that ensures that the wrapped reader is always read until EOF.  This is useful
 /// for ensuring that we always read complete HTTP messages from the IPP over USB device we're

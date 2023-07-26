@@ -11,7 +11,7 @@ use std::os::unix::net::UnixListener;
 
 use tiny_http::Stream;
 
-use libchromeos::sys::error;
+use log::error;
 
 pub trait Accept: AsRawFd {
     fn accept(&self) -> io::Result<Stream>;

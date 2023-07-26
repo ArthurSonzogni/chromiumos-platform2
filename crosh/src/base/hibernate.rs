@@ -13,7 +13,7 @@ use std::time;
 
 use dbus::blocking::Connection;
 use getopts::{Matches, Options};
-use libchromeos::sys::error;
+use log::error;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::board_name;

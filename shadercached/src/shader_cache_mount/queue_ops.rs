@@ -10,7 +10,7 @@ use super::{ShaderCacheMount, ShaderCacheMountMap, VmId};
 use crate::common::*;
 
 use anyhow::{anyhow, Result};
-use libchromeos::sys::{debug, error, warn};
+use log::{debug, error, warn};
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs;

@@ -13,7 +13,7 @@ use crate::{
     dbus_wrapper::DbusConnectionTrait,
     shader_cache_mount::{ShaderCacheMountMapPtr, VmId},
 };
-use libchromeos::sys::{debug, info, warn};
+use log::{debug, info, warn};
 
 use anyhow::Result;
 use system_api::spaced::{StatefulDiskSpaceState, StatefulDiskSpaceUpdate};

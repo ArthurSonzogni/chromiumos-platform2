@@ -20,8 +20,8 @@ use std::time::Duration;
 
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::sys::register_signal_handler;
-use libchromeos::sys::{debug, error, info};
 use libchromeos::syslog;
+use log::{debug, error, info};
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;

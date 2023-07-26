@@ -16,8 +16,9 @@ use libc::{
 };
 use libchromeos::chromeos::is_dev_mode;
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::{block_signal, error, handle_eintr_errno, unblock_signal};
+use libchromeos::sys::{block_signal, handle_eintr_errno, unblock_signal};
 use libchromeos::syslog;
+use log::error;
 use rustyline::completion::Completer;
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;

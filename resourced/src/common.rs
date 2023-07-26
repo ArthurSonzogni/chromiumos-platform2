@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
-use libchromeos::sys::{error, info, warn};
+use log::{error, info, warn};
 use once_cell::sync::Lazy;
 
 use crate::config;
@@ -114,8 +114,8 @@ pub fn set_game_mode(
     #[cfg(target_arch = "x86_64")]
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
         match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
-            Ok(_) => log::info!("Active GPU tuning running."),
-            Err(e) => log::warn!("Active GPU tuning not set. {:?}", e),
+            Ok(_) => info!("Active GPU tuning running."),
+            Err(e) => warn!("Active GPU tuning not set. {:?}", e),
         }
         let mut power_is_ac = false;
         match power::new_directory_power_preferences_manager(Path::new(&root))
@@ -123,7 +123,7 @@ pub fn set_game_mode(
             .get_power_source()
         {
             Ok(source) => power_is_ac = source == config::PowerSourceType::AC,
-            Err(_) => log::warn!("Failed to get power state"),
+            Err(_) => warn!("Failed to get power state"),
         };
 
         if intel_device::is_intel_device(root.clone().into()) && power_is_ac {

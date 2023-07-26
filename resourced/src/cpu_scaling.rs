@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 use anyhow::{bail, Result};
 use glob::glob;
-use libchromeos::sys::info;
+use log::info;
 use regex::Regex;
 use std::fs::File;
 use std::io::BufRead;

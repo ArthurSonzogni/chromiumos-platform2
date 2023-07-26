@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
 use glob::glob;
-use libchromeos::sys::{error, info};
+use log::{error, info};
 
 use crate::common;
 use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};

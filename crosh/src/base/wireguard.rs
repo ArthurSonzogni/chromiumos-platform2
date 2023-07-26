@@ -12,7 +12,7 @@ use dbus::{
     arg::{ArgType, RefArg, Variant},
     blocking::Connection,
 };
-use libchromeos::sys::error;
+use log::error;
 use system_api::client::OrgChromiumFlimflamManager;
 use system_api::client::OrgChromiumFlimflamService;
 

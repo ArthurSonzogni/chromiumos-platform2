@@ -14,7 +14,7 @@ pub mod quota {
     use libc::{
         c_char, c_int, dqblk, quotactl, QCMD, QIF_BLIMITS, Q_QUOTAON, Q_SETQUOTA, USRQUOTA,
     };
-    use libchromeos::sys::{debug, info};
+    use log::{debug, info};
     use std::{
         ffi::CString,
         path::Path,

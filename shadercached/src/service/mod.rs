@@ -20,7 +20,7 @@ use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
 
 use anyhow::{anyhow, Result};
 use dbus::MethodErr;
-use libchromeos::sys::{debug, error, warn};
+use log::{debug, error, warn};
 use protobuf::Message;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

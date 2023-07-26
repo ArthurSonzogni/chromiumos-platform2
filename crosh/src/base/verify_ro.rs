@@ -15,7 +15,8 @@ use std::time::Duration;
 use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use libc::{c_int, SIGINT};
-use libchromeos::sys::{error, pipe};
+use libchromeos::sys::pipe;
+use log::error;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};

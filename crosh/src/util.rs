@@ -25,8 +25,8 @@ use chrono::Local;
 use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::chromeos;
-use libchromeos::sys::error;
 use libchromeos::sys::{clear_signal_handler, register_signal_handler};
+use log::error;
 use regex::Regex;
 use system_api::client::OrgChromiumSessionManagerInterface;
 

@@ -22,8 +22,8 @@ use dbus::message::MatchRule;
 use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use dbus_wrapper::dbus_constants;
-use libchromeos::sys::{debug, error, info, warn};
 use libchromeos::syslog;
+use log::{debug, error, info, warn};
 use tokio::signal::unix::{signal, SignalKind};
 
 const BINARY_IDENTITY: &str = "shadercached";

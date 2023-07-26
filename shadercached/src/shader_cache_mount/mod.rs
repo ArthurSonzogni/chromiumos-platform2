@@ -21,7 +21,7 @@ use crate::service;
 use mesa_path_constants::*;
 
 use anyhow::{anyhow, Result};
-use libchromeos::sys::{debug, error};
+use log::{debug, error};
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;

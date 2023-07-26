@@ -5,7 +5,7 @@
 use anyhow::{bail, Result};
 use futures_util::future::{FutureExt as _, TryFutureExt as _};
 use grpcio::{ChannelBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink};
-use libchromeos::sys::{error, info, warn};
+use log::{error, info, warn};
 use protobuf::RepeatedField;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};

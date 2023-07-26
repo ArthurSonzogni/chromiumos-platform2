@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
-use libchromeos::sys::debug;
+use log::debug;
 use serial_test::serial;
 use system_api::dlcservice::dlc_state::State;
 use system_api::dlcservice::DlcState;

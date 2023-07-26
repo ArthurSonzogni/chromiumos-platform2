@@ -13,7 +13,7 @@ use super::{ShaderCacheMount, ShaderCacheMountMap};
 use crate::common::*;
 
 use anyhow::{anyhow, Result};
-use libchromeos::sys::debug;
+use log::debug;
 use std::fs;
 
 pub mod helpers {
@@ -24,7 +24,7 @@ pub mod helpers {
         #![allow(dead_code)]
 
         use anyhow::{anyhow, Result};
-        use libchromeos::sys::debug;
+        use log::debug;
         use std::process::{Command, Stdio};
 
         pub fn get_mount_list() -> Result<String> {

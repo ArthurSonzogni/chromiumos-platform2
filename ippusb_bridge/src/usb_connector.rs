@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 use libchromeos::deprecated::{EventFd, PollContext};
-use libchromeos::sys::{debug, error, info};
+use log::{debug, error, info};
 use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
 use sync::{Condvar, Mutex};
 

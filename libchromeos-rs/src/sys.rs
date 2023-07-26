@@ -55,14 +55,3 @@ pub use crosvm_base::Result;
 pub use crosvm_base::SafeDescriptor;
 pub use crosvm_base::ScmSocket;
 pub use crosvm_base::Terminal;
-
-#[deprecated = "Use log::debug instead."]
-pub use log::debug;
-#[deprecated = "Use log::error instead."]
-pub use log::error;
-#[deprecated = "Use log::info instead."]
-pub use log::info;
-#[deprecated = "Use log::trace instead."]
-pub use log::trace;
-#[deprecated = "Use log::warn instead."]
-pub use log::warn;

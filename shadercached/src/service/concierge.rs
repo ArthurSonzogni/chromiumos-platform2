@@ -10,7 +10,7 @@ use crate::dbus_wrapper::DbusConnectionTrait;
 use crate::shader_cache_mount::{ShaderCacheMountMapPtr, VmId};
 
 use anyhow::Result;
-use libchromeos::sys::debug;
+use log::debug;
 use std::sync::Arc;
 use system_api::concierge_service::{
     AddGroupPermissionMesaRequest, GetVmGpuCachePathRequest, GetVmGpuCachePathResponse,

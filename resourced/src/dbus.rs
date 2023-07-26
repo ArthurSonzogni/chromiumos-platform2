@@ -17,7 +17,7 @@ use dbus::message::{MatchRule, Message};
 use dbus::nonblock::{Proxy, SyncConnection};
 use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
 use dbus_tokio::connection;
-use libchromeos::sys::error;
+use log::error;
 use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 

@@ -28,8 +28,8 @@ mod vm_grpc;
 
 use anyhow::{bail, Result};
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::{error, info};
 use libchromeos::syslog;
+use log::{error, info};
 use tokio::runtime::Builder;
 
 const IDENT: &str = "resourced";

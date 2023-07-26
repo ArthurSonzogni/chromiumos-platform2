@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use anyhow::Result;
-use libchromeos::sys::debug;
+use log::debug;
 use serial_test::serial;
 use std::path::Path;
 use std::sync::Arc;

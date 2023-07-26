@@ -9,7 +9,7 @@ use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
 use glob::glob;
-use libchromeos::sys::info;
+use log::info;
 use once_cell::sync::Lazy;
 
 use crate::common;

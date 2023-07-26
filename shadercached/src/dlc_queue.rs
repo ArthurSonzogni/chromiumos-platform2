@@ -4,7 +4,7 @@
 
 // This module creates thread-safe DlcQueue
 
-use libchromeos::sys::debug;
+use log::debug;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock;

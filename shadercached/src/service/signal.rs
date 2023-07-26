@@ -6,7 +6,7 @@
 
 use crate::{dbus_constants, dbus_wrapper::DbusConnectionTrait};
 use anyhow::{anyhow, Result};
-use libchromeos::sys::debug;
+use log::debug;
 use std::sync::Arc;
 use system_api::shadercached::ShaderCacheMountStatus;
 

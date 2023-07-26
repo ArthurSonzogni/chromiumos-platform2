@@ -11,7 +11,7 @@ use std::io::Read;
 use std::process::{self, Stdio};
 
 use dbus::blocking::Connection;
-use libchromeos::sys::error;
+use log::error;
 use remain::sorted;
 use tlsdate_dbus::client::OrgTorprojectTlsdate;
 
