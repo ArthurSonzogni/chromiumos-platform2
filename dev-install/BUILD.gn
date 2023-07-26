@@ -59,6 +59,7 @@ if (use.test) {
 
   executable("dev_install_test") {
     sources = [ "dev_install_test.cc" ]
+    run_test = true
     configs += [
       "//common-mk:test",
       ":target_defaults",
