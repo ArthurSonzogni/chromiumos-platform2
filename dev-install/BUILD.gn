@@ -5,7 +5,12 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":dev_install" ]
+  deps = [
+    ":dev_install",
+    ":install_bashrc",
+    ":install_envd",
+    ":install_make_defaults",
+  ]
   if (use.test) {
     deps += [ ":dev_install_test" ]
   }
@@ -26,8 +31,25 @@ static_library("libdev_install") {
 
 executable("dev_install") {
   sources = [ "dev_install_main.cc" ]
+  install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libdev_install" ]
+}
+
+install_config("install_bashrc") {
+  sources = [ "share/bashrc" ]
+  outputs = [ "dev-install.sh" ]
+  install_path = "/etc/bash/bashrc.d"
+}
+
+install_config("install_make_defaults") {
+  sources = [ "share/make.defaults" ]
+  install_path = "/usr/share/dev-install/portage/make.profile"
+}
+
+install_config("install_envd") {
+  sources = [ "share/99devinstall" ]
+  install_path = "/etc/env.d"
 }
 
 if (use.test) {
