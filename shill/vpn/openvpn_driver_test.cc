@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -29,11 +30,9 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_virtual_device.h"
 #include "shill/net/mock_process_manager.h"
 #include "shill/rpc_task.h"
 #include "shill/technology.h"
-#include "shill/virtual_device.h"
 #include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_openvpn_management_server.h"
 #include "shill/vpn/mock_vpn_driver.h"
@@ -494,7 +493,7 @@ TEST_F(OpenVPNDriverTest, ParseIPv6RouteOption) {
 
   // Do not verify routes.empty() here, since a valid key with an invalid value
   // will actually create an entry.
-  EXPECT_FALSE(invoke("ipv6_network_1", "fd00::"));
+  EXPECT_FALSE(invoke("ipv6_network_1", "fd00::/130"));
 
   constexpr char kAddr1[] = "fd00::";
   constexpr int kPrefix1 = 64;
@@ -502,20 +501,30 @@ TEST_F(OpenVPNDriverTest, ParseIPv6RouteOption) {
   constexpr char kAddr2[] = "fd01::";
   constexpr int kPrefix2 = 96;
   constexpr char kGateway2[] = "fd01::1";
+  constexpr char kAddr3[] = "fd02::";
+  constexpr char kGateway3[] = "fd02::1";
   const auto prefix_str = [](const char* addr, int prefix) {
     return base::StringPrintf("%s/%d", addr, prefix);
   };
+
+  // The string without prefix length means the address with maximum prefix
+  // length.
+  EXPECT_TRUE(invoke("ipv6_network_3", kAddr3));
+  EXPECT_TRUE(invoke("ipv6_gateway_3", kGateway3));
   EXPECT_TRUE(invoke("ipv6_network_2", prefix_str(kAddr2, kPrefix2)));
   EXPECT_TRUE(invoke("ipv6_gateway_2", kGateway2));
   EXPECT_TRUE(invoke("ipv6_network_1", prefix_str(kAddr1, kPrefix1)));
   EXPECT_TRUE(invoke("ipv6_gateway_1", kGateway1));
-  EXPECT_EQ(2, routes.size());
+  EXPECT_EQ(3, routes.size());
   EXPECT_EQ(kAddr1, routes[1].host);
   EXPECT_EQ(kPrefix1, routes[1].prefix);
   EXPECT_EQ(kGateway1, routes[1].gateway);
   EXPECT_EQ(kAddr2, routes[2].host);
   EXPECT_EQ(kPrefix2, routes[2].prefix);
   EXPECT_EQ(kGateway2, routes[2].gateway);
+  EXPECT_EQ(kAddr3, routes[3].host);
+  EXPECT_EQ(net_base::IPv6CIDR::kMaxPrefixLength, routes[3].prefix);
+  EXPECT_EQ(kGateway3, routes[3].gateway);
 }
 
 TEST_F(OpenVPNDriverTest, SplitPortFromHost) {

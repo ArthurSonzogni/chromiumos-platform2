@@ -360,29 +360,21 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
 
 // static
 std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
-    IPAddress::Family family,
+    net_base::IPFamily family,
     const std::string& local,
     const std::string& peer,
-    int prefix,
+    std::optional<int> prefix_length,
     bool default_route,
     const RouteOptions& routes) {
-  const int max_prefix = IPAddress::GetMaxPrefixLength(family);
+  const int max_prefix_length = net_base::IPCIDR::GetMaxPrefixLength(family);
   auto properties = std::make_unique<IPConfig::Properties>();
   properties->method = kTypeVPN;
-  properties->address_family = family;
+  properties->address_family = net_base::ToSAFamily(family);
   properties->address = local;
-  if (prefix == 0) {
-    properties->subnet_prefix = max_prefix;
-  } else {
-    properties->subnet_prefix = prefix;
-  }
+  properties->subnet_prefix = prefix_length.value_or(max_prefix_length);
   // L3 VPN doesn't need gateway. Set it to default to skip RTA_GATEWAY when
   // installing routes.
-  if (family == IPAddress::kFamilyIPv4) {
-    properties->gateway = "0.0.0.0";
-  } else if (family == IPAddress::kFamilyIPv6) {
-    properties->gateway = "::";
-  }
+  properties->gateway = net_base::IPAddress(family).ToString();
 
   properties->default_route = default_route;
   if (!peer.empty()) {
@@ -393,8 +385,8 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
     // create an explicit host route here, and clear
     // |properties->peer_address.|
     properties->inclusion_list.push_back(
-        base::StringPrintf("%s/%d", peer.c_str(), max_prefix));
-  } else if (properties->subnet_prefix != max_prefix) {
+        base::StringPrintf("%s/%d", peer.c_str(), max_prefix_length));
+  } else if (properties->subnet_prefix != max_prefix_length) {
     // --topology subnet will set ifconfig_netmask instead
     const auto network_cidr = net_base::IPCIDR::CreateFromStringAndPrefix(
         properties->address, properties->subnet_prefix,
@@ -403,10 +395,9 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
       LOG(WARNING) << "Error obtaining network address for "
                    << properties->address;
     } else {
-      const std::string prefix = base::StringPrintf(
-          "%s/%d", network_cidr->GetPrefixAddress().ToString().c_str(),
-          properties->subnet_prefix);
-      properties->inclusion_list.push_back(prefix);
+      const auto prefix_cidr = *net_base::IPCIDR::CreateFromAddressAndPrefix(
+          network_cidr->GetPrefixAddress(), network_cidr->prefix_length());
+      properties->inclusion_list.push_back(prefix_cidr.ToString());
     }
   }
 
@@ -438,11 +429,11 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
   int mtu = 0;
   std::string ipv4_local;
   std::string ipv4_peer;
-  int ipv4_prefix = 0;
+  std::optional<int> ipv4_prefix = std::nullopt;
   bool ipv4_redirect_gateway = false;
   RouteOptions ipv4_routes;
   std::string ipv6_local;
-  int ipv6_prefix = 0;
+  std::optional<int> ipv6_prefix = std::nullopt;
   RouteOptions ipv6_routes;
 
   for (const auto& configuration_map : configuration) {
@@ -452,8 +443,13 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
     if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigLocal)) {
       ipv4_local = value;
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigNetmask)) {
-      ipv4_prefix =
-          IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
+      const auto netmask = net_base::IPv4Address::CreateFromString(value);
+      if (netmask) {
+        ipv4_prefix = net_base::IPv4CIDR::GetPrefixLength(*netmask);
+      }
+      if (!ipv4_prefix) {
+        LOG(WARNING) << "Failed to get prefix length from " << value;
+      }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigRemote)) {
       if (base::StartsWith(value, kSuspectedNetmaskPrefix,
                            base::CompareCase::INSENSITIVE_ASCII)) {
@@ -465,8 +461,13 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
         // interface as if it were a broadcast-style network.  The
         // kernel will, automatically set the peer address equal to
         // the local address.
-        ipv4_prefix =
-            IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
+        const auto netmask = net_base::IPv4Address::CreateFromString(value);
+        if (netmask) {
+          ipv4_prefix = net_base::IPv4CIDR::GetPrefixLength(*netmask);
+        }
+        if (!ipv4_prefix) {
+          LOG(WARNING) << "Failed to get prefix length from " << value;
+        }
       } else {
         ipv4_peer = value;
       }
@@ -482,8 +483,11 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
       ipv6_local = value;
     } else if (base::EqualsCaseInsensitiveASCII(key,
                                                 kOpenVPNIfconfigIPv6Netbits)) {
-      if (!base::StringToInt(value, &ipv6_prefix)) {
+      int prefix = 0;
+      if (!base::StringToInt(value, &prefix)) {
         LOG(ERROR) << "IPv6 netbits ignored, value=" << value;
+      } else {
+        ipv6_prefix = prefix;
       }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
       if (!base::StringToInt(value, &mtu)) {
@@ -556,7 +560,7 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
   std::unique_ptr<IPConfig::Properties> ipv4_props, ipv6_props;
   if (has_ipv4) {
     ipv4_props =
-        CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local, ipv4_peer,
+        CreateIPProperties(net_base::IPFamily::kIPv4, ipv4_local, ipv4_peer,
                            ipv4_prefix, ipv4_redirect_gateway, ipv4_routes);
     ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway && !has_ipv6;
     ipv4_props->domain_search = search_domains;
@@ -569,7 +573,7 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
   }
   if (has_ipv6) {
     ipv6_props =
-        CreateIPProperties(IPAddress::kFamilyIPv6, ipv6_local, /*peer=*/"",
+        CreateIPProperties(net_base::IPFamily::kIPv6, ipv6_local, /*peer=*/"",
                            ipv6_prefix, /*default_route=*/false, ipv6_routes);
     // We probably want a blackhole_ipv4 here, but that cannot be done easily at
     // the routing layer now, and IPv6-only OpenVPN should be rare.
@@ -643,8 +647,13 @@ bool OpenVPNDriver::ParseIPv4RouteOption(const std::string& key,
   }
   route = GetRouteOptionEntry(kOpenVPNRouteNetmaskPrefix, key, routes);
   if (route) {
-    route->prefix =
-        IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
+    const auto netmask = net_base::IPv4Address::CreateFromString(value);
+    if (netmask) {
+      route->prefix = net_base::IPv4CIDR::GetPrefixLength(*netmask).value_or(0);
+    }
+    if (route->prefix == 0) {
+      LOG(WARNING) << "Failed to get prefix length from " << value;
+    }
     return true;
   }
   route = GetRouteOptionEntry(kOpenVPNRouteGatewayPrefix, key, routes);
@@ -663,12 +672,12 @@ bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
   IPConfig::Route* route =
       GetRouteOptionEntry(kOpenVPNRouteIPv6NetworkPrefix, key, routes);
   if (route) {
-    auto addr = IPAddress::CreateFromPrefixString(value);
-    if (!addr.has_value()) {
+    auto cidr = net_base::IPCIDR::CreateFromCIDRString(value);
+    if (!cidr.has_value()) {
       return false;
     }
-    route->host = addr->ToString();
-    route->prefix = addr->prefix();
+    route->host = cidr->address().ToString();
+    route->prefix = cidr->prefix_length();
     return true;
   }
   route = GetRouteOptionEntry(kOpenVPNRouteIPv6GatewayPrefix, key, routes);

@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/net/sockets.h"
@@ -171,10 +172,10 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                                 std::string* port);
 
   static std::unique_ptr<IPConfig::Properties> CreateIPProperties(
-      IPAddress::Family family,
+      net_base::IPFamily family,
       const std::string& local,
       const std::string& peer,
-      int prefix,
+      std::optional<int> prefix_length,
       bool default_route,
       const RouteOptions& routes);
 
