@@ -28,7 +28,7 @@ class GcamAeDeviceAdapter {
 
   // Called by GcamAeController to allow the adapter to set device specific
   // control metadata (e.g. vendor tags) for each capture request.
-  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request) = 0;
+  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
 
   // Called by GcamAeController to set the exposure target through vendor tag.
   // Returns true if the camera HAL accepts the exposure target vendor tag and
@@ -39,15 +39,15 @@ class GcamAeDeviceAdapter {
   // |exposure_target| has the same format as the TET computed by Gcam AE:
   //   exposure_time (ms) * analog_gain * digital_gain
   virtual bool SetExposureTargetVendorTag(Camera3CaptureDescriptor* request,
-                                          float exposure_target) = 0;
+                                          float exposure_target);
 
   // Called by GcamAeController to extract the device specific AE stats from
   // |result|.
   virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,
-                              MetadataLogger* metadata_logger = nullptr) = 0;
+                              MetadataLogger* metadata_logger = nullptr);
 
   // Whether there's AE stats available for frame |frame_number|.
-  virtual bool HasAeStats(int frame_number) = 0;
+  virtual bool HasAeStats(int frame_number);
 
   // Compute the AE parameters from |frame_info| and the AE stats previously
   // extracted for frame |frame_number|.  |device_tet_range| and |max_hdr_ratio|
@@ -55,7 +55,7 @@ class GcamAeDeviceAdapter {
   virtual AeParameters ComputeAeParameters(int frame_number,
                                            const AeFrameInfo& frame_info,
                                            const Range<float>& device_tet_range,
-                                           float max_hdr_ratio) = 0;
+                                           float max_hdr_ratio);
 };
 
 }  // namespace cros
