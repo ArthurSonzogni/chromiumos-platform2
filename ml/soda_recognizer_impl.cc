@@ -171,6 +171,9 @@ SodaRecognizerImpl::SodaRecognizerImpl(
         << "Unknown enum type for recognition mode, setting CAPTION default.";
     cfg_msg.set_recognition_mode(ExtendedSodaConfigMsg::CAPTION);
   }
+
+  cfg_msg.set_mask_offensive_words(spec->mask_offensive_words);
+
   std::string serialized = cfg_msg.SerializeAsString();
 
   ExtendedSodaConfig cfg;
