@@ -298,6 +298,16 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
   EXPECT_EQ("TEST_HWID_123", GetHardwareClass());
 
   // When the HWID file exists, it should prioritize to return the file content.
+  // .../chromeos_acpi/HWID is prior to
+  // .../GGL0001:00/HWID and .../GOOG0016:00/HWID for backward compatible.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get("/sys/devices/platform/GOOG0016:00/HWID"), "TEST_HWID_321"));
+  EXPECT_EQ("TEST_HWID_321", GetHardwareClass());
+
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get("/sys/devices/platform/GGL0001:00/HWID"), "TEST_HWID_000"));
+  EXPECT_EQ("TEST_HWID_000", GetHardwareClass());
+
   ASSERT_TRUE(test_util::CreateFile(
       paths::Get("/sys/devices/platform/chromeos_acpi/HWID"),
       kHwClassContents));

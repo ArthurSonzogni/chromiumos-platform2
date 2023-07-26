@@ -46,7 +46,12 @@ namespace {
 constexpr size_t kBufferSize = 4096;
 
 // Path to hardware class description.
-constexpr char kHwClassPath[] = "/sys/devices/platform/chromeos_acpi/HWID";
+// The order here is important: the legacy one should come first.
+const char* kHwClassPaths[] = {
+    "/sys/devices/platform/chromeos_acpi/HWID",
+    "/sys/devices/platform/GGL0001:00/HWID",
+    "/sys/devices/platform/GOOG0016:00/HWID",
+};
 
 constexpr char kDevSwBoot[] = "devsw_boot";
 constexpr char kDevMode[] = "dev";
@@ -327,8 +332,10 @@ bool IsBuildTimestampTooOldForUploads(int64_t build_time_millis,
 
 std::string GetHardwareClass() {
   std::string hw_class;
-  if (base::ReadFileToString(paths::Get(kHwClassPath), &hw_class))
-    return hw_class;
+  for (const auto& path : kHwClassPaths) {
+    if (base::ReadFileToString(paths::Get(path), &hw_class))
+      return hw_class;
+  }
   auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
   return vb_value ? vb_value.value() : "undefined";
 }
