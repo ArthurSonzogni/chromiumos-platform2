@@ -25,54 +25,24 @@
 namespace secagentd {
 namespace pb = cros_xdr::reporting;
 namespace bpf {
-template <typename H>
-H AbslHashValue(H h, const secagentd::bpf::cros_network_5_tuple& t) {
-  if (t.family == CROS_FAMILY_AF_INET6) {
-    return H::combine(
-        std::move(h),
-        absl::Span<const uint8_t>(&t.source_addr.addr6[0],
-                                  sizeof(t.source_addr.addr6)),
-        t.source_port,
-        absl::Span<const uint8_t>(t.dest_addr.addr6, sizeof(t.dest_addr.addr6)),
-        t.dest_port, t.protocol, t.family);
-  }
-  return H::combine(std::move(h), t.source_addr.addr4, t.dest_addr.addr4,
-                    t.source_port, t.dest_port, t.protocol, t.family);
-}
+bool operator<(const secagentd::bpf::cros_flow_map_key& lhs,
+               const secagentd::bpf::cros_flow_map_key& rhs) {
+  auto& lhs_tuple = lhs.five_tuple;
+  absl::Span lhs_daddr6 = lhs_tuple.dest_addr.addr6;
+  absl::Span lhs_saddr6 = lhs_tuple.source_addr.addr6;
 
-template <typename H>
-H AbslHashValue(H h, const struct secagentd::bpf::cros_flow_map_key& m) {
-  return H::combine(std::move(h), m.sock, m.five_tuple);
-}
-bool operator==(const secagentd::bpf::cros_flow_map_key& lhs,
-                const secagentd::bpf::cros_flow_map_key& rhs) {
-  if (lhs.five_tuple.family != rhs.five_tuple.family) {
-    return false;
-  }
-  if (lhs.five_tuple.family == secagentd::bpf::CROS_FAMILY_AF_INET6) {
-    if (memcmp(lhs.five_tuple.source_addr.addr6,
-               rhs.five_tuple.source_addr.addr6,
-               sizeof(lhs.five_tuple.source_addr.addr6)) != 0) {
-      return false;
-    }
-    if (memcmp(lhs.five_tuple.dest_addr.addr6, rhs.five_tuple.dest_addr.addr6,
-               sizeof(lhs.five_tuple.dest_addr.addr6)) != 0) {
-      return false;
-    }
-  } else {
-    if (lhs.five_tuple.source_addr.addr4 != rhs.five_tuple.source_addr.addr4) {
-      return false;
-    }
-    if (lhs.five_tuple.dest_addr.addr4 != rhs.five_tuple.dest_addr.addr4) {
-      return false;
-    }
-  }
-  if ((lhs.sock != rhs.sock) ||
-      (lhs.five_tuple.dest_port != rhs.five_tuple.dest_port) ||
-      (lhs.five_tuple.protocol != rhs.five_tuple.protocol)) {
-    return false;
-  }
-  return true;
+  auto& rhs_tuple = rhs.five_tuple;
+  absl::Span rhs_daddr6 = rhs_tuple.dest_addr.addr6;
+  absl::Span rhs_saddr6 = rhs_tuple.source_addr.addr6;
+
+  return std::tie(lhs_tuple.family, lhs_tuple.protocol,
+                  lhs_tuple.dest_addr.addr4, lhs_tuple.source_addr.addr4,
+                  lhs_daddr6, lhs_saddr6, lhs_tuple.source_port,
+                  lhs_tuple.dest_port, lhs.sock) <
+         std::tie(rhs_tuple.family, rhs_tuple.protocol,
+                  rhs_tuple.dest_addr.addr4, rhs_tuple.source_addr.addr4,
+                  rhs_daddr6, rhs_saddr6, rhs_tuple.source_port,
+                  rhs_tuple.dest_port, rhs.sock);
 }
 }  // namespace bpf
 
@@ -260,9 +230,7 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
 std::unique_ptr<cros_xdr::reporting::NetworkFlowEvent>
 NetworkPlugin::MakeFlowEvent(
     const secagentd::bpf::cros_synthetic_network_flow& flow_event) const {
-  static base::HashingLRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value,
-                               absl::Hash<bpf::cros_flow_map_key>,
-                               std::equal_to<bpf::cros_flow_map_key>>
+  static base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>
       prev_tx_rx_totals(bpf::kMaxFlowMapEntries);
   auto flow_proto = std::make_unique<pb::NetworkFlowEvent>();
   auto* flow = flow_proto->mutable_network_flow();
