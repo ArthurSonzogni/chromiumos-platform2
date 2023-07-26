@@ -14,11 +14,12 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <base/check.h>
+#include <base/notreached.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
-#include "base/check.h"
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -216,7 +217,7 @@ void RoutineAdapter::PopulateStatusUpdate(
 
   switch (cached_state_->state_union->which()) {
     case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument: {
-      CHECK(false) << "Got unrecognized RoutineState";
+      NOTREACHED_NORETURN() << "Got unrecognized RoutineState";
       break;
     }
     case mojom::RoutineStateUnion::Tag::kInitialized: {

@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
+#include <base/notreached.h>
 #include <base/functional/callback_forward.h>
 #include <base/values.h>
 
@@ -87,7 +87,7 @@ void RoutineObserver::OnRoutineStateChange(
   switch (state_update->state_union->which()) {
     case ash::cros_healthd::mojom::RoutineStateUnion::Tag::
         kUnrecognizedArgument: {
-      CHECK(false) << "Got unrecognized RoutineState";
+      NOTREACHED_NORETURN() << "Got unrecognized RoutineState";
       break;
     }
     case mojom::RoutineStateUnion::Tag::kFinished: {
@@ -99,7 +99,7 @@ void RoutineObserver::OnRoutineStateChange(
       std::cout << ("Status: ") << passed_status << std::endl;
       switch (finished_state->detail->which()) {
         case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
-          CHECK(false) << "Got unrecognized RoutineDetail";
+          NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
           break;
         }
         // These routines do not produce printable output. Printing passed or
