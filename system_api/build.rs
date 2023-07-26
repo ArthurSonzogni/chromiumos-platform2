@@ -92,6 +92,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
     ("dlcservice", "system_api/dbus/dlcservice/dlcservice.proto"),
     ("fido", "system_api/dbus/cryptohome/fido.proto"),
     ("key", "system_api/dbus/cryptohome/key.proto"),
+    (
+        "printscanmgr_service",
+        "system_api/dbus/printscanmgr/printscanmgr_service.proto",
+    ),
     ("rpc", "system_api/dbus/cryptohome/rpc.proto"),
     (
         "shadercached",
