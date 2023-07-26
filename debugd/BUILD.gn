@@ -454,6 +454,7 @@ if (use.test) {
       "src/subprocess_tool_test.cc",
       "src/upstart_tools_test.cc",
     ]
+    run_test = true
     configs += [
       "//common-mk:test",
       ":debugd_testrunner_config",
