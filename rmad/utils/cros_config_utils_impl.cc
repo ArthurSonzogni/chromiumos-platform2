@@ -196,12 +196,11 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
     }
 
     base::FilePath key_path = path.Append(category).Append(key);
-    std::string key_str;
+    std::string key_str = "";
     if (!base::ReadFileToString(key_path, &key_str)) {
       // This might be expected behavior. cros_config sometimes doesn't populate
       // attributes with empty strings.
       DLOG(WARNING) << "Failed to read key from " << key_path.value();
-      continue;
     }
     items.insert(key_str);
   }

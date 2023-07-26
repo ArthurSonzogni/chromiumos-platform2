@@ -9,10 +9,12 @@
 
 namespace rmad {
 
-bool CrosConfigUtils::IsCustomLabel() const {
+bool CrosConfigUtils::HasCustomLabel() const {
+  // A model has custom label if it has more than 1 supported custom label tags,
+  // including empty tag.
   std::vector<std::string> custom_label_tag_list;
   return GetCustomLabelTagList(&custom_label_tag_list) &&
-         !custom_label_tag_list.empty();
+         custom_label_tag_list.size() > 1;
 }
 
 }  // namespace rmad

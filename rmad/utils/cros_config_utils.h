@@ -44,7 +44,7 @@ class CrosConfigUtils {
       std::vector<std::string>* custom_label_tag_list) const = 0;
   virtual bool GetSkuIdList(std::vector<uint64_t>* sku_id_list) const = 0;
 
-  bool IsCustomLabel() const;
+  bool HasCustomLabel() const;
 };
 
 }  // namespace rmad

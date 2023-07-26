@@ -51,7 +51,7 @@ constexpr char kDramPartNum[] = "TestDramPartNum";
 const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
 const std::vector<uint64_t> kSkuList = {1234567890, 1234567891};
 const std::vector<std::string> kCustomLabelTagList = {
-    "TestCustomLabelTag", "TestCustomLabelTag0", "TestCustomLabelTag1"};
+    "", "TestCustomLabelTag", "TestCustomLabelTag0", "TestCustomLabelTag1"};
 constexpr uint32_t kOriginalRegionSelection = 0;
 constexpr uint32_t kOriginalSkuSelection = 0;
 constexpr uint32_t kOriginalCustomLabelSelection = 0;
@@ -691,7 +691,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_CustomLabelEmpty_Success) {
+       GetNextStateCase_CustomLabelEmpty_Failed) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -705,14 +705,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
-  EXPECT_EQ(custom_label_set_, "");
-  EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,

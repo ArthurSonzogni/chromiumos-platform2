@@ -356,9 +356,8 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
     return false;
   }
 
-  // We can allow empty custom-label-tag, so we reserved negative index for
-  // empty string of custom-label-tag.
-  if (device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
+  if (device_info.whitelabel_index() < 0 ||
+      device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
     LOG(ERROR)
         << "It is a wrong |custom-label-tag index| of |custom-label-tag list|.";
     return false;
@@ -389,22 +388,17 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  // The default custom-label-tag is always an empty string.
-  std::string custom_label_tag = "";
-  if (device_info.whitelabel_index() >= 0) {
-    custom_label_tag =
-        device_info.whitelabel_list(device_info.whitelabel_index());
-  }
   // Whether the device uses the legacy "whitelabel_tag" instead of
   // "custom_label_tag".
   // TODO(chenghan): For the initial launch on Octopus, |use_legacy| is always
   //                 true. Investigate how to generalize this when expanding to
   //                 other platforms, e.g. configure this in Boxster?
   const bool use_legacy = true;
+  const std::string custom_label_tag =
+      device_info.whitelabel_list(device_info.whitelabel_index());
   // We need to set the custom-label-tag when the model has it.
   if (device_info.whitelabel_index() !=
           device_info.original_whitelabel_index() &&
-      !device_info.whitelabel_list().empty() &&
       !vpd_utils_->SetCustomLabelTag(custom_label_tag, use_legacy)) {
     LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";
     return false;

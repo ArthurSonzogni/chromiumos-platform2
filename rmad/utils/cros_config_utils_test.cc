@@ -79,9 +79,10 @@ constexpr uint32_t kSsfcValue1 = 0x1;
 constexpr char kSsfcIdentifier2[] = "TestComponent_2";
 constexpr uint32_t kSsfcValue2 = 0x2;
 
-// The first option of the WL list is always an empty string.
 const std::vector<std::string> kTargetCustomLabelTagList = {
-    kCustomLabelTag, kCustomLabelTagOther};
+    kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther};
+const std::vector<std::string> kEmptyCustomLabelTagList = {
+    kCustomLabelTagEmpty};
 const std::vector<uint64_t> kTargetSkuIdList = {kSkuIdOther1, kSkuIdOther2,
                                                 kSkuId};
 
@@ -309,19 +310,19 @@ TEST_F(CrosConfigUtilsImplTest, GetEmptyCustomLabelTagList_Success) {
 
   std::vector<std::string> custom_label_tag_list;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
-  EXPECT_TRUE(custom_label_tag_list.empty());
+  EXPECT_EQ(custom_label_tag_list, kEmptyCustomLabelTagList);
 }
 
-TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_True) {
+TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_True) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  EXPECT_TRUE(cros_config_utils->IsCustomLabel());
+  EXPECT_TRUE(cros_config_utils->HasCustomLabel());
 }
 
-TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_False) {
+TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_False) {
   auto cros_config_utils = CreateCrosConfigUtils(false);
 
-  EXPECT_FALSE(cros_config_utils->IsCustomLabel());
+  EXPECT_FALSE(cros_config_utils->HasCustomLabel());
 }
 
 }  // namespace rmad

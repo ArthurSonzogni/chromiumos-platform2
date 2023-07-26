@@ -493,7 +493,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
       // TODO(chenghan): Custom label board ID flags should not be used on a
       //                 non custom label device, but technically GSC still
       //                 works. Record a metric for it.
-      if (!cros_config_utils_->IsCustomLabel()) {
+      if (!cros_config_utils_->HasCustomLabel()) {
         LOG(ERROR) << "GSC board ID flags for custom label should not be used "
                    << "on a non custom label device";
       }
