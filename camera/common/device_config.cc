@@ -15,6 +15,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -145,11 +146,9 @@ const CrosConfigCameraInfo* DeviceConfig::GetCrosConfigInfoFromFacing(
 }
 
 base::span<const PlatformCameraInfo> DeviceConfig::GetPlatformCameraInfo() {
-  if (!platform_cameras_.has_value()) {
-    platform_cameras_.emplace();
-    PopulatePlatformCameraInfo();
-  }
-  return *platform_cameras_;
+  static const base::NoDestructor<std::vector<PlatformCameraInfo>>
+      platform_cameras(ReadPlatformCameraInfo());
+  return *platform_cameras;
 }
 
 // static
@@ -340,7 +339,7 @@ void DeviceConfig::AddCameraEeproms() {
   }
 }
 
-void DeviceConfig::PopulatePlatformCameraInfo() {
+std::vector<PlatformCameraInfo> DeviceConfig::ReadPlatformCameraInfo() {
   AddCameraEeproms();
   AddV4L2Sensors();
 
@@ -350,6 +349,7 @@ void DeviceConfig::PopulatePlatformCameraInfo() {
   //   /path/to/i2c/sysfs - i2c-2 - 2-0010 - video4linux - v4l-subdev6
   //                             \- 2-0058 - 2-00580 - nvmem
   std::set<const V4L2SensorInfo*> associated_sensors;
+  std::vector<PlatformCameraInfo> platform_cameras;
   for (const EepromInfo& eeprom : eeproms_) {
     std::vector<std::string> path = eeprom.nvmem_path.GetComponents();
     CHECK_GE(path.size(), 4u);
@@ -368,15 +368,16 @@ void DeviceConfig::PopulatePlatformCameraInfo() {
       info.v4l2_sensor = *iter;
       associated_sensors.insert(&*iter);
     }
-    platform_cameras_->push_back(std::move(info));
+    platform_cameras.push_back(std::move(info));
   }
   for (const V4L2SensorInfo& sensor : v4l2_sensors_) {
     if (!base::Contains(associated_sensors, &sensor)) {
-      platform_cameras_->push_back(PlatformCameraInfo{
+      platform_cameras.push_back(PlatformCameraInfo{
           .v4l2_sensor = sensor,
       });
     }
   }
+  return platform_cameras;
 }
 
 // static

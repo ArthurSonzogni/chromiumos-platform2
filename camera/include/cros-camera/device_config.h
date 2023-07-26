@@ -132,7 +132,7 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   void ProbeMediaController(int media_fd);
   void AddV4L2Sensors();
   void AddCameraEeproms();
-  void PopulatePlatformCameraInfo();
+  std::vector<PlatformCameraInfo> ReadPlatformCameraInfo();
 
   static bool PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf);
 
@@ -148,7 +148,6 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // |cros_config_cameras_| is not empty.
   std::vector<CrosConfigCameraInfo> cros_config_cameras_;
 
-  std::optional<std::vector<PlatformCameraInfo>> platform_cameras_;
   std::vector<EepromInfo> eeproms_;
   std::vector<V4L2SensorInfo> v4l2_sensors_;
 };
