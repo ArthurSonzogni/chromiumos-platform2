@@ -28,14 +28,9 @@ using dbus::ObjectPath;
 
 namespace {
 
-#ifdef FP_LOGIN
-constexpr bool kInstantiateCrosFpAuthStackManager = true;
-#else
-constexpr bool kInstantiateCrosFpAuthStackManager = false;
-#endif
-
 constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
 constexpr char kBiodLibPath[] = "/var/lib/biod";
+constexpr char kForceFpLoginFile[] = "/var/lib/biod/force_fp_login";
 
 }  // namespace
 
@@ -62,7 +57,10 @@ BiometricsDaemon::BiometricsDaemon() {
   session_state_manager_ =
       std::make_unique<SessionStateManager>(bus_.get(), biod_metrics_.get());
 
-  if (kInstantiateCrosFpAuthStackManager) {
+  bool instantiate_auth_stack_manager =
+      base::PathExists(base::FilePath(kForceFpLoginFile));
+
+  if (instantiate_auth_stack_manager) {
     ObjectPath cros_fp_manager_path = ObjectPath(base::StringPrintf(
         "%s/%s", kBiodServicePath, kCrosFpAuthStackManagerName));
     auto biod_storage = std::make_unique<BiodStorage>(

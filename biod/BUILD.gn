@@ -36,12 +36,6 @@ pkg_config("target_defaults") {
     defines += [ "FP_ON_POWER_BUTTON" ]
   }
 
-  # TODO(b/252951165): Make enablement of FP login a runtime behavior after we
-  # decide the launch plan.
-  if (use.fp_login) {
-    defines += [ "FP_LOGIN" ]
-  }
-
   # NOSORT
   pkg_deps = [
     "libbrillo",
