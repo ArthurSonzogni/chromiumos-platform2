@@ -147,8 +147,6 @@ class Platform2Test:
         env_vars,
         test_bin_args,
     ):
-        # Defaults to argv[0] to find the test binary to run.
-        self.bin = test_bin_args[0]
         self.env_vars = env_vars
         self.args = test_bin_args
         self.board = board
@@ -187,6 +185,17 @@ class Platform2Test:
                 "confirm that qemu is supported on your system"
             )
             self.qemu = qemu.Qemu(self.sysroot, arch=qemu_arch)
+
+    @property
+    def bin(self):
+        """Returns the binary to run.
+
+        Returns:
+            Default returns argv[0] as binary to run. Will return None when
+            no args are specified that means there is no binary to run, which
+            is expected in pre_test.
+        """
+        return self.args[0] if self.args else None
 
     @classmethod
     def generateGtestSubfilter(cls, gtest_filter):
