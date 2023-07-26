@@ -22,10 +22,12 @@ execve: 1
 exit: 1
 exit_group: 1
 faccessat: 1
+fchmod: 1
 fcntl: 1
 flock: 1
 fstat: 1
 fstatfs: 1
+ftruncate: 1
 futex: 1
 getcwd: 1
 getdents64: 1
@@ -60,6 +62,7 @@ openat: 1
 pipe2: 1
 ppoll: 1
 prctl: arg0 == PR_GET_DUMPABLE || arg0 == PR_SET_DUMPABLE
+pread64: 1
 prlimit64: 1
 process_vm_readv: 1
 read: 1
