@@ -151,8 +151,7 @@ std::ostream& operator<<(std::ostream& stream,
       break;
   }
   stream << ", downstream: " << info.downstream_ifname;
-  stream << ", ipv4 subnet: " << info.ipv4_cidr.GetPrefixAddress() << "/"
-         << info.ipv4_cidr.prefix_length();
+  stream << ", ipv4 subnet: " << info.ipv4_cidr.GetPrefixCIDR();
   stream << ", ipv4 addr: " << info.ipv4_cidr.address();
   stream << ", enable_ipv6: " << std::boolalpha << info.enable_ipv6;
   return stream << "}";

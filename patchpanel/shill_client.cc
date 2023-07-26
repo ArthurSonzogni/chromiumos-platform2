@@ -688,8 +688,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
     return;
   }
   if (old_cidr && new_cidr &&
-      old_cidr->prefix_length() == new_cidr->prefix_length() &&
-      old_cidr->GetPrefixAddress() == new_cidr->GetPrefixAddress()) {
+      old_cidr->GetPrefixCIDR() == new_cidr->GetPrefixCIDR()) {
     return;
   }
 

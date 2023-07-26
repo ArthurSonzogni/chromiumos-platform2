@@ -183,9 +183,10 @@ class NET_BASE_EXPORT IPCIDR {
   // Creates the Address that has all the high-order of prefix length bits set.
   IPAddress ToNetmask() const;
 
-  // Returns an address that represents the network-part of the address,
-  // i.e, the address with all but the prefix bits masked out.
-  IPAddress GetPrefixAddress() const;
+  // Returns an CIDR that represents the network-part of the address
+  // (i.e, the address with all but the prefix bits masked out) and the same
+  // prefix length as |this|.
+  IPCIDR GetPrefixCIDR() const;
 
   // Returns the broadcast address for the IP address, by setting all of the
   // host-part bits to 1.

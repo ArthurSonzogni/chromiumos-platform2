@@ -310,11 +310,9 @@ IPAddress IPCIDR::ToNetmask() const {
       cidr_);
 }
 
-IPAddress IPCIDR::GetPrefixAddress() const {
+IPCIDR IPCIDR::GetPrefixCIDR() const {
   return std::visit(
-      [](auto&& cidr) -> IPAddress {
-        return IPAddress(cidr.GetPrefixAddress());
-      },
+      [](auto&& cidr) -> IPCIDR { return IPCIDR(cidr.GetPrefixCIDR()); },
       cidr_);
 }
 

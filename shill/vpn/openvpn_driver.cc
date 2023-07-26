@@ -395,9 +395,8 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
       LOG(WARNING) << "Error obtaining network address for "
                    << properties->address;
     } else {
-      const auto prefix_cidr = *net_base::IPCIDR::CreateFromAddressAndPrefix(
-          network_cidr->GetPrefixAddress(), network_cidr->prefix_length());
-      properties->inclusion_list.push_back(prefix_cidr.ToString());
+      properties->inclusion_list.push_back(
+          network_cidr->GetPrefixCIDR().ToString());
     }
   }
 

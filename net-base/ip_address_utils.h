@@ -166,9 +166,12 @@ class NET_BASE_EXPORT CIDR {
     return *GetNetmask(prefix_length_);
   }
 
-  // Returns an address that represents the network-part of the address,
-  // i.e, the address with all but the prefix bits masked out.
-  Address GetPrefixAddress() const { return BitwiseAnd(address_, ToNetmask()); }
+  // Returns an CIDR that represents the network-part of the address (i.e, the
+  // address with all but the prefix bits masked out) and the same prefix length
+  // as |this|.
+  CIDR GetPrefixCIDR() const {
+    return CIDR(BitwiseAnd(address_, ToNetmask()), prefix_length_);
+  }
 
   // Returns the broadcast address for the IP address, by setting all of the
   // host-part bits to 1.
@@ -179,7 +182,7 @@ class NET_BASE_EXPORT CIDR {
 
   // Returns true is the address |b| is in the same subnet with |*this| CIDR.
   bool InSameSubnetWith(const Address& b) const {
-    return GetPrefixAddress() == CIDR(b, prefix_length_).GetPrefixAddress();
+    return GetPrefixCIDR() == CIDR(b, prefix_length_).GetPrefixCIDR();
   }
 
   // Returns the string in the CIDR notation.

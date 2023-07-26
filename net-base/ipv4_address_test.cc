@@ -211,12 +211,12 @@ TEST(IPv4CIDRTest, DefaultConstructor) {
   EXPECT_EQ(cidr.prefix_length(), 0);
 }
 
-TEST(IPv4CIDRTest, GetPrefixAddress) {
+TEST(IPv4CIDRTest, GetPrefixCIDR) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
-  EXPECT_EQ(cidr1.GetPrefixAddress().ToString(), "192.168.10.0");
+  EXPECT_EQ(cidr1.GetPrefixCIDR().ToString(), "192.168.10.0/24");
 
   const auto cidr2 = *IPv4CIDR::CreateFromCIDRString("192.168.255.123/20");
-  EXPECT_EQ(cidr2.GetPrefixAddress().ToString(), "192.168.240.0");
+  EXPECT_EQ(cidr2.GetPrefixCIDR().ToString(), "192.168.240.0/20");
 }
 
 TEST(IPv4CIDRTest, GetBroadcast) {

@@ -37,7 +37,7 @@ TEST(DownstreamNetworkService,
   ShillClient::Device wwan0_dev;
   wwan0_dev.ifname = "wwan0";
   const auto ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
-  const auto subnet_ip = ipv4_cidr.GetPrefixAddress();
+  const auto subnet_cidr = ipv4_cidr.GetPrefixCIDR();
   const IPv4Address start_ip = IPv4Address(192, 168, 3, 50);
   const IPv4Address end_ip = IPv4Address(192, 168, 3, 150);
   const std::vector<IPv4Address> dns_servers = {
@@ -51,9 +51,9 @@ TEST(DownstreamNetworkService,
       {43, "ANDROID_METERED"}};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
-  ipv4_subnet->set_addr(subnet_ip.ToByteString());
+  ipv4_subnet->set_addr(subnet_cidr.address().ToByteString());
   ipv4_subnet->set_prefix_len(
-      static_cast<unsigned int>(ipv4_cidr.prefix_length()));
+      static_cast<unsigned int>(subnet_cidr.prefix_length()));
 
   IPv4Configuration* ipv4_config = new IPv4Configuration();
   ipv4_config->set_allocated_ipv4_subnet(ipv4_subnet);

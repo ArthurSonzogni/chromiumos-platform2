@@ -25,7 +25,7 @@ namespace patchpanel {
 // static
 std::unique_ptr<SubnetPool> SubnetPool::New(const net_base::IPv4CIDR& base_cidr,
                                             uint32_t num_subnets) {
-  if (base_cidr.GetPrefixAddress() != base_cidr.address()) {
+  if (base_cidr.GetPrefixCIDR() != base_cidr) {
     LOG(ERROR) << "base_cidr doesn't contain the base address: " << base_cidr;
     return nullptr;
   }

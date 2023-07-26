@@ -215,20 +215,21 @@ TEST(IPv6CIDR, DefaultConstructor) {
   EXPECT_EQ(cidr.prefix_length(), 0);
 }
 
-TEST(IPv6CIDR, GetPrefixAddress) {
+TEST(IPv6CIDR, GetPrefixCIDR) {
   const auto cidr1 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
-  EXPECT_EQ(cidr1.GetPrefixAddress(), *IPv6Address::CreateFromString("2401::"));
+  EXPECT_EQ(cidr1.GetPrefixCIDR(),
+            *IPv6CIDR::CreateFromCIDRString("2401::/16"));
 
   const auto cidr2 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/20");
-  EXPECT_EQ(cidr2.GetPrefixAddress(),
-            *IPv6Address::CreateFromString("2401:f000::"));
+  EXPECT_EQ(cidr2.GetPrefixCIDR(),
+            *IPv6CIDR::CreateFromCIDRString("2401:f000::/20"));
 
   const auto cidr3 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/0");
-  EXPECT_EQ(cidr3.GetPrefixAddress(), *IPv6Address::CreateFromString("::"));
+  EXPECT_EQ(cidr3.GetPrefixCIDR(), *IPv6CIDR::CreateFromCIDRString("::/0"));
 
   const auto cidr4 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/128");
-  EXPECT_EQ(cidr4.GetPrefixAddress(),
-            *IPv6Address::CreateFromString("2401:fa00:480:f6::6"));
+  EXPECT_EQ(cidr4.GetPrefixCIDR(),
+            *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/128"));
 }
 
 TEST(IPv6CIDR, InSameSubnetWith) {

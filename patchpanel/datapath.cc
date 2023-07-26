@@ -2102,7 +2102,7 @@ bool Datapath::AddIPv4Route(const IPv4Address& gateway_addr,
   struct rtentry route;
   memset(&route, 0, sizeof(route));
   SetSockaddrIn(&route.rt_gateway, gateway_addr);
-  SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixAddress());
+  SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixCIDR().address());
   SetSockaddrIn(&route.rt_genmask, subnet_cidr.ToNetmask());
   route.rt_flags = RTF_UP | RTF_GATEWAY;
   return ModifyRtentry(SIOCADDRT, &route);
@@ -2113,7 +2113,7 @@ bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
   struct rtentry route;
   memset(&route, 0, sizeof(route));
   SetSockaddrIn(&route.rt_gateway, gateway_addr);
-  SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixAddress());
+  SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixCIDR().address());
   SetSockaddrIn(&route.rt_genmask, subnet_cidr.ToNetmask());
   route.rt_flags = RTF_UP | RTF_GATEWAY;
   return ModifyRtentry(SIOCDELRT, &route);

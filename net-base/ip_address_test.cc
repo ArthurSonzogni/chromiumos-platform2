@@ -318,16 +318,16 @@ TEST(IPCIDRTest, FamilyConstructor) {
   EXPECT_EQ(ipv6_default.ToString(), "::/0");
 }
 
-TEST(IPCIDRTest, GetPrefixAddress) {
+TEST(IPCIDRTest, GetPrefixCIDR) {
   const auto cidr1 = *IPCIDR::CreateFromCIDRString("192.168.10.123/24");
-  const auto prefix1 = cidr1.GetPrefixAddress();
+  const auto prefix1 = cidr1.GetPrefixCIDR();
   EXPECT_EQ(prefix1.GetFamily(), IPFamily::kIPv4);
-  EXPECT_EQ(prefix1.ToString(), "192.168.10.0");
+  EXPECT_EQ(prefix1.ToString(), "192.168.10.0/24");
 
   const auto cidr2 = *IPCIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
-  const auto prefix2 = cidr2.GetPrefixAddress();
+  const auto prefix2 = cidr2.GetPrefixCIDR();
   EXPECT_EQ(prefix2.GetFamily(), IPFamily::kIPv6);
-  EXPECT_EQ(prefix2.ToString(), "2401::");
+  EXPECT_EQ(prefix2.ToString(), "2401::/16");
 }
 
 TEST(IPCIDRTest, GetBroadcast) {

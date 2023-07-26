@@ -132,10 +132,8 @@ bool CreateConfigFile(const std::string& ifname,
 net_base::IPv6CIDR GuestIPv6Service::IPAddressTo64BitPrefix(
     const net_base::IPv6Address& addr) {
   const int prefix_length = 64;
-  const auto prefix =
-      net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr, prefix_length)
-          ->GetPrefixAddress();
-  return *net_base::IPv6CIDR::CreateFromAddressAndPrefix(prefix, prefix_length);
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr, prefix_length)
+      ->GetPrefixCIDR();
 }
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
