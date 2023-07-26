@@ -45,7 +45,8 @@ install_deps() {
 
   # TODO(b/280695675): Remove this once the VM image has a newer OS.
   # shellcheck disable=SC2154
-  sudo dpkg -i "${KOKORO_GFILE_DIR}/fai-setup-storage_5.10.3ubuntu1_all.deb"
+  sudo dpkg -i "${KOKORO_GFILE_DIR}/fai-setup-storage_5.10.3ubuntu1_all.deb" \
+    "${KOKORO_GFILE_DIR}/debian-archive-keyring_2023.3ubuntu1_all.deb"
 }
 
 main "$@"
