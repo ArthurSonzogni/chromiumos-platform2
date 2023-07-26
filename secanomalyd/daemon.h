@@ -5,10 +5,8 @@
 #ifndef SECANOMALYD_DAEMON_H_
 #define SECANOMALYD_DAEMON_H_
 
-#include <map>
 #include <memory>
 #include <set>
-#include <string>
 
 #include <base/files/file_path.h>
 
@@ -90,6 +88,7 @@ class Daemon : public brillo::DBusDaemon {
   MountEntryMap wx_mounts_;
   MaybeMountEntries all_mounts_;
   MaybeProcEntries all_procs_;
+  MaybeProcEntry init_proc_;
 
   std::set<base::FilePath> executables_attempting_memfd_exec_;
 

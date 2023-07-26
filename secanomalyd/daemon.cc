@@ -9,7 +9,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <absl/strings/match.h>
 #include <base/command_line.h>
@@ -304,7 +303,13 @@ void Daemon::DoWXMountScan() {
 }
 
 void Daemon::DoProcScan() {
-  all_procs_ = ReadProcesses(ProcessFilter::kInitPidNamespaceOnly);
+  all_procs_ = ReadProcesses(ProcessFilter::kAll);
+  if (!all_procs_) {
+    return;
+  }
+  if (!init_proc_) {
+    init_proc_ = GetInitProcEntry(all_procs_.value());
+  }
   // TODO(enlightened) Check for anomalies in the process list and save them for
   // reporting.
 }
@@ -463,25 +468,20 @@ void Daemon::EmitSandboxingUma() {
     }
 
     // For the rest of the metrics, we need to have the init process entry.
-    MaybeProcEntry init_proc_entry;
-    if (all_procs_) {
-      init_proc_entry = GetInitProcEntry(all_procs_.value());
-    }
-    if (!init_proc_entry) {
-      LOG(WARNING) << "Failed to find init process";
+    if (!init_proc_) {
       return;
     }
 
     if (!has_emitted_unpriv_proc_percentage_uma_) {
       has_emitted_unpriv_proc_percentage_uma_ = EmitUnprivProcPercentageUma(
-          maybe_proc_entries.value(), init_proc_entry.value().userns());
+          maybe_proc_entries.value(), init_proc_.value().userns());
     }
 
     if (!has_emitted_non_initns_proc_percentage_uma_) {
       has_emitted_non_initns_proc_percentage_uma_ =
           EmitNonInitNsProcPercentageUma(maybe_proc_entries.value(),
-                                         init_proc_entry.value().pidns(),
-                                         init_proc_entry.value().mntns());
+                                         init_proc_.value().pidns(),
+                                         init_proc_.value().mntns());
     }
   }
 }

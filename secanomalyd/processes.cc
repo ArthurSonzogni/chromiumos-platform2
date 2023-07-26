@@ -11,9 +11,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
+#include <iterator>
 #include <optional>
 #include <string>
-#include <utility>
 
 #include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
@@ -40,7 +40,6 @@ constexpr pid_t kInitPid = 1;
 constexpr pid_t kKThreadDPid = 2;
 constexpr pid_t kKThreadDPPid = 0;
 
-constexpr char kInitExecutable[] = "/sbin/init";
 constexpr char kProcSubdirPattern[] = "[0-9]*";
 
 const base::FilePath kProcStatusFile("status");
@@ -226,59 +225,62 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter,
                                const base::FilePath& proc) {
-  ProcEntries entries;
-  std::optional<ino_t> init_pidns = std::nullopt;
-
+  ProcEntries all_entries;
   base::FileEnumerator proc_enumerator(proc, /*Recursive=*/false,
                                        base::FileEnumerator::DIRECTORIES,
                                        kProcSubdirPattern);
   for (base::FilePath pid_path = proc_enumerator.Next(); !pid_path.empty();
        pid_path = proc_enumerator.Next()) {
     MaybeProcEntry entry = ProcEntry::CreateFromPath(pid_path);
-    if (entry.has_value()) {
-      if (filter == ProcessFilter::kInitPidNamespaceOnly &&
-          entry->args() == std::string(kInitExecutable)) {
-        init_pidns = entry->pidns();
-        // The init process has been found, add it to the list and continue
-        // the loop early.
-        entries.push_back(*entry);
-        continue;
-      }
-
-      // Add the entry to the list if:
-      //    -Caller requested no kernel tasks and the process is not [kthreadd]
-      //    or doesn't have [kthreadd] as its parent.
-      //    -Caller requested all processes, or
-      //    -The init process hasn't yet been identified, or
-      //    -The init process has been successfully identified, and the PID
-      //     namespaces match.
-      if (filter == ProcessFilter::kNoKernelTasks) {
-        if (entry->ppid() != kKThreadDPid && entry->ppid() != kKThreadDPPid) {
-          entries.push_back(*entry);
-        }
-      } else if (filter == ProcessFilter::kAll || !init_pidns ||
-                 entry->pidns() == init_pidns.value()) {
-        entries.push_back(*entry);
-      }
+    if (entry) {
+      all_entries.push_back(*entry);
     }
   }
 
-  if (filter == ProcessFilter::kInitPidNamespaceOnly) {
-    if (init_pidns) {
-      // Remove all processes whose |pidns| does not match init's.
-      entries.erase(std::remove_if(entries.begin(), entries.end(),
-                                   [init_pidns](const ProcEntry& pe) {
-                                     return pe.pidns() != init_pidns.value();
-                                   }),
-                    entries.end());
-    } else {
-      LOG(ERROR) << "Failed to find init process";
-      return std::nullopt;
-    }
+  if (all_entries.empty()) {
+    return std::nullopt;
   }
 
-  // If we failed to parse any valid processes, return nullopt.
-  return entries.empty() ? std::nullopt : MaybeProcEntries(entries);
+  if (filter == ProcessFilter::kAll) {
+    return MaybeProcEntries(all_entries);
+  }
+
+  ProcEntries filtered_entries;
+  if (filter == ProcessFilter::kNoKernelTasks) {
+    FilterKernelProcesses(all_entries, filtered_entries);
+  } else if (filter == ProcessFilter::kInitPidNamespaceOnly) {
+    return FilterNonInitPidNsProcesses(all_entries, filtered_entries)
+               ? MaybeProcEntries(filtered_entries)
+               : std::nullopt;
+  }
+
+  return MaybeProcEntries(filtered_entries);
+}
+
+void FilterKernelProcesses(const ProcEntries& all_procs,
+                           ProcEntries& filtered_procs) {
+  // Keeps processes that do not have the same parent as the kernel thread and
+  // do not have the kernel thread as their parent.
+  std::copy_if(all_procs.begin(), all_procs.end(),
+               std::back_inserter(filtered_procs), [](const ProcEntry& pe) {
+                 return pe.ppid() != kKThreadDPPid && pe.ppid() != kKThreadDPid;
+               });
+}
+
+bool FilterNonInitPidNsProcesses(const ProcEntries& all_procs,
+                                 ProcEntries& filtered_procs) {
+  // Looks for the init process. Fails if no init process is found.
+  MaybeProcEntry init_proc = GetInitProcEntry(all_procs);
+  if (!init_proc) {
+    return false;
+  }
+
+  // Keeps all processes whose |pidns| does not match init's.
+  ino_t init_pidns = init_proc.value().pidns();
+  std::copy_if(
+      all_procs.begin(), all_procs.end(), std::back_inserter(filtered_procs),
+      [init_pidns](const ProcEntry& pe) { return pe.pidns() == init_pidns; });
+  return true;
 }
 
 MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
@@ -287,7 +289,8 @@ MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
       return MaybeProcEntry(e);
     }
   }
-  return MaybeProcEntry();
+  LOG(ERROR) << "Failed to find init process";
+  return std::nullopt;
 }
 
 }  // namespace secanomalyd

@@ -5,7 +5,7 @@
 #ifndef SECANOMALYD_METRICS_H_
 #define SECANOMALYD_METRICS_H_
 
-#include <string>
+#include <cstddef>
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.

@@ -182,8 +182,14 @@ bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
   // Filter out private mounts before upload.
   MaybeMountEntries uploadable_mounts = FilterPrivateMounts(all_mounts);
 
-  MaybeReport anomaly_report =
-      GenerateAnomalousSystemReport(wx_mounts, uploadable_mounts, all_procs);
+  // Filter out processes not in the init PID namespace.
+  ProcEntries init_pidns_procs;
+  if (all_procs) {
+    FilterNonInitPidNsProcesses(all_procs.value(), init_pidns_procs);
+  }
+
+  MaybeReport anomaly_report = GenerateAnomalousSystemReport(
+      wx_mounts, uploadable_mounts, MaybeProcEntries(init_pidns_procs));
 
   if (!anomaly_report) {
     LOG(ERROR) << "Failed to generate anomalous system report";

@@ -90,6 +90,15 @@ enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly, kNoKernelTasks };
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter,
                                const base::FilePath& proc = kProcPathBase);
+
+// These functions filter processes by copying the appropriate entries from
+// |all_procs| into |filtered_procs|. |FilterNinInitPidNsProcesses()| returns
+// false if the init process is not found.
+void FilterKernelProcesses(const ProcEntries& all_procs,
+                           ProcEntries& filtered_procs);
+bool FilterNonInitPidNsProcesses(const ProcEntries& all_procs,
+                                 ProcEntries& filtered_procs);
+
 MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries);
 
 }  // namespace secanomalyd
