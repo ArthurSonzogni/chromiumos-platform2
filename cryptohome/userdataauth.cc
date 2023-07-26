@@ -3166,10 +3166,8 @@ void UserDataAuth::ListAuthFactors(
           default_features_->IsFeatureEnabled(Features::kUSSMigration);
     }
     AuthFactorVaultKeysetConverter converter(keyset_management_);
-    AuthFactorMap auth_factor_map;
-    auth_factor_map =
-        LoadAuthFactorMap(migrate_to_user_secret_stash, obfuscated_username,
-                          *platform_, converter, *auth_factor_manager_);
+    AuthFactorMap auth_factor_map = auth_factor_manager_->LoadAllAuthFactors(
+        obfuscated_username, migrate_to_user_secret_stash, converter);
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {

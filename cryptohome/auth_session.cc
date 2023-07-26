@@ -360,9 +360,8 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   AuthFactorMap auth_factor_map;
   if (persistent_user_exists) {
     AuthFactorVaultKeysetConverter converter(backing_apis.keyset_management);
-    auth_factor_map = LoadAuthFactorMap(
-        migrate_to_user_secret_stash, obfuscated_username,
-        *backing_apis.platform, converter, *backing_apis.auth_factor_manager);
+    auth_factor_map = backing_apis.auth_factor_manager->LoadAllAuthFactors(
+        obfuscated_username, migrate_to_user_secret_stash, converter);
 
     // If only uss factors exists, then we should remove all the backups.
     if (!auth_factor_map.HasFactorWithStorage(

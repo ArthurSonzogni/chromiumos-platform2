@@ -13,7 +13,9 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_map.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/username.h"
@@ -29,13 +31,12 @@ class AuthFactorManager final {
   // Mapping between auth factor label and type.
   using LabelToTypeMap = std::map<std::string, AuthFactorType>;
 
-  // `platform` is an unowned pointer that must outlive this object.
   explicit AuthFactorManager(Platform* platform);
 
   AuthFactorManager(const AuthFactorManager&) = delete;
   AuthFactorManager& operator=(const AuthFactorManager&) = delete;
 
-  ~AuthFactorManager();
+  ~AuthFactorManager() = default;
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
@@ -51,8 +52,10 @@ class AuthFactorManager final {
 
   // Loads all configured auth factors for the given user from the disk.
   // Malformed factors are logged and skipped.
-  std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
-      const ObfuscatedUsername& obfuscated_username);
+  AuthFactorMap LoadAllAuthFactors(
+      const ObfuscatedUsername& obfuscated_username,
+      bool is_uss_migration_enabled,
+      AuthFactorVaultKeysetConverter& converter);
 
   // Loads the list of configured auth factors from the user's data vault.
   LabelToTypeMap ListAuthFactors(const ObfuscatedUsername& obfuscated_username);

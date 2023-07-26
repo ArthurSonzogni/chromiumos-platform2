@@ -5,17 +5,13 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_LOADING_H_
 #define CRYPTOHOME_AUTH_FACTOR_LOADING_H_
 
-#include <map>
 #include <string>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_map.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -29,13 +25,6 @@ bool LoadUserAuthFactorByLabel(AuthFactorDriverManager* driver_manager,
                                const std::string& factor_label,
                                user_data_auth::AuthFactor* out_auth_factor);
 
-// Given a keyset converter, factor manager, and platform, load all of the auth
-// factors for the given user into an auth factor map.
-AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
-                                const ObfuscatedUsername& obfuscated_username,
-                                Platform& platform,
-                                AuthFactorVaultKeysetConverter& converter,
-                                AuthFactorManager& manager);
-
 }  // namespace cryptohome
+
 #endif  // CRYPTOHOME_AUTH_FACTOR_LOADING_H_

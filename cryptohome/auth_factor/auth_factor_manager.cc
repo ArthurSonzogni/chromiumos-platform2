@@ -7,11 +7,12 @@
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
-#include <variant>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -27,24 +28,22 @@
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_factor_generated.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/platform.h"
-
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
-using hwsec_foundation::status::StatusChain;
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
-
 namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 // Use rw------- for the auth factor files.
 constexpr mode_t kAuthFactorFilePermissions = 0600;
@@ -93,8 +92,6 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
 AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
   CHECK(platform_);
 }
-
-AuthFactorManager::~AuthFactorManager() = default;
 
 CryptohomeStatus AuthFactorManager::SaveAuthFactor(
     const ObfuscatedUsername& obfuscated_username,
@@ -198,21 +195,70 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
       serialized_factor.value().auth_block_state);
 }
 
-std::map<std::string, std::unique_ptr<AuthFactor>>
-AuthFactorManager::LoadAllAuthFactors(
-    const ObfuscatedUsername& obfuscated_username) {
-  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
-  for (const auto& [label, auth_factor_type] :
-       ListAuthFactors(obfuscated_username)) {
-    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
-        LoadAuthFactor(obfuscated_username, auth_factor_type, label);
-    if (!auth_factor.ok()) {
-      LOG(WARNING) << "Skipping malformed auth factor " << label;
-      continue;
+AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
+    const ObfuscatedUsername& obfuscated_username,
+    bool is_uss_migration_enabled,
+    AuthFactorVaultKeysetConverter& converter) {
+  AuthFactorMap auth_factor_map;
+
+  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
+  // them to AuthFactor format.
+  std::vector<std::string> migrated_labels;
+  std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
+  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
+  converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
+      obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
+
+  // UserSecretStash is enabled: merge VaultKeyset-AuthFactors with
+  // USS-AuthFactors
+  if (IsUserSecretStashExperimentEnabled(platform_)) {
+    for (const auto& [label, auth_factor_type] :
+         ListAuthFactors(obfuscated_username)) {
+      CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
+          LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+      if (!auth_factor.ok()) {
+        LOG(WARNING) << "Skipping malformed auth factor " << label;
+        continue;
+      }
+      auth_factor_map.Add(std::move(*auth_factor),
+                          AuthFactorStorageType::kUserSecretStash);
     }
-    label_to_auth_factor.emplace(label, std::move(auth_factor).value());
+
+    // If USS migration is disabled, but USS is still enabled only the migrated
+    // AuthFactors should be rolled back. Override the AuthFactor with the
+    // migrated VaultKeyset in this case.
+    if (!is_uss_migration_enabled) {
+      for (auto migrated_label : migrated_labels) {
+        auto backup_factor_iter = backup_factor_map.find(migrated_label);
+        if (backup_factor_iter != backup_factor_map.end()) {
+          auth_factor_map.Add(std::move(backup_factor_iter->second),
+                              AuthFactorStorageType::kVaultKeyset);
+        }
+      }
+    }
+  } else {
+    // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with
+    // backup-VaultKeyset-AuthFactors.
+    for (auto& [unused, factor] : backup_factor_map) {
+      auth_factor_map.Add(std::move(factor),
+                          AuthFactorStorageType::kVaultKeyset);
+    }
   }
-  return label_to_auth_factor;
+
+  // Duplicate labels are not expected on any use case. However in very rare
+  // edge cases where an interrupted USS migration results in having both
+  // regular VaultKeyset and USS factor in disk it is safer to use the original
+  // VaultKeyset. In that case regular VaultKeyset overrides the existing
+  // label in the map.
+  for (auto& [unused, factor] : vk_factor_map) {
+    if (auth_factor_map.Find(factor->label())) {
+      LOG(WARNING) << "Unexpected duplication of label: " << factor->label()
+                   << ". Regular VaultKeyset will override the AuthFactor.";
+    }
+    auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
+  }
+
+  return auth_factor_map;
 }
 
 AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(

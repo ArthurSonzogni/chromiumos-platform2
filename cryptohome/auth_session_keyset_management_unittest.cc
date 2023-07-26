@@ -335,9 +335,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       bool enable_uss_migration) {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
-    AuthFactorMap auth_factor_map =
-        LoadAuthFactorMap(enable_uss_migration, users_[0].obfuscated, platform_,
-                          converter, auth_factor_manager_);
+    AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
+        users_[0].obfuscated, enable_uss_migration, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -354,9 +353,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   AuthSession StartAuthSession(bool enable_uss_migration) {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
-    AuthFactorMap auth_factor_map =
-        LoadAuthFactorMap(enable_uss_migration, users_[0].obfuscated, platform_,
-                          converter, auth_factor_manager_);
+    AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
+        users_[0].obfuscated, enable_uss_migration, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -928,8 +926,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
       user_secret_stash_status.value()->HasWrappedMainKey(kDefaultLabel));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
-      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
+  std::map<std::string, AuthFactorType> factor_map =
+      auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kDefaultLabel), factor_map.end());
   ASSERT_EQ(auth_session.auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
@@ -992,8 +990,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
       user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
-      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
   ASSERT_EQ(
       auth_session2.auth_factor_map().Find(kPasswordLabel)->storage_type(),
       AuthFactorStorageType::kUserSecretStash);
@@ -1130,8 +1126,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel2));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
-      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
+  std::map<std::string, AuthFactorType> factor_map =
+      auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kPasswordLabel), factor_map.end());
   ASSERT_NE(factor_map.find(kPasswordLabel2), factor_map.end());
   ASSERT_EQ(
