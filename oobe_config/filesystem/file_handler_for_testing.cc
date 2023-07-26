@@ -80,6 +80,22 @@ bool FileHandlerForTesting::WriteRollbackMetricsData(
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName), data);
 }
 
+bool FileHandlerForTesting::UpdateRollbackMetricsModificationTime(
+    const base::Time& modification_time) const {
+  std::optional<base::File> file =
+      OpenFile(GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
+  if (!file.has_value()) {
+    return false;
+  }
+
+  base::File::Info file_info;
+  if (!file->GetInfo(&file_info)) {
+    return false;
+  }
+
+  return file->SetTimes(file_info.last_accessed, modification_time);
+}
+
 bool FileHandlerForTesting::ReadPstoreData(std::string* data) const {
   return base::ReadFileToString(
       GetFullPath(kDataSavePath).Append(kPstoreFileName), data);

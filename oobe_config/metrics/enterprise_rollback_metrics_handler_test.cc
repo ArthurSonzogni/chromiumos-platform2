@@ -430,6 +430,36 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       CleanRollbackTrackingIfStaleDoesNotDeleteFreshFile) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  base::Time modification_time = base::Time::Now();
+  ASSERT_TRUE(
+      file_handler_.UpdateRollbackMetricsModificationTime(modification_time));
+
+  enterprise_rollback_metrics_handler_.CleanRollbackTrackingIfStale();
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       CleanRollbackTrackingIfStaleDeletesOldFile) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  base::Time modification_time = base::Time::Now() - base::Days(16);
+  ASSERT_TRUE(
+      file_handler_.UpdateRollbackMetricsModificationTime(modification_time));
+
+  enterprise_rollback_metrics_handler_.CleanRollbackTrackingIfStale();
+  ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
        TrackEventsCheckIsFalseIfNoMetricsFile) {
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
   ASSERT_FALSE(enterprise_rollback_metrics_handler_.IsTrackingRollbackEvents());

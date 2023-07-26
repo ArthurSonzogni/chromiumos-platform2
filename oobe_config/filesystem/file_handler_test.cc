@@ -425,6 +425,29 @@ TEST_F(FileHandlerTest, RemoveRollbackMetricsData) {
                           base::Unretained(&file_handler_)));
 }
 
+TEST_F(FileHandlerTest, LastModifiedTimeReturnsNullIfFileDoesNotExist) {
+  std::optional<base::Time> stale_time =
+      file_handler_.LastModifiedTimeRollbackMetricsDataFile();
+  ASSERT_FALSE(stale_time.has_value());
+}
+
+TEST_F(FileHandlerTest, LastModifiedTimeReturnsLastModified) {
+  base::FilePath path = RootedPath(kExpectedRollbackMetricsData);
+  ASSERT_TRUE(InitializeFileWithData(path));
+
+  base::Time modification_time;
+  ASSERT_TRUE(base::Time::FromString("25 Jul 2023", &modification_time));
+  ASSERT_TRUE(
+      file_handler_.UpdateRollbackMetricsModificationTime(modification_time));
+
+  std::optional<base::Time> stale_time =
+      file_handler_.LastModifiedTimeRollbackMetricsDataFile();
+  ASSERT_TRUE(stale_time.has_value());
+  ASSERT_EQ(stale_time.value(), modification_time);
+
+  ASSERT_TRUE(base::DeleteFile(path));
+}
+
 TEST_F(FileHandlerTest, CreateRamoopsPath) {
   VerifyCreateFunction(
       FileHandlerTest::kExpectedRamoopsPath,
@@ -456,7 +479,7 @@ TEST_F(FileHandlerTest, OpenAndReadFile) {
   ASSERT_TRUE(read_data.has_value());
   ASSERT_EQ(read_data.value(), kFileData);
 
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, FlockFailsAfterLockFileNoBlocking) {
@@ -472,7 +495,7 @@ TEST_F(FileHandlerTest, FlockFailsAfterLockFileNoBlocking) {
   ASSERT_EQ(flock(new_opened_file->GetPlatformFile(), LOCK_EX | LOCK_NB), -1);
 
   file_handler_.UnlockFile(*opened_file);
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, DoNotLockIfFileIsLockedInAnotherProcess) {
@@ -494,7 +517,7 @@ TEST_F(FileHandlerTest, DoNotLockIfFileIsLockedInAnotherProcess) {
   ASSERT_TRUE(file_handler_.LockFileNoBlocking(*file));
 
   file_handler_.UnlockFile(*file);
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, ExtendFile) {
@@ -510,7 +533,7 @@ TEST_F(FileHandlerTest, ExtendFile) {
   ASSERT_TRUE(read_data.has_value());
   ASSERT_EQ(read_data.value(), kFileDataExtended);
 
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, LockAndExtendFile) {
@@ -528,7 +551,7 @@ TEST_F(FileHandlerTest, LockAndExtendFile) {
   ASSERT_EQ(read_data.value(), kFileDataExtended);
 
   file_handler_.UnlockFile(*file);
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, TruncateFile) {
@@ -544,7 +567,7 @@ TEST_F(FileHandlerTest, TruncateFile) {
   ASSERT_TRUE(read_data.has_value());
   ASSERT_EQ(read_data.value(), kFileDataTruncated);
 
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 TEST_F(FileHandlerTest, LockAndTruncateFile) {
@@ -562,7 +585,7 @@ TEST_F(FileHandlerTest, LockAndTruncateFile) {
   ASSERT_EQ(read_data.value(), kFileDataTruncated);
 
   file_handler_.UnlockFile(*file);
-  ASSERT_TRUE(base::DeletePathRecursively(path));
+  ASSERT_TRUE(base::DeleteFile(path));
 }
 
 }  // namespace oobe_config

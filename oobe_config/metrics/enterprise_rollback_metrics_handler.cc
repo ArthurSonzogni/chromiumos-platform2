@@ -17,6 +17,8 @@ namespace oobe_config {
 
 namespace {
 
+const int kNumberStaleDaysBeforeDeletion = 15;
+
 std::unique_ptr<RollbackMetadata> MetadataFromVersions(
     const base::Version& current, const base::Version& target) {
   auto metadata = std::make_unique<RollbackMetadata>();
@@ -228,7 +230,30 @@ void EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
     LOG(ERROR) << "Unable to report the events before deleting the rollback "
                   "metrics file.";
   }
-  file_handler_.RemoveRollbackMetricsData();
+
+  if (!file_handler_.RemoveRollbackMetricsData()) {
+    LOG(ERROR) << "Error when deleting the rollback metrics file.";
+  }
+}
+
+void EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
+  // Rollback metrics file should be updated periodically to track the events
+  // before powerwash. When recording metrics after powerwash, the file header
+  // is read but not modified but it is updated when previous events are
+  // recorded. If the file has not been modified for days, it can mean that
+  // something went wrong in the process and the file is stale.
+  std::optional<base::Time> last_modification =
+      file_handler_.LastModifiedTimeRollbackMetricsDataFile();
+  if (!last_modification.has_value()) {
+    return;
+  }
+
+  base::TimeDelta stale_delta = base::Time::Now() - last_modification.value();
+  if (stale_delta.InDays() > kNumberStaleDaysBeforeDeletion) {
+    // TODO(b/261850979): Add UMA metric to control how often the file stales.
+    LOG(INFO) << "Deleting stale rollback metrics file.";
+    StopTrackingRollback();
+  }
 }
 
 bool EnterpriseRollbackMetricsHandler::IsTrackingRollbackEvents() const {

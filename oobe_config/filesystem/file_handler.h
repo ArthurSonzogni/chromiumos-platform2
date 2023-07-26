@@ -10,6 +10,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 
 namespace oobe_config {
 
@@ -110,6 +111,8 @@ class FileHandler {
   bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
   // Removes the file with rollback metrics data.
   bool RemoveRollbackMetricsData() const;
+  // Returns the last modified time of the rollback metrics file.
+  std::optional<base::Time> LastModifiedTimeRollbackMetricsDataFile() const;
 
   // Returns a file enumerator to contents of pstore after reboot.
   base::FileEnumerator RamoopsFileEnumerator() const;

@@ -75,6 +75,9 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   // Report all tracked events and delete the rollback metrics file.
   void StopTrackingRollback() const;
 
+  // Call StopTrackingRollback if the file is stale for 15 days.
+  void CleanRollbackTrackingIfStale() const;
+
   // Checks if we are tracking events of the current rollback process. Events
   // are tracked if the rollback metrics file exists.
   bool IsTrackingRollbackEvents() const;

@@ -62,6 +62,10 @@ class FileHandlerForTesting : public FileHandler {
   // Writes rollback metrics file.
   bool WriteRollbackMetricsData(const std::string& data) const;
 
+  // Sets the modification time of the rollback metrics file.
+  bool UpdateRollbackMetricsModificationTime(
+      const base::Time& modification_time) const;
+
   // Reads data staged to be preserved across powerwash in pstore from
   // oobe_config_save directory.
   bool ReadPstoreData(std::string* data) const;

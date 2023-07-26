@@ -169,6 +169,18 @@ bool FileHandler::RemoveRollbackMetricsData() const {
       GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
 }
 
+std::optional<base::Time> FileHandler::LastModifiedTimeRollbackMetricsDataFile()
+    const {
+  base::File::Info file_info;
+  if (!base::GetFileInfo(
+          GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
+          &file_info)) {
+    return std::nullopt;
+  }
+
+  return file_info.last_modified;
+}
+
 base::FileEnumerator FileHandler::RamoopsFileEnumerator() const {
   return base::FileEnumerator(GetFullPath(kRamoopsPath),
                               /*recursive=*/false, base::FileEnumerator::FILES,
