@@ -127,11 +127,9 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
   CHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
-  CHECK(!cryptohome_recovery_auth_input.user_gaia_id.empty());
-  CHECK(!cryptohome_recovery_auth_input.device_user_id.empty());
 
+  // Check for empty inputs that are required.
   if (!auth_input.obfuscated_username.has_value()) {
-    LOG(ERROR) << "Missing obfuscated_username";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoUsernameInCreate),
@@ -140,6 +138,16 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
+  if (cryptohome_recovery_auth_input.user_gaia_id.empty()) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoUserGaiaIdInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
+  }
+
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
