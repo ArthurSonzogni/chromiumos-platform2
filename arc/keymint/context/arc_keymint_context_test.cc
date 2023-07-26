@@ -38,9 +38,8 @@ namespace {
 
 constexpr size_t kKeymasterOperationTableSize = 16;
 
-// TODO(b/274723555): Update these patch levels
-constexpr uint32_t kOsVersion = 9;
-constexpr uint32_t kOsPatchlevel = 20200205;
+constexpr uint32_t kOsVersion = 13;
+constexpr uint32_t kOsPatchlevel = 20230705;
 constexpr int32_t kKeyMintMessageVersion = 4;
 constexpr ::keymaster::KmVersion kKeyMintVersion =
     ::keymaster::KmVersion::KEYMINT_2;
