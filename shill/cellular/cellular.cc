@@ -3526,6 +3526,8 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
                  << ": IPv6 address is not valid: " << props.address;
     } else if (link_local_mask.InSameSubnetWith(*local)) {
       ipv6_props_ = props;
+      ipv6_props_->address = "";
+      start_opts_.link_local_address = local;
     }
     ipv6_configured = true;
   }

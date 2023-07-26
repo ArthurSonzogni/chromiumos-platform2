@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
@@ -126,6 +127,11 @@ class Network {
     std::optional<DHCPProvider::Options> dhcp;
     // Accept router advertisements for IPv6.
     bool accept_ra = false;
+    // The link local address for the device that would be an override of the
+    // default EUI-64 link local address assigned by the kernel. Used in
+    // cellular where the link local address is generated from the network ID
+    // specified by the carrier through bearer.
+    std::optional<net_base::IPv6Address> link_local_address;
     // When set to true, neighbor events from link monitoring are ignored.
     bool ignore_link_monitoring = false;
     // PortalDetector probe configuration for network validation.
@@ -407,8 +413,10 @@ class Network {
   void OnDHCPDrop(bool is_voluntary);
 
   // Functions for IPv6.
-  // Configures static IP address received from cellular bearer.
-  void ConfigureStaticIPv6Address();
+  // Configures link local IPv6 address received from cellular bearer.
+  // TODO(b/292048101): Link local address should be configured before SLAAC to
+  // ensure RS were sent with the provided link local address.
+  void ConfigureLinkLocalAddress(net_base::IPv6Address link_local_address);
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
 

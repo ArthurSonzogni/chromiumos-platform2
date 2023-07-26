@@ -20,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -122,12 +123,9 @@ void Network::Start(const Network::StartOptions& opts) {
     slaac_controller_->RegisterCallback(
         base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
     slaac_controller_->Start();
-    ipv6_started = true;
-  }
-  if (ipv6_static_properties_) {
-    dispatcher_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&Network::ConfigureStaticIPv6Address, AsWeakPtr()));
+    if (opts.link_local_address) {
+      ConfigureLinkLocalAddress(*opts.link_local_address);
+    }
     ipv6_started = true;
   }
   if (link_protocol_ipv6_properties_) {
@@ -236,7 +234,6 @@ void Network::SetupConnection(IPConfig* ipconfig) {
         base::Seconds(30));
   }
   state_ = State::kConnected;
-  ConfigureStaticIPv6Address();
   for (auto* ev : event_handlers_) {
     ev->OnConnectionUpdated(interface_index_);
   }
@@ -528,21 +525,22 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
   return dhcp_controller_->TimeToLeaseExpiry();
 }
 
-void Network::ConfigureStaticIPv6Address() {
-  if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
+void Network::ConfigureLinkLocalAddress(
+    net_base::IPv6Address link_local_address) {
+  const auto link_local_mask =
+      *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
+  if (!link_local_mask.InSameSubnetWith(link_local_address)) {
+    LOG(ERROR) << logging_tag_ << ": Address " << link_local_address
+               << " is not a link local address";
     return;
   }
-  const auto local = net_base::IPv6CIDR::CreateFromStringAndPrefix(
-      ipv6_static_properties_->address, ipv6_static_properties_->subnet_prefix);
-  if (!local) {
-    LOG(ERROR) << logging_tag_ << ": Local address "
-               << ipv6_static_properties_->address << "/"
-               << ipv6_static_properties_->subnet_prefix << " is invalid";
-    return;
-  }
-  LOG(INFO) << logging_tag_ << ": configuring static IPv6 address " << *local;
-  rtnl_handler_->AddInterfaceAddress(interface_index_, net_base::IPCIDR(*local),
-                                     std::nullopt);
+  LOG(INFO) << logging_tag_ << ": configuring link local address "
+            << link_local_address;
+  rtnl_handler_->AddInterfaceAddress(
+      interface_index_,
+      net_base::IPCIDR(*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+          link_local_address, 64)),
+      std::nullopt);
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
