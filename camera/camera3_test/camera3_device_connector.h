@@ -44,6 +44,10 @@ class DeviceConnector {
 
   // Flush all currently in-process captures and all buffers in the pipeline.
   virtual int Flush() = 0;
+
+  // Signal stream flush.
+  virtual void SignalStreamFlush(uint32_t num_streams,
+                                 const camera3_stream_t* const* streams) = 0;
 };
 
 class HalDeviceConnector : public DeviceConnector {
@@ -63,6 +67,8 @@ class HalDeviceConnector : public DeviceConnector {
   int ProcessCaptureRequest(
       camera3_capture_request_t* capture_request) override;
   int Flush() override;
+  void SignalStreamFlush(uint32_t num_streams,
+                         const camera3_stream_t* const* streams) override;
 
  private:
   void InitializeOnThread(const camera3_callback_ops_t* callback_ops,
@@ -108,6 +114,8 @@ class ClientDeviceConnector : public DeviceConnector,
   int ProcessCaptureRequest(
       camera3_capture_request_t* capture_request) override;
   int Flush() override;
+  void SignalStreamFlush(uint32_t num_streams,
+                         const camera3_stream_t* const* streams) override;
 
  private:
   void MakeDeviceOpsReceiverOnThread(
@@ -134,6 +142,9 @@ class ClientDeviceConnector : public DeviceConnector,
                                      base::OnceCallback<void(int32_t)> cb);
   cros::mojom::Camera3StreamBufferPtr PrepareStreamBufferPtr(
       const camera3_stream_buffer_t* buffer);
+  void FlushOnThread(base::OnceCallback<void(int)> cb);
+  void SignalStreamFlushOnThread(uint32_t num_streams,
+                                 const camera3_stream_t* const* streams);
   void Notify(cros::mojom::Camera3NotifyMsgPtr message) override;
   void ProcessCaptureResult(
       cros::mojom::Camera3CaptureResultPtr result) override;

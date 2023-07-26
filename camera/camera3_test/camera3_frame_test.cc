@@ -1763,7 +1763,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
 
     cam_device_.AddOutputStream(format_, width_, height_,
                                 CAMERA3_STREAM_ROTATION_0);
-    ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+    std::vector<const camera3_stream_t*> streams;
+    ASSERT_EQ(0, cam_device_.ConfigureStreams(&streams))
         << "Configuring stream fails";
 
     // Get original pattern

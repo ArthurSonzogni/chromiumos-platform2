@@ -145,6 +145,14 @@ int HalDeviceConnector::Flush() {
   return cam_device_->ops->flush(cam_device_);
 }
 
+void HalDeviceConnector::SignalStreamFlush(
+    uint32_t num_streams, const camera3_stream_t* const* streams) {
+  if (!cam_device_ || !cam_device_->ops->signal_stream_flush) {
+    return;
+  }
+  cam_device_->ops->signal_stream_flush(cam_device_, num_streams, streams);
+}
+
 ClientDeviceConnector::ClientDeviceConnector()
     : mojo_callback_ops_(this),
       user_callback_ops_(nullptr),
@@ -398,7 +406,7 @@ ClientDeviceConnector::PrepareStreamBufferPtr(
   buffer_ptr->status =
       static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
   if (buffer->buffer == nullptr) {
-    buffer_ptr->buffer_id = 0;
+    buffer_ptr->buffer_id = cros::mojom::NO_BUFFER_BUFFER_ID;
     return buffer_ptr;
   }
 
@@ -467,11 +475,35 @@ ClientDeviceConnector::PrepareStreamBufferPtr(
 
 int ClientDeviceConnector::Flush() {
   auto future = cros::Future<int32_t>::Create(nullptr);
-  dev_ops_->Flush(cros::GetFutureCallback(future));
+  dev_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::BindOnce(&ClientDeviceConnector::FlushOnThread,
+                     base::Unretained(this), cros::GetFutureCallback(future)));
   if (!future->Wait()) {
-    return -ENODEV;
+    return -EIO;
   }
   return future->Get();
+}
+
+void ClientDeviceConnector::FlushOnThread(base::OnceCallback<void(int)> cb) {
+  dev_ops_->Flush(std::move(cb));
+}
+
+void ClientDeviceConnector::SignalStreamFlush(
+    uint32_t num_streams, const camera3_stream_t* const* streams) {
+  dev_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::BindOnce(&ClientDeviceConnector::SignalStreamFlushOnThread,
+                     base::Unretained(this), num_streams, streams));
+}
+
+void ClientDeviceConnector::SignalStreamFlushOnThread(
+    uint32_t num_streams, const camera3_stream_t* const* streams) {
+  std::vector<uint64_t> stream_ids;
+  for (uint32_t i = 0; i < num_streams; ++i) {
+    stream_ids.push_back(reinterpret_cast<uint64_t>(streams[i]));
+  }
+  dev_ops_->SignalStreamFlush(stream_ids);
 }
 
 void ClientDeviceConnector::Notify(cros::mojom::Camera3NotifyMsgPtr message) {

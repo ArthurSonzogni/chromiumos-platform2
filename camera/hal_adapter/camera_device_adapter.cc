@@ -243,7 +243,8 @@ bool CameraDeviceAdapter::Start() {
     return false;
   }
   device_ops_delegate_ = std::make_unique<Camera3DeviceOpsDelegate>(
-      this, camera_device_ops_thread_.task_runner());
+      this, camera_device_ops_thread_.task_runner(),
+      camera_callback_ops_thread_.task_runner());
   return true;
 }
 
@@ -864,6 +865,29 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
   }
 
   return result;
+}
+
+void CameraDeviceAdapter::SignalStreamFlush(
+    const std::vector<uint64_t>& stream_ids) {
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  if (camera_device_->ops->signal_stream_flush == nullptr) {
+    return;
+  }
+
+  std::vector<const camera3_stream_t*> streams;
+  base::AutoLock streams_lock(streams_lock_);
+  for (auto stream_id : stream_ids) {
+    if (streams_.count(stream_id) == 0) {
+      LOGF(ERROR) << "Invalid stream id: " << stream_id;
+      continue;
+    }
+    streams.push_back(streams_[stream_id].get());
+  }
+
+  camera_device_->ops->signal_stream_flush(camera_device_, streams.size(),
+                                           streams.data());
 }
 
 bool CameraDeviceAdapter::IsRequestOrResultStalling() {

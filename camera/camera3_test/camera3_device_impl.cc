@@ -219,6 +219,13 @@ int Camera3DeviceImpl::Flush() {
   return dev_connector_->Flush();
 }
 
+void Camera3DeviceImpl::SignalStreamFlush(
+    const std::vector<const camera3_stream_t*>& streams) {
+  DCHECK(dev_connector_);
+
+  return dev_connector_->SignalStreamFlush(streams.size(), streams.data());
+}
+
 void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
                                            int* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);

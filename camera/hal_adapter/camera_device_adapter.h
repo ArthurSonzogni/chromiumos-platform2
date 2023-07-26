@@ -168,6 +168,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       mojom::Camera3StreamConfigurationPtr* updated_config,
       AllocatedBuffers* allocated_buffers);
 
+  void SignalStreamFlush(const std::vector<uint64_t>& stream_ids);
+
   bool IsRequestOrResultStalling();
 
   // Closes the camera as a fallback solution for HALs that have not implemented

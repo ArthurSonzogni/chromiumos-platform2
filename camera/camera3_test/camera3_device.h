@@ -98,6 +98,10 @@ class Camera3Device {
   // Configure streams and return configured streams if |streams| is not null.
   int ConfigureStreams(std::vector<const camera3_stream_t*>* streams);
 
+  // Signal HAL to return all buffers of designated streams through
+  // process_capture_result() or return_stream_buffers().
+  void SignalStreamFlush(const std::vector<const camera3_stream_t*>& streams);
+
   // If the buffer management APIs are not supported, allocate output buffers
   // for all configured streams and return them in the stream buffer format,
   // which has the buffer associated to the corresponding stream. The allocated

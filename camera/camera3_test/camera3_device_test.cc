@@ -98,6 +98,13 @@ int Camera3Device::ConfigureStreams(
   return impl_->ConfigureStreams(streams);
 }
 
+void Camera3Device::SignalStreamFlush(
+    const std::vector<const camera3_stream_t*>& streams) {
+  DCHECK(impl_);
+
+  return impl_->SignalStreamFlush(streams);
+}
+
 int Camera3Device::PrepareOutputStreamBuffers(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   DCHECK(impl_);

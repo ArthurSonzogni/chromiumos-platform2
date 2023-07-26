@@ -79,6 +79,8 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   int Flush();
 
+  void SignalStreamFlush(const std::vector<const camera3_stream_t*>& streams);
+
   void Destroy();
 
   const Camera3Device::StaticInfo* GetStaticInfo() const;

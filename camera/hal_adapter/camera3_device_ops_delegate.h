@@ -21,7 +21,8 @@ class Camera3DeviceOpsDelegate
  public:
   Camera3DeviceOpsDelegate(
       CameraDeviceAdapter* camera_device_adapter,
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner);
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      scoped_refptr<base::SingleThreadTaskRunner> callback_ops_task_runner);
 
   Camera3DeviceOpsDelegate(const Camera3DeviceOpsDelegate&) = delete;
   Camera3DeviceOpsDelegate& operator=(const Camera3DeviceOpsDelegate&) = delete;
@@ -63,8 +64,9 @@ class Camera3DeviceOpsDelegate
       mojom::Camera3StreamConfigurationPtr config,
       ConfigureStreamsAndGetAllocatedBuffersCallback callback) override;
 
-  void SignalStreamFlush(const std::vector<uint64_t>& stream_ids) final;
+  void SignalStreamFlush(const std::vector<uint64_t>& stream_ids) override;
 
+  scoped_refptr<base::SingleThreadTaskRunner> callback_ops_task_runner_;
   CameraDeviceAdapter* camera_device_adapter_;
 };
 

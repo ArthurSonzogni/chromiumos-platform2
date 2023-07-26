@@ -73,6 +73,19 @@ static int flush(const camera3_device_t* dev) {
   return client->Flush(dev);
 }
 
+static void signal_stream_flush(const camera3_device_t* dev,
+                                uint32_t num_streams,
+                                const camera3_stream_t* const* streams) {
+  std::stringstream s;
+  for (uint32_t i = 0; i < num_streams; ++i) {
+    if (i > 0) {
+      s << ", ";
+    }
+    s << streams[i];
+  }
+  LOGF(INFO) << "streams: " << s.str();
+}
+
 camera3_device_ops_t g_camera_device_ops = {
     .initialize = cros::initialize,
     .configure_streams = cros::configure_streams,
@@ -83,6 +96,7 @@ camera3_device_ops_t g_camera_device_ops = {
     .get_metadata_vendor_tag_ops = NULL,
     .dump = cros::dump,
     .flush = cros::flush,
+    .signal_stream_flush = cros::signal_stream_flush,
     .reserved = {0},
 };
 

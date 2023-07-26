@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/bind_post_task.h>
 
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_device_adapter.h"
@@ -47,8 +48,10 @@ std::string ConvertToJsonString(
 
 Camera3DeviceOpsDelegate::Camera3DeviceOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
-    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    scoped_refptr<base::SingleThreadTaskRunner> callback_ops_task_runner)
     : internal::MojoReceiver<Camera3DeviceOps>(task_runner),
+      callback_ops_task_runner_(callback_ops_task_runner),
       camera_device_adapter_(camera_device_adapter) {}
 
 Camera3DeviceOpsDelegate::~Camera3DeviceOpsDelegate() = default;
@@ -106,7 +109,14 @@ void Camera3DeviceOpsDelegate::Flush(FlushCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
-  std::move(callback).Run(camera_device_adapter_->Flush());
+  int32_t ret = camera_device_adapter_->Flush();
+
+  // Make sure that |callback| is run after pending tasks such as
+  // ProcessCaptureResult() on |callback_ops_task_runner_| finish.
+  base::OnceCallback<void()> run_callback_on_thread = base::BindPostTask(
+      task_runner_, base::BindOnce(std::move(callback), ret));
+  callback_ops_task_runner_->PostTask(FROM_HERE,
+                                      std::move(run_callback_on_thread));
 }
 
 void Camera3DeviceOpsDelegate::RegisterBuffer(
@@ -152,7 +162,10 @@ void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
 
 void Camera3DeviceOpsDelegate::SignalStreamFlush(
     const std::vector<uint64_t>& stream_ids) {
-  // TODO(b/226688669): Implement Camera3DeviceOpsDelegate::SignalStreamFlush.
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  camera_device_adapter_->SignalStreamFlush(stream_ids);
 }
 
 }  // namespace cros
