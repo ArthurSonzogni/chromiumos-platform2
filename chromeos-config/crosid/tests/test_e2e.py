@@ -71,6 +71,8 @@ def make_fake_sysroot(
             fdt_frid
         )
 
+    # Leave it use legacy path.  Once we completely switched to use current
+    # chromeos_acpi driver, change the path to "GOOG0016:00".
     chromeos_acpi_path = path / "sys" / "devices" / "platform" / "chromeos_acpi"
     if acpi_frid is not None:
         chromeos_acpi_path.mkdir(exist_ok=True, parents=True)

@@ -15,7 +15,16 @@
 #define PROC_FDT_PATH "/proc/device-tree"
 #define PROC_FDT_COREBOOT_PATH PROC_FDT_PATH "/firmware/coreboot"
 #define PROC_FDT_CHROMEOS_PATH PROC_FDT_PATH "/firmware/chromeos"
-#define SYSFS_CHROMEOS_ACPI_PATH "/sys/devices/platform/chromeos_acpi"
+/* Path with legacy chromeos_acpi ("ACPI_CHROMEOS") driver. */
+#define SYSFS_CHROMEOS_ACPI_LEGACY_DRIVER_PATH \
+	"/sys/devices/platform/chromeos_acpi"
+/*
+ * Path with current chromeos_acpi ("CHROMEOS_ACPI") driver with firmwares
+ * without https://crrev.com/c/2266713.
+ */
+#define SYSFS_CHROMEOS_ACPI_LEGACY_FW_PATH "/sys/devices/platform/GGL0001:00"
+/* Path with current chromeos_acpi ("CHROMEOS_ACPI") driver. */
+#define SYSFS_CHROMEOS_ACPI_PATH "/sys/devices/platform/GOOG0016:00"
 #define SYSFS_SMBIOS_ID_PATH "/sys/class/dmi/id"
 #define SYSFS_VPD_RO_PATH "/sys/firmware/vpd/ro"
 #define UNIBUILD_CONFIG_PATH "/usr/share/chromeos-config"

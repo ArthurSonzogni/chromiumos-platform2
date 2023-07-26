@@ -15,6 +15,8 @@ static int get_full_frid(char **frid_out)
 		const char *dir;
 		const char *file;
 	} files_to_try[] = {
+		{ SYSFS_CHROMEOS_ACPI_LEGACY_DRIVER_PATH, "FRID" },
+		{ SYSFS_CHROMEOS_ACPI_LEGACY_FW_PATH, "FRID" },
 		{ SYSFS_CHROMEOS_ACPI_PATH, "FRID" },
 		{ PROC_FDT_CHROMEOS_PATH, "readonly-firmware-version" },
 	};
