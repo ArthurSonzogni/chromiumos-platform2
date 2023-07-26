@@ -1108,6 +1108,58 @@ event --help`.
 | patch_number | string | The OS version patch number (e.g. "59.0"). |
 | release_channel | string | The OS release channel (e.g. "stable-channel"). |
 
+#### Platform Service Record
+
+##### PsrInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| log_state | [LogState](#LogState) | The PSR log state. |
+| uuid | string | PSR UUID. |
+| upid | string | Platform UPID. |
+| log_start_date | uint32 | Logging start date in UNIX time. |
+| oem_name | string | OEM's name, ex: Panasonic. |
+| oem_make | string | OEM's make, ex: Toughbook. |
+| oem_model | string | OEM's model, ex: 55. |
+| manufacture_country | string | Country of device origin. |
+| oem_data | string | Additional OEM data. |
+| uptime_seconds | uint32 | Cumulative number of seconds at S0. |
+| s5_counter | uint32 | Cumulative number of S0->S5. |
+| s4_counter | uint32 | Cumulative number of S0->S4. |
+| s3_counter | uint32 | Cumulative number of S0->S3. |
+| warm_reset_counter | uint32 | Cumulative number of warm resets (soft reboots). |
+| events | array<[PsrEvent](#PsrEvent)> | First 100 PSR events that have been saved. |
+| is_supported | bool | Is PSR supported. |
+
+##### LogState
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
+| kNotStarted | PSR logging was not started yet. |
+| kStarted | PSR logging started and currently running. |
+| kStopped | PSR logging was stopped due to some critical event. |
+
+##### PsrEvent
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| type | [EventType](#EventType) | PSR event type. |
+| time | uint32 | Time of occurrence. |
+| data | uint32 | Event data. |
+
+##### EventType
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
+| kLogStart | Log has ended. |
+| kLogEnd | Log has ended. |
+| kCsmeRecovery | CSME recovery. |
+| kPrtcFailure | Protected real-time counter failure. |
+| kSvnIncrease | Secure Version Number increased. |
+| kMissing | Missing event file. |
+| kInvalid | Invalid event. |
+| kCsmeDamState | Entered CSME DAM state. |
+| kCsmeUnlockState | CSME unlocked state for debugging. |
+| kFwVersionChanged | FW Version changed. |
+
 ####  Time zone
 
 #####  TimezoneInfo
