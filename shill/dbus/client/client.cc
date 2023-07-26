@@ -9,6 +9,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
+#include <dbus/shill/dbus-constants.h>
 #include <net-base/ip_address.h>
 
 using org::chromium::flimflam::DeviceProxy;
@@ -469,6 +470,9 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
 
   if (device->type == Client::Device::Type::kCellular) {
     device->cellular_country_code = GetCellularProviderCountryCode(properties);
+    device->cellular_primary_ifname =
+        brillo::GetVariantValueOrDefault<std::string>(
+            properties, kPrimaryMultiplexedInterfaceProperty);
   }
   // Obtain and monitor properties on this device's selected service and treat
   // them as if they are instrinsically characteristic of the device itself.
@@ -515,6 +519,14 @@ void Client::OnDevicePropertyChange(bool device_added,
     device = it->second->device();
     device->cellular_country_code = property_value.TryGet<
         std::map<std::string, std::string>>()[shill::kOperatorCountryKey];
+  } else if (property_name == kPrimaryMultiplexedInterfaceProperty) {
+    auto it = devices_.find(device_path);
+    if (it == devices_.end()) {
+      LOG(ERROR) << "Device [" << device_path << "] not found";
+      return;
+    }
+    device = it->second->device();
+    device->cellular_primary_ifname = property_value.TryGet<std::string>();
   } else {
     return;
   }
@@ -759,6 +771,7 @@ std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
     device->state = dev->device()->state;
     device->ipconfig = dev->device()->ipconfig;
     device->cellular_country_code = dev->device()->cellular_country_code;
+    device->cellular_primary_ifname = dev->device()->cellular_primary_ifname;
     devices.emplace_back(std::move(device));
   }
   return devices;
@@ -866,6 +879,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
           properties, kIPConfigsProperty));
   if (device->type == Client::Device::Type::kCellular) {
     device->cellular_country_code = GetCellularProviderCountryCode(properties);
+    device->cellular_primary_ifname =
+        brillo::GetVariantValueOrDefault<std::string>(
+            properties, kPrimaryMultiplexedInterfaceProperty);
   }
   return device;
 }

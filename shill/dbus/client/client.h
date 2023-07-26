@@ -112,6 +112,8 @@ class BRILLO_EXPORT Client {
     Type type;
     ConnectionState state;
     std::string ifname;
+    std::string cellular_primary_ifname;  // empty if cell device has no primary
+                                          // interface property.
     IPConfig ipconfig;
     std::string cellular_country_code;
   };
