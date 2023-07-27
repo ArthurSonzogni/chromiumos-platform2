@@ -1517,11 +1517,9 @@ Sample output:
 Progress: 100
 Output: {
    "peripherals": [ {
-      "bluetooth_class": "123456",
       "name": "Example Bluetooth device name",
       "peripheral_id": "36974412",
       "rssi_history": [ -52, -46, -63 ],
-      "uuids": [ "0000110a-0000-1000-8000-00805f9b34fb", "00000000-0000-0000-0000-000000000000" ]
    } ]
 }
 

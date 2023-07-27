@@ -136,23 +136,6 @@ class BluetoothScanningRoutineTest : public testing::Test {
     } else {
       EXPECT_CALL(*mock_device, is_rssi_valid()).WillOnce(Return(false));
     }
-    // Bluetooth class of device (CoD).
-    if (device.bluetooth_class.has_value()) {
-      EXPECT_CALL(*mock_device, is_bluetooth_class_valid())
-          .WillOnce(Return(true));
-      EXPECT_CALL(*mock_device, bluetooth_class())
-          .WillOnce(Return(device.bluetooth_class.value()));
-    } else {
-      EXPECT_CALL(*mock_device, is_bluetooth_class_valid())
-          .WillOnce(Return(false));
-    }
-    // UUIDs.
-    if (!device.uuids.empty()) {
-      EXPECT_CALL(*mock_device, is_uuids_valid()).WillOnce(Return(true));
-      EXPECT_CALL(*mock_device, uuids()).WillOnce(ReturnRef(device.uuids));
-    } else {
-      EXPECT_CALL(*mock_device, is_uuids_valid()).WillOnce(Return(false));
-    }
   }
 
   void SetDeviceRssiChangedCall(const dbus::ObjectPath& device_path,
@@ -166,15 +149,11 @@ class BluetoothScanningRoutineTest : public testing::Test {
   void SetScannedDeviceData(dbus::ObjectPath device_path,
                             std::string address,
                             std::optional<std::string> name,
-                            std::vector<int16_t> rssi_history,
-                            std::optional<uint32_t> bluetooth_class,
-                            std::vector<std::string> uuids) {
+                            std::vector<int16_t> rssi_history) {
     fake_devices_[device_path] = ScannedPeripheralDevice{
         .peripheral_id = base::NumberToString(base::FastHash(address)),
         .name = name,
-        .rssi_history = rssi_history,
-        .bluetooth_class = bluetooth_class,
-        .uuids = uuids};
+        .rssi_history = rssi_history};
     device_addresses_[device_path] = address;
     mock_device_proxies_[device_path] =
         std::make_unique<StrictMock<org::bluez::Device1ProxyMock>>();
@@ -191,15 +170,6 @@ class BluetoothScanningRoutineTest : public testing::Test {
       for (const auto& rssi : device.second.rssi_history)
         out_rssi_history.Append(rssi);
       peripheral.Set("rssi_history", std::move(out_rssi_history));
-      if (device.second.bluetooth_class.has_value()) {
-        peripheral.Set(
-            "bluetooth_class",
-            base::NumberToString(device.second.bluetooth_class.value()));
-      }
-      base::Value::List out_uuids;
-      for (const auto& uuid : device.second.uuids)
-        out_uuids.Append(uuid);
-      peripheral.Set("uuids", std::move(out_uuids));
       peripherals.Append(std::move(peripheral));
     }
     base::Value::Dict output_dict;
@@ -244,13 +214,9 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Set up fake data.
   SetScannedDeviceData(dbus::ObjectPath("/org/bluez/dev_70_88_6B_92_34_70"),
-                       "70:88:6B:92:34:70", "GID6B", {-54, -66, -62}, 2360344,
-                       {"0000110c-0000-1000-8000-00805f9b34fb",
-                        "0000110e-0000-1000-8000-00805f9b34fb",
-                        "0000111e-0000-1000-8000-00805f9b34fb"});
+                       "70:88:6B:92:34:70", "GID6B", {-54, -66, -62});
   SetScannedDeviceData(dbus::ObjectPath("/org/bluez/dev_70_D6_9F_0B_4F_D8"),
-                       "70:D6:9F:0B:4F:D8", std::nullopt, {-64}, std::nullopt,
-                       {});
+                       "70:D6:9F:0B:4F:D8", std::nullopt, {-64});
   // Start scanning.
   SetSwitchDiscoveryCall();
   // Reset powered.
