@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -450,39 +451,28 @@ void Metrics::NotifyNeighborLinkMonitorFailure(
     Technology tech,
     net_base::IPFamily family,
     patchpanel::Client::NeighborRole role) {
-  NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
   using Role = patchpanel::Client::NeighborRole;
-  switch (family) {
-    case net_base::IPFamily::kIPv4:
-      switch (role) {
-        case Role::kGateway:
-          failure = kNeighborIPv4GatewayFailure;
-          break;
-        case Role::kDnsServer:
-          failure = kNeighborIPv4DNSServerFailure;
-          break;
-        case Role::kGatewayAndDnsServer:
-          failure = kNeighborIPv4GatewayAndDNSServerFailure;
-          break;
-        default:
-          failure = kNeighborLinkMonitorFailureUnknown;
-      }
-      break;
-    case net_base::IPFamily::kIPv6:
-      switch (role) {
-        case Role::kGateway:
-          failure = kNeighborIPv6GatewayFailure;
-          break;
-        case Role::kDnsServer:
-          failure = kNeighborIPv6DNSServerFailure;
-          break;
-        case Role::kGatewayAndDnsServer:
-          failure = kNeighborIPv6GatewayAndDNSServerFailure;
-          break;
-        default:
-          failure = kNeighborLinkMonitorFailureUnknown;
-      }
-      break;
+  static constexpr auto failure_table =
+      base::MakeFixedFlatMap<std::pair<net_base::IPFamily, Role>,
+                             NeighborLinkMonitorFailure>({
+          {{net_base::IPFamily::kIPv4, Role::kGateway},
+           kNeighborIPv4GatewayFailure},
+          {{net_base::IPFamily::kIPv4, Role::kDnsServer},
+           kNeighborIPv4DNSServerFailure},
+          {{net_base::IPFamily::kIPv4, Role::kGatewayAndDnsServer},
+           kNeighborIPv4GatewayAndDNSServerFailure},
+          {{net_base::IPFamily::kIPv6, Role::kGateway},
+           kNeighborIPv6GatewayFailure},
+          {{net_base::IPFamily::kIPv6, Role::kDnsServer},
+           kNeighborIPv6DNSServerFailure},
+          {{net_base::IPFamily::kIPv6, Role::kGatewayAndDnsServer},
+           kNeighborIPv6GatewayAndDNSServerFailure},
+      });
+
+  NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
+  const auto it = failure_table.find({family, role});
+  if (it != failure_table.end()) {
+    failure = it->second;
   }
 
   SendEnumToUMA(kMetricNeighborLinkMonitorFailure, tech, failure);
