@@ -581,8 +581,8 @@ TEST_F(CpuFetcherTest, ValidArmCpuFlagsCpuinfoFile) {
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags, expected);
 }
 
-// Test that we have soc_id for Arm devices.
-TEST_F(CpuFetcherTest, ModelNameFromSoCID) {
+// Test that we have soc_id for Arm devices that don't have a specific driver
+TEST_F(CpuFetcherTest, ModelNameFromJEP106SoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            kNoModelNameCpuinfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
@@ -597,6 +597,42 @@ TEST_F(CpuFetcherTest, ModelNameFromSoCID) {
   auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
   EXPECT_TRUE(model_name.has_value());
   ASSERT_EQ(model_name.value(), "MediaTek 8192");
+}
+
+// Test that we have soc_id for Qualcomm devices
+TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCID) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                           kNoModelNameCpuinfoContents));
+
+  // For Qualcomm devices we _should_ just be looking at the "family" and
+  // "machine" files, but throw others in there (based on a real device)
+  // to make sure it doesn't confuse the parser.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeSoCDevicesDir).Append("soc0").Append("family"),
+      "jep106:0070\n"));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeSoCDevicesDir).Append("soc0").Append("soc_id"),
+      "jep106:0070:01a9\n"));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeSoCDevicesDir).Append("soc1").Append("family"),
+      "Snapdragon\n"));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeSoCDevicesDir).Append("soc1").Append("soc_id"),
+      "425\n"));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeSoCDevicesDir)
+                                               .Append("soc1")
+                                               .Append("machine"),
+                                           "SC7180\n"));
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
 }
 
 // Test that we have device tree compatible string for Arm devices.

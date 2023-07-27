@@ -52,6 +52,9 @@ constexpr char kProcessorIdKey[] = "processor";
 constexpr char kX86CpuFlagsKey[] = "flags";
 constexpr char kArmCpuFlagsKey[] = "Features";
 
+// Used to parse SoCs
+constexpr char kQualcommFamilyName[] = "Snapdragon";
+
 // Regex used to parse /proc/stat.
 constexpr char kRelativeStatFileRegex[] = R"(cpu(\d+)\s+(\d+) \d+ (\d+) (\d+))";
 
@@ -295,6 +298,7 @@ bool ParseProcessor(const std::string& processor,
 void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
   // Currently, only Mediatek and Qualcomm with newer kernel support this
   // feature.
+  std::string family, machine;
   std::string content;
   base::FileEnumerator file_enum(
       root_dir.Append(kRelativeSoCDevicesDir), false,
@@ -302,6 +306,19 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
           base::FileEnumerator::FileType::DIRECTORIES |
           base::FileEnumerator::FileType::SHOW_SYM_LINKS);
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
+    // Qualcomm devices have a specific SoC driver that will report a "family"
+    // of "Snapdragon" and then provide the marketing name of the SoC. If we
+    // find this then we return right away.
+    if (ReadAndTrimString(path.Append("family"), &family)) {
+      if (family == kQualcommFamilyName) {
+        if (!ReadAndTrimString(path.Append("machine"), &machine)) {
+          continue;
+        }
+        *model_name = "Qualcomm " + family + " " + machine;
+        return;
+      }
+    }
+
     if (!base::ReadFileToString(path.Append("soc_id"), &content)) {
       continue;
     }

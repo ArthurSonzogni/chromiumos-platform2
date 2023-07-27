@@ -114,7 +114,15 @@ void EnterHealthdMinijail() {
   BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/bus/soc/devices/soc0/soc_id"));
   BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/bus/soc/devices/soc0/family"));
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/bus/soc/devices/soc0/machine"));
+  BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/bus/soc/devices/soc1/soc_id"));
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/bus/soc/devices/soc1/family"));
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/bus/soc/devices/soc1/machine"));
   // Files related to the device information.
   BindMountIfPathExists(jail.get(), base::FilePath("/sys/dev"));
   // TPM did_vid file.
