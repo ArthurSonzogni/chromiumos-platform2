@@ -53,7 +53,7 @@ constexpr char kDeviceAddress[] = "00:01:02:03:04:05";
 constexpr int kDeviceInterfaceIndex = 1;
 constexpr char kRedirectUrl[] = "http://www.redirect.com/signin";
 // Portal detection is technology agnostic, use 'unknown'.
-constexpr Technology kTestTechnology = Technology::kUnknown;
+constexpr Technology kTestTechnology = Technology::kWiFi;
 
 class TestNetwork : public Network {
  public:

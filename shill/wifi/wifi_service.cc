@@ -878,16 +878,18 @@ void WiFiService::ResetSuspectedCredentialFailures() {
   suspected_credential_failures_ = 0;
 }
 
-void WiFiService::InitializeCustomMetrics() const {
+void WiFiService::InitializeCustomMetrics() {
   SLOG(this, 2) << __func__ << " for " << log_name();
   auto histogram = metrics()->GetFullMetricName(
       Metrics::kMetricTimeToJoinMillisecondsSuffix, technology());
-  metrics()->AddServiceStateTransitionTimer(
-      *this, histogram, Service::kStateAssociating, Service::kStateConfiguring);
+  AddServiceStateTransitionTimer(histogram, Service::kStateAssociating,
+                                 Service::kStateConfiguring);
 }
 
 void WiFiService::SendPostReadyStateMetrics(
-    int64_t time_resume_to_ready_milliseconds) const {
+    base::TimeDelta time_resume_to_ready) const {
+  LOG(INFO) << __func__ << " " << log_name()
+            << ": time_resume_to_ready=" << time_resume_to_ready;
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkChannelSuffix,
                                    technology()),
@@ -939,11 +941,11 @@ void WiFiService::SendPostReadyStateMetrics(
       Metrics::kMetricNetworkSignalStrengthMax,
       Metrics::kMetricNetworkSignalStrengthNumBuckets);
 
-  if (time_resume_to_ready_milliseconds > 0) {
+  if (time_resume_to_ready.InMilliseconds() > 0) {
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
             Metrics::kMetricTimeResumeToReadyMillisecondsSuffix, technology()),
-        time_resume_to_ready_milliseconds,
+        time_resume_to_ready.InMilliseconds(),
         Metrics::kTimerHistogramMillisecondsMin,
         Metrics::kTimerHistogramMillisecondsMax,
         Metrics::kTimerHistogramNumBuckets);
@@ -965,7 +967,7 @@ void WiFiService::SendPostReadyStateMetrics(
         LOG(WARNING) << "Invalid frequency: " << frequency_;
       }
       if (!metric_name.empty()) {
-        metrics()->SendToUMA(metric_name, time_resume_to_ready_milliseconds,
+        metrics()->SendToUMA(metric_name, time_resume_to_ready.InMilliseconds(),
                              Metrics::kTimerHistogramMillisecondsMin,
                              Metrics::kTimerHistogramMillisecondsMax,
                              Metrics::kTimerHistogramNumBuckets);

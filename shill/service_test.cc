@@ -22,6 +22,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "base/time/time.h"
 #include "shill/dbus/dbus_control.h"
@@ -55,6 +56,7 @@ using testing::AtLeast;
 using testing::DefaultValue;
 using testing::DoAll;
 using testing::Eq;
+using testing::Ge;
 using testing::HasSubstr;
 using testing::Mock;
 using testing::NiceMock;
@@ -2704,4 +2706,41 @@ TEST_F(ServiceTest, UpdateLinkSpeedTwice) {
 
   EXPECT_EQ(uplink_speed_kbps(), 30);
 }
+
+TEST_F(ServiceTest, ServiceMetricsTimeToConfig) {
+  EXPECT_CALL(*metrics(), SendToUMA("Network.Shill.Wifi.TimeToConfig", Ge(0),
+                                    Metrics::kTimerHistogramMillisecondsMin,
+                                    Metrics::kTimerHistogramMillisecondsMax,
+                                    Metrics::kTimerHistogramNumBuckets));
+  service_->UpdateStateTransitionMetrics(Service::kStateConfiguring);
+  service_->UpdateStateTransitionMetrics(Service::kStateConnected);
+}
+
+TEST_F(ServiceTest, ServiceMetricsTimeToPortal) {
+  EXPECT_CALL(*metrics(), SendToUMA("Network.Shill.Wifi.TimeToPortal", Ge(0),
+                                    Metrics::kTimerHistogramMillisecondsMin,
+                                    Metrics::kTimerHistogramMillisecondsMax,
+                                    Metrics::kTimerHistogramNumBuckets));
+  service_->UpdateStateTransitionMetrics(Service::kStateConnected);
+  service_->UpdateStateTransitionMetrics(Service::kStateNoConnectivity);
+}
+
+TEST_F(ServiceTest, ServiceMetricsTimeToOnline) {
+  EXPECT_CALL(*metrics(), SendToUMA("Network.Shill.Wifi.TimeToOnline", Ge(0),
+                                    Metrics::kTimerHistogramMillisecondsMin,
+                                    Metrics::kTimerHistogramMillisecondsMax,
+                                    Metrics::kTimerHistogramNumBuckets));
+  service_->UpdateStateTransitionMetrics(Service::kStateConnected);
+  service_->UpdateStateTransitionMetrics(Service::kStateOnline);
+}
+
+TEST_F(ServiceTest, ServiceMetricsServiceFailure) {
+  service_->SetFailure(Service::kFailureBadPassphrase);
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(Metrics::kMetricNetworkServiceError, Technology::kWiFi,
+                    MetricsEnums::kNetworkServiceErrorBadPassphrase));
+  service_->UpdateStateTransitionMetrics(Service::kStateFailure);
+}
+
 }  // namespace shill

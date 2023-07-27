@@ -129,7 +129,6 @@ std::string GetApnTypeString(
 
 Metrics::Metrics()
     : library_(&metrics_library_),
-      time_resume_to_ready_timer_(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_between_rekey_and_connection_failure_timer_(
           new chromeos_metrics::Timer),
@@ -312,78 +311,6 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
   }
 }
 
-void Metrics::RegisterService(const Service& service) {
-  SLOG(2) << __func__;
-  LOG_IF(WARNING, base::Contains(services_metrics_,
-                                 service.GetDBusObjectPathIdentifier()))
-      << "Repeatedly registering " << service.log_name();
-  services_metrics_[service.GetDBusObjectPathIdentifier()] =
-      std::make_unique<ServiceMetrics>();
-  InitializeCommonServiceMetrics(service);
-}
-
-void Metrics::DeregisterService(const Service& service) {
-  services_metrics_.erase(service.GetDBusObjectPathIdentifier());
-}
-
-void Metrics::AddServiceStateTransitionTimer(const Service& service,
-                                             const std::string& histogram_name,
-                                             Service::ConnectState start_state,
-                                             Service::ConnectState stop_state) {
-  SLOG(2) << __func__ << ": adding " << histogram_name << " for "
-          << Service::ConnectStateToString(start_state) << " -> "
-          << Service::ConnectStateToString(stop_state);
-  auto it = services_metrics_.find(service.GetDBusObjectPathIdentifier());
-  if (it == services_metrics_.end()) {
-    NOTREACHED() << service.log_name() << " not found";
-    return;
-  }
-  ServiceMetrics* service_metrics = it->second.get();
-  CHECK(start_state < stop_state);
-  int num_buckets = kTimerHistogramNumBuckets;
-  int max_ms = kTimerHistogramMillisecondsMax;
-  if (base::EndsWith(histogram_name, kMetricTimeToJoinMillisecondsSuffix,
-                     base::CompareCase::SENSITIVE)) {
-    // TimeToJoin state transition has a timeout of 70s in wpa_supplicant (see
-    // b/265183655 for more details). Use a larger number of buckets and max
-    // value to capture this.
-    num_buckets = kTimerHistogramNumBucketsLarge;
-    max_ms = kTimerHistogramMillisecondsMaxLarge;
-  }
-  auto timer = std::make_unique<chromeos_metrics::TimerReporter>(
-      histogram_name, kTimerHistogramMillisecondsMin, max_ms, num_buckets);
-  service_metrics->start_on_state[start_state].push_back(timer.get());
-  service_metrics->stop_on_state[stop_state].push_back(timer.get());
-  service_metrics->timers.push_back(std::move(timer));
-}
-
-void Metrics::NotifyServiceStateChanged(const Service& service,
-                                        Service::ConnectState new_state) {
-  auto it = services_metrics_.find(service.GetDBusObjectPathIdentifier());
-  if (it == services_metrics_.end()) {
-    NOTREACHED() << service.log_name() << " not found";
-    return;
-  }
-  ServiceMetrics* service_metrics = it->second.get();
-  UpdateServiceStateTransitionMetrics(service_metrics, new_state);
-
-  if (new_state == Service::kStateFailure)
-    SendServiceFailure(service);
-
-  bootstat::BootStat().LogEvent(
-      base::StringPrintf("network-%s-%s", service.GetTechnologyName().c_str(),
-                         service.GetStateString().c_str())
-          .c_str());
-
-  if (new_state != Service::kStateConnected)
-    return;
-
-  base::TimeDelta time_resume_to_ready;
-  time_resume_to_ready_timer_->GetElapsedTime(&time_resume_to_ready);
-  time_resume_to_ready_timer_->Reset();
-  service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
-}
-
 // static
 std::string Metrics::GetFullMetricName(const char* metric_name,
                                        Technology technology_id,
@@ -397,10 +324,6 @@ std::string Metrics::GetFullMetricName(const char* metric_name,
     return base::StringPrintf("%s.%s.%s", kMetricPrefix, metric_name,
                               technology.c_str());
   }
-}
-
-void Metrics::NotifySuspendDone() {
-  time_resume_to_ready_timer_->Start();
 }
 
 void Metrics::NotifySuspendActionsStarted() {
@@ -1352,56 +1275,6 @@ int Metrics::GetRegulatoryDomainValue(std::string country_code) {
     return ((static_cast<int>(country_code[0]) - static_cast<int>('A')) * 26) +
            (static_cast<int>(country_code[1]) - static_cast<int>('A') + 2);
   }
-}
-
-void Metrics::InitializeCommonServiceMetrics(const Service& service) {
-  Technology technology = service.technology();
-  auto histogram =
-      GetFullMetricName(kMetricTimeToConfigMillisecondsSuffix, technology);
-  AddServiceStateTransitionTimer(service, histogram, Service::kStateConfiguring,
-                                 Service::kStateConnected);
-  histogram =
-      GetFullMetricName(kMetricTimeToPortalMillisecondsSuffix, technology);
-  AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
-                                 Service::kStateNoConnectivity);
-  histogram = GetFullMetricName(kMetricTimeToRedirectFoundMillisecondsSuffix,
-                                technology);
-  AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
-                                 Service::kStateRedirectFound);
-  histogram =
-      GetFullMetricName(kMetricTimeToOnlineMillisecondsSuffix, technology);
-  AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
-                                 Service::kStateOnline);
-}
-
-void Metrics::UpdateServiceStateTransitionMetrics(
-    ServiceMetrics* service_metrics, Service::ConnectState new_state) {
-  const char* state_string = Service::ConnectStateToString(new_state);
-  SLOG(5) << __func__ << ": new_state=" << state_string;
-  TimerReportersList& start_timers = service_metrics->start_on_state[new_state];
-  for (auto& start_timer : start_timers) {
-    SLOG(5) << "Starting timer for " << start_timer->histogram_name()
-            << " due to new state " << state_string << ".";
-    start_timer->Start();
-  }
-
-  TimerReportersList& stop_timers = service_metrics->stop_on_state[new_state];
-  for (auto& stop_timer : stop_timers) {
-    SLOG(5) << "Stopping timer for " << stop_timer->histogram_name()
-            << " due to new state " << state_string << ".";
-    if (stop_timer->Stop()) {
-      ReportMilliseconds(*stop_timer);
-    }
-  }
-}
-
-void Metrics::SendServiceFailure(const Service& service) {
-  MetricsEnums::NetworkServiceError error =
-      Service::ConnectFailureToMetricsEnum(service.failure());
-  // Publish technology specific connection failure metrics. This will
-  // account for all the connection failures happening while connected to
-  // a particular interface e.g. wifi, cellular etc.
-  SendEnumToUMA(kMetricNetworkServiceError, service.technology(), error);
 }
 
 Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {

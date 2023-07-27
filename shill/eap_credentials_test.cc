@@ -27,6 +27,7 @@
 #include "shill/store/key_value_store.h"
 #include "shill/store/mock_pkcs11_slot_getter.h"
 #include "shill/store/pkcs11_util.h"
+#include "shill/store/property_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 

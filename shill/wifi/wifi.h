@@ -326,10 +326,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
   friend class WiFiMainTest;    // wifi_state_
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange);
@@ -377,11 +373,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
+  FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
   FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
-  FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef);
 
   using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
   using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;

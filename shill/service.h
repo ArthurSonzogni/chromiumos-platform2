@@ -5,6 +5,7 @@
 #ifndef SHILL_SERVICE_H_
 #define SHILL_SERVICE_H_
 
+#include <list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -21,6 +22,7 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/timer.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -219,10 +221,27 @@ class Service : public base::RefCounted<Service> {
 
   static const int kPriorityNone;
 
+  // Helper types and struct used for recording transition times between certain
+  // Connection states of a Service.
+  using TimerReporters =
+      std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>;
+  using TimerReportersList = std::list<chromeos_metrics::TimerReporter*>;
+  using TimerReportersByState = std::map<ConnectState, TimerReportersList>;
+  struct ServiceMetrics {
+    // All TimerReporter objects are stored in |timers| which owns the objects.
+    // |start_on_state| and |stop_on_state| contain pointers to the
+    // TimerReporter objects and control when to start and stop the timers.
+    TimerReporters timers;
+    TimerReportersByState start_on_state;
+    TimerReportersByState stop_on_state;
+  };
+
   // A constructor for the Service object
   Service(Manager* manager, Technology technology);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
+
+  ServiceMetrics* service_metrics() const { return service_metrics_.get(); }
 
   // AutoConnect MAY choose to ignore the connection request in some
   // cases. For example, if the corresponding Device only supports one
@@ -320,6 +339,11 @@ class Service : public base::RefCounted<Service> {
 
   void set_previous_error_for_testing(const std::string& error) {
     previous_error_ = error;
+  }
+
+  void set_time_resume_to_ready_timer_for_testing(
+      std::unique_ptr<chromeos_metrics::Timer> timer) {
+    time_resume_to_ready_timer_ = std::move(timer);
   }
 
   unsigned int serial_number() const { return serial_number_; }
@@ -438,12 +462,12 @@ class Service : public base::RefCounted<Service> {
 
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
-  // |time_resume_to_ready_milliseconds| holds the elapsed time from when
+  // |time_resume_to_ready| holds the elapsed time from when
   // the system was resumed until when the service transitioned to the
   // connected state.  This value is non-zero for the first service transition
   // to the connected state after a resume.
   virtual void SendPostReadyStateMetrics(
-      int64_t /*time_resume_to_ready_milliseconds*/) const {}
+      base::TimeDelta /*time_resume_to_ready*/) const {}
 
   // Setter and getter for uplink and downlink speeds for the service.
   // The unit of both link speeds are Kbps.
@@ -678,6 +702,11 @@ class Service : public base::RefCounted<Service> {
     return previous_error_serial_number_;
   }
 
+  // Update ServiceMetrics state and notifies UMA this object that |service|
+  // state has changed if the new state is an error state. Visible for unit
+  // tests.
+  void UpdateStateTransitionMetrics(Service::ConnectState new_state);
+
   // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
   // in that order.
   static const size_t kTrafficCounterArraySize;
@@ -815,6 +844,12 @@ class Service : public base::RefCounted<Service> {
   StaticIPParameters* mutable_static_ip_parameters() {
     return &static_ip_parameters_;
   }
+
+  // Tracks the time it takes |service| to go from |start_state| to
+  // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
+  void AddServiceStateTransitionTimer(const std::string& histogram_name,
+                                      ConnectState start_state,
+                                      ConnectState stop_state);
 
   // Service's user friendly name, mapped to the Service Object kNameProperty.
   // Use |log_name_| for logging to avoid logging PII.
@@ -1003,6 +1038,9 @@ class Service : public base::RefCounted<Service> {
   void OnPortalDetectionConfigurationChange(bool restart,
                                             const std::string& reason);
 
+  void InitializeServiceStateTransitionMetrics();
+  void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);
+
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
@@ -1116,6 +1154,8 @@ class Service : public base::RefCounted<Service> {
   uint32_t uplink_speed_kbps_ = 0;
   uint32_t downlink_speed_kbps_ = 0;
 
+  std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
+  std::unique_ptr<ServiceMetrics> service_metrics_;
   // Timestamps of last manual connect attempt, last successful connection and
   // last time online.
   base::Time last_manual_connect_attempt_;

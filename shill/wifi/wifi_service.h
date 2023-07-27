@@ -195,9 +195,9 @@ class WiFiService : public Service {
 
   bool hidden_ssid() const { return hidden_ssid_; }
 
-  void InitializeCustomMetrics() const;
+  void InitializeCustomMetrics();
   void SendPostReadyStateMetrics(
-      int64_t time_resume_to_ready_milliseconds) const override;
+      base::TimeDelta time_resume_to_ready) const override;
 
   // Clear any cached credentials stored in wpa_supplicant related to |this|.
   // This will disconnect this service if it is currently connected.
@@ -336,13 +336,13 @@ class WiFiService : public Service {
   friend class WiFiServiceFuzzer;  // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReady);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDLB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDHB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUHB);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadySameBSSIDUndef);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReady);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadyEAP);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB);
+  FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, Connectable);

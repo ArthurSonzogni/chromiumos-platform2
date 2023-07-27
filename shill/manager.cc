@@ -1587,7 +1587,6 @@ void Manager::OnSuspendImminent() {
 }
 
 void Manager::OnSuspendDone() {
-  metrics_->NotifySuspendDone();
   // Un-suppress auto-connect in case this flag was left set in dark resume.
   set_suppress_autoconnect(false);
   for (const auto& service : services_) {

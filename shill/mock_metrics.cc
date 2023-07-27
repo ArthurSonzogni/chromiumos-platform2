@@ -4,17 +4,9 @@
 
 #include "shill/mock_metrics.h"
 
-using ::testing::_;
-using ::testing::AnyNumber;
-
 namespace shill {
 
-MockMetrics::MockMetrics() {
-  EXPECT_CALL(*this, AddServiceStateTransitionTimer(_, _, _, _))
-      .Times(AnyNumber());
-  EXPECT_CALL(*this, NotifyServiceStateChanged(_, _)).Times(AnyNumber());
-}
-
+MockMetrics::MockMetrics() {}
 MockMetrics::~MockMetrics() = default;
 
 }  // namespace shill

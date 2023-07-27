@@ -19,14 +19,18 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <metrics/bootstat.h>
+#include <metrics/timer.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/eap_credentials.h"
@@ -205,7 +209,8 @@ Service::Service(Manager* manager, Technology technology)
       link_monitor_disabled_(false),
       managed_credentials_(false),
       unreliable_(false),
-      source_(ONCSource::kONCSourceUnknown) {
+      source_(ONCSource::kONCSourceUnknown),
+      time_resume_to_ready_timer_(new chromeos_metrics::Timer) {
   // Provide a default name.
   friendly_name_ = "service_" + base::NumberToString(serial_number_);
   log_name_ = friendly_name_;
@@ -307,7 +312,8 @@ Service::Service(Manager* manager, Technology technology)
   store_.RegisterConstUint32(kUplinkSpeedPropertyKbps, &uplink_speed_kbps_);
   store_.RegisterConstUint32(kDownlinkSpeedPropertyKbps, &downlink_speed_kbps_);
 
-  metrics()->RegisterService(*this);
+  service_metrics_ = std::make_unique<ServiceMetrics>();
+  InitializeServiceStateTransitionMetrics();
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
   store_.RegisterDerivedKeyValueStore(
@@ -323,7 +329,6 @@ Service::Service(Manager* manager, Technology technology)
 }
 
 Service::~Service() {
-  metrics()->DeregisterService(*this);
   SLOG(this, 1) << technology() << " Service " << serial_number_
                 << " destroyed.";
 }
@@ -643,7 +648,7 @@ void Service::SetState(ConnectState state) {
 
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
-  metrics()->NotifyServiceStateChanged(*this, state);
+  UpdateStateTransitionMetrics(state);
 
   if (IsConnectedState(previous_state_) != IsConnectedState(state_)) {
     adaptor_->EmitBoolChanged(kIsConnectedProperty, IsConnected());
@@ -1846,6 +1851,7 @@ void Service::OnBeforeSuspend(ResultCallback callback) {
 }
 
 void Service::OnAfterResume() {
+  time_resume_to_ready_timer_->Start();
   // Forget old autoconnect failures across suspend/resume.
   ResetAutoConnectCooldownTime();
   // Forget if the user disconnected us, we might be able to connect now.
@@ -2495,4 +2501,93 @@ void Service::SetDownlinkSpeedKbps(uint32_t downlink_speed_kbps) {
     adaptor_->EmitIntChanged(kDownlinkSpeedPropertyKbps, downlink_speed_kbps_);
   }
 }
+
+void Service::UpdateStateTransitionMetrics(Service::ConnectState new_state) {
+  UpdateServiceStateTransitionMetrics(new_state);
+  if (new_state == kStateFailure) {
+    MetricsEnums::NetworkServiceError error =
+        ConnectFailureToMetricsEnum(failure());
+    // Publish technology specific connection failure metrics. This will
+    // account for all the connection failures happening while connected to
+    // a particular interface e.g. wifi, cellular etc.
+    metrics()->SendEnumToUMA(Metrics::kMetricNetworkServiceError, technology(),
+                             error);
+  }
+  bootstat::BootStat().LogEvent(
+      base::StrCat({"network-", GetTechnologyName(), "-", GetStateString()}));
+  if (new_state != kStateConnected) {
+    return;
+  }
+  base::TimeDelta time_resume_to_ready;
+  time_resume_to_ready_timer_->GetElapsedTime(&time_resume_to_ready);
+  time_resume_to_ready_timer_->Reset();
+  SendPostReadyStateMetrics(time_resume_to_ready);
+}
+
+void Service::UpdateServiceStateTransitionMetrics(
+    Service::ConnectState new_state) {
+  const char* state_string = ConnectStateToString(new_state);
+  SLOG(5) << __func__ << " " << log_name() << ": new_state=" << state_string;
+  TimerReportersList& start_timers =
+      service_metrics_->start_on_state[new_state];
+  for (auto* start_timer : start_timers) {
+    SLOG(5) << __func__ << " " << log_name() << " Starting timer for "
+            << start_timer->histogram_name() << " due to new state "
+            << state_string << ".";
+    start_timer->Start();
+  }
+  TimerReportersList& stop_timers = service_metrics_->stop_on_state[new_state];
+  for (auto* stop_timer : stop_timers) {
+    SLOG(5) << __func__ << " " << log_name() << " Stopping timer for "
+            << stop_timer->histogram_name() << " due to new state "
+            << state_string << ".";
+    if (stop_timer->Stop()) {
+      metrics()->ReportMilliseconds(*stop_timer);
+    }
+  }
+}
+
+void Service::InitializeServiceStateTransitionMetrics() {
+  auto histogram = Metrics::GetFullMetricName(
+      Metrics::kMetricTimeToConfigMillisecondsSuffix, technology());
+  AddServiceStateTransitionTimer(histogram, kStateConfiguring, kStateConnected);
+  histogram = Metrics::GetFullMetricName(
+      Metrics::kMetricTimeToPortalMillisecondsSuffix, technology());
+  AddServiceStateTransitionTimer(histogram, kStateConnected,
+                                 kStateNoConnectivity);
+  histogram = Metrics::GetFullMetricName(
+      Metrics::kMetricTimeToRedirectFoundMillisecondsSuffix, technology());
+  AddServiceStateTransitionTimer(histogram, kStateConnected,
+                                 kStateRedirectFound);
+  histogram = Metrics::GetFullMetricName(
+      Metrics::kMetricTimeToOnlineMillisecondsSuffix, technology());
+  AddServiceStateTransitionTimer(histogram, kStateConnected, kStateOnline);
+}
+
+void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
+                                             Service::ConnectState start_state,
+                                             Service::ConnectState stop_state) {
+  SLOG(5) << __func__ << " " << log_name() << ": adding " << histogram_name
+          << " for " << ConnectStateToString(start_state) << " -> "
+          << ConnectStateToString(stop_state);
+  CHECK(start_state < stop_state);
+  int num_buckets = Metrics::kTimerHistogramNumBuckets;
+  int max_ms = Metrics::kTimerHistogramMillisecondsMax;
+  if (base::EndsWith(histogram_name,
+                     Metrics::kMetricTimeToJoinMillisecondsSuffix,
+                     base::CompareCase::SENSITIVE)) {
+    // TimeToJoin state transition has a timeout of 70s in wpa_supplicant (see
+    // b/265183655 for more details). Use a larger number of buckets and max
+    // value to capture this.
+    num_buckets = Metrics::kTimerHistogramNumBucketsLarge;
+    max_ms = Metrics::kTimerHistogramMillisecondsMaxLarge;
+  }
+  auto timer = std::make_unique<chromeos_metrics::TimerReporter>(
+      histogram_name, Metrics::kTimerHistogramMillisecondsMin, max_ms,
+      num_buckets);
+  service_metrics_->start_on_state[start_state].push_back(timer.get());
+  service_metrics_->stop_on_state[stop_state].push_back(timer.get());
+  service_metrics_->timers.push_back(std::move(timer));
+}
+
 }  // namespace shill

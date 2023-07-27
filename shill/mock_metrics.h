@@ -22,13 +22,6 @@ class MockMetrics : public Metrics {
 
   ~MockMetrics() override;
 
-  MOCK_METHOD(void,
-              AddServiceStateTransitionTimer,
-              (const Service&,
-               const std::string&,
-               Service::ConnectState,
-               Service::ConnectState),
-              (override));
   MOCK_METHOD(void, DeregisterDevice, (int), (override));
   MOCK_METHOD(void, NotifyDeviceScanStarted, (int), (override));
   MOCK_METHOD(void, NotifyDeviceScanFinished, (int), (override));
@@ -51,10 +44,6 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void,
               NotifyCellularEntitlementCheckResult,
               (Metrics::CellularEntitlementCheck result),
-              (override));
-  MOCK_METHOD(void,
-              NotifyServiceStateChanged,
-              (const Service&, Service::ConnectState),
               (override));
   MOCK_METHOD(void,
               Notify80211Disconnect,

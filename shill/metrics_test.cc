@@ -25,7 +25,6 @@
 #include "shill/cellular/apn_list.h"
 #include "shill/metrics_enums.h"
 #include "shill/mock_control.h"
-#include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
@@ -53,35 +52,12 @@ class MetricsTest : public Test {
   MetricsTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         recorder_(new metrics::structured::MockRecorder()),
-        open_wifi_service_(new MockWiFiService(&manager_,
-                                               manager_.wifi_provider(),
-                                               ssid_,
-                                               kModeManaged,
-                                               kSecurityNone,
-                                               WiFiSecurity::kNone,
-                                               false)),
-        wep_wifi_service_(new MockWiFiService(&manager_,
-                                              manager_.wifi_provider(),
-                                              ssid_,
-                                              kModeManaged,
-                                              kSecurityWep,
-                                              WiFiSecurity::kWep,
-                                              false)),
-        eap_wifi_service_(new MockWiFiService(&manager_,
-                                              manager_.wifi_provider(),
-                                              ssid_,
-                                              kModeManaged,
-                                              kSecurityClass8021x,
-                                              WiFiSecurity::kWpa2Enterprise,
-                                              false)),
-        eap_(new MockEapCredentials()),
         service_(new MockService(&manager_)) {}
 
   ~MetricsTest() override = default;
 
   void SetUp() override {
     metrics_.SetLibraryForTesting(&library_);
-    eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
     auto recorder =
         std::unique_ptr<metrics::structured::MockRecorder>(recorder_);
     metrics::structured::RecorderSingleton::GetInstance()->SetRecorderForTest(
@@ -95,23 +71,6 @@ class MetricsTest : public Test {
   }
 
  protected:
-  void ExpectCommonPostReady(Metrics::WiFiChannel channel,
-                             Metrics::WiFiNetworkPhyMode mode,
-                             MetricsEnums::WirelessSecurity security,
-                             int signal_strength) {
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel", channel,
-                                        Metrics::kMetricNetworkChannelMax));
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.PhyMode", mode,
-                                        Metrics::kWiFiNetworkPhyModeMax));
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security", security,
-                                        MetricsEnums::kWirelessSecurityMax));
-    EXPECT_CALL(library_,
-                SendToUMA("Network.Shill.Wifi.SignalStrength", signal_strength,
-                          Metrics::kMetricNetworkSignalStrengthMin,
-                          Metrics::kMetricNetworkSignalStrengthMax,
-                          Metrics::kMetricNetworkSignalStrengthNumBuckets));
-  }
-
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
@@ -119,10 +78,6 @@ class MetricsTest : public Test {
   MetricsLibraryMock library_;
   metrics::structured::MockRecorder* recorder_;
   const std::vector<uint8_t> ssid_;
-  scoped_refptr<MockWiFiService> open_wifi_service_;
-  scoped_refptr<MockWiFiService> wep_wifi_service_;
-  scoped_refptr<MockWiFiService> eap_wifi_service_;
-  MockEapCredentials* eap_;  // Owned by |eap_wifi_service_|.
   scoped_refptr<MockService> service_;
 };
 
@@ -214,306 +169,6 @@ TEST_F(MetricsTest, HistogramMetric) {
               SendToUMA("Network.Shill.FakeBuckets.Wifi", 148, 0, 250, 64));
   metrics_.SendToUMA(metric3, Technology(Technology::kWiFi), 148);
   Mock::VerifyAndClearExpectations(&library_);
-}
-
-TEST_F(MetricsTest, TimeToConfig) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToConfig", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConfiguring);
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
-}
-
-TEST_F(MetricsTest, TimeToPortal) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToPortal", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateNoConnectivity);
-}
-
-TEST_F(MetricsTest, TimeToOnline) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToOnline", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateOnline);
-}
-
-TEST_F(MetricsTest, ServiceFailure) {
-  EXPECT_CALL(*service_, failure())
-      .WillRepeatedly(Return(Service::kFailureBadPassphrase));
-  EXPECT_CALL(*service_, technology())
-      .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Network.Shill.Wifi.ServiceErrors",
-                            MetricsEnums::kNetworkServiceErrorBadPassphrase,
-                            MetricsEnums::kNetworkServiceErrorMax));
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
-}
-
-TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMaxLarge,
-                                  Metrics::kTimerHistogramNumBucketsLarge));
-  metrics_.NotifyServiceStateChanged(*open_wifi_service_,
-                                     Service::kStateAssociating);
-  metrics_.NotifyServiceStateChanged(*open_wifi_service_,
-                                     Service::kStateConfiguring);
-}
-
-TEST_F(MetricsTest, WiFiServicePostReady) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
-
-  const int kStrength = -42;
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
-      .Times(0);
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol", _, _))
-      .Times(0);
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol", _, _))
-      .Times(0);
-  wep_wifi_service_->frequency_ = 2412;
-  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wep_wifi_service_->raw_signal_strength_ = kStrength;
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  Mock::VerifyAndClearExpectations(&library_);
-
-  // Simulate a system suspend, resume and an AP reconnect.
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifySuspendDone();
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  Mock::VerifyAndClearExpectations(&library_);
-  Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
-
-  // Make sure subsequent connects do not count towards TimeResumeToReady.
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
-      .Times(0);
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-}
-
-TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
-  const int kStrength = -42;
-  ExpectCommonPostReady(
-      Metrics::kWiFiChannel2412, Metrics::kWiFiNetworkPhyMode11a,
-      MetricsEnums::kWirelessSecurityWpa2Enterprise, -kStrength);
-  eap_wifi_service_->frequency_ = 2412;
-  eap_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  eap_wifi_service_->raw_signal_strength_ = kStrength;
-  EXPECT_CALL(
-      *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWiFi)));
-  metrics_.NotifyServiceStateChanged(*eap_wifi_service_,
-                                     Service::kStateConnected);
-}
-
-TEST_F(MetricsTest, WiFiServicePostReadySameBSSIDLB) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
-  const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
-  wep_wifi_service_->frequency_ = 2412;
-  wep_wifi_service_->bssid_ = kBSSID;
-  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wep_wifi_service_->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(&manager_, "wifi", "", 0, 0, new MockWakeOnWiFi());
-  wep_wifi_service_->wifi_ = wifi_device;
-  wifi_device->current_service_ = wep_wifi_service_;
-
-  // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyLB", Ge(0),
-                        Metrics::kTimerHistogramMillisecondsMin,
-                        Metrics::kTimerHistogramMillisecondsMax,
-                        Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifySuspendDone();
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
-
-  Mock::VerifyAndClearExpectations(&library_);
-  Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
-  wifi_device->current_service_ = nullptr;
-  wep_wifi_service_->wifi_ = nullptr;
-}
-
-TEST_F(MetricsTest, WiFiServicePostReadySameBSSIDHB) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
-  const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
-  wep_wifi_service_->frequency_ = 5180;
-  wep_wifi_service_->bssid_ = kBSSID;
-  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wep_wifi_service_->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(&manager_, "wifi", "", 0, 0, new MockWakeOnWiFi());
-  wep_wifi_service_->wifi_ = wifi_device;
-  wifi_device->current_service_ = wep_wifi_service_;
-
-  // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
-  ExpectCommonPostReady(Metrics::kWiFiChannel5180,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyHB", Ge(0),
-                        Metrics::kTimerHistogramMillisecondsMin,
-                        Metrics::kTimerHistogramMillisecondsMax,
-                        Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifySuspendDone();
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
-
-  Mock::VerifyAndClearExpectations(&library_);
-  Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
-  wifi_device->current_service_ = nullptr;
-  wep_wifi_service_->wifi_ = nullptr;
-}
-
-TEST_F(MetricsTest, WiFiServicePostReadySameBSSIDUHB) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
-  const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
-  wep_wifi_service_->frequency_ = 6375;
-  wep_wifi_service_->bssid_ = kBSSID;
-  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wep_wifi_service_->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(&manager_, "wifi", "", 0, 0, new MockWakeOnWiFi());
-  wep_wifi_service_->wifi_ = wifi_device;
-  wifi_device->current_service_ = wep_wifi_service_;
-
-  // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
-  ExpectCommonPostReady(Metrics::kWiFiChannel6375,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyUHB", Ge(0),
-                        Metrics::kTimerHistogramMillisecondsMin,
-                        Metrics::kTimerHistogramMillisecondsMax,
-                        Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifySuspendDone();
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
-
-  Mock::VerifyAndClearExpectations(&library_);
-  Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
-  wifi_device->current_service_ = nullptr;
-  wep_wifi_service_->wifi_ = nullptr;
-}
-
-TEST_F(MetricsTest, WiFiServicePostReadySameBSSIDUndef) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
-  const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
-  wep_wifi_service_->frequency_ = 123;
-  wep_wifi_service_->bssid_ = kBSSID;
-  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wep_wifi_service_->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(&manager_, "wifi", "", 0, 0, new MockWakeOnWiFi());
-  wep_wifi_service_->wifi_ = wifi_device;
-  wifi_device->current_service_ = wep_wifi_service_;
-
-  // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
-  ExpectCommonPostReady(Metrics::kWiFiChannelUndef,
-                        Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
-                                  Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets))
-      .Times(1);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyLB", _, _, _, _))
-      .Times(0);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyHB", _, _, _, _))
-      .Times(0);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.TimeResumeToReadyUHB", _, _, _, _))
-      .Times(0);
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  metrics_.NotifySuspendDone();
-  metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
-                                     Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
-
-  Mock::VerifyAndClearExpectations(&library_);
-  Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
-  wifi_device->current_service_ = nullptr;
-  wep_wifi_service_->wifi_ = nullptr;
 }
 
 TEST_F(MetricsTest, FrequencyToChannel) {

@@ -6,7 +6,6 @@
 #define SHILL_METRICS_H_
 
 #include <cstdint>
-#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -19,9 +18,9 @@
 
 #include "shill/error.h"
 #include "shill/metrics_enums.h"
+#include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/shill_time.h"
-#include "shill/service.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -1547,34 +1546,12 @@ class Metrics {
   static EapInnerProtocol EapInnerProtocolStringToEnum(
       const std::string& inner);
 
-  // Registers a service with this object so it can use the timers to track
-  // state transition metrics.
-  void RegisterService(const Service& service);
-
-  // Deregisters the service from this class.  All state transition timers
-  // will be removed.
-  void DeregisterService(const Service& service);
-
-  // Tracks the time it takes |service| to go from |start_state| to
-  // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
-  virtual void AddServiceStateTransitionTimer(const Service& service,
-                                              const std::string& histogram_name,
-                                              Service::ConnectState start_state,
-                                              Service::ConnectState stop_state);
-
   // Specializes |metric_name| with the specified |technology_id| and
   // |location|.
   static std::string GetFullMetricName(
       const char* metric_name,
       Technology technology_id,
       TechnologyLocation location = TechnologyLocation::kBeforeName);
-
-  // Notifies this object that |service| state has changed.
-  virtual void NotifyServiceStateChanged(const Service& service,
-                                         Service::ConnectState new_state);
-
-  // Notifies this object of the end of a suspend attempt.
-  void NotifySuspendDone();
 
   // Notifies this object that suspend actions started executing.
   void NotifySuspendActionsStarted();
@@ -1696,7 +1673,7 @@ class Metrics {
     Error::Type error;
     std::string detailed_error;
     std::string uuid;
-    shill::Stringmap apn_info;
+    std::map<std::string, std::string> apn_info;
     std::vector<APNType> connection_apn_types;
     IPConfigMethod ipv4_config_method;
     IPConfigMethod ipv6_config_method;
@@ -2153,20 +2130,6 @@ class Metrics {
   FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);
   FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
 
-  using TimerReporters =
-      std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>;
-  using TimerReportersList = std::list<chromeos_metrics::TimerReporter*>;
-  using TimerReportersByState =
-      std::map<Service::ConnectState, TimerReportersList>;
-  struct ServiceMetrics {
-    // All TimerReporter objects are stored in |timers| which owns the objects.
-    // |start_on_state| and |stop_on_state| contain pointers to the
-    // TimerReporter objects and control when to start and stop the timers.
-    TimerReporters timers;
-    TimerReportersByState start_on_state;
-    TimerReportersByState stop_on_state;
-  };
-
   struct DeviceMetrics {
     DeviceMetrics() {}
     Technology technology;
@@ -2197,17 +2160,9 @@ class Metrics {
   static constexpr uint16_t kWiFiFrequency5955 = 5955;
   static constexpr uint16_t kWiFiFrequency7115 = 7115;
 
-  void InitializeCommonServiceMetrics(const Service& service);
-  void UpdateServiceStateTransitionMetrics(ServiceMetrics* service_metrics,
-                                           Service::ConnectState new_state);
-  void SendServiceFailure(const Service& service);
-
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
 
   // For unit test purposes.
-  void set_time_resume_to_ready_timer(chromeos_metrics::Timer* timer) {
-    time_resume_to_ready_timer_.reset(timer);  // Passes ownership
-  }
   void set_time_suspend_actions_timer(chromeos_metrics::Timer* timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
   }
@@ -2240,12 +2195,8 @@ class Metrics {
   // MetricsLibraryMock object instead.
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface* library_;
-  // Map of ServiceMetrics objects indexed by the RPC identifier of the
-  // associated services.
-  std::map<std::string, std::unique_ptr<ServiceMetrics>> services_metrics_;
   // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
   base::StringPiece pseudo_tag_salt_;
-  std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer>
       time_between_rekey_and_connection_failure_timer_;
