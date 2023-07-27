@@ -45,7 +45,6 @@ copies.
 | [codelab](./codelab/) | Codelab exercise |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
-| [cronista](./cronista/) | Tamper evident storage daemon |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [crosdns](./crosdns/) | Hostname resolution service for ChromeOS |
 | [crosh](./crosh/) | The ChromiumOS shell |
@@ -157,7 +156,6 @@ copies.
 | [sepolicy](./sepolicy/) | SELinux policy for ChromeOS |
 | [shadercached](./shadercached/) | Shader cache management daemon |
 | [shill](./shill/) | ChromeOS Connection Manager |
-| [sirenia](./sirenia/) | Minimalistic init written in Rust |
 | [smbfs](./smbfs/) | FUSE-based filesystem for accessing Samba / Windows networking shares |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
 | [spaced](./spaced/) | Disk space information daemon |

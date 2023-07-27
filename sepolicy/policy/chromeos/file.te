@@ -73,7 +73,6 @@ type cros_core_collector_exec, exec_type, file_type, cros_file_type, cros_system
 type cros_cras_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crash_reporter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crash_sender_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_cronista_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crosdns_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crossystem_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cryptohome_namespace_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

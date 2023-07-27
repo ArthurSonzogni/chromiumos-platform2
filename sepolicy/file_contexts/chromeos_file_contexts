@@ -83,7 +83,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/chunneld               u:object_r:cros_chunneld_exec:s0
 /usr/bin/core_collector[0-9]*   u:object_r:cros_core_collector_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
-/usr/bin/cronista               u:object_r:cros_cronista_exec:s0
 /usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/cros-health-tool       u:object_r:cros_health_tool_exec:s0
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
