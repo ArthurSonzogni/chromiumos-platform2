@@ -1068,11 +1068,11 @@ TEST_F(NetworkTest, ApplyAddress) {
   network_->TriggerApplyAddress(properties);
 
   properties.address_family = IPAddress::kFamilyIPv6;
-  properties.method = kTypeIPv6;
+  properties.method = kTypeSLAAC;
   properties.address = ipv6_local->address().ToString();
   properties.subnet_prefix = ipv6_local->prefix_length();
   properties.broadcast_address = "";
-  // SLAAC (kTypeIPv6) address should not trigger ApplyAddress.
+  // SLAAC (kTypeSLAAC) address should not trigger ApplyAddress.
   EXPECT_CALL(network_applier_, ApplyAddress(kTestIfindex, _, _)).Times(0);
   network_->TriggerApplyAddress(properties);
 
@@ -1148,7 +1148,7 @@ TEST_F(NetworkTest, ApplyRouteIPv6) {
                          false, true, false, IsEmpty(), IsEmpty(), IsEmpty()));
   network_->TriggerApplyRoute(properties);
 
-  properties.method = kTypeIPv6;
+  properties.method = kTypeSLAAC;
   // Don't need to add default route for SLAAC.
   EXPECT_CALL(network_applier_,
               ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv6, ipv6_gateway,
@@ -1206,14 +1206,14 @@ class NetworkStartTest : public NetworkTest {
     ipv4_link_protocol_with_static_props_.mtu = kIPv4LinkProtocolMTU;
 
     ipv6_slaac_props_.address_family = IPAddress::kFamilyIPv6;
-    ipv6_slaac_props_.method = kTypeIPv6;
+    ipv6_slaac_props_.method = kTypeSLAAC;
     ipv6_slaac_props_.address = kIPv6SLAACAddress;
     ipv6_slaac_props_.subnet_prefix = kIPv6SLAACPrefix;
     ipv6_slaac_props_.gateway = kIPv6SLAACGateway;
     ipv6_slaac_props_.dns_servers = {kIPv6SLAACNameserver};
 
     ipv6_link_protocol_props_.address_family = IPAddress::kFamilyIPv6;
-    ipv6_link_protocol_props_.method = kTypeIPv6;
+    ipv6_link_protocol_props_.method = kTypeSLAAC;
     ipv6_link_protocol_props_.address = kIPv6LinkProtocolAddress;
     ipv6_link_protocol_props_.subnet_prefix = kIPv6LinkProtocolPrefix;
     ipv6_link_protocol_props_.gateway = kIPv6LinkProtocolGateway;

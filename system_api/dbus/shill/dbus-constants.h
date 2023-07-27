@@ -729,6 +729,7 @@ constexpr char kTypeDHCP[] = "dhcp";
 constexpr char kTypeBOOTP[] = "bootp";
 constexpr char kTypeZeroConf[] = "zeroconf";
 constexpr char kTypeDHCP6[] = "dhcp6";
+constexpr char kTypeSLAAC[] = "slaac";
 // kTypeVPN[] = "vpn" is defined above in device type session.
 
 // Flimflam error options.

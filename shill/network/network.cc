@@ -606,7 +606,7 @@ void Network::OnIPv6AddressChanged() {
   }
 
   properties.address_family = IPAddress::kFamilyIPv6;
-  properties.method = kTypeIPv6;
+  properties.method = kTypeSLAAC;
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config()->properties().dns_servers;
@@ -1225,11 +1225,11 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
     }
   }
 
-  // For IPv4 and IPv6 VPNs shill has to create default route by itself.
-  // For IPv6 physical networks with RAs it is done by kernel.
-  // Note that IPv6 VPN uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
+  // For IPv4, IPv6 VPNs, and IPv6 celluar where SLAAC is done by modem shill
+  // has to create default route by itself. For other IPv6 networks with
+  // in-kernel SLAAC, the default route is set up by the kernel.
   bool default_route =
-      properties.default_route && (properties.method != kTypeIPv6);
+      properties.default_route && (properties.method != kTypeSLAAC);
 
   bool blackhole_ipv6 = properties.blackhole_ipv6;
 
@@ -1277,9 +1277,8 @@ void Network::ApplyAddress(const IPConfig::Properties& properties) {
   SLOG(2) << logging_tag_ << ": " << __func__ << " on "
           << IPAddress::GetAddressFamilyName(properties.address_family);
 
-  // Skip address configuration if the address is from SLAAC. Note that IPv6
-  // VPN uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
-  const bool skip_ip_configuration = properties.method == kTypeIPv6;
+  // Skip address configuration if the address is from SLAAC.
+  const bool skip_ip_configuration = properties.method == kTypeSLAAC;
   if (fixed_ip_params_ || skip_ip_configuration) {
     return;
   }
