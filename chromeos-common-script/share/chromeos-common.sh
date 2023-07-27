@@ -365,7 +365,7 @@ get_fixed_dst_drive() {
     esac
     # No " here, the variable may contain wildcards.
     for rootdev in ${DEFAULT_ROOTDEV}; do
-      [ -f "${rootdev}" ] || continue
+      [ -d "${rootdev}" ] || continue
       dev="/dev/$(basename "${rootdev}")"
       if [ -b "${dev}" ]; then
         case "${dev}" in
