@@ -47,6 +47,8 @@ class FileHandler {
   bool WriteOpensslEncryptedRollbackData(
       const std::string& openssl_encrypted_rollback_data) const;
   // Removes OpenSSL encrypted rollback data in powerwash-safe directory.
+  // Rollback metrics data cleanup relies on this method only being called
+  // in rollback_cleanup.
   bool RemoveOpensslEncryptedRollbackData() const;
 
   // Checks if TPM encrypted rollback data in powerwash-safe directory
@@ -59,6 +61,8 @@ class FileHandler {
   bool WriteTpmEncryptedRollbackData(
       const std::string& tpm_encrypted_rollback_data) const;
   // Removes TPM encrypted rollback data in powerwash-safe directory.
+  // Rollback metrics data cleanup relies on this method only being called
+  // in rollback_cleanup.
   bool RemoveTpmEncryptedRollbackData() const;
 
   // Checks if decrypted rollback data in oobe_config_restore directory exists.

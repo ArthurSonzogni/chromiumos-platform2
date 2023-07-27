@@ -45,19 +45,26 @@ void ZeroTpmSpaceIfExists() {
 
 }  // namespace
 
-// Cleans up after a rollback happened by deleting any remaining files and
-// zero'ing the TPM space if it exists. Should be called once the device is
-// owned.
+// Deletes leftovers from a preceding enterprise rollback. Should be called
+// only when the device is owned.
 int main(int argc, char* argv[]) {
   InitLog();
   oobe_config::FileHandler file_handler;
   file_handler.RemoveRestorePath();
+
+  // Only clean metrics file when encrypted rollback data is present, as that is
+  // a sign that a rollback process just finished. Otherwise we may be cleaning
+  // data too early.
+  if (file_handler.HasOpensslEncryptedRollbackData() ||
+      file_handler.HasTpmEncryptedRollbackData()) {
+    oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
+    if (metrics_handler.IsTrackingRollbackEvents()) {
+      metrics_handler.StopTrackingRollback();
+    }
+  }
+
   file_handler.RemoveOpensslEncryptedRollbackData();
   file_handler.RemoveTpmEncryptedRollbackData();
   ZeroTpmSpaceIfExists();
-  oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
-  if (metrics_handler.IsTrackingRollbackEvents()) {
-    metrics_handler.StopTrackingRollback();
-  }
   return 0;
 }
