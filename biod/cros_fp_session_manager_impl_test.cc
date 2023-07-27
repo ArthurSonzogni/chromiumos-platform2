@@ -198,6 +198,58 @@ TEST_F(CrosFpSessionManagerTest, UpdateRecord) {
   CheckTemplatesEqual(std::vector<Record>());
 }
 
+TEST_F(CrosFpSessionManagerTest, DeleteRecord) {
+  const std::string kUser("testuser");
+  const std::string kRecordIdToDelete("record_id_2");
+  const std::string kRecordNotExisting("record_id_non_existing");
+  const std::vector<Record> kOriginalRecords{
+      Record{
+          .metadata =
+              RecordMetadata{
+                  .record_id = "record_id_1",
+                  .user_id = kUser,
+              },
+          .data = base::Base64Encode(brillo::Blob(32, 1)),
+      },
+      Record{
+          .metadata =
+              RecordMetadata{
+                  .record_id = kRecordIdToDelete,
+                  .user_id = kUser,
+              },
+          .data = base::Base64Encode(brillo::Blob(32, 2)),
+      },
+      Record{
+          .metadata =
+              RecordMetadata{
+                  .record_id = "record_id_3",
+                  .user_id = kUser,
+              },
+          .data = base::Base64Encode(brillo::Blob(32, 3)),
+      }};
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser(kUser))
+      .WillOnce(Return(kOriginalRecords));
+
+  EXPECT_TRUE(session_manager_->LoadUser(kUser));
+  CheckTemplatesEqual(kOriginalRecords);
+
+  EXPECT_CALL(*mock_record_manager_, DeleteRecord(kRecordIdToDelete))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(session_manager_->HasRecordId(kRecordIdToDelete));
+  EXPECT_TRUE(session_manager_->DeleteRecord(kRecordIdToDelete));
+  std::vector<Record> new_records{kOriginalRecords[0], kOriginalRecords[2]};
+  CheckTemplatesEqual(new_records);
+
+  EXPECT_FALSE(session_manager_->HasRecordId(kRecordNotExisting));
+  EXPECT_FALSE(session_manager_->DeleteRecord(kRecordNotExisting));
+
+  session_manager_->UnloadUser();
+  EXPECT_FALSE(session_manager_->GetUser().has_value());
+  CheckTemplatesEqual(std::vector<Record>());
+}
+
 TEST_F(CrosFpSessionManagerTest, CreateRecordFailed) {
   const std::string kUser("testuser");
   const std::vector<Record> kOriginalRecords{Record{

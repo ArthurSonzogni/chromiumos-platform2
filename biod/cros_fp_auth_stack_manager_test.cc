@@ -545,6 +545,53 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
 }
 
+TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialSuccess) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kRecordId("record_id");
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, HasRecordId(kRecordId))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, DeleteRecord(kRecordId))
+      .WillOnce(Return(true));
+  // Assume there are no more templates after deletion.
+  // `PreloadCurrentUserTemplates` is covered in other tests already anyway.
+  EXPECT_CALL(*mock_session_manager_, GetRecords())
+      .WillOnce(Return(std::vector<CrosFpSessionManager::SessionRecord>()));
+
+  DeleteCredentialRequest request;
+  request.set_record_id(kRecordId);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
+            DeleteCredentialReply::SUCCESS);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialNonExisting) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kRecordId("record_id");
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, HasRecordId(kRecordId))
+      .WillOnce(Return(false));
+
+  DeleteCredentialRequest request;
+  request.set_record_id(kRecordId);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
+            DeleteCredentialReply::NOT_EXIST);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialFailed) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kRecordId("record_id");
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, HasRecordId(kRecordId))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, DeleteRecord(kRecordId))
+      .WillOnce(Return(false));
+
+  DeleteCredentialRequest request;
+  request.set_record_id(kRecordId);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
+            DeleteCredentialReply::DELETION_FAILED);
+}
+
 class CrosFpAuthStackManagerInitiallyEnrollDoneTest
     : public CrosFpAuthStackManagerTest {
  public:

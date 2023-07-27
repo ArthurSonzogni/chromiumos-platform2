@@ -79,6 +79,9 @@ AuthStackManagerWrapper::AuthStackManagerWrapper(
   auth_stack_interface->AddMethodHandler(
       kAuthStackManagerAuthenticateCredentialMethod, base::Unretained(this),
       &AuthStackManagerWrapper::AuthenticateCredential);
+  auth_stack_interface->AddMethodHandler(
+      kAuthStackManagerDeleteCredentialMethod, base::Unretained(this),
+      &AuthStackManagerWrapper::DeleteCredential);
   dbus_object_.RegisterAsync(std::move(completion_callback));
 
   // Add this AuthStackManagerWrapper instance to observe session state
@@ -279,6 +282,12 @@ void AuthStackManagerWrapper::AuthenticateCredential(
          AuthenticateCredentialReply reply) { response->Return(reply); };
   auth_stack_manager_->AuthenticateCredential(
       request, base::BindOnce(std::move(callback), std::move(response)));
+}
+
+void AuthStackManagerWrapper::DeleteCredential(
+    std::unique_ptr<DBusMethodResponse<const DeleteCredentialReply&>> response,
+    const DeleteCredentialRequest& request) {
+  response->Return(auth_stack_manager_->DeleteCredential(request));
 }
 
 bool AuthStackManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {

@@ -308,6 +308,35 @@ void CrosFpAuthStackManager::AuthenticateCredential(
   return;
 }
 
+DeleteCredentialReply CrosFpAuthStackManager::DeleteCredential(
+    const DeleteCredentialRequest& request) {
+  DeleteCredentialReply reply;
+  if (!session_manager_->GetUser().has_value()) {
+    LOG(ERROR) << "Can only delete credential when there is a user session.";
+    reply.set_status(DeleteCredentialReply::INCORRECT_STATE);
+    return reply;
+  }
+  const std::string& record_id = request.record_id();
+  if (!session_manager_->HasRecordId(record_id)) {
+    LOG(WARNING) << "Trying to delete a non-existing credential.";
+    reply.set_status(DeleteCredentialReply::NOT_EXIST);
+    return reply;
+  }
+  if (!session_manager_->DeleteRecord(record_id)) {
+    LOG(ERROR) << "Failed to delete credential.";
+    reply.set_status(DeleteCredentialReply::DELETION_FAILED);
+    return reply;
+  }
+  if (!PreloadCurrentUserTemplates()) {
+    LOG(ERROR) << "Failed to reload the current user's templates. Biod locked "
+                  "for further actions.";
+    // The credential is still deleted successfully, so don't need to return
+    // error here.
+  }
+  reply.set_status(DeleteCredentialReply::SUCCESS);
+  return reply;
+}
+
 void CrosFpAuthStackManager::OnUserLoggedOut() {
   session_manager_->UnloadUser();
 }
@@ -401,6 +430,10 @@ bool CrosFpAuthStackManager::LoadUser(std::string user_id) {
     state_ = State::kLocked;
     return false;
   }
+  return PreloadCurrentUserTemplates();
+}
+
+bool CrosFpAuthStackManager::PreloadCurrentUserTemplates() {
   std::vector<CrosFpSessionManager::SessionRecord> records =
       session_manager_->GetRecords();
   for (size_t i = 0; i < records.size(); i++) {

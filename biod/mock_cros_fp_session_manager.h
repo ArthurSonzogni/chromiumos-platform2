@@ -38,6 +38,8 @@ class MockCrosFpSessionManager : public CrosFpSessionManager {
               (const BiodStorageInterface::RecordMetadata&,
                std::unique_ptr<VendorTemplate>),
               (override));
+  MOCK_METHOD(bool, HasRecordId, (const std::string&), (override));
+  MOCK_METHOD(bool, DeleteRecord, (const std::string&), (override));
   MOCK_METHOD(std::vector<SessionRecord>, GetRecords, (), (override));
   MOCK_METHOD(std::optional<BiodStorageInterface::RecordMetadata>,
               GetRecordMetadata,

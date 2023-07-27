@@ -70,6 +70,9 @@ class AuthStackManager {
       const AuthenticateCredentialRequest& request,
       AuthenticateCredentialCallback callback) = 0;
 
+  virtual DeleteCredentialReply DeleteCredential(
+      const DeleteCredentialRequest& request) = 0;
+
   // This will be called when a user logs out.
   virtual void OnUserLoggedOut() = 0;
 

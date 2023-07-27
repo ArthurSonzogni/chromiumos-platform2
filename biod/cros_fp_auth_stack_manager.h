@@ -86,6 +86,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void AuthenticateCredential(
       const AuthenticateCredentialRequest& request,
       AuthStackManager::AuthenticateCredentialCallback callback) override;
+  DeleteCredentialReply DeleteCredential(
+      const DeleteCredentialRequest& request) override;
   void OnUserLoggedOut() override;
   void OnUserLoggedIn(const std::string& user_id) override;
   void SetEnrollScanDoneHandler(const AuthStackManager::EnrollScanDoneCallback&
@@ -122,6 +124,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void OnSessionFailed();
 
   bool LoadUser(std::string user_id);
+  // Preload encrypted user templates into FPMCU. We only need to do this when
+  // the current user has changed, or when we delete a template and a reload is
+  // required.
+  bool PreloadCurrentUserTemplates();
 
   bool RequestEnrollImage();
   bool RequestEnrollFingerUp();

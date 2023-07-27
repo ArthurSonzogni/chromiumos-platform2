@@ -61,6 +61,9 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const AuthenticateCredentialReply&>> response,
       const AuthenticateCredentialRequest& request);
+  void DeleteCredential(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            const DeleteCredentialReply&>> response,
+                        const DeleteCredentialRequest& request);
   bool EnrollSessionCancel(brillo::ErrorPtr* error);
   bool AuthSessionEnd(brillo::ErrorPtr* error);
 

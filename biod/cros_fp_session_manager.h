@@ -45,6 +45,12 @@ class CrosFpSessionManager {
       const BiodStorageInterface::RecordMetadata& record_metadata,
       std::unique_ptr<VendorTemplate> templ) = 0;
 
+  // Return whether a record with |record_id| exists for the current user.
+  virtual bool HasRecordId(const std::string& record_id) = 0;
+
+  // Delete the record with |record_id|. It will fail if no user session exists.
+  virtual bool DeleteRecord(const std::string& record_id) = 0;
+
   // Get all of the templates that belong to the current user session. It will
   // return an empty list if no user session exists.
   virtual std::vector<SessionRecord> GetRecords() = 0;

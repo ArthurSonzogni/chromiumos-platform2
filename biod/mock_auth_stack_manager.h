@@ -34,6 +34,10 @@ class MockAuthStackManager : public AuthStackManager {
               (const AuthenticateCredentialRequest&,
                AuthStackManager::AuthenticateCredentialCallback),
               (override));
+  MOCK_METHOD(DeleteCredentialReply,
+              DeleteCredential,
+              (const DeleteCredentialRequest&),
+              (override));
   MOCK_METHOD(void, OnUserLoggedOut, (), (override));
   MOCK_METHOD(void, OnUserLoggedIn, (const std::string&), (override));
   MOCK_METHOD(void,

@@ -107,6 +107,49 @@ bool CrosFpSessionManagerImpl::UpdateRecord(
   return true;
 }
 
+bool CrosFpSessionManagerImpl::HasRecordId(const std::string& record_id) {
+  if (!user_.has_value()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < records_.size(); i++) {
+    if (records_[i].record_metadata.record_id == record_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CrosFpSessionManagerImpl::DeleteRecord(const std::string& record_id) {
+  if (!user_.has_value()) {
+    LOG(ERROR) << "Can't delete record when there is no active user.";
+    return false;
+  }
+
+  std::optional<size_t> match_idx = std::nullopt;
+  for (size_t i = 0; i < records_.size(); i++) {
+    if (records_[i].record_metadata.record_id == record_id) {
+      match_idx = i;
+      break;
+    }
+  }
+
+  if (!match_idx.has_value()) {
+    LOG(WARNING) << "Deleting non-existing record.";
+    return false;
+  }
+
+  // Removing the record from persistent storage has a chance to fail. Perform
+  // this removal before the in-memory record removal to be sync even in case of
+  // failure.
+  if (!record_manager_->DeleteRecord(record_id)) {
+    LOG(ERROR) << "Failed to delete the record.";
+    return false;
+  }
+  records_.erase(records_.begin() + match_idx.value());
+  return true;
+}
+
 std::vector<SessionRecord> CrosFpSessionManagerImpl::GetRecords() {
   return records_;
 }
