@@ -76,3 +76,4 @@ further restrict what the service can do.
 
 [Upstart service]: conf/os_install_service.conf
 [SELinux policy]: ../sepolicy/policy/chromeos/cros_os_install_service.te
+[virt-firmware]: https://pypi.org/project/virt-firmware/
