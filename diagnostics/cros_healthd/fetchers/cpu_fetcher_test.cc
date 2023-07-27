@@ -135,7 +135,7 @@ constexpr char kFakeCryptoContents[] =
     "driver\t: driver_name\n"
     "module\t: module_name\n";
 
-constexpr char kSoCIDContents[] = "jep106:0426:8192";
+constexpr char kSoCIDContents[] = "jep106:0426:8192\n";
 
 // Workaround matchers for UnorderedElementsAreArray not accepting
 // move-only types.
