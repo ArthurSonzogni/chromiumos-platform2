@@ -232,6 +232,7 @@ class PsrCmdVirt {
   virtual CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
     return kInvalidState;
   }
+  virtual bool CheckPlatformServiceRecord() { return false; }
   virtual std::string IdToHexString(uint8_t id[], int id_len) { return ""; }
 };
 
@@ -244,7 +245,7 @@ class PsrCmd : public PsrCmdVirt {
   virtual ~PsrCmd() = default;
 
   bool GetPlatformServiceRecord(PsrHeciResp& psr_blob);
-  bool CheckPlatformServiceRecord();
+  bool CheckPlatformServiceRecord() override;
   std::string IdToHexString(uint8_t id[], int id_len) override;
 
  private:

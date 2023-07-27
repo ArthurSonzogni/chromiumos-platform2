@@ -44,6 +44,7 @@ class MockPsrCmd : public PsrCmd {
               Check,
               (FwCapsRequest & tx_buff, FwCapsResp& rx_buff),
               (override));
+  MOCK_METHOD(bool, CheckPlatformServiceRecord, (), (override));
 };
 
 class PsrCmdTest : public testing::Test {
@@ -182,10 +183,10 @@ TEST_F(PsrCmdTest, Check) {
 TEST_F(PsrCmdTest, CheckPlatformServiceRecord) {
   MockPsrCmd cmd;
 
-  EXPECT_CALL(cmd, Check(_, _))
-      .WillOnce(Return(MockPsrCmd::CmdStatus::kSuccess));
-  EXPECT_EQ(cmd.CheckPlatformServiceRecord(),
-            true);  // Success.
+  EXPECT_CALL(cmd, CheckPlatformServiceRecord()).WillOnce(Return(false));
+  EXPECT_FALSE(cmd.CheckPlatformServiceRecord());  // Failure.
+  EXPECT_CALL(cmd, CheckPlatformServiceRecord()).WillOnce(Return(true));
+  EXPECT_TRUE(cmd.CheckPlatformServiceRecord());  // Success.
 }
 }  // namespace psr
 }  // namespace diagnostics
