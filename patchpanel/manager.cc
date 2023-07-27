@@ -635,10 +635,18 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
     mac_to_ip[mac_addr].second.push_back(ipv6_addr);
   }
 
+  const auto dhcp_server_controller_iter =
+      dhcp_server_controllers_.find(downstream_ifname);
   std::vector<DownstreamClientInfo> client_infos;
   for (const auto& [mac_addr, ip] : mac_to_ip) {
-    client_infos.push_back({mac_addr, ip.first, ip.second,
-                            /*hostname=*/"", /*vendor_class=*/""});
+    std::string hostname = "";
+    if (dhcp_server_controller_iter != dhcp_server_controllers_.end()) {
+      hostname = dhcp_server_controller_iter->second->GetClientHostname(
+          MacAddressToString(mac_addr));
+    }
+
+    client_infos.push_back(
+        {mac_addr, ip.first, ip.second, hostname, /*vendor_class=*/""});
   }
   return client_infos;
 }
