@@ -57,6 +57,11 @@ absl::Status AuthenticationPlugin::Activate() {
       base::BindOnce(&AuthenticationPlugin::HandleRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
 
+  // Register for login/out signal.
+  device_user_->RegisterSessionChangeListener(
+      base::BindRepeating(&AuthenticationPlugin::HandleSessionStateChange,
+                          weak_ptr_factory_.GetWeakPtr()));
+
   is_active_ = true;
   return absl::OkStatus();
 }
@@ -96,6 +101,27 @@ void AuthenticationPlugin::HandleScreenUnlock() {
       pb::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
   FillCommon(screen_lock);
 
+  message_sender_->SendMessage(reporting::CROS_SECURITY_USER,
+                               xdr_proto->mutable_common(),
+                               std::move(xdr_proto), std::nullopt);
+}
+
+void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
+  auto xdr_proto = std::make_unique<pb::XdrAuthenticateEvent>();
+  auto log_event = xdr_proto->add_batched_events();
+
+  if (state == kStarted) {
+    // TODO(b/289005503): Source auth type.
+    log_event->mutable_logon()->mutable_authentication()->add_auth_factor(
+        cros_xdr::reporting::
+            Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
+  } else if (state == kStopped) {
+    log_event->mutable_logoff();
+  } else {
+    return;
+  }
+
+  FillCommon(log_event);
   message_sender_->SendMessage(reporting::CROS_SECURITY_USER,
                                xdr_proto->mutable_common(),
                                std::move(xdr_proto), std::nullopt);

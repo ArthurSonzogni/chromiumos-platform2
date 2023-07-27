@@ -25,6 +25,10 @@ class MockDeviceUser : public DeviceUserInterface {
               (base::RepeatingClosure signal_callback,
                dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
               (override));
+  MOCK_METHOD(void,
+              RegisterSessionChangeListener,
+              (base::RepeatingCallback<void(const std::string&)> cb),
+              (override));
   MOCK_METHOD(std::string, GetDeviceUser, (), (override));
 };
 }  // namespace secagentd::testing

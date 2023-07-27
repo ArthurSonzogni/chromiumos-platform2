@@ -317,6 +317,8 @@ class AuthenticationPlugin : public PluginInterface {
   void HandleRegistrationResult(const std::string& interface,
                                 const std::string& signal,
                                 bool success);
+  // Creates and sends a login/out event based on the state.
+  void HandleSessionStateChange(const std::string& state);
 
   base::WeakPtrFactory<AuthenticationPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;

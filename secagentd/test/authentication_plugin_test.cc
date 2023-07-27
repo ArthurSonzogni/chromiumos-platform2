@@ -8,10 +8,12 @@
 #include <memory>
 #include <optional>
 
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "missive/util/status.h"
+#include "secagentd/device_user.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_device_user.h"
@@ -62,9 +64,12 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
             })));
   }
 
-  void CheckCommon(const pb::AuthenticateEventAtomicVariant& event) {
-    EXPECT_TRUE(event.common().has_device_user());
-    EXPECT_TRUE(event.common().has_create_timestamp_us());
+  void SaveSessionStateChangeCb() {
+    EXPECT_CALL(*device_user_, RegisterSessionChangeListener)
+        .WillOnce(WithArg<0>(Invoke([this](const base::RepeatingCallback<void(
+                                               const std::string& state)>& cb) {
+          state_changed_cb_ = cb;
+        })));
   }
 
   scoped_refptr<MockMessageSender> message_sender_;
@@ -74,6 +79,7 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
   std::unique_ptr<PluginInterface> plugin_;
   base::RepeatingCallback<void()> locked_cb_;
   base::RepeatingCallback<void()> unlocked_cb_;
+  base::RepeatingCallback<void(const std::string& state)> state_changed_cb_;
 };
 
 TEST_F(AuthenticationPluginTestFixture, TestGetName) {
@@ -122,6 +128,51 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   expected_batched->mutable_common()->set_create_timestamp_us(
       unlock_event->batched_events()[0].common().create_timestamp_us());
   EXPECT_THAT(*expected_event, EqualsProto(*unlock_event));
+}
+
+TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
+  SaveSessionStateChangeCb();
+  EXPECT_CALL(*device_user_, GetDeviceUser)
+      .Times(2)
+      .WillRepeatedly(Return(kDeviceUser));
+
+  // message_sender_ will be called twice. Once for login, once for logout.
+  auto logout_event = std::make_unique<pb::XdrAuthenticateEvent>();
+  auto login_event = std::make_unique<pb::XdrAuthenticateEvent>();
+  EXPECT_CALL(*message_sender_,
+              SendMessage(reporting::Destination::CROS_SECURITY_USER, _, _, _))
+      .Times(2)
+      .WillOnce(WithArg<2>(
+          Invoke([&login_event](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            login_event->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })))
+      .WillOnce(WithArg<2>(
+          Invoke([&logout_event](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            logout_event->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })));
+
+  EXPECT_OK(plugin_->Activate());
+
+  state_changed_cb_.Run(kStarted);
+  auto expected_event = std::make_unique<pb::XdrAuthenticateEvent>();
+  expected_event->mutable_common();
+  auto expected_batched = expected_event->add_batched_events();
+  expected_batched->mutable_logon()->mutable_authentication()->add_auth_factor(
+      pb::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
+  expected_batched->mutable_common()->set_device_user(kDeviceUser);
+  expected_batched->mutable_common()->set_create_timestamp_us(
+      login_event->batched_events()[0].common().create_timestamp_us());
+  EXPECT_THAT(*expected_event, EqualsProto(*login_event));
+
+  state_changed_cb_.Run(kStopped);
+  expected_batched->mutable_logoff();
+  expected_batched->mutable_common()->set_create_timestamp_us(
+      logout_event->batched_events()[0].common().create_timestamp_us());
+  EXPECT_THAT(*expected_event, EqualsProto(*logout_event));
 }
 
 }  // namespace secagentd::testing

@@ -17,6 +17,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/uuid.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
@@ -34,31 +35,78 @@ DeviceUser::DeviceUser(
     const base::FilePath& root_path)
     : weak_ptr_factory_(this),
       session_manager_(std::move(session_manager)),
-      root_path_(root_path) {
-  session_manager_->GetObjectProxy()->SetNameOwnerChangedCallback(
-      base::BindRepeating(&DeviceUser::OnSessionManagerNameChange,
-                          weak_ptr_factory_.GetWeakPtr()));
-}
+      root_path_(root_path) {}
 
 void DeviceUser::RegisterSessionChangeHandler() {
-  session_manager_->RegisterSessionStateChangedSignalHandler(
-      base::BindRepeating(&DeviceUser::OnSessionStateChange,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DeviceUser::HandleRegistrationResult,
-                     weak_ptr_factory_.GetWeakPtr()));
+  session_manager_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::BindOnce(
+          [](org::chromium::SessionManagerInterfaceProxyInterface*
+                 session_manager,
+             base::WeakPtr<DeviceUser> weak_ptr, bool available) {
+            if (!available) {
+              LOG(ERROR) << "Failed to register for session_manager's session "
+                            "change signal";
+              return;
+            }
+            session_manager->RegisterSessionStateChangedSignalHandler(
+                base::BindRepeating(&DeviceUser::OnSessionStateChange,
+                                    weak_ptr),
+                base::BindOnce(&DeviceUser::HandleRegistrationResult,
+                               weak_ptr));
+            session_manager->GetObjectProxy()->SetNameOwnerChangedCallback(
+                base::BindRepeating(&DeviceUser::OnSessionManagerNameChange,
+                                    weak_ptr));
+          },
+          session_manager_.get(), weak_ptr_factory_.GetWeakPtr()));
 }
 
 void DeviceUser::RegisterScreenLockedHandler(
     base::RepeatingClosure signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
-  session_manager_->RegisterScreenIsLockedSignalHandler(
-      std::move(signal_callback), std::move(on_connected_callback));
+  session_manager_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::BindOnce(
+          [](org::chromium::SessionManagerInterfaceProxyInterface*
+                 session_manager,
+             base::RepeatingClosure signal_callback,
+             dbus::ObjectProxy::OnConnectedCallback on_connected_callback,
+             bool available) {
+            if (!available) {
+              LOG(ERROR) << "Failed to register for session_manager's screen "
+                            "locked signal";
+              return;
+            }
+            session_manager->RegisterScreenIsLockedSignalHandler(
+                std::move(signal_callback), std::move(on_connected_callback));
+          },
+          session_manager_.get(), std::move(signal_callback),
+          std::move(on_connected_callback)));
 }
+
 void DeviceUser::RegisterScreenUnlockedHandler(
     base::RepeatingClosure signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
-  session_manager_->RegisterScreenIsUnlockedSignalHandler(
-      std::move(signal_callback), std::move(on_connected_callback));
+  session_manager_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::BindOnce(
+          [](org::chromium::SessionManagerInterfaceProxyInterface*
+                 session_manager,
+             base::RepeatingClosure signal_callback,
+             dbus::ObjectProxy::OnConnectedCallback on_connected_callback,
+             bool available) {
+            if (!available) {
+              LOG(ERROR) << "Failed to register for session_manager's screen "
+                            "unlocked signal";
+              return;
+            }
+            session_manager->RegisterScreenIsUnlockedSignalHandler(
+                std::move(signal_callback), std::move(on_connected_callback));
+          },
+          session_manager_.get(), std::move(signal_callback),
+          std::move(on_connected_callback)));
+}
+
+void DeviceUser::RegisterSessionChangeListener(
+    base::RepeatingCallback<void(const std::string&)> cb) {
+  session_change_listeners_.push_back(std::move(cb));
 }
 
 void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
@@ -85,7 +133,11 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
 }
 
 void DeviceUser::OnSessionStateChange(const std::string& state) {
-  if (state == "started") {
+  for (auto cb : session_change_listeners_) {
+    cb.Run(state);
+  }
+
+  if (state == kStarted) {
     UpdateDeviceId();
     // When a user logs in for the first time there is a delay for their
     // ID to be added. Add a slight delay so the ID can appear.
@@ -94,7 +146,7 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
         base::BindOnce(&DeviceUser::UpdateDeviceUser,
                        weak_ptr_factory_.GetWeakPtr()),
         base::Seconds(2));
-  } else if (state == "stopping" || state == "stopped") {
+  } else if (state == kStopping || state == kStopped) {
     device_user_ = "";
   }
 }

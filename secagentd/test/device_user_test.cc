@@ -9,6 +9,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
@@ -42,8 +43,6 @@ class DeviceUserTestFixture : public ::testing::Test {
     session_manager_ =
         std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
     session_manager_ref_ = session_manager_.get();
-
-    SetupNameChangeCb();
 
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     daemon_store_directory_ =
@@ -101,7 +100,24 @@ class DeviceUserTestFixture : public ::testing::Test {
     return std::vector<uint8_t>(serialized.begin(), serialized.end());
   }
 
-  void SaveRegisterSessionStateCb() {
+  void SaveRegistrationCallbacks() {
+    session_manager_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(), login_manager::kSessionManagerServiceName,
+        dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+    EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
+        .Times(2)
+        .WillRepeatedly(Return(session_manager_object_proxy_.get()));
+    EXPECT_CALL(*session_manager_object_proxy_, DoWaitForServiceToBeAvailable)
+        .WillOnce(
+            WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
+              std::move(*cb).Run(true);
+            })));
+    EXPECT_CALL(*session_manager_object_proxy_, SetNameOwnerChangedCallback)
+        .WillOnce(WithArg<0>(
+            Invoke([this](const base::RepeatingCallback<void(
+                              const std::string&, const std::string&)>& cb) {
+              name_change_cb_ = cb;
+            })));
     EXPECT_CALL(*session_manager_ref_,
                 DoRegisterSessionStateChangedSignalHandler)
         .WillOnce(WithArg<0>(Invoke(
@@ -109,21 +125,6 @@ class DeviceUserTestFixture : public ::testing::Test {
                 const base::RepeatingCallback<void(const std::string&)>& cb) {
               registration_cb_ = cb;
             })));
-  }
-
-  void SetupNameChangeCb() {
-    session_manager_object_proxy_ = new dbus::MockObjectProxy(
-        bus_.get(), login_manager::kSessionManagerServiceName,
-        dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-    EXPECT_CALL(*session_manager_object_proxy_, SetNameOwnerChangedCallback)
-        .WillOnce(WithArg<0>(
-            Invoke([this](const base::RepeatingCallback<void(
-                              const std::string&, const std::string&)>& cb) {
-              name_change_cb_ = cb;
-            })));
-
-    EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
-        .WillOnce(Return(session_manager_object_proxy_.get()));
   }
 
   void SetDeviceUser(const std::string& user) {
@@ -170,9 +171,9 @@ TEST_F(DeviceUserTestFixture, TestAffiliatedUser) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
@@ -209,9 +210,9 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
   ASSERT_TRUE(
       base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
@@ -224,7 +225,7 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
 
   // Trigger callback again to verify the file is read from.
   SetDeviceUser("");
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
 }
@@ -260,9 +261,9 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
   ASSERT_TRUE(
       base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   // Just verify that the username is a valid uuid because it
@@ -278,7 +279,7 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
 
   // Trigger callback again to verify the file is read from.
   SetDeviceUser("");
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
   EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
                   .is_valid());
@@ -286,15 +287,15 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
 
 TEST_F(DeviceUserTestFixture, TestLogout) {
   SetDeviceUser(kDeviceUser);
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("stopped");
+  registration_cb_.Run(kStopped);
   EXPECT_EQ("", device_user_->GetDeviceUser());
 
   SetDeviceUser(kDeviceUser);
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("stopping");
+  registration_cb_.Run(kStopping);
   EXPECT_EQ("", device_user_->GetDeviceUser());
 }
 
@@ -324,9 +325,9 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
@@ -345,15 +346,26 @@ TEST_F(DeviceUserTestFixture, TestGuestUser) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kGuest, device_user_->GetDeviceUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedRegistration) {
+  session_manager_object_proxy_ = new dbus::MockObjectProxy(
+      bus_.get(), login_manager::kSessionManagerServiceName,
+      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
+  EXPECT_CALL(*session_manager_ref_, GetObjectProxy)
+      .Times(2)
+      .WillRepeatedly(Return(session_manager_object_proxy_.get()));
+  EXPECT_CALL(*session_manager_object_proxy_, DoWaitForServiceToBeAvailable)
+      .WillRepeatedly(
+          WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
+            std::move(*cb).Run(true);
+          })));
   EXPECT_CALL(*session_manager_ref_, DoRegisterSessionStateChangedSignalHandler)
       .WillOnce(WithArg<1>(
           Invoke([](base::OnceCallback<void(const std::string&,
@@ -384,9 +396,9 @@ TEST_F(DeviceUserTestFixture, TestFailedGuestSessionRetrieval) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
@@ -410,9 +422,9 @@ TEST_F(DeviceUserTestFixture, TestFailedPrimarySessionRetrieval) {
         return false;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
@@ -437,9 +449,9 @@ TEST_F(DeviceUserTestFixture, TestFailedRetrievePolicyEx) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
@@ -473,9 +485,9 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingResponse) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
@@ -509,9 +521,9 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
         return true;
       })));
 
-  SaveRegisterSessionStateCb();
+  SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run("started");
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
@@ -519,6 +531,8 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
 TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   SetDeviceUser(kDeviceUser);
 
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
   // Simulate "crash" by invoking name change method.
   name_change_cb_.Run("old_name", "");
   name_change_cb_.Run("", "new_name");
