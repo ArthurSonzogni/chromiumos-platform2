@@ -307,7 +307,19 @@ class AuthenticationPlugin : public PluginInterface {
  private:
   friend class testing::AuthenticationPluginTestFixture;
 
+  // Fills the common field for the protos.
+  void FillCommon(cros_xdr::reporting::AuthenticateEventAtomicVariant* proto);
+  // Creates and sends a screen Lock event.
+  void HandleScreenLock();
+  // Creates and sends a screen Unlock event.
+  void HandleScreenUnlock();
+  // Logs error if registration fails.
+  void HandleRegistrationResult(const std::string& interface,
+                                const std::string& signal,
+                                bool success);
+
   base::WeakPtrFactory<AuthenticationPlugin> weak_ptr_factory_;
+  scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
   bool is_active_{false};

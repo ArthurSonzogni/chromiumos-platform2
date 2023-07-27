@@ -61,7 +61,7 @@ class MessageSenderTestFixture : public ::testing::Test {
         std::make_unique<NiceMock<reporting::MockReportQueueProvider>>();
     reporting::report_queue_provider_test_helper::SetForTesting(
         provider_.get());
-    provider_->ExpectCreateNewSpeculativeQueueAndReturnNewMockQueue(3);
+    provider_->ExpectCreateNewSpeculativeQueueAndReturnNewMockQueue(4);
     EXPECT_EQ(message_sender_->InitializeQueues(), absl::OkStatus());
     for (auto destination : kDestinations) {
       auto it = message_sender_->queue_map_.find(destination);
@@ -87,9 +87,10 @@ class MessageSenderTestFixture : public ::testing::Test {
   std::unordered_map<reporting::Destination, reporting::MockReportQueue*>
       mock_queue_map_;
   static const reporting::Priority kPriority_ = reporting::SLOW_BATCH;
-  constexpr static const reporting::Destination kDestinations[3] = {
+  constexpr static const reporting::Destination kDestinations[4] = {
       reporting::Destination::CROS_SECURITY_NETWORK,
-      reporting::CROS_SECURITY_PROCESS, reporting::CROS_SECURITY_AGENT};
+      reporting::CROS_SECURITY_PROCESS, reporting::CROS_SECURITY_AGENT,
+      reporting::CROS_SECURITY_USER};
 };
 
 TEST_F(MessageSenderTestFixture, TestInitializeBtime) {

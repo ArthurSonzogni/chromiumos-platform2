@@ -76,6 +76,14 @@ void VlogEventForDebug(reporting::Destination destination,
       VLOG(1) << network_event->DebugString();
       break;
     }
+    case reporting::CROS_SECURITY_USER: {
+      auto authenticate_event =
+          google::protobuf::internal::down_cast<pb::XdrAuthenticateEvent*>(
+              message);
+      VLOG(1) << "XdrAuthenticateEvent:";
+      VLOG(1) << authenticate_event->DebugString();
+      break;
+    }
     default:
       LOG(ERROR) << "Unknown destination: " << destination;
   }
@@ -154,7 +162,7 @@ absl::Status MessageSender::InitializeQueues() {
   // Array of possible destinations.
   const reporting::Destination kDestinations[] = {
       reporting::CROS_SECURITY_NETWORK, reporting::CROS_SECURITY_PROCESS,
-      reporting::CROS_SECURITY_AGENT};
+      reporting::CROS_SECURITY_AGENT, reporting::CROS_SECURITY_USER};
 
   for (auto destination : kDestinations) {
     auto report_queue_result =
