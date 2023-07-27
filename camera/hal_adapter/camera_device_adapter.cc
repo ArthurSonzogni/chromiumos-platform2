@@ -668,7 +668,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         ToString(HalAdapterTraceEvent::kCapture),
         GetTraceTrack(HalAdapterTraceEvent::kCapture,
                       request_descriptor.frame_number(),
-                      reinterpret_cast<uintptr_t>(*output_buffer.buffer())),
+                      reinterpret_cast<uintptr_t>(output_buffer.stream())),
         "frame_number", request_descriptor.frame_number(), "stream",
         reinterpret_cast<uintptr_t>(output_buffer.stream()), "width",
         output_buffer.stream()->width, "height", output_buffer.stream()->height,
@@ -964,7 +964,7 @@ void CameraDeviceAdapter::ReturnResultToClient(
   for (const auto& output_buffer : result_descriptor.GetOutputBuffers()) {
     TRACE_HAL_ADAPTER_END(GetTraceTrack(
         HalAdapterTraceEvent::kCapture, result_descriptor.frame_number(),
-        reinterpret_cast<uintptr_t>(*output_buffer.buffer())));
+        reinterpret_cast<uintptr_t>(output_buffer.stream())));
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);

@@ -721,7 +721,9 @@ void Camera3CaptureDescriptor::PopulateEventAnnotation(
 
   base::Value::List out_bufs;
   for (const auto& b : GetOutputBuffers()) {
-    perfetto::Flow::ProcessScoped(b.flow_id())(ctx);
+    if (b.is_valid()) {
+      perfetto::Flow::ProcessScoped(b.flow_id())(ctx);
+    }
     out_bufs.Append(ToValueDict(b));
   }
   std::string output_buffers;
