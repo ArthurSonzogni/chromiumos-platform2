@@ -75,7 +75,8 @@ void AuthStackManagerProxyBase::EndEnrollSession() {
 }
 
 void AuthStackManagerProxyBase::CreateCredential(
-    const CreateCredentialRequest& request, CreateCredentialCallback callback) {
+    const CreateCredentialRequest& request,
+    base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback) {
   dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
                                biod::kAuthStackManagerCreateCredentialMethod);
   dbus::MessageWriter method_writer(&method_call);
@@ -83,8 +84,9 @@ void AuthStackManagerProxyBase::CreateCredential(
 
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
-      base::BindOnce(&AuthStackManagerProxyBase::OnCreateCredentialResponse,
-                     base::Unretained(this), std::move(callback)));
+      base::BindOnce(
+          &AuthStackManagerProxyBase::OnProtoResponse<CreateCredentialReply>,
+          base::Unretained(this), std::move(callback)));
 }
 
 void AuthStackManagerProxyBase::StartAuthSession(
@@ -108,7 +110,8 @@ void AuthStackManagerProxyBase::EndAuthSession() {
 
 void AuthStackManagerProxyBase::AuthenticateCredential(
     const AuthenticateCredentialRequest& request,
-    AuthenticateCredentialCallback callback) {
+    base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
+        callback) {
   dbus::MethodCall method_call(
       biod::kAuthStackManagerInterface,
       biod::kAuthStackManagerAuthenticateCredentialMethod);
@@ -117,8 +120,23 @@ void AuthStackManagerProxyBase::AuthenticateCredential(
 
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
+      base::BindOnce(&AuthStackManagerProxyBase::OnProtoResponse<
+                         AuthenticateCredentialReply>,
+                     base::Unretained(this), std::move(callback)));
+}
+
+void AuthStackManagerProxyBase::DeleteCredential(
+    const DeleteCredentialRequest& request,
+    base::OnceCallback<void(std::optional<DeleteCredentialReply>)> callback) {
+  dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
+                               biod::kAuthStackManagerDeleteCredentialMethod);
+  dbus::MessageWriter method_writer(&method_call);
+  method_writer.AppendProtoAsArrayOfBytes(request);
+
+  proxy_->CallMethod(
+      &method_call, kDbusTimeoutMs,
       base::BindOnce(
-          &AuthStackManagerProxyBase::OnAuthenticateCredentialResponse,
+          &AuthStackManagerProxyBase::OnProtoResponse<DeleteCredentialReply>,
           base::Unretained(this), std::move(callback)));
 }
 
@@ -139,20 +157,10 @@ void AuthStackManagerProxyBase::OnStartEnrollSessionResponse(
   std::move(callback).Run(biod_enroll_session_ != nullptr);
 }
 
-void AuthStackManagerProxyBase::OnCreateCredentialResponse(
-    CreateCredentialCallback callback, dbus::Response* response) {
-  std::move(callback).Run(HandleCreateCredentialResponse(response));
-}
-
 void AuthStackManagerProxyBase::OnStartAuthSessionResponse(
     base::OnceCallback<void(bool success)> callback, dbus::Response* response) {
   biod_auth_session_ = HandleStartSessionResponse(response);
   std::move(callback).Run(biod_auth_session_ != nullptr);
-}
-
-void AuthStackManagerProxyBase::OnAuthenticateCredentialResponse(
-    AuthenticateCredentialCallback callback, dbus::Response* response) {
-  std::move(callback).Run(HandleAuthenticateCredentialResponse(response));
 }
 
 dbus::ObjectProxy* AuthStackManagerProxyBase::HandleStartSessionResponse(

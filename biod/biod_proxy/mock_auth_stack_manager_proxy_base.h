@@ -43,7 +43,8 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
 
   MOCK_METHOD(void,
               CreateCredential,
-              (const CreateCredentialRequest&, CreateCredentialCallback),
+              (const CreateCredentialRequest&,
+               base::OnceCallback<void(std::optional<CreateCredentialReply>)>),
               (override));
 
   MOCK_METHOD(void,
@@ -53,10 +54,17 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
 
   MOCK_METHOD(void, EndAuthSession, (), (override));
 
+  MOCK_METHOD(
+      void,
+      AuthenticateCredential,
+      (const AuthenticateCredentialRequest&,
+       base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>),
+      (override));
+
   MOCK_METHOD(void,
-              AuthenticateCredential,
-              (const AuthenticateCredentialRequest&,
-               AuthenticateCredentialCallback),
+              DeleteCredential,
+              (const DeleteCredentialRequest&,
+               base::OnceCallback<void(std::optional<DeleteCredentialReply>)>),
               (override));
 };
 }  // namespace biod

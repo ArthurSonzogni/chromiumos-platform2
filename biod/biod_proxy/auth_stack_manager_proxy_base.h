@@ -8,7 +8,9 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
+#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 #include <dbus/bus.h>
@@ -24,10 +26,6 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
  public:
   using SignalCallback = dbus::ObjectProxy::SignalCallback;
   using OnConnectedCallback = dbus::ObjectProxy::OnConnectedCallback;
-  using CreateCredentialCallback =
-      base::OnceCallback<void(std::optional<CreateCredentialReply>)>;
-  using AuthenticateCredentialCallback =
-      base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>;
 
   AuthStackManagerProxyBase(const AuthStackManagerProxyBase&) = delete;
   AuthStackManagerProxyBase& operator=(const AuthStackManagerProxyBase&) =
@@ -62,8 +60,9 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   // Creates the actual fingerprint record. Should only be called after an
   // enroll session completes successfully. See CreateCredentialRequest/Reply
   // protos for the detailed function signature.
-  virtual void CreateCredential(const CreateCredentialRequest& request,
-                                CreateCredentialCallback callback);
+  virtual void CreateCredential(
+      const CreateCredentialRequest& request,
+      base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback);
 
   // Starts biometrics auth session asynchronously.
   // |callback| is called when starting the auth session succeeds/fails.
@@ -78,7 +77,14 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   // the detailed function signature.
   virtual void AuthenticateCredential(
       const AuthenticateCredentialRequest& request,
-      AuthenticateCredentialCallback callback);
+      base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
+          callback);
+
+  // Deletes the specified fingerprint. See DeleteCredentialRequest/Reply protos
+  // for the detailed function signature.
+  virtual void DeleteCredential(
+      const DeleteCredentialRequest& request,
+      base::OnceCallback<void(std::optional<DeleteCredentialReply>)> callback);
 
  protected:
   AuthStackManagerProxyBase() = default;
@@ -98,21 +104,32 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       base::OnceCallback<void(bool success)> callback,
       dbus::Response* response);
 
-  // Handler for CreateCredential. |callback| will be called on behalf of
-  // the caller of CreateCredential.
-  void OnCreateCredentialResponse(CreateCredentialCallback callback,
-                                  dbus::Response* response);
-
   // Handler for StartAuthSession. |callback| will be called on behalf of
   // the caller of StartAuthSession.
   void OnStartAuthSessionResponse(
       base::OnceCallback<void(bool success)> callback,
       dbus::Response* response);
 
-  // Handler for AuthenticateCredential. |callback| will be called on behalf of
-  // the caller of AuthenticateCredential.
-  void OnAuthenticateCredentialResponse(AuthenticateCredentialCallback callback,
-                                        dbus::Response* response);
+  // Handler for *Credential commands
+  template <typename ReplyProto>
+  void OnProtoResponse(
+      base::OnceCallback<void(std::optional<ReplyProto>)> callback,
+      dbus::Response* response) {
+    if (!response) {
+      LOG(ERROR) << "No dbus response received.";
+      std::move(callback).Run(std::nullopt);
+      return;
+    }
+
+    dbus::MessageReader response_reader(response);
+    ReplyProto reply;
+    if (!response_reader.PopArrayOfBytesAsProto(&reply)) {
+      LOG(ERROR) << "Invalid dbus response.";
+      std::move(callback).Run(std::nullopt);
+      return;
+    }
+    std::move(callback).Run(std::move(reply));
+  }
 
   // Parse a dbus response and return the ObjectProxy implied by the response.
   // Returns nullptr on error.

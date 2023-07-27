@@ -125,7 +125,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredential) {
   CreateCredentialReply reply;
   reply.set_record_id("fake");
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
-  // this case OnCreateCredentialResponse) with a fake response containing
+  // this case OnProtoResponse) with a fake response containing
   // |reply|.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
@@ -155,7 +155,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredential) {
 // is unexpected.
 TEST_F(AuthStackManagerProxyBaseTest, CreateCredentialInvalidResponse) {
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
-  // this case OnCreateCredentialResponse) with an empty response.
+  // this case OnProtoResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
@@ -246,7 +246,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredential) {
   AuthenticateCredentialReply reply;
   reply.set_record_id("fake");
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
-  // this case OnAuthenticateCredentialResponse) with a fake response containing
+  // this case OnProtoResponse) with a fake response containing
   // |reply|.
   auto ExecuteCallbackWithFakeResponse =
       [reply](dbus::MethodCall* unused_method, int unused_ms,
@@ -277,7 +277,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredential) {
 // is unexpected.
 TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
-  // this case OnAuthenticateCredentialResponse) with an empty response.
+  // this case OnProtoResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
@@ -297,6 +297,64 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
           [&reply_ret](std::optional<AuthenticateCredentialReply> reply) {
             reply_ret = reply;
           }));
+  EXPECT_FALSE(reply_ret.has_value());
+}
+
+// Test that DeleteCredential succeeds and the returned reply is what the
+// mock provides.
+TEST_F(AuthStackManagerProxyBaseTest, DeleteCredential) {
+  DeleteCredentialReply reply;
+  reply.set_status(DeleteCredentialReply::SUCCESS);
+  // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
+  // this case OnProtoResponse) with a fake response containing
+  // |reply|.
+  auto ExecuteCallbackWithFakeResponse =
+      [reply](dbus::MethodCall* unused_method, int unused_ms,
+              base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+        std::unique_ptr<dbus::Response> fake_response =
+            dbus::Response::CreateEmpty();
+        dbus::MessageWriter writer(fake_response.get());
+        writer.AppendProtoAsArrayOfBytes(reply);
+        std::move(*dbus_callback).Run(fake_response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+      .WillOnce(ExecuteCallbackWithFakeResponse);
+
+  DeleteCredentialRequest request;
+  std::optional<DeleteCredentialReply> reply_ret;
+  // Install a lambda as the client callback and verify it is run.
+  proxy_base_->DeleteCredential(
+      request, base::BindLambdaForTesting(
+                   [&reply_ret](std::optional<DeleteCredentialReply> reply) {
+                     reply_ret = reply;
+                   }));
+  ASSERT_TRUE(reply_ret.has_value());
+  EXPECT_EQ(reply_ret->status(), reply.status());
+}
+
+// Test that DeleteCredential returns nullopt when the dbus response
+// is unexpected.
+TEST_F(AuthStackManagerProxyBaseTest, DeleteCredentialInvalidResponse) {
+  // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
+  // this case OnProtoResponse) with an empty response.
+  auto ExecuteCallbackWithEmptyResponse =
+      [](dbus::MethodCall* unused_method, int unused_ms,
+         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+        std::unique_ptr<dbus::Response> fake_response =
+            dbus::Response::CreateEmpty();
+        std::move(*dbus_callback).Run(fake_response.get());
+      };
+  EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
+      .WillOnce(ExecuteCallbackWithEmptyResponse);
+
+  DeleteCredentialRequest request;
+  std::optional<DeleteCredentialReply> reply_ret;
+  // Install a lambda as the client callback and verify it is run.
+  proxy_base_->DeleteCredential(
+      request, base::BindLambdaForTesting(
+                   [&reply_ret](std::optional<DeleteCredentialReply> reply) {
+                     reply_ret = reply;
+                   }));
   EXPECT_FALSE(reply_ret.has_value());
 }
 
