@@ -3508,16 +3508,27 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     return false;
   }
 
-  // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
   bool ipv6_configured = false;
   bool ipv4_configured = false;
+
+  // If the modem has done its own SLAAC and it was able to retrieve a correct
+  // address and gateway it will report kMethodStatic. If the modem didn't do
+  // SLAAC by itself it will report kMethodDHCP and optionally include a
+  // link-local address to configure before running host SLAAC. In both those
+  // cases, the modem will receive DNS information via PCOs from the network,
+  // which should be considered in the setup.
   if (bearer->ipv6_config_method() !=
       CellularBearer::IPConfigMethod::kUnknown) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv6 configuration from bearer.";
     const auto& props = *bearer->ipv6_config_properties();
-    // Only apply static config if the address is link local. This is a
-    // workaround for b/230336493.
+    ipv6_props_ = props;
+
+    // TODO(b/285205946): Currently IPv6 method is always set to static so we
+    // need to look into the actual address to tell whether it's a link local
+    // address to be used for SLAAC or it's already a global address reported by
+    // modem SLAAC. After we revert the ModemManager patch we should be able to
+    // simply check IPv6 method here instead.
     const auto link_local_mask =
         *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
     const auto local = net_base::IPv6Address::CreateFromString(props.address);
@@ -3525,8 +3536,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
       LOG(ERROR) << LoggingTag()
                  << ": IPv6 address is not valid: " << props.address;
     } else if (link_local_mask.InSameSubnetWith(*local)) {
-      ipv6_props_ = props;
-      ipv6_props_->address = "";
+      ipv6_props_->address.clear();
       start_opts_.link_local_address = local;
     }
     ipv6_configured = true;
