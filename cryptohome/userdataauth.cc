@@ -51,7 +51,6 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_factor/loading.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor/with_driver.h"
@@ -3327,16 +3326,36 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
   // Compute the account_id and obfuscated user name from the request.
   ObfuscatedUsername obfuscated_username =
       SanitizeUserName(GetAccountId(request.account_id()));
+
+  // Try to find the relevant auth factor with the given label and convert it
+  // into an auth factor proto.
   user_data_auth::AuthFactor auth_factor_proto;
-  if (LoadUserAuthFactorByLabel(
-          auth_factor_driver_manager_, auth_factor_manager_,
-          *auth_block_utility_, obfuscated_username,
-          request.auth_factor_label(), &auth_factor_proto)) {
-    *reply.mutable_auth_factor() = std::move(auth_factor_proto);
+  std::optional<AuthFactorType> auth_factor_type;
+  for (const auto& [label, type] :
+       auth_factor_manager_->ListAuthFactors(obfuscated_username)) {
+    if (label == request.auth_factor_label()) {
+      // Save the type.
+      auth_factor_type = type;
+      // Attempt to load the factor and then load it into the response.
+      auto loaded_auth_factor = auth_factor_manager_->LoadAuthFactor(
+          obfuscated_username, type, label);
+      if (loaded_auth_factor.ok()) {
+        AuthFactor& auth_factor = **loaded_auth_factor;
+        const AuthFactorDriver& driver =
+            auth_factor_driver_manager_->GetDriver(type);
+        if (auto converted_to_proto =
+                driver.ConvertToProto(label, auth_factor.metadata())) {
+          auth_factor_proto = std::move(*converted_to_proto);
+        }
+      }
+      // Stop searching because we found the factor with the requested label,
+      // even if loading it or converting it into a proto failed.
+      break;
+    }
   }
-  std::optional<AuthFactorType> type =
-      AuthFactorTypeFromProto(reply.auth_factor().type());
-  if (!type) {
+
+  // If we at least found the type, also load any type-specific extended info.
+  if (!auth_factor_type) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
@@ -3346,7 +3365,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
                 CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
-  switch (*type) {
+  switch (*auth_factor_type) {
     case AuthFactorType::kCryptohomeRecovery: {
       if (!request.has_recovery_info_request()) {
         ReplyWithError(
@@ -3383,7 +3402,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
       break;
     }
     default: {
-      LOG(WARNING) << AuthFactorTypeToString(*type)
+      LOG(WARNING) << AuthFactorTypeToString(*auth_factor_type)
                    << " factor type does not support extended info.";
     }
   }

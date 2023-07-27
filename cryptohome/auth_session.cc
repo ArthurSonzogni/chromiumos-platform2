@@ -43,7 +43,6 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/auth_factor/loading.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/pin.h"
