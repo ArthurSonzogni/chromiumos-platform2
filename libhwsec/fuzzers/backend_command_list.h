@@ -66,6 +66,8 @@ using FuzzCommandList =
                 &Backend::KeyManagement::WrapECCKey,
                 &Backend::KeyManagement::GetRSAPublicInfo,
                 &Backend::KeyManagement::GetECCPublicInfo,
+                &Backend::LECredentialManager::CheckCredential,
+                &Backend::LECredentialManager::InsertCredential,
                 &Backend::PinWeaver::IsEnabled,
                 &Backend::PinWeaver::GetVersion,
                 &Backend::PinWeaver::Reset,

@@ -22,11 +22,13 @@
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
 
+#include "libhwsec/hwsec_export.h"
+
 namespace hwsec {
 
 // A TPM2 simulator proxy implementation for testing.
 
-class Tpm2SimulatorProxyForTest : public Proxy {
+class HWSEC_EXPORT Tpm2SimulatorProxyForTest : public Proxy {
  public:
   Tpm2SimulatorProxyForTest();
   ~Tpm2SimulatorProxyForTest() override;

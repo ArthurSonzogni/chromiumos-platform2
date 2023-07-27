@@ -466,6 +466,7 @@ if (use.test) {
       "error/tpm_nvram_error_test.cc",
       "frontend/chaps/frontend_impl_test.cc",
       "frontend/oobe_config/frontend_impl_test.cc",
+      "frontend/pinweaver_manager/frontend_impl_test.cc",
       "middleware/function_name_test.cc",
       "middleware/metrics_test.cc",
       "proxy/proxy_for_test.cc",

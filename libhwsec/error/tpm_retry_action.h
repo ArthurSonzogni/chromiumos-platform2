@@ -56,7 +56,8 @@ enum class TPMRetryAction {
   // presence.
   kUserPresence,
 
-  // Action failed - The space for this operation is not found.
+  // Action failed - The space for this operation is not found. This includes
+  // errors when retrieving labels for the pinweaver manager backend.
   // Recommended action: The upper layer should know what to do and handles it
   // correctly.
   kSpaceNotFound,

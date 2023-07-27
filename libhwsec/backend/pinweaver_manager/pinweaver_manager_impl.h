@@ -32,6 +32,14 @@ namespace hwsec {
 // necessary commands on the TPM side, for verification.
 class LECredentialManagerImpl : public LECredentialManager {
  public:
+  enum class UpdateHashTreeType : uint8_t {
+    kInsertLeaf,
+    kUpdateLeaf,
+    kRemoveLeaf,
+    kReplayInsertLeaf,
+    kMaxValue = kReplayInsertLeaf,
+  };
+
   LECredentialManagerImpl(PinWeaver& pinweaver,
                           const base::FilePath& le_basedir)
       : pinweaver_(pinweaver), basedir_(le_basedir) {}
@@ -82,6 +90,55 @@ class LECredentialManagerImpl : public LECredentialManager {
   // and hash tree is valid.
   // All public PW operation functions should first call StateIsReady().
   Status StateIsReady();
+
+  // Since the InsertCredential() and InsertRateLimiter() functions are very
+  // similar, this function combines the common parts of both the calls
+  // into a generic "insert leaf" function. |auth_channel| is only valid in
+  // InsertRateLimiter(), while |le_secret| and |he_secret| is only valid in
+  // InsertCredential(). |is_rate_limiter| is used to signal whether the leaf
+  // being inserted is a rate-limiter (true) or a normal credential (false).
+  //
+  // The returned label should be placed into the metadata associated with the
+  // authentication factor, so that it can be used to look up the credential
+  // later.
+  StatusOr<uint64_t> InsertLeaf(
+      std::optional<uint8_t> auth_channel,
+      const std::vector<hwsec::OperationPolicySetting>& policies,
+      const brillo::SecureBlob* le_secret,
+      const brillo::SecureBlob* he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
+      bool is_rate_limiter);
+
+  // Helper function to retrieve the credential metadata, MAC, and auxiliary
+  // hashes associated with a label |label| (stored in |cred_metadata|, |mac|
+  // and |h_aux| respectively). |metadata_lost| will denote whether the label
+  // contains valid metadata (false) or not (true).
+  Status RetrieveLabelInfo(const SignInHashTree::Label& label,
+                           std::vector<brillo::Blob>& h_aux,
+                           brillo::Blob& cred_metadata,
+                           brillo::Blob& mac,
+                           bool& metadata_lost);
+
+  // Given a label, gets the list of auxiliary hashes for that label.
+  // On failure, returns an empty vector.
+  StatusOr<std::vector<brillo::Blob>> GetAuxHashes(
+      const SignInHashTree::Label& label);
+
+  // Updates the SignInHashTree to insert or update the credential with label
+  // |label|. The credential meta data and MAC are provided in
+  // |cred_tree_result|.
+  // The |update_type| argument determines whether the credential should be
+  // stored with `metadata_lost=true` and the error handling logic when
+  // StoreLabel failed.
+  // If the update fails, the hash tree may be locked (depending on the
+  // |update_type|) to block further Pinweaver operations until at least the
+  // next boot.
+  Status UpdateHashTree(const SignInHashTree::Label& label,
+                        const brillo::Blob* cred_metadata,
+                        const brillo::Blob* mac,
+                        UpdateHashTreeType update_type);
 
   // Last resort flag which prevents any further Low Entropy operations from
   // occurring, till the next time the class is instantiated.
