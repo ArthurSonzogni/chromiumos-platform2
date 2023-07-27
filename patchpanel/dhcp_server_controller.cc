@@ -15,6 +15,7 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/system.h"
@@ -218,10 +219,20 @@ void DHCPServerController::Stop() {
 
   log_watcher_.reset();
   log_fd_.reset();
+  mac_addr_to_hostname_.clear();
 }
 
 bool DHCPServerController::IsRunning() const {
   return pid_.has_value();
+}
+
+std::string DHCPServerController::GetClientHostname(
+    const std::string& mac_addr) const {
+  const auto it = mac_addr_to_hostname_.find(mac_addr);
+  if (it != mac_addr_to_hostname_.end()) {
+    return it->second;
+  }
+  return "";
 }
 
 void DHCPServerController::OnProcessExitedUnexpectedly(int exit_status) {
@@ -264,6 +275,16 @@ void DHCPServerController::HandleDnsmasqLog(const std::string& log) {
     if (log.find(msg) != std::string::npos) {
       metrics_->SendEnumToUMA(dhcp_events_metric_name_, event);
       break;
+    }
+  }
+
+  if (log.find("DHCPACK") != std::string::npos) {
+    // The log format: DHCPACK(<iface>) <IP> <MAC address> [hostname]
+    const auto tokens =
+        base::SplitString(log, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
+    if (tokens.size() >= 4) {
+      mac_addr_to_hostname_[tokens[2]] = tokens[3];
     }
   }
 }

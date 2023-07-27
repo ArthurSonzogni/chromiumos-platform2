@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_DHCP_SERVER_CONTROLLER_H_
 #define PATCHPANEL_DHCP_SERVER_CONTROLLER_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -111,6 +112,11 @@ class DHCPServerController {
   // Returns true if the dnsmasq process is running.
   bool IsRunning() const;
 
+  // Gets the client's hostname, queried by the MAC address. Returns the empty
+  // string if the MAC address is not found or the client doesn't advertise any
+  // hostname.
+  std::string GetClientHostname(const std::string& mac_addr) const;
+
  private:
   // Callback when the process is exited unexpectedly.
   void OnProcessExitedUnexpectedly(int exit_status);
@@ -145,6 +151,8 @@ class DHCPServerController {
   base::ScopedFD log_fd_;
   // Monitors the file descriptor of the dnsmasq process's stderr.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> log_watcher_;
+  // The client's host name, keyed by the MAC address.
+  std::map<std::string, std::string> mac_addr_to_hostname_;
 
   base::WeakPtrFactory<DHCPServerController> weak_ptr_factory_{this};
 };

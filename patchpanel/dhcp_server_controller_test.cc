@@ -298,4 +298,27 @@ TEST_F(DHCPServerControllerTest, Metric) {
   base::RunLoop().RunUntilIdle();
 }
 
+TEST_F(DHCPServerControllerTest, GetClientHostname) {
+  const auto config = CreateValidConfig();
+  constexpr pid_t pid = 5;
+
+  ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStop, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kStopSuccess, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageAck, 1);
+
+  EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
+      .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
+  EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
+  EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
+
+  base::WriteFileDescriptor(
+      write_fd(), "DHCPACK(ap0) 172.16.250.98 11:22:33:44:55:66 ChromeOS\n");
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(dhcp_server_controller_->GetClientHostname("11:22:33:44:55:66"),
+            "ChromeOS");
+}
+
 }  // namespace patchpanel
