@@ -827,7 +827,7 @@ void Network::OnNeighborReachabilityEvent(
 
   if (event.status == Status::kFailed) {
     metrics_->NotifyNeighborLinkMonitorFailure(
-        technology_, net_base::ToSAFamily(ip_address->GetFamily()), event.role);
+        technology_, ip_address->GetFamily(), event.role);
   }
 
   if (state_ == State::kIdle) {

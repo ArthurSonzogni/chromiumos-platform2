@@ -955,66 +955,66 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
                                       Metrics::kNeighborIPv4GatewayFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kGateway);
+      Technology::kWiFi, net_base::IPFamily::kIPv4, Role::kGateway);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv4DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kDnsServer);
+      Technology::kWiFi, net_base::IPFamily::kIPv4, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(wifi_histogram,
                             Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kGatewayAndDnsServer);
+      Technology::kWiFi, net_base::IPFamily::kIPv4, Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv6GatewayFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kGateway);
+      Technology::kWiFi, net_base::IPFamily::kIPv6, Role::kGateway);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv6DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kDnsServer);
+      Technology::kWiFi, net_base::IPFamily::kIPv6, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(wifi_histogram,
                             Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kGatewayAndDnsServer);
+      Technology::kWiFi, net_base::IPFamily::kIPv6, Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(eth_histogram,
                                       Metrics::kNeighborIPv4DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kEthernet, IPAddress::kFamilyIPv4, Role::kDnsServer);
+      Technology::kEthernet, net_base::IPFamily::kIPv4, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(eth_histogram,
                             Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
-                                            IPAddress::kFamilyIPv4,
+                                            net_base::IPFamily::kIPv4,
                                             Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(eth_histogram,
                                       Metrics::kNeighborIPv6DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kEthernet, IPAddress::kFamilyIPv6, Role::kDnsServer);
+      Technology::kEthernet, net_base::IPFamily::kIPv6, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(eth_histogram,
                             Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
-                                            IPAddress::kFamilyIPv6,
+                                            net_base::IPFamily::kIPv6,
                                             Role::kGatewayAndDnsServer);
 }
 

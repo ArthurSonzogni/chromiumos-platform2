@@ -448,41 +448,41 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
 
 void Metrics::NotifyNeighborLinkMonitorFailure(
     Technology tech,
-    IPAddress::Family family,
+    net_base::IPFamily family,
     patchpanel::Client::NeighborRole role) {
   NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
   using Role = patchpanel::Client::NeighborRole;
-  if (family == IPAddress::kFamilyIPv4) {
-    switch (role) {
-      case Role::kGateway:
-        failure = kNeighborIPv4GatewayFailure;
-        break;
-      case Role::kDnsServer:
-        failure = kNeighborIPv4DNSServerFailure;
-        break;
-      case Role::kGatewayAndDnsServer:
-        failure = kNeighborIPv4GatewayAndDNSServerFailure;
-        break;
-      default:
-        failure = kNeighborLinkMonitorFailureUnknown;
-    }
-  } else if (family == IPAddress::kFamilyIPv6) {
-    switch (role) {
-      case Role::kGateway:
-        failure = kNeighborIPv6GatewayFailure;
-        break;
-      case Role::kDnsServer:
-        failure = kNeighborIPv6DNSServerFailure;
-        break;
-      case Role::kGatewayAndDnsServer:
-        failure = kNeighborIPv6GatewayAndDNSServerFailure;
-        break;
-      default:
-        failure = kNeighborLinkMonitorFailureUnknown;
-    }
-  } else {
-    LOG(ERROR) << __func__ << " with kFamilyUnknown";
-    return;
+  switch (family) {
+    case net_base::IPFamily::kIPv4:
+      switch (role) {
+        case Role::kGateway:
+          failure = kNeighborIPv4GatewayFailure;
+          break;
+        case Role::kDnsServer:
+          failure = kNeighborIPv4DNSServerFailure;
+          break;
+        case Role::kGatewayAndDnsServer:
+          failure = kNeighborIPv4GatewayAndDNSServerFailure;
+          break;
+        default:
+          failure = kNeighborLinkMonitorFailureUnknown;
+      }
+      break;
+    case net_base::IPFamily::kIPv6:
+      switch (role) {
+        case Role::kGateway:
+          failure = kNeighborIPv6GatewayFailure;
+          break;
+        case Role::kDnsServer:
+          failure = kNeighborIPv6DNSServerFailure;
+          break;
+        case Role::kGatewayAndDnsServer:
+          failure = kNeighborIPv6GatewayAndDNSServerFailure;
+          break;
+        default:
+          failure = kNeighborLinkMonitorFailureUnknown;
+      }
+      break;
   }
 
   SendEnumToUMA(kMetricNeighborLinkMonitorFailure, tech, failure);
