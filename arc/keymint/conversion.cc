@@ -326,8 +326,8 @@ std::unique_ptr<::keymaster::UpdateOperationRequest> MakeUpdateOperationRequest(
   // unused yet and hence not converted. However, if it is used
   // in future by the reference implementation and the AIDL interface,
   // it will be added here.
-  if (request->auto_token) {
-    auto tokenAsVec(authToken2AidlVec(*request->auto_token));
+  if (request->auth_token) {
+    auto tokenAsVec(authToken2AidlVec(*request->auth_token));
 
     auto key_param_ptr = arc::mojom::keymint::KeyParameter::New(
         static_cast<arc::mojom::keymint::Tag>(KM_TAG_AUTH_TOKEN),
@@ -399,8 +399,8 @@ std::unique_ptr<::keymaster::FinishOperationRequest> MakeFinishOperationRequest(
     ConvertToKeymasterMessage(request->signature.value(), &out->signature);
   }
   std::vector<arc::mojom::keymint::KeyParameterPtr> key_param_array;
-  if (request->auto_token) {
-    auto tokenAsVec(authToken2AidlVec(*request->auto_token));
+  if (request->auth_token) {
+    auto tokenAsVec(authToken2AidlVec(*request->auth_token));
 
     auto key_param_ptr = arc::mojom::keymint::KeyParameter::New(
         static_cast<arc::mojom::keymint::Tag>(KM_TAG_AUTH_TOKEN),

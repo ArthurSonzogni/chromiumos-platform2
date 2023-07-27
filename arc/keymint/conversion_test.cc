@@ -544,7 +544,7 @@ TEST(ConvertToMessage, UpdateOperationRequest) {
   EXPECT_TRUE(VerifyVectorUint8(output->input.begin(),
                                 output->input.available_read(), input->input));
   EXPECT_TRUE(
-      VerifyHardwareAuthToken(output->additional_params, *input->auto_token));
+      VerifyHardwareAuthToken(output->additional_params, *input->auth_token));
 }
 
 TEST(ConvertToMessage, DeviceLockedRequest) {
@@ -591,7 +591,7 @@ TEST(ConvertToMessage, FinishOperationRequest) {
                                 output->signature.available_read(),
                                 input->signature.value()));
   EXPECT_TRUE(
-      VerifyHardwareAuthToken(output->additional_params, *input->auto_token));
+      VerifyHardwareAuthToken(output->additional_params, *input->auth_token));
 }
 
 }  // namespace arc::keymint
