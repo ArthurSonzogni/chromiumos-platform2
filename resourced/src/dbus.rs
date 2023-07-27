@@ -577,7 +577,12 @@ pub async fn service_main() -> Result<()> {
         );
     }
 
-    init_battery_saver_mode(context.clone(), conn.clone()).await?;
+    if init_battery_saver_mode(context.clone(), conn.clone())
+        .await
+        .is_err()
+    {
+        error!("init_battery_saver_mode failed");
+    }
 
     // Registers callbacks for `BatterySaverModeStateChanged` from powerd.
     const BATTERY_SAVER_MODE_EVENT: &str = "BatterySaverModeStateChanged";
