@@ -86,3 +86,6 @@ filetrans_pattern(cros_init_scripts, cros_var_lib, cros_var_lib_preload_network_
 
 # init/vm_concierge.conf
 cros_run_camera_creator(cros_init_scripts)
+
+# init/tmpfiles.d/frecon.conf
+filetrans_pattern(cros_init_scripts, cros_run, cros_run_frecon, dir, "frecon")

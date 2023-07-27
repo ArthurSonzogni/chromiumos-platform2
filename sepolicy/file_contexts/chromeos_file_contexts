@@ -469,6 +469,7 @@ has_arc(`
 /run/dns-proxy                  u:object_r:cros_run_dns_proxy:s0
 /run/featured/active            u:object_r:cros_run_featured_active:s0
 /run/featured_seed              u:object_r:cros_run_featured_seed:s0
+/run/frecon                     u:object_r:cros_run_frecon:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
 /run/hibernate                  u:object_r:cros_run_hibernate:s0
 /run/ippusb(/.*)?               u:object_r:cros_run_ippusb:s0
