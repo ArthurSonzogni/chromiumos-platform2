@@ -27,6 +27,11 @@ constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kNetRawAdminCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 
+// `ip netns` needs CAP_SYS_ADMIN for mount(), and CAP_SYS_PTRACE for accessing
+// `/proc/${pid}/ns/net` of other processes.
+constexpr uint64_t kIpNetnsCapMask =
+    CAP_TO_MASK(CAP_SYS_PTRACE) | CAP_TO_MASK(CAP_SYS_ADMIN);
+
 // These match what is used in iptables.cc in firewalld.
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
@@ -111,12 +116,6 @@ int MinijailedProcessRunner::RunSyncDestroy(
     }
   }
   return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-}
-
-int MinijailedProcessRunner::RunSync(const std::vector<std::string>& argv,
-                                     bool log_failures,
-                                     std::string* output) {
-  return RunSyncDestroy(argv, mj_, mj_->New(), log_failures, output);
 }
 
 void EnterChildProcessJail() {
@@ -224,7 +223,10 @@ int MinijailedProcessRunner::modprobe_all(
 int MinijailedProcessRunner::ip_netns_add(const std::string& netns_name,
                                           bool log_failures) {
   std::vector<std::string> args = {kIpPath, "netns", "add", netns_name};
-  return RunSync(args, log_failures, nullptr);
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  mj_->UseCapabilities(jail, kIpNetnsCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
@@ -232,13 +234,19 @@ int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
                                              bool log_failures) {
   std::vector<std::string> args = {kIpPath, "netns", "attach", netns_name,
                                    std::to_string(netns_pid)};
-  return RunSync(args, log_failures, nullptr);
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  mj_->UseCapabilities(jail, kIpNetnsCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip_netns_delete(const std::string& netns_name,
                                              bool log_failures) {
   std::vector<std::string> args = {kIpPath, "netns", "delete", netns_name};
-  return RunSync(args, log_failures, nullptr);
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  mj_->UseCapabilities(jail, kIpNetnsCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 }  // namespace patchpanel

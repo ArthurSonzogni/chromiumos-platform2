@@ -31,12 +31,6 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   int Run(const std::vector<std::string>& argv, bool log_failures) override {
     return 0;
   }
-
-  int RunSync(const std::vector<std::string>& argv,
-              bool log_failures,
-              std::string* output) override {
-    return 0;
-  }
 };
 }  // namespace
 
