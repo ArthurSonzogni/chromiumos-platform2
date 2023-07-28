@@ -377,25 +377,25 @@ TEST_F(BaseRoutineControlTest, NotifyObserver) {
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
       .Times(AtLeast(1))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_initialized());
-          })))
+          }))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_running());
-          })))
+          }))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_waiting());
-          })))
+          }))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_running());
-          })))
+          }))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_finished());
-          })));
+          }));
   rc.Start();
   rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
                         kWaitingToBeScheduled,
@@ -412,9 +412,9 @@ TEST_F(BaseRoutineControlTest, SetObserverSendsUpdateImmediately) {
 
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
       .WillOnce(testing::WithArg<0>(
-          testing::Invoke([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_initialized());
-          })));
+          }));
 
   rc.SetObserver(std::move(observer_remote));
   rc.FlushObserverForTesting();

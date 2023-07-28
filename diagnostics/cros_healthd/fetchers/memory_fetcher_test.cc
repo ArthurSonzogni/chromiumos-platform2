@@ -23,7 +23,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
 constexpr char kRelativeMeminfoPath[] = "proc/meminfo";
@@ -304,8 +303,8 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
   // Set the mock executor response for ReadMsr calls.
   EXPECT_CALL(*mock_executor(), ReadMsr(_, _, _))
       .Times(2)
-      .WillRepeatedly(Invoke([](uint32_t msr_reg, uint32_t cpu_index,
-                                mojom::Executor::ReadMsrCallback callback) {
+      .WillRepeatedly([](uint32_t msr_reg, uint32_t cpu_index,
+                         mojom::Executor::ReadMsrCallback callback) {
         switch (msr_reg) {
           case cpu_msr::kIA32TmeCapability:
             std::move(callback).Run(
@@ -318,7 +317,7 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
           default:
             std::move(callback).Run(nullptr);
         }
-      }));
+      });
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_memory_info());

@@ -24,7 +24,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::WithArg;
@@ -94,17 +93,17 @@ class AudioFetcherTest : public ::testing::Test {
 
   void SetExpectedVolumeStateError() {
     EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-        .WillOnce(DoAll(WithArg<4>(Invoke([](brillo::ErrorPtr* error) {
+        .WillOnce(DoAll(WithArg<4>([](brillo::ErrorPtr* error) {
                           *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
+                        }),
                         Return(false)));
   }
 
   void SetExpectedNodeInfosError() {
     EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
+        .WillOnce(DoAll(WithArg<1>([](brillo::ErrorPtr* error) {
                           *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
+                        }),
                         Return(false)));
   }
 

@@ -37,7 +37,6 @@ namespace {
 namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 class DiskReadRoutineTest : public testing::Test {
@@ -62,30 +61,30 @@ class DiskReadRoutineTest : public testing::Test {
 
   void SetRunFioPrepareResponse() {
     EXPECT_CALL(*mock_executor(), RunFio(_, _))
-        .WillOnce(WithArg<1>(Invoke(
+        .WillOnce(WithArg<1>(
             [=](mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_prepare_.BindReceiver(std::move(receiver));
-            })));
+            }));
   }
 
   void SetRunFioReadResponse() {
     EXPECT_CALL(*mock_executor(), RunFio(_, _))
-        .WillOnce(WithArg<1>(Invoke(
+        .WillOnce(WithArg<1>(
             [=](mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_read_.BindReceiver(std::move(receiver));
-            })));
+            }));
   }
 
   void SetRemoveFioTestFileResponse(int return_code = EXIT_SUCCESS) {
     EXPECT_CALL(*mock_executor(), RemoveFioTestFile(_))
         .WillOnce(WithArg<0>(
-            Invoke([=](mojom::Executor::RemoveFioTestFileCallback callback) {
+            [=](mojom::Executor::RemoveFioTestFileCallback callback) {
               mojom::ExecutedProcessResult result;
               result.return_code = return_code;
               std::move(callback).Run(result.Clone());
-            })));
+            }));
   }
 
   void SetGetFioTestDirectoryFreeSpaceResponse(
@@ -93,17 +92,17 @@ class DiskReadRoutineTest : public testing::Test {
     if (free_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
           .WillByDefault(
-              WithArg<1>(Invoke([=](base::OnceCallback<void(int64_t /*reply*/)>
-                                        success_callback) {
+              WithArg<1>([=](base::OnceCallback<void(int64_t /*reply*/)>
+                                 success_callback) {
                 std::move(success_callback).Run(free_space_byte.value());
-              })));
+              }));
     } else {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(Invoke(
+          .WillByDefault(WithArg<2>(
               [](base::OnceCallback<void(brillo::Error*)> error_callback) {
                 auto error = brillo::Error::Create(FROM_HERE, "", "", "");
                 std::move(error_callback).Run(error.get());
-              })));
+              }));
     }
   }
 

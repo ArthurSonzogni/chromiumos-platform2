@@ -30,7 +30,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::StrictMock;
@@ -83,7 +82,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
 
   void SetSwitchDiscoveryCall() {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           for (const auto& device : fake_devices_) {
             auto mock_device = mock_device_proxies_[device.first].get();
@@ -94,7 +93,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
                   mock_device, mock_device->RSSIName());
             }
           }
-        })));
+        }));
     for (const auto& device : fake_devices_) {
       SetDeviceAddedCall(/*device_path=*/device.first,
                          /*device=*/device.second);
@@ -104,9 +103,9 @@ class BluetoothScanningRoutineTest : public testing::Test {
       }
     }
     EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
-        })));
+        }));
   }
 
   void SetDeviceAddedCall(const dbus::ObjectPath& device_path,
@@ -278,10 +277,10 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
-          })));
+          }));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
@@ -300,15 +299,15 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+      .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
         std::move(on_success).Run();
-      })));
+      }));
   // Failed to stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
-          })));
+          }));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 

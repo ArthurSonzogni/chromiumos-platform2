@@ -28,7 +28,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 
@@ -116,11 +115,11 @@ class PowerEventsImplTest : public testing::Test {
 
   void SetExpectedEvent(mojom::PowerEventInfo::State state) {
     EXPECT_CALL(*mock_observer(), OnEvent(_))
-        .WillOnce(Invoke([=](mojom::EventInfoPtr info) {
+        .WillOnce([=](mojom::EventInfoPtr info) {
           EXPECT_TRUE(info->is_power_event_info());
           const auto& power_event_info = info->get_power_event_info();
           EXPECT_EQ(power_event_info->state, state);
-        }));
+        });
   }
 
  private:
@@ -144,8 +143,9 @@ class PowerEventsImplTest : public testing::Test {
 TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromAcProto) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kAcInserted);
-  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(power_manager::PowerSupplyProperties::AC);
@@ -158,8 +158,9 @@ TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromAcProto) {
 TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromUsbProto) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kAcInserted);
-  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(power_manager::PowerSupplyProperties::USB);
@@ -172,8 +173,9 @@ TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromUsbProto) {
 TEST_F(PowerEventsImplTest, ReceiveAcRemovedEvent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kAcRemoved);
-  EXPECT_CALL(*mock_deprecated_observer(), OnAcRemoved())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnAcRemoved()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(
@@ -187,8 +189,9 @@ TEST_F(PowerEventsImplTest, ReceiveAcRemovedEvent) {
 TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromSuspendImminent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kOsSuspend);
-  EXPECT_CALL(*mock_deprecated_observer(), OnOsSuspend())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnOsSuspend()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   EmitSuspendImminentSignal();
 
@@ -200,8 +203,9 @@ TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromSuspendImminent) {
 TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromDarkSuspendImminent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kOsSuspend);
-  EXPECT_CALL(*mock_deprecated_observer(), OnOsSuspend())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnOsSuspend()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   EmitDarkSuspendImminentSignal();
 
@@ -212,9 +216,9 @@ TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromDarkSuspendImminent) {
 TEST_F(PowerEventsImplTest, ReceiveOsResumeEvent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kOsResume);
-  EXPECT_CALL(*mock_deprecated_observer(), OnOsResume()).WillOnce(Invoke([&]() {
+  EXPECT_CALL(*mock_deprecated_observer(), OnOsResume()).WillOnce([&]() {
     run_loop.Quit();
-  }));
+  });
 
   EmitSuspendDoneSignal();
 
@@ -231,8 +235,9 @@ TEST_F(PowerEventsImplTest, IgnorePayloadWithoutExternalPower) {
 TEST_F(PowerEventsImplTest, MultipleIdenticalPayloadsReportedOnlyOnce) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::PowerEventInfo::State::kAcRemoved);
-  EXPECT_CALL(*mock_deprecated_observer(), OnAcRemoved())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnAcRemoved()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   // Make the first call, which should be reported.
   power_manager::PowerSupplyProperties power_supply;
@@ -248,8 +253,9 @@ TEST_F(PowerEventsImplTest, MultipleIdenticalPayloadsReportedOnlyOnce) {
   // Changing the type of external power should again be reported.
   base::RunLoop run_loop2;
   SetExpectedEvent(mojom::PowerEventInfo::State::kAcInserted);
-  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted())
-      .WillOnce(Invoke([&]() { run_loop2.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnAcInserted()).WillOnce([&]() {
+    run_loop2.Quit();
+  });
 
   power_supply.set_external_power(power_manager::PowerSupplyProperties::AC);
   EmitPowerSupplyPollSignal(power_supply);

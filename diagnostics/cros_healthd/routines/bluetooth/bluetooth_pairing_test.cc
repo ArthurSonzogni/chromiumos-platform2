@@ -29,7 +29,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::StrictMock;
@@ -151,12 +150,12 @@ class BluetoothPairingRoutineTest : public testing::Test {
   // result.
   void SetConnectDeviceCall(bool connected_result = true) {
     EXPECT_CALL(mock_target_device_, ConnectAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           // Send out connected status changed event.
           fake_bluetooth_event_hub()->SendDevicePropertyChanged(
               &mock_target_device_, mock_target_device_.ConnectedName());
-        })));
+        }));
     EXPECT_CALL(mock_target_device_, connected())
         .WillOnce(Return(connected_result));
   }
@@ -166,12 +165,12 @@ class BluetoothPairingRoutineTest : public testing::Test {
     // Return false to call Pair function.
     EXPECT_CALL(mock_target_device_, paired()).WillOnce(Return(false));
     EXPECT_CALL(mock_target_device_, PairAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           // Send out paired status changed event.
           fake_bluetooth_event_hub()->SendDevicePropertyChanged(
               &mock_target_device_, mock_target_device_.PairedName());
-        })));
+        }));
     // Return false to monitor paired changed event.
     EXPECT_CALL(mock_target_device_, paired()).WillOnce(Return(false));
     EXPECT_CALL(mock_target_device_, paired()).WillOnce(Return(paired_result));
@@ -182,12 +181,11 @@ class BluetoothPairingRoutineTest : public testing::Test {
     EXPECT_CALL(mock_target_device_, GetObjectPath())
         .WillOnce(ReturnRef(target_device_path_));
     EXPECT_CALL(mock_adapter_proxy_, RemoveDeviceAsync(_, _, _, _))
-        .WillOnce(
-            WithArgs<0, 1>(Invoke([&](const dbus::ObjectPath& in_device,
-                                      base::OnceCallback<void()> on_success) {
-              EXPECT_EQ(in_device, target_device_path_);
-              std::move(on_success).Run();
-            })));
+        .WillOnce(WithArgs<0, 1>([&](const dbus::ObjectPath& in_device,
+                                     base::OnceCallback<void()> on_success) {
+          EXPECT_EQ(in_device, target_device_path_);
+          std::move(on_success).Run();
+        }));
   }
 
   base::Value::Dict GetErrorDict(const brillo::Error& error) {
@@ -368,11 +366,11 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
       .WillOnce(ReturnRef(target_device_path_));
   EXPECT_CALL(mock_adapter_proxy_, RemoveDeviceAsync(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(
-          Invoke([&](const dbus::ObjectPath& in_device,
-                     base::OnceCallback<void(brillo::Error*)> on_error) {
+          [&](const dbus::ObjectPath& in_device,
+              base::OnceCallback<void(brillo::Error*)> on_error) {
             EXPECT_EQ(in_device, target_device_path_);
             std::move(on_error).Run(nullptr);
-          })));
+          }));
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -500,10 +498,10 @@ TEST_F(BluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
       FROM_HERE, /*domain=*/"", /*code=*/"org.bluez.Error.Failed",
       /*message=*/"br-connection-profile-unavailable");
   EXPECT_CALL(mock_target_device_, ConnectAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([&](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([&](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(error.get());
-          })));
+          }));
 
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
@@ -569,10 +567,10 @@ TEST_F(BluetoothPairingRoutineTest, FailedToPair) {
       FROM_HERE, /*domain=*/"", /*code=*/"org.bluez.Error.AuthenticationFailed",
       /*message=*/"Authentication Failed");
   EXPECT_CALL(mock_target_device_, PairAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([&](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([&](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(error.get());
-          })));
+          }));
 
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
@@ -640,11 +638,11 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
       .WillOnce(ReturnRef(target_device_path_));
   EXPECT_CALL(mock_adapter_proxy_, RemoveDeviceAsync(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(
-          Invoke([&](const dbus::ObjectPath& in_device,
-                     base::OnceCallback<void(brillo::Error*)> on_error) {
+          [&](const dbus::ObjectPath& in_device,
+              base::OnceCallback<void(brillo::Error*)> on_error) {
             EXPECT_EQ(in_device, target_device_path_);
             std::move(on_error).Run(nullptr);
-          })));
+          }));
 
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);

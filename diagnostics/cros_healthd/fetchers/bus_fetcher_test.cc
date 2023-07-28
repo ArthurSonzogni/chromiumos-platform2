@@ -31,7 +31,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 class FakeUdevDevice : public brillo::MockUdevDevice {
@@ -39,13 +38,13 @@ class FakeUdevDevice : public brillo::MockUdevDevice {
   FakeUdevDevice(const std::string& vendor_name, const std::string& device_name)
       : vendor_name_(vendor_name), device_name_(device_name) {
     EXPECT_CALL(*this, GetPropertyValue)
-        .WillRepeatedly(Invoke([this](const char* key) {
+        .WillRepeatedly([this](const char* key) {
           if (std::string(key) == kPropertieVendorFromDB)
             return vendor_name_.c_str();
           if (std::string(key) == kPropertieModelFromDB)
             return device_name_.c_str();
           return "";
-        }));
+        });
   }
   ~FakeUdevDevice() = default;
 
@@ -69,22 +68,22 @@ class BusFetcherTest : public BaseFileTest {
   void MockUdevDevice(const std::string& vendor_name,
                       const std::string& device_name) {
     EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
-        .WillRepeatedly(Invoke([=](const char* syspath) {
+        .WillRepeatedly([=](const char* syspath) {
           auto udevice =
               std::make_unique<FakeUdevDevice>(vendor_name, device_name);
           return udevice;
-        }));
+        });
   }
 
   void MockFwupdProxy(
       const std::vector<brillo::VariantDictionary>& fwupd_response) {
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
-        .WillRepeatedly(WithArg<0>(
-            Invoke([=](base::OnceCallback<void(
-                           const std::vector<brillo::VariantDictionary>&)>
-                           success_callback) {
+        .WillRepeatedly(
+            WithArg<0>([=](base::OnceCallback<void(
+                               const std::vector<brillo::VariantDictionary>&)>
+                               success_callback) {
               std::move(success_callback).Run(std::move(fwupd_response));
-            })));
+            }));
   }
 
   // Creates a pci device with default attributes. Returns the device's

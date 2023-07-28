@@ -19,7 +19,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 class FingerprintRoutineTest : public testing::Test {
@@ -75,7 +74,7 @@ class FingerprintRoutineTest : public testing::Test {
                 GetFingerprintFrame(
                     mojom::FingerprintCaptureType::kCheckerboardTest, _))
         .WillOnce(WithArg<1>(
-            Invoke([=](mojom::Executor::GetFingerprintFrameCallback callback) {
+            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
               mojom::FingerprintFrameResult result;
               result.width = 4;
               result.height = 4;
@@ -83,7 +82,7 @@ class FingerprintRoutineTest : public testing::Test {
                               5, 12, 6, 11, 10, 7, 9,  8};
 
               std::move(callback).Run(result.Clone(), err);
-            })));
+            }));
   }
 
   // Return the following 4*4 inverted checkerboard frame.
@@ -107,7 +106,7 @@ class FingerprintRoutineTest : public testing::Test {
         GetFingerprintFrame(
             mojom::FingerprintCaptureType::kInvertedCheckerboardTest, _))
         .WillOnce(WithArg<1>(
-            Invoke([=](mojom::Executor::GetFingerprintFrameCallback callback) {
+            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
               mojom::FingerprintFrameResult result;
               result.width = 4;
               result.height = 4;
@@ -115,7 +114,7 @@ class FingerprintRoutineTest : public testing::Test {
                               5, 12, 6, 11, 10, 7, 9,  8};
 
               std::move(callback).Run(result.Clone(), err);
-            })));
+            }));
   }
 
   // Return the following 5*1 reset test frame.
@@ -137,14 +136,14 @@ class FingerprintRoutineTest : public testing::Test {
         *mock_executor(),
         GetFingerprintFrame(mojom::FingerprintCaptureType::kResetTest, _))
         .WillOnce(WithArg<1>(
-            Invoke([=](mojom::Executor::GetFingerprintFrameCallback callback) {
+            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
               mojom::FingerprintFrameResult result;
               result.width = 1;
               result.height = 5;
               result.frame = {1, 2, 3, 4, 5};
 
               std::move(callback).Run(result.Clone(), err);
-            })));
+            }));
   }
 
   MockContext* mock_context() { return &mock_context_; }

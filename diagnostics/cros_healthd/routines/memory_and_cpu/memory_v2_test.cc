@@ -46,7 +46,6 @@ namespace {
 
 namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 using ::testing::WithArgs;
 
@@ -96,13 +95,13 @@ class MemoryRoutineV2TestBase : public BaseFileTest {
   // memory is being tested.
   void SetExecutorResponse() {
     EXPECT_CALL(*mock_context_.mock_executor(), RunMemtesterV2(_, _))
-        .WillRepeatedly(WithArgs<0, 1>(Invoke(
+        .WillRepeatedly(WithArgs<0, 1>(
             [=](uint32_t testing_mem_kib,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_testing_mem_kib_ = testing_mem_kib;
-            })));
+            }));
   }
 
   void SetExecutorOutput(const std::string& output) {

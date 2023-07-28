@@ -29,7 +29,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -77,15 +76,15 @@ TEST_F(VideoConferencingRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const std::optional<std::string>& stun_server_hostname,
-                     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         RunVideoConferencingCallback callback) {
+          [&](const std::optional<std::string>& stun_server_hostname,
+              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  RunVideoConferencingCallback callback) {
             auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kNoProblem,
                 network_diagnostics_ipc::RoutineProblems::
                     NewVideoConferencingProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -99,15 +98,15 @@ TEST_F(VideoConferencingRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const std::optional<std::string>& stun_server_hostname,
-                     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         RunVideoConferencingCallback callback) {
+          [&](const std::optional<std::string>& stun_server_hostname,
+              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  RunVideoConferencingCallback callback) {
             auto result =
                 CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
                              network_diagnostics_ipc::RoutineProblems::
                                  NewVideoConferencingProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -135,15 +134,15 @@ TEST_P(VideoConferencingProblemTest, HandleVideoConferencingProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const std::optional<std::string>& stun_server_hostname,
-                     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         RunVideoConferencingCallback callback) {
+          [&](const std::optional<std::string>& stun_server_hostname,
+              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  RunVideoConferencingCallback callback) {
             auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kProblem,
                 network_diagnostics_ipc::RoutineProblems::
                     NewVideoConferencingProblems(params().problems));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

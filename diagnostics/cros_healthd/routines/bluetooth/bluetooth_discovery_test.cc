@@ -27,7 +27,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
@@ -77,11 +76,11 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
 
   void SetStartDiscoveryCall(bool dbus_result_discovering) {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
               &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
-        })));
+        }));
     // The discovering state will be accessed when a property change event is
     // received.
     EXPECT_CALL(mock_adapter_proxy_, discovering())
@@ -90,11 +89,11 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
 
   void SetStopDiscoveryCall(bool dbus_result_discovering) {
     EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(Invoke([&](base::OnceCallback<void()> on_success) {
+        .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
               &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
-        })));
+        }));
     // The discovering state will be accessed when a property change event is
     // received.
     EXPECT_CALL(mock_adapter_proxy_, discovering())
@@ -284,10 +283,10 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
-          })));
+          }));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.
@@ -311,10 +310,10 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
   // Failed to stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<1>(
-          Invoke([](base::OnceCallback<void(brillo::Error*)> on_error) {
+      .WillOnce(
+          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
             std::move(on_error).Run(nullptr);
-          })));
+          }));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 

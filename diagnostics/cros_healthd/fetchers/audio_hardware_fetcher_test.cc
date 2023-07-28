@@ -20,7 +20,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::AnyNumber;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 constexpr char kAsoundPath[] = "/proc/asound";
@@ -33,11 +32,11 @@ class AudioHardwareFetcherTest : public BaseFileTest {
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
     ON_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
-        .WillByDefault(WithArg<0>(Invoke(
+        .WillByDefault(WithArg<0>(
             [](base::OnceCallback<void(
                    const std::vector<brillo::VariantDictionary>&)> callback) {
               std::move(callback).Run({});
-            })));
+            }));
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
         .Times(AnyNumber());
 

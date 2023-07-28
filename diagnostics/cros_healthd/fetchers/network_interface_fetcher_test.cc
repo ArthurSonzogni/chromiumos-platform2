@@ -34,7 +34,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using IwCommand = mojom::Executor::IwCommand;
 using ::testing::_;
 using ::testing::AnyNumber;
-using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::Return;
@@ -107,22 +106,22 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
               const int32_t return_code,
               const std::string& output) {
     EXPECT_CALL(*mock_context_.mock_executor(), RunIw(cmd, interface_name, _))
-        .WillRepeatedly(WithArg<2>(Invoke(
+        .WillRepeatedly(WithArg<2>(
             [return_code, output](mojom::Executor::RunIwCallback callback) {
               auto result = mojom::ExecutedProcessResult::New();
               result->return_code = return_code;
               result->out = output;
               std::move(callback).Run(std::move(result));
-            })));
+            }));
   }
 
   void MockReadPowerSchema(const std::optional<std::string>& content) {
     EXPECT_CALL(*mock_context_.mock_executor(),
                 ReadFile(mojom::Executor::File::kWirelessPowerScheme, _))
         .WillRepeatedly(
-            WithArg<1>(Invoke([=](mojom::Executor::ReadFileCallback callback) {
+            WithArg<1>([=](mojom::Executor::ReadFileCallback callback) {
               std::move(callback).Run(std::move(content));
-            })));
+            }));
   }
 
  private:

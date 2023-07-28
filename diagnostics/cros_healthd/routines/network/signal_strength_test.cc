@@ -25,7 +25,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -70,14 +69,14 @@ class SignalStrengthRoutineTest : public testing::Test {
 // Test that the SignalStrength routine can be run successfully.
 TEST_F(SignalStrengthRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunSignalStrengthCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunSignalStrengthCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
             network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -89,14 +88,14 @@ TEST_F(SignalStrengthRoutineTest, RoutineSuccess) {
 // run.
 TEST_F(SignalStrengthRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunSignalStrengthCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunSignalStrengthCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
             network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -122,14 +121,14 @@ class SignalStrengthProblemTest
 // problem.
 TEST_P(SignalStrengthProblemTest, HandleSignalStrengthProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunSignalStrengthCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunSignalStrengthCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
                 {params().problem_enum}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

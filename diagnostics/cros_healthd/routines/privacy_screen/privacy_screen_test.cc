@@ -25,7 +25,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 const char kDisplayUtilInitializationError[] =
@@ -97,10 +96,10 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
             : std::make_optional(kDisplayUtilInitializationError);
     EXPECT_CALL(*context_.mock_executor(), GetPrivacyScreenInfo(_))
         .WillRepeatedly(WithArg<0>(
-            Invoke([=](MockExecutor::GetPrivacyScreenInfoCallback callback) {
+            [=](MockExecutor::GetPrivacyScreenInfoCallback callback) {
               std::move(callback).Run(privacy_screen_supported,
                                       privacy_screen_enabled, error_message);
-            })));
+            }));
   }
 
   MockContext context_;

@@ -24,7 +24,6 @@ namespace diagnostics {
 namespace {
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
 using ::testing::WithArgs;
@@ -83,7 +82,7 @@ class DlcManagerTest : public testing::Test {
 
   void SetInstallDlcCall(const dlcservice::DlcState& state, bool is_success) {
     EXPECT_CALL(mock_dlc_service_, InstallAsync(_, _, _, _))
-        .WillOnce(WithArgs<0, 1, 2>(Invoke(
+        .WillOnce(WithArgs<0, 1, 2>(
             [=](const dlcservice::InstallRequest& in_install_request,
                 base::OnceCallback<void()> success_callback,
                 base::OnceCallback<void(brillo::Error*)> error_callback) {
@@ -95,7 +94,7 @@ class DlcManagerTest : public testing::Test {
                 auto error = brillo::Error::Create(FROM_HERE, "", "", "");
                 std::move(error_callback).Run(error.get());
               }
-            })));
+            }));
   }
 
  protected:

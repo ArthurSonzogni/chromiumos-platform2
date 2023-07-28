@@ -158,10 +158,10 @@ TEST_F(NetworkHealthAdapterImplTest, RequestNetworkHealthState) {
   base::RunLoop run_loop;
   auto canned_response = network_health_ipc::NetworkHealthState::New();
   EXPECT_CALL(service, GetHealthSnapshot(testing::_))
-      .WillOnce(testing::Invoke([&](network_health_ipc::NetworkHealthService::
-                                        GetHealthSnapshotCallback callback) {
+      .WillOnce([&](network_health_ipc::NetworkHealthService::
+                        GetHealthSnapshotCallback callback) {
         std::move(callback).Run(canned_response.Clone());
-      }));
+      });
 
   network_health_adapter()->GetNetworkHealthState(base::BindLambdaForTesting(
       [&](std::optional<network_health_ipc::NetworkHealthStatePtr> response) {
@@ -181,9 +181,9 @@ TEST_F(NetworkHealthAdapterImplTest, AddNetworkEventsObserver) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(service, AddObserver(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](mojo::PendingRemote<network_health_ipc::NetworkEventsObserver>
-                  pending_remote) { run_loop.Quit(); }));
+                  pending_remote) { run_loop.Quit(); });
 
   // Add a NetworkObserver to the NetworkHealthAdapterImpl instance. The
   // NetworkHealthAdapterImpl instance should start listening for network
@@ -204,10 +204,10 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveConnectionStateChangeEvent) {
   MockNetworkEventsObserver mock_observer;
   auto network_state = network_health_ipc::NetworkState::kConnected;
   EXPECT_CALL(mock_observer, OnConnectionStateChanged(kFakeGuid, network_state))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](const std::string& guid, network_health_ipc::NetworkState state) {
             run_loop.Quit();
-          }));
+          });
 
   network_health_adapter()->AddObserver(mock_observer.pending_remote());
 
@@ -227,12 +227,11 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveSignalStrengthChangeEvent) {
   MockNetworkEventsObserver observer;
   uint32_t network_signal_strength = 50;
   EXPECT_CALL(observer, OnSignalStrengthChanged(kFakeGuid, testing::_))
-      .WillOnce(testing::Invoke(
-          [&](const std::string& guid,
-              network_health_ipc::UInt32ValuePtr signal_strength) {
-            EXPECT_EQ(signal_strength->value, network_signal_strength);
-            run_loop.Quit();
-          }));
+      .WillOnce([&](const std::string& guid,
+                    network_health_ipc::UInt32ValuePtr signal_strength) {
+        EXPECT_EQ(signal_strength->value, network_signal_strength);
+        run_loop.Quit();
+      });
 
   network_health_adapter()->AddObserver(observer.pending_remote());
 

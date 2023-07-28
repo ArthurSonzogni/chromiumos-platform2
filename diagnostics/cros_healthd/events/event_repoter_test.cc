@@ -22,7 +22,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 
 class EventReporterTest : public testing::Test {
   void SetUp() {
@@ -47,12 +46,12 @@ TEST_F(EventReporterTest, KeyboardDiagnostic) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(mock_observer_, OnEvent(_))
-      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+      .WillOnce([&](mojom::EventInfoPtr info) {
         EXPECT_TRUE(info->is_keyboard_diagnostic_event_info());
         EXPECT_EQ(info->get_keyboard_diagnostic_event_info(),
                   keyboard_diagnostic_event_info);
         run_loop.Quit();
-      }));
+      });
 
   event_reporter_->SendKeyboardDiagnosticEvent(
       keyboard_diagnostic_event_info.Clone());

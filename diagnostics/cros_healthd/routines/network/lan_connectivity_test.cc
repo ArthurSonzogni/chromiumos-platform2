@@ -24,7 +24,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 
 class LanConnectivityRoutineTest : public testing::Test {
  protected:
@@ -63,14 +62,14 @@ class LanConnectivityRoutineTest : public testing::Test {
 // verdict is network_diagnostics::mojom::RoutineVerdict::kNoProblem.
 TEST_F(LanConnectivityRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunLanConnectivityCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunLanConnectivityCallback callback) {
         auto result =
             CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
                          network_diagnostics_ipc::RoutineProblems::
                              NewLanConnectivityProblems({}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
 
@@ -84,8 +83,8 @@ TEST_F(LanConnectivityRoutineTest, RoutineSuccess) {
 // network_diagnostics::mojom::RoutineVerdict::kProblem.
 TEST_F(LanConnectivityRoutineTest, RoutineFailed) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunLanConnectivityCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunLanConnectivityCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::
@@ -93,7 +92,7 @@ TEST_F(LanConnectivityRoutineTest, RoutineFailed) {
                     {network_diagnostics_ipc::LanConnectivityProblem::
                          kNoLanConnectivity}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
 
@@ -107,14 +106,14 @@ TEST_F(LanConnectivityRoutineTest, RoutineFailed) {
 // routine is a network_diagnostics::mojom::RoutineVerdict::kNotRun.
 TEST_F(LanConnectivityRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunLanConnectivityCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunLanConnectivityCallback callback) {
         auto result =
             CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
                          network_diagnostics_ipc::RoutineProblems::
                              NewLanConnectivityProblems({}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
 

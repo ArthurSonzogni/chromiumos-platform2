@@ -19,7 +19,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 class FingerprintAliveRoutineTest : public testing::Test {
@@ -37,12 +36,12 @@ class FingerprintAliveRoutineTest : public testing::Test {
       const std::optional<std::string>& err, bool rw_fw) {
     EXPECT_CALL(*mock_executor(), GetFingerprintInfo(_))
         .WillOnce(WithArg<0>(
-            Invoke([=](mojom::Executor::GetFingerprintInfoCallback callback) {
+            [=](mojom::Executor::GetFingerprintInfoCallback callback) {
               mojom::FingerprintInfoResult result;
               result.rw_fw = rw_fw;
 
               std::move(callback).Run(result.Clone(), err);
-            })));
+            }));
   }
 
   MockContext* mock_context() { return &mock_context_; }

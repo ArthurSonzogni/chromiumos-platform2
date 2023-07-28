@@ -21,7 +21,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
 
@@ -51,9 +50,9 @@ class AudioSetGainRoutineTest : public testing::Test {
 
   void SetSetInputNodeGainError() {
     EXPECT_CALL(*mock_cras_proxy(), SetInputNodeGain(_, _, _, _))
-        .WillOnce(DoAll(WithArg<2>(Invoke([](brillo::ErrorPtr* error) {
+        .WillOnce(DoAll(WithArg<2>([](brillo::ErrorPtr* error) {
                           *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
+                        }),
                         Return(false)));
   }
 

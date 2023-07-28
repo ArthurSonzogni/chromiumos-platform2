@@ -27,7 +27,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 
@@ -86,11 +85,11 @@ class AudioEventsImplTest : public testing::Test {
 
   void SetExpectedEvent(mojom::AudioEventInfo::State state) {
     EXPECT_CALL(*mock_observer(), OnEvent(_))
-        .WillOnce(Invoke([=](mojom::EventInfoPtr info) {
+        .WillOnce([=](mojom::EventInfoPtr info) {
           EXPECT_TRUE(info->is_audio_event_info());
           const auto& audio_event_info = info->get_audio_event_info();
           EXPECT_EQ(audio_event_info->state, state);
-        }));
+        });
   }
 
   MockEventObserver* mock_observer() { return observer_.get(); }
@@ -111,9 +110,9 @@ class AudioEventsImplTest : public testing::Test {
 TEST_F(AudioEventsImplTest, UnderrunEvent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::AudioEventInfo::State::kUnderrun);
-  EXPECT_CALL(*mock_deprecated_observer(), OnUnderrun()).WillOnce(Invoke([&]() {
+  EXPECT_CALL(*mock_deprecated_observer(), OnUnderrun()).WillOnce([&]() {
     run_loop.Quit();
-  }));
+  });
 
   InvokeUnderrunEvent();
 
@@ -123,8 +122,9 @@ TEST_F(AudioEventsImplTest, UnderrunEvent) {
 TEST_F(AudioEventsImplTest, SevereUnderrunEvent) {
   base::RunLoop run_loop;
   SetExpectedEvent(mojom::AudioEventInfo::State::kSevereUnderrun);
-  EXPECT_CALL(*mock_deprecated_observer(), OnSevereUnderrun())
-      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
+  EXPECT_CALL(*mock_deprecated_observer(), OnSevereUnderrun()).WillOnce([&]() {
+    run_loop.Quit();
+  });
 
   InvokeSevereUnderrunEvent();
 

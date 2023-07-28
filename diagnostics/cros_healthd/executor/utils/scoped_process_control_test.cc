@@ -23,7 +23,6 @@ namespace diagnostics {
 namespace {
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Return;
 
 class ScopedProcessControlTest : public testing::Test {

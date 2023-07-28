@@ -29,7 +29,6 @@ namespace {
 namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArgs;
 
 class CpuStressRoutineV2TestBase : public BaseFileTest {
@@ -57,13 +56,13 @@ class CpuStressRoutineV2TestBase : public BaseFileTest {
   void SetExecutorResponse() {
     EXPECT_CALL(*mock_context_.mock_executor(),
                 RunStressAppTest(_, _, mojom::StressAppTestType::kCpuStress, _))
-        .WillRepeatedly(WithArgs<1, 3>(Invoke(
+        .WillRepeatedly(WithArgs<1, 3>(
             [=](uint32_t test_seconds,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_test_seconds_ = test_seconds;
-            })));
+            }));
   }
 
   void SetExecutorReturnCode(int return_code) {

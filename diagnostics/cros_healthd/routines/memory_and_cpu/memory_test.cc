@@ -34,7 +34,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 // Location of files containing test data (fake memtester output).
@@ -125,8 +124,8 @@ class MemoryRoutineTest : public BaseFileTest {
         "MemFree:         2873180 kB\n"
         "MemAvailable:    2878980 kB\n");
     EXPECT_CALL(*mock_executor(), RunMemtester(_, _))
-        .WillOnce(WithArg<1>(
-            Invoke([=](mojom::Executor::RunMemtesterCallback callback) {
+        .WillOnce(
+            WithArg<1>([=](mojom::Executor::RunMemtesterCallback callback) {
               mojom::ExecutedProcessResult result;
               result.return_code = exit_code;
               if (outfile_name.has_value()) {
@@ -144,7 +143,7 @@ class MemoryRoutineTest : public BaseFileTest {
                       FROM_HERE,
                       base::BindOnce(std::move(callback), result.Clone()),
                       delay.value());
-            })));
+            }));
   }
 
  private:

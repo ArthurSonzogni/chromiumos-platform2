@@ -25,7 +25,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 const char kFakeMountSource[] = "/dev/mmcblk0p1";
@@ -60,16 +59,16 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
     if (free_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
           .WillByDefault(WithArg<1>(
-              Invoke([=](base::OnceCallback<void(int64_t)> success_callback) {
+              [=](base::OnceCallback<void(int64_t)> success_callback) {
                 std::move(success_callback).Run(free_space_byte.value());
-              })));
+              }));
     } else {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(Invoke(
+          .WillByDefault(WithArg<2>(
               [](base::OnceCallback<void(brillo::Error*)> error_callback) {
                 auto error = brillo::Error::Create(FROM_HERE, "", "", "");
                 std::move(error_callback).Run(error.get());
-              })));
+              }));
     }
   }
 
@@ -77,16 +76,16 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
     if (total_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetTotalDiskSpaceAsync(_, _, _, _))
           .WillByDefault(WithArg<1>(
-              Invoke([=](base::OnceCallback<void(int64_t)> success_callback) {
+              [=](base::OnceCallback<void(int64_t)> success_callback) {
                 std::move(success_callback).Run(total_space_byte.value());
-              })));
+              }));
     } else {
       ON_CALL(*mock_spaced_proxy(), GetTotalDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(Invoke(
+          .WillByDefault(WithArg<2>(
               [](base::OnceCallback<void(brillo::Error*)> error_callback) {
                 auto error = brillo::Error::Create(FROM_HERE, "", "", "");
                 std::move(error_callback).Run(error.get());
-              })));
+              }));
     }
   }
 

@@ -22,7 +22,6 @@ namespace {
 
 using base::test::TestFuture;
 using testing::_;
-using testing::Invoke;
 using testing::WithArg;
 
 namespace network_diagnostics_ipc = chromeos::network_diagnostics::mojom;
@@ -160,15 +159,15 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunLanConnectivityRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunLanConnectivity(_))
-      .WillOnce(WithArg<0>(
-          Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         RunLanConnectivityCallback callback) {
+      .WillOnce(
+          WithArg<0>([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                             RunLanConnectivityCallback callback) {
             auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kNoProblem,
                 network_diagnostics_ipc::RoutineProblems::
                     NewLanConnectivityProblems({}));
             std::move(callback).Run(std::move(result));
-          })));
+          }));
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunLanConnectivityRoutine(
@@ -186,15 +185,15 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunSignalStrengthRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunSignalStrength(_))
-      .WillOnce(WithArg<0>(
-          Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         RunSignalStrengthCallback callback) {
+      .WillOnce(
+          WithArg<0>([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                             RunSignalStrengthCallback callback) {
             auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kNoProblem,
                 network_diagnostics_ipc::RoutineProblems::
                     NewSignalStrengthProblems({}));
             std::move(callback).Run(std::move(result));
-          })));
+          }));
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunSignalStrengthRoutine(future.GetCallback());
@@ -212,7 +211,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunGatewayCanBePinged(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunGatewayCanBePingedCallback callback) {
             auto result = CreateResult(
@@ -220,7 +219,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewGatewayCanBePingedProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunGatewayCanBePingedRoutine(
@@ -240,7 +239,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
 
   EXPECT_CALL(network_diagnostics_routines,
               RunHasSecureWiFiConnection(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunHasSecureWiFiConnectionCallback callback) {
             auto result = CreateResult(
@@ -248,7 +247,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewHasSecureWifiConnectionProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHasSecureWiFiConnectionRoutine(
@@ -268,7 +267,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunDnsResolverPresent(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunDnsResolverPresentCallback callback) {
             auto result = CreateResult(
@@ -276,7 +275,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewDnsResolverPresentProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunDnsResolverPresentRoutine(
@@ -295,7 +294,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunDnsLatency(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunDnsLatencyCallback callback) {
             auto result = CreateResult(
@@ -303,7 +302,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
                 network_diagnostics_ipc::RoutineProblems::NewDnsLatencyProblems(
                     {}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunDnsLatencyRoutine(future.GetCallback());
@@ -321,7 +320,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunDnsResolution(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunDnsResolutionCallback callback) {
             auto result = CreateResult(
@@ -329,7 +328,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewDnsResolutionProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunDnsResolutionRoutine(future.GetCallback());
@@ -347,7 +346,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunCaptivePortal(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunCaptivePortalCallback callback) {
             auto result = CreateResult(
@@ -355,7 +354,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewCaptivePortalProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunCaptivePortalRoutine(future.GetCallback());
@@ -373,7 +372,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunHttpFirewall(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunHttpFirewallCallback callback) {
             auto result = CreateResult(
@@ -381,7 +380,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewHttpFirewallProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHttpFirewallRoutine(future.GetCallback());
@@ -399,7 +398,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunHttpsFirewall(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunHttpsFirewallCallback callback) {
             auto result = CreateResult(
@@ -407,7 +406,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewHttpsFirewallProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHttpsFirewallRoutine(future.GetCallback());
@@ -425,7 +424,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunHttpsLatency(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunHttpsLatencyCallback callback) {
             auto result = CreateResult(
@@ -433,7 +432,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewHttpsLatencyProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHttpsLatencyRoutine(future.GetCallback());
@@ -451,7 +450,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunVideoConferencing(_, _))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](const std::optional<std::string>& stun_server_hostname,
               network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunVideoConferencingCallback callback) {
@@ -460,7 +459,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewVideoConferencingProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunVideoConferencingRoutine(
@@ -480,7 +479,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunArcHttp(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunArcHttpCallback callback) {
             auto result = CreateResult(
@@ -488,7 +487,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
                 network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems(
                     {}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunArcHttpRoutine(future.GetCallback());
@@ -506,7 +505,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunArcPing(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunArcPingCallback callback) {
             auto result = CreateResult(
@@ -514,7 +513,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
                 network_diagnostics_ipc::RoutineProblems::NewArcPingProblems(
                     {}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunArcPingRoutine(future.GetCallback());
@@ -532,7 +531,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
       network_diagnostics_routines.pending_remote());
 
   EXPECT_CALL(network_diagnostics_routines, RunArcDnsResolution(testing::_))
-      .WillOnce(testing::Invoke(
+      .WillOnce(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunArcDnsResolutionCallback callback) {
             auto result = CreateResult(
@@ -540,7 +539,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
                 network_diagnostics_ipc::RoutineProblems::
                     NewArcDnsResolutionProblems({}));
             std::move(callback).Run(std::move(result));
-          }));
+          });
 
   TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunArcDnsResolutionRoutine(

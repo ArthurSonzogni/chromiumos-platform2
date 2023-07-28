@@ -25,7 +25,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -69,14 +68,14 @@ class HttpsLatencyRoutineTest : public testing::Test {
 // Test that the HttpsLatency routine can be run successfully.
 TEST_F(HttpsLatencyRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpsLatencyCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpsLatencyCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
             network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -88,14 +87,14 @@ TEST_F(HttpsLatencyRoutineTest, RoutineSuccess) {
 // run.
 TEST_F(HttpsLatencyRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpsLatencyCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpsLatencyCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
             network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -120,14 +119,14 @@ class HttpsLatencyProblemTest
 // Test that the HttpsLatency routine handles the given HTTPS latency problem.
 TEST_P(HttpsLatencyProblemTest, HandleHttpsLatencyProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpsLatencyCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpsLatencyCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
                 {params().problem_enum}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

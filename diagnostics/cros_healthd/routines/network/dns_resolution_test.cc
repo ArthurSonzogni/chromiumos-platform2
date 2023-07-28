@@ -25,7 +25,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -69,14 +68,14 @@ class DnsResolutionRoutineTest : public testing::Test {
 // Test that the DnsResolution routine can be run successfully.
 TEST_F(DnsResolutionRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunDnsResolutionCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunDnsResolutionCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
             network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -88,14 +87,14 @@ TEST_F(DnsResolutionRoutineTest, RoutineSuccess) {
 // run.
 TEST_F(DnsResolutionRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunDnsResolutionCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunDnsResolutionCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
             network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -120,14 +119,14 @@ class DnsResolutionProblemTest
 // Test that the DnsResolution routine handles the given DNS resolution problem.
 TEST_P(DnsResolutionProblemTest, HandleDnsResolutionProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunDnsResolutionCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunDnsResolutionCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
                 {params().problem_enum}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

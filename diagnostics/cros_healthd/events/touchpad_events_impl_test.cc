@@ -24,7 +24,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::StrictMock;
 
 // Tests for the TouchpadEventsImpl class.
@@ -92,13 +91,13 @@ TEST_F(TouchpadEventsImplTest, TouchpadTouchEvent) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+      .WillOnce([&](mojom::EventInfoPtr info) {
         EXPECT_TRUE(info->is_touchpad_event_info());
         const auto& touchpad_event_info = info->get_touchpad_event_info();
         EXPECT_TRUE(touchpad_event_info->is_touch_event());
         EXPECT_EQ(fake_touch_event, *touchpad_event_info->get_touch_event());
         run_loop.Quit();
-      }));
+      });
 
   EmitTouchpadTouchEvent(fake_touch_event.Clone());
 
@@ -113,13 +112,13 @@ TEST_F(TouchpadEventsImplTest, TouchpadButtonEvent) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+      .WillOnce([&](mojom::EventInfoPtr info) {
         EXPECT_TRUE(info->is_touchpad_event_info());
         const auto& touchpad_event_info = info->get_touchpad_event_info();
         EXPECT_TRUE(touchpad_event_info->is_button_event());
         EXPECT_EQ(fake_button_event, *touchpad_event_info->get_button_event());
         run_loop.Quit();
-      }));
+      });
 
   EmitTouchpadButtonEvent(fake_button_event.Clone());
 
@@ -135,14 +134,14 @@ TEST_F(TouchpadEventsImplTest, TouchpadConnectedEvent) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+      .WillOnce([&](mojom::EventInfoPtr info) {
         EXPECT_TRUE(info->is_touchpad_event_info());
         const auto& touchpad_event_info = info->get_touchpad_event_info();
         EXPECT_TRUE(touchpad_event_info->is_connected_event());
         EXPECT_EQ(fake_connected_event,
                   *touchpad_event_info->get_connected_event());
         run_loop.Quit();
-      }));
+      });
 
   EmitTouchpadConnectedEvent(fake_connected_event.Clone());
 
@@ -171,8 +170,8 @@ TEST_F(TouchpadEventsImplTest, TouchpadConnectedEventWithMultipleObservers) {
       run_loop.Quit();
     }
   };
-  EXPECT_CALL(*mock_event_observer(), OnEvent(_)).WillOnce(Invoke(on_event));
-  EXPECT_CALL(*second_event_observer, OnEvent(_)).WillOnce(Invoke(on_event));
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_)).WillOnce(on_event);
+  EXPECT_CALL(*second_event_observer, OnEvent(_)).WillOnce(on_event);
 
   EmitTouchpadConnectedEvent(fake_connected_event.Clone());
 

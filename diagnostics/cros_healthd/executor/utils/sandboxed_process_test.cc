@@ -17,7 +17,6 @@ namespace {
 
 using ::testing::_;
 using ::testing::Contains;
-using ::testing::Invoke;
 using ::testing::Not;
 using ::testing::Return;
 
@@ -61,7 +60,7 @@ class SandboxedProcessTest : public testing::Test {
                 IsPathExists(base::FilePath{kTestReadOnlyFileNotExist}))
         .WillOnce(Return(false));
     EXPECT_CALL(process, BrilloProcessAddArg(_))
-        .WillRepeatedly(Invoke([&](const std::string& arg) {
+        .WillRepeatedly([&](const std::string& arg) {
           // These are minijail flags with string argument.
           const std::set<std::string> kMinijailStringArgFlags{
               "-u", "-g", "-c", "-S", "-b", "-P", "-k"};
@@ -87,7 +86,7 @@ class SandboxedProcessTest : public testing::Test {
             return;
           }
           cmd_.push_back(arg);
-        }));
+        });
   }
 
  protected:

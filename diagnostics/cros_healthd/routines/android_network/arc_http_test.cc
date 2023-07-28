@@ -25,7 +25,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -69,13 +68,13 @@ class ArcHttpRoutineTest : public testing::Test {
 // Test that the ArcHttp routine can be run successfully.
 TEST_F(ArcHttpRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunArcHttpRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunArcHttpCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunArcHttpCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
             network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems({}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -86,13 +85,13 @@ TEST_F(ArcHttpRoutineTest, RoutineSuccess) {
 // Test that the ArcHttp routine returns an error when it is not run.
 TEST_F(ArcHttpRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunArcHttpRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunArcHttpCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunArcHttpCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
             network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems({}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -116,14 +115,14 @@ class ArcHttpProblemTest : public ArcHttpRoutineTest,
 // Test that the ArcHttp routine handles the given ARC HTTP problem.
 TEST_P(ArcHttpProblemTest, HandleArcHttpProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunArcHttpRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunArcHttpCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunArcHttpCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems(
                 {params().problem_enum}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

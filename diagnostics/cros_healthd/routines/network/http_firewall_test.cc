@@ -25,7 +25,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
@@ -69,14 +68,14 @@ class HttpFirewallRoutineTest : public testing::Test {
 // Test that the HttpFirewall routine can be run successfully.
 TEST_F(HttpFirewallRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpFirewallRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpFirewallCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpFirewallCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
             network_diagnostics_ipc::RoutineProblems::NewHttpFirewallProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -88,14 +87,14 @@ TEST_F(HttpFirewallRoutineTest, RoutineSuccess) {
 // run.
 TEST_F(HttpFirewallRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpFirewallRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpFirewallCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpFirewallCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
             network_diagnostics_ipc::RoutineProblems::NewHttpFirewallProblems(
                 {}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -120,14 +119,14 @@ class HttpFirewallProblemTest
 // Test that the HttpFirewall routine handles the given HTTP firewall problem.
 TEST_P(HttpFirewallProblemTest, HandleHttpFirewallProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpFirewallRoutine(_))
-      .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               RunHttpFirewallCallback callback) {
+      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunHttpFirewallCallback callback) {
         auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
             network_diagnostics_ipc::RoutineProblems::NewHttpFirewallProblems(
                 {params().problem_enum}));
         std::move(callback).Run(std::move(result));
-      }));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

@@ -27,7 +27,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::InSequence;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
@@ -67,14 +66,14 @@ class BluetoothPowerRoutineTest : public testing::Test {
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
-          .WillOnce(Invoke(
+          .WillOnce(
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
                 std::move(on_finish).Run(is_success);
                 if (is_success) {
                   fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
                       &mock_adapter_proxy_, mock_adapter_proxy_.PoweredName());
                 }
-              }));
+              });
     }
   }
 

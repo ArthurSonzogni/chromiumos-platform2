@@ -37,7 +37,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::UnorderedElementsAreArray;
 using VulnerabilityInfoMap =
     base::flat_map<std::string, mojom::VulnerabilityInfoPtr>;
@@ -401,10 +400,10 @@ class CpuFetcherTest : public testing::Test {
     EXPECT_CALL(*mock_executor(),
                 ReadMsr(expected_msr_reg, expected_logical_id, _))
         .WillRepeatedly(
-            Invoke([expected_val](uint32_t msr_reg, uint32_t cpu_index,
-                                  mojom::Executor::ReadMsrCallback callback) {
+            [expected_val](uint32_t msr_reg, uint32_t cpu_index,
+                           mojom::Executor::ReadMsrCallback callback) {
               std::move(callback).Run(mojom::NullableUint64::New(expected_val));
-            }));
+            });
   }
 
  private:

@@ -31,7 +31,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::WithArg;
 
 // POD struct for ParseProcessStateTest.
@@ -246,11 +245,11 @@ class ProcessFetcherTest : public testing::Test {
     // Set the mock executor response.
     EXPECT_CALL(*mock_context_.mock_executor(), GetProcessIOContents(_, _))
         .WillOnce(WithArg<1>(
-            Invoke([=](mojom::Executor::GetProcessIOContentsCallback callback) {
+            [=](mojom::Executor::GetProcessIOContentsCallback callback) {
               base::flat_map<uint32_t, std::string> content;
               content = io_contents;
               std::move(callback).Run(content);
-            })));
+            }));
   }
 
   const base::FilePath& temp_dir_path() const { return temp_dir_.GetPath(); }

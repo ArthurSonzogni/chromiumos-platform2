@@ -29,7 +29,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::WithArg;
@@ -66,9 +65,9 @@ class AudioDriverRoutineTest : public testing::Test {
 
   void SetIsInternalCardDetectedError() {
     EXPECT_CALL(*mock_cras_proxy(), IsInternalCardDetected(_, _, _))
-        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
+        .WillOnce(DoAll(WithArg<1>([](brillo::ErrorPtr* error) {
                           *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
+                        }),
                         Return(false)));
   }
 
@@ -80,9 +79,9 @@ class AudioDriverRoutineTest : public testing::Test {
 
   void SetExpectedNodeInfosError() {
     EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
+        .WillOnce(DoAll(WithArg<1>([](brillo::ErrorPtr* error) {
                           *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
+                        }),
                         Return(false)));
   }
 

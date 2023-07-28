@@ -38,7 +38,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using testing::_;
 using testing::ByMove;
-using testing::Invoke;
 using testing::Return;
 using testing::StrictMock;
 using ::testing::WithArg;
@@ -326,9 +325,7 @@ class ExternalDisplayEventsImplTest : public testing::Test {
 
 TEST_F(ThunderboltEventTest, TestThunderboltAddEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnAdd()).WillOnce(Invoke([&]() {
-    run_loop.Quit();
-  }));
+  EXPECT_CALL(*mock_observer(), OnAdd()).WillOnce([&]() { run_loop.Quit(); });
 
   TriggerUdevEvent(kUdevActionAdd, nullptr);
 
@@ -337,9 +334,9 @@ TEST_F(ThunderboltEventTest, TestThunderboltAddEvent) {
 
 TEST_F(ThunderboltEventTest, TestThunderboltRemoveEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnRemove()).WillOnce(Invoke([&]() {
+  EXPECT_CALL(*mock_observer(), OnRemove()).WillOnce([&]() {
     run_loop.Quit();
-  }));
+  });
 
   TriggerUdevEvent(kUdevActionRemove, nullptr);
 
@@ -348,9 +345,9 @@ TEST_F(ThunderboltEventTest, TestThunderboltRemoveEvent) {
 
 TEST_F(ThunderboltEventTest, TestThunderboltAuthorizedEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnAuthorized()).WillOnce(Invoke([&]() {
+  EXPECT_CALL(*mock_observer(), OnAuthorized()).WillOnce([&]() {
     run_loop.Quit();
-  }));
+  });
 
   TriggerUdevEvent(kUdevActionChange, kThunderboltAuthorized);
 
@@ -359,9 +356,9 @@ TEST_F(ThunderboltEventTest, TestThunderboltAuthorizedEvent) {
 
 TEST_F(ThunderboltEventTest, TestThunderboltUnAuthorizedEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnUnAuthorized()).WillOnce(Invoke([&]() {
+  EXPECT_CALL(*mock_observer(), OnUnAuthorized()).WillOnce([&]() {
     run_loop.Quit();
-  }));
+  });
 
   TriggerUdevEvent(kUdevActionChange, kThunderboltUnAuthorized);
 
@@ -430,10 +427,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
     connectors[1] = GenerateExternalDisplayInfo("display1");
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
           run_loop.Quit();
-        }));
+        });
     TriggerExternalDisplayEvent();
     run_loop.Run();
     recv_info->is_external_display_event_info();
@@ -468,10 +465,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
     mojom::EventInfoPtr recv_info;
     SetExecutorGetHdmi({});
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
           run_loop.Quit();
-        }));
+        });
     TriggerExternalDisplayEvent();
     run_loop.Run();
     recv_info->is_external_display_event_info();
@@ -506,7 +503,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     connectors[1] = GenerateExternalDisplayInfo("display1");
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) { run_loop.Quit(); }));
+        .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
     TriggerExternalDisplayEvent();
     run_loop.Run();
   }
@@ -515,7 +512,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) { run_loop.Quit(); }));
+        .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
     TriggerExternalDisplayEvent();
     run_loop.Run();
   }
@@ -526,10 +523,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     connectors[1] = GenerateExternalDisplayInfo("display2");
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
           run_loop.Quit();
-        }));
+        });
     TriggerExternalDisplayEvent();
     run_loop.Run();
     recv_info->is_external_display_event_info();
@@ -566,12 +563,12 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
     connectors[2] = GenerateExternalDisplayInfo("display2");
     SetExecutorGetHdmi(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(Invoke(
-            [&](mojom::EventInfoPtr info) { recv_info_1 = std::move(info); }))
-        .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        .WillOnce(
+            [&](mojom::EventInfoPtr info) { recv_info_1 = std::move(info); })
+        .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info_2 = std::move(info);
           run_loop.Quit();
-        }));
+        });
 
     TriggerExternalDisplayEvent();
     run_loop.Run();
