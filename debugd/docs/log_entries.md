@@ -38,6 +38,9 @@ decode.
 
 ## android_app_storage
 
+Gets ARC app disk usage and includes SELinux context for /data files.
+This should be empty on virtio-blk devices.
+
 ## arcvm_console_output
 
 Dumps kernel logs using [`vm_pstore_dump`](/vm_tools#vm_pstore_dump)
@@ -45,6 +48,18 @@ tool. The log is stored in pstore in the guest which is a file on the host side,
 similar to [console-ramoops](#console_ramoops). Should show kernel logs when all
 else fails inside the guest OS. Timestamp is in seconds from guest Linux kernel
 boot.
+
+## arcvm_psi
+
+PSI of ARCVM that comes from /proc/pressure/memory.
+
+## arcvm_zram_mm_stat
+
+Zram activity of ARCVM which is the output of /sys/block/zram0/mm_stat.
+
+## arcvm_zram_stat
+
+Zram activity of ARCVM which is the output of /sys/block/zram0/stat.
 
 ## atmel_tp_deltas
 
@@ -428,6 +443,10 @@ and base64-encoded.
 ## powerwash_count
 
 ## ps
+
+## psi
+
+The output of /proc/pressure/memory.
 
 ## pvs
 
