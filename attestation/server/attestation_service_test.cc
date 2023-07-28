@@ -2871,10 +2871,24 @@ TEST_P(AttestationServiceTest,
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   RemoveNvramQuotesFromIdentity(identity_);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForVtpmEkCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ(1, pca_request.nvram_quotes().size());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_TRUE(pca_request.attested_device_id().empty());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
   // Empty ADID should fail the operation.
@@ -2904,7 +2918,15 @@ TEST_P(AttestationServiceTest,
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
+    EXPECT_TRUE(pca_request.nvram_quotes().empty());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
   service_->set_attested_device_id(kFakeAttestedDeviceId);

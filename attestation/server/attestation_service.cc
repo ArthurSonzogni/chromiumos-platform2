@@ -1372,9 +1372,11 @@ bool AttestationService::CreateCertificateRequestInternal(
     // VTPM EK certificate requires `attested_device_id_` to be presented.
     if (attested_device_id_.empty()) {
       LOG(ERROR) << __func__ << ": VTPM EK certificate request requires ADID.";
-      return false;
+      // Don't fail the request directly, because it's the server's
+      // responsibilities to reject this request.
+    } else {
+      request_pb.set_attested_device_id(attested_device_id_);
     }
-    request_pb.set_attested_device_id(attested_device_id_);
 
     const int identity = identity_certificate.identity();
     const AttestationDatabase::Identity& identity_data =
@@ -1395,7 +1397,8 @@ bool AttestationService::CreateCertificateRequestInternal(
       }
       // For VTPM EK certificate, all the quotes are mandatory.
       LOG(ERROR) << "Could not provide quote for VTPM EK cert request.";
-      return false;
+      // Don't fail the request directly, because it's the server's
+      // responsibilities to reject this request.
     }
   }
 
