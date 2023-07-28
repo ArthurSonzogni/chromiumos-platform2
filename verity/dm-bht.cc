@@ -7,6 +7,7 @@
  * This file is released under the GPL.
  */
 
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 
@@ -27,14 +28,6 @@
 #include "verity/dm-bht.h"
 
 #define DM_MSG_PREFIX "dm bht"
-
-/* For sector formatting. */
-#if defined(_LP64) || defined(__LP64__) || __BITS_PER_LONG == 64
-#define __PRIS_PREFIX "z"
-#else
-#define __PRIS_PREFIX "ll"
-#endif
-#define PRIu64 __PRIS_PREFIX "u"
 
 #define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
 
