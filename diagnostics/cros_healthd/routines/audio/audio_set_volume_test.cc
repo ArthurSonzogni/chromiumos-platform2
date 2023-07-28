@@ -75,12 +75,7 @@ class AudioSetVolumeRoutineTest : public testing::Test {
   void RunRoutineAndWaitUntilFinished() {
     base::RunLoop run_loop;
     routine_->Start();
-    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(),
-        // This routine should be finished within 1 second. Set 2 seconds as a
-        // safe timeout.
-        base::Milliseconds(2000));
-    run_loop.Run();
+    run_loop.RunUntilIdle();
   }
 
   MockContext mock_context_;
