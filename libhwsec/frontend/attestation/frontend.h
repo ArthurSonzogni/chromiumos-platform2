@@ -37,6 +37,8 @@ class AttestationFrontend : public Frontend {
   GetCurrentBootMode() const = 0;
   virtual StatusOr<attestation::Quote> CertifyNV(
       RoSpace space, const brillo::Blob& key_blob) const = 0;
+  virtual StatusOr<attestation::Quote> CertifyNVWithSize(
+      RoSpace space, const brillo::Blob& key_blob, int size) const = 0;
   virtual StatusOr<attestation::CertifiedKey> CreateCertifiedKey(
       const brillo::Blob& identity_key_blob,
       attestation::KeyType key_type,

@@ -34,6 +34,9 @@ class RoDataTpm2 : public RoData {
   StatusOr<bool> IsReady(RoSpace space) override;
   StatusOr<brillo::Blob> Read(RoSpace space) override;
   StatusOr<attestation::Quote> Certify(RoSpace space, Key key) override;
+  StatusOr<attestation::Quote> CertifyWithSize(RoSpace space,
+                                               Key key,
+                                               int size) override;
 
  private:
   TrunksContext& context_;

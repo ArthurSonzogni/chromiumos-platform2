@@ -231,6 +231,13 @@ StatusOr<attestation::Quote> RoDataTpm2::Certify(RoSpace space, Key key) {
                    GetDetailSpaceInfo(tpm_nvram_, space_info),
                    _.WithStatus<TPMError>("Failed to get detail space info"));
 
+  return CertifyWithSize(space, key, detail_info.size);
+}
+
+StatusOr<attestation::Quote> RoDataTpm2::CertifyWithSize(RoSpace space,
+                                                         Key key,
+                                                         int size) {
+  ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
   std::unique_ptr<trunks::AuthorizationDelegate> empty_password_authorization =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
 
@@ -263,7 +270,7 @@ StatusOr<attestation::Quote> RoDataTpm2::Certify(RoSpace space, Key key) {
                           "",                           // nv_index_name
                           trunks::Make_TPM2B_DATA(""),  // qualifying data
                           scheme,                       // in_scheme
-                          detail_info.size,             // size to read
+                          size,                         // size to read
                           0,                            // offset
                           &quoted_struct, &signature, &authorization)))
       .WithStatus<TPMError>("Failed to certify the NVs");

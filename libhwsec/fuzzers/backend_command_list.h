@@ -92,6 +92,7 @@ using FuzzCommandList =
                 &Backend::RoData::IsReady,
                 &Backend::RoData::Read,
                 &Backend::RoData::Certify,
+                &Backend::RoData::CertifyWithSize,
                 &Backend::Sealing::IsSupported,
                 &Backend::Sealing::Seal,
                 &Backend::Sealing::PreloadSealedData,
