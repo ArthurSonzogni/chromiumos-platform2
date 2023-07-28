@@ -288,7 +288,17 @@ void AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     return;
   }
 
-  auth_block.value()->PrepareForRemoval(auth_block_state, std::move(callback));
+  // This lambda functions to keep the auth_block reference valid until
+  // the results are returned through callback.
+  AuthBlock* auth_block_ptr = auth_block->get();
+  auto managed_callback = base::BindOnce(
+      [](std::unique_ptr<AuthBlock> owned_auth_block,
+         CryptohomeStatusCallback callback,
+         CryptohomeStatus error) { std::move(callback).Run(std::move(error)); },
+      std::move(auth_block.value()), std::move(callback));
+
+  auth_block_ptr->PrepareForRemoval(auth_block_state,
+                                    std::move(managed_callback));
 }
 
 CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
