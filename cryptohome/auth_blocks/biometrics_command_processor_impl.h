@@ -53,6 +53,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
                        OperationCallback on_done) override;
   void EndEnrollSession() override;
   void EndAuthenticateSession() override;
+  void DeleteCredential(
+      const std::string& record_id,
+      base::OnceCallback<void(DeleteResult)> on_done) override;
 
  private:
   // If signal is successfully connected, decrement the
@@ -84,6 +87,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       OperationCallback on_done,
       crypto::ScopedEC_KEY key,
       std::optional<biod::AuthenticateCredentialReply> reply);
+  void OnDeleteCredentialReply(
+      base::OnceCallback<void(DeleteResult)> on_done,
+      std::optional<biod::DeleteCredentialReply> reply);
 
   base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
                                std::optional<brillo::Blob>)>

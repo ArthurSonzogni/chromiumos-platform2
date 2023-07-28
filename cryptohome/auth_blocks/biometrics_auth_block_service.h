@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
@@ -28,6 +29,7 @@ class BiometricsAuthBlockService {
   using OperationInput = BiometricsCommandProcessor::OperationInput;
   using OperationOutput = BiometricsCommandProcessor::OperationOutput;
   using OperationCallback = BiometricsCommandProcessor::OperationCallback;
+  using DeleteResult = BiometricsCommandProcessor::DeleteResult;
 
   BiometricsAuthBlockService(
       std::unique_ptr<BiometricsCommandProcessor> processor,
@@ -78,6 +80,10 @@ class BiometricsAuthBlockService {
   // and construct the OperationInput. The nonce is erased after calling this
   // function such that a nonce is never retrieved twice.
   std::optional<brillo::Blob> TakeNonce();
+
+  // Calls BiometricsCommandProcessor::DeleteCredential.
+  void DeleteCredential(const std::string& record_id,
+                        base::OnceCallback<void(DeleteResult)> on_done);
 
  private:
   class Token : public PreparedAuthFactorToken {

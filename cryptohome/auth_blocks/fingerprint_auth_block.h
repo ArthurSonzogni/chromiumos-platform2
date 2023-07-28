@@ -76,6 +76,19 @@ class FingerprintAuthBlock : public AuthBlock {
       uint64_t rate_limiter_label,
       CryptohomeStatusOr<BiometricsAuthBlockService::OperationOutput> output);
 
+  // This is used as the callback of
+  // BiometricsAuthBlockService::DeleteCredential.
+  //  Processes the delete result and continue the removal by calling
+  //  ContinuePrepareForRemoval if necessary.
+  void OnDeleteCredentialReply(const FingerprintAuthBlockState& state,
+                               StatusCallback callback,
+                               BiometricsAuthBlockService::DeleteResult result);
+
+  // Continue preparing to remove the AuthFactor after the async
+  // DeleteCredential step.
+  void ContinuePrepareForRemoval(const FingerprintAuthBlockState& state,
+                                 StatusCallback callback);
+
   // Check whether the rate-limiter leaf is locked-out currently.
   bool IsLocked(uint64_t label);
 

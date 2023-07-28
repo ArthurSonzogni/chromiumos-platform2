@@ -98,6 +98,20 @@ class BiometricsCommandProcessor {
 
   // Ends the existing authenticate session in biod.
   virtual void EndAuthenticateSession() = 0;
+
+  // DeleteCredential deletes the record specified by |record_id| in biod and
+  // returns the result.
+  enum class DeleteResult {
+    kSuccess,
+    kFailed,
+    // kNotExist is separated from kFailed because we can treat the delete
+    // operation as successful here and continue deleting the auth factor if the
+    // record doesn't exist in biod.
+    kNotExist,
+  };
+  virtual void DeleteCredential(
+      const std::string& record_id,
+      base::OnceCallback<void(DeleteResult)> on_done) = 0;
 };
 
 }  // namespace cryptohome

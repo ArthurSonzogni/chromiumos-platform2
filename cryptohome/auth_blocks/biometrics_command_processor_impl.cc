@@ -472,6 +472,18 @@ void BiometricsCommandProcessorImpl::EndAuthenticateSession() {
   proxy_->EndAuthSession();
 }
 
+void BiometricsCommandProcessorImpl::DeleteCredential(
+    const std::string& record_id,
+    base::OnceCallback<void(BiometricsCommandProcessor::DeleteResult)>
+        on_done) {
+  biod::DeleteCredentialRequest request;
+  request.set_record_id(record_id);
+  proxy_->DeleteCredential(
+      request,
+      base::BindOnce(&BiometricsCommandProcessorImpl::OnDeleteCredentialReply,
+                     base::Unretained(this), std::move(on_done)));
+}
+
 void BiometricsCommandProcessorImpl::OnSignalConnected(
     const std::string& interface, const std::string& signal, bool success) {
   if (!success) {
@@ -594,6 +606,27 @@ void BiometricsCommandProcessorImpl::OnAuthenticateCredentialReply(
   std::move(on_done).Run(OperationOutput{.record_id = reply->record_id(),
                                          .auth_secret = std::move(auth_secret),
                                          .auth_pin = std::move(auth_pin)});
+}
+
+void BiometricsCommandProcessorImpl::OnDeleteCredentialReply(
+    base::OnceCallback<void(BiometricsCommandProcessor::DeleteResult)> on_done,
+    std::optional<biod::DeleteCredentialReply> reply) {
+  if (!reply.has_value()) {
+    std::move(on_done).Run(BiometricsCommandProcessor::DeleteResult::kFailed);
+    return;
+  }
+  BiometricsCommandProcessor::DeleteResult result;
+  switch (reply->status()) {
+    case biod::DeleteCredentialReply::SUCCESS:
+      result = BiometricsCommandProcessor::DeleteResult::kSuccess;
+      break;
+    case biod::DeleteCredentialReply::NOT_EXIST:
+      result = BiometricsCommandProcessor::DeleteResult::kNotExist;
+      break;
+    default:
+      result = BiometricsCommandProcessor::DeleteResult::kFailed;
+  }
+  std::move(on_done).Run(result);
 }
 
 }  // namespace cryptohome

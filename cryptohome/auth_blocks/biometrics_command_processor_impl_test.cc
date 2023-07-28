@@ -444,5 +444,50 @@ TEST_F(BiometricsCommandProcessorImplTest, AuthenticateCredentialNoMatch) {
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
 }
 
+TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialSuccess) {
+  const std::string kRecordId("record_id");
+
+  EXPECT_CALL(*mock_proxy_, DeleteCredential)
+      .WillOnce([](auto&&, auto&& callback) {
+        biod::DeleteCredentialReply reply;
+        reply.set_status(biod::DeleteCredentialReply::SUCCESS);
+        std::move(callback).Run(reply);
+      });
+
+  TestFuture<BiometricsCommandProcessor::DeleteResult> result;
+  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kSuccess);
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialNotExist) {
+  const std::string kRecordId("record_id");
+
+  EXPECT_CALL(*mock_proxy_, DeleteCredential)
+      .WillOnce([](auto&&, auto&& callback) {
+        biod::DeleteCredentialReply reply;
+        reply.set_status(biod::DeleteCredentialReply::NOT_EXIST);
+        std::move(callback).Run(reply);
+      });
+
+  TestFuture<BiometricsCommandProcessor::DeleteResult> result;
+  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kNotExist);
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialFailed) {
+  const std::string kRecordId("record_id");
+
+  EXPECT_CALL(*mock_proxy_, DeleteCredential)
+      .WillOnce([](auto&&, auto&& callback) {
+        biod::DeleteCredentialReply reply;
+        reply.set_status(biod::DeleteCredentialReply::DELETION_FAILED);
+        std::move(callback).Run(reply);
+      });
+
+  TestFuture<BiometricsCommandProcessor::DeleteResult> result;
+  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kFailed);
+}
+
 }  // namespace
 }  // namespace cryptohome
