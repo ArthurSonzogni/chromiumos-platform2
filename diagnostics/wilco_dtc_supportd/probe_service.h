@@ -8,10 +8,9 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
-
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace wilco {

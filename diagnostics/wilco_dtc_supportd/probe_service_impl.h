@@ -12,10 +12,10 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service.h"
 
 namespace diagnostics {

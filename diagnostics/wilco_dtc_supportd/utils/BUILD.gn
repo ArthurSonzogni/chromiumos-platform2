@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("libutils_pkg_deps") {
   pkg_deps = [
+    "cros_healthd-client",
     "libchrome",
     "libmojo",
   ]
@@ -23,7 +24,6 @@ if (use.test || use.fuzzer) {
     deps = [
       ":libutils",
       "system:libsystem_test_utils",
-      "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
     sources = [
       "file_test_utils.cc",

@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("common_pkg_deps") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
     "libdebugd-client",
@@ -20,7 +21,6 @@ source_set("libwilco_dtc_supportd") {
     "utils:libutils",
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     "//diagnostics/mojom/public:wilco_dtc_supportd_mojo_bindings",
   ]
   sources = [

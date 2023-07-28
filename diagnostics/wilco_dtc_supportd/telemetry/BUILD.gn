@@ -5,13 +5,15 @@
 import("//common-mk/pkg_config.gni")
 
 pkg_config("libtelemetry_pkg_deps") {
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "cros_healthd-client",
+    "libchrome",
+  ]
 }
 
 source_set("libtelemetry") {
   configs += [ ":libtelemetry_pkg_deps" ]
   deps = [
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     "//diagnostics/mojom/public:wilco_dtc_supportd_mojo_bindings",
     "//diagnostics/wilco_dtc_supportd/utils:libutils",
   ]

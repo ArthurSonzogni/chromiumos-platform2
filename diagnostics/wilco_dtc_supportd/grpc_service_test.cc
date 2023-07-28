@@ -21,11 +21,11 @@
 #include <base/system/sys_info.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/mock_system_files_service.h"

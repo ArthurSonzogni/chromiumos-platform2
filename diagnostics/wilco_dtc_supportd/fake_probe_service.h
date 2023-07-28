@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service.h"
 
 namespace diagnostics {

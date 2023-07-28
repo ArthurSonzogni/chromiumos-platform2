@@ -12,10 +12,10 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {

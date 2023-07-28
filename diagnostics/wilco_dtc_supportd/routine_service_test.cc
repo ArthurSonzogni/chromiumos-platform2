@@ -12,10 +12,10 @@
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
