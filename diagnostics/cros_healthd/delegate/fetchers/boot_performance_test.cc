@@ -102,7 +102,7 @@ class BootPerformanceFetcherTest : public ::testing::Test {
   }
 
   void PopulateUptimeLogFile(const std::string& content = kFakeUptimeLog) {
-    const auto path = GetRootedPath(path::kUptimeLoginPromptVisible);
+    const auto path = GetRootedPath(path::kUptimeBootComplete);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
@@ -163,8 +163,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
-  ASSERT_TRUE(
-      brillo::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kUptimeBootComplete)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -198,8 +197,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
-  ASSERT_TRUE(
-      brillo::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kUptimeBootComplete)));
   PopulateUptimeLogFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();

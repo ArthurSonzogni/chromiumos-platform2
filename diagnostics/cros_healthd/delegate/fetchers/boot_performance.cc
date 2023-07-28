@@ -67,16 +67,17 @@ mojom::ProbeErrorPtr ParseBiosTime(double* firmware_time,
   return nullptr;
 }
 
-mojom::ProbeErrorPtr ParseBootKernelTime(double& kernel_time) {
-  auto events = bootstat::BootStat(GetRootedPath("/"))
-                    .GetEventTimings("login-prompt-visible");
+mojom::ProbeErrorPtr ParseBootKernelToLoginTime(double& kernel_to_login_time) {
+  auto events =
+      bootstat::BootStat(GetRootedPath("/")).GetEventTimings("boot-complete");
   if (!events || events->empty()) {
     return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
-                                  "Failed to get login-prompt stats");
+                                  "Failed to get boot-complete stats");
   }
 
-  // There may be multiple events; we only care about the first occurrence.
-  kernel_time = (*events)[0].uptime.InSecondsF();
+  // Usually there is only one event because this upstart job only starts once.
+  // But no matter what, we only care about the first occurrence.
+  kernel_to_login_time = (*events)[0].uptime.InSecondsF();
   return nullptr;
 }
 
@@ -103,10 +104,10 @@ mojom::ProbeErrorPtr ParseProcUptime(double& proc_uptime) {
 
 mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
   // Boot up stages
-  //                              |<-             proc_uptime     ->
-  //          |<- firmware_time ->|<-  kernel_time  ->|
-  //  |-------|-------------------|-------------------|------------> Now
-  // off   power on         jump to kernel       login screen
+  //                              |<-             proc_uptime            ->
+  //          |<- firmware_time ->|<-  kernel_to_login_time  ->|
+  //  |-------|-------------------|----------------------------|----------> Now
+  // off   power on         jump to kernel                login screen
   //
   // There is some deviation when calculating, but it should be minor.
   // See go/chromeos-boottime for more details.
@@ -131,22 +132,22 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
   info->tpm_initialization_seconds = mojom::NullableDouble::New(
       tpm_initialization_finish_time - tpm_initialization_start_time);
 
-  double kernel_time;
-  error = ParseBootKernelTime(kernel_time);
+  double kernel_to_login_time = 0.0;
+  error = ParseBootKernelToLoginTime(kernel_to_login_time);
   if (!error.is_null()) {
     return error;
   }
-  info->boot_up_seconds += kernel_time;
+  info->boot_up_seconds += kernel_to_login_time;
   if (info->boot_up_seconds > 3600) {
     // This is an impossible case, there must be something wrong when parsing.
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
         base::StringPrintf("boot_up_seconds is too large. firmware_time: %lf, "
-                           "kernel_time: %lf",
-                           firmware_time, kernel_time));
+                           "kernel_to_login_time: %lf",
+                           firmware_time, kernel_to_login_time));
   }
 
-  double proc_uptime;
+  double proc_uptime = 0.0;
   error = ParseProcUptime(proc_uptime);
   if (!error.is_null()) {
     return error;
@@ -211,8 +212,8 @@ void PopulateShutdownInfo(mojom::BootPerformanceInfoPtr& info) {
   //           |<-     shutdown seconds      ->|
   // running --|-------------------------------|-------------------|------> off
   // powerd receives request          create metrics log   unmount partition
-  double shutdown_start_timestamp;
-  double shutdown_end_timestamp;
+  double shutdown_start_timestamp = 0.0;
+  double shutdown_end_timestamp = 0.0;
   std::string shutdown_reason;
 
   if (!ParsePreviousPowerdLog(shutdown_start_timestamp, shutdown_reason) ||
