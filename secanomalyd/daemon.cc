@@ -132,13 +132,15 @@ bool EmitNonRootProcPercentageUma(const ProcEntries& proc_entries) {
   return true;
 }
 
-bool EmitUnprivProcPercentageUma(const ProcEntries& proc_entries) {
+bool EmitUnprivProcPercentageUma(const ProcEntries& proc_entries,
+                                 ino_t init_user_ns) {
   size_t total_proc_count = proc_entries.size();
   size_t unpriv_proc_count = 0;
   unpriv_proc_count = std::count_if(
-      proc_entries.begin(), proc_entries.end(), [](const ProcEntry& entry) {
-        return entry.sandbox_status()[ProcEntry::kNoCapSysAdminBit] == 1 &&
-               entry.sandbox_status()[ProcEntry::kNonRootBit] == 1;
+      proc_entries.begin(), proc_entries.end(), [&](const ProcEntry& entry) {
+        return entry.sandbox_status()[ProcEntry::kNonRootBit] == 1 &&
+               (entry.sandbox_status()[ProcEntry::kNoCapSysAdminBit] == 1 ||
+                entry.userns() != init_user_ns);
       });
   unsigned int unpriv_proc_percentage =
       static_cast<unsigned int>(round((static_cast<float>(unpriv_proc_count) /
@@ -154,8 +156,8 @@ bool EmitUnprivProcPercentageUma(const ProcEntries& proc_entries) {
 }
 
 bool EmitNonInitNsProcPercentageUma(const ProcEntries& proc_entries,
-                                    const ino_t& init_pid_ns,
-                                    const ino_t& init_mnt_ns) {
+                                    ino_t init_pid_ns,
+                                    ino_t init_mnt_ns) {
   size_t total_proc_count = proc_entries.size();
   size_t non_initns_proc_count = 0;
   non_initns_proc_count = std::count_if(
@@ -460,21 +462,26 @@ void Daemon::EmitSandboxingUma() {
           EmitNonRootProcPercentageUma(maybe_proc_entries.value());
     }
 
+    // For the rest of the metrics, we need to have the init process entry.
+    MaybeProcEntry init_proc_entry;
+    if (all_procs_) {
+      init_proc_entry = GetInitProcEntry(all_procs_.value());
+    }
+    if (!init_proc_entry) {
+      LOG(WARNING) << "Failed to find init process";
+      return;
+    }
+
     if (!has_emitted_unpriv_proc_percentage_uma_) {
-      has_emitted_unpriv_proc_percentage_uma_ =
-          EmitUnprivProcPercentageUma(maybe_proc_entries.value());
+      has_emitted_unpriv_proc_percentage_uma_ = EmitUnprivProcPercentageUma(
+          maybe_proc_entries.value(), init_proc_entry.value().userns());
     }
 
     if (!has_emitted_non_initns_proc_percentage_uma_) {
-      if (all_procs_) {
-        MaybeProcEntry init_proc_entry = GetInitProcEntry(all_procs_.value());
-        if (init_proc_entry) {
-          has_emitted_non_initns_proc_percentage_uma_ =
-              EmitNonInitNsProcPercentageUma(maybe_proc_entries.value(),
-                                             init_proc_entry.value().pidns(),
-                                             init_proc_entry.value().mntns());
-        }
-      }
+      has_emitted_non_initns_proc_percentage_uma_ =
+          EmitNonInitNsProcPercentageUma(maybe_proc_entries.value(),
+                                         init_proc_entry.value().pidns(),
+                                         init_proc_entry.value().mntns());
     }
   }
 }
