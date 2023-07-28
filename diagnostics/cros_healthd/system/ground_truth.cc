@@ -216,15 +216,14 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
-      auto side_volume_button_region = SideVolumeButtonRegion();
-      if (side_volume_button_region == cros_config_value::kButtonRegionScreen ||
-          side_volume_button_region ==
-              cros_config_value::kButtonRegionKeyboard) {
+      auto has_side_volume_button = HasSideVolumeButton();
+      if (has_side_volume_button == "true") {
         return mojom::SupportStatus::NewSupported(mojom::Supported::New());
       }
+
       return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kSideVolumeButtonRegion,
-                                side_volume_button_region),
+          WrapUnsupportedString(cros_config_property::kHasSideVolumeButton,
+                                has_side_volume_button),
           nullptr));
     }
     case mojom::RoutineArgument::Tag::kLedLitUp: {
@@ -276,9 +275,9 @@ std::string GroundTruth::HasSdReader() {
                         cros_config_property::kHasSdReader);
 }
 
-std::string GroundTruth::SideVolumeButtonRegion() {
-  return ReadCrosConfig(cros_config_path::kUi,
-                        cros_config_property::kSideVolumeButtonRegion);
+std::string GroundTruth::HasSideVolumeButton() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kHasSideVolumeButton);
 }
 
 std::string GroundTruth::StorageType() {

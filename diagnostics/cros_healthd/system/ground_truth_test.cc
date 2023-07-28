@@ -402,10 +402,10 @@ TEST_F(GroundTruthTest, VolumeButtonRoutine) {
   arg.timeout = base::Seconds(10);
 
   std::vector<
-      std::pair</*volume-button-region=*/std::string, /*supported=*/bool>>
+      std::pair</*has-side-volume-button=*/std::string, /*supported=*/bool>>
       test_combinations = {
-          {cros_config_value::kButtonRegionScreen, true},
-          {cros_config_value::kButtonRegionKeyboard, true},
+          {"true", true},
+          {"false", false},
           {"Others", false},
       };
 
@@ -413,10 +413,10 @@ TEST_F(GroundTruthTest, VolumeButtonRoutine) {
   ExpectRoutineUnsupported(
       mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
 
-  for (const auto& [volume_button_region, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kUi,
-                  cros_config_property::kSideVolumeButtonRegion,
-                  volume_button_region);
+  for (const auto& [has_side_volume_button, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kHasSideVolumeButton,
+                  has_side_volume_button);
     if (supported) {
       ExpectRoutineSupported(
           mojom::RoutineArgument::NewVolumeButton(arg.Clone()));

@@ -107,18 +107,15 @@ Always supported.
 
 ### Volume button
 
-Supported only when `side-volume-button/region` is explicitly configured as one
-of the following:
-- screen
-- keyboard
+Supported only when `has-side-volume-button` is explicitly configured as "true".
 
 You can run the following commands on your DUT:
-1. `cros_config /ui side-volume-button/region` This is helpful to understand
-   what the value of `side-volume-button/region` is.
+1. `cros_config /hardware-properties has-side-volume-button` This is helpful to
+   understand what the value of `has-side-volume-button` is.
 2. `cros-health-tool diag volume_button --button_type=up --check_supported` Use
    this to see if healthd reports the correct support status.
 
-To configure `side-volume-button/region` in Boxster, you can use
+To configure `has-side-volume-button` in Boxster, you can use
 `create_volume_button` function defined in [hw_topology.star] to set it up.
 
 ### LED lit up

@@ -41,7 +41,7 @@ class GroundTruth final {
   std::string HasHdmi();
   std::string HasAudioJack();
   std::string HasSdReader();
-  std::string SideVolumeButtonRegion();
+  std::string HasSideVolumeButton();
   std::string StorageType();
 
   bool HasCrosEC();
