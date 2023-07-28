@@ -85,4 +85,25 @@ bool GscNvramQuoter::Certify(NVRAMQuoteType type,
   return true;
 }
 
+bool GscNvramQuoter::CertifyWithSize(NVRAMQuoteType type,
+                                     const std::string& signing_key_blob,
+                                     int size,
+                                     Quote& quote) {
+  CHECK_LT(static_cast<uint32_t>(type), std::size(kNvramQuoteMetadata))
+      << "Unexpected type: " << static_cast<uint32_t>(type) << ".";
+
+  NvramQuoteMetadata metadata =
+      kNvramQuoteMetadata[static_cast<uint32_t>(type)];
+
+  ASSIGN_OR_RETURN(
+      quote,
+      hwsec_.CertifyNVWithSize(metadata.space, BlobFromString(signing_key_blob),
+                               size),
+      _.WithStatus<TPMError>(
+           base::StringPrintf("Failed to certify %s", metadata.name))
+          .LogError()
+          .As(false));
+  return true;
+}
+
 }  // namespace attestation

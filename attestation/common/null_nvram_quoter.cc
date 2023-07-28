@@ -30,4 +30,12 @@ bool NullNvramQuoter::Certify(NVRAMQuoteType, const std::string&, Quote&) {
   return false;
 }
 
+bool NullNvramQuoter::CertifyWithSize(NVRAMQuoteType,
+                                      const std::string&,
+                                      int,
+                                      Quote&) {
+  LOG(FATAL) << __func__ << ": null implemenetion called.";
+  return false;
+}
+
 }  // namespace attestation
