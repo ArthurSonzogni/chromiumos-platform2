@@ -24,6 +24,7 @@ libc = "0.2.44"
 libchromeos = { path = "../libchromeos-rs", features = ['chromeos-module'] } # provided by ebuild
 log = "0.4"
 nix = { version = "0.26", features = ["signal"] }
+protobuf = "3.2"
 rand = "0.7"
 remain = "*"
 regex = "1.0.6"

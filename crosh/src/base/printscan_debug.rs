@@ -5,42 +5,39 @@
 // Provides the `printscan_debug` command which can be used to assist with log
 // collection for feedback reports.
 
-use bitflags::bitflags;
 use dbus::blocking::Connection;
-use system_api::client::OrgChromiumDebugd;
+use std::error::Error;
+use system_api::client::OrgChromiumPrintscanmgr;
+use system_api::printscanmgr_service::{
+    printscan_debug_set_categories_request::DebugLogCategory, PrintscanDebugSetCategoriesRequest,
+};
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
-// These bitflag values must match those in org.chromium.debugd.xml.
-bitflags! {
-    struct PrintscanDebugCategories: u32 {
-        const PRINTING =  0x001;
-        const SCANNING =  0x002;
-    }
-}
-
-struct Debugd {
+struct Printscanmgr {
     connection: dbus::blocking::Connection,
 }
 
-impl Debugd {
-    fn new() -> Result<Debugd, dbus::Error> {
-        Connection::new_system().map(|connection| Debugd { connection })
+impl Printscanmgr {
+    fn new() -> Result<Printscanmgr, dbus::Error> {
+        Connection::new_system().map(|connection| Printscanmgr { connection })
     }
 
     fn printscan_debug_set_categories(
         self,
-        categories: PrintscanDebugCategories,
-    ) -> Result<Debugd, dbus::Error> {
-        self.connection
+        request: PrintscanDebugSetCategoriesRequest,
+    ) -> Result<Printscanmgr, Box<dyn Error>> {
+        let request_bytes = protobuf::Message::write_to_bytes(&request)?;
+        Ok(self
+            .connection
             .with_proxy(
-                "org.chromium.debugd",
-                "/org/chromium/debugd",
+                "org.chromium.printscanmgr",
+                "/org/chromium/printscanmgr",
                 DEFAULT_DBUS_TIMEOUT,
             )
-            .printscan_debug_set_categories(categories.bits())
-            .map(|_| self)
+            .printscan_debug_set_categories(request_bytes)
+            .map(|_| self)?)
     }
 }
 
@@ -88,10 +85,13 @@ fn execute_printscan_debug_start(
             "Invalid number of arguments".to_string(),
         ));
     }
-    let category = match tokens[0].as_str() {
-        "all" => PrintscanDebugCategories::PRINTING | PrintscanDebugCategories::SCANNING,
-        "printing" => PrintscanDebugCategories::PRINTING,
-        "scanning" => PrintscanDebugCategories::SCANNING,
+    let categories = match tokens[0].as_str() {
+        "all" => vec![
+            DebugLogCategory::DEBUG_LOG_CATEGORY_PRINTING,
+            DebugLogCategory::DEBUG_LOG_CATEGORY_SCANNING,
+        ],
+        "printing" => vec![DebugLogCategory::DEBUG_LOG_CATEGORY_PRINTING],
+        "scanning" => vec![DebugLogCategory::DEBUG_LOG_CATEGORY_SCANNING],
         _ => {
             return Err(dispatcher::Error::CommandInvalidArguments(
                 "Invalid category: ".to_string() + tokens[0].as_str(),
@@ -105,8 +105,13 @@ fn execute_printscan_debug_start(
              advanced logging can be disabled by running `printscan_debug stop`, logging out, \
              or rebooting your device."
     );
-    Debugd::new()
-        .and_then(|d| d.printscan_debug_set_categories(category))
+    let mut request = PrintscanDebugSetCategoriesRequest::new();
+    for category in &categories {
+        request.categories.push((*category).into());
+    }
+    request.disable_logging = false;
+    Printscanmgr::new()
+        .map(|p| p.printscan_debug_set_categories(request))
         .map(|_| ())
         .map_err(|err| {
             println!(
@@ -125,8 +130,10 @@ fn execute_printscan_debug_stop(_cmd: &Command, args: &Arguments) -> Result<(), 
         ));
     }
     println!("Done collecting printscan debug logs.");
-    Debugd::new()
-        .and_then(|d| d.printscan_debug_set_categories(PrintscanDebugCategories::empty()))
+    let mut request = PrintscanDebugSetCategoriesRequest::new();
+    request.disable_logging = true;
+    Printscanmgr::new()
+        .map(|p| p.printscan_debug_set_categories(request))
         .map(|_| ())
         .map_err(|err| {
             println!(
