@@ -70,14 +70,10 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
   }
 
   void RunRoutineAndWaitUntilFinished() {
-    base::RunLoop run_loop;
     routine()->Start();
-    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(),
-        // Privacy screen routine should be finished within 1 second. Set 2
-        // seconds as a safe timeout.
-        base::Milliseconds(2000));
-    run_loop.Run();
+    // Privacy screen routine should be finished within 1 second. Set 2 seconds
+    // as a safe timeout.
+    task_environment_.FastForwardBy(base::Seconds(2));
   }
 
   mojom::RoutineUpdatePtr GetUpdate() {
@@ -109,7 +105,8 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
 
   MockContext context_;
   std::unique_ptr<PrivacyScreenRoutine> routine_;
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 // Test that routine error occurs if display_util fails to be initialized.
