@@ -944,9 +944,6 @@ class ArcVmTest : public ::testing::Test {
     auto swap_state_monitor_timer =
         std::make_unique<base::MockRepeatingTimer>();
     swap_state_monitor_timer_ = swap_state_monitor_timer.get();
-    auto aggressive_balloon_timer =
-        std::make_unique<base::MockRepeatingTimer>();
-    aggressive_balloon_timer_ = aggressive_balloon_timer.get();
     auto swap_metrics_heartbeat_timer =
         std::make_unique<base::MockRepeatingTimer>();
     swap_metrics_heartbeat_timer_ = swap_metrics_heartbeat_timer.get();
@@ -977,15 +974,14 @@ class ArcVmTest : public ::testing::Test {
         .data_disk_path = base::FilePath("dummy"),
         .features = {},
         .swap_policy_timer = std::move(swap_policy_timer),
-        .swap_state_monitor_timer = std::move(swap_state_monitor_timer),
-        .aggressive_balloon_timer = std::move(aggressive_balloon_timer)}));
+        .swap_state_monitor_timer = std::move(swap_state_monitor_timer)}));
 
     // The more than 28days enabled log unblocks the VmmSwapUsagePolicy.
     // We don't add OnDisabled log here because adding OnDisabled log at 50days
     // ago again will invalidate this enabled log on some test cases.
     vm_->vmm_swap_usage_policy_.OnEnabled(base::Time::Now() - base::Days(50));
 
-    vm_->balloon_stats_thread_.Start();
+    vm_->balloon_request_thread_.Start();
 
     SetBalloonStats(0, MiB(1024));
   }
@@ -1007,10 +1003,26 @@ class ArcVmTest : public ::testing::Test {
     vm_->InitializeBalloonPolicy(margins, "arcvm");
   }
 
-  void DoInflateAggressiveBalloon(ArcVm::AggressiveBalloonCallback callback) {
+  void StartInflateAggressiveBalloon(
+      ArcVm::AggressiveBalloonCallback callback) {
     vm_->InflateAggressiveBalloon(std::move(callback));
-    vm_->balloon_stats_thread_.FlushForTesting();
+    vm_->balloon_request_thread_.FlushForTesting();
     task_environment_.RunUntilIdle();
+    FakeCrosvmControl::Get()->set_balloon_result_latch_.Signal();
+    vm_->balloon_request_thread_.FlushForTesting();
+    task_environment_.RunUntilIdle();
+  }
+
+  void StepInflateAggressiveBalloon() {
+    task_environment_.FastForwardBy(ArcVm::kInitAggressiveBalloonInterval);
+    FakeCrosvmControl::Get()->set_balloon_result_latch_.Signal();
+    vm_->balloon_request_thread_.FlushForTesting();
+    task_environment_.RunUntilIdle();
+  }
+
+  uint64_t DoLmkdSignal(int oom_score_adj, uint64_t proc_size) {
+    FakeCrosvmControl::Get()->set_balloon_result_latch_.Signal();
+    return vm_->DeflateBalloonOnLmkd(oom_score_adj, proc_size);
   }
 
   bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
@@ -1065,7 +1077,6 @@ class ArcVmTest : public ::testing::Test {
 
   raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
   raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
-  raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
   raw_ptr<base::MockRepeatingTimer> swap_metrics_heartbeat_timer_;
 
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
@@ -1095,7 +1106,8 @@ class ArcVmTest : public ::testing::Test {
   // Resource allocators for the VM.
   VsockCidPool vsock_cid_pool_;
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 class FakeAggressiveBalloonCallback {
@@ -1120,16 +1132,17 @@ class FakeAggressiveBalloonCallback {
 TEST_F(ArcVmTest, InflateAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(callback.counter_, 0);
-  ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(110));
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
 }
 
 TEST_F(ArcVmTest, InflateAggressiveBalloonDisableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   MemoryMargins margins;
   ASSERT_FALSE(vm_->GetBalloonPolicy(margins, "arcvm"));
 }
@@ -1138,84 +1151,91 @@ TEST_F(ArcVmTest, InflateAggressiveBalloonTwice) {
   FakeAggressiveBalloonCallback callback1;
   FakeAggressiveBalloonCallback callback2;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback1.Create());
-  DoInflateAggressiveBalloon(callback2.Create());
+  StartInflateAggressiveBalloon(callback1.Create());
+  StartInflateAggressiveBalloon(callback2.Create());
   ASSERT_EQ(callback1.counter_, 0);
   ASSERT_EQ(callback2.counter_, 1);
   ASSERT_FALSE(callback2.latest_response_.success());
 }
 
-TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimer) {
+TEST_F(ArcVmTest, InflateAggressiveBalloonOnMultipleTimes) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  aggressive_balloon_timer_->Fire();
-  ASSERT_EQ(callback.counter_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(110));
+  StartInflateAggressiveBalloon(callback.Create());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
-}
-
-TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerMultipleTimes) {
-  FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  aggressive_balloon_timer_->Fire();
-  aggressive_balloon_timer_->Fire();
-  aggressive_balloon_timer_->Fire();
-  ASSERT_EQ(callback.counter_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(130));
+  StepInflateAggressiveBalloon();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
+  StepInflateAggressiveBalloon();
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 3);
-  ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
+  StepInflateAggressiveBalloon();
+  ASSERT_EQ(callback.counter_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(140));
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 4);
 }
 
-TEST_F(ArcVmTest, InflateAggressiveBalloonOnTimerFailedToSetBalloonSize) {
+TEST_F(ArcVmTest, InflateAggressiveBalloonManyFailureToSetBalloonSize) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   FakeCrosvmControl::Get()->result_set_balloon_size_ = false;
-  aggressive_balloon_timer_->Fire();
-  ASSERT_EQ(callback.counter_, 1);
   ASSERT_FALSE(callback.latest_response_.success());
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  for (int i = 0; i < 100 && !callback.latest_response_.success(); i++) {
+    StepInflateAggressiveBalloon();
+  }
+  ASSERT_TRUE(callback.latest_response_.success());
+  // Backoff from inflation failures should have set us back to a starting
+  // size of 0MiB, plus one inflation.
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(10));
+}
+
+TEST_F(ArcVmTest, InflateAggressiveBalloonSingleFailureToSetBalloonSize) {
+  FakeAggressiveBalloonCallback callback;
+  SetBalloonStats(MiB(100), MiB(1024));
+  StartInflateAggressiveBalloon(callback.Create());
+  FakeCrosvmControl::Get()->result_set_balloon_size_ = false;
+  StepInflateAggressiveBalloon();
+  FakeCrosvmControl::Get()->result_set_balloon_size_ = true;
+  for (int i = 0; i < 100 && !callback.latest_response_.success(); i++) {
+    StepInflateAggressiveBalloon();
+    if (FakeCrosvmControl::Get()->target_balloon_size_ == MiB(20)) {
+      break;
+    }
+  }
+  ASSERT_FALSE(callback.latest_response_.success());
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(20));
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkd) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(30)),
+  StartInflateAggressiveBalloon(callback.Create());
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(30)),
             MiB(30));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(70));
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdAfterBalloonSizeIncreated) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   SetBalloonStats(MiB(200), MiB(1024));
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(30)),
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(30)),
             MiB(30));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(170));
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  DoInflateAggressiveBalloon(callback.Create());
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(30)),
+  StartInflateAggressiveBalloon(callback.Create());
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(30)),
             MiB(30));
   MemoryMargins margins;
   EXPECT_TRUE(vm_->GetBalloonPolicy(margins, "arcvm"));
@@ -1224,40 +1244,33 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(
-                kPlatformPerceptibleMaxOmmScoreAdjValue + 1, MiB(30)),
+  StartInflateAggressiveBalloon(callback.Create());
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue + 1, MiB(30)),
             0);
   ASSERT_EQ(callback.counter_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 0);
-  ASSERT_TRUE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdBiggerThanActualBalloonSize) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(130)),
+  StartInflateAggressiveBalloon(callback.Create());
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(130)),
             MiB(100));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 0);
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdFailedToGetBalloonStats) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
-  // Increase target size by 10MiB.
-  aggressive_balloon_timer_->Fire();
+  StartInflateAggressiveBalloon(callback.Create());
   // Reset counter.
   FakeCrosvmControl::Get()->count_set_balloon_size_ = 0;
   FakeCrosvmControl::Get()->result_balloon_stats_ = false;
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(30)),
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(30)),
             MiB(30));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
@@ -1265,42 +1278,38 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkdFailedToGetBalloonStats) {
   // pessimistic balloon actual size.
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(70));
   ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest,
        DeflateBalloonOnLmkdFailedToGetBalloonStatsAndTargetLessThanIncrement) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(5), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   FakeCrosvmControl::Get()->result_balloon_stats_ = false;
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      MiB(30)),
-            MiB(0));
+  ASSERT_EQ(DoLmkdSignal(kPlatformPerceptibleMaxOmmScoreAdjValue, MiB(30)),
+            MiB(5));
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_TRUE(callback.latest_response_.success());
   ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, MiB(0));
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 1);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
 }
 
 TEST_F(ArcVmTest, StopAggressiveBalloon) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
   vm_->StopAggressiveBalloon(response);
   ASSERT_TRUE(response.success());
   ASSERT_EQ(callback.counter_, 1);
   ASSERT_FALSE(callback.latest_response_.success());
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, StopAggressiveBalloonReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(MiB(100), MiB(1024));
   InitializeBalloonPolicy();
-  DoInflateAggressiveBalloon(callback.Create());
+  StartInflateAggressiveBalloon(callback.Create());
   AggressiveBalloonResponse response;
   vm_->StopAggressiveBalloon(response);
   ASSERT_TRUE(response.success());

@@ -55,7 +55,9 @@ class CrosvmControl {
   // listening on `socket_path`.
   //
   // The function returns true on success or false if an error occurred.
-  virtual bool SetBalloonSize(const std::string& socket_path, size_t num_bytes);
+  virtual bool SetBalloonSize(const std::string& socket_path,
+                              size_t num_bytes,
+                              std::optional<base::TimeDelta> timeout);
 
   // Returns the maximum possible number of USB devices.
   virtual size_t MaxUsbDevices();

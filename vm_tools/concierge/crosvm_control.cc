@@ -56,8 +56,15 @@ bool CrosvmControl::MakeRtVm(const std::string& socket_path) {
 }
 
 bool CrosvmControl::SetBalloonSize(const std::string& socket_path,
-                                   size_t num_bytes) {
-  return crosvm_client_balloon_vms(socket_path.c_str(), num_bytes);
+                                   size_t num_bytes,
+                                   std::optional<base::TimeDelta> timeout) {
+  if (timeout) {
+    uint64_t timeout_ms = timeout->InMilliseconds();
+    return crosvm_client_balloon_vms_wait_with_timeout(socket_path.c_str(),
+                                                       num_bytes, timeout_ms);
+  } else {
+    return crosvm_client_balloon_vms(socket_path.c_str(), num_bytes);
+  }
 }
 
 uintptr_t CrosvmControl::MaxUsbDevices() {

@@ -42,11 +42,8 @@ bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   if (byte_size < 0) {
     LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;
   }
-  bool result =
-      CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath(), byte_size);
-  if (result && balloon_policy_) {
-    balloon_policy_->UpdateCurrentBalloonSize(byte_size);
-  }
+  bool result = CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath(),
+                                                     byte_size, std::nullopt);
   return result;
 }
 

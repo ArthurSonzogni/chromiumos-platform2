@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <base/synchronization/waitable_event.h>
 #include <base/time/time.h>
 #include "vm_tools/concierge/crosvm_control.h"
 
@@ -28,7 +29,8 @@ class FakeCrosvmControl : public CrosvmControl {
   bool MakeRtVm(const std::string& socket_path) override;
 
   bool SetBalloonSize(const std::string& socket_path,
-                      size_t num_bytes) override;
+                      size_t num_bytes,
+                      std::optional<base::TimeDelta> timeout) override;
 
   uintptr_t MaxUsbDevices() override;
 
@@ -87,6 +89,10 @@ class FakeCrosvmControl : public CrosvmControl {
   int count_vmm_swap_trim_ = 0;
   int count_disable_vmm_swap_ = 0;
   int count_disable_vmm_swap_fast_file_cleanup_ = 0;
+
+  base::WaitableEvent set_balloon_result_latch_{
+      base::WaitableEvent::ResetPolicy::AUTOMATIC,
+  };
 
   bool result_set_balloon_size_ = true;
   bool result_balloon_stats_ = true;

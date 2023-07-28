@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
 #include <base/memory/ptr_util.h>
+#include <gtest/gtest.h>
 
 namespace vm_tools::concierge {
 
@@ -40,10 +41,12 @@ bool FakeCrosvmControl::MakeRtVm(const std::string& socket_path) {
 }
 
 bool FakeCrosvmControl::SetBalloonSize(const std::string& socket_path,
-                                       size_t num_bytes) {
+                                       size_t num_bytes,
+                                       std::optional<base::TimeDelta> timeout) {
   target_socket_path_ = socket_path;
   target_balloon_size_ = num_bytes;
   count_set_balloon_size_ += 1;
+  EXPECT_TRUE(set_balloon_result_latch_.TimedWait(base::Seconds(5)));
   return result_set_balloon_size_;
 }
 

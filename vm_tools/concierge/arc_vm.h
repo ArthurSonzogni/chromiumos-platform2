@@ -95,8 +95,6 @@ class ArcVm final : public VmBaseImpl {
         std::make_unique<base::OneShotTimer>()};
     std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer{
         std::make_unique<base::RepeatingTimer>()};
-    std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer{
-        std::make_unique<base::RepeatingTimer>()};
     VmBuilder vm_builder;
   };
 
@@ -232,8 +230,9 @@ class ArcVm final : public VmBaseImpl {
   void HandleLmkdVsockRead();
 
   // Handlers for aggressive balloon
-  void InflateAggressiveBalloonOnTimer();
-  void StartAggressiveBalloonTimer(std::optional<BalloonStats> stats_opt);
+  void StartAggressiveBalloonInflation(std::optional<BalloonStats> stats_opt);
+  void DoAggressiveBalloonStep();
+  void OnAggressiveBalloonStepDone(bool success);
 
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
@@ -283,6 +282,20 @@ class ArcVm final : public VmBaseImpl {
   // perceptible processes usually have 30 ~ 100 MiB size.
   static constexpr int32_t kAggressiveBalloonIncrementSize = MiB(10);
 
+  // Amount the aggressive balloon deflates by on a puff failure. This should
+  // be enough to ensure memory allocations from guest userspace start
+  // succeeding again, but the precise value is arbitrary.
+  static constexpr uint64_t kAggressiveBalloonBackoffBytes =
+      50 * kAggressiveBalloonIncrementSize;
+
+  // See comment on aggressive_balloon_interval_.
+  static constexpr base::TimeDelta kInitAggressiveBalloonInterval =
+      base::Milliseconds(50);
+  static constexpr base::TimeDelta kMaxAggressiveBalloonInterval =
+      base::Milliseconds(200);
+  static constexpr base::TimeDelta kAggressiveBalloonPuffTimeout =
+      base::Seconds(1);
+
   base::ScopedFD arcvm_lmkd_vsock_fd_;
   base::ScopedFD lmkd_client_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
@@ -322,9 +335,20 @@ class ArcVm final : public VmBaseImpl {
   uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   AggressiveBalloonCallback aggressive_balloon_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer_
+  bool aggressive_balloon_running_ GUARDED_BY_CONTEXT(sequence_checker_) =
+      false;
+  // Interval used between puffs of the aggressive balloon. This helps to
+  // ensure that LMKD has enough time to react before the guest goes into an
+  // OOM state and locks up. Puff timeouts trigger a deflate followed by a
+  // slower inflate to try again to avoid locking up the guest.
+  //
+  // If we repeatedly get puff timeouts without an LMKD kill to end the
+  // aggressive balloon, then we timeout the aggressive balloon. This is not
+  // considered a failure, since the balloon should have at least accomplished
+  // its goal of dropping as much guest page cache as possible.
+  base::TimeDelta aggressive_balloon_interval_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  base::Thread balloon_stats_thread_{"balloon_stats_thread"};
+  base::Thread balloon_request_thread_{"balloon_request_thread"};
 
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };
