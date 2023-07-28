@@ -216,6 +216,9 @@ void SensorServiceImpl::OnDeviceRemoved(int iio_device_id) {
   context_->Reload();
 
   sensor_device_->OnDeviceRemoved(iio_device_id);
+
+  for (auto& observer : observers_)
+    observer->OnDeviceRemoved(iio_device_id);
 }
 
 void SensorServiceImpl::GetDeviceIds(cros::mojom::DeviceType type,

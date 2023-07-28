@@ -45,6 +45,10 @@ class FakeSensorServiceNewDevicesObserver
     types_ = types;
   }
 
+  void OnDeviceRemoved(int32_t iio_device_id) override {
+    removed_device_id_ = iio_device_id;
+  }
+
   mojo::PendingRemote<cros::mojom::SensorServiceNewDevicesObserver>
   PassRemote() {
     CHECK(!receiver_.is_bound());
@@ -66,6 +70,8 @@ class FakeSensorServiceNewDevicesObserver
 
     return true;
   }
+
+  std::optional<int32_t> removed_device_id_;
 
  private:
   mojo::Receiver<cros::mojom::SensorServiceNewDevicesObserver> receiver_;
@@ -173,6 +179,17 @@ TEST_F(SensorServiceImplTest, OnDeviceAdded) {
   EXPECT_TRUE(observer->CheckNewDevice(
       kFakeLightId,
       std::vector<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
+}
+
+TEST_F(SensorServiceImplTest, OnDeviceRemoved) {
+  std::unique_ptr<FakeSensorServiceNewDevicesObserver> observer(
+      new FakeSensorServiceNewDevicesObserver());
+  sensor_service_->RegisterNewDevicesObserver(observer->PassRemote());
+
+  sensor_service_->OnDeviceRemoved(kFakeAccelId);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(observer->removed_device_id_, kFakeAccelId);
 }
 
 class SensorServiceImplInvalidContextTest : public ::testing::Test {

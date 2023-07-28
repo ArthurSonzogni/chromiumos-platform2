@@ -115,11 +115,13 @@ interface SensorService {
   GetDevice@2(int32 iio_device_id, pending_receiver<SensorDevice> device_request);
 
   // Registers a SensorServiceNewDevicesObserver to iioservice. Users will get
-  // notified when new devices are added and visible to iioservice.
+  // notified when new devices are added or devices are removed in iioservice.
   RegisterNewDevicesObserver
       @3(pending_remote<SensorServiceNewDevicesObserver> observer);
 };
 
+// Deprecated: SensorServiceNewDevicesObserver::OnDeviceRemoved will be used to
+// notify sensor clients that sensor devices are removed.
 // The disconnect reasons of SensorDevice and SensorDeviceSamplesObserver.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -260,14 +262,19 @@ interface SensorDeviceSamplesObserver {
   OnErrorOccurred@1(ObserverErrorType type);
 };
 
-// One observer is created to track new sensors updated to iioservice, using
-// SensorService::RegisterNewDevicesObserver to register the observer.
+// One observer is created to track new sensors updated and existing sensors
+// removed in iioservice, using SensorService::RegisterNewDevicesObserver to
+// register the observer.
 //
 // Next method ID: 1
 interface SensorServiceNewDevicesObserver {
   // A new IIO device with |iio_device_id| and |types| is added and visible to
   // iioservice. Sensor clients can get access to this device with the id.
   OnNewDeviceAdded@0(int32 iio_device_id, array<DeviceType> types);
+
+  // An existing IIO device with |iio_device_id| is removed and no longer
+  // available to iioservice.
+  OnDeviceRemoved@1(int32 iio_device_id);
 };
 
 // One observer is created to track one specific device's events, using
