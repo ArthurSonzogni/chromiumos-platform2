@@ -35,19 +35,27 @@
 namespace secanomalyd {
 
 namespace {
+
 constexpr pid_t kInitPid = 1;
 constexpr pid_t kKThreadDPid = 2;
 constexpr pid_t kKThreadDPPid = 0;
+
 constexpr char kInitExecutable[] = "/sbin/init";
 constexpr char kProcSubdirPattern[] = "[0-9]*";
+
 const base::FilePath kProcStatusFile("status");
 const base::FilePath kProcCmdlineFile("cmdline");
+
 const base::FilePath kProcNsPidPath("ns/pid");
 const base::FilePath kProcNsMntPath("ns/mnt");
+const base::FilePath kProcNsUserPath("ns/user");
+
 static constexpr LazyRE2 kProcNsPattern = {R"([a-z]+:\[(\d+)\])"};
+
 constexpr char kSecCompModeDisabled[] = "0";
 // SECCOMP_MODE_STRICT is 1.
 // SECCOMP_MODE_FILTER is 2.
+
 constexpr uint64_t kCapSysAdminMask = 1 << 21;
 
 // Reads a file under a directory, given the FD for the directory. This is
@@ -109,7 +117,7 @@ static ino_t GetNsFromPath(const base::FilePath& ns_symlink_path) {
 MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // ProcEntry attributes.
   pid_t pid, ppid;
-  ino_t pidns = 0, mntns = 0;
+  ino_t pidns = 0, mntns = 0, usrns = 0;
   std::string comm, args;
   SandboxStatus sandbox_status;
   sandbox_status.reset();
@@ -211,8 +219,9 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
 
   pidns = GetNsFromPath(pid_path.Append(kProcNsPidPath));
   mntns = GetNsFromPath(pid_path.Append(kProcNsMntPath));
+  usrns = GetNsFromPath(pid_path.Append(kProcNsUserPath));
 
-  return ProcEntry(pid, ppid, pidns, mntns, comm, args, sandbox_status);
+  return ProcEntry(pid, ppid, pidns, mntns, usrns, comm, args, sandbox_status);
 }
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter,

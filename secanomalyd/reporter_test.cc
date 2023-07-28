@@ -198,10 +198,11 @@ TEST(ReporterTest, FullReport) {
   MaybeMountEntries uploadable_mounts = FilterPrivateMounts(all_mounts);
   MaybeProcEntries maybe_procs = MaybeProcEntries(
 
-      {ProcEntry(1, 0, 4026531836, 4026531836, "init", "/sbin/init", 0b100000),
-       ProcEntry(471, 300, 4026531836, 4026531836, "agetty",
+      {ProcEntry(1, 0, 4026531841, 4026531836, 4026531837, "init", "/sbin/init",
+                 0b100000),
+       ProcEntry(471, 300, 4026531841, 4026531836, 4026531837, "agetty",
                  "agetty 115200 ttyS0 linux", 0b000000),
-       ProcEntry(506, 1, 4026531836, 4026531836, "auditd",
+       ProcEntry(506, 1, 4026531841, 4026531836, 4026531837, "auditd",
                  "/sbin/auditd -n -c /etc/audit", 0b000000)});
 
   MaybeReport report =

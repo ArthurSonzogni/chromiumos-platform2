@@ -46,6 +46,7 @@ class ProcEntry {
   pid_t ppid() const { return ppid_; }
   ino_t pidns() const { return pidns_; }
   ino_t mntns() const { return mntns_; }
+  ino_t userns() const { return userns_; }
   std::string comm() const { return comm_; }
   std::string args() const { return args_; }
   SandboxStatus sandbox_status() const { return sandbox_status_; }
@@ -58,6 +59,7 @@ class ProcEntry {
             pid_t ppid,
             ino_t pidns,
             ino_t mntns,
+            ino_t userns,
             std::string comm,
             std::string args,
             SandboxStatus sandbox_status)
@@ -65,6 +67,7 @@ class ProcEntry {
         ppid_(ppid),
         pidns_(pidns),
         mntns_(mntns),
+        userns_(userns),
         comm_(comm),
         args_(args),
         sandbox_status_(sandbox_status) {}
@@ -73,6 +76,7 @@ class ProcEntry {
   pid_t ppid_;
   ino_t pidns_;
   ino_t mntns_;
+  ino_t userns_;
   std::string comm_;
   std::string args_;
   SandboxStatus sandbox_status_;
