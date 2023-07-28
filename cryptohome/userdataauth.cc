@@ -2945,7 +2945,17 @@ void UserDataAuth::AddAuthFactor(
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
-  auth_session_status.value()->AddAuthFactor(
+  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInAddAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+  session_decrypt->AddAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
@@ -3039,7 +3049,18 @@ void UserDataAuth::UpdateAuthFactor(
 
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
-  auth_session_status.value()->UpdateAuthFactor(
+
+  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInUpdateAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+  session_decrypt->UpdateAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
@@ -3100,8 +3121,18 @@ void UserDataAuth::RemoveAuthFactor(
       base::BindOnce(&ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
                      std::move(on_done));
 
-  auth_session_status.value()->RemoveAuthFactor(
-      request, std::move(on_remove_auth_factor_finished));
+  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInRemoveAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+  session_decrypt->RemoveAuthFactor(request,
+                                    std::move(on_remove_auth_factor_finished));
 }
 
 void UserDataAuth::ListAuthFactors(

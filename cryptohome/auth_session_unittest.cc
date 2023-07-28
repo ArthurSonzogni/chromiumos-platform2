@@ -445,6 +445,9 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
                            backing_apis_);
 
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
 }
 
 TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
@@ -458,6 +461,9 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
                            backing_apis_);
 
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 TEST_F(AuthSessionTest, Username) {
@@ -633,6 +639,9 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 // Test if AuthSession reports the correct attributes on an already-existing
@@ -694,6 +703,10 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
                .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -703,6 +716,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -729,6 +745,10 @@ TEST_F(AuthSessionTest,
                .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -797,6 +817,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -823,6 +846,10 @@ TEST_F(AuthSessionTest,
                .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -894,6 +921,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -915,6 +945,10 @@ TEST_F(AuthSessionTest,
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -975,6 +1009,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 // Test that AuthenticateAuthFactor returns an error when supplied label and
@@ -991,6 +1028,10 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -1010,6 +1051,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   EXPECT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 // Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor
@@ -1036,6 +1080,10 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
 
   // Setting the expectation that the user does not exist.
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_FALSE(auth_session.user_exists());
 
   // Creating the user.
@@ -1043,6 +1091,9 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::AddAuthFactorRequest request;
@@ -1067,7 +1118,8 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
 
   // Test.
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -1095,6 +1147,10 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // Setting the expectation that the user does not exist.
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_FALSE(auth_session.user_exists());
 
   // Creating the user.
@@ -1102,6 +1158,9 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::AddAuthFactorRequest request;
@@ -1139,7 +1198,8 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // Test.
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -1158,7 +1218,8 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // Test.
   TestFuture<CryptohomeStatus> add_future2;
-  auth_session.AddAuthFactor(request2, add_future2.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request2,
+                                                  add_future2.GetCallback());
 
   // Verify.
   ASSERT_THAT(add_future2.Get(), IsOk());
@@ -1190,6 +1251,9 @@ TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
   user_data_auth::AddAuthFactorRequest request;
@@ -1201,7 +1265,8 @@ TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -1227,6 +1292,9 @@ TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
   user_data_auth::AddAuthFactorRequest request;
@@ -1238,7 +1306,8 @@ TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
 
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(add_future.Get(), NotOk());
@@ -1263,6 +1332,9 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   // Add the first password.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1272,7 +1344,8 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
   request_factor.mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> first_add_future;
-  auth_session.AddAuthFactor(request, first_add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(
+      request, first_add_future.GetCallback());
   EXPECT_THAT(first_add_future.Get(), IsOk());
 
   // Test.
@@ -1280,7 +1353,8 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(
       kFakeOtherPass);
   TestFuture<CryptohomeStatus> second_add_future;
-  auth_session.AddAuthFactor(request, second_add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(
+      request, second_add_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(second_add_future.Get(), IsOk());
@@ -1314,6 +1388,10 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                                         ->auth_factor()
                                         .auth_block_state();
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
@@ -1321,6 +1399,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.user_exists());
 
   // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
@@ -1358,7 +1439,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), IsOk());
@@ -1385,6 +1467,10 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
                .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
@@ -1392,6 +1478,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1405,7 +1494,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
       kFakeOtherPass);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), NotOk());
@@ -1430,6 +1520,10 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
                .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
@@ -1437,6 +1531,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1450,7 +1547,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
       kFakeOtherPass);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), NotOk());
@@ -1559,6 +1657,10 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
                             .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
   EXPECT_TRUE(auth_session.user_exists());
 
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
@@ -1566,6 +1668,9 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test that RemoveAuthFactor success removes the factor from the map.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
@@ -1584,7 +1689,8 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   remove_request.set_auth_session_id(auth_session.serialized_token());
   remove_request.set_auth_factor_label(kFakeOtherLabel);
   TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(remove_request, remove_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      remove_request, remove_future.GetCallback());
 
   // Verify that AuthFactor is removed and the Authentication doesn't succeed
   // with the removed factor.
@@ -1594,6 +1700,9 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test that RemoveAuthFactor failure doesn't remove the factor from the map.
   user_data_auth::RemoveAuthFactorRequest remove_request2;
@@ -1601,7 +1710,8 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   remove_request2.set_auth_factor_label(kFakeLabel);
 
   TestFuture<CryptohomeStatus> remove_future2;
-  auth_session.RemoveAuthFactor(remove_request2, remove_future2.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      remove_request2, remove_future2.GetCallback());
 
   // Verify that AuthFactor is not removed and the Authentication doesn't
   // succeed with the removed factor.
@@ -1613,6 +1723,9 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment
@@ -1684,7 +1797,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
         ->set_mediator_pub_key("mediator pub key");
     // Add recovery AuthFactor.
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                    add_future.GetCallback());
 
     if (add_future.Get().ok() ||
         !add_future.Get()->local_legacy_error().has_value()) {
@@ -1725,7 +1839,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     request.set_auth_session_id(auth_session.serialized_token());
 
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                    add_future.GetCallback());
 
     if (add_future.Get().ok() ||
         !add_future.Get()->local_legacy_error().has_value()) {
@@ -1838,7 +1953,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
         new_password);
 
     TestFuture<CryptohomeStatus> update_future;
-    auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+        request, update_future.GetCallback());
 
     if (update_future.Get().ok() ||
         !update_future.Get()->local_legacy_error().has_value()) {
@@ -1895,7 +2011,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
     add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(add_pin_request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(add_pin_request,
+                                                    add_future.GetCallback());
 
     if (add_future.Get().ok() ||
         !add_future.Get()->local_legacy_error().has_value()) {
@@ -1942,7 +2059,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     request.mutable_auth_input()->mutable_fingerprint_input();
 
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                    add_future.GetCallback());
 
     if (add_future.Get().ok() ||
         !add_future.Get()->local_legacy_error().has_value()) {
@@ -1991,7 +2109,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     add_request.mutable_auth_factor()->mutable_fingerprint_metadata();
     add_request.mutable_auth_input()->mutable_fingerprint_input();
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(add_request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
+                                                    add_future.GetCallback());
 
     if (add_future.Get().ok() ||
         !add_future.Get()->local_legacy_error().has_value()) {
@@ -2087,7 +2206,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -2150,7 +2270,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -2214,7 +2335,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(add_future.Get(), NotOk());
@@ -2225,39 +2347,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors, IsEmpty());
-}
-
-// Test that a new auth factor cannot be added for an unauthenticated
-// authsession.
-TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
-  // Setup.
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = true,
-                            .auth_factor_map = AuthFactorMap()},
-                           backing_apis_);
-
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request.mutable_auth_factor()->set_label(kFakeLabel);
-  request.mutable_auth_factor()->mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
-  // Test and Verify.
-  TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
-
-  // Verify.
-  ASSERT_THAT(add_future.Get(), NotOk());
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
-  ASSERT_EQ(add_future.Get()->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
 // Test that a new auth factor and a pin can be added to the newly created user,
@@ -2304,7 +2393,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 
   // Test and Verify.
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -2336,7 +2426,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
       kFakePin);
   // Test and Verify.
   TestFuture<CryptohomeStatus> add_pin_future;
-  auth_session.AddAuthFactor(add_pin_request, add_pin_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_pin_request,
+                                                  add_pin_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(add_pin_future.Get(), IsOk());
@@ -2440,6 +2531,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
@@ -2539,6 +2633,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
@@ -2736,6 +2833,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
@@ -2845,6 +2945,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
@@ -2948,6 +3051,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
@@ -3097,7 +3203,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
       ->set_mediator_pub_key("mediator pub key");
   // Test and Verify.
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -3195,6 +3302,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
@@ -3236,6 +3346,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
   // There should be no verifier created for the recovery factor.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
@@ -3303,6 +3416,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
 
   // Verify.
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
@@ -3343,6 +3459,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   // There should be a verifier created for the smart card factor.
@@ -3758,7 +3877,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   request.set_auth_factor_label(kFakePinLabel);
 
   TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      request, remove_future.GetCallback());
 
   EXPECT_THAT(remove_future.Get(), IsOk());
 
@@ -3846,7 +3966,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.set_auth_factor_label(kFakeOtherLabel);
 
   TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      request, remove_future.GetCallback());
 
   EXPECT_THAT(remove_future.Get(), IsOk());
 
@@ -3915,7 +4036,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   request.set_auth_factor_label(kFakePinLabel);
 
   TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      request, remove_future.GetCallback());
 
   EXPECT_THAT(remove_future.Get(), IsOk());
 
@@ -3959,7 +4081,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   request.set_auth_factor_label(kFakeLabel);
 
   TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      request, remove_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(remove_future.Get(), NotOk());
@@ -3970,29 +4093,6 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
               UnorderedElementsAre(
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
-TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
-  // Setup.
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = true,
-                            .auth_factor_map = AuthFactorMap()},
-                           backing_apis_);
-
-  // Test.
-  user_data_auth::RemoveAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
-
-  ASSERT_THAT(remove_future.Get(), NotOk());
-  EXPECT_EQ(remove_future.Get()->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
@@ -4232,7 +4332,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(new_pass);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), NotOk());
@@ -4279,7 +4380,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), NotOk());
@@ -4328,7 +4430,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      request, update_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(update_future.Get(), NotOk());
@@ -4389,7 +4492,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
       kFakePass);
   add_request.set_auth_session_id(auth_session.serialized_token());
   TestFuture<CryptohomeStatus> add_future;
-  auth_session.AddAuthFactor(add_request, add_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
+                                                  add_future.GetCallback());
   EXPECT_THAT(add_future.Get(), IsOk());
   // Setting the expectations for the new auth block creation. The mock is set
   // to fail.
@@ -4417,7 +4521,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
       kFakePass);
   // Calling UpdateAuthFactor.
   TestFuture<CryptohomeStatus> update_future;
-  auth_session.UpdateAuthFactor(update_request, update_future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+      update_request, update_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(update_future.Get(), NotOk());

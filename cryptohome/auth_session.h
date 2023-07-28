@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
-#include <base/containers/span.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -40,9 +39,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
@@ -59,15 +56,46 @@ namespace cryptohome {
 using AuthFactorStatusUpdateCallback = base::RepeatingCallback<void(
     user_data_auth::AuthFactorWithStatus, const std::string&)>;
 
-// The list of all intents satisfied when the auth session is "fully
-// authenticated". Useful for places that want to set the "fully authenticated"
-// state.
-constexpr AuthIntent kAuthorizedIntentsForFullAuth[] = {
-    AuthIntent::kDecrypt, AuthIntent::kVerifyOnly};
-
 // This class starts a session for the user to authenticate with their
 // credentials.
 class AuthSession final {
+ private:
+  // Base class for all the AuthForXxx classes. Provides the standard
+  // boilerplate that every one of those classes supports:
+  //   * They all provide kIntent static member of their AuthIntent
+  //   * Their constructor takes a Passkey parameter that only AuthSession
+  //     can construct, so that only AuthSession can create these
+  //   * They can't be copied or moved.
+  //
+  // Each AuthIntent should have a corresponding subclass of this base that
+  // defines any AuthSession functions which REQUIRE the session to be
+  // authorized for this intent. The goal of this is to make it very difficult
+  // to accidentally write a bug where a function that requires authorization
+  // fails to check for it, by putting the function into a subobject that only
+  // gets created when the authorization happens.
+  template <AuthIntent intent>
+  class AuthForBase {
+   public:
+    class Passkey {
+     private:
+      friend class AuthSession;
+      Passkey() = default;
+    };
+
+    static constexpr AuthIntent kIntent = intent;
+
+    // Construct an AuthFor object for the given session. The passkey parameter
+    // is used just to restrict construction to classes and functions that can
+    // create the Passkey object (i.e. AuthSession).
+    AuthForBase(AuthSession& session, Passkey) : session_(&session) {}
+
+    AuthForBase(const AuthForBase&) = delete;
+    AuthForBase& operator=(const AuthForBase&) = delete;
+
+   protected:
+    AuthSession* session_;
+  };
+
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
 
@@ -136,9 +164,7 @@ class AuthSession final {
   }
 
   // Returns the intents that the AuthSession has been authorized for.
-  const base::flat_set<AuthIntent>& authorized_intents() const {
-    return authorized_intents_;
-  }
+  base::flat_set<AuthIntent> authorized_intents() const;
 
   // Returns the file system keyset used to access the filesystem. This is set
   // when the session gets into an authenticated state and so the caller must
@@ -178,11 +204,6 @@ class AuthSession final {
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
   CryptohomeStatus OnUserCreated();
-
-  // AddAuthFactor is called when newly created or existing user wants to add
-  // new AuthFactor.
-  void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
-                     StatusCallback on_done);
 
   // Whether the AuthenticateAuthFactor request should be forced to perform full
   // auth.
@@ -227,19 +248,9 @@ class AuthSession final {
   void AuthenticateAuthFactor(const AuthenticateAuthFactorRequest& request,
                               AuthenticateAuthFactorCallback callback);
 
-  // RemoveAuthFactor is called when the user wants to remove auth factor
-  // provided in the `request`.
-  void RemoveAuthFactor(const user_data_auth::RemoveAuthFactorRequest& request,
-                        StatusCallback on_done);
-
   // PrepareUserForRemoval is called to perform the necessary steps before
   // removing a user, like preparing each auth factor for removal.
   void PrepareUserForRemoval();
-
-  // UpdateAuthFactor is called when the user wants to update auth factor
-  // provided in the `request`.
-  void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
-                        StatusCallback on_done);
 
   // UpdateAuthFactorMetadata updates the auth factor without new credentials.
   void UpdateAuthFactorMetadata(
@@ -257,6 +268,64 @@ class AuthSession final {
   void TerminateAuthFactor(
       const user_data_auth::TerminateAuthFactorRequest& request,
       StatusCallback on_done);
+
+  // Subobjects that implement operations that require the session to be
+  // authforized for a specific intent. While these are technically classes they
+  // are not really intended to be used as independent types. Instead it is
+  // best to think of them as sets of additional AuthSession functions with a
+  // specific precondition, "must be authorized for intent X".
+  //
+  // For consistency we define a class (AuthForXxx) and function (GetAuthForXxx)
+  // for each intent, although some of them are just empty stubs because the
+  // authorization opens up no additional operations. The GetAuthForXxx are
+  // similar to an "is authorized for Xxx" check except that instead of
+  // returning a bool the return either null (not authorized) or not null
+  // (authorized). If not null the returned objects have the same lifetime as
+  // the AuthSession object itself.
+
+  // AuthForDecrypt: operations that require AuthIntent::kDecrypt.
+  class AuthForDecrypt : public AuthForBase<AuthIntent::kDecrypt> {
+   public:
+    using AuthForBase::AuthForBase;
+
+    // AddAuthFactor is called when newly created or existing user wants to add
+    // new AuthFactor.
+    void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
+                       StatusCallback on_done);
+
+    // RemoveAuthFactor is called when the user wants to remove auth factor
+    // provided in the `request`.
+    void RemoveAuthFactor(
+        const user_data_auth::RemoveAuthFactorRequest& request,
+        StatusCallback on_done);
+
+    // UpdateAuthFactor is called when the user wants to update auth factor
+    // provided in the `request`.
+    void UpdateAuthFactor(
+        const user_data_auth::UpdateAuthFactorRequest& request,
+        StatusCallback on_done);
+  };
+  friend class AuthForDecrypt;
+  AuthForDecrypt* GetAuthForDecrypt();
+
+  // AuthForXxx classes for intents which don't add any new operations. These
+  // classes are just simple stubs of AuthForBase that don't really do anything
+  // other than acting as indicators that the session is authorized for a
+  // specific intent, but we still define them this way for consistency. This
+  // allows most of the auth intent handling code to be written generically.
+  class AuthForVerifyOnly : public AuthForBase<AuthIntent::kVerifyOnly> {
+   public:
+    using AuthForBase::AuthForBase;
+  };
+  friend class AuthForVerifyOnly;
+  AuthForVerifyOnly* GetAuthForVerifyOnly();
+
+  class AuthForWebAuthn : public AuthForBase<AuthIntent::kWebAuthn> {
+   public:
+    using AuthForBase::AuthForBase;
+  };
+  friend class AuthForWebAuthn;
+  AuthForWebAuthn* GetAuthForWebAuthn();
 
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
@@ -333,7 +402,7 @@ class AuthSession final {
   // Switches the state to authorize the specified intents. Starts or restarts
   // the timer when applicable.
   void SetAuthorizedForIntents(
-      base::span<const AuthIntent> new_authorized_intents);
+      base::flat_set<AuthIntent> new_authorized_intents);
 
   // Sets the auth session as fully authenticated by the given factor type. What
   // specific intents the session is authorized for depends on the factor type.
@@ -716,12 +785,20 @@ class AuthSession final {
   Username username_;
   ObfuscatedUsername obfuscated_username_;
 
-  // AuthSession's flag configuration.
+  // Is the user of this session ephemeral?
   const bool is_ephemeral_user_;
+  // The intent this session was started for.
   const AuthIntent auth_intent_;
 
-  // The intents which this session is currently authorized for.
-  base::flat_set<AuthIntent> authorized_intents_;
+  // AuthFor objects representing which intents the session is authorized for.
+  // These are null when the session is not authorized.
+  //
+  // Once a session is authorized for a specific intent that
+  // authorization cannot be cleared as clients may have references to the
+  // AuthFor object. In other words, intents cannot be "deauthorized".
+  std::optional<AuthForDecrypt> auth_for_decrypt_;
+  std::optional<AuthForVerifyOnly> auth_for_verify_only_;
+  std::optional<AuthForWebAuthn> auth_for_web_authn_;
 
   // The wall clock timer object to send AuthFactor status update periodically.
   std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer_;

@@ -243,7 +243,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     request.set_auth_factor_label(label);
     request.set_auth_session_id(auth_session.serialized_token());
     TestFuture<CryptohomeStatus> remove_future;
-    auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+        request, remove_future.GetCallback());
     EXPECT_THAT(remove_future.Get(), IsOk());
   }
 
@@ -402,7 +403,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
     request.set_auth_session_id(auth_session.serialized_token());
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                    add_future.GetCallback());
     EXPECT_THAT(add_future.Get(), IsOk());
   }
 
@@ -461,7 +463,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
     request.set_auth_session_id(auth_session.serialized_token());
     TestFuture<CryptohomeStatus> add_future;
-    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                    add_future.GetCallback());
     EXPECT_THAT(add_future.Get(), IsOk());
   }
 
@@ -493,7 +496,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     request.mutable_auth_factor()->mutable_password_metadata();
     request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
     TestFuture<CryptohomeStatus> update_future;
-    auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
+        request, update_future.GetCallback());
     EXPECT_THAT(update_future.Get(), IsOk());
   }
 

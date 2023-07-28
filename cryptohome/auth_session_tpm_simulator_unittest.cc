@@ -102,7 +102,8 @@ CryptohomeStatus RunAddAuthFactor(
     const user_data_auth::AddAuthFactorRequest& request,
     AuthSession& auth_session) {
   TestFuture<CryptohomeStatus> future;
-  auth_session.AddAuthFactor(request, future.GetCallback());
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  future.GetCallback());
   return future.Take();
 }
 
@@ -132,7 +133,8 @@ CryptohomeStatus RunUpdateAuthFactor(
     const user_data_auth::UpdateAuthFactorRequest& request,
     AuthSession& auth_session) {
   TestFuture<CryptohomeStatus> future;
-  auth_session.UpdateAuthFactor(request, future.GetCallback());
+  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(request,
+                                                     future.GetCallback());
   return future.Take();
 }
 

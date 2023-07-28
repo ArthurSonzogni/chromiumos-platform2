@@ -359,39 +359,39 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptCompatAuthBlockChapsKeyInDerive = 266,
   /* =Obsolete= */
   kLocScryptCompatAuthBlockResetKeyInDerive = 267,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInInsertCred = 268,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManLabelUnavailableInInsertCred = 269,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManEmptyAuxInInsertCred = 270,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManTpmFailedInInsertCred = 271,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManStoreFailedInInsertCred = 272,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInRemoveCred = 273,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManRetrieveLabelFailedInRemoveCred = 274,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManRemoveCredFailedInRemoveCred = 275,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManRemoveLabelFailedInRemoveCred = 276,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInCheckSecret = 277,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidMetadataInCheckSecret = 278,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManStoreLabelFailedInCheckSecret = 279,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManTpmFailedInCheckSecret = 280,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManTreeGetDataFailedInRetrieveLabel = 281,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManNonexistentInRetrieveLabel = 282,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManEmptyAuxInRetrieveLabel = 283,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManConvertTpmError = 284,
   /* ./userdataauth.cc */
   kLocUserDataAuthCreateFailedInStartAuthSession = 285,
@@ -489,8 +489,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNonEmptyKioskKeyInGetCred = 331,
   /* =Obsolete= */
   kLocAuthSessionEmptyPublicMountKeyInGetCred = 332,
-  /* ./auth_session.cc */
-  kLocAuthSessionUnauthedInAddAuthFactor = 333,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUnauthedInAddAuthFactor = 333,
   /* ./auth_session.cc */
   kLocAuthSessionUnknownFactorInAddAuthFactor = 334,
   /* ./auth_session.cc */
@@ -929,7 +929,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockNoUsernameInCreate = 551,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockNoUsernameInDerive = 552,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInCheckSecret = 553,
   /* =Obsolete= */
   kLocUserDataAuthNoTPMInInitChalRespAuth = 554,
@@ -1007,11 +1007,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthRemoveFailedInRemove = 590,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockCheckCredLockedInDerive = 591,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInGetCredentialMetadata = 592,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManRetrieveLabelFailedInGetCredentialMetadata = 593,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetDelayInSeconds = 594,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnsupportedInPrepareAuthBlockForRemoval = 595,
@@ -1087,8 +1087,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoAuthSessionInUpdateAuthFactor = 630,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFromUssFailedInRemoveAuthFactor = 631,
-  /* ./auth_session.cc */
-  kLocAuthSessionUnauthedInUpdateAuthFactor = 632,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUnauthedInUpdateAuthFactor = 632,
   /* ./auth_session.cc */
   kLocAuthSessionNoOldLabelInUpdateAuthFactor = 633,
   /* ./auth_session.cc */
@@ -1125,9 +1125,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAddToUssFailedInPersistToUSS = 649,
   /* =Obsolete= */
   kLocAuthSessionAddBackupVKFailedInPersistToUSS = 650,
-  /* ./auth_session.cc */
-  kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
-  /* ./le_credential_manager_impl.cc */
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUnauthedInRemoveAuthFactor = 651,
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidMetadataInGetCredentialMetadata = 652,
   /* ./userdataauth.cc */
   kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault = 653,
@@ -1189,21 +1189,21 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManRetrieveLabelFailedInGetExpirationInSeconds = 681,
   /* =Obsolete= */
   kLocLECredManInvalidMetadataInGetExpirationInSeconds = 682,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetExpirationInSeconds = 683,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInStartBiometricsAuth = 684,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidMetadataInStartBiometricsAuth = 685,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInStartBiometricsAuth = 686,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManStoreLabelFailedInStartBiometricsAuth = 687,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManTpmFailedInStartBiometricsAuth = 688,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidOutputInStartBiometricsAuth = 689,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidParamInInsertCred = 690,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveSameVKInRemoveAuthFactor = 691,
@@ -1299,15 +1299,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus = 1500,
   /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
   kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus = 1501,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidLESecretInConvertTpmError = 1502,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManInvalidResetSecretInConvertTpmError = 1503,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManTooManyAttemptsInConvertTpmError = 1504,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPCRNotMatchInConvertTpmError = 1505,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManHashTreeInConvertTpmError = 1506,
   /* ./auth_session.cc */
   kLocAuthSessionUserNotFoundInAuthAuthFactor = 1507,
@@ -1371,7 +1371,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptVerifierVerifySecretMismatch = 2103,
   /* ./auth_blocks/generic.h */
   kLocGenericAuthBlockIsSupportedNotFound = 2104,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetDelaySchedule = 2105,
   /* ./auth_session.cc */
   kLocAuthSessionGetStoredFactorFailedInRecreate = 2106,
@@ -1743,9 +1743,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockServiceNotReadyIsSupported = 3388,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockAuthenticateCredentialLockedInSelect = 3389,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManUnSyncedTreeInRemoveCred = 3390,
-  /* ./le_credential_manager_impl.cc */
+  /* ./pinweaver_manager/le_credential_manager_impl.cc */
   kLocLECredManExpiredInConvertTpmError = 3391,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintGetFactorDelayWrongFactorType = 3392,
