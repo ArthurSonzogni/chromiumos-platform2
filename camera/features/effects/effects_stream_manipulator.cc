@@ -308,6 +308,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
                            const Camera3StreamBuffer& result_buffer,
                            const SharedImage* result_image,
                            bool* result_buffer_appended);
+  void ReturnCaptureResult(Camera3CaptureDescriptor& result);
 
   std::unique_ptr<ReloadableConfigFile> config_;
   base::FilePath config_file_path_;
@@ -787,9 +788,9 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
   auto processing_time_start = base::TimeTicks::Now();
 
-  base::ScopedClosureRunner callback_action =
-      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
-          callbacks_.result_callback, result);
+  base::ScopedClosureRunner callback_action(
+      base::BindOnce(&EffectsStreamManipulatorImpl::ReturnCaptureResult,
+                     base::Unretained(this), std::ref(result)));
 
   if (runtime_options_->sw_privacy_switch_state() ==
       mojom::CameraPrivacySwitchState::ON) {
@@ -1453,6 +1454,39 @@ bool EffectsStreamManipulatorImpl::ProcessStillCapture(
   still_capture_processor_->QueuePendingYuvImage(frame_number, queued_buffer,
                                                  std::move(release_fence));
   return true;
+}
+
+void EffectsStreamManipulatorImpl::ReturnCaptureResult(
+    Camera3CaptureDescriptor& result) {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  TRACE_EFFECTS("frame_number", result.frame_number());
+
+  base::AutoLock lock(stream_contexts_lock_);
+
+  // Remove the appended output stream buffer from |result|.
+  const camera3_stream_t* appended_yuv_stream = nullptr;
+  StreamContext* blob_stream_context = nullptr;
+  for (auto& s : stream_contexts_) {
+    if (s->yuv_stream_for_blob) {
+      blob_stream_context = s.get();
+      break;
+    }
+  }
+  if (blob_stream_context) {
+    if (CaptureContext* capture_context =
+            blob_stream_context->GetCaptureContext(result.frame_number())) {
+      if (capture_context->yuv_stream_appended) {
+        appended_yuv_stream = blob_stream_context->yuv_stream_for_blob;
+      }
+    }
+  }
+  for (auto& buffer : result.AcquireOutputBuffers()) {
+    if (buffer.stream() != appended_yuv_stream) {
+      result.AppendOutputBuffer(std::move(buffer));
+    }
+  }
+
+  callbacks_.result_callback.Run(std::move(result));
 }
 
 }  // namespace cros
