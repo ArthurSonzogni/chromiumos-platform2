@@ -31,6 +31,21 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   int Run(const std::vector<std::string>& argv, bool log_failures) override {
     return 0;
   }
+
+  int RunIptables(std::string_view iptables_path,
+                  Iptables::Table table,
+                  Iptables::Command command,
+                  std::string_view chain,
+                  const std::vector<std::string>& argv,
+                  bool log_failures,
+                  std::string* output) override {
+    return 0;
+  }
+
+  int RunIpNetns(const std::vector<std::string>& argv,
+                 bool log_failures) override {
+    return 0;
+  }
 };
 }  // namespace
 
