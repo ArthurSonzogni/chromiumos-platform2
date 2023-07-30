@@ -13,6 +13,7 @@
 #include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/metrics.h"
 #include "shill/refptr_types.h"
 #include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/property_store.h"
@@ -22,7 +23,6 @@ namespace shill {
 
 class Error;
 class Manager;
-class Metrics;
 class ProfileAdaptorInterface;
 class StoreInterface;
 

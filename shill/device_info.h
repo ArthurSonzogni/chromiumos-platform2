@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/metrics.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
@@ -30,7 +31,6 @@ namespace shill {
 
 class EventDispatcher;
 class Manager;
-class Metrics;
 class NetlinkManager;
 class Nl80211Message;
 class RoutingTable;

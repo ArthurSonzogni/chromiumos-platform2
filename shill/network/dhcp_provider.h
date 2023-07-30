@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
@@ -24,7 +25,6 @@ namespace shill {
 class ControlInterface;
 class DHCPCDListenerInterface;
 class EventDispatcher;
-class Metrics;
 
 // DHCPProvider is a singleton providing the main DHCP configuration entrypoint.
 // Once the provider is initialized through its Init method, DHCP configurations

@@ -949,7 +949,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   EXPECT_CALL(
       *metrics(),
       SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
-                    MetricsEnums::kUserInitiatedConnectionFailureReasonDHCP));
+                    Metrics::kUserInitiatedConnectionFailureReasonDHCP));
   service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -2739,7 +2739,7 @@ TEST_F(ServiceTest, ServiceMetricsServiceFailure) {
   EXPECT_CALL(
       *metrics(),
       SendEnumToUMA(Metrics::kMetricNetworkServiceError, Technology::kWiFi,
-                    MetricsEnums::kNetworkServiceErrorBadPassphrase));
+                    Metrics::kNetworkServiceErrorBadPassphrase));
   service_->UpdateStateTransitionMetrics(Service::kStateFailure);
 }
 

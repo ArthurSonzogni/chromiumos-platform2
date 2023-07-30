@@ -1105,7 +1105,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
 }
 
 void Metrics::NotifyWiFiConnectionAttemptResult(
-    MetricsEnums::NetworkServiceError result_code, uint64_t session_tag) {
+    Metrics::NetworkServiceError result_code, uint64_t session_tag) {
   int64_t usecs;
   if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
     LOG(ERROR) << "Failed to read timestamp";

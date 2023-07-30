@@ -23,7 +23,6 @@
 #include <metrics/timer_mock.h>
 
 #include "shill/cellular/apn_list.h"
-#include "shill/metrics_enums.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -875,7 +874,7 @@ TEST_F(MetricsTest, NotifyWiFiConnectionAttemptResultEmitsAttemptResultEvent) {
       .Times(1);
   constexpr uint64_t tag = 0x123456789;
   metrics_.NotifyWiFiConnectionAttemptResult(
-      MetricsEnums::kNetworkServiceErrorBadPassphrase, tag);
+      Metrics::kNetworkServiceErrorBadPassphrase, tag);
 }
 
 TEST_F(MetricsTest, NotifyWiFiConnectionDisconnectionEmitsConnectionEndEvent) {

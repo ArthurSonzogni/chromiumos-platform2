@@ -16,6 +16,7 @@
 #include <base/observer_list_types.h>
 
 #include "shill/data_types.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
@@ -31,7 +32,6 @@ class ByteString;
 class Error;
 class KeyValueStore;
 class Manager;
-class Metrics;
 class WiFiEndpoint;
 class WiFiPhy;
 class WiFiService;

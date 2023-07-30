@@ -17,7 +17,6 @@
 #include <metrics/timer.h>
 
 #include "shill/error.h"
-#include "shill/metrics_enums.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/shill_time.h"
@@ -295,6 +294,30 @@ class Metrics {
       {
           .n = NameByTechnology{"EapInnerProtocol"},
           .max = kEapInnerProtocolMax,
+  };
+
+  enum WirelessSecurity {
+    kWirelessSecurityUnknown = 0,
+    kWirelessSecurityNone = 1,
+    kWirelessSecurityWep = 2,
+    kWirelessSecurityWpa = 3,
+    // Value "802.11i/RSN" (4) is not used anymore.
+    kWirelessSecurity8021x = 5,
+    kWirelessSecurityPsk = 6,
+    kWirelessSecurityWpa3 = 7,
+    kWirelessSecurityWpaWpa2 = 8,
+    kWirelessSecurityWpa2 = 9,
+    kWirelessSecurityWpa2Wpa3 = 10,
+    kWirelessSecurityWpaEnterprise = 11,
+    kWirelessSecurityWpaWpa2Enterprise = 12,
+    kWirelessSecurityWpa2Enterprise = 13,
+    kWirelessSecurityWpa2Wpa3Enterprise = 14,
+    kWirelessSecurityWpa3Enterprise = 15,
+    kWirelessSecurityWpaAll = 16,
+    kWirelessSecurityWpaAllEnterprise = 17,
+    kWirelessSecurityWepEnterprise = 18,
+
+    kWirelessSecurityMax
   };
 
   enum WirelessSecurityChange {
@@ -846,12 +869,31 @@ class Metrics {
           .max = kUserInitiatedConnectionResultMax,
   };
 
+  // Reason when a connection initiated by Service::UserInitiatedConnect fails.
+  enum UserInitiatedConnectionFailureReason {
+    kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
+    kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
+    kUserInitiatedConnectionFailureReasonConnect = 3,
+    kUserInitiatedConnectionFailureReasonDHCP = 4,
+    kUserInitiatedConnectionFailureReasonDNSLookup = 5,
+    kUserInitiatedConnectionFailureReasonEAPAuthentication = 6,
+    kUserInitiatedConnectionFailureReasonEAPLocalTLS = 7,
+    kUserInitiatedConnectionFailureReasonEAPRemoteTLS = 8,
+    kUserInitiatedConnectionFailureReasonOutOfRange = 9,
+    kUserInitiatedConnectionFailureReasonPinMissing = 10,
+    kUserInitiatedConnectionFailureReasonUnknown = 11,
+    kUserInitiatedConnectionFailureReasonNone = 12,
+    kUserInitiatedConnectionFailureReasonNotAssociated = 13,
+    kUserInitiatedConnectionFailureReasonNotAuthenticated = 14,
+    kUserInitiatedConnectionFailureReasonTooManySTAs = 15,
+    kUserInitiatedConnectionFailureReasonMax
+  };
   static constexpr EnumMetric<FixedName>
       kMetricWifiUserInitiatedConnectionFailureReason = {
           .n =
               FixedName{
                   "Network.Shill.WiFi.UserInitiatedConnectionFailureReason"},
-          .max = MetricsEnums::kUserInitiatedConnectionFailureReasonMax,
+          .max = Metrics::kUserInitiatedConnectionFailureReasonMax,
   };
 
   // Device presence.
@@ -874,27 +916,62 @@ class Metrics {
     kDeviceTechnologyTypeMax
   };
 
+  // These correspond to entries in Chrome's tools/metrics/histograms/enums.xml.
+  // Please do not remove entries (append 'Deprecated' instead), and update the
+  // enums.xml file when entries are added.
+  enum NetworkServiceError {
+    kNetworkServiceErrorNone = 0,
+    kNetworkServiceErrorAAA = 1,
+    kNetworkServiceErrorActivation = 2,
+    kNetworkServiceErrorBadPassphrase = 3,
+    kNetworkServiceErrorBadWEPKey = 4,
+    kNetworkServiceErrorConnect = 5,
+    kNetworkServiceErrorDHCP = 6,
+    kNetworkServiceErrorDNSLookup = 7,
+    kNetworkServiceErrorEAPAuthentication = 8,
+    kNetworkServiceErrorEAPLocalTLS = 9,
+    kNetworkServiceErrorEAPRemoteTLS = 10,
+    kNetworkServiceErrorHTTPGet = 11,
+    kNetworkServiceErrorIPsecCertAuth = 12,
+    kNetworkServiceErrorIPsecPSKAuth = 13,
+    kNetworkServiceErrorInternal = 14,
+    kNetworkServiceErrorNeedEVDO = 15,
+    kNetworkServiceErrorNeedHomeNetwork = 16,
+    kNetworkServiceErrorOTASP = 17,
+    kNetworkServiceErrorOutOfRange = 18,
+    kNetworkServiceErrorPPPAuth = 19,
+    kNetworkServiceErrorPinMissing = 20,
+    kNetworkServiceErrorUnknown = 21,
+    kNetworkServiceErrorNotAssociated = 22,
+    kNetworkServiceErrorNotAuthenticated = 23,
+    kNetworkServiceErrorTooManySTAs = 24,
+    kNetworkServiceErrorDisconnect = 25,
+    kNetworkServiceErrorSimLocked = 26,
+    kNetworkServiceErrorNotRegistered = 27,
+    kNetworkServiceErrorInvalidAPN = 28,
+    kNetworkServiceErrorMax
+  };
   static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {
       .n = NameByTechnology{"ServiceErrors"},
-      .max = MetricsEnums::kNetworkServiceErrorMax,
+      .max = Metrics::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricVpnIkev2EndReason = {
       .n = FixedName{"Network.Shill.Vpn.Ikev2.EndReason"},
-      .max = MetricsEnums::kNetworkServiceErrorMax,
+      .max = Metrics::kNetworkServiceErrorMax,
   };
   // Temporary metrics for comparing the robustness of the two L2TP/IPsec
   // drivers (b/204261554).
   static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecSwanctlEndReason = {
       .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason"},
-      .max = MetricsEnums::kNetworkServiceErrorMax,
+      .max = Metrics::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecStrokeEndReason = {
       .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.StrokeEndReason"},
-      .max = MetricsEnums::kNetworkServiceErrorMax,
+      .max = Metrics::kNetworkServiceErrorMax,
   };
   static constexpr EnumMetric<FixedName> kMetricPasspointConnectionResult = {
       .n = FixedName{"Network.Shill.WiFi.Passpoint.ConnectionResult"},
-      .max = MetricsEnums::kNetworkServiceErrorMax,
+      .max = Metrics::kNetworkServiceErrorMax,
   };
 
   // Corresponds to RegulatoryDomain enum values in
@@ -1761,7 +1838,7 @@ class Metrics {
   struct WiFiConnectionAttemptInfo {
     ConnectionAttemptType type;
     WiFiNetworkPhyMode mode;
-    MetricsEnums::WirelessSecurity security;
+    Metrics::WirelessSecurity security;
     EapInnerProtocol eap_inner;
     EapOuterProtocol eap_outer;
     WiFiFrequencyRange band;
@@ -1798,7 +1875,7 @@ class Metrics {
   // Emits the |WiFiConnectionAttemptResult| structured event that describes
   // the result of the corresponding |WiFiConnectionAttempt| event.
   virtual void NotifyWiFiConnectionAttemptResult(
-      MetricsEnums::NetworkServiceError result_code, uint64_t session_tag);
+      Metrics::NetworkServiceError result_code, uint64_t session_tag);
 
   enum WiFiDisconnectionType {
     kWiFiDisconnectionTypeUnknown = 0,

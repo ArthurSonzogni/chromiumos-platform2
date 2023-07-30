@@ -15,6 +15,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
@@ -26,7 +27,6 @@ class ControlInterface;
 class Error;
 class EventDispatcher;
 class Manager;
-class Metrics;
 class ProcessManager;
 class PropertyStore;
 class StoreInterface;

@@ -22,6 +22,7 @@
 
 #include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
@@ -36,7 +37,6 @@
 namespace shill {
 
 class EventDispatcher;
-class Metrics;
 class RoutingTable;
 class Service;
 

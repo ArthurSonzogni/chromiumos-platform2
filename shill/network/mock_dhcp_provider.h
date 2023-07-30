@@ -10,6 +10,7 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/refptr_types.h"
@@ -18,7 +19,6 @@ namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
-class Metrics;
 
 class MockDHCPProvider : public DHCPProvider {
  public:

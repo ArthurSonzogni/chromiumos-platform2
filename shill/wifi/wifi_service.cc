@@ -907,25 +907,25 @@ void WiFiService::SendPostReadyStateMetrics(
       static_cast<Metrics::WiFiNetworkPhyMode>(ap_phy),
       Metrics::kWiFiNetworkPhyModeMax);
 
-  MetricsEnums::WirelessSecurity security_uma;
+  Metrics::WirelessSecurity security_uma;
   if (security_.IsValid()) {
     security_uma = WiFiSecurity::ToMetricEnum(security_);
   } else {
     LOG(WARNING) << "Invalid Security property in ready state.";
     security_uma = WiFiSecurity::ToMetricEnum(security_class_);
   }
-  if (security_uma == MetricsEnums::kWirelessSecurityUnknown) {
+  if (security_uma == Metrics::kWirelessSecurityUnknown) {
     LOG(WARNING) << "Unknown Security property in ready state.";
   }
   // Special case for Dynamic WEP, let's report it separately for the initial
   // phase of FGSec deployment. TODO(b/226138492): Remove this afterwards.
   if (security_ == WiFiSecurity::kWep && Is8021x()) {
-    security_uma = MetricsEnums::kWirelessSecurityWepEnterprise;
+    security_uma = Metrics::kWirelessSecurityWepEnterprise;
   }
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
                                    technology()),
-      security_uma, MetricsEnums::kWirelessSecurityMax);
+      security_uma, Metrics::kWirelessSecurityMax);
 
   if (Is8021x()) {
     eap()->OutputConnectionMetrics(metrics(), technology());

@@ -3,14 +3,14 @@
 // found in the LICENSE file.
 
 #include "shill/wifi/wifi_security.h"
-#include "shill/logging.h"
 
 #include <algorithm>
 #include <utility>
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 
-#include "shill/metrics_enums.h"
+#include "shill/logging.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -339,57 +339,57 @@ std::string WiFiSecurity::ToString() const {
 }
 
 // static
-MetricsEnums::WirelessSecurity WiFiSecurity::ToMetricEnum(
+Metrics::WirelessSecurity WiFiSecurity::ToMetricEnum(
     const WiFiSecurity& security) {
   switch (security.mode()) {
     case WiFiSecurity::kNone:
-      return MetricsEnums::kWirelessSecurityNone;
+      return Metrics::kWirelessSecurityNone;
     case WiFiSecurity::kWep:
-      return MetricsEnums::kWirelessSecurityWep;
+      return Metrics::kWirelessSecurityWep;
     case WiFiSecurity::kWpa:
-      return MetricsEnums::kWirelessSecurityWpa;
+      return Metrics::kWirelessSecurityWpa;
     case WiFiSecurity::kWpaWpa2:
-      return MetricsEnums::kWirelessSecurityWpaWpa2;
+      return Metrics::kWirelessSecurityWpaWpa2;
     case WiFiSecurity::kWpaAll:
-      return MetricsEnums::kWirelessSecurityWpaAll;
+      return Metrics::kWirelessSecurityWpaAll;
     case WiFiSecurity::kWpa2:
-      return MetricsEnums::kWirelessSecurityWpa2;
+      return Metrics::kWirelessSecurityWpa2;
     case WiFiSecurity::kWpa2Wpa3:
-      return MetricsEnums::kWirelessSecurityWpa2Wpa3;
+      return Metrics::kWirelessSecurityWpa2Wpa3;
     case WiFiSecurity::kWpa3:
-      return MetricsEnums::kWirelessSecurityWpa3;
+      return Metrics::kWirelessSecurityWpa3;
     case WiFiSecurity::kWpaEnterprise:
-      return MetricsEnums::kWirelessSecurityWpaEnterprise;
+      return Metrics::kWirelessSecurityWpaEnterprise;
     case WiFiSecurity::kWpaWpa2Enterprise:
-      return MetricsEnums::kWirelessSecurityWpaWpa2Enterprise;
+      return Metrics::kWirelessSecurityWpaWpa2Enterprise;
     case WiFiSecurity::kWpaAllEnterprise:
-      return MetricsEnums::kWirelessSecurityWpaAllEnterprise;
+      return Metrics::kWirelessSecurityWpaAllEnterprise;
     case WiFiSecurity::kWpa2Enterprise:
-      return MetricsEnums::kWirelessSecurityWpa2Enterprise;
+      return Metrics::kWirelessSecurityWpa2Enterprise;
     case WiFiSecurity::kWpa2Wpa3Enterprise:
-      return MetricsEnums::kWirelessSecurityWpa2Wpa3Enterprise;
+      return Metrics::kWirelessSecurityWpa2Wpa3Enterprise;
     case WiFiSecurity::kWpa3Enterprise:
-      return MetricsEnums::kWirelessSecurityWpa3Enterprise;
+      return Metrics::kWirelessSecurityWpa3Enterprise;
     default:
-      return MetricsEnums::kWirelessSecurityUnknown;
+      return Metrics::kWirelessSecurityUnknown;
   }
 }
 
 // static
-MetricsEnums::WirelessSecurity WiFiSecurity::ToMetricEnum(
+Metrics::WirelessSecurity WiFiSecurity::ToMetricEnum(
     const std::string& security_class) {
   if (security_class == kSecurityClassNone) {
-    return MetricsEnums::kWirelessSecurityNone;
+    return Metrics::kWirelessSecurityNone;
   }
   if (security_class == kSecurityClassWep) {
-    return MetricsEnums::kWirelessSecurityWep;
+    return Metrics::kWirelessSecurityWep;
   }
   if (security_class == kSecurityClassPsk) {
-    return MetricsEnums::kWirelessSecurityPsk;
+    return Metrics::kWirelessSecurityPsk;
   } else if (security_class == kSecurityClass8021x) {
-    return MetricsEnums::kWirelessSecurity8021x;
+    return Metrics::kWirelessSecurity8021x;
   } else {
-    return MetricsEnums::kWirelessSecurityUnknown;
+    return Metrics::kWirelessSecurityUnknown;
   }
 }
 

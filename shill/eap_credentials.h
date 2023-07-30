@@ -15,6 +15,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libpasswordprovider/password_provider.h>
 
+#include "shill/metrics.h"
 #include "shill/store/pkcs11_slot_getter.h"
 #include "shill/technology.h"
 
@@ -23,7 +24,6 @@ namespace shill {
 class CertificateFile;
 class Error;
 class KeyValueStore;
-class Metrics;
 class PropertyStore;
 class StoreInterface;
 

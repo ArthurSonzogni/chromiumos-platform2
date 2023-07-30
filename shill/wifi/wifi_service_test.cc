@@ -233,7 +233,7 @@ class WiFiServiceTest : public PropertyStoreTest {
 
   void ExpectCommonPostReady(Metrics::WiFiChannel channel,
                              Metrics::WiFiNetworkPhyMode mode,
-                             MetricsEnums::WirelessSecurity security,
+                             Metrics::WirelessSecurity security,
                              int signal_strength) {
     EXPECT_CALL(*metrics(), SendEnumToUMA("Network.Shill.Wifi.Channel", channel,
                                           Metrics::kMetricNetworkChannelMax));
@@ -241,7 +241,7 @@ class WiFiServiceTest : public PropertyStoreTest {
                                           Metrics::kWiFiNetworkPhyModeMax));
     EXPECT_CALL(*metrics(),
                 SendEnumToUMA("Network.Shill.Wifi.Security", security,
-                              MetricsEnums::kWirelessSecurityMax));
+                              Metrics::kWirelessSecurityMax));
     EXPECT_CALL(*metrics(),
                 SendToUMA("Network.Shill.Wifi.SignalStrength", signal_strength,
                           Metrics::kMetricNetworkSignalStrengthMin,
@@ -2900,7 +2900,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.ssid, "a");
   EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
-  EXPECT_EQ(info.security, MetricsEnums::kWirelessSecurityNone);
+  EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoNoBSSID) {
@@ -2915,7 +2915,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-  EXPECT_EQ(info.security, MetricsEnums::kWirelessSecurityNone);
+  EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
   if ((false)) {
     EXPECT_EQ(info.ap_oui, 0x00012345);
   }
@@ -3290,7 +3290,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReady) {
 
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
       .Times(0);
@@ -3306,7 +3306,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReady) {
   // Simulate a system suspend, resume and an AP reconnect.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                         Metrics::kTimerHistogramMillisecondsMin,
@@ -3322,7 +3322,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReady) {
   // Make sure subsequent connects do not count towards TimeResumeToReady.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
       .Times(0);
@@ -3338,9 +3338,9 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadyEAP) {
   service->raw_signal_strength_ = kStrength;
   MockEapCredentials* eap = SetMockEap(service);
 
-  ExpectCommonPostReady(
-      Metrics::kWiFiChannel2412, Metrics::kWiFiNetworkPhyMode11a,
-      MetricsEnums::kWirelessSecurityWpa2Enterprise, -kStrength);
+  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+                        Metrics::kWiFiNetworkPhyMode11a,
+                        Metrics::kWirelessSecurityWpa2Enterprise, -kStrength);
   EXPECT_CALL(*eap, OutputConnectionMetrics(_, Technology::kWiFi));
 
   service->UpdateStateTransitionMetrics(Service::kStateConnected);
@@ -3369,7 +3369,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                         Metrics::kTimerHistogramMillisecondsMin,
@@ -3417,7 +3417,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel5180,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                         Metrics::kTimerHistogramMillisecondsMin,
@@ -3465,7 +3465,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel6375,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                         Metrics::kTimerHistogramMillisecondsMin,
@@ -3513,7 +3513,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannelUndef,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        MetricsEnums::kWirelessSecurityWep, -kStrength);
+                        Metrics::kWirelessSecurityWep, -kStrength);
   EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                         Metrics::kTimerHistogramMillisecondsMin,

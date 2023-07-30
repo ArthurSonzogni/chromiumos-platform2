@@ -38,7 +38,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/metrics_enums.h"
 #include "shill/net/event_history.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
@@ -1375,110 +1374,108 @@ const char* Service::ConnectStateToString(ConnectState state) {
 }
 
 // static
-MetricsEnums::NetworkServiceError Service::ConnectFailureToMetricsEnum(
+Metrics::NetworkServiceError Service::ConnectFailureToMetricsEnum(
     Service::ConnectFailure failure) {
   // Explicitly map all possible failures. So when new failures are added,
   // they will need to be mapped as well. Otherwise, the compiler will
   // complain.
   switch (failure) {
     case Service::kFailureNone:
-      return MetricsEnums::kNetworkServiceErrorNone;
+      return Metrics::kNetworkServiceErrorNone;
     case Service::kFailureAAA:
-      return MetricsEnums::kNetworkServiceErrorAAA;
+      return Metrics::kNetworkServiceErrorAAA;
     case Service::kFailureActivation:
-      return MetricsEnums::kNetworkServiceErrorActivation;
+      return Metrics::kNetworkServiceErrorActivation;
     case Service::kFailureBadPassphrase:
-      return MetricsEnums::kNetworkServiceErrorBadPassphrase;
+      return Metrics::kNetworkServiceErrorBadPassphrase;
     case Service::kFailureBadWEPKey:
-      return MetricsEnums::kNetworkServiceErrorBadWEPKey;
+      return Metrics::kNetworkServiceErrorBadWEPKey;
     case Service::kFailureConnect:
-      return MetricsEnums::kNetworkServiceErrorConnect;
+      return Metrics::kNetworkServiceErrorConnect;
     case Service::kFailureDHCP:
-      return MetricsEnums::kNetworkServiceErrorDHCP;
+      return Metrics::kNetworkServiceErrorDHCP;
     case Service::kFailureDNSLookup:
-      return MetricsEnums::kNetworkServiceErrorDNSLookup;
+      return Metrics::kNetworkServiceErrorDNSLookup;
     case Service::kFailureEAPAuthentication:
-      return MetricsEnums::kNetworkServiceErrorEAPAuthentication;
+      return Metrics::kNetworkServiceErrorEAPAuthentication;
     case Service::kFailureEAPLocalTLS:
-      return MetricsEnums::kNetworkServiceErrorEAPLocalTLS;
+      return Metrics::kNetworkServiceErrorEAPLocalTLS;
     case Service::kFailureEAPRemoteTLS:
-      return MetricsEnums::kNetworkServiceErrorEAPRemoteTLS;
+      return Metrics::kNetworkServiceErrorEAPRemoteTLS;
     case Service::kFailureHTTPGet:
-      return MetricsEnums::kNetworkServiceErrorHTTPGet;
+      return Metrics::kNetworkServiceErrorHTTPGet;
     case Service::kFailureIPsecCertAuth:
-      return MetricsEnums::kNetworkServiceErrorIPsecCertAuth;
+      return Metrics::kNetworkServiceErrorIPsecCertAuth;
     case Service::kFailureIPsecPSKAuth:
-      return MetricsEnums::kNetworkServiceErrorIPsecPSKAuth;
+      return Metrics::kNetworkServiceErrorIPsecPSKAuth;
     case Service::kFailureInternal:
-      return MetricsEnums::kNetworkServiceErrorInternal;
+      return Metrics::kNetworkServiceErrorInternal;
     case Service::kFailureInvalidAPN:
-      return MetricsEnums::kNetworkServiceErrorInvalidAPN;
+      return Metrics::kNetworkServiceErrorInvalidAPN;
     case Service::kFailureNeedEVDO:
-      return MetricsEnums::kNetworkServiceErrorNeedEVDO;
+      return Metrics::kNetworkServiceErrorNeedEVDO;
     case Service::kFailureNeedHomeNetwork:
-      return MetricsEnums::kNetworkServiceErrorNeedHomeNetwork;
+      return Metrics::kNetworkServiceErrorNeedHomeNetwork;
     case Service::kFailureNotAssociated:
-      return MetricsEnums::kNetworkServiceErrorNotAssociated;
+      return Metrics::kNetworkServiceErrorNotAssociated;
     case Service::kFailureNotAuthenticated:
-      return MetricsEnums::kNetworkServiceErrorNotAuthenticated;
+      return Metrics::kNetworkServiceErrorNotAuthenticated;
     case Service::kFailureOTASP:
-      return MetricsEnums::kNetworkServiceErrorOTASP;
+      return Metrics::kNetworkServiceErrorOTASP;
     case Service::kFailureOutOfRange:
-      return MetricsEnums::kNetworkServiceErrorOutOfRange;
+      return Metrics::kNetworkServiceErrorOutOfRange;
     case Service::kFailurePPPAuth:
-      return MetricsEnums::kNetworkServiceErrorPPPAuth;
+      return Metrics::kNetworkServiceErrorPPPAuth;
     case Service::kFailureSimLocked:
-      return MetricsEnums::kNetworkServiceErrorSimLocked;
+      return Metrics::kNetworkServiceErrorSimLocked;
     case Service::kFailureNotRegistered:
-      return MetricsEnums::kNetworkServiceErrorNotRegistered;
+      return Metrics::kNetworkServiceErrorNotRegistered;
     case Service::kFailurePinMissing:
-      return MetricsEnums::kNetworkServiceErrorPinMissing;
+      return Metrics::kNetworkServiceErrorPinMissing;
     case Service::kFailureTooManySTAs:
-      return MetricsEnums::kNetworkServiceErrorTooManySTAs;
+      return Metrics::kNetworkServiceErrorTooManySTAs;
     case Service::kFailureDisconnect:
-      return MetricsEnums::kNetworkServiceErrorDisconnect;
+      return Metrics::kNetworkServiceErrorDisconnect;
     case Service::kFailureUnknown:
     case Service::kFailureMax:
-      return MetricsEnums::kNetworkServiceErrorUnknown;
+      return Metrics::kNetworkServiceErrorUnknown;
   }
 }
 
 // static
-MetricsEnums::UserInitiatedConnectionFailureReason
+Metrics::UserInitiatedConnectionFailureReason
 Service::ConnectFailureToFailureReason(Service::ConnectFailure failure) {
   switch (failure) {
     case Service::kFailureNone:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonNone;
+      return Metrics::kUserInitiatedConnectionFailureReasonNone;
     case Service::kFailureBadPassphrase:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonBadPassphrase;
+      return Metrics::kUserInitiatedConnectionFailureReasonBadPassphrase;
     case Service::kFailureBadWEPKey:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonBadWEPKey;
+      return Metrics::kUserInitiatedConnectionFailureReasonBadWEPKey;
     case Service::kFailureConnect:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonConnect;
+      return Metrics::kUserInitiatedConnectionFailureReasonConnect;
     case Service::kFailureDHCP:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonDHCP;
+      return Metrics::kUserInitiatedConnectionFailureReasonDHCP;
     case Service::kFailureDNSLookup:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonDNSLookup;
+      return Metrics::kUserInitiatedConnectionFailureReasonDNSLookup;
     case Service::kFailureEAPAuthentication:
-      return MetricsEnums::
-          kUserInitiatedConnectionFailureReasonEAPAuthentication;
+      return Metrics::kUserInitiatedConnectionFailureReasonEAPAuthentication;
     case Service::kFailureEAPLocalTLS:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonEAPLocalTLS;
+      return Metrics::kUserInitiatedConnectionFailureReasonEAPLocalTLS;
     case Service::kFailureEAPRemoteTLS:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
+      return Metrics::kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
     case Service::kFailureNotAssociated:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonNotAssociated;
+      return Metrics::kUserInitiatedConnectionFailureReasonNotAssociated;
     case Service::kFailureNotAuthenticated:
-      return MetricsEnums::
-          kUserInitiatedConnectionFailureReasonNotAuthenticated;
+      return Metrics::kUserInitiatedConnectionFailureReasonNotAuthenticated;
     case Service::kFailureOutOfRange:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonOutOfRange;
+      return Metrics::kUserInitiatedConnectionFailureReasonOutOfRange;
     case Service::kFailurePinMissing:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonPinMissing;
+      return Metrics::kUserInitiatedConnectionFailureReasonPinMissing;
     case Service::kFailureTooManySTAs:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonTooManySTAs;
+      return Metrics::kUserInitiatedConnectionFailureReasonTooManySTAs;
     default:
-      return MetricsEnums::kUserInitiatedConnectionFailureReasonUnknown;
+      return Metrics::kUserInitiatedConnectionFailureReasonUnknown;
   }
 }
 
@@ -2505,8 +2502,7 @@ void Service::SetDownlinkSpeedKbps(uint32_t downlink_speed_kbps) {
 void Service::UpdateStateTransitionMetrics(Service::ConnectState new_state) {
   UpdateServiceStateTransitionMetrics(new_state);
   if (new_state == kStateFailure) {
-    MetricsEnums::NetworkServiceError error =
-        ConnectFailureToMetricsEnum(failure());
+    Metrics::NetworkServiceError error = ConnectFailureToMetricsEnum(failure());
     // Publish technology specific connection failure metrics. This will
     // account for all the connection failures happening while connected to
     // a particular interface e.g. wifi, cellular etc.

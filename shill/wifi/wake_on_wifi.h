@@ -25,6 +25,7 @@
 #include <brillo/timers/alarm_timer.h>
 
 #include "shill/callbacks.h"
+#include "shill/metrics.h"
 #include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
@@ -37,7 +38,6 @@ class ByteString;
 class Error;
 class EventDispatcher;
 class GetWakeOnWiFiMessage;
-class Metrics;
 class Nl80211Message;
 class PropertyStore;
 class SetWakeOnWiFiMessage;

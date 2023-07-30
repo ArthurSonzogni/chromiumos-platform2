@@ -17,6 +17,7 @@
 #include <base/types/expected.h>
 #include <net-base/ip_address.h>
 
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 
 namespace shill {
@@ -27,7 +28,6 @@ class EventDispatcher;
 class HttpUrl;
 class IcmpSession;
 class IcmpSessionFactory;
-class Metrics;
 
 // Given a connected Network and a URL, ConnectionDiagnostics performs the
 // following actions to diagnose a connectivity problem on the current

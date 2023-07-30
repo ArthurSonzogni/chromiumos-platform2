@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/shill_time.h"
 #include "shill/store/key_value_store.h"
@@ -28,7 +29,6 @@ class ControlInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
 class EventDispatcher;
-class Metrics;
 class ProcessManager;
 
 // This class provides a DHCP client instance for the device |device_name|.

@@ -27,6 +27,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
+#include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -43,7 +44,6 @@ class DeviceAdaptorInterface;
 class Error;
 class EventDispatcher;
 class Manager;
-class Metrics;
 class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from

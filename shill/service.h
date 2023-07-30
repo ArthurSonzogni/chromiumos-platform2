@@ -27,7 +27,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/data_types.h"
-#include "shill/metrics_enums.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
@@ -47,7 +47,6 @@ class Error;
 class EventDispatcher;
 class KeyValueStore;
 class Manager;
-class Metrics;
 class Network;
 class MockManager;
 class ServiceAdaptorInterface;
@@ -545,9 +544,9 @@ class Service : public base::RefCounted<Service> {
 
   static const char* ConnectFailureToString(ConnectFailure failure);
   static const char* ConnectStateToString(ConnectState state);
-  static MetricsEnums::NetworkServiceError ConnectFailureToMetricsEnum(
+  static Metrics::NetworkServiceError ConnectFailureToMetricsEnum(
       ConnectFailure failure);
-  static MetricsEnums::UserInitiatedConnectionFailureReason
+  static Metrics::UserInitiatedConnectionFailureReason
   ConnectFailureToFailureReason(ConnectFailure failure);
 
   // Compare two services.  The first element of the result pair is true if

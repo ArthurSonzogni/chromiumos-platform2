@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/metrics_enums.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -45,9 +45,8 @@ class WiFiSecurity {
   static std::string SecurityClass(Mode m);
   std::string SecurityClass() const { return SecurityClass(mode_); }
 
-  static MetricsEnums::WirelessSecurity ToMetricEnum(
-      const WiFiSecurity& security);
-  static MetricsEnums::WirelessSecurity ToMetricEnum(
+  static Metrics::WirelessSecurity ToMetricEnum(const WiFiSecurity& security);
+  static Metrics::WirelessSecurity ToMetricEnum(
       const std::string& security_class);
 
   bool IsValid() const;

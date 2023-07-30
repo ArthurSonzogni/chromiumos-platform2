@@ -95,6 +95,7 @@
 #include <net-base/ip_address.h>
 
 #include "shill/device.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
@@ -111,7 +112,6 @@
 namespace shill {
 
 class Error;
-class Metrics;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;

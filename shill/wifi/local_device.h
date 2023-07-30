@@ -22,7 +22,6 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
-class Metrics;
 class SupplicantProcessProxyInterface;
 
 // LocalDevice superclass. This class is used as a base class for local

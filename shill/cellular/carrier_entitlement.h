@@ -21,11 +21,11 @@
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/data_types.h"
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
 class EventDispatcher;
-class Metrics;
 
 // The CarrierEntitlement class implements the carrier entitlement check
 // functionality in shill, which is responsible for connecting to a remote

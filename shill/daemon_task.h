@@ -12,6 +12,7 @@
 #include <base/functional/callback.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -20,7 +21,6 @@ class ControlInterface;
 class DHCPProvider;
 class Error;
 class Manager;
-class Metrics;
 class MojoServiceProvider;
 class NetlinkManager;
 class ProcessManager;

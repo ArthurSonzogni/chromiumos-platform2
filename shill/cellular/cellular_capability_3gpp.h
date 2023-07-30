@@ -33,13 +33,13 @@
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/subscription_state.h"
 #include "shill/data_types.h"
+#include "shill/metrics.h"
 #include "shill/store/key_value_store.h"
 
 namespace shill {
 
 class CellularBearer;
 class Error;
-class Metrics;
 class PendingActivationStore;
 
 // CellularCapability3gpp handles modems using the
