@@ -647,6 +647,111 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->set_ip6config(nullptr);
 }
 
+TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
+
+  patchpanel::Client::NeighborReachabilityEvent ipv4_event;
+  ipv4_event.ip_addr = "192.168.11.34";
+  ipv4_event.status = Status::kFailed;
+
+  patchpanel::Client::NeighborReachabilityEvent ipv6_event;
+  ipv6_event.ip_addr = "2001:db8::abcd:1234";
+  ipv6_event.status = Status::kFailed;
+
+  auto wifi_network = std::make_unique<NiceMock<NetworkInTest>>(
+      kTestIfindex, kTestIfname, Technology::kWiFi,
+      /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
+      &network_applier_);
+  wifi_network->set_ignore_link_monitoring_for_testing(true);
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                    Technology::kWiFi, Metrics::kNeighborIPv4GatewayFailure));
+  ipv4_event.role = Role::kGateway;
+  wifi_network->OnNeighborReachabilityEvent(ipv4_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                    Technology::kWiFi, Metrics::kNeighborIPv4DNSServerFailure));
+  ipv4_event.role = Role::kDnsServer;
+  wifi_network->OnNeighborReachabilityEvent(ipv4_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kWiFi,
+                            Metrics::kNeighborIPv4GatewayAndDNSServerFailure));
+  ipv4_event.role = Role::kGatewayAndDnsServer;
+  wifi_network->OnNeighborReachabilityEvent(ipv4_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                    Technology::kWiFi, Metrics::kNeighborIPv6GatewayFailure));
+  ipv6_event.role = Role::kGateway;
+  wifi_network->OnNeighborReachabilityEvent(ipv6_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                    Technology::kWiFi, Metrics::kNeighborIPv6DNSServerFailure));
+  ipv6_event.role = Role::kDnsServer;
+  wifi_network->OnNeighborReachabilityEvent(ipv6_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kWiFi,
+                            Metrics::kNeighborIPv6GatewayAndDNSServerFailure));
+  ipv6_event.role = Role::kGatewayAndDnsServer;
+  wifi_network->OnNeighborReachabilityEvent(ipv6_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  auto eth_network = std::make_unique<NiceMock<NetworkInTest>>(
+      kTestIfindex, kTestIfname, Technology::kEthernet,
+      /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
+      &network_applier_);
+  eth_network->set_ignore_link_monitoring_for_testing(true);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kEthernet,
+                            Metrics::kNeighborIPv6DNSServerFailure));
+  ipv6_event.role = Role::kDnsServer;
+  eth_network->OnNeighborReachabilityEvent(ipv6_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kEthernet,
+                            Metrics::kNeighborIPv6GatewayAndDNSServerFailure));
+  ipv6_event.role = Role::kGatewayAndDnsServer;
+  eth_network->OnNeighborReachabilityEvent(ipv6_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kEthernet,
+                            Metrics::kNeighborIPv4DNSServerFailure));
+  ipv4_event.role = Role::kDnsServer;
+  eth_network->OnNeighborReachabilityEvent(ipv4_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure,
+                            Technology::kEthernet,
+                            Metrics::kNeighborIPv4GatewayAndDNSServerFailure));
+  ipv4_event.role = Role::kGatewayAndDnsServer;
+  eth_network->OnNeighborReachabilityEvent(ipv4_event);
+  Mock::VerifyAndClearExpectations(&metrics_);
+}
+
 TEST_F(NetworkTest, PortalDetectionStopBeforeStart) {
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);

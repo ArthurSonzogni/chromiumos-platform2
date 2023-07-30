@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
@@ -796,8 +797,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   if (event.status == Status::kFailed) {
-    metrics_->NotifyNeighborLinkMonitorFailure(
-        technology_, ip_address->GetFamily(), event.role);
+    ReportNeighborLinkMonitorFailure(technology_, ip_address->GetFamily(),
+                                     event.role);
   }
 
   if (state_ == State::kIdle) {
@@ -1302,6 +1303,39 @@ void Network::ApplyMTU() {
   }
 
   network_applier_->ApplyMTU(interface_index_, mtu);
+}
+
+void Network::ReportNeighborLinkMonitorFailure(
+    Technology tech,
+    net_base::IPFamily family,
+    patchpanel::Client::NeighborRole role) {
+  using Role = patchpanel::Client::NeighborRole;
+  static constexpr auto failure_table =
+      base::MakeFixedFlatMap<std::pair<net_base::IPFamily, Role>,
+                             Metrics::NeighborLinkMonitorFailure>({
+          {{net_base::IPFamily::kIPv4, Role::kGateway},
+           Metrics::kNeighborIPv4GatewayFailure},
+          {{net_base::IPFamily::kIPv4, Role::kDnsServer},
+           Metrics::kNeighborIPv4DNSServerFailure},
+          {{net_base::IPFamily::kIPv4, Role::kGatewayAndDnsServer},
+           Metrics::kNeighborIPv4GatewayAndDNSServerFailure},
+          {{net_base::IPFamily::kIPv6, Role::kGateway},
+           Metrics::kNeighborIPv6GatewayFailure},
+          {{net_base::IPFamily::kIPv6, Role::kDnsServer},
+           Metrics::kNeighborIPv6DNSServerFailure},
+          {{net_base::IPFamily::kIPv6, Role::kGatewayAndDnsServer},
+           Metrics::kNeighborIPv6GatewayAndDNSServerFailure},
+      });
+
+  Metrics::NeighborLinkMonitorFailure failure =
+      Metrics::kNeighborLinkMonitorFailureUnknown;
+  const auto it = failure_table.find({family, role});
+  if (it != failure_table.end()) {
+    failure = it->second;
+  }
+
+  metrics_->SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure, tech,
+                          failure);
 }
 
 }  // namespace shill

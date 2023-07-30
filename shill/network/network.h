@@ -357,6 +357,9 @@ class Network {
   void set_portal_detector_for_testing(PortalDetector* portal_detector) {
     portal_detector_.reset(portal_detector);
   }
+  void set_ignore_link_monitoring_for_testing(bool ignore_link_monitoring) {
+    ignore_link_monitoring_ = ignore_link_monitoring;
+  }
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
@@ -426,6 +429,12 @@ class Network {
 
   // Report the current IP type metrics (v4, v6 or dual-stack) to UMA.
   void ReportIPType();
+
+  // Report to UMA a failure in patchpanel::NeighborLinkMonitor for a WiFi or
+  // Ethernet network connection.
+  void ReportNeighborLinkMonitorFailure(Technology tech,
+                                        net_base::IPFamily family,
+                                        patchpanel::Client::NeighborRole role);
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.

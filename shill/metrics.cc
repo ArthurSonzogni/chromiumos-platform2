@@ -12,7 +12,6 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
-#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -444,37 +443,6 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
   SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds());
-}
-
-void Metrics::NotifyNeighborLinkMonitorFailure(
-    Technology tech,
-    net_base::IPFamily family,
-    patchpanel::Client::NeighborRole role) {
-  using Role = patchpanel::Client::NeighborRole;
-  static constexpr auto failure_table =
-      base::MakeFixedFlatMap<std::pair<net_base::IPFamily, Role>,
-                             NeighborLinkMonitorFailure>({
-          {{net_base::IPFamily::kIPv4, Role::kGateway},
-           kNeighborIPv4GatewayFailure},
-          {{net_base::IPFamily::kIPv4, Role::kDnsServer},
-           kNeighborIPv4DNSServerFailure},
-          {{net_base::IPFamily::kIPv4, Role::kGatewayAndDnsServer},
-           kNeighborIPv4GatewayAndDNSServerFailure},
-          {{net_base::IPFamily::kIPv6, Role::kGateway},
-           kNeighborIPv6GatewayFailure},
-          {{net_base::IPFamily::kIPv6, Role::kDnsServer},
-           kNeighborIPv6DNSServerFailure},
-          {{net_base::IPFamily::kIPv6, Role::kGatewayAndDnsServer},
-           kNeighborIPv6GatewayAndDNSServerFailure},
-      });
-
-  NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
-  const auto it = failure_table.find({family, role});
-  if (it != failure_table.end()) {
-    failure = it->second;
-  }
-
-  SendEnumToUMA(kMetricNeighborLinkMonitorFailure, tech, failure);
 }
 
 void Metrics::NotifyApChannelSwitch(uint16_t frequency,

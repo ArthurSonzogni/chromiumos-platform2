@@ -14,10 +14,8 @@
 
 #include <base/strings/string_piece_forward.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <chromeos/patchpanel/dbus/client.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
-#include <net-base/ip_address.h>
 
 #include "shill/cellular/apn_list.h"
 #include "shill/error.h"
@@ -1588,12 +1586,6 @@ class Metrics {
   // Notifies this object that suspend actions have been completed.
   // |success| is true, if the suspend actions completed successfully.
   void NotifySuspendActionsCompleted(bool success);
-
-  // Notifies this object of a failure in patchpanel::NeighborLinkMonitor for
-  // a WiFi connection.
-  void NotifyNeighborLinkMonitorFailure(Technology tech,
-                                        net_base::IPFamily family,
-                                        patchpanel::Client::NeighborRole role);
 
   // Notifies this object that an AP was discovered and of that AP's 802.11k
   // support.
