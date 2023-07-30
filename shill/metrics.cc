@@ -117,10 +117,6 @@ std::string VPNTypeToMetricString(VPNType type) {
 
 Metrics::Metrics()
     : library_(&metrics_library_),
-      last_default_technology_(Technology::kUnknown),
-      was_last_online_(false),
-      time_online_timer_(new chromeos_metrics::Timer),
-      time_to_drop_timer_(new chromeos_metrics::Timer),
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_between_rekey_and_connection_failure_timer_(
@@ -349,38 +345,6 @@ void Metrics::AddServiceStateTransitionTimer(const Service& service,
   service_metrics->start_on_state[start_state].push_back(timer.get());
   service_metrics->stop_on_state[stop_state].push_back(timer.get());
   service_metrics->timers.push_back(std::move(timer));
-}
-
-void Metrics::NotifyDefaultLogicalServiceChanged(
-    const ServiceRefPtr& logical_service) {
-  base::TimeDelta elapsed_seconds;
-  Technology technology = logical_service ? logical_service->technology()
-                                          : Technology(Technology::kUnknown);
-  if (technology != last_default_technology_) {
-    if (last_default_technology_ != Technology::kUnknown) {
-      SendToUMA(kMetricTimeOnlineSeconds, last_default_technology_,
-                elapsed_seconds.InSeconds());
-    }
-    last_default_technology_ = technology;
-    time_online_timer_->Start();
-  }
-
-  // Only consider transitions from online to offline and vice-versa; i.e.
-  // ignore switching between wired and wireless or wireless and cellular.
-  // TimeToDrop measures time online regardless of how we are connected.
-  bool staying_online = ((logical_service != nullptr) && was_last_online_);
-  bool staying_offline = ((logical_service == nullptr) && !was_last_online_);
-  if (staying_online || staying_offline)
-    return;
-
-  if (logical_service == nullptr) {
-    time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
-    SendToUMA(kMetricTimeToDropSeconds, elapsed_seconds.InSeconds());
-  } else {
-    time_to_drop_timer_->Start();
-  }
-
-  was_last_online_ = (logical_service != nullptr);
 }
 
 void Metrics::NotifyServiceStateChanged(const Service& service,

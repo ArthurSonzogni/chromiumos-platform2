@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/timer.h>
 
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
@@ -521,6 +522,16 @@ class Manager {
   // ISO 3166-1.
   mockable std::optional<std::string> GetCellularOperatorCountryCode();
 
+  void set_time_online_timer_for_testing(
+      std::unique_ptr<chromeos_metrics::Timer> timer) {
+    time_online_timer_ = std::move(timer);
+  }
+
+  void set_time_to_drop_timer_for_testing(
+      std::unique_ptr<chromeos_metrics::Timer> timer) {
+    time_to_drop_timer_ = std::move(timer);
+  }
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -541,6 +552,7 @@ class Manager {
 
   FRIEND_TEST(CellularCapability3gppTest, TerminationAction);
   FRIEND_TEST(CellularCapability3gppTest, TerminationActionRemovedByStopModem);
+  FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
   FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
@@ -551,40 +563,40 @@ class Manager {
   FRIEND_TEST(ManagerTest, ClaimDevice);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
-  FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
+  FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
-  FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
+  FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
   FRIEND_TEST(ManagerTest, IsTechnologyProhibited);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, MoveService);
-  FRIEND_TEST(ManagerTest, UpdateDefaultServices);
-  FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
-  FRIEND_TEST(ManagerTest,
-              UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, ReleaseBlockedDevice);
   FRIEND_TEST(ManagerTest, RequestWiFiRestart);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
+  FRIEND_TEST(ManagerTest, ServiceMetricTimeOnlineTimeToDrop);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
   FRIEND_TEST(ManagerTest, SetCheckPortalListProp);
-  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
+  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
+  FRIEND_TEST(ManagerTest, UpdateDefaultServices);
+  FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
+  FRIEND_TEST(ManagerTest,
+              UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
   FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
-  FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 
   void AutoConnect();
   // Ensure always-on VPN follows the current configuration, ie: hardware
@@ -755,6 +767,9 @@ class Manager {
   // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
+  // Notifies Metrics when the default logical Service has changed.
+  void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
+
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
@@ -892,6 +907,11 @@ class Manager {
   // Tethering manager to manage tethering related state machine, properties
   // and session.
   std::unique_ptr<TetheringManager> tethering_manager_;
+
+  bool was_last_online_;
+  Technology last_default_technology_;
+  std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
+  std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

@@ -21,7 +21,7 @@
 #include "shill/error.h"
 #include "shill/metrics_enums.h"
 #include "shill/net/ieee80211.h"
-#include "shill/refptr_types.h"
+#include "shill/net/shill_time.h"
 #include "shill/service.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_types.h"
@@ -1570,9 +1570,6 @@ class Metrics {
       Technology technology_id,
       TechnologyLocation location = TechnologyLocation::kBeforeName);
 
-  // Notifies Metrics when the default logical Service has changed.
-  void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
-
   // Notifies this object that |service| state has changed.
   virtual void NotifyServiceStateChanged(const Service& service,
                                          Service::ConnectState new_state);
@@ -2200,12 +2197,6 @@ class Metrics {
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
 
   // For unit test purposes.
-  void set_time_online_timer(chromeos_metrics::Timer* timer) {
-    time_online_timer_.reset(timer);  // Passes ownership
-  }
-  void set_time_to_drop_timer(chromeos_metrics::Timer* timer) {
-    time_to_drop_timer_.reset(timer);  // Passes ownership
-  }
   void set_time_resume_to_ready_timer(chromeos_metrics::Timer* timer) {
     time_resume_to_ready_timer_.reset(timer);  // Passes ownership
   }
@@ -2244,12 +2235,8 @@ class Metrics {
   // Map of ServiceMetrics objects indexed by the RPC identifier of the
   // associated services.
   std::map<std::string, std::unique_ptr<ServiceMetrics>> services_metrics_;
-  Technology last_default_technology_;
-  bool was_last_online_;
   // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
   base::StringPiece pseudo_tag_salt_;
-  std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
-  std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer>

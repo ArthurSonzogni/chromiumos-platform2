@@ -554,47 +554,6 @@ TEST_F(MetricsTest, ChannelToFrequencyRange) {
             metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel6255));
 }
 
-TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
-  chromeos_metrics::TimerMock* mock_time_online_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_online_timer(mock_time_online_timer);
-  chromeos_metrics::TimerMock* mock_time_to_drop_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
-  scoped_refptr<MockService> wifi_service = new MockService(&manager_);
-  EXPECT_CALL(*service_, technology()).WillOnce(Return(Technology::kEthernet));
-  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWiFi));
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.Ethernet.TimeOnline", Ge(0),
-                        Metrics::kMetricTimeOnlineSeconds.min,
-                        Metrics::kMetricTimeOnlineSeconds.max,
-                        Metrics::kMetricTimeOnlineSeconds.num_buckets));
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricTimeToDropSeconds.n.name, Ge(0),
-                        Metrics::kMetricTimeToDropSeconds.min,
-                        Metrics::kMetricTimeToDropSeconds.max,
-                        Metrics::kMetricTimeToDropSeconds.num_buckets))
-      .Times(0);
-  EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
-  EXPECT_CALL(*mock_time_to_drop_timer, Start());
-  metrics_.NotifyDefaultLogicalServiceChanged(service_);
-  metrics_.NotifyDefaultLogicalServiceChanged(wifi_service);
-
-  EXPECT_CALL(*mock_time_online_timer, Start());
-  EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.Wifi.TimeOnline", Ge(0),
-                        Metrics::kMetricTimeOnlineSeconds.min,
-                        Metrics::kMetricTimeOnlineSeconds.max,
-                        Metrics::kMetricTimeOnlineSeconds.num_buckets));
-  EXPECT_CALL(library_,
-              SendToUMA(Metrics::kMetricTimeToDropSeconds.n.name, Ge(0),
-                        Metrics::kMetricTimeToDropSeconds.min,
-                        Metrics::kMetricTimeToDropSeconds.max,
-                        Metrics::kMetricTimeToDropSeconds.num_buckets));
-  metrics_.NotifyDefaultLogicalServiceChanged(nullptr);
-}
-
 TEST_F(MetricsTest, TimeToConnect) {
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Cellular.TimeToConnect", Ge(0),
