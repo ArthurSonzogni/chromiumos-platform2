@@ -98,6 +98,9 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // vendor of this AP.
   std::map<std::string, std::string> GetVendorInformation() const;
 
+  Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures
+  ToApSupportedFeatures() const;
+
   const std::vector<uint8_t>& ssid() const;
   const std::string& ssid_string() const;
   const std::string& ssid_hex() const;

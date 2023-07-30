@@ -1109,8 +1109,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   info.ap_oui = ap_oui;
   if ((false)) {
     if (current_endpoint_) {
-      info.ap_features =
-          Metrics::ConvertEndPointFeatures(current_endpoint_.get());
+      info.ap_features = current_endpoint_->ToApSupportedFeatures();
     }
   }
 

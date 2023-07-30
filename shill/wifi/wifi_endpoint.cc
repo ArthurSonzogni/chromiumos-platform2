@@ -885,4 +885,22 @@ void WiFiEndpoint::CheckForTetheringSignature() {
        Tethering::HasIosOui(vendor_information_.oui_set));
 }
 
+Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures
+WiFiEndpoint::ToApSupportedFeatures() const {
+  Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures ap_features;
+  ap_features.krv_info.neighbor_list_supported =
+      krv_support().neighbor_list_supported;
+  ap_features.krv_info.ota_ft_supported = krv_support().ota_ft_supported;
+  ap_features.krv_info.otds_ft_supported = krv_support().otds_ft_supported;
+  ap_features.krv_info.dms_supported = krv_support().dms_supported;
+  ap_features.krv_info.bss_max_idle_period_supported =
+      krv_support().bss_max_idle_period_supported;
+  ap_features.krv_info.bss_transition_supported =
+      krv_support().bss_transition_supported;
+  ap_features.hs20_info.supported = hs20_information().supported;
+  ap_features.hs20_info.version = hs20_information().version;
+  ap_features.mbo_supported = mbo_support();
+  return ap_features;
+}
+
 }  // namespace shill

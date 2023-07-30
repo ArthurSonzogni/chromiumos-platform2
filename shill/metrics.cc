@@ -34,7 +34,6 @@
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
 #include "shill/vpn/vpn_types.h"
-#include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -1164,30 +1163,6 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
       .SetProductId(p_id)
       .SetSubsystemId(s_id)
       .Record();
-}
-
-// static
-Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures
-Metrics::ConvertEndPointFeatures(const WiFiEndpoint* ep) {
-  Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures ap_features;
-  if (ep) {
-    ap_features.krv_info.neighbor_list_supported =
-        ep->krv_support().neighbor_list_supported;
-    ap_features.krv_info.ota_ft_supported = ep->krv_support().ota_ft_supported;
-    ap_features.krv_info.otds_ft_supported =
-        ep->krv_support().otds_ft_supported;
-    ap_features.krv_info.dms_supported = ep->krv_support().dms_supported;
-    ap_features.krv_info.bss_max_idle_period_supported =
-        ep->krv_support().bss_max_idle_period_supported;
-    ap_features.krv_info.bss_transition_supported =
-        ep->krv_support().bss_transition_supported;
-
-    ap_features.hs20_info.supported = ep->hs20_information().supported;
-    ap_features.hs20_info.version = ep->hs20_information().version;
-
-    ap_features.mbo_supported = ep->mbo_support();
-  }
-  return ap_features;
 }
 
 void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,

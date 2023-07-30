@@ -30,8 +30,6 @@
 
 namespace shill {
 
-class WiFiEndPoint;
-
 static constexpr size_t kMaxMetricNameLen = 256;
 
 // Represents a UMA metric name that can be defined by technology for a
@@ -1820,9 +1818,6 @@ class Metrics {
       int mbo_supported = kWiFiStructuredMetricsErrorValue;
     } ap_features;
   };
-
-  static WiFiConnectionAttemptInfo::ApSupportedFeatures ConvertEndPointFeatures(
-      const WiFiEndpoint* ep);
 
   // Emits the |WiFiConnectionAttempt| structured event that notifies that the
   // device is attempting to connect to an AP. It describes the parameters of
