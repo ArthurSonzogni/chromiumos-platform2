@@ -26,7 +26,6 @@ class Request {
     kShowInputPanel,
     kHideInputPanel,
     kReset,
-    kSetSurroundingText,
     kSetContentType,
     kSetInputType,
     kSetCursorRectangle,
@@ -79,22 +78,6 @@ class SetInputTypeRequest : public Request {
   uint32_t input_flags_;
   uint32_t learning_mode_;
   uint32_t inline_composition_support_;
-};
-
-class SetSurroundingTextRequest : public Request {
- public:
-  SetSurroundingTextRequest(int text_input_id,
-                            const std::string& text,
-                            uint32_t cursor,
-                            uint32_t anchor);
-  ~SetSurroundingTextRequest() override;
-  bool RequestMatches(const Request& actual) const override;
-  void Print(std::ostream& stream) const override;
-
- private:
-  std::string text_;
-  uint32_t cursor_;
-  uint32_t anchor_;
 };
 
 class SetSurroundingTextSupportRequest : public Request {

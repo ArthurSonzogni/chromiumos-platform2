@@ -107,7 +107,6 @@ class BackendTest {
     Expect<text_input_id>(Request::kCreateTextInput);
 
     Ignore<text_input_id>(Request::kSetCursorRectangle);
-    Ignore<text_input_id>(Request::kSetSurroundingText);
     Ignore<text_input_id>(Request::kSetContentType);
     Ignore<text_input_id>(Request::kSetInputType);
     Ignore<text_input_id>(Request::kShowInputPanel);
@@ -135,16 +134,6 @@ class BackendTest {
   }
 
   template <int text_input_id = 0>
-  void ExpectSetSurroundingText(const std::string& text,
-                                uint32_t cursor,
-                                uint32_t anchor) {
-#ifndef DISABLE_SURROUNDING
-    actions_.emplace(std::make_unique<SetSurroundingTextRequest>(
-        text_input_id, text, cursor, anchor));
-#endif
-  }
-
-  template <int text_input_id = 0>
   void ExpectSetSurroundingTextSupport(bool is_supported_) {
     actions_.emplace(std::make_unique<SetSurroundingTextSupportRequest>(
         text_input_id, is_supported_));
@@ -160,12 +149,6 @@ class BackendTest {
   void SendKeySym(int keysym, uint32_t modifiers = 0) {
     actions_.emplace(
         std::make_unique<KeySymEvent>(text_input_id, keysym, modifiers));
-  }
-
-  template <int text_input_id = 0>
-  void SendDeleteSurroundingText(int index, int length) {
-    actions_.emplace(std::make_unique<DeleteSurroundingTextEvent>(
-        text_input_id, index, length));
   }
 
   template <int text_input_id = 0>

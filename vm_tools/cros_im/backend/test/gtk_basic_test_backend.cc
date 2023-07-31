@@ -16,7 +16,6 @@ BACKEND_TEST(GtkBasicTest, TextViewShownImmediately) {
   Expect(Request::kCreateTextInput);
 
   Expect(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText("", 0, 0);
   Expect(Request::kActivate);
   ExpectSetSurroundingTextSupport(
       ZCR_EXTENDED_TEXT_INPUT_V1_SURROUNDING_TEXT_SUPPORT_UNSUPPORTED);
@@ -28,7 +27,6 @@ BACKEND_TEST(GtkBasicTest, TextViewShownImmediately) {
       ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED);
   Expect(Request::kShowInputPanel);
 
-  ExpectSetSurroundingText("", 0, 0);
   Expect(Request::kHideInputPanel);
   Expect(Request::kDeactivate);
   Expect(Request::kExtensionDestroy);
@@ -39,7 +37,6 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
   Expect<0>(Request::kCreateTextInput);
 
   Expect<0>(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText<0>("", 0, 0);
   Expect<0>(Request::kActivate);
   ExpectSetSurroundingTextSupport<0>(
       ZCR_EXTENDED_TEXT_INPUT_V1_SURROUNDING_TEXT_SUPPORT_UNSUPPORTED);
@@ -50,14 +47,11 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
       ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_ENABLED,
       ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED);
   Expect<0>(Request::kShowInputPanel);
-  ExpectSetSurroundingText<0>("", 0, 0);
 
   Expect<0>(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText<0>("", 0, 0);
 
   Expect<1>(Request::kCreateTextInput);
   Expect<1>(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText<1>("", 0, 0);
 
   Expect<0>(Request::kHideInputPanel);
   Expect<0>(Request::kDeactivate);
@@ -72,13 +66,10 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
       ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_ENABLED,
       ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED);
   Expect<1>(Request::kShowInputPanel);
-  ExpectSetSurroundingText<1>("", 0, 0);
 
   Expect<0>(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText<0>("", 0, 0);
 
   Expect<1>(Request::kSetCursorRectangle);
-  ExpectSetSurroundingText<1>("", 0, 0);
 
   Expect<1>(Request::kHideInputPanel);
   Expect<1>(Request::kDeactivate);

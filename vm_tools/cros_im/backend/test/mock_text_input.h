@@ -89,10 +89,6 @@ void zwp_text_input_v1_deactivate(zwp_text_input_v1*, wl_seat*);
 void zwp_text_input_v1_show_input_panel(zwp_text_input_v1*);
 void zwp_text_input_v1_hide_input_panel(zwp_text_input_v1*);
 void zwp_text_input_v1_reset(zwp_text_input_v1*);
-void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1*,
-                                            const char* text,
-                                            uint32_t cursor,
-                                            uint32_t anchor);
 void zwp_text_input_v1_set_content_type(zwp_text_input_v1*,
                                         uint32_t hint,
                                         uint32_t purpose);

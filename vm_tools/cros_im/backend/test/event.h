@@ -37,19 +37,6 @@ class CommitStringEvent : public Event {
   std::string text_;
 };
 
-class DeleteSurroundingTextEvent : public Event {
- public:
-  DeleteSurroundingTextEvent(int text_input_id, int index, int length)
-      : Event(text_input_id), index_(index), length_(length) {}
-  ~DeleteSurroundingTextEvent() override;
-  void Run() const override;
-  void Print(std::ostream& stream) const override;
-
- private:
-  int index_;
-  int length_;
-};
-
 class KeySymEvent : public Event {
  public:
   KeySymEvent(int text_input_id, int keysym, uint32_t modifiers)

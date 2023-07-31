@@ -65,31 +65,15 @@ class CrosGtkIMContext : public GtkIMContext {
     void SetPreedit(const std::string& preedit,
                     int cursor,
                     const std::vector<PreeditStyle>& styles) override;
-    void SetPreeditRegion(int start_offset,
-                          int length,
-                          const std::vector<PreeditStyle>& styles) override;
     void Commit(const std::string& commit) override;
-
-    void DeleteSurroundingText(int start_offset, int length) override;
 
     void KeySym(uint32_t keysym, KeyState state, uint32_t modifiers) override;
 
    private:
-    // Returns the deleted text on success, an empty string on failure.
-    std::optional<std::string> DeleteSurroundingTextImpl(int byte_offset,
-                                                         int byte_length);
-
     CrosGtkIMContext* context_;
   };
 
   void Activate();
-
-  // Retrieves the current surrounding text. On success, returns true and
-  // populates surrounding_ and surrounding_cursor_pos_.
-  bool RetrieveSurrounding();
-  // Retrieves and then sends the surrounding text to the backend. The text may
-  // be trimmed if it is too long.
-  void UpdateSurrounding();
 
   bool is_x11_;
 
@@ -105,10 +89,6 @@ class CrosGtkIMContext : public GtkIMContext {
   bool pending_activation_ = false;
 
   bool supports_preedit_ = true;
-
-  // Updated by calling RetrieveSurrounding()
-  std::string surrounding_;
-  int surrounding_cursor_pos_ = 0;
 
   std::string preedit_;
   int32_t preedit_cursor_pos_ = 0;

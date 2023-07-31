@@ -414,21 +414,11 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   y = offset_y - top_level_y + area->y;
 #endif
   backend_->SetCursorLocation(x, y, area->width, area->height);
-  UpdateSurrounding();
 }
 
 void CrosGtkIMContext::SetSurrounding(const char* text,
                                       int len,
-                                      int cursor_index) {
-  if (len == -1) {
-    // Null-terminated
-    surrounding_ = text;
-  } else {
-    // Not necessarily null-terminated
-    surrounding_ = std::string(text, len);
-  }
-  surrounding_cursor_pos_ = cursor_index;
-}
+                                      int cursor_index) {}
 
 void CrosGtkIMContext::SetUsePreedit(gboolean use_preedit) {
   // GTK doesn't specify when exactly this should be called, but apps we've
@@ -460,25 +450,6 @@ void CrosGtkIMContext::BackendObserver::SetPreedit(
     g_signal_emit_by_name(context_, "preedit-end");
 }
 
-void CrosGtkIMContext::BackendObserver::SetPreeditRegion(
-    int start_offset, int length, const std::vector<PreeditStyle>& styles) {
-#ifdef DISABLE_SURROUNDING
-  return;
-#else
-  std::optional<std::string> text =
-      DeleteSurroundingTextImpl(start_offset, length);
-  if (!text.has_value())
-    return;
-
-  context_->preedit_ = std::move(text.value());
-  context_->preedit_cursor_pos_ = length;
-  context_->preedit_styles_ = styles;
-
-  g_signal_emit_by_name(context_, "preedit-start");
-  g_signal_emit_by_name(context_, "preedit-changed");
-#endif
-}
-
 void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
   if (!context_->preedit_.empty()) {
     context_->preedit_.clear();
@@ -488,13 +459,6 @@ void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
     g_signal_emit_by_name(context_, "preedit-end");
   }
   g_signal_emit_by_name(context_, "commit", text.c_str());
-}
-
-void CrosGtkIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
-                                                              int length) {
-#ifndef DISABLE_SURROUNDING
-  DeleteSurroundingTextImpl(start_offset, length);
-#endif
 }
 
 void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
@@ -561,62 +525,6 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
 #endif
 }
 
-std::optional<std::string>
-CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
-    int byte_start_offset, int byte_length) {
-  g_assert(byte_start_offset <= 0 && byte_start_offset + byte_length >= 0);
-
-  if (!context_->preedit_.empty()) {
-    // TODO(timloh): Work out the correct behaviour here. Should we commit the
-    // existing pre-edit text first?
-    LOG(WARNING)
-        << "DeleteSurroundingText() called when pre-edit was already present.";
-    return std::nullopt;
-  }
-
-  if (!context_->RetrieveSurrounding()) {
-    LOG(WARNING)
-        << "Failed to retrieve surrounding text for DeleteSurroundingText().";
-    return std::nullopt;
-  }
-
-  const char* surrounding_start = context_->surrounding_.c_str();
-  const char* surrounding_end =
-      surrounding_start + context_->surrounding_.size();
-  const char* cursor = surrounding_start + context_->surrounding_cursor_pos_;
-  const char* region_start = cursor + byte_start_offset;
-  const char* region_end = region_start + byte_length;
-
-  if (region_start < surrounding_start || region_end > surrounding_end) {
-    LOG(WARNING)
-        << "Not enough surrounding text to handle DeleteSurroundingText("
-        << byte_start_offset << ", " << byte_length << "). Surrounding text is "
-        << context_->surrounding_.size() << " bytes with cursor at "
-        << context_->surrounding_cursor_pos_ << ".";
-    return std::nullopt;
-  }
-
-  if (!g_utf8_validate(region_start, byte_length, nullptr)) {
-    LOG(WARNING)
-        << "DeleteSurroundingText() cannot delete invalid UTF-8 regions.";
-    return std::nullopt;
-  }
-
-  int char_offset = -g_utf8_strlen(region_start, -byte_start_offset);
-  int char_length = g_utf8_strlen(region_start, byte_length);
-
-  gboolean result = false;
-  g_signal_emit_by_name(context_, "delete-surrounding", char_offset,
-                        char_length, &result);
-  if (!result) {
-    LOG(WARNING)
-        << "Failed to delete surrounding text for DeleteSurroundingText().";
-    return std::nullopt;
-  }
-
-  return std::string(region_start, region_end);
-}
-
 void CrosGtkIMContext::Activate() {
 #ifdef GTK4
   if (!root_surface_) {
@@ -655,17 +563,9 @@ void CrosGtkIMContext::Activate() {
 
   pending_activation_ = false;
 
-#ifdef DISABLE_SURROUNDING
   // This request takes effect when we call SetContentType.
-  // TODO(b/232048095): Set this to true for input fields where we can retrieve
-  // surrounding text and selection.
+  // TODO(b/232048095): Support surrounding text.
   backend_->SetSupportsSurrounding(false);
-#else
-  // Apps should be calling set_cursor_location on focus, which would result in
-  // us updating surrounding text, but to support apps that don't do that we
-  // also explicitly update surrounding text here.
-  UpdateSurrounding();
-#endif
 
   GtkInputHints gtk_hints = GTK_INPUT_HINT_NONE;
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;
@@ -676,46 +576,6 @@ void CrosGtkIMContext::Activate() {
 
   if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
     backend_->ShowInputPanel();
-}
-
-bool CrosGtkIMContext::RetrieveSurrounding() {
-#ifdef DISABLE_SURROUNDING
-  return false;
-#else
-  // TODO(b/232048095#comment8, b/252966041): Replace this with something that
-  // supports selection. Failing to report selection means the IME may try and
-  // do auto-corrections on key events when text is selected, rather than
-  // replacing the selected text with the pressed key.
-  gboolean result = false;
-  // SetSurrounding() gets called when this succeeds.
-  g_signal_emit_by_name(this, "retrieve-surrounding", &result);
-  if (!result) {
-    LOG(WARNING)
-        << "Failed to retrieve surrounding text for UpdateSurrounding().";
-  }
-  return result;
-#endif
-}
-
-void CrosGtkIMContext::UpdateSurrounding() {
-  if (!RetrieveSurrounding())
-    return;
-
-  size_t length = surrounding_.length();
-
-  // There is a maximum length to Wayland messages and sending a message that
-  // is too long will result in a crash. The actual limit appears to be around
-  // 4075 bytes, but we give a bit of leeway here and match the limit Lacros
-  // uses.
-  constexpr size_t kMaxSurroundingTextByteLength = 4000;
-
-  if (length <= kMaxSurroundingTextByteLength) {
-    backend_->SetSurrounding(surrounding_.c_str(), surrounding_cursor_pos_);
-    return;
-  }
-
-  // TODO(b/232048905): Send a substring of the surrounding text instead of
-  // doing nothing.
 }
 
 }  // namespace gtk

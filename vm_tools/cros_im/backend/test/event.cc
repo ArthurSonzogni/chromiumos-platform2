@@ -36,22 +36,6 @@ void CommitStringEvent::Print(std::ostream& stream) const {
   stream << "commit_string(" << text_ << ")";
 }
 
-DeleteSurroundingTextEvent::~DeleteSurroundingTextEvent() = default;
-
-void DeleteSurroundingTextEvent::Run() const {
-  auto* text_input = GetTextInput(text_input_id_);
-  if (!text_input) {
-    FAILED() << "Failed to find text_input object";
-    return;
-  }
-  text_input->listener->delete_surrounding_text(text_input->listener_data,
-                                                text_input, index_, length_);
-}
-
-void DeleteSurroundingTextEvent::Print(std::ostream& stream) const {
-  stream << "delete_surrounding_text(" << index_ << ", " << length_ << ")";
-}
-
 KeySymEvent::~KeySymEvent() = default;
 
 void KeySymEvent::Run() const {

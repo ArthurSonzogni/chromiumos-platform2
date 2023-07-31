@@ -69,13 +69,7 @@ class CrosQtIMContext : public QPlatformInputContext {
                     int cursor,
                     const std::vector<PreeditStyle>& styles) override;
 
-    void SetPreeditRegion(int start_offset,
-                          int length,
-                          const std::vector<PreeditStyle>& styles) override;
-
     void Commit(const std::string& commit) override;
-
-    void DeleteSurroundingText(int start_offset, int length) override;
 
     void KeySym(uint32_t keysym, KeyState state, uint32_t modifiers) override;
 

@@ -90,14 +90,6 @@ void zwp_text_input_v1_reset(zwp_text_input_v1* text_input) {
   HandleRequest(text_input, Request::kReset);
 }
 
-void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1* text_input,
-                                            const char* text,
-                                            uint32_t cursor,
-                                            uint32_t anchor) {
-  HandleRequest(cros_im::test::SetSurroundingTextRequest(text_input->id, text,
-                                                         cursor, anchor));
-}
-
 void zwp_text_input_v1_set_content_type(zwp_text_input_v1* text_input,
                                         uint32_t hints,
                                         uint32_t purpose) {

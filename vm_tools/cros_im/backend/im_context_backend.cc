@@ -141,14 +141,6 @@ void IMContextBackend::Reset() {
   zwp_text_input_v1_reset(text_input_);
 }
 
-void IMContextBackend::SetSurrounding(const char* text, int cursor_index) {
-  if (!text_input_)
-    return;
-  surrounding_cursor_index_ = cursor_index;
-  zwp_text_input_v1_set_surrounding_text(text_input_, text, cursor_index,
-                                         cursor_index);
-}
-
 void IMContextBackend::SetContentTypeOld(ContentTypeOld content_type) {
   if (!text_input_)
     return;
@@ -224,29 +216,12 @@ void IMContextBackend::Commit(uint32_t serial, const char* text) {
 
 void IMContextBackend::DeleteSurroundingText(int32_t index,
                                              uint32_t length_unsigned) {
-  // TODO(b/252955997): Unlike what is written in the protocol, Chrome's
-  // implementation gives a value relative to it's understanding of the
-  // surrounding text. The API is not conducive to a correct implementation, so
-  // for now we just do something that works in simple cases.
+  // The GTK and Qt frontends both use SetSurroundingTextSupport() to indicate
+  // surrounding text is not supported, so Chrome shouldn't be calling this.
+  LOG(ERROR) << "delete_surrounding_text is not supported yet.";
 
-  // Convert from an index relative to the surrounding text to an offset
-  // relative to the cursor.
-  int start = index - surrounding_cursor_index_;
-  int length = length_unsigned;
-
-  // Only support deleting text adjacent to the cursor for now.
-  if (start > 0 || start + length < 0 || length == 0)
-    return;
-
-  observer_->DeleteSurroundingText(start, length);
-
-  // This handles if Chrome sends multiple delete_surrounding_text events
-  // without receiving set_surrounding_text requests. The indices it gives us
-  // assume previous delete_surrounding_text requests have been handled already.
-  // TODO(timloh): Add automated tests for this case. We currently don't support
-  // sending multiple events without running the event loop.
-  if (start < 0)
-    surrounding_cursor_index_ += start;
+  // Also see b/252955997: delete_surrounding_text implementation in Chrome
+  // seems inherently racey.
 }
 
 void IMContextBackend::KeySym(uint32_t serial,
@@ -264,15 +239,9 @@ void IMContextBackend::KeySym(uint32_t serial,
 
 void IMContextBackend::SetPreeditRegion(int32_t index,
                                         uint32_t length_unsigned) {
-  int length = length_unsigned;
-  if (index > 0 || index + length < 0 || length <= 0) {
-    LOG(WARNING) << "SetPreeditRegion(" << index << ", " << length
-                 << ") is for unsupported range.";
-  } else {
-    observer_->SetPreeditRegion(index, length, styles_);
-  }
-  cursor_pos_ = 0;
-  styles_.clear();
+  // The GTK and Qt frontends both use SetSurroundingTextSupport() to indicate
+  // surrounding text is not supported, so Chrome shouldn't be calling this.
+  LOG(ERROR) << "set_preedit_region is not supported yet.";
 }
 
 }  // namespace cros_im

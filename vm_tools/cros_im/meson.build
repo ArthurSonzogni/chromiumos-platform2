@@ -65,8 +65,6 @@ gtk3_sources = gtk_sources + [
   'frontend/gtk/im_cros_gtk3.cc',
 ]
 
-gtk_args = ['-DDISABLE_SURROUNDING']
-
 libim_cros_gtk3 = shared_library('im-cros-gtk3',
   sources: gtk3_sources + wl_outs,
   dependencies: [
@@ -74,7 +72,6 @@ libim_cros_gtk3 = shared_library('im-cros-gtk3',
     dependency('gtk+-3.0'),
     dependency('wayland-client'),
   ],
-  cpp_args: gtk_args,
 
   # No prefix on build result.
   name_prefix: '',
@@ -92,7 +89,7 @@ if get_option('build_gtk4')
       dependency('gtk4'),
       dependency('wayland-client'),
     ],
-    cpp_args: ['-DGTK4'] + gtk_args,
+    cpp_args: ['-DGTK4'],
     install: true,
     install_dir: get_option('libdir') / 'gtk-4.0/4.0.0/immodules',
   )
@@ -144,8 +141,6 @@ libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
     'backend/test/gtk_commit_string_test_backend.cc',
     'backend/test/gtk_content_type_test_backend.cc',
     'backend/test/gtk_key_sym_test_backend.cc',
-    'backend/test/gtk_set_preedit_region_test_backend.cc',
-    'backend/test/gtk_surrounding_text_test_backend.cc',
     'backend/test/gtk_windowing_test_backend.cc',
     'backend/test/mock_text_input.cc',
     'backend/test/mock_text_input.h',
@@ -158,7 +153,7 @@ libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
   ],
-  cpp_args: ['-DTEST_BACKEND'] + gtk_args,
+  cpp_args: ['-DTEST_BACKEND'],
 )
 
 test_sources = [
@@ -166,8 +161,6 @@ test_sources = [
   'test/gtk_commit_string_test.cc',
   'test/gtk_content_type_test.cc',
   'test/gtk_key_sym_test.cc',
-  'test/gtk_set_preedit_region_test.cc',
-  'test/gtk_surrounding_text_test.cc',
   'test/gtk_test_base.h',
   'test/gtk_windowing_test.cc',
 ]

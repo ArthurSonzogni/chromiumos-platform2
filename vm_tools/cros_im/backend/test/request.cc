@@ -29,8 +29,6 @@ std::string RequestTypeToString(Request::RequestType type) {
       return "hide_input_panel()";
     case Request::kReset:
       return "reset()";
-    case Request::kSetSurroundingText:
-      return "set_surrounding_text()";
     case Request::kSetContentType:
       return "set_content_type()";
     case Request::kSetInputType:
@@ -129,37 +127,6 @@ void SetInputTypeRequest::Print(std::ostream& stream) const {
          << ", learning_mode = " << learning_mode_
          << ", inline_composition_support = " << inline_composition_support_
          << ")";
-}
-
-SetSurroundingTextRequest::SetSurroundingTextRequest(int text_input_id,
-                                                     const std::string& text,
-                                                     uint32_t cursor,
-                                                     uint32_t anchor)
-    : Request(text_input_id, Request::kSetSurroundingText),
-      text_(text),
-      cursor_(cursor),
-      anchor_(anchor) {}
-
-SetSurroundingTextRequest::~SetSurroundingTextRequest() = default;
-
-bool SetSurroundingTextRequest::RequestMatches(const Request& actual) const {
-  if (!Request::RequestMatches(actual))
-    return false;
-  const SetSurroundingTextRequest* other =
-      dynamic_cast<const SetSurroundingTextRequest*>(&actual);
-  if (!other) {
-    FAILED() << "SetSurroundingText request was not of type "
-                "SetSurroundingTextRequest";
-    return false;
-  }
-
-  return text_ == other->text_ && cursor_ == other->cursor_ &&
-         anchor_ == other->anchor_;
-}
-
-void SetSurroundingTextRequest::Print(std::ostream& stream) const {
-  stream << "set_surrounding_text(text = " << text_ << ", cursor = " << cursor_
-         << ", anchor = " << anchor_ << ")";
 }
 
 SetSurroundingTextSupportRequest::SetSurroundingTextSupportRequest(

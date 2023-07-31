@@ -418,12 +418,6 @@ void CrosQtIMContext::BackendObserver::SetPreedit(
   QCoreApplication::sendEvent(input, &event);
 }
 
-void CrosQtIMContext::BackendObserver::SetPreeditRegion(
-    int start_offset, int length, const std::vector<PreeditStyle>& styles) {
-  // not needed for CJ
-  LOG(WARNING) << "BackendObserver::SetPreeditRegion() is not implemented";
-}
-
 void CrosQtIMContext::BackendObserver::Commit(const std::string& commit) {
   // IME want plugin to commit this text
   // but why both qt and IME can tell plugin to commit?
@@ -440,14 +434,6 @@ void CrosQtIMContext::BackendObserver::Commit(const std::string& commit) {
   event.setCommitString(QString::fromStdString(commit));
   QCoreApplication::sendEvent(input, &event);
   context_->preedit_ = "";
-}
-
-void CrosQtIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
-                                                             int length) {
-  // not needed for CJ without autocorrect
-  // possibly: "if you turn on autocorrect then it gets used instead of
-  // backspace for some reason"
-  LOG(WARNING) << "BackendObserver::DeleteSurroundingText() is not implemented";
 }
 
 void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym,
