@@ -7,7 +7,7 @@ authors = ["The ChromiumOS Authors"]
 getopts = "0.2"
 libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
-p9 = { path = "../../../platform/crosvm/common/p9" } # provided by ebuild
+p9 = "0.2.3"
 log = "0.4"
 
 [patch.crates-io] # ignored by ebuild
