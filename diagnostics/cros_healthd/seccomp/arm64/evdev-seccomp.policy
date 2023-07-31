@@ -39,9 +39,28 @@ sendto: 1
 #   0x80ff4508 == EVIOCGUNIQ(255)
 #   0x8404450a == EVIOCGMTSLOTS(1028)
 #   0x80084503 == EVIOCGREP
+#  The ABS_ codes are from linux/include/uapi/linux/input-event-codes.h. All
+#  possible codes should be included. It is used when a perihperal supporting
+#  the code is connected.
 #   0x80184540 == EVIOCGABS(ABS_X)
 #   0x80184541 == EVIOCGABS(ABS_Y)
 #   0x80184542 == EVIOCGABS(ABS_Z)
+#   0x80184543 == EVIOCGABS(ABS_RX)
+#   0x80184544 == EVIOCGABS(ABS_RY)
+#   0x80184545 == EVIOCGABS(ABS_RZ)
+#   0x80184546 == EVIOCGABS(ABS_THROTTLE)
+#   0x80184547 == EVIOCGABS(ABS_RUDDER)
+#   0x80184548 == EVIOCGABS(ABS_WHEEL)
+#   0x80184549 == EVIOCGABS(ABS_GAS)
+#   0x8018454a == EVIOCGABS(ABS_BRAKE)
+#   0x80184550 == EVIOCGABS(ABS_HAT0X)
+#   0x80184551 == EVIOCGABS(ABS_HAT0Y)
+#   0x80184552 == EVIOCGABS(ABS_HAT1X)
+#   0x80184553 == EVIOCGABS(ABS_HAT1Y)
+#   0x80184554 == EVIOCGABS(ABS_HAT2X)
+#   0x80184555 == EVIOCGABS(ABS_HAT2Y)
+#   0x80184556 == EVIOCGABS(ABS_HAT3X)
+#   0x80184557 == EVIOCGABS(ABS_HAT3Y)
 #   0x80184558 == EVIOCGABS(ABS_PRESSURE)
 #   0x80184559 == EVIOCGABS(ABS_DISTANCE)
 #   0x8018455a == EVIOCGABS(ABS_TILT_X)
@@ -81,7 +100,12 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184574 || arg1 == 0x8018457b || arg1 == 0x8018457c || \
        arg1 == 0x8018457d || arg1 == 0x80184542 || arg1 == 0x80184560 || \
        arg1 == 0x80184561 || arg1 == 0x80184572 || arg1 == 0x80184573 || \
-       arg1 == 0x80184578
+       arg1 == 0x80184578 || arg1 == 0x80184543 || arg1 == 0x80184544 || \
+       arg1 == 0x80184545 || arg1 == 0x80184546 || arg1 == 0x80184547 || \
+       arg1 == 0x80184548 || arg1 == 0x80184549 || arg1 == 0x8018454a || \
+       arg1 == 0x80184550 || arg1 == 0x80184551 || arg1 == 0x80184552 || \
+       arg1 == 0x80184553 || arg1 == 0x80184554 || arg1 == 0x80184555 || \
+       arg1 == 0x80184556 || arg1 == 0x80184557
 recvmsg: 1
 rt_sigprocmask: 1
 brk: 1
