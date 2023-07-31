@@ -33,6 +33,7 @@ const char Daemon::kScanUserName[] = "saned";
 namespace {
 
 constexpr base::TimeDelta kMaxDiscoverySessionTime = base::Minutes(60);
+constexpr base::TimeDelta kMaxScannerHandleIdleTime = base::Minutes(60);
 constexpr base::TimeDelta kTimeoutCheckInterval = base::Seconds(2);
 
 }  // namespace
@@ -83,6 +84,14 @@ void Daemon::OnTimeout() {
     base::TimeDelta idle_time =
         base::Time::Now() - device_tracker_->LastDiscoverySessionActivity();
     if (idle_time < kMaxDiscoverySessionTime) {
+      PostponeShutdown(kTimeoutCheckInterval);
+      return;
+    }
+  }
+  if (device_tracker_->NumOpenScanners() > 0) {
+    base::TimeDelta idle_time =
+        base::Time::Now() - device_tracker_->LastOpenScannerActivity();
+    if (idle_time < kMaxScannerHandleIdleTime) {
       PostponeShutdown(kTimeoutCheckInterval);
       return;
     }

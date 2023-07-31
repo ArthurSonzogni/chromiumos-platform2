@@ -96,6 +96,22 @@ base::Time DeviceTracker::LastDiscoverySessionActivity() const {
   return activity;
 }
 
+size_t DeviceTracker::NumOpenScanners() const {
+  return open_scanners_.size();
+}
+
+base::Time DeviceTracker::LastOpenScannerActivity() const {
+  base::Time activity = base::Time::UnixEpoch();
+  for (const auto& scanner : open_scanners_) {
+    if (scanner.second.start_time > activity) {
+      activity = scanner.second.start_time;
+    }
+    // TODO(bmgordon): Include subsequent timestamps once more operations
+    // are implemented.
+  }
+  return activity;
+}
+
 StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
     const StartScannerDiscoveryRequest& request) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

@@ -360,6 +360,7 @@ TEST(DeviceTrackerTest, OpenScannerEmptyDevice) {
 
   EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, OpenScannerEmptyString) {
@@ -374,6 +375,7 @@ TEST(DeviceTrackerTest, OpenScannerEmptyString) {
 
   EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, OpenScannerNoDevice) {
@@ -389,6 +391,7 @@ TEST(DeviceTrackerTest, OpenScannerNoDevice) {
 
   EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_NE(response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, OpenScannerFirstClientSucceeds) {
@@ -408,6 +411,7 @@ TEST(DeviceTrackerTest, OpenScannerFirstClientSucceeds) {
   EXPECT_THAT(response.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_EQ(response.result(), OPERATION_RESULT_SUCCESS);
   EXPECT_THAT(response.config().scanner(), Not(EqualsProto(ScannerHandle())));
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 }
 
 TEST(DeviceTrackerTest, OpenScannerSameClientSucceedsTwice) {
@@ -441,6 +445,7 @@ TEST(DeviceTrackerTest, OpenScannerSameClientSucceedsTwice) {
 
   EXPECT_THAT(response2.config().scanner(),
               Not(EqualsProto(response1.config().scanner())));
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 }
 
 TEST(DeviceTrackerTest, OpenScannerSecondClientFails) {
@@ -472,6 +477,8 @@ TEST(DeviceTrackerTest, OpenScannerSecondClientFails) {
   EXPECT_THAT(response2.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_EQ(response2.result(), OPERATION_RESULT_DEVICE_BUSY);
   EXPECT_THAT(response2.config().scanner(), EqualsProto(ScannerHandle()));
+
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 }
 
 TEST(DeviceTrackerTest, CloseScannerMissingHandle) {
@@ -485,6 +492,7 @@ TEST(DeviceTrackerTest, CloseScannerMissingHandle) {
 
   EXPECT_THAT(request.scanner(), EqualsProto(response.scanner()));
   EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, CloseScannerInvalidHandle) {
@@ -499,6 +507,7 @@ TEST(DeviceTrackerTest, CloseScannerInvalidHandle) {
 
   EXPECT_THAT(request.scanner(), EqualsProto(response.scanner()));
   EXPECT_EQ(response.result(), OPERATION_RESULT_MISSING);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, CloseScannerSuccess) {
@@ -515,12 +524,15 @@ TEST(DeviceTrackerTest, CloseScannerSuccess) {
   request1.set_client_id("DeviceTrackerTest");
   OpenScannerResponse response1 = tracker->OpenScanner(request1);
 
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
+
   CloseScannerRequest request2;
   *request2.mutable_scanner() = response1.config().scanner();
   CloseScannerResponse response2 = tracker->CloseScanner(request2);
 
   EXPECT_THAT(request2.scanner(), EqualsProto(response2.scanner()));
   EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, CloseScannerTwiceFails) {
@@ -537,6 +549,8 @@ TEST(DeviceTrackerTest, CloseScannerTwiceFails) {
   request1.set_client_id("DeviceTrackerTest");
   OpenScannerResponse response1 = tracker->OpenScanner(request1);
 
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
+
   CloseScannerRequest request2;
   *request2.mutable_scanner() = response1.config().scanner();
   CloseScannerResponse response2 = tracker->CloseScanner(request2);
@@ -546,6 +560,7 @@ TEST(DeviceTrackerTest, CloseScannerTwiceFails) {
   EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
   EXPECT_THAT(request2.scanner(), EqualsProto(response3.scanner()));
   EXPECT_EQ(response3.result(), OPERATION_RESULT_MISSING);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 }
 
 TEST(DeviceTrackerTest, CloseScannerFreesDevice) {
@@ -562,6 +577,7 @@ TEST(DeviceTrackerTest, CloseScannerFreesDevice) {
   open_request.mutable_scanner_id()->set_connection_string("Test");
   open_request.set_client_id("DeviceTrackerTest");
   OpenScannerResponse response1 = tracker->OpenScanner(open_request);
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 
   // Re-insert the test device because the fake SANE client deletes it after one
   // connection.
@@ -571,14 +587,17 @@ TEST(DeviceTrackerTest, CloseScannerFreesDevice) {
   // This will fail because the device is still open.
   open_request.set_client_id("DeviceTrackerTest2");
   OpenScannerResponse response2 = tracker->OpenScanner(open_request);
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 
   // Close first client's handle to free up the device.
   CloseScannerRequest close_request;
   *close_request.mutable_scanner() = response1.config().scanner();
   CloseScannerResponse response3 = tracker->CloseScanner(close_request);
+  EXPECT_EQ(tracker->NumOpenScanners(), 0);
 
   // Now the second client can open the device.
   OpenScannerResponse response4 = tracker->OpenScanner(open_request);
+  EXPECT_EQ(tracker->NumOpenScanners(), 1);
 
   EXPECT_THAT(response1.scanner_id(), EqualsProto(open_request.scanner_id()));
   EXPECT_EQ(response1.result(), OPERATION_RESULT_SUCCESS);

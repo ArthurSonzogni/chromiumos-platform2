@@ -60,6 +60,8 @@ class DeviceTracker {
   void SetFirewallManager(FirewallManager* firewall_manager);
   size_t NumActiveDiscoverySessions() const;
   base::Time LastDiscoverySessionActivity() const;
+  size_t NumOpenScanners() const;
+  base::Time LastOpenScannerActivity() const;
 
   // StartScannerDiscovery kicks off a new scanner discovery session.  The
   // session as a whole follows roughly these phases:
