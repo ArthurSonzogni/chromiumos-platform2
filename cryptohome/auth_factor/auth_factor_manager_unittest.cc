@@ -669,25 +669,13 @@ class LoadAllAuthFactorsTest : public ::testing::Test {
   AuthFactorManager manager_{&platform_};
 };
 
-// Test that if nothing is set up, no factors are loaded (with or without USS).
+// Test that if nothing is set up, no factors are loaded.
 TEST_F(LoadAllAuthFactorsTest, NoFactors) {
   InstallVaultKeysets({});
 
-  {
-    auto no_uss = DisableUssExperiment();
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
 
-    EXPECT_THAT(af_map, IsEmpty());
-  }
-
-  {
-    auto uss = EnableUssExperiment();
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
-
-    EXPECT_THAT(af_map, IsEmpty());
-  }
+  EXPECT_THAT(af_map, IsEmpty());
 }
 
 TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyVaultKeysets) {
@@ -695,8 +683,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyVaultKeysets) {
   InstallVaultKeysets({{"primary", &CreatePasswordVaultKeyset},
                        {"secondary", &CreatePasswordVaultKeyset}});
 
-  auto af_map = manager_.LoadAllAuthFactors(
-      kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -715,8 +702,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
                               {.metadata = auth_factor::PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
-  auto af_map = manager_.LoadAllAuthFactors(
-      kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -738,74 +724,35 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
                               {.metadata = auth_factor::PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
 
-  // Without USS, only the regular and backup VKs should be loaded.
-  {
-    auto no_uss = DisableUssExperiment();
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
 
-    EXPECT_THAT(af_map,
-                UnorderedElementsAre(
-                    AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
-                                      AuthFactorStorageType::kVaultKeyset),
-                    AuthFactorMapItem(AuthFactorType::kPassword, "quaternary",
-                                      AuthFactorStorageType::kVaultKeyset)));
-  }
-
-  // With USS, the USS factors should be loaded along with the non-backup VKs.
-  {
-    auto uss = EnableUssExperiment();
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
-
-    EXPECT_THAT(af_map,
-                UnorderedElementsAre(
-                    AuthFactorMapItem(AuthFactorType::kPassword, "primary",
-                                      AuthFactorStorageType::kUserSecretStash),
-                    AuthFactorMapItem(AuthFactorType::kPin, "secondary",
-                                      AuthFactorStorageType::kUserSecretStash),
-                    AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
-                                      AuthFactorStorageType::kVaultKeyset)));
-  }
+  EXPECT_THAT(af_map,
+              UnorderedElementsAre(
+                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                    AuthFactorStorageType::kUserSecretStash),
+                  AuthFactorMapItem(AuthFactorType::kPin, "secondary",
+                                    AuthFactorStorageType::kUserSecretStash),
+                  AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
+                                    AuthFactorStorageType::kVaultKeyset)));
 }
 
 // Test that, given a mix of regular VKs, migrated VKs, and USS factors, the
-// correct ones are loaded depending on whether USS migration is enabled or
-// disabled.
+// correct ones are loaded.
 TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
   InstallVaultKeysets({{"secondary", &CreatePasswordVaultKeyset},
                        {"primary", &CreateMigratedVaultKeyset}});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = auth_factor::PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
-  auto no_uss = EnableUssExperiment();
 
-  // Without USS migration, only the regular and migrated VKs should be loaded.
-  {
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/false, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
 
-    EXPECT_THAT(af_map,
-                UnorderedElementsAre(
-                    AuthFactorMapItem(AuthFactorType::kPassword, "primary",
-                                      AuthFactorStorageType::kVaultKeyset),
-                    AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
-                                      AuthFactorStorageType::kVaultKeyset)));
-  }
-
-  // With USS migration, the USS factors should be loaded along with the regular
-  // VKs.
-  {
-    auto af_map = manager_.LoadAllAuthFactors(
-        kObfuscatedUsername, /*is_uss_migration_enabled=*/true, converter_);
-
-    EXPECT_THAT(af_map,
-                UnorderedElementsAre(
-                    AuthFactorMapItem(AuthFactorType::kPassword, "primary",
-                                      AuthFactorStorageType::kUserSecretStash),
-                    AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
-                                      AuthFactorStorageType::kVaultKeyset)));
-  }
+  EXPECT_THAT(af_map,
+              UnorderedElementsAre(
+                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                    AuthFactorStorageType::kUserSecretStash),
+                  AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
+                                    AuthFactorStorageType::kVaultKeyset)));
 }
 
 }  // namespace

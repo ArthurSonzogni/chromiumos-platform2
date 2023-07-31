@@ -54,7 +54,6 @@ class AuthFactorManager final {
   // Malformed factors are logged and skipped.
   AuthFactorMap LoadAllAuthFactors(
       const ObfuscatedUsername& obfuscated_username,
-      bool is_uss_migration_enabled,
       AuthFactorVaultKeysetConverter& converter);
 
   // Loads the list of configured auth factors from the user's data vault.

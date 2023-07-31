@@ -197,9 +197,21 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
 
 AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
     const ObfuscatedUsername& obfuscated_username,
-    bool is_uss_migration_enabled,
     AuthFactorVaultKeysetConverter& converter) {
   AuthFactorMap auth_factor_map;
+
+  // Load all of the USS-based auth factors.
+  for (const auto& [label, auth_factor_type] :
+       ListAuthFactors(obfuscated_username)) {
+    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
+        LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+    if (!auth_factor.ok()) {
+      LOG(WARNING) << "Skipping malformed auth factor " << label;
+      continue;
+    }
+    auth_factor_map.Add(std::move(*auth_factor),
+                        AuthFactorStorageType::kUserSecretStash);
+  }
 
   // Load all the VaultKeysets and backup VaultKeysets in disk and convert
   // them to AuthFactor format.
@@ -208,42 +220,6 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
   converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
       obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
-
-  // UserSecretStash is enabled: merge VaultKeyset-AuthFactors with
-  // USS-AuthFactors
-  if (IsUserSecretStashExperimentEnabled(platform_)) {
-    for (const auto& [label, auth_factor_type] :
-         ListAuthFactors(obfuscated_username)) {
-      CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
-          LoadAuthFactor(obfuscated_username, auth_factor_type, label);
-      if (!auth_factor.ok()) {
-        LOG(WARNING) << "Skipping malformed auth factor " << label;
-        continue;
-      }
-      auth_factor_map.Add(std::move(*auth_factor),
-                          AuthFactorStorageType::kUserSecretStash);
-    }
-
-    // If USS migration is disabled, but USS is still enabled only the migrated
-    // AuthFactors should be rolled back. Override the AuthFactor with the
-    // migrated VaultKeyset in this case.
-    if (!is_uss_migration_enabled) {
-      for (auto migrated_label : migrated_labels) {
-        auto backup_factor_iter = backup_factor_map.find(migrated_label);
-        if (backup_factor_iter != backup_factor_map.end()) {
-          auth_factor_map.Add(std::move(backup_factor_iter->second),
-                              AuthFactorStorageType::kVaultKeyset);
-        }
-      }
-    }
-  } else {
-    // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with
-    // backup-VaultKeyset-AuthFactors.
-    for (auto& [unused, factor] : backup_factor_map) {
-      auth_factor_map.Add(std::move(factor),
-                          AuthFactorStorageType::kVaultKeyset);
-    }
-  }
 
   // Duplicate labels are not expected on any use case. However in very rare
   // edge cases where an interrupted USS migration results in having both

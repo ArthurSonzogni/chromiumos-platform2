@@ -335,7 +335,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
     AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, enable_uss_migration, converter);
+        users_[0].obfuscated, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -353,7 +353,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
     AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, enable_uss_migration, converter);
+        users_[0].obfuscated, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
