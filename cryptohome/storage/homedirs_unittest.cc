@@ -26,8 +26,6 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
-#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -633,9 +631,12 @@ class HomeDirsVaultTest : public ::testing::Test {
                        HomeDirs* homedirs) {
     if (test_case.lvm_supported) {
       auto type = test_case.existing_container_type;
-      ExpectLogicalVolumeStatefulPartition(
-          platform, homedirs, user_.obfuscated,
-          type == EncryptedContainerType::kDmcrypt);
+      bool expect_dmcrypt_partition =
+          type == EncryptedContainerType::kDmcrypt ||
+          type == EncryptedContainerType::kEcryptfsToDmcrypt ||
+          type == EncryptedContainerType::kFscryptToDmcrypt;
+      ExpectLogicalVolumeStatefulPartition(platform, homedirs, user_.obfuscated,
+                                           expect_dmcrypt_partition);
       homedirs->set_lvm_migration_enabled(true);
     }
 
@@ -662,6 +663,19 @@ class HomeDirsVaultTest : public ::testing::Test {
       case EncryptedContainerType::kEcryptfsToFscrypt:
         ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
+        ASSERT_TRUE(
+            platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
+        ON_CALL(*platform,
+                GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
+            .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
+        break;
+      case EncryptedContainerType::kEcryptfsToDmcrypt:
+        ASSERT_TRUE(platform->CreateDirectory(
+            GetEcryptfsUserVaultPath(user_.obfuscated)));
+        ASSERT_TRUE(
+            platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
+        break;
+      case EncryptedContainerType::kFscryptToDmcrypt:
         ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         ON_CALL(*platform,
@@ -823,7 +837,33 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
           .expected_type = EncryptedContainerType::kDmcrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
-  };
+      {
+          .name = "existing_in_process_migration_ecryptfs_to_fscrypt",
+          .lvm_supported = false,
+          .fscrypt_supported = true,
+          .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .options = {},
+          .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
+      },
+      {
+          .name = "existing_in_process_migration_ecryptfs_to_dmcrypt",
+          .lvm_supported = true,
+          .fscrypt_supported = false,
+          .existing_container_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+          .options = {},
+          .expected_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+          .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
+      },
+      {
+          .name = "existing_in_process_migration_fscrypt_to_dmcrypt",
+          .lvm_supported = true,
+          .fscrypt_supported = true,
+          .existing_container_type = EncryptedContainerType::kFscryptToDmcrypt,
+          .options = {},
+          .expected_type = EncryptedContainerType::kFscryptToDmcrypt,
+          .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
+      }};
 
   for (const auto& test_case : test_cases) {
     NiceMock<MockPlatform> platform;
