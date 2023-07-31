@@ -316,9 +316,9 @@ pub fn set_rtc_audio_active(
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
-            /* TODO(b/226646450): set_gt_boost_freq_mhz fails on non-Intel platforms. */
+            #[cfg(target_arch = "x86_64")]
             if let Err(err) = set_gt_boost_freq_mhz(mode) {
-                error!("Failed to set boost freq: {:#}", err)
+                error!("Set boost freq not supported: {:#}", err)
             }
         }
         Err(_) => bail!("Failed to set RTC audio activity"),
@@ -439,53 +439,25 @@ fn set_rps_thresholds(up: u64, down: u64) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_arch = "x86_64")]
 fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
     set_gt_boost_freq_mhz_impl(Path::new("/"), mode)
 }
 
 // Extract the impl function for unittest.
+#[cfg(target_arch = "x86_64")]
 fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
-    const SYSFS_BASE: &str = "sys/class/drm";
-    const BOOST_PATH: &str = "gt_boost_freq_mhz";
-    const MIN_PATH: &str = "gt_min_freq_mhz";
-    const MAX_PATH: &str = "gt_max_freq_mhz";
-
-    let drm_card_glob = root.join(SYSFS_BASE).join("card*").join(BOOST_PATH);
-    let drm_card_glob_str = drm_card_glob
-        .to_str()
-        .with_context(|| format!("cannot convert path to str: {}", drm_card_glob.display()))?;
-    let first_glob_result = match glob::glob(drm_card_glob_str)?.next() {
-        Some(result) => result?,
-        None => return Ok(()), // Skip when there is no gt_boost_freq_mhz file.
-    };
-    let card_path = first_glob_result
-        .parent()
-        .with_context(|| format!("cannot get parent: {}", first_glob_result.display()))?
-        .to_path_buf();
-
-    let gt_boost_freq_mhz_content = std::fs::read_to_string(card_path.join(BOOST_PATH))?;
-    // When gt_boost_freq_mhz is 0, it cannot be changed.
-    if gt_boost_freq_mhz_content == "0\n" {
-        return Ok(());
-    }
-
-    let gt_boost_freq_mhz = if mode == RTCAudioActive::Active {
-        std::fs::read_to_string(card_path.join(MIN_PATH))?
-    } else {
-        std::fs::read_to_string(card_path.join(MAX_PATH))?
-    };
-
-    std::fs::write(card_path.join(BOOST_PATH), gt_boost_freq_mhz)?;
-
-    Ok(())
+    let mut gpu_config = intel_device::IntelGpuDeviceConfig::new(root.to_owned(), 100)?;
+    gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::tests::MockPowerPreferencesManager;
+    use crate::test_utils::tests::{get_intel_gpu_boost, MockPowerPreferencesManager};
     use crate::test_utils::tests::{
-        setup_mock_cpu_dev_dirs, setup_mock_cpu_files, setup_mock_intel_gpu_dev_dirs,
-        setup_mock_intel_gpu_files,
+        set_intel_gpu_boost, set_intel_gpu_max, set_intel_gpu_min, setup_mock_cpu_dev_dirs,
+        setup_mock_cpu_files, setup_mock_intel_gpu_dev_dirs, setup_mock_intel_gpu_files,
+        write_mock_cpuinfo,
     };
 
     use super::*;
@@ -518,27 +490,41 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_set_gt_boost_freq_mhz() {
-        const GT_BOOST_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_boost_freq_mhz";
-        const GT_MAX_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_max_freq_mhz";
-        const GT_MIN_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_min_freq_mhz";
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
 
-        let root = tempdir().unwrap();
-        let root_path = root.path();
-        let gt_boost_freq_mhz_path = root_path.join(GT_BOOST_FREQ_MHZ_PATH);
-        let gt_max_freq_mhz_path = root_path.join(GT_MAX_FREQ_MHZ_PATH);
-        let gt_min_freq_mhz_path = root_path.join(GT_MIN_FREQ_MHZ_PATH);
-        write_i32_to_file(&gt_boost_freq_mhz_path, 500);
-        write_i32_to_file(&gt_max_freq_mhz_path, 1100);
-        write_i32_to_file(&gt_min_freq_mhz_path, 300);
+        setup_mock_intel_gpu_dev_dirs(root);
+        setup_mock_intel_gpu_files(root);
+        write_mock_cpuinfo(
+            root,
+            "filter_out",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active)
+            .expect_err("Should return error on non-intel CPUs");
 
-        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Active).unwrap();
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+        set_intel_gpu_min(root, 300);
+        set_intel_gpu_max(root, 1100);
 
-        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path).unwrap(), 300);
+        set_intel_gpu_boost(root, 0);
+        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active)
+            .expect_err("Should return error when gpu_boost is 0");
 
-        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Inactive).unwrap();
+        set_intel_gpu_boost(root, 500);
+        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active).unwrap();
 
-        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path).unwrap(), 1100);
+        assert_eq!(get_intel_gpu_boost(root), 300);
+
+        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Inactive).unwrap();
+
+        assert_eq!(get_intel_gpu_boost(root), 1100);
     }
 
     #[test]

@@ -193,6 +193,28 @@ pub mod intel_device {
             Ok(())
         }
 
+        /// Sets the RTC audio active state.
+        ///
+        /// # Arguments
+        ///
+        /// * `active` - The new RTC audio active state.
+        ///
+        /// # Returns
+        ///
+        /// A `Result` with an `Ok` value if the state was successfully set, or
+        /// a `Err` value with an error message if the state could not be set.
+        pub fn set_rtc_audio_active(&mut self, active: bool) -> Result<()> {
+            let gpu_stats = self.get_gpu_stats()?;
+            if gpu_stats._turbo_freq == 0 {
+                bail!("cannot change gt_boost_freq_mhz when it's 0")
+            }
+            if active {
+                self.set_gpu_turbo_freq(gpu_stats.min_freq)
+            } else {
+                self.set_gpu_turbo_freq(gpu_stats.max_freq)
+            }
+        }
+
         // This function will only filter in 10th gen (Cometlake CPUs).  The current tuning
         // table is only valid for Intel cometlake deives using a core i3/i5/i7 processors.
         fn is_supported_device(root: PathBuf) -> bool {
