@@ -58,13 +58,14 @@ class CrostiniServiceTest : public testing::Test {
                             base::Unretained(this)));
   }
 
-  void DeviceHandler(const Device& device, Device::ChangeEvent event) {
-    guest_devices_[device.host_ifname()] = event;
+  void DeviceHandler(const CrostiniService::CrostiniDevice& device,
+                     CrostiniService::CrostiniDeviceEvent event) {
+    guest_devices_[device.tap_device_ifname()] = event;
   }
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
-  std::map<std::string, Device::ChangeEvent> guest_devices_;
+  std::map<std::string, CrostiniService::CrostiniDeviceEvent> guest_devices_;
 };
 
 TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
@@ -85,25 +86,26 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  ASSERT_TRUE(crostini->GetDevices().empty());
+  EXPECT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Crostini VM can successfully start.
   auto* device = crostini->Start(vm_id, CrostiniService::VMType::kTermina,
                                  /*subnet_index=*/0);
   Mock::VerifyAndClearExpectations(datapath_.get());
   ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->shill_device());
+  EXPECT_NE(std::nullopt, device->lxd_ipv4_subnet());
+  EXPECT_NE(std::nullopt, device->lxd_ipv4_address());
+  EXPECT_EQ("vmtap0", device->tap_device_ifname());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting, there should be a virtual device.
-  ASSERT_EQ(device, crostini->GetDevice(vm_id));
+  EXPECT_EQ(device, crostini->GetDevice(vm_id));
   auto devices = crostini->GetDevices();
   ASSERT_FALSE(devices.empty());
-  ASSERT_EQ(device, devices[0]);
+  EXPECT_EQ(device, devices[0]);
 
   // The virtual datapath for the Crostini VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
@@ -112,11 +114,11 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
 
   // After stopping the datapath setup, there should be no virtual device.
-  ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  ASSERT_TRUE(crostini->GetDevices().empty());
+  EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
+  EXPECT_TRUE(crostini->GetDevices().empty());
 }
 
 TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
@@ -140,26 +142,26 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  ASSERT_TRUE(crostini->GetDevices().empty());
+  EXPECT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Parallels VM can successfully start.
   auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
                                  /*subnet_index=*/1);
   ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->shill_device());
+  EXPECT_EQ("vmtap0", device->tap_device_ifname());
+  EXPECT_EQ(std::nullopt, device->lxd_ipv4_subnet());
+  EXPECT_EQ(std::nullopt, device->lxd_ipv4_address());
   Mock::VerifyAndClearExpectations(datapath_.get());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting, there should be a virtual device.
-  ASSERT_EQ(device, crostini->GetDevice(vm_id));
+  EXPECT_EQ(device, crostini->GetDevice(vm_id));
   auto devices = crostini->GetDevices();
-  ASSERT_NE(nullptr, device);
   ASSERT_FALSE(devices.empty());
-  ASSERT_EQ(device, devices[0]);
+  EXPECT_EQ(device, devices[0]);
 
   // The virtual datapath for the Parallels VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
@@ -171,11 +173,11 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
   crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
 
   // After stopping the datapath setup, there should be no virtual device.
-  ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
-  ASSERT_TRUE(crostini->GetDevices().empty());
+  EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
+  EXPECT_TRUE(crostini->GetDevices().empty());
 }
 
 TEST_F(CrostiniServiceTest, MultipleVMs) {
@@ -192,7 +194,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
-  ASSERT_TRUE(crostini->GetDevices().empty());
+  EXPECT_TRUE(crostini->GetDevices().empty());
 
   // Start first Crostini VM.
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
@@ -205,11 +207,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
                                  /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap0", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->shill_device());
+  ASSERT_EQ("vmtap0", device->tap_device_ifname());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
   guest_devices_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -230,11 +231,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   device = crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap1", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->shill_device());
+  ASSERT_EQ("vmtap1", device->tap_device_ifname());
   it = guest_devices_.find("vmtap1");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
   guest_devices_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -252,11 +252,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap2", device->host_ifname());
-  ASSERT_EQ(std::nullopt, device->shill_device());
+  ASSERT_EQ("vmtap2", device->tap_device_ifname());
   it = guest_devices_.find("vmtap2");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
   guest_devices_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -267,16 +266,14 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   auto devices = crostini->GetDevices();
   ASSERT_FALSE(devices.empty());
   for (const auto* dev : devices) {
-    ASSERT_EQ(std::nullopt, dev->shill_device());
-    ASSERT_EQ("", dev->guest_ifname());
-    if (dev->host_ifname() == "vmtap0") {
-      ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
-    } else if (dev->host_ifname() == "vmtap1") {
-      ASSERT_EQ(Device::Type::kParallelsVM, dev->type());
-    } else if (dev->host_ifname() == "vmtap2") {
-      ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
+    if (dev->tap_device_ifname() == "vmtap0") {
+      ASSERT_EQ(CrostiniService::VMType::kTermina, dev->type());
+    } else if (dev->tap_device_ifname() == "vmtap1") {
+      ASSERT_EQ(CrostiniService::VMType::kParallels, dev->type());
+    } else if (dev->tap_device_ifname() == "vmtap2") {
+      ASSERT_EQ(CrostiniService::VMType::kTermina, dev->type());
     } else {
-      FAIL() << "Unexpected guest Device " << dev->host_ifname();
+      FAIL() << "Unexpected guest Device " << dev->tap_device_ifname();
     }
   }
 
@@ -288,7 +285,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
   guest_devices_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -300,7 +297,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
   it = guest_devices_.find("vmtap2");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
   guest_devices_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -315,7 +312,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   it = guest_devices_.find("vmtap1");
   ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
+  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
 
   // There are no more virtual devices left.
   ASSERT_TRUE(crostini->GetDevices().empty());

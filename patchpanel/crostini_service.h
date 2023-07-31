@@ -66,6 +66,14 @@ class CrostiniService {
     std::unique_ptr<Device> device_;
   };
 
+  enum class CrostiniDeviceEvent {
+    kAdded,
+    kRemoved,
+  };
+
+  using CrostiniDeviceEventHandler =
+      base::RepeatingCallback<void(const CrostiniDevice&, CrostiniDeviceEvent)>;
+
   static std::optional<VMType> VMTypeFromDeviceType(Device::Type device_type);
   static std::optional<VMType> VMTypeFromProtoGuestType(
       NetworkDevice::GuestType guest_type);
@@ -84,28 +92,31 @@ class CrostiniService {
   // caller.
   CrostiniService(AddressManager* addr_mgr,
                   Datapath* datapath,
-                  Device::ChangeEventHandler device_changed_handler);
+                  CrostiniDeviceEventHandler event_handler);
   CrostiniService(const CrostiniService&) = delete;
   CrostiniService& operator=(const CrostiniService&) = delete;
 
   ~CrostiniService();
 
-  const Device* Start(uint64_t vm_id, VMType vm_type, uint32_t subnet_index);
+  const CrostiniDevice* Start(uint64_t vm_id,
+                              VMType vm_type,
+                              uint32_t subnet_index);
   void Stop(uint64_t vm_id);
 
-  // Returns a single Device pointer created for the VM with id |vm_id|.
-  const Device* const GetDevice(uint64_t vm_id) const;
+  // Returns a single CrostiniDevice pointer created for the VM with id |vm_id|.
+  const CrostiniDevice* const GetDevice(uint64_t vm_id) const;
 
-  // Returns a list of all tap Devices currently managed by this service.
-  std::vector<const Device*> GetDevices() const;
+  // Returns a list of all CrostiniDevices currently managed by this service.
+  std::vector<const CrostiniDevice*> GetDevices() const;
 
-  // Notifies CrostiniService about a change in the default logical Device.
+  // Notifies CrostiniService about a change in the default logical shill
+  // Device.
   void OnShillDefaultLogicalDeviceChanged(
       const ShillClient::Device* new_device,
       const ShillClient::Device* prev_device);
 
  private:
-  std::unique_ptr<Device> AddTAP(VMType vm_type, uint32_t subnet_index);
+  std::unique_ptr<CrostiniDevice> AddTAP(VMType vm_type, uint32_t subnet_index);
 
   // Checks ADB sideloading status and set it to |adb_sideloading_enabled_|.
   // This function will call itself again if ADB sideloading status is not
@@ -121,16 +132,16 @@ class CrostiniService {
 
   // Starts and stop automatic DNAT forwarding of inbound traffic into a
   // Crostini virtual device. |crostini_device| must not be null.
-  void StartAutoDNAT(const Device* crostini_device);
-  void StopAutoDNAT(const Device* crostini_device);
+  void StartAutoDNAT(const CrostiniDevice* crostini_device);
+  void StopAutoDNAT(const CrostiniDevice* crostini_device);
 
   AddressManager* addr_mgr_;
   Datapath* datapath_;
   std::optional<ShillClient::Device> default_logical_device_;
-  Device::ChangeEventHandler device_changed_handler_;
+  CrostiniDeviceEventHandler event_handler_;
 
   // Mapping of VM IDs to TAP devices
-  std::map<uint64_t, std::unique_ptr<Device>> taps_;
+  std::map<uint64_t, std::unique_ptr<CrostiniDevice>> devices_;
 
   bool adb_sideloading_enabled_;
   scoped_refptr<dbus::Bus> bus_;

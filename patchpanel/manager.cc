@@ -80,7 +80,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
       &addr_mgr_, datapath_.get(),
-      base::BindRepeating(&Manager::OnCrostiniDeviceChanged,
+      base::BindRepeating(&Manager::OnCrostiniDeviceEvent,
                           weak_factory_.GetWeakPtr()));
 
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
@@ -152,12 +152,12 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
   // TODO(b/197930417): Introduce a separate forwarding service and migrate the
   // update of the forwarding setup inside the default logical device change
   // handler CrostiniService::OnShillDefaultLogicalDeviceChanged.
-  for (const auto* tap_device : cros_svc_->GetDevices()) {
+  for (const auto* crostini_device : cros_svc_->GetDevices()) {
     if (prev_device) {
-      StopForwarding(*prev_device, tap_device->host_ifname());
+      StopForwarding(*prev_device, crostini_device->tap_device_ifname());
     }
     if (new_device) {
-      StartForwarding(*new_device, tap_device->host_ifname());
+      StartForwarding(*new_device, crostini_device->tap_device_ifname());
     }
   }
   cros_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
@@ -395,21 +395,24 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
   }
 }
 
-void Manager::OnCrostiniDeviceChanged(const Device& virtual_device,
-                                      Device::ChangeEvent event) {
+void Manager::OnCrostiniDeviceEvent(
+    const CrostiniService::CrostiniDevice& virtual_device,
+    CrostiniService::CrostiniDeviceEvent event) {
   auto default_logical_device = shill_client_->default_logical_device();
   auto* signal_device = new NetworkDevice();
-  FillDeviceProto(virtual_device, signal_device);
-  if (event == Device::ChangeEvent::kAdded) {
+  virtual_device.ConvertToProto(signal_device);
+  if (event == CrostiniService::CrostiniDeviceEvent::kAdded) {
     if (default_logical_device) {
-      StartForwarding(*default_logical_device, virtual_device.host_ifname(),
+      StartForwarding(*default_logical_device,
+                      virtual_device.tap_device_ifname(),
                       {.ipv6 = true, .multicast = true});
     }
     client_notifier_->OnNetworkDeviceChanged(
         signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
-  } else if (event == Device::ChangeEvent::kRemoved) {
+  } else if (event == CrostiniService::CrostiniDeviceEvent::kRemoved) {
     if (default_logical_device) {
-      StopForwarding(*default_logical_device, virtual_device.host_ifname());
+      StopForwarding(*default_logical_device,
+                     virtual_device.tap_device_ifname());
     }
     client_notifier_->OnNetworkDeviceChanged(
         signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
@@ -477,9 +480,8 @@ void Manager::ArcVmShutdown(uint32_t cid) {
   arc_svc_->Stop(cid);
 }
 
-const Device* Manager::StartCrosVm(uint64_t vm_id,
-                                   CrostiniService::VMType vm_type,
-                                   uint32_t subnet_index) {
+const CrostiniService::CrostiniDevice* Manager::StartCrosVm(
+    uint64_t vm_id, CrostiniService::VMType vm_type, uint32_t subnet_index) {
   const auto* guest_device = cros_svc_->Start(vm_id, vm_type, subnet_index);
   if (!guest_device) {
     return nullptr;
@@ -517,15 +519,15 @@ GetDevicesResponse Manager::GetDevices() const {
                             dns_proxy_ipv6_addrs_);
   }
 
-  for (const auto* crosvm_device : cros_svc_->GetDevices()) {
-    auto* dev = response.add_devices();
-    FillDeviceProto(*crosvm_device, dev);
+  for (const auto* crostini_device : cros_svc_->GetDevices()) {
+    crostini_device->ConvertToProto(response.add_devices());
   }
 
   return response;
 }
 
-const Device* const Manager::TerminaVmStartup(uint64_t cid) {
+const CrostiniService::CrostiniDevice* const Manager::TerminaVmStartup(
+    uint64_t cid) {
   const auto* guest_device =
       StartCrosVm(cid, CrostiniService::VMType::kTermina);
   if (!guest_device) {
@@ -539,8 +541,8 @@ void Manager::TerminaVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, GuestMessage::TERMINA_VM);
 }
 
-const Device* const Manager::ParallelsVmStartup(uint64_t vm_id,
-                                                uint32_t subnet_index) {
+const CrostiniService::CrostiniDevice* const Manager::ParallelsVmStartup(
+    uint64_t vm_id, uint32_t subnet_index) {
   const auto* guest_device =
       StartCrosVm(vm_id, CrostiniService::VMType::kParallels, subnet_index);
   if (!guest_device) {

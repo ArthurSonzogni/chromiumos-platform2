@@ -245,12 +245,6 @@ ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
                << "): Failed to create virtual Device";
     return {};
   }
-  if (!parallels_device->config().ipv4_subnet()) {
-    LOG(ERROR) << __func__ << "(cid: " << vm_id
-               << ", subnet_index: " << subnet_index
-               << "): Missing IPv4 subnet";
-    return {};
-  }
   ParallelsVmStartupResponse response;
   FillParallelsAllocationProto(*parallels_device, &response);
   RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
@@ -320,14 +314,14 @@ TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
                << ": Failed to create virtual Device";
     return {};
   }
-  if (!termina_device->config().ipv4_subnet()) {
-    LOG(ERROR) << __func__ << "(cid: " << cid << ")"
-               << ": Missing Termina IPv4 subnet";
-    return {};
-  }
-  if (!termina_device->config().lxd_ipv4_subnet()) {
+  if (!termina_device->lxd_ipv4_subnet()) {
     LOG(ERROR) << __func__ << "(cid: " << cid << ")"
                << ": Missing LXD container IPv4 subnet";
+    return {};
+  }
+  if (!termina_device->lxd_ipv4_address()) {
+    LOG(ERROR) << __func__ << "(cid: " << cid << ")"
+               << ": Missing LXD container IPv4 address";
     return {};
   }
   TerminaVmStartupResponse response;

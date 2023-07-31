@@ -14,35 +14,30 @@
 
 namespace patchpanel {
 
-void FillTerminaAllocationProto(const Device& termina_device,
-                                TerminaVmStartupResponse* output) {
-  DCHECK(termina_device.config().ipv4_subnet());
-  DCHECK(termina_device.config().lxd_ipv4_subnet());
-  output->set_tap_device_ifname(termina_device.host_ifname());
-  FillSubnetProto(termina_device.config().ipv4_subnet()->base_cidr(),
+void FillTerminaAllocationProto(
+    const CrostiniService::CrostiniDevice& termina_device,
+    TerminaVmStartupResponse* output) {
+  DCHECK(termina_device.lxd_ipv4_subnet());
+  DCHECK(termina_device.lxd_ipv4_address());
+  output->set_tap_device_ifname(termina_device.tap_device_ifname());
+  FillSubnetProto(termina_device.vm_ipv4_subnet(),
                   output->mutable_ipv4_subnet());
-  output->set_ipv4_address(
-      termina_device.config().guest_ipv4_addr().ToByteString());
+  output->set_ipv4_address(termina_device.vm_ipv4_address().ToByteString());
   output->set_gateway_ipv4_address(
-      termina_device.config().host_ipv4_addr().ToByteString());
-  FillSubnetProto(termina_device.config().lxd_ipv4_subnet()->base_cidr(),
+      termina_device.gateway_ipv4_address().ToByteString());
+  FillSubnetProto(*termina_device.lxd_ipv4_subnet(),
                   output->mutable_container_ipv4_subnet());
   output->set_container_ipv4_address(
-      termina_device.config()
-          .lxd_ipv4_subnet()
-          ->CIDRAtOffset(CrostiniService::kTerminaContainerAddressOffset)
-          ->address()
-          .ToByteString());
+      termina_device.lxd_ipv4_address()->ToByteString());
 }
 
-void FillParallelsAllocationProto(const Device& parallels_device,
-                                  ParallelsVmStartupResponse* output) {
-  DCHECK(parallels_device.config().ipv4_subnet());
-  output->set_tap_device_ifname(parallels_device.host_ifname());
-  FillSubnetProto(parallels_device.config().ipv4_subnet()->base_cidr(),
+void FillParallelsAllocationProto(
+    const CrostiniService::CrostiniDevice& parallels_device,
+    ParallelsVmStartupResponse* output) {
+  output->set_tap_device_ifname(parallels_device.tap_device_ifname());
+  FillSubnetProto(parallels_device.vm_ipv4_subnet(),
                   output->mutable_ipv4_subnet());
-  output->set_ipv4_address(
-      parallels_device.config().guest_ipv4_addr().ToByteString());
+  output->set_ipv4_address(parallels_device.vm_ipv4_address().ToByteString());
 }
 
 void FillDeviceProto(const Device& virtual_device,

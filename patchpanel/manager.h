@@ -85,13 +85,14 @@ class Manager {
   void ArcVmShutdown(uint32_t cid);
 
   // Handles notification indicating a Termina VM is booting up.
-  const Device* const TerminaVmStartup(uint64_t vm_id);
+  const CrostiniService::CrostiniDevice* const TerminaVmStartup(uint64_t vm_id);
 
   // Handles notification indicating a Termina VM is spinning down.
   void TerminaVmShutdown(uint64_t vm_id);
 
   // Handles notification indicating a Parallels VM is booting up.
-  const Device* const ParallelsVmStartup(uint64_t vm_id, uint32_t subnet_index);
+  const CrostiniService::CrostiniDevice* const ParallelsVmStartup(
+      uint64_t vm_id, uint32_t subnet_index);
 
   // Handles notification indicating a Parallels VM is spinning down.
   void ParallelsVmShutdown(uint64_t vm_id);
@@ -179,8 +180,9 @@ class Manager {
   void OnArcDeviceChanged(const ShillClient::Device& shill_device,
                           const Device& virtual_device,
                           Device::ChangeEvent event);
-  void OnCrostiniDeviceChanged(const Device& virtual_device,
-                               Device::ChangeEvent event);
+  void OnCrostiniDeviceEvent(
+      const CrostiniService::CrostiniDevice& virtual_device,
+      CrostiniService::CrostiniDeviceEvent event);
 
   // Callback from |network_monitor_svc_|.
   void OnNeighborReachabilityEvent(
@@ -211,9 +213,10 @@ class Manager {
                       const ForwardingSet& fs = {.ipv6 = true,
                                                  .multicast = true});
 
-  const Device* StartCrosVm(uint64_t vm_id,
-                            CrostiniService::VMType vm_type,
-                            uint32_t subnet_index = kAnySubnetIndex);
+  const CrostiniService::CrostiniDevice* StartCrosVm(
+      uint64_t vm_id,
+      CrostiniService::VMType vm_type,
+      uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type);
 
   // Checks the validaty of a CreateTetheredNetwork or CreatedLocalOnlyNetwork

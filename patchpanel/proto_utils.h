@@ -12,6 +12,7 @@
 #include <net-base/ipv6_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
 #include "patchpanel/subnet.h"
@@ -20,13 +21,15 @@ namespace patchpanel {
 
 // Fills a protobuf TerminaVmStartupResponse object with the given
 // |termina_device| Device.
-void FillTerminaAllocationProto(const Device& termina_device,
-                                TerminaVmStartupResponse* output);
+void FillTerminaAllocationProto(
+    const CrostiniService::CrostiniDevice& termina_device,
+    TerminaVmStartupResponse* output);
 
 // Fills a protobuf ParallelsVmStartupResponse object with the given
 // |parallels_device| Device.
-void FillParallelsAllocationProto(const Device& parallels_device,
-                                  ParallelsVmStartupResponse* output);
+void FillParallelsAllocationProto(
+    const CrostiniService::CrostiniDevice& parallels_device,
+    ParallelsVmStartupResponse* output);
 
 // Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);

@@ -51,8 +51,10 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr), std::move(lxd_subnet));
-  auto termina_device = std::make_unique<Device>(
-      Device::Type::kTerminaVM, std::nullopt, "vmtap0", "", std::move(config));
+  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
+                                         "vmtap0", "", std::move(config));
+  auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
+      CrostiniService::VMType::kTermina, std::move(device));
 
   TerminaVmStartupResponse proto;
   FillTerminaAllocationProto(*termina_device, &proto);
@@ -89,9 +91,11 @@ TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto parallels_device =
+  auto device =
       std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
                                "vmtap1", "", std::move(config));
+  auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
+      CrostiniService::VMType::kParallels, std::move(device));
 
   ParallelsVmStartupResponse proto;
   FillParallelsAllocationProto(*parallels_device, &proto);
