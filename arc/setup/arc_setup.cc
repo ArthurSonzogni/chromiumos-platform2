@@ -613,6 +613,37 @@ void RemoveStaleDataDirectory(brillo::SafeFD& root_fd,
   }
 }
 
+// Returns the device path for virtio-blk /data on ARCVM. It first looks for an
+// LVM application container, and then falls back to a Concierge disk image.
+// An empty path is returned if neither device is found, in which case virtio-fs
+// /data is expected to be used. For simplicity it just checks the existence of
+// a file without looking up USE flags, assuming that a device for virtio-blk
+// /data is created only when it is actually used.
+base::FilePath GetArcVmDataDevicePath(const std::string& chromeos_user,
+                                      const base::FilePath& home_root_dir) {
+  // Check if an LVM application container exists.
+  // See cryptohome::DmcryptVolumePrefix() for how the volume's path is
+  // constructed.
+  const brillo::cryptohome::home::Username username(chromeos_user);
+  const std::string user_hash =
+      *brillo::cryptohome::home::SanitizeUserName(username);
+  const base::FilePath lvm_application_container_path(base::StringPrintf(
+      "/dev/mapper/vm/dmcrypt-%s-arcvm", user_hash.substr(0, 8).c_str()));
+  if (base::PathExists(lvm_application_container_path)) {
+    return lvm_application_container_path;
+  }
+
+  // Check if a Concierge disk image exists. The disk image's name is a constant
+  // defined by vm_tools::GetEncodedName("arcvm").
+  const base::FilePath concierge_disk_path =
+      home_root_dir.Append("crosvm/YXJjdm0=.img");
+  if (base::PathExists(concierge_disk_path)) {
+    return concierge_disk_path;
+  }
+
+  return base::FilePath();
+}
+
 }  // namespace
 
 // A struct that holds all the FilePaths ArcSetup uses.
@@ -2739,6 +2770,22 @@ void ArcSetup::OnUpdateRestoreconLast() {
 }
 
 void ArcSetup::OnHandleUpgrade() {
+  // Mount virtio-blk /data on /home/root/<hash>/android-data/data when needed.
+  // Here, we mount an ext4 image as read-only but without the "noload" option,
+  // which should be safe since arc-handle-upgrade blocks the guest side /data
+  // mount on ARCVM.
+  const base::FilePath data_device_path = GetArcVmDataDevicePath(
+      config_.GetStringOrDie("CHROMEOS_USER"), arc_paths_->root_directory);
+  std::unique_ptr<ScopedMount> android_data_mount =
+      data_device_path.empty()
+          ? nullptr
+          : ScopedMount::CreateScopedLoopMount(
+                arc_mounter_.get(), data_device_path.value(),
+                arc_paths_->android_data_directory.Append("data"),
+                LoopMountFilesystemType::kExt4,
+                MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
+  LOG_IF(INFO, android_data_mount) << "Mounted " << data_device_path;
+
   ArcBootType boot_type;
   AndroidSdkVersion data_sdk_version;
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
