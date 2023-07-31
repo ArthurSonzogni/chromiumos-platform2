@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -19,7 +20,6 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -124,7 +124,7 @@ constexpr bool IsFactorTypeSupportedByVk(AuthFactorType auth_factor_type) {
          auth_factor_type == AuthFactorType::kKiosk;
 }
 
-constexpr base::StringPiece IntentToDebugString(AuthIntent intent) {
+constexpr std::string_view IntentToDebugString(AuthIntent intent) {
   switch (intent) {
     case AuthIntent::kDecrypt:
       return "decrypt";
@@ -136,7 +136,7 @@ constexpr base::StringPiece IntentToDebugString(AuthIntent intent) {
 }
 
 std::string IntentSetToDebugString(const base::flat_set<AuthIntent>& intents) {
-  std::vector<base::StringPiece> strings;
+  std::vector<std::string_view> strings;
   strings.reserve(intents.size());
   for (auto intent : intents) {
     strings.push_back(IntentToDebugString(intent));

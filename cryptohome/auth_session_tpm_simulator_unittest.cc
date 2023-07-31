@@ -8,13 +8,13 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_piece.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
@@ -498,7 +498,7 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
 
   constexpr char kWrongPin[] = "0000";
-  static_assert(base::StringPiece(kWrongPin) != base::StringPiece(kPin),
+  static_assert(std::string_view(kWrongPin) != std::string_view(kPin),
                 "Bad kWrongPin");
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
