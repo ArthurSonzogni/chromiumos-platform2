@@ -3538,6 +3538,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
             << ": Assign static IPv6 configuration from bearer.";
     const auto& props = *bearer->ipv6_config_properties();
     ipv6_props_ = props;
+    start_opts_.accept_ra = true;
 
     // TODO(b/285205946): Currently IPv6 method is always set to static so we
     // need to look into the actual address to tell whether it's a link local
@@ -3554,6 +3555,8 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
       ipv6_props_->address.clear();
       ipv6_props_->subnet_prefix = 0;
       start_opts_.link_local_address = local;
+    } else {
+      start_opts_.accept_ra = false;
     }
     ipv6_configured = true;
   }
@@ -3603,7 +3606,6 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   }
 
   start_opts_.dhcp = dhcp_opts;
-  start_opts_.accept_ra = true;
   // TODO(b/234300343#comment43): Read probe URL override configuration
   // from shill APN dB.
   start_opts_.probing_configuration =
