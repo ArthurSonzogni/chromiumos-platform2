@@ -50,12 +50,13 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
                               const std::string& key,
                               uint32_t default_value) const;
 
-  SsfcConfig GetSsfc() const;
-  std::vector<SsfcComponentTypeConfig> GetSsfcComponentTypeConfigs() const;
+  SsfcConfig GetSsfc(const base::FilePath& rmad_path) const;
+  std::vector<SsfcComponentTypeConfig> GetSsfcComponentTypeConfigs(
+      const base::FilePath& ssfc_path) const;
   SsfcComponentTypeConfig GetSsfcComponentTypeConfig(
-      const std::string& path) const;
+      const base::FilePath& component_type_config_path) const;
   std::map<std::string, uint32_t> GetSsfcProbeableComponents(
-      const std::string& path) const;
+      const base::FilePath& component_type_config_path) const;
 
   std::string configs_root_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

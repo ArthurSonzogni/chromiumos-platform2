@@ -37,8 +37,7 @@ constexpr char kModelNameUnused[] = "TestModelNameUnused";
 constexpr char kBrandCode[] = "ZZCR";
 
 // cros_config identity path.
-constexpr char kCrosIdentityPath[] = "/identity";
-constexpr char kCrosIdentityPathKey[] = "identity";
+constexpr char kCrosIdentityPath[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
@@ -53,7 +52,7 @@ constexpr char kCustomLabelTagUnused[] = "TestCustomLabelTagUnused";
 constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
 
 // cros_config rmad path.
-constexpr char kCrosRmadPath[] = "/rmad";
+constexpr char kCrosRmadPath[] = "rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
@@ -61,16 +60,14 @@ constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
 constexpr char kTrueStr[] = "true";
 
 // cros_config rmad/ssfc path.
-constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
-constexpr char kCrosRmadSsfcMaskKey[] = "mask";
-constexpr char kCrosRmadSsfcComponentTypeConfigsPath[] =
-    "/rmad/ssfc/component-type-configs";
-constexpr char kCrosRmadSsfcComponentTypeKey[] = "component-type";
-constexpr char kCrosRmadSsfcDefaultValueKey[] = "default-value";
-constexpr char kCrosRmadSsfcProbeableComponentsRelPath[] =
-    "probeable-components";
-constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
-constexpr char kCrosRmadSsfcValueKey[] = "value";
+constexpr char kCrosSsfcPath[] = "ssfc";
+constexpr char kCrosSsfcMaskKey[] = "mask";
+constexpr char kCrosComponentTypeConfigsPath[] = "component-type-configs";
+constexpr char kCrosComponentTypeConfigsComponentTypeKey[] = "component-type";
+constexpr char kCrosComponentTypeConfigsDefaultValueKey[] = "default-value";
+constexpr char kCrosProbeableComponentsPath[] = "probeable-components";
+constexpr char kCrosProbeableComponentsIdentifierKey[] = "identifier";
+constexpr char kCrosProbeableComponentsValueKey[] = "value";
 
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
@@ -109,8 +106,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
       base::FilePath model_path = config_path.AppendASCII(kCrosModelNameKey);
       EXPECT_TRUE(base::WriteFile(model_path, model_names[i]));
 
-      base::FilePath identity_path =
-          config_path.AppendASCII(kCrosIdentityPathKey);
+      base::FilePath identity_path = config_path.Append(kCrosIdentityPath);
       EXPECT_TRUE(base::CreateDirectory(identity_path));
 
       if (sku_ids[i].has_value()) {
@@ -135,11 +131,28 @@ class CrosConfigUtilsImplTest : public testing::Test {
       bool custom_label = true,
       bool enable_rmad = true,
       bool set_optional = true) {
+    // Define all path constants here.
+    const base::FilePath root_path = base::FilePath(kCrosRootPath);
+    const base::FilePath identity_path = root_path.Append(kCrosIdentityPath);
+    const base::FilePath rmad_path = root_path.Append(kCrosRmadPath);
+    const base::FilePath ssfc_path = rmad_path.Append(kCrosSsfcPath);
+    const base::FilePath component_type_configs_path =
+        ssfc_path.Append(kCrosComponentTypeConfigsPath);
+    const base::FilePath component_type_config_0_path =
+        component_type_configs_path.Append("0");
+    const base::FilePath probeable_components_path =
+        component_type_config_0_path.Append(kCrosProbeableComponentsPath);
+    const base::FilePath probeable_component_0_path =
+        probeable_components_path.Append("0");
+    const base::FilePath probeable_component_1_path =
+        probeable_components_path.Append("1");
+
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
-    fake_cros_config->SetString(kCrosRootPath, kCrosBrandCodeKey, kBrandCode);
-    fake_cros_config->SetString(std::string(kCrosIdentityPath),
-                                kCrosIdentitySkuKey,
+    fake_cros_config->SetString(root_path.value(), kCrosModelNameKey,
+                                kModelName);
+    fake_cros_config->SetString(root_path.value(), kCrosBrandCodeKey,
+                                kBrandCode);
+    fake_cros_config->SetString(identity_path.value(), kCrosIdentitySkuKey,
                                 base::NumberToString(kSkuId));
 
     base::FilePath cros_config_root_path;
@@ -151,7 +164,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
            std::nullopt},
           {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTag,
            kCustomLabelTagOther, kCustomLabelTagUnused, kCustomLabelTagOther});
-      fake_cros_config->SetString(std::string(kCrosIdentityPath),
+      fake_cros_config->SetString(identity_path.value(),
                                   kCrosIdentityCustomLabelTagKey,
                                   kCustomLabelTag);
     } else {
@@ -163,45 +176,35 @@ class CrosConfigUtilsImplTest : public testing::Test {
     }
 
     if (enable_rmad) {
-      fake_cros_config->SetString(std::string(kCrosRmadPath),
-                                  kCrosRmadEnabledKey, kTrueStr);
-      fake_cros_config->SetString(std::string(kCrosRmadPath),
-                                  kCrosRmadHasCbiKey, kTrueStr);
-      fake_cros_config->SetString(std::string(kCrosRmadPath),
+      fake_cros_config->SetString(rmad_path.value(), kCrosRmadEnabledKey,
+                                  kTrueStr);
+      fake_cros_config->SetString(rmad_path.value(), kCrosRmadHasCbiKey,
+                                  kTrueStr);
+      fake_cros_config->SetString(rmad_path.value(),
                                   kCrosRmadUseLegacyCustomLabelKey, kTrueStr);
       if (set_optional) {
-        fake_cros_config->SetString(std::string(kCrosRmadSsfcPath),
-                                    kCrosRmadSsfcMaskKey,
+        fake_cros_config->SetString(ssfc_path.value(), kCrosSsfcMaskKey,
                                     base::NumberToString(kSsfcMask));
-        fake_cros_config->SetString(
-            base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
-            kCrosRmadSsfcComponentTypeKey, kSsfcComponentType);
-        fake_cros_config->SetString(
-            base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
-            kCrosRmadSsfcDefaultValueKey,
-            base::NumberToString(kSsfcDefaultValue));
+        fake_cros_config->SetString(component_type_config_0_path.value(),
+                                    kCrosComponentTypeConfigsComponentTypeKey,
+                                    kSsfcComponentType);
+        fake_cros_config->SetString(component_type_config_0_path.value(),
+                                    kCrosComponentTypeConfigsDefaultValueKey,
+                                    base::NumberToString(kSsfcDefaultValue));
       }
 
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0/%s/%d",
-                             kCrosRmadSsfcComponentTypeConfigsPath,
-                             kCrosRmadSsfcProbeableComponentsRelPath, 0),
-          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier1);
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0/%s/%d",
-                             kCrosRmadSsfcComponentTypeConfigsPath,
-                             kCrosRmadSsfcProbeableComponentsRelPath, 0),
-          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue1));
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0/%s/%d",
-                             kCrosRmadSsfcComponentTypeConfigsPath,
-                             kCrosRmadSsfcProbeableComponentsRelPath, 1),
-          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier2);
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0/%s/%d",
-                             kCrosRmadSsfcComponentTypeConfigsPath,
-                             kCrosRmadSsfcProbeableComponentsRelPath, 1),
-          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue2));
+      fake_cros_config->SetString(probeable_component_0_path.value(),
+                                  kCrosProbeableComponentsIdentifierKey,
+                                  kSsfcIdentifier1);
+      fake_cros_config->SetString(probeable_component_0_path.value(),
+                                  kCrosProbeableComponentsValueKey,
+                                  base::NumberToString(kSsfcValue1));
+      fake_cros_config->SetString(probeable_component_1_path.value(),
+                                  kCrosProbeableComponentsIdentifierKey,
+                                  kSsfcIdentifier2);
+      fake_cros_config->SetString(probeable_component_1_path.value(),
+                                  kCrosProbeableComponentsValueKey,
+                                  base::NumberToString(kSsfcValue2));
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(

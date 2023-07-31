@@ -28,38 +28,50 @@ namespace rmad {
 
 namespace {
 
-// TODO(genechang): We should build the configuration ourselves to
-// prevent possible changes to the configuration file in the future.
-const std::string kChromeosConfigsRootPath(
-    "/run/chromeos-config/private/v1/chromeos/configs");
+constexpr char kChromeosConfigsRootPath[] =
+    "/run/chromeos-config/private/v1/chromeos/configs";
 
 // cros_config root path.
 constexpr char kCrosRootPath[] = "/";
+// cros_config property /name.
 constexpr char kCrosModelNameKey[] = "name";
+// cros_config property /brand-code.
 constexpr char kCrosBrandCodeKey[] = "brand-code";
 
-// cros_config identity path.
+// cros_config path /identity.
 constexpr char kCrosIdentityPath[] = "identity";
+// cros_config property /identity/sku-id.
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
+// cros_config property /identity/custom-label-tag.
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
-// cros_config rmad path.
-constexpr char kCrosRmadPath[] = "/rmad";
+// cros_config path /rmad.
+constexpr char kCrosRmadPath[] = "rmad";
+// cros_config property /rmad/enabled.
 constexpr char kCrosRmadEnabledKey[] = "enabled";
+// cros_config property /rmad/has-cbi.
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
+// cros_config property /rmad/use-legacy-custom-label.
 constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
+// cros_config path /rmad/ssfc.
+constexpr char kCrosSsfcPath[] = "ssfc";
+// cros_config property /ssfc/mask.
+constexpr char kCrosSsfcMaskKey[] = "mask";
+// cros_config path /rmad/ssfc/component-type-configs.
+constexpr char kCrosComponentTypeConfigsPath[] = "component-type-configs";
+// cros_config property /rmad/ssfc/component-type-configs/*/component-type.
+constexpr char kCrosComponentTypeConfigsComponentTypeKey[] = "component-type";
+// cros_config property /rmad/ssfc/component-type-configs/*/default-value.
+constexpr char kCrosComponentTypeConfigsDefaultValueKey[] = "default-value";
+// cros_config path /rmad/ssfc/component-type-configs/*/probeable-components.
+constexpr char kCrosProbeableComponentsPath[] = "probeable-components";
+// cros_config property
+// /rmad/ssfc/component-type-configs/*/probeable-components/*/identifier.
+constexpr char kCrosProbeableComponentsIdentifierKey[] = "identifier";
+// cros_config property
+// /rmad/ssfc/component-type-configs/*/probeable-components/*/value.
+constexpr char kCrosProbeableComponentsValueKey[] = "value";
 
-// cros_config rmad/ssfc path.
-constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
-constexpr char kCrosRmadSsfcMaskKey[] = "mask";
-constexpr char kCrosRmadSsfcComponentTypeConfigsPath[] =
-    "/rmad/ssfc/component-type-configs";
-constexpr char kCrosRmadSsfcComponentTypeKey[] = "component-type";
-constexpr char kCrosRmadSsfcDefaultValueKey[] = "default-value";
-constexpr char kCrosRmadSsfcProbeableComponentsRelPath[] =
-    "probeable-components";
-constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
-constexpr char kCrosRmadSsfcValueKey[] = "value";
 constexpr int kMaxSsfcComponentTypeNum = 32;
 constexpr int kMaxSsfcProbeableComponentNum = 1024;
 
@@ -82,13 +94,15 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
 bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
   DCHECK(config);
 
+  const base::FilePath rmad_path =
+      base::FilePath(kCrosRootPath).Append(kCrosRmadPath);
   config->enabled =
-      GetBooleanWithDefault(kCrosRmadPath, kCrosRmadEnabledKey, false);
+      GetBooleanWithDefault(rmad_path.value(), kCrosRmadEnabledKey, false);
   config->has_cbi =
-      GetBooleanWithDefault(kCrosRmadPath, kCrosRmadHasCbiKey, false);
-  config->ssfc = GetSsfc();
+      GetBooleanWithDefault(rmad_path.value(), kCrosRmadHasCbiKey, false);
+  config->ssfc = GetSsfc(rmad_path);
   config->use_legacy_custom_label = GetBooleanWithDefault(
-      kCrosRmadPath, kCrosRmadUseLegacyCustomLabelKey, false);
+      rmad_path.value(), kCrosRmadUseLegacyCustomLabelKey, false);
 
   return true;
 }
@@ -109,9 +123,10 @@ bool CrosConfigUtilsImpl::GetSkuId(uint64_t* sku_id) const {
   DCHECK(sku_id);
 
   std::string sku_id_str;
-  if (!cros_config_->GetString(
-          std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
-          kCrosIdentitySkuKey, &sku_id_str)) {
+  const base::FilePath identity_path =
+      base::FilePath(kCrosRootPath).Append(kCrosIdentityPath);
+  if (!cros_config_->GetString(identity_path.value(), kCrosIdentitySkuKey,
+                               &sku_id_str)) {
     return false;
   }
 
@@ -122,9 +137,10 @@ bool CrosConfigUtilsImpl::GetCustomLabelTag(
     std::string* custom_label_tag) const {
   DCHECK(custom_label_tag);
 
+  const base::FilePath identity_path =
+      base::FilePath(kCrosRootPath).Append(kCrosIdentityPath);
   return cros_config_->GetString(
-      std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
-      kCrosIdentityCustomLabelTagKey, custom_label_tag);
+      identity_path.value(), kCrosIdentityCustomLabelTagKey, custom_label_tag);
 }
 
 bool CrosConfigUtilsImpl::GetSkuIdList(
@@ -248,10 +264,11 @@ uint32_t CrosConfigUtilsImpl::GetUintWithDefault(const std::string& path,
   return ret;
 }
 
-SsfcConfig CrosConfigUtilsImpl::GetSsfc() const {
+SsfcConfig CrosConfigUtilsImpl::GetSsfc(const base::FilePath& rmad_path) const {
   SsfcConfig ssfc;
-  ssfc.mask = GetUintWithDefault(kCrosRmadSsfcPath, kCrosRmadSsfcMaskKey, 0);
-  ssfc.component_type_configs = GetSsfcComponentTypeConfigs();
+  const base::FilePath ssfc_path = rmad_path.Append(kCrosSsfcPath);
+  ssfc.mask = GetUintWithDefault(ssfc_path.value(), kCrosSsfcMaskKey, 0);
+  ssfc.component_type_configs = GetSsfcComponentTypeConfigs(ssfc_path);
   // SSFC config integrity check. No component should set the bits in the mask.
   for (const auto& component_type_config : ssfc.component_type_configs) {
     for (const auto& [identifier, value] :
@@ -267,13 +284,14 @@ SsfcConfig CrosConfigUtilsImpl::GetSsfc() const {
 }
 
 std::vector<SsfcComponentTypeConfig>
-CrosConfigUtilsImpl::GetSsfcComponentTypeConfigs() const {
+CrosConfigUtilsImpl::GetSsfcComponentTypeConfigs(
+    const base::FilePath& ssfc_path) const {
   std::vector<SsfcComponentTypeConfig> component_type_configs;
+  const base::FilePath component_type_configs_path =
+      ssfc_path.Append(kCrosComponentTypeConfigsPath);
   for (int i = 0; i < kMaxSsfcComponentTypeNum; ++i) {
-    const std::string path =
-        base::StringPrintf("%s/%d", kCrosRmadSsfcComponentTypeConfigsPath, i);
-    SsfcComponentTypeConfig component_type_config =
-        GetSsfcComponentTypeConfig(path);
+    SsfcComponentTypeConfig component_type_config = GetSsfcComponentTypeConfig(
+        component_type_configs_path.Append(base::NumberToString(i)));
     if (component_type_config.probeable_components.size()) {
       component_type_configs.emplace_back(std::move(component_type_config));
     } else {
@@ -284,28 +302,34 @@ CrosConfigUtilsImpl::GetSsfcComponentTypeConfigs() const {
 }
 
 SsfcComponentTypeConfig CrosConfigUtilsImpl::GetSsfcComponentTypeConfig(
-    const std::string& path) const {
+    const base::FilePath& component_type_config_path) const {
   SsfcComponentTypeConfig config;
   config.component_type = GetStringWithDefault(
-      path, kCrosRmadSsfcComponentTypeKey, kUndefinedComponentType);
+      component_type_config_path.value(),
+      kCrosComponentTypeConfigsComponentTypeKey, kUndefinedComponentType);
   config.default_value =
-      GetUintWithDefault(path, kCrosRmadSsfcDefaultValueKey, 0);
-  config.probeable_components = GetSsfcProbeableComponents(path);
+      GetUintWithDefault(component_type_config_path.value(),
+                         kCrosComponentTypeConfigsDefaultValueKey, 0);
+  config.probeable_components =
+      GetSsfcProbeableComponents(component_type_config_path);
   return config;
 }
 
 std::map<std::string, uint32_t> CrosConfigUtilsImpl::GetSsfcProbeableComponents(
-    const std::string& path) const {
+    const base::FilePath& component_type_config_path) const {
   std::map<std::string, uint32_t> components;
+  const base::FilePath probeable_components_path =
+      component_type_config_path.Append(kCrosProbeableComponentsPath);
   for (int i = 0; i < kMaxSsfcProbeableComponentNum; ++i) {
-    const std::string component_path = base::StringPrintf(
-        "%s/%s/%d", path.c_str(), kCrosRmadSsfcProbeableComponentsRelPath, i);
+    const base::FilePath component_path =
+        probeable_components_path.Append(base::NumberToString(i));
     std::string identifier, value_str;
     uint32_t value;
-    if (cros_config_->GetString(component_path, kCrosRmadSsfcIdentifierKey,
+    if (cros_config_->GetString(component_path.value(),
+                                kCrosProbeableComponentsIdentifierKey,
                                 &identifier) &&
-        cros_config_->GetString(component_path, kCrosRmadSsfcValueKey,
-                                &value_str) &&
+        cros_config_->GetString(component_path.value(),
+                                kCrosProbeableComponentsValueKey, &value_str) &&
         base::StringToUint(value_str, &value)) {
       components[identifier] = value;
     } else {
