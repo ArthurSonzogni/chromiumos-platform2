@@ -47,8 +47,6 @@ bool AsyncInitFeatures::IsFeatureEnabled(
 const VariationsFeature& GetVariationFeatureFor(
     Features::ActiveFeature active_feature) {
   switch (active_feature) {
-    case Features::kUSSMigration:
-      return kCrOSLateBootMigrateToUserSecretStash;
     case Features::kModernPin:
       return kCrOSLateBootEnableModernPin;
     case Features::kMigratePin:

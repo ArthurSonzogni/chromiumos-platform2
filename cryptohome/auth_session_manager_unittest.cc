@@ -330,8 +330,7 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -366,8 +365,7 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -445,8 +443,7 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 
@@ -481,8 +478,7 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
         backing_apis_);
     auto* created_auth_session_ptr = created_auth_session.get();
 

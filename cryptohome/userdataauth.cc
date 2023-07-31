@@ -400,7 +400,6 @@ UserDataAuth::UserDataAuth()
       fscrypt_v2_(false),
       legacy_mount_(true),
       bind_mount_downloads_(true),
-      migrate_to_user_secret_stash_(false),
       default_arc_disk_quota_(nullptr),
       arc_disk_quota_(nullptr),
       default_features_(nullptr),

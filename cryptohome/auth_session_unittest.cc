@@ -421,8 +421,7 @@ TEST_F(AuthSessionTest, TokensAreValid) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_FALSE(auth_session.token().is_empty());
@@ -442,8 +441,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
@@ -456,8 +454,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
@@ -470,8 +467,7 @@ TEST_F(AuthSessionTest, Username) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_EQ(auth_session.username(), kFakeUsername);
@@ -486,8 +482,7 @@ TEST_F(AuthSessionTest, DecryptionIntent) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kDecrypt);
@@ -500,8 +495,7 @@ TEST_F(AuthSessionTest, VerfyIntent) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kVerifyOnly);
@@ -514,24 +508,10 @@ TEST_F(AuthSessionTest, WebAuthnIntent) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kWebAuthn);
-}
-
-// Test the scenario when `kCrOSLateBootMigrateToUserSecretStash` feature cannot
-// be checked due to the feature lib unavailability. AuthSession should fall
-// back to the default value (and not crash).
-TEST_F(AuthSessionTest, UssMigrationFlagCheckFailure) {
-  auto auth_session = AuthSession::Create(
-      kFakeUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
-      AuthIntent::kDecrypt, backing_apis_);
-
-  // Verify.
-  ASSERT_THAT(auth_session, NotNull());
-  EXPECT_FALSE(auth_session->has_migrate_to_user_secret_stash());
 }
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
@@ -602,8 +582,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
-           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
-       .migrate_to_user_secret_stash = false},
+           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume()},
       backing_apis_);
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
 
@@ -701,6 +680,7 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
 // user with VK.
 TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   // Setup AuthSession.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -711,8 +691,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -736,6 +715,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
 TEST_F(AuthSessionTest,
        AuthenticateAuthFactorExistingVKUserAndResaveForUpdate) {
   // Setup AuthSession.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -746,8 +726,7 @@ TEST_F(AuthSessionTest,
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -830,6 +809,7 @@ TEST_F(AuthSessionTest,
 TEST_F(AuthSessionTest,
        AuthenticateAuthFactorExistingVKUserAndResaveForResetSeed) {
   // Setup AuthSession.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -840,8 +820,7 @@ TEST_F(AuthSessionTest,
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -933,8 +912,7 @@ TEST_F(AuthSessionTest,
        .auth_factor_status_update_timer =
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
-       .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
-       .migrate_to_user_secret_stash = false},
+       .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1010,8 +988,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .auth_factor_status_update_timer =
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
-       .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
-       .migrate_to_user_secret_stash = false},
+       .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1054,8 +1031,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            test_backing_apis);
 
   // Setting the expectation that the user does not exist.
@@ -1114,8 +1090,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Setting the expectation that the user does not exist.
@@ -1209,8 +1184,7 @@ TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
@@ -1247,8 +1221,7 @@ TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
@@ -1284,8 +1257,7 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
@@ -1324,6 +1296,7 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
 // UpdateAuthFactor request success when updating authenticated password VK.
 TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   // Setup.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -1334,8 +1307,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   AuthBlockState auth_block_state = auth_session.auth_factor_map()
                                         .Find(kFakeLabel)
@@ -1410,8 +1382,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1456,8 +1427,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
        .auth_factor_map =
            AfMapBuilder()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1499,6 +1469,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
   // Create an AuthSession with a fake factor.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -1507,8 +1478,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
-           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
-       .migrate_to_user_secret_stash = false},
+           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume()},
       backing_apis_);
   // Set up VaultKeyset authentication mock.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
@@ -1579,14 +1549,14 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
       AuthFactorStorageType::kVaultKeyset);
 
   // Create AuthSession.
+  auto no_uss = DisableUssExperiment();
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session.user_exists());
@@ -2042,8 +2012,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -2065,8 +2034,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -2086,8 +2054,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -2146,8 +2113,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -2210,8 +2176,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -2272,8 +2237,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   user_data_auth::AddAuthFactorRequest request;
@@ -2306,8 +2270,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -2439,8 +2402,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -2538,8 +2500,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -2638,8 +2599,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -2738,8 +2698,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -2832,8 +2791,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -2943,8 +2901,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -3045,8 +3002,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -3107,8 +3063,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -3206,8 +3161,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
@@ -3342,8 +3296,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
   EXPECT_FALSE(auth_session.has_user_secret_stash());
@@ -3407,8 +3360,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
        .auth_factor_status_update_timer =
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
-       .auth_factor_map = std::move(verify_auth_factor_map),
-       .migrate_to_user_secret_stash = false},
+       .auth_factor_map = std::move(verify_auth_factor_map)},
       backing_apis_);
 
   // Simulate a successful key verification.
@@ -3448,8 +3400,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
-           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
-       .migrate_to_user_secret_stash = false},
+           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume()},
       backing_apis_);
 
   // Test.
@@ -3531,8 +3482,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
 
   // Expectations for the full auth.
@@ -3604,8 +3554,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = true,
-                          .auth_factor_map = AuthFactorMap(),
-                          .migrate_to_user_secret_stash = false},
+                          .auth_factor_map = AuthFactorMap()},
       backing_apis_);
 
   // Test.
@@ -3636,8 +3585,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = true,
-                          .auth_factor_map = AuthFactorMap(),
-                          .migrate_to_user_secret_stash = false},
+                          .auth_factor_map = AuthFactorMap()},
       backing_apis_);
   EXPECT_CALL(*bio_processor_,
               StartAuthenticateSession(auth_session->obfuscated_username(), _))
@@ -3667,8 +3615,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -3694,8 +3641,7 @@ TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -3721,8 +3667,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -3748,8 +3693,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   EXPECT_CALL(*bio_processor_,
               StartAuthenticateSession(auth_session.obfuscated_username(), _))
@@ -3782,8 +3726,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -3863,8 +3806,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -3951,8 +3893,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -3996,8 +3937,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4040,8 +3980,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -4067,8 +4006,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
                               .auth_factor_status_update_timer =
                                   std::make_unique<base::WallClockTimer>(),
                               .user_exists = false,
-                              .auth_factor_map = AuthFactorMap(),
-                              .migrate_to_user_secret_stash = false},
+                              .auth_factor_map = AuthFactorMap()},
                              backing_apis_);
 
     // Creating the user.
@@ -4105,8 +4043,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
            AfMapBuilder()
                .WithUss()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
   EXPECT_THAT(new_auth_session.authorized_intents(), IsEmpty());
 
@@ -4137,8 +4074,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
                               .auth_factor_status_update_timer =
                                   std::make_unique<base::WallClockTimer>(),
                               .user_exists = false,
-                              .auth_factor_map = AuthFactorMap(),
-                              .migrate_to_user_secret_stash = false},
+                              .auth_factor_map = AuthFactorMap()},
                              backing_apis_);
     // Create the user with password and recovery factors.
     EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
@@ -4163,8 +4099,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
                .WithUss()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
                .AddRecovery(kRecoveryLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
 
   // Authenticate the new auth session with recovery factor.
@@ -4206,8 +4141,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
                               .auth_factor_status_update_timer =
                                   std::make_unique<base::WallClockTimer>(),
                               .user_exists = false,
-                              .auth_factor_map = AuthFactorMap(),
-                              .migrate_to_user_secret_stash = false},
+                              .auth_factor_map = AuthFactorMap()},
                              backing_apis_);
     // Create the user.
     EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
@@ -4237,8 +4171,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
                .WithUss()
                .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
                .AddRecovery(kRecoveryLabel)
-               .Consume(),
-       .migrate_to_user_secret_stash = false},
+               .Consume()},
       backing_apis_);
 
   // Authenticate the new auth session with recovery factor.
@@ -4270,8 +4203,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = false,
-                          .auth_factor_map = AuthFactorMap(),
-                          .migrate_to_user_secret_stash = false},
+                          .auth_factor_map = AuthFactorMap()},
       backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -4321,8 +4253,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -4370,8 +4301,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -4422,8 +4352,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
   // Creating the user.
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
@@ -4502,8 +4431,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4558,8 +4486,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4594,8 +4521,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4630,8 +4556,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4669,8 +4594,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4716,8 +4640,7 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Test.
@@ -4757,8 +4680,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map),
-                            .migrate_to_user_secret_stash = true},
+                            .auth_factor_map = std::move(auth_factor_map)},
                            backing_apis_);
   // Helpers to make keysets and keyblobs in the test.
   auto make_vk = [this]() {
@@ -4842,8 +4764,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4873,8 +4794,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = true,
-                          .auth_factor_map = AuthFactorMap(),
-                          .migrate_to_user_secret_stash = false},
+                          .auth_factor_map = AuthFactorMap()},
       backing_apis_);
   EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
@@ -4905,8 +4825,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap(),
-                            .migrate_to_user_secret_stash = false},
+                            .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
 
   // Creating the user.
@@ -4999,8 +4918,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
        .auth_factor_map = AfMapBuilder()
                               .WithUss()
                               .AddCopiesFromMap(auth_session.auth_factor_map())
-                              .Consume(),
-       .migrate_to_user_secret_stash = false},
+                              .Consume()},
       backing_apis_);
   AuthenticateTestFuture verify_future;
   verify_session.AuthenticateAuthFactor(
@@ -5016,8 +4934,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
        .auth_factor_map = AfMapBuilder()
                               .WithUss()
                               .AddCopiesFromMap(auth_session.auth_factor_map())
-                              .Consume(),
-       .migrate_to_user_secret_stash = false},
+                              .Consume()},
       backing_apis_);
   AuthenticateTestFuture decrypt_future;
   decrypt_session.AuthenticateAuthFactor(

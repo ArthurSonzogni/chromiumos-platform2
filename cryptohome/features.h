@@ -16,14 +16,6 @@
 
 namespace cryptohome {
 
-// Control switch value for migrating existing vaultkeyset users to AuthFactor
-// and USS.
-inline constexpr struct VariationsFeature
-    kCrOSLateBootMigrateToUserSecretStash = {
-        .name = "CrOSLateBootMigrateToUserSecretStash",
-        .default_state = FEATURE_ENABLED_BY_DEFAULT,
-};
-
 // Control switch value for creating new PIN with the timebase backoff for
 // passwordless login.
 inline constexpr struct VariationsFeature kCrOSLateBootEnableModernPin = {
@@ -44,9 +36,6 @@ class Features {
   // ActiveFeature is an enum that defines active features that are being rolled
   // out via finch in cryptohome.
   enum ActiveFeature {
-    // Feature to enable migration of existing VaultKeysets to AUthFactor and
-    // USS.
-    kUSSMigration,
     kModernPin,
     kMigratePin,
   };

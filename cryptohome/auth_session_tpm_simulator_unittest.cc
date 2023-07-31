@@ -392,9 +392,6 @@ class AuthSessionWithTpmSimulatorUssMigrationTest
     uss_experiment_override_.reset();
     uss_experiment_override_ =
         std::make_unique<SetUssExperimentOverride>(enable_uss);
-
-    features_.SetDefaultForFeature(Features::kUSSMigration,
-                                   /*enabled=*/true);
   }
 
  private:

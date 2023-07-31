@@ -351,10 +351,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;
 
-  // Determine if migration is enabled.
-  bool migrate_to_user_secret_stash =
-      backing_apis.features->IsFeatureEnabled(Features::kUSSMigration);
-
   // If we have an existing persistent user, load all of their auth factors.
   AuthFactorMap auth_factor_map;
   if (persistent_user_exists) {
@@ -382,8 +378,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
       .auth_factor_status_update_timer =
           std::make_unique<base::WallClockTimer>(),
       .user_exists = user_exists,
-      .auth_factor_map = std::move(auth_factor_map),
-      .migrate_to_user_secret_stash = migrate_to_user_secret_stash};
+      .auth_factor_map = std::move(auth_factor_map)};
   return std::make_unique<AuthSession>(std::move(params), backing_apis);
 }
 
@@ -413,8 +408,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       serialized_public_token_(
           GetSerializedStringFromToken(public_token_).value_or("")),
       user_exists_(*params.user_exists),
-      auth_factor_map_(std::move(params.auth_factor_map)),
-      migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
+      auth_factor_map_(std::move(params.auth_factor_map)) {
   CHECK(!serialized_token_.empty());
   CHECK(auth_factor_status_update_timer_);
   CHECK(crypto_);
@@ -741,8 +735,7 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
   // verifications.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
-  if (migrate_to_user_secret_stash_ &&
-      IsUserSecretStashExperimentEnabled(platform_)) {
+  if (IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
     // FilesystemKeyset is the same for all VaultKeysets hence the session's
     // |file_system_keyset_| is what we need for the migrator.
@@ -926,8 +919,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
-  if (migrate_to_user_secret_stash_ &&
-      authorized_intents_.contains(AuthIntent::kDecrypt) &&
+  if (authorized_intents_.contains(AuthIntent::kDecrypt) &&
       IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
 

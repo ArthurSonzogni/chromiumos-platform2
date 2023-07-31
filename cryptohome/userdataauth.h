@@ -1217,9 +1217,6 @@ class UserDataAuth {
   // Whether Downloads/ should be bind mounted.
   bool bind_mount_downloads_;
 
-  // This value is fetched from feature flag
-  bool migrate_to_user_secret_stash_;
-
   // The default ARC Disk Quota object. This is used to provide Quota related
   // information function for ARC.
   std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;

@@ -81,7 +81,6 @@ class AuthSession final {
     std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer;
     hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
-    hwsec::ExplicitInit<bool> migrate_to_user_secret_stash;
   };
 
   // Parameter struct used to supply all of the backing APIs that AuthSession
@@ -166,7 +165,7 @@ class AuthSession final {
 
   // Indicates if the session has migration to User Secret Stash enabled.
   bool has_migrate_to_user_secret_stash() const {
-    return has_user_secret_stash() && migrate_to_user_secret_stash_;
+    return has_user_secret_stash();
   }
 
   // Indicates if there is a reset_secret in session's User Secret Stash for
@@ -782,8 +781,6 @@ class AuthSession final {
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
-  // Specify whether USS migration should happen.
-  bool migrate_to_user_secret_stash_;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
