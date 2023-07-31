@@ -7,11 +7,23 @@
 
 #include <libudev.h>
 
+#include "featured/c_feature_library.h"  // for enums
 #include "policy/device_policy.h"
 
 using policy::DevicePolicy;
 
 namespace permission_broker {
+
+constexpr char kCrosUsbLocation[] = "CROS_USB_LOCATION";
+
+enum class CrosUsbLocationProperty {
+  kUnknown,
+  kInternal,
+  kExternal,
+};
+
+std::optional<CrosUsbLocationProperty> GetCrosUsbLocationProperty(
+    udev_device* device);
 
 // Reads a udev device attribute and assigns it as an unsigned integer to the
 // variable at val.
@@ -28,6 +40,11 @@ bool UsbDeviceListContainsId(Iterator first,
 
 // Checks if a device is intended to work with WebHID.
 bool IsDeviceAllowedWebHID(udev_device* device);
+
+class RuleUtils {
+ public:
+  static const VariationsFeature kEnablePermissiveUsbPassthrough;
+};
 
 }  // namespace permission_broker
 

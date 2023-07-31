@@ -13,41 +13,14 @@
 #include "base/logging.h"
 #include "featured/feature_library.h"
 #include "permission_broker/rule.h"
+#include "permission_broker/rule_utils.h"
 
-namespace {
+namespace permission_broker {
 
-constexpr char kCrosUsbLocation[] = "CROS_USB_LOCATION";
-
-enum class CrosUsbLocationProperty {
-  kUnknown,
-  kInternal,
-  kExternal,
-};
-
-std::optional<CrosUsbLocationProperty> GetCrosUsbLocationProperty(
-    udev_device* device) {
-  const char* prop = udev_device_get_property_value(device, kCrosUsbLocation);
-  if (!prop) {
-    return std::nullopt;
-  }
-  std::string tag(prop);
-
-  if (tag == "external") {
-    return CrosUsbLocationProperty::kExternal;
-  } else if (tag == "internal") {
-    return CrosUsbLocationProperty::kInternal;
-  } else {
-    if (tag != "unknown") {
-      VLOG(1) << "Unexpected value for CROS_USB_LOCATION property: '" << tag
-              << "'";
-    }
-    return CrosUsbLocationProperty::kUnknown;
-  }
-}
-
-bool HasInternalAncestors(udev_device* device) {
+CrosUsbLocationProperty AncestorsLocation(udev_device* device) {
   udev_device* ancestor = udev_device_get_parent(device);
   bool internal_ancestors = false;
+  bool external_ancestors = false;
 
   while (ancestor != nullptr) {
     const char* subsystem = udev_device_get_subsystem(ancestor);
@@ -60,11 +33,8 @@ bool HasInternalAncestors(udev_device* device) {
       continue;
     }
 
-    if (location == CrosUsbLocationProperty::kExternal ||
-        location == CrosUsbLocationProperty::kUnknown) {
-      std::string loc_str = (location == CrosUsbLocationProperty::kExternal)
-                                ? "external"
-                                : "unknown";
+    if (location == CrosUsbLocationProperty::kExternal) {
+      external_ancestors = true;
     } else if (location == CrosUsbLocationProperty::kInternal) {
       // TODO(b/267951284) - should we track this, and see if we get false
       // positives?
@@ -73,18 +43,13 @@ bool HasInternalAncestors(udev_device* device) {
     ancestor = udev_device_get_parent(ancestor);
   }
 
-  return internal_ancestors;
+  if (internal_ancestors)
+    return CrosUsbLocationProperty::kInternal;
+  else if (external_ancestors)
+    return CrosUsbLocationProperty::kExternal;
+  else
+    return CrosUsbLocationProperty::kUnknown;
 }
-
-}  // namespace
-
-namespace permission_broker {
-
-// static
-const struct VariationsFeature kEnablePermissiveUsbPassthrough {
-  .name = "CrOSLateBootPermissiveUsbPassthrough",
-  .default_state = FEATURE_DISABLED_BY_DEFAULT,
-};
 
 AllowExternalTaggedUsbDeviceRule::AllowExternalTaggedUsbDeviceRule()
     : Rule("AllowExternalTaggedUsbDeviceRule") {}
@@ -95,11 +60,18 @@ Rule::Result ProcessUsbDevice(udev_device* device,
                               CrosUsbLocationProperty location) {
   // Safety check, if we have an internal node in the device hierarchy we
   // should DENY this device, even if the device thinks it is external.
-  if (HasInternalAncestors(device)) {
+  CrosUsbLocationProperty ancestors_location = AncestorsLocation(device);
+  if (ancestors_location == CrosUsbLocationProperty::kInternal) {
     return Rule::DENY;
   }
 
   if (location == CrosUsbLocationProperty::kExternal) {
+    return Rule::ALLOW_WITH_DETACH;
+  } else if ((location == CrosUsbLocationProperty::kInternal ||
+              location == CrosUsbLocationProperty::kUnknown) &&
+             ancestors_location == CrosUsbLocationProperty::kExternal) {
+    // device erroneously reported that it is not external, but has an external
+    // ancestor.
     return Rule::ALLOW_WITH_DETACH;
   } else if (location == CrosUsbLocationProperty::kInternal) {
     return Rule::DENY;
@@ -125,11 +97,12 @@ Rule::Result AllowExternalTaggedUsbDeviceRule::ProcessDevice(
 
   auto features_lib = feature::PlatformFeatures::Get();
   if (!features_lib) {
-    LOG(ERROR)
-        << "Unable to get PlatformFeatures library, will default to IGNORE";
+    LOG(ERROR) << "Unable to get PlatformFeatures library, will not enable "
+                  "permissive features";
     return IGNORE;
   }
-  if (!features_lib->IsEnabledBlocking(kEnablePermissiveUsbPassthrough)) {
+  if (!features_lib->IsEnabledBlocking(
+          RuleUtils::kEnablePermissiveUsbPassthrough)) {
     return IGNORE;
   }
   return ProcessUsbDevice(device, maybe_location.value());

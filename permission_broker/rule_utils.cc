@@ -4,12 +4,36 @@
 
 #include "permission_broker/rule_utils.h"
 
+#include <optional>
+#include <string>
 #include <vector>
 
+#include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "permission_broker/allow_lists.h"
 
 namespace permission_broker {
+
+std::optional<CrosUsbLocationProperty> GetCrosUsbLocationProperty(
+    udev_device* device) {
+  const char* prop = udev_device_get_property_value(device, kCrosUsbLocation);
+  if (!prop) {
+    return std::nullopt;
+  }
+  std::string tag(prop);
+
+  if (tag == "external") {
+    return CrosUsbLocationProperty::kExternal;
+  } else if (tag == "internal") {
+    return CrosUsbLocationProperty::kInternal;
+  } else {
+    if (tag != "unknown") {
+      VLOG(1) << "Unexpected value for CROS_USB_LOCATION property: '" << tag
+              << "'";
+    }
+    return CrosUsbLocationProperty::kUnknown;
+  }
+}
 
 bool GetUIntSysattr(udev_device* device, const char* key, uint32_t* val) {
   CHECK(val);
@@ -54,5 +78,10 @@ template bool UsbDeviceListContainsId<
     std::vector<policy::DevicePolicy::UsbDeviceId>::iterator last,
     uint16_t vendor_id,
     uint16_t product_id);
+
+const VariationsFeature RuleUtils::kEnablePermissiveUsbPassthrough = {
+    .name = "CrOSLateBootPermissiveUsbPassthrough",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
 
 }  // namespace permission_broker
