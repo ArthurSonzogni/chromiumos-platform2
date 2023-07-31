@@ -87,6 +87,8 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
       return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE:
       switch (status_.status()) {
+        case FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN:
+          [[fallthrough]];
         case FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS:
           return NextStateCaseWrapper(RMAD_ERROR_WAIT);
         case FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE:

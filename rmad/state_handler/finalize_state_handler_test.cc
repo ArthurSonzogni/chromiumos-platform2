@@ -246,6 +246,16 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
       RmadState::StateCase::kRepairComplete);
 }
 
+TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
+  // RunState() is not called yet, so there's no call to get HWWP status either.
+  auto handler = CreateInitializedStateHandler({.hwwp_status_list = {}});
+
+  ExpectTransitionFailedWithError(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
+      RMAD_ERROR_WAIT);
+}
+
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateInitializedStateHandler();
   handler->RunState();
