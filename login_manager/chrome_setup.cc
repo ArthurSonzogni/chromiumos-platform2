@@ -1046,8 +1046,10 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureDisableOverride("FederatedService");
   }
 
-  if (builder->UseFlagIsSet("camera_feature_effects"))
+  if (builder->UseFlagIsSet("camera_feature_effects")) {
     builder->AddArg("--camera-effects-supported-by-hardware");
+    builder->AddFeatureEnableOverride("CameraEffectsSupportedByHardware");
+  }
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
   SetUpHasHpsFlag(builder, cros_config);
