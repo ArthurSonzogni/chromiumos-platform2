@@ -1482,9 +1482,9 @@ void ArcSetup::MountDemoApps(const base::FilePath& demo_apps_image,
 
   // imageloader securely verifies images before mounting them, so we can trust
   // the provided image and can mount it without MS_NOEXEC.
-  EXIT_IF(!arc_mounter_->LoopMount(demo_apps_image.value(),
-                                   demo_apps_mount_directory,
-                                   MS_RDONLY | MS_NODEV));
+  EXIT_IF(!arc_mounter_->LoopMount(
+      demo_apps_image.value(), demo_apps_mount_directory,
+      LoopMountFilesystemType::kUnspecified, MS_RDONLY | MS_NODEV));
 }
 
 void ArcSetup::SetUpMountPointsForMedia() {
@@ -2185,6 +2185,7 @@ void ArcSetup::MountOnOnetimeSetup() {
   // appropriate flags.
   EXIT_IF(!arc_mounter_->LoopMount(
       kSystemImage, arc_paths_->android_rootfs_directory,
+      LoopMountFilesystemType::kUnspecified,
       MS_NOEXEC | MS_NOSUID | MS_NODEV | writable_flag));
 
   unsigned long kBaseFlags =  // NOLINT(runtime/int)
@@ -2196,9 +2197,11 @@ void ArcSetup::MountOnOnetimeSetup() {
   // Unlike system.raw.img, we don't remount them as exec either. The images do
   // not contain any executables.
   EXIT_IF(!arc_mounter_->LoopMount(
-      kSdcardRootfsImage, arc_paths_->sdcard_rootfs_directory, kBaseFlags));
+      kSdcardRootfsImage, arc_paths_->sdcard_rootfs_directory,
+      LoopMountFilesystemType::kUnspecified, kBaseFlags));
   EXIT_IF(!arc_mounter_->LoopMount(
-      kObbRootfsImage, arc_paths_->obb_rootfs_directory, kBaseFlags));
+      kObbRootfsImage, arc_paths_->obb_rootfs_directory,
+      LoopMountFilesystemType::kUnspecified, kBaseFlags));
 }
 
 void ArcSetup::UnmountOnOnetimeStop() {

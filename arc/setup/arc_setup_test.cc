@@ -46,6 +46,7 @@ class MockArcMounter : public ArcMounter {
 
   bool LoopMount(const std::string& source,
                  const base::FilePath& target,
+                 LoopMountFilesystemType filesystem_type,
                  unsigned long mount_flags) override {  // NOLINT(runtime/int)
     loop_mount_points_.insert(target.value());
     return true;
@@ -107,8 +108,10 @@ TEST(ArcSetup, TestMockArcMounter) {
   EXPECT_FALSE(mounter.Umount(base::FilePath("/b")));  // now /b is unknown
 
   // Do the same for loop.
-  EXPECT_TRUE(mounter.LoopMount("/a.img", base::FilePath("/d"), 0U));
-  EXPECT_TRUE(mounter.LoopMount("/c.img", base::FilePath("/d"), 0U));
+  EXPECT_TRUE(mounter.LoopMount("/a.img", base::FilePath("/d"),
+                                LoopMountFilesystemType::kSquashFS, 0U));
+  EXPECT_TRUE(mounter.LoopMount("/c.img", base::FilePath("/d"),
+                                LoopMountFilesystemType::kExt4, 0U));
   EXPECT_EQ(2U, mounter.loop_mount_points_.size());
   EXPECT_FALSE(mounter.LoopUmount(base::FilePath("/x")));  // unknown path
   EXPECT_TRUE(mounter.LoopUmount(base::FilePath("/d")));

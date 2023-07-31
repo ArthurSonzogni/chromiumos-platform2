@@ -36,6 +36,14 @@ constexpr bool kUseHoudini64 = USE_HOUDINI64;
 constexpr bool kUseHoudini = USE_HOUDINI;
 constexpr bool kUseNdkTranslation = USE_NDK_TRANSLATION;
 
+// TODO: b/293906766 - Replace all occurrences of `kUnspecified` with specific
+// filesystem types and remove the enum value.
+enum class LoopMountFilesystemType {
+  kUnspecified,
+  kSquashFS,
+  kExt4,
+};
+
 // A class that provides mount(2) and umount(2) wrappers. They return true on
 // success.
 class ArcMounter {
@@ -54,6 +62,7 @@ class ArcMounter {
 
   virtual bool LoopMount(const std::string& source,
                          const base::FilePath& target,
+                         LoopMountFilesystemType filesystem_type,
                          unsigned long mount_flags) = 0;  // NOLINT(runtime/int)
 
   virtual bool BindMount(const base::FilePath& old_path,
@@ -96,6 +105,7 @@ class ScopedMount {
       ArcMounter* mounter,
       const std::string& source,
       const base::FilePath& target,
+      LoopMountFilesystemType filesystem_type,
       unsigned long flags);  // NOLINT(runtime/int)
 
   // Bindmounts |old_path| to |new_path| and returns a unique_ptr that umounts

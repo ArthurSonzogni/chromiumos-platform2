@@ -214,11 +214,13 @@ class ArcMounterImpl : public ArcMounter {
 
   bool LoopMount(const std::string& source,
                  const base::FilePath& target,
+                 LoopMountFilesystemType filesystem_type,
                  unsigned long mount_flags) override {  // NOLINT(runtime/int)
     constexpr size_t kRetryMax = 10;
     for (size_t i = 0; i < kRetryMax; ++i) {
       bool retry = false;
-      if (LoopMountInternal(source, target, mount_flags, &retry))
+      if (LoopMountInternal(source, target, filesystem_type, mount_flags,
+                            &retry))
         return true;
       if (!retry)
         break;
@@ -333,6 +335,7 @@ class ArcMounterImpl : public ArcMounter {
 
   bool LoopMountInternal(const std::string& source,
                          const base::FilePath& target,
+                         LoopMountFilesystemType filesystem_type,
                          unsigned long mount_flags,  // NOLINT(runtime/int)
                          bool* out_retry) {
     constexpr char kLoopControl[] = "/dev/loop-control";
@@ -413,15 +416,28 @@ class ArcMounterImpl : public ArcMounter {
     loop_device_cleanup.ReplaceClosure(base::BindOnce(
         &DisassociateLoopDevice, scoped_loop_fd.get(), source, device_path));
 
-    if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr)) {
-      // Expected case, all good.
-    } else if (Mount(device_path.value(), target, "ext4", mount_flags,
-                     nullptr)) {
-      // For development ext4 is allowed.
-      LOG(INFO) << "Mounted " << source << " as ext4";
-    } else {
-      PLOG(ERROR) << "Failed to mount " << source;
-      return false;
+    switch (filesystem_type) {
+      case LoopMountFilesystemType::kUnspecified:
+        if (!Mount(device_path.value(), target, "squashfs", mount_flags,
+                   nullptr) &&
+            !Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
+          PLOG(ERROR) << "Failed to mount " << source << " as squashfs or ext4";
+          return false;
+        }
+        break;
+      case LoopMountFilesystemType::kSquashFS:
+        if (!Mount(device_path.value(), target, "squashfs", mount_flags,
+                   nullptr)) {
+          PLOG(ERROR) << "Failed to mount " << source << " as squashfs";
+          return false;
+        }
+        break;
+      case LoopMountFilesystemType::kExt4:
+        if (!Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
+          PLOG(ERROR) << "Failed to mount " << source << " as ext4";
+          return false;
+        }
+        break;
     }
 
     loop_device_cleanup.ReplaceClosure(base::DoNothing());
@@ -480,8 +496,9 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedLoopMount(
     ArcMounter* mounter,
     const std::string& source,
     const base::FilePath& target,
+    LoopMountFilesystemType filesystem_type,
     unsigned long flags) {  // NOLINT(runtime/int)
-  if (!mounter->LoopMount(source, target, flags))
+  if (!mounter->LoopMount(source, target, filesystem_type, flags))
     return nullptr;
   return std::make_unique<ScopedMount>(target, mounter, true /*is_loop*/);
 }
