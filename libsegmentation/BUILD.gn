@@ -97,7 +97,10 @@ shared_library("libsegmentation") {
 }
 
 install_config("install_libsegmentation_headers") {
-  sources = [ "feature_management.h" ]
+  sources = [
+    "feature_management.h",
+    "feature_management_interface.h",
+  ]
   install_path = "/usr/include/libsegmentation"
 }
 
