@@ -121,6 +121,20 @@ class DiskCleanup {
   // Actually performs disk cleanup. Called by FreeDiskSpace.
   bool FreeDiskSpaceInternal();
 
+  struct DiskCleanupActionResult {
+    bool success = true;
+    bool should_stop = false;
+
+    DiskCleanupActionResult();
+    DiskCleanupActionResult& operator|=(const DiskCleanupActionResult& rhs);
+  };
+
+  DiskCleanupActionResult RemoveEpheperalCryptohomes();
+  DiskCleanupActionResult RemoveCaches(
+      const std::vector<HomeDirs::HomeDir>& homedirs);
+  DiskCleanupActionResult RemoveGCaches(
+      const std::vector<HomeDirs::HomeDir>& homedirs);
+
   // Actually performs disk cleanup. Called by FreeDiskSpaceDuringLogin.
   bool FreeDiskSpaceDuringLoginInternal(const ObfuscatedUsername& obfuscated);
 
