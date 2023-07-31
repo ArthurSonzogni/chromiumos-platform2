@@ -15,7 +15,11 @@ CaptureRequest::CaptureRequest(const camera3_capture_request& request,
   // We cannot merge the two loops because the address of elements in
   // buffer_handles_ may be changed when new element is push into the vector.
   for (size_t i = 0; i < request.num_output_buffers; i++) {
-    buffer_handles_.push_back(*request.output_buffers[i].buffer);
+    if (request.output_buffers[i].buffer) {
+      buffer_handles_.push_back(*request.output_buffers[i].buffer);
+    } else {
+      buffer_handles_.push_back(nullptr);
+    }
   }
 
   for (size_t i = 0; i < request.num_output_buffers; i++) {
@@ -24,7 +28,7 @@ CaptureRequest::CaptureRequest(const camera3_capture_request& request,
     memset(&to, 0, sizeof(camera3_stream_buffer_t));
 
     to.stream = from->stream;
-    to.buffer = &buffer_handles_[i];
+    to.buffer = buffer_handles_[i] != nullptr ? &buffer_handles_[i] : nullptr;
     to.status = CAMERA3_BUFFER_STATUS_OK;
     to.acquire_fence = from->acquire_fence;
     to.release_fence = kBufferFenceReady;

@@ -306,8 +306,6 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
     }
   }
 
-  base::flat_map<camera3_stream_t*, std::vector<const camera3_stream_buffer_t*>>
-      stream_to_buffers;
   for (size_t i = 0; i < request->num_output_buffers; i++) {
     const camera3_stream_buffer_t* buffer = &request->output_buffers[i];
     if (!IsFormatSupported(qualified_formats_, *(buffer->stream))) {
@@ -317,41 +315,6 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
                   << ", format: " << buffer->stream->format;
       return -EINVAL;
     }
-    stream_to_buffers[buffer->stream].push_back(buffer);
-  }
-
-  // If the buffer management APIs are enabled, requests do not contain output
-  // buffer handles and HAL needs to request buffers using
-  // request_stream_buffers().
-  std::vector<camera3_stream_buffer_t> returned_output_buffers(
-      request->num_output_buffers, camera3_stream_buffer_t{});
-  if (!request->output_buffers[0].buffer) {
-    std::vector<camera3_buffer_request_t> buf_reqs;
-    std::vector<camera3_stream_buffer_ret_t> returned_buf_reqs(
-        request->num_output_buffers, camera3_stream_buffer_ret_t{});
-
-    // Prepare |buf_reqs| and |returned_buf_reqs|.
-    size_t returned_buf_reqs_index = 0;
-    size_t returned_output_buffers_index = 0;
-    for (const auto& [stream, output_buffers] : stream_to_buffers) {
-      auto num_buffers = static_cast<uint32_t>(output_buffers.size());
-      buf_reqs.push_back(
-          {.stream = stream, .num_buffers_requested = num_buffers});
-      returned_buf_reqs[returned_buf_reqs_index++].output_buffers =
-          &returned_output_buffers[returned_output_buffers_index];
-      returned_output_buffers_index += num_buffers;
-    }
-
-    uint32_t num_returned_buf_reqs;
-    camera3_buffer_request_status_t ret = callback_ops_->request_stream_buffers(
-        callback_ops_, request->num_output_buffers, buf_reqs.data(),
-        &num_returned_buf_reqs, returned_buf_reqs.data());
-    if (ret != CAMERA3_BUF_REQ_OK) {
-      // TODO(b/226688669): Handle errors.
-      LOGF(ERROR) << "Failed to request stream buffers: " << ret;
-      return -EINVAL;
-    }
-    request->output_buffers = returned_output_buffers.data();
   }
 
   // We cannot use |request| after this function returns. So we have to copy
@@ -810,6 +773,34 @@ void CameraClient::RequestHandler::HandleRequest(
   capture_result.num_output_buffers = output_stream_buffers->size();
   capture_result.output_buffers = &(*output_stream_buffers)[0];
 
+  // If the buffer management APIs are enabled, requests do not contain output
+  // buffer handles and HAL needs to request buffers using
+  // request_stream_buffers().
+  camera3_stream_buffer_t* returned_output_buffers =
+      const_cast<camera3_stream_buffer_t*>(capture_result.output_buffers);
+  if (!capture_result.output_buffers[0].buffer) {
+    std::vector<camera3_buffer_request_t> buf_reqs;
+    std::vector<camera3_stream_buffer_ret_t> returned_buf_reqs(
+        capture_result.num_output_buffers, camera3_stream_buffer_ret_t{});
+
+    // Prepare |buf_reqs| and |returned_buf_reqs|.
+    for (size_t i = 0; i < capture_result.num_output_buffers; ++i) {
+      buf_reqs.push_back({.stream = capture_result.output_buffers[i].stream,
+                          .num_buffers_requested = 1});
+      returned_buf_reqs[i].output_buffers = returned_output_buffers + i;
+    }
+
+    uint32_t num_returned_buf_reqs;
+    camera3_buffer_request_status_t ret = callback_ops_->request_stream_buffers(
+        callback_ops_, capture_result.num_output_buffers, buf_reqs.data(),
+        &num_returned_buf_reqs, returned_buf_reqs.data());
+    if (ret != CAMERA3_BUF_REQ_OK) {
+      LOGF(ERROR) << "Failed to request stream buffers: " << ret;
+      NotifyRequestError(capture_result.frame_number);
+      return;
+    }
+  }
+
   if (flush_started_) {
     VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
                            << " is aborted due to flush";
@@ -823,7 +814,7 @@ void CameraClient::RequestHandler::HandleRequest(
     return;
   }
 
-  VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
+  VLOGFID(1, device_id_) << "Request Frame: " << capture_result.frame_number
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
   android::CameraMetadata* metadata = request->GetMetadata();
