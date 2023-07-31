@@ -41,6 +41,15 @@ madvise: 1
 exit: 1
 shmdt: 1
 rt_sigreturn: 1
+pipe2: 1
+gettid: 1
+sched_setaffinity: 1
+timerfd_create: 1
+timerfd_settime: 1
+fcntl: 1
+read: 1
+mkdirat: 1
+pselect6: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
