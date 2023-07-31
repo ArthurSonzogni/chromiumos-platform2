@@ -368,6 +368,11 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
   if (virtual_device.type() == Device::Type::kARC0) {
     return;
   }
+  // b/273741099: For multiplexed Cellular interfaces, callers expect
+  // patchpanel to advertise the ARC virtual device as associated with the
+  // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
+  auto* signal_device = new NetworkDevice();
+  FillDeviceProto(virtual_device, signal_device);
   if (event == Device::ChangeEvent::kAdded) {
     // Only start forwarding multicast traffic if ARC is in an interactive
     // state.
@@ -380,28 +385,34 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
     }
     StartForwarding(shill_device, virtual_device.host_ifname(),
                     {.ipv6 = true, .multicast = forward_multicast});
+    client_notifier_->OnNetworkDeviceChanged(
+        signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
   } else if (event == Device::ChangeEvent::kRemoved) {
     StopForwarding(shill_device, virtual_device.host_ifname());
+    client_notifier_->OnNetworkDeviceChanged(
+        signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
   }
-
-  // b/273741099: For multiplexed Cellular interfaces, callers expect
-  // patchpanel to advertise the ARC virtual device as associated with the
-  // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
-  client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
 void Manager::OnCrostiniDeviceChanged(const Device& virtual_device,
                                       Device::ChangeEvent event) {
   auto default_logical_device = shill_client_->default_logical_device();
-  if (default_logical_device) {
-    if (event == Device::ChangeEvent::kAdded) {
+  auto* signal_device = new NetworkDevice();
+  FillDeviceProto(virtual_device, signal_device);
+  if (event == Device::ChangeEvent::kAdded) {
+    if (default_logical_device) {
       StartForwarding(*default_logical_device, virtual_device.host_ifname(),
                       {.ipv6 = true, .multicast = true});
-    } else if (event == Device::ChangeEvent::kRemoved) {
+    }
+    client_notifier_->OnNetworkDeviceChanged(
+        signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
+  } else if (event == Device::ChangeEvent::kRemoved) {
+    if (default_logical_device) {
       StopForwarding(*default_logical_device, virtual_device.host_ifname());
     }
+    client_notifier_->OnNetworkDeviceChanged(
+        signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
   }
-  client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
 bool Manager::ArcStartup(pid_t pid) {

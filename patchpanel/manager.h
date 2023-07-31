@@ -44,8 +44,10 @@ class Manager {
   // The notification callbacks to the client side.
   class ClientNotifier {
    public:
-    virtual void OnNetworkDeviceChanged(const Device& virtual_device,
-                                        Device::ChangeEvent event) = 0;
+    // Takes ownership of |virtual_device|.
+    virtual void OnNetworkDeviceChanged(
+        NetworkDevice* virtual_device,
+        NetworkDeviceChangedSignal::Event event) = 0;
     virtual void OnNetworkConfigurationChanged() = 0;
     virtual void OnNeighborReachabilityEvent(
         int ifindex,

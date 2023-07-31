@@ -94,8 +94,8 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
 
   // Implements Manager::ClientNotifier, which are mapping to the exported D-Bus
   // signals.
-  void OnNetworkDeviceChanged(const Device& virtual_device,
-                              Device::ChangeEvent event) override;
+  void OnNetworkDeviceChanged(NetworkDevice* virtual_device,
+                              NetworkDeviceChangedSignal::Event event) override;
   void OnNetworkConfigurationChanged() override;
   void OnNeighborReachabilityEvent(
       int ifindex,

@@ -350,14 +350,11 @@ PatchpanelAdaptor::NotifyAndroidInteractiveState(
   return {};
 }
 
-void PatchpanelAdaptor::OnNetworkDeviceChanged(const Device& virtual_device,
-                                               Device::ChangeEvent event) {
+void PatchpanelAdaptor::OnNetworkDeviceChanged(
+    NetworkDevice* virtual_device, NetworkDeviceChangedSignal::Event event) {
   NetworkDeviceChangedSignal signal;
-  signal.set_event(event == Device::ChangeEvent::kAdded
-                       ? NetworkDeviceChangedSignal::DEVICE_ADDED
-                       : NetworkDeviceChangedSignal::DEVICE_REMOVED);
-  auto* dev = signal.mutable_device();
-  FillDeviceProto(virtual_device, dev);
+  signal.set_event(event);
+  signal.set_allocated_device(virtual_device);  // Passes ownership
   SendNetworkDeviceChangedSignal(signal);
 }
 
