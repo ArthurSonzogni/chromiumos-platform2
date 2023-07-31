@@ -545,6 +545,45 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
 }
 
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserSuccess) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kSecondUserId("fakeuser");
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, UnloadUser);
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kSecondUserId))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kSecondUserId);
+  EXPECT_TRUE(auth_session);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserFail) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::optional<std::string> kNoUserId = std::nullopt;
+  const std::string kSecondUserId("fakeuser");
+  AuthStackManager::Session auth_session;
+
+  {
+    InSequence s;
+    EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUserId));
+    EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId.value()))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  }
+
+  cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId.value());
+  // Start auth session. Blocked because there is an existing logged-in user.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kSecondUserId);
+  EXPECT_FALSE(auth_session);
+}
+
 TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialSuccess) {
   const std::optional<std::string> kUserId("testuser");
   const std::string kRecordId("record_id");
@@ -867,18 +906,6 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
   // Finger down after lifting the finger first should complete the auth.
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
-}
-
-TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartFailIncorrectUser) {
-  const std::optional<std::string> kUserId("testuser");
-  const std::string kWrongUserId("fakeuser");
-  AuthStackManager::Session auth_session;
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-
-  // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kWrongUserId);
-  EXPECT_FALSE(auth_session);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionFingerDownModeFailed) {

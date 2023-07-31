@@ -247,7 +247,7 @@ BioSession CrosFpAuthStackManager::StartAuthSession(std::string user_id) {
     return BioSession(base::NullCallback());
   }
 
-  if (!LoadUser(user_id)) {
+  if (!LoadUser(user_id, false)) {
     LOG(ERROR) << "Failed to load user for authentication.";
     return BioSession(base::NullCallback());
   }
@@ -338,11 +338,13 @@ DeleteCredentialReply CrosFpAuthStackManager::DeleteCredential(
 }
 
 void CrosFpAuthStackManager::OnUserLoggedOut() {
+  // Note that CrOS currently always logouts all users together.
   session_manager_->UnloadUser();
+  locked_to_current_user_ = false;
 }
 
 void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
-  LoadUser(user_id);
+  LoadUser(user_id, true);
 }
 
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
@@ -417,13 +419,21 @@ void CrosFpAuthStackManager::OnSessionFailed() {
   on_session_failed_.Run();
 }
 
-bool CrosFpAuthStackManager::LoadUser(std::string user_id) {
+bool CrosFpAuthStackManager::LoadUser(std::string user_id, bool lock_to_user) {
   const std::optional<std::string>& current_user = session_manager_->GetUser();
   if (current_user.has_value() && current_user.value() == user_id) {
     // No action required, the user is already loaded.
     return true;
   } else if (current_user.has_value()) {
+    if (locked_to_current_user_) {
+      LOG(ERROR) << "Can't load another user as a user is logged-in.";
+      return false;
+    }
     session_manager_->UnloadUser();
+  }
+  // Any failure beyond this will lock the whole biod state machine.
+  if (lock_to_user) {
+    locked_to_current_user_ = true;
   }
   if (!session_manager_->LoadUser(std::move(user_id))) {
     LOG(ERROR) << "Failed to start user session.";

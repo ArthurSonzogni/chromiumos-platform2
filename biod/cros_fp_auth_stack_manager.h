@@ -123,7 +123,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void OnAuthScanDone(brillo::Blob auth_nonce);
   void OnSessionFailed();
 
-  bool LoadUser(std::string user_id);
+  bool LoadUser(std::string user_id, bool lock_to_user);
   // Preload encrypted user templates into FPMCU. We only need to do this when
   // the current user has changed, or when we delete a template and a reload is
   // required.
@@ -175,6 +175,12 @@ class CrosFpAuthStackManager : public AuthStackManager {
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
 
   State state_;
+
+  // This is used to disallow authenticating/enrolling fingerprint for a second
+  // user after a user has logged-in. Note that CrOS currently supports
+  // multi-login, but as biod and FPMCU can only hold state for a single user,
+  // we stick to the first logged-in user.
+  bool locked_to_current_user_ = false;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };
