@@ -431,5 +431,86 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
                 CrostiniService::VMType::kParallels));
 }
 
+TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
+  const uint32_t subnet_index = 0;
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kTerminaVM, subnet_index);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto lxd_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
+
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr), std::move(lxd_subnet));
+  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
+                                         "vmtap0", "", std::move(config));
+  auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
+      CrostiniService::VMType::kTermina, std::move(device));
+
+  NetworkDevice proto_device;
+  termina_device->ConvertToProto(&proto_device);
+  EXPECT_EQ("vmtap0", proto_device.ifname());
+  // Convention for Crostini Devices is to reuse the virtual interface name in
+  // place of the interface name of the upstream network used by ARC Devices.
+  EXPECT_EQ("vmtap0", proto_device.phys_ifname());
+  EXPECT_EQ("", proto_device.guest_ifname());
+  EXPECT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
+  EXPECT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
+  EXPECT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr()));
+  EXPECT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
+  EXPECT_EQ(expected_base_cidr.prefix_length(),
+            proto_device.ipv4_subnet().prefix_len());
+  EXPECT_EQ(NetworkDevice::TERMINA_VM, proto_device.guest_type());
+}
+
+TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
+  const uint32_t subnet_index = 1;
+  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kParallelsVM, subnet_index);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
+
+  auto config = std::make_unique<Device::Config>(
+      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
+      std::move(guest_ipv4_addr));
+  auto device =
+      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
+                               "vmtap1", "", std::move(config));
+  auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
+      CrostiniService::VMType::kParallels, std::move(device));
+
+  NetworkDevice proto_device;
+  parallels_device->ConvertToProto(&proto_device);
+  EXPECT_EQ("vmtap1", proto_device.ifname());
+  // Convention for Crostini Devices is to reuse the virtual interface name in
+  // place of the interface name of the upstream network used by ARC Devices.
+  EXPECT_EQ("vmtap1", proto_device.phys_ifname());
+  EXPECT_EQ("", proto_device.guest_ifname());
+  EXPECT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
+  EXPECT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
+  EXPECT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr()));
+  EXPECT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
+  EXPECT_EQ(expected_base_cidr.prefix_length(),
+            proto_device.ipv4_subnet().prefix_len());
+  EXPECT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
+}
+
 }  // namespace
 }  // namespace patchpanel

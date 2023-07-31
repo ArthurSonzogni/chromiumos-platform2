@@ -40,6 +40,32 @@ class CrostiniService {
     kParallels,
   };
 
+  // Crostini specific wrappers for Device. This class exposes setters tailored
+  // for Crostini needs and abstracting the internals of Device.
+  class CrostiniDevice {
+   public:
+    CrostiniDevice(VMType type, std::unique_ptr<Device> device);
+    CrostiniDevice(const CrostiniDevice&) = delete;
+    CrostiniDevice& operator=(const CrostiniDevice&) = delete;
+    ~CrostiniDevice();
+
+    VMType type() const { return type_; }
+    const std::string& tap_device_ifname() const;
+    const net_base::IPv4CIDR vm_ipv4_subnet() const;
+    const net_base::IPv4Address vm_ipv4_address() const;
+    const net_base::IPv4Address gateway_ipv4_address() const;
+    std::optional<net_base::IPv4CIDR> lxd_ipv4_subnet() const;
+    std::optional<net_base::IPv4Address> lxd_ipv4_address() const;
+    // Converts this CrostiniDevice to a patchpanel proto NetworkDevice object
+    // passed as a pointer. It is necessary to support externally allocated
+    // objects to work well with probotuf repeated embedded message fields.
+    void ConvertToProto(NetworkDevice* output) const;
+
+   private:
+    VMType type_;
+    std::unique_ptr<Device> device_;
+  };
+
   static std::optional<VMType> VMTypeFromDeviceType(Device::Type device_type);
   static std::optional<VMType> VMTypeFromProtoGuestType(
       NetworkDevice::GuestType guest_type);

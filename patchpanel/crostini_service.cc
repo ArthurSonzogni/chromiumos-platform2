@@ -21,12 +21,14 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/address_manager.h"
 #include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/proto_utils.h"
 
 namespace patchpanel {
 namespace {
@@ -54,6 +56,76 @@ std::optional<AutoDNATTarget> GetAutoDNATTarget(Device::Type guest_type) {
   }
 }
 }  // namespace
+
+CrostiniService::CrostiniDevice::CrostiniDevice(VMType type,
+                                                std::unique_ptr<Device> device)
+    : type_(type), device_(std::move(device)) {}
+
+CrostiniService::CrostiniDevice::~CrostiniDevice() {}
+
+const std::string& CrostiniService::CrostiniDevice::tap_device_ifname() const {
+  return device_->host_ifname();
+}
+
+const net_base::IPv4CIDR CrostiniService::CrostiniDevice::vm_ipv4_subnet()
+    const {
+  return device_->config().ipv4_subnet()->base_cidr();
+}
+
+const net_base::IPv4Address CrostiniService::CrostiniDevice::vm_ipv4_address()
+    const {
+  return device_->config().guest_ipv4_addr();
+}
+
+const net_base::IPv4Address
+CrostiniService::CrostiniDevice::gateway_ipv4_address() const {
+  return device_->config().host_ipv4_addr();
+}
+
+std::optional<net_base::IPv4CIDR>
+CrostiniService::CrostiniDevice::lxd_ipv4_subnet() const {
+  if (!device_->config().lxd_ipv4_subnet()) {
+    return std::nullopt;
+  }
+  return device_->config().lxd_ipv4_subnet()->base_cidr();
+}
+
+std::optional<net_base::IPv4Address>
+CrostiniService::CrostiniDevice::lxd_ipv4_address() const {
+  if (!device_->config().lxd_ipv4_subnet()) {
+    return std::nullopt;
+  }
+  auto cidr = device_->config().lxd_ipv4_subnet()->CIDRAtOffset(
+      kTerminaContainerAddressOffset);
+  if (!cidr) {
+    return std::nullopt;
+  }
+  return cidr->address();
+}
+
+void CrostiniService::CrostiniDevice::ConvertToProto(
+    NetworkDevice* output) const {
+  output->set_ifname(tap_device_ifname());
+  // Legacy compatibility: fill |phys_ifname| with the tap device interface
+  // name.
+  output->set_phys_ifname(tap_device_ifname());
+  // For non-ARC VMs, the guest virtio interface name is not known.
+  output->set_phys_ifname(tap_device_ifname());
+  output->set_guest_ifname("");
+  output->set_ipv4_addr(vm_ipv4_address().ToInAddr().s_addr);
+  output->set_host_ipv4_addr(gateway_ipv4_address().ToInAddr().s_addr);
+  switch (type()) {
+    case VMType::kTermina:
+      output->set_guest_type(NetworkDevice::TERMINA_VM);
+      break;
+    case VMType::kParallels:
+      output->set_guest_type(NetworkDevice::PARALLELS_VM);
+      break;
+  }
+  FillSubnetProto(vm_ipv4_subnet(), output->mutable_ipv4_subnet());
+  // Do no copy LXD container subnet data: patchpanel_service.proto's
+  // NetworkDevice does not have a field for the LXD container IPv4 allocation.
+}
 
 CrostiniService::CrostiniService(
     AddressManager* addr_mgr,
