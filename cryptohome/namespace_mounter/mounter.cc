@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/namespace_mounter/mounter.h"
 
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -287,33 +287,33 @@ constexpr char kBindMountMigratingStage[] = "migrating";
 // After moving ~/Downloads to ~/MyFiles/Downloads set the xattr to this value.
 constexpr char kBindMountMigratedStage[] = "migrated";
 
-MountHelper::MountHelper(bool legacy_mount,
-                         bool bind_mount_downloads,
-                         Platform* platform)
+Mounter::Mounter(bool legacy_mount,
+                 bool bind_mount_downloads,
+                 Platform* platform)
     : legacy_mount_(legacy_mount),
       bind_mount_downloads_(bind_mount_downloads),
       platform_(platform) {}
 
 // static
-FilePath MountHelper::GetNewUserPath(const Username& username) {
+FilePath Mounter::GetNewUserPath(const Username& username) {
   ObfuscatedUsername sanitized = SanitizeUserName(username);
   std::string user_dir = StringPrintf("u-%s", sanitized->c_str());
   return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
 }
 
-FilePath MountHelper::GetMountedUserHomePath(
+FilePath Mounter::GetMountedUserHomePath(
     const ObfuscatedUsername& obfuscated_username) const {
   return GetUserMountDirectory(obfuscated_username).Append(kUserHomeSuffix);
 }
 
-FilePath MountHelper::GetMountedRootHomePath(
+FilePath Mounter::GetMountedRootHomePath(
     const ObfuscatedUsername& obfuscated_username) const {
   return GetUserMountDirectory(obfuscated_username).Append(kRootHomeSuffix);
 }
 
-bool MountHelper::EnsurePathComponent(const FilePath& check_path,
-                                      uid_t uid,
-                                      gid_t gid) const {
+bool Mounter::EnsurePathComponent(const FilePath& check_path,
+                                  uid_t uid,
+                                  gid_t gid) const {
   base::stat_wrapper_t st;
   if (!platform_->Stat(check_path, &st)) {
     // Dirent not there, so create and set ownership.
@@ -347,7 +347,7 @@ bool MountHelper::EnsurePathComponent(const FilePath& check_path,
   return true;
 }
 
-bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
+bool Mounter::EnsureMountPointPath(const FilePath& dir) const {
   std::vector<std::string> path_parts = dir.GetComponents();
   FilePath check_path(path_parts[0]);
   if (path_parts[0] != "/") {
@@ -362,7 +362,7 @@ bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
   return true;
 }
 
-bool MountHelper::EnsureUserMountPoints(const Username& username) const {
+bool Mounter::EnsureUserMountPoints(const Username& username) const {
   FilePath multi_home_user = GetUserPath(username);
   FilePath multi_home_root = GetRootPath(username);
   FilePath new_user_path = GetNewUserPath(username);
@@ -418,8 +418,8 @@ bool MountHelper::EnsureUserMountPoints(const Username& username) const {
   return true;
 }
 
-void MountHelper::RecursiveCopy(const FilePath& source,
-                                const FilePath& destination) const {
+void Mounter::RecursiveCopy(const FilePath& source,
+                            const FilePath& destination) const {
   std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source, false, base::FileEnumerator::FILES));
   FilePath next_path;
@@ -457,11 +457,11 @@ void MountHelper::RecursiveCopy(const FilePath& source,
   }
 }
 
-void MountHelper::CopySkeleton(const FilePath& destination) const {
+void Mounter::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(SkelDir(), destination);
 }
 
-bool MountHelper::IsFirstMountComplete(
+bool Mounter::IsFirstMountComplete(
     const ObfuscatedUsername& obfuscated_username) const {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
@@ -498,7 +498,7 @@ bool MountHelper::IsFirstMountComplete(
   return false;
 }
 
-bool MountHelper::MountLegacyHome(const FilePath& from) {
+bool Mounter::MountLegacyHome(const FilePath& from) {
   VLOG(1) << "MountLegacyHome from " << from.value();
   // Multiple mounts can't live on the legacy mountpoint.
   if (platform_->IsDirectoryMounted(FilePath(kDefaultHomeDir))) {
@@ -513,7 +513,7 @@ bool MountHelper::MountLegacyHome(const FilePath& from) {
   return true;
 }
 
-bool MountHelper::HandleMyFilesDownloads(const base::FilePath& user_home) {
+bool Mounter::HandleMyFilesDownloads(const base::FilePath& user_home) {
   // If the flag to not bind mount ~/Downloads to ~/MyFiles/Downloads is
   // enabled, then attempt to (one-time) migrate the folder. In the event this
   // fails, fallback to the bind mount logic and try again on the next mount.
@@ -537,7 +537,7 @@ bool MountHelper::HandleMyFilesDownloads(const base::FilePath& user_home) {
   return true;
 }
 
-bool MountHelper::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
+bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
   const base::FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
   const base::FilePath downloads = user_home.Append(kDownloadsDir);
@@ -668,10 +668,10 @@ bool MountHelper::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
   return true;
 }
 
-bool MountHelper::MountAndPush(const base::FilePath& src,
-                               const base::FilePath& dest,
-                               const std::string& type,
-                               const std::string& options) {
+bool Mounter::MountAndPush(const base::FilePath& src,
+                           const base::FilePath& dest,
+                           const std::string& type,
+                           const std::string& options) {
   uint32_t mount_flags = kDefaultMountFlags | MS_NOSYMFOLLOW;
 
   if (!platform_->Mount(src, dest, type, mount_flags, options)) {
@@ -683,9 +683,9 @@ bool MountHelper::MountAndPush(const base::FilePath& src,
   return true;
 }
 
-bool MountHelper::BindAndPush(const FilePath& src,
-                              const FilePath& dest,
-                              RemountOption remount) {
+bool Mounter::BindAndPush(const FilePath& src,
+                          const FilePath& dest,
+                          RemountOption remount) {
   if (!platform_->Bind(src, dest, remount, /*nosymfollow=*/true)) {
     std::string remount_strs[] = {"kNoRemount", "kPrivate", "kShared",
                                   "kMountsFlowIn", "kUnbindable"};
@@ -699,21 +699,21 @@ bool MountHelper::BindAndPush(const FilePath& src,
   return true;
 }
 
-bool MountHelper::MountDaemonStoreCacheDirectories(
+bool Mounter::MountDaemonStoreCacheDirectories(
     const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
   return InternalMountDaemonStoreDirectories(
       root_home.Append(kDaemonStoreCacheDir), obfuscated_username,
       kEtcDaemonStoreBaseDir, kRunDaemonStoreCacheBaseDir);
 }
 
-bool MountHelper::MountDaemonStoreDirectories(
+bool Mounter::MountDaemonStoreDirectories(
     const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
   return InternalMountDaemonStoreDirectories(root_home, obfuscated_username,
                                              kEtcDaemonStoreBaseDir,
                                              kRunDaemonStoreBaseDir);
 }
 
-bool MountHelper::InternalMountDaemonStoreDirectories(
+bool Mounter::InternalMountDaemonStoreDirectories(
     const FilePath& root_home,
     const ObfuscatedUsername& obfuscated_username,
     const char* etc_daemon_store_base_dir,
@@ -785,8 +785,8 @@ bool MountHelper::InternalMountDaemonStoreDirectories(
   return true;
 }
 
-int MountHelper::MigrateDirectory(const base::FilePath& dst,
-                                  const base::FilePath& src) const {
+int Mounter::MigrateDirectory(const base::FilePath& dst,
+                              const base::FilePath& src) const {
   VLOG(1) << "Migrating directory " << src << " -> " << dst;
   int num_items = 0;
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
@@ -808,7 +808,7 @@ int MountHelper::MigrateDirectory(const base::FilePath& dst,
   return num_items;
 }
 
-bool MountHelper::MountHomesAndDaemonStores(
+bool Mounter::MountHomesAndDaemonStores(
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,
     const FilePath& user_home,
@@ -855,7 +855,7 @@ bool MountHelper::MountHomesAndDaemonStores(
   return true;
 }
 
-bool MountHelper::MountCacheSubdirectories(
+bool Mounter::MountCacheSubdirectories(
     const ObfuscatedUsername& obfuscated_username,
     const base::FilePath& data_directory) {
   FilePath cache_directory = GetDmcryptUserCacheDirectory(obfuscated_username);
@@ -881,11 +881,10 @@ bool MountHelper::MountCacheSubdirectories(
 
 // The eCryptfs mount is mounted from vault/ --> mount/ except in case of
 // migration where the mount point is a temporary directory.
-bool MountHelper::SetUpEcryptfsMount(
-    const ObfuscatedUsername& obfuscated_username,
-    const std::string& fek_signature,
-    const std::string& fnek_signature,
-    const FilePath& mount_point) {
+bool Mounter::SetUpEcryptfsMount(const ObfuscatedUsername& obfuscated_username,
+                                 const std::string& fek_signature,
+                                 const std::string& fnek_signature,
+                                 const FilePath& mount_point) {
   const FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
 
   // Specify the ecryptfs options for mounting the user's cryptohome.
@@ -910,7 +909,7 @@ bool MountHelper::SetUpEcryptfsMount(
   return true;
 }
 
-void MountHelper::SetUpDircryptoMount(
+void Mounter::SetUpDircryptoMount(
     const ObfuscatedUsername& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
@@ -920,9 +919,8 @@ void MountHelper::SetUpDircryptoMount(
       platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
 }
 
-bool MountHelper::SetUpDmcryptMount(
-    const ObfuscatedUsername& obfuscated_username,
-    const base::FilePath& data_mount_point) {
+bool Mounter::SetUpDmcryptMount(const ObfuscatedUsername& obfuscated_username,
+                                const base::FilePath& data_mount_point) {
   const FilePath dmcrypt_data_volume =
       GetDmcryptDataVolume(obfuscated_username);
   const FilePath dmcrypt_cache_volume =
@@ -954,10 +952,10 @@ bool MountHelper::SetUpDmcryptMount(
   return true;
 }
 
-StorageStatus MountHelper::PerformMount(MountType mount_type,
-                                        const Username& username,
-                                        const std::string& fek_signature,
-                                        const std::string& fnek_signature) {
+StorageStatus Mounter::PerformMount(MountType mount_type,
+                                    const Username& username,
+                                    const std::string& fek_signature,
+                                    const std::string& fnek_signature) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
@@ -1097,7 +1095,7 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
 
 // TODO(dlunev): make specific errors returned. MOUNT_ERROR_FATAL for now
 // to preserve the existing expectations..
-StorageStatus MountHelper::PerformEphemeralMount(
+StorageStatus Mounter::PerformEphemeralMount(
     const Username& username, const FilePath& ephemeral_loop_device) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
   const FilePath mount_point =
@@ -1160,7 +1158,7 @@ StorageStatus MountHelper::PerformEphemeralMount(
   return StorageStatus::Ok();
 }
 
-void MountHelper::UnmountAll() {
+void Mounter::UnmountAll() {
   FilePath src, dest;
   while (stack_.Pop(&src, &dest)) {
     ForceUnmount(src, dest);
@@ -1172,7 +1170,7 @@ void MountHelper::UnmountAll() {
   platform_->DeletePathRecursively(ephemeral_mount_path);
 }
 
-void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
+void Mounter::ForceUnmount(const FilePath& src, const FilePath& dest) {
   // Try an immediate unmount.
   bool was_busy;
   if (!platform_->Unmount(dest, false, &was_busy)) {
@@ -1187,19 +1185,19 @@ void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
   }
 }
 
-bool MountHelper::CanPerformEphemeralMount() const {
+bool Mounter::CanPerformEphemeralMount() const {
   return !MountPerformed();
 }
 
-bool MountHelper::MountPerformed() const {
+bool Mounter::MountPerformed() const {
   return stack_.size() > 0;
 }
 
-bool MountHelper::IsPathMounted(const base::FilePath& path) const {
+bool Mounter::IsPathMounted(const base::FilePath& path) const {
   return stack_.ContainsDest(path);
 }
 
-std::vector<base::FilePath> MountHelper::MountedPaths() const {
+std::vector<base::FilePath> Mounter::MountedPaths() const {
   return stack_.MountDestinations();
 }
 

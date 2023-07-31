@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Unit tests for Mount Helper.
+// Unit tests for Mounter.
 
-#include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/namespace_mounter/mounter.h"
 
 #include <map>
 #include <memory>
@@ -27,10 +27,8 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
 
@@ -415,23 +413,20 @@ void CheckSkel(Platform* platform,
 
 }  // namespace
 
-class MountHelperTest : public ::testing::Test {
+class MounterTest : public ::testing::Test {
  public:
   const Username kUser{"someuser"};
 
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<FakeEncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeKeyring>());
-    mount_helper_ = std::make_unique<MountHelper>(
+    mount_helper_ = std::make_unique<Mounter>(
         true /* legacy_mount */, true /* bind_mount_downloads */, &platform_);
   }
 
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
-  std::unique_ptr<MountHelper> mount_helper_;
+  std::unique_ptr<Mounter> mount_helper_;
 
   void VerifyFS(const Username& username,
                 MountType type,
@@ -633,7 +628,7 @@ class MountHelperTest : public ::testing::Test {
   }
 };
 
-TEST_F(MountHelperTest, MountOrdering) {
+TEST_F(MounterTest, MountOrdering) {
   // Checks that mounts made with MountAndPush/BindAndPush are undone in the
   // right order. We mock everything here, so we can isolate testing of the
   // ordering only.
@@ -666,7 +661,7 @@ TEST_F(MountHelperTest, MountOrdering) {
 
 namespace {
 
-TEST_F(MountHelperTest, BindDownloads) {
+TEST_F(MounterTest, BindDownloads) {
   // Make sure that the flag to bind downloads is honoured and the file
   // migration happens to `user/Downloads`.
   const std::string kContent{"some_content"};
@@ -726,7 +721,7 @@ TEST_F(MountHelperTest, BindDownloads) {
   ASSERT_THAT(result, kContent);
 }
 
-TEST_F(MountHelperTest, NoBindDownloads) {
+TEST_F(MounterTest, NoBindDownloads) {
   // Make sure that the flag to bind downloads is honoured and the file
   // migration happens to `user/MyFiles/Downloads`
   const std::string kContent{"some_content"};
@@ -756,7 +751,7 @@ TEST_F(MountHelperTest, NoBindDownloads) {
                                   kContent));
 
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   ASSERT_THAT(mount_helper_->PerformMount(
@@ -785,14 +780,14 @@ TEST_F(MountHelperTest, NoBindDownloads) {
   ASSERT_THAT(result, kContent);
 }
 
-TEST_F(MountHelperTest, IsFirstMountComplete_False) {
+TEST_F(MounterTest, IsFirstMountComplete_False) {
   const base::FilePath kSkelFile{"skel_file"};
   const std::string kSkelFileContent{"skel_content"};
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
   const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   SetHomedir(kUser);
@@ -830,7 +825,7 @@ TEST_F(MountHelperTest, IsFirstMountComplete_False) {
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 }
 
-TEST_F(MountHelperTest, Dircrypto_IsFirstMountComplete_True) {
+TEST_F(MounterTest, Dircrypto_IsFirstMountComplete_True) {
   const base::FilePath kSkelFile{"skel_file"};
   const std::string kSkelFileContent{"skel_content"};
   const base::FilePath kVaultFile{"vault_file"};
@@ -839,7 +834,7 @@ TEST_F(MountHelperTest, Dircrypto_IsFirstMountComplete_True) {
   const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   SetHomedir(kUser);
@@ -866,7 +861,7 @@ TEST_F(MountHelperTest, Dircrypto_IsFirstMountComplete_True) {
       base::FilePath(kEtcSkel).Append(kSkelFile), kSkelFileContent));
 
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   ASSERT_THAT(mount_helper_->PerformMount(
@@ -888,7 +883,7 @@ TEST_F(MountHelperTest, Dircrypto_IsFirstMountComplete_True) {
 // For Dmcrypt we test only mount part, without container. In fact, we should do
 // the same for all and rely on the vault container to setup things properly and
 // uniformly.
-TEST_F(MountHelperTest, Dmcrypt_MountUnmount) {
+TEST_F(MounterTest, Dmcrypt_MountUnmount) {
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
 
   ASSERT_THAT(mount_helper_->PerformMount(
@@ -904,7 +899,7 @@ TEST_F(MountHelperTest, Dmcrypt_MountUnmount) {
            /*downloads_bind_mount=*/true);
 }
 
-TEST_F(MountHelperTest, Ecryptfs_IsFirstMountComplete_True) {
+TEST_F(MounterTest, Ecryptfs_IsFirstMountComplete_True) {
   const base::FilePath kSkelFile{"skel_file"};
   const std::string kSkelFileContent{"skel_content"};
   const base::FilePath kVaultFile{"vault_file"};
@@ -913,7 +908,7 @@ TEST_F(MountHelperTest, Ecryptfs_IsFirstMountComplete_True) {
   const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   SetHomedir(kUser);
@@ -937,7 +932,7 @@ TEST_F(MountHelperTest, Ecryptfs_IsFirstMountComplete_True) {
       base::FilePath(kEtcSkel).Append(kSkelFile), kSkelFileContent));
 
   // Ensure that bind_mount_downloads is false.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       true /* legacy_mount */, false /* bind_mount_downloads */, &platform_);
 
   ASSERT_THAT(mount_helper_->PerformMount(
@@ -955,10 +950,10 @@ TEST_F(MountHelperTest, Ecryptfs_IsFirstMountComplete_True) {
   mount_helper_->UnmountAll();
 }
 
-class DownloadsBindMountMigrationTest : public MountHelperTest {
+class DownloadsBindMountMigrationTest : public MounterTest {
  public:
   void SetUp() override {
-    MountHelperTest::SetUp();
+    MounterTest::SetUp();
 
     keyset_ = FileSystemKeyset::CreateRandom();
 
@@ -1000,7 +995,7 @@ class DownloadsBindMountMigrationTest : public MountHelperTest {
   void SetUpAndVerifyUserHome(bool bind_mount_downloads) {
     // Create a mounter that sets up ~/Downloads bind mounted to
     // ~/MyFiles/Downloads and mount it.
-    mount_helper_ = std::make_unique<MountHelper>(
+    mount_helper_ = std::make_unique<Mounter>(
         /*legacy_mount=*/true, bind_mount_downloads, &platform_);
     EXPECT_THAT(mount_helper_->PerformMount(
                     MountType::DIR_CRYPTO, kUser,
@@ -1110,7 +1105,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_->UnmountAll();
 
   // Create a mounter that doesn't bind mount at all and mount it.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
   // Ignore all other calls to DeletePathRecursively but when the
@@ -1140,7 +1135,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_->UnmountAll();
 
   // Create a mounter that doesn't bind mount at all and mount it.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
   // Ignore all other calls to SetExtendedFileAttribute but when the
@@ -1170,7 +1165,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_->UnmountAll();
 
   // Create a mounter that doesn't bind mount at all.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
   // Ignore all other calls to Rename but when the ~/Downloads-backup rename
@@ -1198,7 +1193,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_->UnmountAll();
 
   // Create a mounter that doesn't bind mount at all.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
   // Ignore all other calls to Rename but when the ~/Downloads-backup rename
@@ -1226,7 +1221,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_->UnmountAll();
 
   // Create a mounter that doesn't bind mount at all.
-  mount_helper_ = std::make_unique<MountHelper>(
+  mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
   // Ignore all other calls to SetExtendedFileAttribute but when the
@@ -1282,22 +1277,22 @@ TEST_F(
 
 }  // namespace
 
-class MountHelperEphemeral : public ::testing::Test {
+class MounterEphemeral : public ::testing::Test {
  public:
   const Username kUser{"someuser"};
 
-  MountHelperEphemeral() = default;
+  MounterEphemeral() = default;
 
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    mount_helper_ = std::make_unique<MountHelper>(
+    mount_helper_ = std::make_unique<Mounter>(
         true /* legacy_mount */, true /* bind_mount_downloads */, &platform_);
   }
 
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
-  std::unique_ptr<MountHelper> mount_helper_;
+  std::unique_ptr<Mounter> mount_helper_;
   struct statvfs ephemeral_statvfs_;
 
   base::FilePath EphemeralBackingFile(const Username& username) {
@@ -1339,7 +1334,7 @@ class MountHelperEphemeral : public ::testing::Test {
 
 namespace {
 
-TEST_F(MountHelperEphemeral, EphemeralMount) {
+TEST_F(MounterEphemeral, EphemeralMount) {
   EXPECT_CALL(platform_, SetSELinuxContext(EphemeralMountPoint(kUser), _))
       .WillOnce(Return(true));
   const ObfuscatedUsername obfuscated_username =
@@ -1355,7 +1350,7 @@ TEST_F(MountHelperEphemeral, EphemeralMount) {
   VerifyFS(kUser, /*expect_present=*/false);
 }
 
-TEST_F(MountHelperEphemeral, EphemeralMount_EnsureUserMountFailure) {
+TEST_F(MounterEphemeral, EphemeralMount_EnsureUserMountFailure) {
   // Checks that when ephemeral mount fails to ensure mount points.
   EXPECT_CALL(platform_, Mount(Property(&base::FilePath::value,
                                         StartsWith(kDevLoopPrefix)),

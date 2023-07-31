@@ -120,7 +120,7 @@ StorageStatus OopErrorCodeToStatus(MountError error) {
 
 }  // namespace
 
-//  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
+//  namespace_mounter enters the Chrome mount namespace and mounts
 //  the user cryptohome in that mount namespace if the flags are enabled.
 //  Chrome mount namespace is created by session_manager. cryptohome knows
 //  the path at which this mount namespace is created and uses that path to

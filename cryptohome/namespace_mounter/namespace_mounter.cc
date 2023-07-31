@@ -33,12 +33,11 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/namespace_mounter/mounter.h"
 #include "cryptohome/namespace_mounter_ipc.pb.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
-#include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/username.h"
 
@@ -135,9 +134,9 @@ int main(int argc, char** argv) {
     // Enter the required mount namespace.
     ns_mnt = brillo::ScopedMountNamespace::CreateFromPath(
         base::FilePath(request.mount_namespace_path()));
-    // cryptohome_namespace_mounter will only fail if it cannot enter the
+    // namespace_mounter will only fail if it cannot enter the
     // existing user session mount namespace. If the namespace doesn't exist
-    // cryptohome_namespace_mounter will do the mounts in the root mount
+    // namespace_mounter will do the mounts in the root mount
     // namespace. The design here is consistent with the session_manager
     // behavior which will continue in the root mount namespace if the namespace
     // creation is attempted but failed. The failure in the namespace creation
@@ -151,8 +150,8 @@ int main(int argc, char** argv) {
     }
   }
 
-  cryptohome::MountHelper mounter(request.legacy_home(),
-                                  request.bind_mount_downloads(), &platform);
+  cryptohome::Mounter mounter(request.legacy_home(),
+                              request.bind_mount_downloads(), &platform);
 
   cryptohome::MountError error = cryptohome::MOUNT_ERROR_NONE;
   // Link the user keyring into session keyring to allow request_key() search

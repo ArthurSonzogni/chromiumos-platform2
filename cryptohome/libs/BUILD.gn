@@ -677,7 +677,6 @@ static_library("libcryptohome") {
     "../storage/mount.cc",
     "../storage/mount_constants.cc",
     "../storage/mount_factory.cc",
-    "../storage/mount_helper.cc",
     "../storage/mount_stack.cc",
     "../storage/mount_utils.cc",
     "../storage/out_of_process_mount_helper.cc",
@@ -717,7 +716,7 @@ static_library("libcryptohome") {
 
 # cryptohome <-> cryptohome-namespace-mounter IPC proto.
 proto_library("namespace-mounter-ipc-proto") {
-  proto_in_dir = "../cryptohome_namespace_mounter"
+  proto_in_dir = "../namespace_mounter"
   proto_out_dir = "include/cryptohome"
 
   sources = [ "${proto_in_dir}/namespace_mounter_ipc.proto" ]

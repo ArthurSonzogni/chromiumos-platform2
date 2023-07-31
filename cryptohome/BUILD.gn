@@ -153,7 +153,10 @@ executable("cryptohomed") {
 
 # This executable is used to mount cryptohomes.
 executable("cryptohome-namespace-mounter") {
-  sources = [ "cryptohome_namespace_mounter/cryptohome_namespace_mounter.cc" ]
+  sources = [
+    "namespace_mounter/mounter.cc",
+    "namespace_mounter/namespace_mounter.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     "libs:libcryptohome",
@@ -394,6 +397,8 @@ if (use.test) {
       "keyset_management_unittest.cc",
       "lockbox-cache-unittest.cc",
       "lockbox_unittest.cc",
+      "namespace_mounter/mounter.cc",
+      "namespace_mounter/mounter_unittest.cc",
       "pinweaver_manager/le_credential_manager_impl_unittest.cc",
       "pinweaver_manager/persistent_lookup_table_unittest.cc",
       "pinweaver_manager/sign_in_hash_tree_unittest.cc",
@@ -411,7 +416,6 @@ if (use.test) {
       "storage/encrypted_container/ramdisk_device_test.cc",
       "storage/ephemeral_policy_util_unittest.cc",
       "storage/homedirs_unittest.cc",
-      "storage/mount_helper_unittest.cc",
       "storage/mount_stack_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",

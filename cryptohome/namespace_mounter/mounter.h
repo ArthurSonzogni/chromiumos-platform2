@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// MountHelper objects carry out mount(2) and unmount(2) operations for a single
+// Mounter objects carry out mount(2) and unmount(2) operations for a single
 // cryptohome mount.
 
-#ifndef CRYPTOHOME_STORAGE_MOUNT_HELPER_H_
-#define CRYPTOHOME_STORAGE_MOUNT_HELPER_H_
+#ifndef CRYPTOHOME_NAMESPACE_MOUNTER_MOUNTER_H_
+#define CRYPTOHOME_NAMESPACE_MOUNTER_MOUNTER_H_
 
 #include <sys/types.h>
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,7 +21,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
-#include "cryptohome/storage/mount_helper_interface.h"
 #include "cryptohome/storage/mount_stack.h"
 #include "cryptohome/username.h"
 
@@ -34,13 +32,13 @@ extern const char kBindMountMigrationXattrName[];
 extern const char kBindMountMigratingStage[];
 extern const char kBindMountMigratedStage[];
 
-class MountHelper : public MountHelperInterface {
+class Mounter {
  public:
-  MountHelper(bool legacy_mount, bool bind_mount_downloads, Platform* platform);
-  MountHelper(const MountHelper&) = delete;
-  MountHelper& operator=(const MountHelper&) = delete;
+  Mounter(bool legacy_mount, bool bind_mount_downloads, Platform* platform);
+  Mounter(const Mounter&) = delete;
+  Mounter& operator=(const Mounter&) = delete;
 
-  ~MountHelper() = default;
+  ~Mounter() = default;
 
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291.
@@ -76,26 +74,25 @@ class MountHelper : public MountHelperInterface {
   StorageStatus PerformMount(MountType mount_type,
                              const Username& username,
                              const std::string& fek_signature,
-                             const std::string& fnek_signature) override;
+                             const std::string& fnek_signature);
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
   StorageStatus PerformEphemeralMount(
-      const Username& username,
-      const base::FilePath& ephemeral_loop_device) override;
+      const Username& username, const base::FilePath& ephemeral_loop_device);
 
   // Unmounts all mount points.
   // Relies on ForceUnmount() internally; see the caveat listed for it.
-  void UnmountAll() override;
+  void UnmountAll();
 
   // Returns whether an ephemeral mount operation can be performed.
-  bool CanPerformEphemeralMount() const override;
+  bool CanPerformEphemeralMount() const;
 
   // Returns whether a mount operation has been performed.
-  bool MountPerformed() const override;
+  bool MountPerformed() const;
 
   // Returns whether |path| is the destination of an existing mount.
-  bool IsPathMounted(const base::FilePath& path) const override;
+  bool IsPathMounted(const base::FilePath& path) const;
 
   // Returns a list of paths that have been mounted as part of the mount.
   std::vector<base::FilePath> MountedPaths() const;
@@ -251,9 +248,9 @@ class MountHelper : public MountHelperInterface {
 
   Platform* platform_;  // Un-owned.
 
-  FRIEND_TEST(MountHelperTest, MountOrdering);
+  FRIEND_TEST(MounterTest, MountOrdering);
 };
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STORAGE_MOUNT_HELPER_H_
+#endif  // CRYPTOHOME_NAMESPACE_MOUNTER_MOUNTER_H_
