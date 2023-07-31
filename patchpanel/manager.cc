@@ -384,12 +384,9 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
     StopForwarding(shill_device, virtual_device.host_ifname());
   }
 
-  // TODO(b/273741099): For multiplexed Cellular interfaces, callers expect
+  // b/273741099: For multiplexed Cellular interfaces, callers expect
   // patchpanel to advertise the ARC virtual device as associated with the
-  // shill Device kInterfaceProperty value. Here patchpanel must find the
-  // ShillClient::Device associated with this ARC virtual device and make sure
-  // that the primary multiplxed interface is changed to the shill Device
-  // kInterfaceProperty value.
+  // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
   client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
@@ -499,15 +496,13 @@ GetDevicesResponse Manager::GetDevices() const {
       continue;
     }
     auto* dev = response.add_devices();
+    // b/273741099: For multiplexed Cellular interfaces, callers expect
+    // patchpanel to advertise the ARC virtual device as associated with the
+    // shill Device kInterfaceProperty value. This is handled in
+    // FillDeviceProto.
     FillDeviceProto(*arc_device, dev);
     FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
                             dns_proxy_ipv6_addrs_);
-    // TODO(b/273741099): For multiplexed Cellular interfaces, callers expect
-    // patchpanel to advertise the ARC virtual device as associated with the
-    // shill Device kInterfaceProperty value. Here patchpanel must find the
-    // ShillClient::Device associated with this ARC virtual device and make sure
-    // that the primary multiplxed interface is changed to the shill Device
-    // kInterfaceProperty value.
   }
 
   for (const auto* crosvm_device : cros_svc_->GetDevices()) {
