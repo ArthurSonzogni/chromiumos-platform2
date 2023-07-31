@@ -152,8 +152,7 @@ bool SuspendConfigurator::IsHibernateAvailable() {
   }
 
   if (!HiberimageExists()) {
-    LOG(INFO)
-        << "Hibernate would be available but no hiberimage does not exist";
+    LOG(INFO) << "Hibernate would be available but 'hiberimage' does not exist";
     return false;
   }
 
