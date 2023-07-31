@@ -20,7 +20,7 @@
 namespace reporting {
 
 // Deletes the given path, whether it's a file or a directory.
-// This function is identical to base::DeleteFile() except that it issues a
+// This function is identical to brillo::DeleteFile() except that it issues a
 // warning if the deletion fails. Useful when we do not care about whether the
 // deletion succeeds or not.
 bool DeleteFileWarnIfFailed(const base::FilePath& path);

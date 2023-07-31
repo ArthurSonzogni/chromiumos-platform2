@@ -15,10 +15,12 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
+#include "brillo/files/file_util.h"
+
 namespace reporting {
 
 bool DeleteFileWarnIfFailed(const base::FilePath& path) {
-  const auto delete_result = base::DeleteFile(path);
+  const auto delete_result = brillo::DeleteFile(path);
   if (!delete_result) {
     LOG(WARNING) << "Failed to delete " << path.MaybeAsASCII();
   }

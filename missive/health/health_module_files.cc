@@ -18,6 +18,8 @@
 #include <base/strings/string_split.h>
 #include <re2/re2.h>
 
+#include "brillo/files/file_util.h"
+
 namespace reporting {
 
 std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
@@ -53,7 +55,7 @@ std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
     if (file_size > 0) {
       storage_used += file_size;
     } else if (file_size == 0) {
-      base::DeleteFile(path);
+      brillo::DeleteFile(path);
       files.erase(header);
     }
   }
@@ -101,7 +103,7 @@ void HealthModuleFiles::DeleteOldestFile() {
   }
 
   const auto it = files_.begin();
-  base::DeleteFile(it->second);
+  brillo::DeleteFile(it->second);
   files_.erase(it);
 }
 

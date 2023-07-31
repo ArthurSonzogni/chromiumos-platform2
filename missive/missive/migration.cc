@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
+#include "brillo/files/file_util.h"
 #include "missive/analytics/metrics.h"
 #include "missive/util/file.h"
 
@@ -44,7 +45,7 @@ Status DeleteSrcDir(const base::FilePath& src) {
   }
 
   // Delete the deletion tag file.
-  if (!base::DeleteFile(deletion_tag_file_path)) {
+  if (!brillo::DeleteFile(deletion_tag_file_path)) {
     Metrics::SendEnumToUMA(kMigrationStatusUmaName,
                            MigrationStatusForUma::FailToDeleteDeletionTagFile);
     return Status{error::INTERNAL, base::StrCat({"Failed to delete ",
