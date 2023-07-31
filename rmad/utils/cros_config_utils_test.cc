@@ -18,6 +18,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/utils/cros_config_constants.h"
+
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -26,20 +28,10 @@ using testing::SetArgPointee;
 
 namespace rmad {
 
-// cros_config root path.
-constexpr char kCrosRootPath[] = "/";
-constexpr char kCrosModelNameKey[] = "name";
-constexpr char kCrosBrandCodeKey[] = "brand-code";
-
 constexpr char kModelName[] = "TestModelName";
 constexpr char kModelNameUnused[] = "TestModelNameUnused";
 
 constexpr char kBrandCode[] = "ZZCR";
-
-// cros_config identity path.
-constexpr char kCrosIdentityPath[] = "identity";
-constexpr char kCrosIdentitySkuKey[] = "sku-id";
-constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
 constexpr uint64_t kSkuId = 1234567890;
 constexpr uint64_t kSkuIdUnused = 1111111110;
@@ -51,23 +43,7 @@ constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 constexpr char kCustomLabelTagUnused[] = "TestCustomLabelTagUnused";
 constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
 
-// cros_config rmad path.
-constexpr char kCrosRmadPath[] = "rmad";
-constexpr char kCrosRmadEnabledKey[] = "enabled";
-constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
-constexpr char kCrosRmadUseLegacyCustomLabelKey[] = "use-legacy-custom-label";
-
 constexpr char kTrueStr[] = "true";
-
-// cros_config rmad/ssfc path.
-constexpr char kCrosSsfcPath[] = "ssfc";
-constexpr char kCrosSsfcMaskKey[] = "mask";
-constexpr char kCrosComponentTypeConfigsPath[] = "component-type-configs";
-constexpr char kCrosComponentTypeConfigsComponentTypeKey[] = "component-type";
-constexpr char kCrosComponentTypeConfigsDefaultValueKey[] = "default-value";
-constexpr char kCrosProbeableComponentsPath[] = "probeable-components";
-constexpr char kCrosProbeableComponentsIdentifierKey[] = "identifier";
-constexpr char kCrosProbeableComponentsValueKey[] = "value";
 
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
