@@ -49,7 +49,6 @@ pkg_config("host_target_defaults_pkgs") {
     "libcros_config",
     "libnet-base",
     "libpatchpanel-client",
-    "libpatchpanel-util",
   ]
 }
 
