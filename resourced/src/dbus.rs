@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::os::fd::{FromRawFd, OwnedFd};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -635,6 +635,18 @@ async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
     }
 }
 
+fn report_notification_count(notification_count: i32) -> Result<()> {
+    metrics_rs::MetricsLibrary::new()?.send_to_uma(
+        "Platform.Resourced.MemoryNotificationCountTenMinutes", // Metric name
+        notification_count,                                     // Sample
+        0,                                                      // Min
+        1000,                                                   // Max
+        50,                                                     // Number of buckets
+    )?;
+
+    Ok(())
+}
+
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let context = DbusContext {
@@ -781,6 +793,23 @@ pub async fn service_main() -> Result<()> {
         }
     });
 
+    // Reports memory pressure notification count every 10 minutes.
+    let notification_count = Arc::new(AtomicI32::new(0));
+    let notification_count_clone = notification_count.clone();
+    tokio::spawn(async move {
+        loop {
+            // 10 minutes interval.
+            tokio::time::sleep(Duration::from_secs(10 * 60)).await;
+
+            let count = notification_count_clone.load(Ordering::Relaxed);
+
+            if let Err(err) = report_notification_count(count) {
+                error!("Failed to report notification count: {}", err);
+            }
+            notification_count_clone.store(0, Ordering::Relaxed);
+        }
+    });
+
     // The memory checker loop.
     loop {
         let pressure_result = memory::get_memory_pressure_status();
@@ -802,6 +831,8 @@ pub async fn service_main() -> Result<()> {
                 );
             }
         }
+
+        notification_count.fetch_add(1, Ordering::Relaxed);
 
         memory_checker_wait(&pressure_result).await;
     }
