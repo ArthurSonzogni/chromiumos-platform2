@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_DEVICE_USER_H_
 #define SECAGENTD_DEVICE_USER_H_
 
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -40,6 +41,7 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
   virtual void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) = 0;
   virtual std::string GetDeviceUser() = 0;
+  virtual std::list<std::string> GetUsernamesForRedaction() = 0;
 
   virtual ~DeviceUserInterface() = default;
 };
@@ -71,8 +73,10 @@ class DeviceUser : public DeviceUserInterface {
   // Registers a callback to be notified when the session state changes.
   void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) override;
-  // Retrieves the current device user.
+  // Returns the current device user.
   std::string GetDeviceUser() override;
+  // Returns the most recently used usernames so they can be redacted.
+  std::list<std::string> GetUsernamesForRedaction() override;
 
   DeviceUser(const DeviceUser&) = delete;
   DeviceUser(DeviceUser&&) = delete;
@@ -113,6 +117,7 @@ class DeviceUser : public DeviceUserInterface {
   std::vector<base::RepeatingCallback<void(const std::string&)>>
       session_change_listeners_;
   std::string device_user_ = "";
+  std::list<std::string> redacted_usernames_;
   std::string device_id_ = "";
   const base::FilePath root_path_;
 };

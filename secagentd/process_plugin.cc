@@ -3,18 +3,14 @@
 // found in the LICENSE file.
 
 #include <cstdint>
-#include <iterator>
 #include <memory>
 #include <utility>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "google/protobuf/message_lite.h"
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/device_user.h"
@@ -246,7 +242,8 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
   // If that fails, fill in the task info that we got from BPF.
   if (hierarchy.empty()) {
     ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-        process_exit.task_info, process_terminate_event->mutable_process());
+        process_exit.task_info, process_terminate_event->mutable_process(),
+        device_user_->GetUsernamesForRedaction());
     // Maybe the parent is still alive and in procfs.
     auto parent = process_cache_->GetProcessHierarchy(
         process_exit.task_info.ppid, process_exit.task_info.parent_start_time,

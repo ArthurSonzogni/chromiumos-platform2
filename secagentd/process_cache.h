@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_PROCESS_CACHE_H_
 #define SECAGENTD_PROCESS_CACHE_H_
 
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,8 +18,8 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/synchronization/lock.h"
-#include "base/time/time.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/device_user.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -109,7 +110,8 @@ class ProcessCache : public ProcessCacheInterface {
 
   static void PartiallyFillProcessFromBpfTaskInfo(
       const bpf::cros_process_task_info& task_info,
-      cros_xdr::reporting::Process* process_proto);
+      cros_xdr::reporting::Process* process_proto,
+      const std::list<std::string>& redacted_usernames);
 
   // Appends an absolute path to the given base path. base::FilePath has a
   // DCHECK that avoids appending such absolute paths. We absolutely do need
@@ -118,7 +120,7 @@ class ProcessCache : public ProcessCacheInterface {
   static absl::StatusOr<base::FilePath> SafeAppendAbsolutePath(
       const base::FilePath& path, const base::FilePath& abs_component);
 
-  ProcessCache();
+  explicit ProcessCache(scoped_refptr<DeviceUserInterface> device_user);
   void PutFromBpfExec(const bpf::cros_process_start& process_start) override;
   void EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) override;
   std::vector<std::unique_ptr<cros_xdr::reporting::Process>>
@@ -143,7 +145,8 @@ class ProcessCache : public ProcessCacheInterface {
  private:
   friend class testing::ProcessCacheTestFixture;
   // Internal constructor used for testing.
-  explicit ProcessCache(const base::FilePath& root_path);
+  explicit ProcessCache(const base::FilePath& root_path,
+                        scoped_refptr<DeviceUserInterface> device_user);
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
   // inclusively Puts them in process_cache_ if successful and returns an
@@ -176,6 +179,7 @@ class ProcessCache : public ProcessCacheInterface {
   std::unique_ptr<InternalProcessCacheType> process_cache_;
   base::Lock image_cache_lock_;
   std::unique_ptr<InternalImageCacheType> image_cache_;
+  scoped_refptr<DeviceUserInterface> device_user_;
   const base::FilePath root_path_;
   InternalFilterRuleSetType filter_rules_parent_;
   InternalFilterRuleSetType filter_rules_process_;

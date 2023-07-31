@@ -177,6 +177,8 @@ TEST_F(DeviceUserTestFixture, TestAffiliatedUser) {
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
 TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
@@ -228,6 +230,8 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(base::Seconds(2));
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
 TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
@@ -283,19 +287,21 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
   task_environment_.FastForwardBy(base::Seconds(2));
   EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
                   .is_valid());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
 TEST_F(DeviceUserTestFixture, TestLogout) {
   SetDeviceUser(kDeviceUser);
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run(kStopped);
+  registration_cb_.Run(kStopping);
   EXPECT_EQ("", device_user_->GetDeviceUser());
 
   SetDeviceUser(kDeviceUser);
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run(kStopping);
+  registration_cb_.Run(kStopped);
   EXPECT_EQ("", device_user_->GetDeviceUser());
 }
 
@@ -332,6 +338,8 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
 
   EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(device_user_->GetDeviceUser())
                   .is_valid());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
 TEST_F(DeviceUserTestFixture, TestGuestUser) {
@@ -352,6 +360,7 @@ TEST_F(DeviceUserTestFixture, TestGuestUser) {
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kGuest, device_user_->GetDeviceUser());
+  ASSERT_EQ(0, device_user_->GetUsernamesForRedaction().size());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedRegistration) {
@@ -528,6 +537,7 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
 
   EXPECT_EQ(kUnknown, device_user_->GetDeviceUser());
 }
+
 TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   SetDeviceUser(kDeviceUser);
 
@@ -538,6 +548,140 @@ TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   name_change_cb_.Run("", "new_name");
 
   EXPECT_EQ("", device_user_->GetDeviceUser());
+}
+
+TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutForRedaction) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })))
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = "differentUser@email.com";
+            *sanitized = "differentSanitize";
+            return true;
+          })));
+  ASSERT_TRUE(
+      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
+  ASSERT_TRUE(base::CreateDirectory(
+      daemon_store_directory_.Append("differentSanitize")));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                                   "user", "differentUser@email.com"),
+                               _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+        return true;
+      })));
+
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(base::Seconds(2));
+
+  EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(base::Seconds(2));
+  ASSERT_EQ(2, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ("differentUser@email.com", device_user_->GetDeviceUser());
+  EXPECT_EQ("differentUser@email.com",
+            device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().back());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ("differentUser@email.com",
+            device_user_->GetUsernamesForRedaction().front());
+}
+
+TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .Times(2)
+      .WillRepeatedly(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })));
+  ASSERT_TRUE(
+      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .Times(1)
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+        return true;
+      })));
+
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(base::Seconds(2));
+
+  EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(base::Seconds(2));
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", device_user_->GetDeviceUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
 }  // namespace secagentd::testing

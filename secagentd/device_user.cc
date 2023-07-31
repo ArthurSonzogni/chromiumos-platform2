@@ -4,7 +4,7 @@
 
 #include "secagentd/device_user.h"
 
-#include <cstddef>
+#include <list>
 #include <string>
 #include <utility>
 #include <vector>
@@ -119,6 +119,10 @@ std::string DeviceUser::GetDeviceUser() {
   return device_user_;
 }
 
+std::list<std::string> DeviceUser::GetUsernamesForRedaction() {
+  return redacted_usernames_;
+}
+
 void DeviceUser::HandleRegistrationResult(const std::string& interface,
                                           const std::string& signal,
                                           bool success) {
@@ -146,7 +150,11 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
         base::BindOnce(&DeviceUser::UpdateDeviceUser,
                        weak_ptr_factory_.GetWeakPtr()),
         base::Seconds(2));
-  } else if (state == kStopping || state == kStopped) {
+  } else if (state == kStopping) {
+    device_user_ = "";
+  } else if (state == kStopped) {
+    redacted_usernames_.resize(1);
+
     device_user_ = "";
   }
 }
@@ -206,6 +214,13 @@ void DeviceUser::UpdateDeviceUser() {
       }
       return;
     }
+
+    // Set the username for redaction.
+    if (std::find(redacted_usernames_.begin(), redacted_usernames_.end(),
+                  username) == redacted_usernames_.end()) {
+      redacted_usernames_.push_front(username);
+    }
+
     // Check if username file exists in daemon-store.
     std::string username_file_path =
         "run/daemon-store/secagentd/" + sanitized + "/username";

@@ -6,20 +6,24 @@
 
 #include <unistd.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/test/task_environment.h"
 #include "brillo/files/file_util.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
+#include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/test_utils.h"
 
 namespace {
@@ -43,8 +47,12 @@ void ExpectPartialMatch(pb::Process& expected, pb::Process& actual) {
 
 namespace secagentd::testing {
 
+using ::testing::Return;
+
 class ProcessCacheTestFixture : public ::testing::Test {
  protected:
+  ProcessCacheTestFixture()
+      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
   struct MockProcFsFile {
     std::string procstat;
     uint64_t starttime_ns;
@@ -76,6 +84,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
   static constexpr uint64_t kPidChildOfRecoverDutProcess = 9114;
   static constexpr uint64_t kPidContainerInit = 3997;
   static constexpr uint64_t kPidChildOfContainerInit = 3949;
+
+  constexpr static const char kUsername[] = "username@email.com";
 
   base::FilePath GetPathInCurrentMountNsOrDie(uint64_t pid_for_setns,
                                               const base::FilePath& path) {
@@ -150,11 +160,12 @@ class ProcessCacheTestFixture : public ::testing::Test {
   void ClearInternalCache() { process_cache_->process_cache_->Clear(); }
 
   void SetUp() override {
+    device_user_ = base::MakeRefCounted<MockDeviceUser>();
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     const base::FilePath& root = fake_root_.GetPath();
     ASSERT_TRUE(fake_container_root_.CreateUniqueTempDir());
     const base::FilePath& container_root = fake_container_root_.GetPath();
-    process_cache_ = ProcessCache::CreateForTesting(root);
+    process_cache_ = ProcessCache::CreateForTesting(root, device_user_);
 
     mock_procfs_ = {
         {kPidInit,
@@ -607,7 +618,9 @@ class ProcessCacheTestFixture : public ::testing::Test {
         ->set_sha256(mock_spawns_[kPidChildOfContainerInit].exe_sha256);
   }
 
+  base::test::TaskEnvironment task_environment_;
   scoped_refptr<ProcessCache> process_cache_;
+  scoped_refptr<MockDeviceUser> device_user_;
   base::ScopedTempDir fake_root_;
   base::ScopedTempDir fake_container_root_;
   std::map<uint64_t, MockProcFsFile> mock_procfs_;
@@ -636,8 +649,8 @@ TEST_F(ProcessCacheTestFixture, TestUuidBpfVsProcfs) {
       .start_time = mock_procfs_[kPidChildOfInit].starttime_ns,
   };
   cros_xdr::reporting::Process bpf_process_proto;
-  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(task_info,
-                                                    &bpf_process_proto);
+  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+      task_info, &bpf_process_proto, std::list<std::string>());
   EXPECT_TRUE(bpf_process_proto.has_process_uuid());
   auto procfs_process_proto = process_cache_->GetProcessHierarchy(
       kPidChildOfInit, mock_procfs_[kPidChildOfInit].starttime_ns, 1);
@@ -1075,6 +1088,50 @@ TEST_F(ProcessCacheTestFixture, HashImageInForeignMountNamespace) {
               EqualsProto(*actual[0]));
   ExpectPartialMatch(mock_procfs_[kPidContainerInit].expected_proto,
                      *actual[1]);
+}
+
+TEST_F(ProcessCacheTestFixture, TestPutFromBpfRedaction) {
+  bpf::cros_process_start process_start = {.task_info{
+      .pid = 123,
+      .start_time = 5029384029,
+      .commandline = "'start' 'arc-sdcard-mount' "
+                     "'CHROMEOS_USER=username@email.com' 'CONTAINER_PID=4704'",
+      .commandline_len = 82}};
+
+  std::list<std::string> redacted_usernames;
+  redacted_usernames.push_front(kUsername);
+  EXPECT_CALL(*device_user_, GetUsernamesForRedaction)
+      .WillOnce(Return(redacted_usernames));
+
+  process_cache_->PutFromBpfExec(process_start);
+  auto actual = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 1);
+
+  EXPECT_EQ(
+      "''start' 'arc-sdcard-mount' "
+      "'CHROMEOS_USER=[EMAIL_REDACTED]' 'CONTAINER_PID=4704''",
+      actual[0]->commandline());
+}
+
+TEST_F(ProcessCacheTestFixture, TestScrapeFromProcFsRedaction) {
+  std::list<std::string> redacted_usernames;
+  redacted_usernames.push_front(kUsername);
+  redacted_usernames.push_front("random string");
+  EXPECT_CALL(*device_user_, GetUsernamesForRedaction)
+      .WillOnce(Return(redacted_usernames));
+
+  auto process = mock_procfs_[kPidChildOfInit];
+  process.cmdline = "\tusername@email.com\t !username@email.com!";
+  auto file_path = base::FilePath(fake_root_.GetPath().value() + "/proc/" +
+                                  std::to_string(kPidChildOfInit));
+  ASSERT_TRUE(base::WriteFile(file_path.Append("cmdline"),
+                              process.cmdline.c_str(), process.cmdline.size()));
+
+  auto actual = process_cache_->GetProcessHierarchy(kPidChildOfInit,
+                                                    process.starttime_ns, 1);
+
+  EXPECT_EQ("'\t[EMAIL_REDACTED]\t ![EMAIL_REDACTED]!'",
+            actual[0]->commandline());
 }
 
 }  // namespace secagentd::testing

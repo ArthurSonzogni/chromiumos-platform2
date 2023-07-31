@@ -9,14 +9,17 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
+#include <list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_replace.h"
 #include "base/containers/lru_cache.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -24,6 +27,7 @@
 #include "base/functional/bind.h"
 #include "base/hash/md5.h"
 #include "base/logging.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece_forward.h"
@@ -34,6 +38,7 @@
 #include "openssl/sha.h"
 #include "re2/re2.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/device_user.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -48,6 +53,7 @@ static const char kErrorFailedToResolve[] = "Failed to resolve ";
 static const char kErrorFailedToRead[] = "Failed to read ";
 static const char kErrorFailedToParse[] = "Failed to parse ";
 static const char kErrorSslSha[] = "SSL SHA error";
+static const char kRedactMessage[] = "[EMAIL_REDACTED]";
 
 std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
   base::MD5Digest md5;
@@ -96,9 +102,10 @@ void FillImageFromBpf(const bpf::cros_image_info& image_info,
 }
 
 void FillProcessFromBpf(const bpf::cros_process_start& process_start,
-                        pb::Process* process_proto) {
-  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(process_start.task_info,
-                                                    process_proto);
+                        pb::Process* process_proto,
+                        const std::list<std::string>& redacted_usernames) {
+  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+      process_start.task_info, process_proto, redacted_usernames);
   FillImageFromBpf(process_start.image_info, process_proto->mutable_image());
 }
 
@@ -145,7 +152,7 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
                           proc_stat_contents.end(), " ");
   // We could avoid a separate loop here but the tokenizer API is awkward for
   // random access.
-  std::vector<base::StringPiece> stat_tokens;
+  std::vector<std::string_view> stat_tokens;
   while (t.GetNext()) {
     stat_tokens.push_back(t.token_piece());
   }
@@ -240,6 +247,19 @@ const uint64_t GetScClockTck() {
   return kScClockTck;
 }
 
+void RedactCommandline(std::string* commandline,
+                       const std::list<std::string>& redacted_usernames) {
+  if (commandline->empty()) {
+    return;
+  }
+
+  for (auto username : redacted_usernames) {
+    if (!username.empty()) {
+      absl::StrReplaceAll({{username, kRedactMessage}}, commandline);
+    }
+  }
+}
+
 }  // namespace
 
 namespace secagentd {
@@ -270,15 +290,19 @@ int64_t ProcessCache::ClockTToSeconds(uint64_t clock_t) {
 }
 
 void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-    const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
+    const bpf::cros_process_task_info& task_info,
+    pb::Process* process_proto,
+    const std::list<std::string>& redacted_usernames) {
   ProcessCache::InternalProcessKeyType key{
       LossyNsecToClockT(task_info.start_time), task_info.pid};
   process_proto->set_process_uuid(StableUuid(key));
   process_proto->set_canonical_pid(task_info.pid);
   process_proto->set_canonical_uid(task_info.uid);
-  process_proto->set_commandline(SafeTransformArgvEnvp(
-      task_info.commandline, sizeof(task_info.commandline),
-      task_info.commandline_len));
+  std::string cmdline = SafeTransformArgvEnvp(task_info.commandline,
+                                              sizeof(task_info.commandline),
+                                              task_info.commandline_len);
+  RedactCommandline(&cmdline, redacted_usernames);
+  process_proto->set_commandline(cmdline);
   process_proto->set_rel_start_time_s(ClockTToSeconds(key.start_time_t));
 }
 
@@ -299,16 +323,19 @@ absl::StatusOr<base::FilePath> ProcessCache::SafeAppendAbsolutePath(
       base::StrCat({base::FilePath::kCurrentDirectory, abs_component.value()}));
 }
 
-ProcessCache::ProcessCache(const base::FilePath& root_path)
+ProcessCache::ProcessCache(const base::FilePath& root_path,
+                           scoped_refptr<DeviceUserInterface> device_user)
     : weak_ptr_factory_(this),
       process_cache_(
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
       image_cache_(
           std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
+      device_user_(device_user),
       root_path_(root_path),
       earliest_seen_exec_rel_s_(INT64_MAX) {}
 
-ProcessCache::ProcessCache() : ProcessCache(base::FilePath("/")) {}
+ProcessCache::ProcessCache(scoped_refptr<DeviceUserInterface> device_user)
+    : ProcessCache(base::FilePath("/"), device_user) {}
 
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
@@ -325,7 +352,8 @@ void ProcessCache::PutFromBpfExec(
       LossyNsecToClockT(process_start.task_info.start_time),
       process_start.task_info.pid};
   auto process_proto = std::make_unique<pb::Process>();
-  FillProcessFromBpf(process_start, process_proto.get());
+  FillProcessFromBpf(process_start, process_proto.get(),
+                     device_user_->GetUsernamesForRedaction());
   InternalProcessKeyType parent_key{
       LossyNsecToClockT(process_start.task_info.parent_start_time),
       process_start.task_info.ppid};
@@ -495,9 +523,11 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
     return absl::NotFoundError(
         base::StrCat({kErrorFailedToRead, cmdline_path.value()}));
   }
-  process_proto->set_commandline(
+  std::string cmdline =
       SafeTransformArgvEnvp(cmdline_contents.c_str(), cmdline_contents.size(),
-                            cmdline_contents.size()));
+                            cmdline_contents.size());
+  RedactCommandline(&cmdline, device_user_->GetUsernamesForRedaction());
+  process_proto->set_commandline(cmdline);
 
   auto status = FillImageFromProcfs(proc_pid_dir, key.pid,
                                     process_proto->mutable_image());

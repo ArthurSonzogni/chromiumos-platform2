@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_TEST_MOCK_DEVICE_USER_H_
 #define SECAGENTD_TEST_MOCK_DEVICE_USER_H_
 
+#include <list>
 #include <string>
 
 #include "gmock/gmock.h"
@@ -30,6 +31,10 @@ class MockDeviceUser : public DeviceUserInterface {
               (base::RepeatingCallback<void(const std::string&)> cb),
               (override));
   MOCK_METHOD(std::string, GetDeviceUser, (), (override));
+  MOCK_METHOD((std::list<std::string>),
+              GetUsernamesForRedaction,
+              (),
+              (override));
 };
 }  // namespace secagentd::testing
 

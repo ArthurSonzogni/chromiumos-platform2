@@ -4,22 +4,12 @@
 
 #include <unistd.h>
 
-#include <cstdlib>
-#include <iomanip>
 #include <memory>
-#include <optional>
-#include <string>
 #include <sysexits.h>
-#include <utility>
 
-#include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/functional/callback_helpers.h"
-#include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "brillo/daemons/dbus_daemon.h"
@@ -29,7 +19,6 @@
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
-#include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/secagent.h"
 
@@ -54,12 +43,12 @@ int Daemon::OnInit() {
   }
   CHECK(feature::PlatformFeatures::Initialize(bus_));
   common::SetDBus(bus_);
+  auto device_user = base::MakeRefCounted<DeviceUser>(
+      std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_));
   secagent_ = std::make_unique<SecAgent>(
       base::BindOnce(&Daemon::QuitDaemon, weak_ptr_factory_.GetWeakPtr()),
       base::MakeRefCounted<MessageSender>(),
-      base::MakeRefCounted<ProcessCache>(),
-      base::MakeRefCounted<DeviceUser>(
-          std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_)),
+      base::MakeRefCounted<ProcessCache>(device_user), device_user,
       std::make_unique<PluginFactory>(),
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
