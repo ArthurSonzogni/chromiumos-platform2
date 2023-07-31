@@ -77,8 +77,8 @@ class UpstartToolsImpl : public UpstartTools {
       writer.AppendBool(/*wait=*/true);
     }
     std::unique_ptr<dbus::Response> method_response =
-        job_proxy->CallMethodAndBlock(&method_call,
-                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        job_proxy->CallMethodAndBlockDeprecated(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
     if (!method_response) {
       *error = base::StringPrintf("%s job (%s) request had no response.",
                                   method.c_str(), job_name.c_str());

@@ -35,8 +35,8 @@ std::unique_ptr<dbus::Response> CallEnvironmentMethod(
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfStrings(args_keyvals);
 
-  return proxy->CallMethodAndBlock(&method_call,
-                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  return proxy->CallMethodAndBlockDeprecated(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 std::unique_ptr<dbus::Response> SetEnvironment(

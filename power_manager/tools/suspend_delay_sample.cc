@@ -39,8 +39,9 @@ bool CallMethod(dbus::ObjectProxy* powerd_proxy,
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(request);
 
-  std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(
+      powerd_proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response)
     return false;
   if (!reply_out)

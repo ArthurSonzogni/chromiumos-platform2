@@ -205,7 +205,7 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
                                                    A<int>(), A<dbus::Error*>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
-                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
                 DoCallMethod(A<dbus::MethodCall*>(), A<int>(),
@@ -430,7 +430,7 @@ void ServiceTestingHelper::SetUpDefaultVmAndContainer() {
               SendSignal(HasMethodName(kContainerStartedSignal)))
       .WillOnce(Invoke(&CheckContainerStartedSignalForDefaultVm));
   EXPECT_CALL(*mock_crosdns_service_proxy_,
-              CallMethodAndBlock(
+              CallMethodAndBlockDeprecated(
                   HasMethodName(crosdns::kSetHostnameIpMappingMethod), _))
       .WillOnce(Invoke(&CheckSetHostnameIpMappingMethod));
 

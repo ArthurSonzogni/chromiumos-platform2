@@ -58,7 +58,7 @@ void SetUpMockObjectProxy(
     dbus::MockObjectProxy* mock_object_proxy) {
   if (action.return_dbus_response()) {
     EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
     EXPECT_CALL(*mock_object_proxy,
                 CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
@@ -66,7 +66,7 @@ void SetUpMockObjectProxy(
         .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
   } else {
     EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
         .WillRepeatedly(ReturnNull());
     EXPECT_CALL(*mock_object_proxy,
                 CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),

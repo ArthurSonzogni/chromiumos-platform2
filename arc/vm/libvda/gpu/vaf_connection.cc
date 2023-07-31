@@ -130,7 +130,7 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
 
   dbus::MethodCall method_call(libvda::kLibvdaServiceInterface,
                                libvda::kProvideMojoConnectionMethod);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
+  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlockDeprecated(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response.get()) {
     DLOG(ERROR) << "Unable to get response from method call "

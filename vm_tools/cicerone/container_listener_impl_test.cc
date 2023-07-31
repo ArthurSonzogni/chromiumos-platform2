@@ -97,7 +97,7 @@ TEST(ContainerListenerImplTest,
       }));
   std::string unregister_hostname;
   EXPECT_CALL(test_framework.get_mock_crosdns_service_proxy(),
-              CallMethodAndBlock(
+              CallMethodAndBlockDeprecated(
                   AllOf(HasInterfaceName(crosdns::kCrosDnsInterfaceName),
                         HasMethodName(crosdns::kRemoveHostnameIpMappingMethod)),
                   _))
@@ -146,7 +146,7 @@ void ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
   vm_tools::apps::ApplicationList dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      CallMethodAndBlock(
+      CallMethodAndBlockDeprecated(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -409,7 +409,7 @@ void LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
   vm_tools::apps::ApplicationList dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      CallMethodAndBlock(
+      CallMethodAndBlockDeprecated(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -463,7 +463,7 @@ void ValidOpenUrlCallShouldProduceDBusMessageGeneric(bool plugin_vm) {
   std::string resulting_url;
   EXPECT_CALL(
       test_framework.get_mock_url_handler_service_proxy(),
-      CallMethodAndBlock(
+      CallMethodAndBlockDeprecated(
           AllOf(HasInterfaceName(chromeos::kUrlHandlerServiceInterface),
                 HasMethodName(chromeos::kUrlHandlerServiceOpenUrlMethod)),
           _))
@@ -662,7 +662,7 @@ TEST(ContainerListenerImplTest, ValidOpenTerminalCallShouldProduceDBusMessage) {
   vm_tools::apps::TerminalParams dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      CallMethodAndBlock(
+      CallMethodAndBlockDeprecated(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(
@@ -705,7 +705,7 @@ TEST(ContainerListenerImplTest,
   vm_tools::apps::MimeTypes dbus_result;
   EXPECT_CALL(
       test_framework.get_mock_vm_applications_service_proxy(),
-      CallMethodAndBlock(
+      CallMethodAndBlockDeprecated(
           AllOf(
               HasInterfaceName(vm_tools::apps::kVmApplicationsServiceInterface),
               HasMethodName(

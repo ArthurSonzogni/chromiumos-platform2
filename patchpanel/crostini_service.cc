@@ -309,7 +309,7 @@ void CrostiniService::CheckAdbSideloadingStatus() {
   dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
                                login_manager::kSessionManagerQueryAdbSideload);
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+      proxy->CallMethodAndBlockDeprecated(&method_call, kDbusTimeoutMs);
 
   if (!dbus_response) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(

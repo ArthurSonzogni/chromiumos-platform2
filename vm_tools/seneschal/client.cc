@@ -78,8 +78,9 @@ int StartServer(dbus::ObjectProxy* proxy, uint64_t port, uint64_t accept_cid) {
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to seneschal service";
     return EXIT_FAILURE;
@@ -126,8 +127,9 @@ int StopServer(dbus::ObjectProxy* proxy, uint64_t handle) {
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to seneschal service";
     return EXIT_FAILURE;
@@ -262,8 +264,9 @@ int SharePath(dbus::ObjectProxy* proxy,
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to seneschal service";
     return EXIT_FAILURE;
@@ -319,8 +322,9 @@ int UnsharePath(dbus::ObjectProxy* proxy, uint64_t handle, string path) {
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to seneschal service";
     return EXIT_FAILURE;
@@ -364,7 +368,7 @@ bool GetServerHandle(scoped_refptr<dbus::Bus> bus,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      concierge_proxy->CallMethodAndBlock(
+      concierge_proxy->CallMethodAndBlockDeprecated(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to concierge service";

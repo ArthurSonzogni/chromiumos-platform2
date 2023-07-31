@@ -55,7 +55,7 @@ class PowerManagerClientTest : public ::testing::Test {
 
     // Sets an expectation that the mock proxy's CallMethodAndBlock() will use
     // CreateMockProxyResponse() to return responses.
-    EXPECT_CALL(*power_manager_proxy_.get(), CallMethodAndBlock(_, _))
+    EXPECT_CALL(*power_manager_proxy_.get(), CallMethodAndBlockDeprecated(_, _))
         .WillRepeatedly(
             Invoke(this, &PowerManagerClientTest::CreateMockProxyResponse));
 

@@ -168,8 +168,8 @@ void DebugModeTool::SetModemManagerLogging(const std::string& level) {
                                kSetLogging);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(level);
-  proxy->CallMethodAndBlock(&method_call,
-                            dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  proxy->CallMethodAndBlockDeprecated(&method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 #endif  // USE_CELLULAR
 }
 

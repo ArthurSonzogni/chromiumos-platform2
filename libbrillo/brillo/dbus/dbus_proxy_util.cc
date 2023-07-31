@@ -29,7 +29,8 @@ std::unique_ptr<dbus::Response> CallDBusMethodInDbusThread(
           [](dbus::ObjectProxy* proxy, dbus::MethodCall* method_call,
              int timeout_ms, std::unique_ptr<dbus::Response>* response,
              base::WaitableEvent* event) {
-            *response = proxy->CallMethodAndBlock(method_call, timeout_ms);
+            *response =
+                proxy->CallMethodAndBlockDeprecated(method_call, timeout_ms);
             event->Signal();
           },
           base::Unretained(proxy), base::Unretained(method_call), timeout_ms,
@@ -76,7 +77,7 @@ std::unique_ptr<dbus::Response> CallDBusMethod(scoped_refptr<dbus::Bus> bus,
     return CallDBusMethodInDbusThread(bus->GetDBusTaskRunner(), proxy,
                                       method_call, timeout_ms);
   }
-  return proxy->CallMethodAndBlock(method_call, timeout_ms);
+  return proxy->CallMethodAndBlockDeprecated(method_call, timeout_ms);
 }
 
 std::unique_ptr<dbus::Response> CallDBusMethodWithErrorResponse(

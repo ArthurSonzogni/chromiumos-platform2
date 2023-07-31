@@ -50,8 +50,9 @@ std::unique_ptr<dbus::Response> SystemServiceProxy::CallMethodAndGetResponse(
     const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
   dbus::ObjectProxy* object_proxy =
       bus_->GetObjectProxy(service_name_, object_path);
-  std::unique_ptr<dbus::Response> response = object_proxy->CallMethodAndBlock(
-      method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> response =
+      object_proxy->CallMethodAndBlockDeprecated(
+          method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   return response;
 }
 

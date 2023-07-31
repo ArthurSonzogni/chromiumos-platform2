@@ -172,8 +172,9 @@ bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
            "when calling InstallAttributes method ";
     return false;
   }
-  std::unique_ptr<dbus::Response> response(fwmp_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(
+      fwmp_proxy_->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response) {
     LOG(ERROR) << "Error contacting Cryptohomed to get FWMP.";
     return false;

@@ -111,8 +111,9 @@ bool GetChromeProxyServers(scoped_refptr<dbus::Bus> bus,
       chromeos::kNetworkProxyServiceResolveProxyMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(url);
-  std::unique_ptr<dbus::Response> response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> response =
+      proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   return ParseProxyInfo(response.get(), proxies_out);
 }
 

@@ -166,7 +166,7 @@ class BasePowerdAdapterImplTest : public ::testing::Test {
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplySuccess) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
@@ -185,7 +185,7 @@ TEST_F(BasePowerdAdapterImplTest, PowerSupplySuccess) {
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplyFail) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
 
   ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), std::nullopt);
@@ -193,7 +193,7 @@ TEST_F(BasePowerdAdapterImplTest, PowerSupplyFail) {
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplyParseError) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 

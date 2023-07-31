@@ -194,7 +194,7 @@ TEST_F(DevModeUnblockBrokerTest, DetectUnBlockedDevMode) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillRepeatedly(
           Invoke(this, &DevModeUnblockBrokerTest::CreateMockProxyResponse));
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
@@ -281,7 +281,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillRepeatedly(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillRepeatedly(
           Invoke(this, &DevModeUnblockBrokerTest::CreateMockProxyResponse));
   dbus::ObjectProxy::ResponseCallback fwmp_removal_callback;

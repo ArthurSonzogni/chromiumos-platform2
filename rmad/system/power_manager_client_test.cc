@@ -55,27 +55,27 @@ class PowerManagerClientTest : public testing::Test {
 };
 
 TEST_F(PowerManagerClientTest, Restart_Success) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
   EXPECT_TRUE(power_manager_client()->Restart());
 }
 
 TEST_F(PowerManagerClientTest, Restart_Failed) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
   EXPECT_FALSE(power_manager_client()->Restart());
 }
 
 TEST_F(PowerManagerClientTest, Shutdown_Success) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
   EXPECT_TRUE(power_manager_client()->Shutdown());
 }
 
 TEST_F(PowerManagerClientTest, Shutdown_Failed) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
   EXPECT_FALSE(power_manager_client()->Shutdown());
 }

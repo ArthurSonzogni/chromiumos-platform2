@@ -79,8 +79,8 @@ bool UpstartToolsImpl::CallJobMethod(
   writer.AppendArrayOfStrings(environment);
   writer.AppendBool(true /* wait for response */);
   std::unique_ptr<dbus::Response> method_response =
-      job_proxy->CallMethodAndBlock(&method_call,
-                                    dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      job_proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!method_response) {
     DEBUGD_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
                          "%s job (%s) request had no response.", method.c_str(),

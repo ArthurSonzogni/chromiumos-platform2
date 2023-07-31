@@ -285,8 +285,9 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabled_Failure_EmptyResponse) {
 TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Success) {
   bool enabled = GetParam();
 
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke([this, enabled](dbus::MethodCall* call, int timeout_ms) {
         return CreateIsEnabledResponse(call, enabled);
       }));
@@ -296,8 +297,9 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Success) {
 }
 
 TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Null) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke(
           [](dbus::MethodCall* call, int timeout_ms) { return nullptr; }));
 
@@ -310,8 +312,9 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Null) {
 }
 
 TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Empty) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms) {
         return dbus::Response::CreateEmpty();
       }));
@@ -328,7 +331,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlockingWithTimeout_Success) {
   int timeout = 100;
   bool enabled = GetParam();
 
-  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlockDeprecated(_, timeout))
       .WillOnce(Invoke([this, enabled](dbus::MethodCall* call, int timeout_ms) {
         return CreateIsEnabledResponse(call, enabled);
       }));
@@ -340,7 +343,7 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlockingWithTimeout_Success) {
 TEST_P(FeatureLibraryParameterizedTest,
        IsEnabledBlockingWithTimeout_Failure_Null) {
   int timeout = 100;
-  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlockDeprecated(_, timeout))
       .WillOnce(Invoke(
           [](dbus::MethodCall* call, int timeout_ms) { return nullptr; }));
 
@@ -355,7 +358,7 @@ TEST_P(FeatureLibraryParameterizedTest,
 TEST_P(FeatureLibraryParameterizedTest,
        IsEnabledBlockingWithTimeout_Failure_Empty) {
   int timeout = 100;
-  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlockDeprecated(_, timeout))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms) {
         return dbus::Response::CreateEmpty();
       }));
@@ -686,8 +689,9 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking) {
       // f6 is default
   };
 
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke([this, enabled_map, params_map](dbus::MethodCall* call,
                                                        int timeout_ms) {
         return CreateGetParamsResponse(call, params_map, enabled_map);
@@ -744,8 +748,9 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking) {
 }
 
 TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking_Failure_Null) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke(
           [](dbus::MethodCall* call, int timeout_ms) { return nullptr; }));
 
@@ -776,8 +781,9 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking_Failure_Null) {
 }
 
 TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking_Failure_Empty) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms) {
         return dbus::Response::CreateEmpty();
       }));
@@ -810,8 +816,9 @@ TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking_Failure_Empty) {
 
 // Invalid response should result in default values.
 TEST_F(FeatureLibraryTest, GetParamsAndEnabledBlocking_Failure_Invalid) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms) {
         std::unique_ptr<dbus::Response> response =
             dbus::Response::CreateEmpty();
@@ -1048,8 +1055,9 @@ TEST_F(FeatureLibraryDeathTest, IsEnabledDistinctFeatureDefs) {
 }
 
 TEST_F(FeatureLibraryDeathTest, IsEnabledBlockingDistinctFeatureDefs) {
-  EXPECT_CALL(*mock_chrome_proxy_,
-              CallMethodAndBlock(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+  EXPECT_CALL(
+      *mock_chrome_proxy_,
+      CallMethodAndBlockDeprecated(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .Times(1);
 
   VariationsFeature f{"Feature", FEATURE_ENABLED_BY_DEFAULT};

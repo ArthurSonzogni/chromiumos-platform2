@@ -71,7 +71,8 @@ mojo::Remote<RollbackNetworkConfig> BootstrapMojoConnection(dbus::Bus* bus) {
   dbus::MessageWriter writer(&bootstrap_method_call);
 
   std::unique_ptr<dbus::Response> bootstrap_response =
-      proxy->CallMethodAndBlock(&bootstrap_method_call, /*timeout_ms=*/25000);
+      proxy->CallMethodAndBlockDeprecated(&bootstrap_method_call,
+                                          /*timeout_ms=*/25000);
 
   if (!bootstrap_response) {
     LOG(ERROR) << "Failed to establish dbus connection to Chrome. No response.";

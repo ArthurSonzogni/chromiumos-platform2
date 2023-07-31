@@ -113,8 +113,8 @@ void SessionManagerProxy::EnableChromeRemoteDebuggingInternal() {
   writer.AppendBool(true);  // force_restart
   writer.AppendArrayOfStrings({"--remote-debugging-port=9222"});
   writer.AppendArrayOfStrings({});  // extra_environment_variables
-  if (proxy_->CallMethodAndBlock(&method_call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
+  if (proxy_->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
     is_chrome_remote_debugging_enabled_ = true;
   } else {
     LOG(ERROR) << "Failed to enable Chrome remote debugging";

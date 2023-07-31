@@ -34,8 +34,9 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
       hardware_verifier::kHardwareVerifierInterfaceName,
       hardware_verifier::kVerifyComponentsMethod);
 
-  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> response =
+      proxy_->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response.get()) {
     LOG(ERROR) << "Failed to call hardware_verifier D-Bus service";
     return false;

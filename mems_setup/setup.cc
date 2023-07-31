@@ -108,8 +108,8 @@ int main(int argc, char** argv) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendInt32(device->GetId());
 
-    proxy->CallMethodAndBlock(&method_call,
-                              dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    proxy->CallMethodAndBlockDeprecated(&method_call,
+                                        dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
     return 0;
   }
 

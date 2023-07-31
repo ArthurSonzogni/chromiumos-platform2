@@ -431,7 +431,7 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_->SetLoginScreenStorageForTesting(std::make_unique<LoginScreenStorage>(
         login_screen_storage_path_, std::move(shared_memory_util)));
 
-    EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
+    EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
         .WillRepeatedly(
             Invoke(this, &SessionManagerImplTest::CreateMockProxyResponse));
 
@@ -2374,7 +2374,7 @@ TEST_F(SessionManagerImplTest, StopArcInstance_BackupsArcBugReport) {
                                   ArcContainerStopReason::USER_REQUEST)))
       .Times(1);
 
-  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce(WithArg<0>(Invoke([](dbus::MethodCall* method_call) {
         EXPECT_EQ(method_call->GetInterface(), debugd::kDebugdInterface);
         EXPECT_EQ(method_call->GetMember(), debugd::kBackupArcBugReport);
@@ -2539,7 +2539,7 @@ TEST_F(SessionManagerImplTest,
   EXPECT_CALL(*arc_sideload_status_, IsAdbSideloadAllowed())
       .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce(WithArg<0>(Invoke([](dbus::MethodCall* method_call) {
         EXPECT_EQ(method_call->GetInterface(), debugd::kDebugdInterface);
         EXPECT_EQ(method_call->GetMember(), debugd::kBackupArcBugReport);

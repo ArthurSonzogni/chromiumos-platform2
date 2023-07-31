@@ -45,7 +45,7 @@ void ChromeFeaturesServiceClient::FetchPeripheralDataAccessEnabled() {
         chromeos::kChromeFeaturesServiceIsPeripheralDataAccessEnabledMethod);
 
     std::unique_ptr<dbus::Response> dbus_response =
-        proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+        proxy_->CallMethodAndBlockDeprecated(&method_call, kDbusTimeoutMs);
     if (dbus_response) {
       bool enabled;
       dbus::MessageReader reader(dbus_response.get());

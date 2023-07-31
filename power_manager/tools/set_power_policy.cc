@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
                                power_manager::kSetPolicyMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(policy);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
+  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlockDeprecated(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response.get());
 

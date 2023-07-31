@@ -284,7 +284,7 @@ void SessionManagerService::RestartDevice(const std::string& description) {
   dbus::MessageWriter writer(&call);
   writer.AppendInt32(power_manager::REQUEST_RESTART_OTHER);
   writer.AppendString(description);
-  powerd_dbus_proxy_->CallMethodAndBlock(
+  powerd_dbus_proxy_->CallMethodAndBlockDeprecated(
       &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 

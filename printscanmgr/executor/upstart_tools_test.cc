@@ -92,7 +92,7 @@ TEST_F(UpstartToolsTest, TestIsJobRunning) {
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/cupsd"));
   dbus::MethodCall method_call("com.ubuntu.Upstart0_6.Job", "GetInstance");
   EXPECT_CALL(*job_object_proxy_,
-              CallMethodAndBlock(IsMethod("GetInstance"), _))
+              CallMethodAndBlockDeprecated(IsMethod("GetInstance"), _))
       .WillOnce(Return(ByMove(std::move(job_response))));
   std::string error;
   bool result =
@@ -110,7 +110,7 @@ TEST_F(UpstartToolsTest, TestRestartJob) {
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/cupsd"));
-  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
   std::string error;
   bool result = upstart_tools()->RestartJob(mojom::UpstartJob::kCupsd, &error);

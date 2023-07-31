@@ -131,7 +131,7 @@ class HardwareVerifierClientTest : public testing::Test {
 };
 
 TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_Compliant) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();
@@ -152,7 +152,7 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_Compliant) {
 }
 
 TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();
@@ -177,7 +177,7 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
 
 TEST_F(HardwareVerifierClientTest,
        GetHardwareVerificationResult_EmptyResponse) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 
@@ -189,7 +189,7 @@ TEST_F(HardwareVerifierClientTest,
 
 TEST_F(HardwareVerifierClientTest,
        GetHardwareVerificationResult_ErrorResponse) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockDeprecated(_, _))
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();

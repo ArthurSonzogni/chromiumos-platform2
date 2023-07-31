@@ -238,8 +238,9 @@ int main(int argc, char* argv[]) {
     writer.AppendUint32(FLAGS_flavor);
   }
 
-  std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(
+      powerd_proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response) << power_manager::kRequestSuspendMethod << " failed";
 
   // Schedule a task to fire after the timeout.
@@ -253,8 +254,9 @@ int main(int argc, char* argv[]) {
   if (FLAGS_suspend_for_sec != 0) {
     dbus::MethodCall method_call2(power_manager::kPowerManagerInterface,
                                   power_manager::kGetLastWakealarmMethod);
-    std::unique_ptr<dbus::Response> response2(powerd_proxy->CallMethodAndBlock(
-        &method_call2, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+    std::unique_ptr<dbus::Response> response2(
+        powerd_proxy->CallMethodAndBlockDeprecated(
+            &method_call2, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 
     dbus::MessageReader reader2(response2.get());
     uint64_t wakealarm_time;

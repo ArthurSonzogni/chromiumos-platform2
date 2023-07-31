@@ -104,7 +104,8 @@ bool GetCid(dbus::ObjectProxy* concierge_proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      concierge_proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+      concierge_proxy->CallMethodAndBlockDeprecated(&method_call,
+                                                    kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to concierge service";
     return false;
@@ -154,7 +155,8 @@ bool LaunchVshd(dbus::ObjectProxy* cicerone_proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      cicerone_proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+      cicerone_proxy->CallMethodAndBlockDeprecated(&method_call,
+                                                   kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return false;
@@ -283,7 +285,8 @@ void RegisterVshSession(dbus::ObjectProxy* cicerone_proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      cicerone_proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+      cicerone_proxy->CallMethodAndBlockDeprecated(&method_call,
+                                                   kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return;

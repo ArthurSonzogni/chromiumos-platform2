@@ -51,8 +51,9 @@ int main(int argc, char* argv[]) {
                                power_manager::kRequestShutdownMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(FLAGS_request_reason);
-  std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(
+      powerd_proxy->CallMethodAndBlockDeprecated(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response) << power_manager::kRequestShutdownMethod << " failed";
 
   return 0;

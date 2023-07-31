@@ -107,7 +107,7 @@ std::optional<power_manager::PowerSupplyProperties>
 PowerdAdapterImpl::GetPowerSupplyProperties() {
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kGetPowerSupplyPropertiesMethod);
-  auto response = bus_proxy_->CallMethodAndBlock(
+  auto response = bus_proxy_->CallMethodAndBlockDeprecated(
       &method_call, kPowerManagerDBusTimeout.InMilliseconds());
 
   if (!response) {
