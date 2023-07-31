@@ -333,7 +333,7 @@ CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER)) -std=gnu17
 # We undefine _FORTIFY_SOURCE because some distros enable it by default in
 # their toolchains.  This makes the compiler issue warnings about redefines
 # and our -Werror usage breaks it all.
-CPPFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
+CPPFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 
 # Enable large file support.
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
