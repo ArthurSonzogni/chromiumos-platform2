@@ -773,7 +773,11 @@ bool CrosFpDevice::ResetContext() {
   // exists to make sure that we have disabled any matching in the firmware
   // when this is called. See https://crbug.com/980614 for details.
   if (cur_mode != FpMode(FpMode::Mode::kNone)) {
-    LOG(ERROR) << "Attempting to reset context with mode: " << cur_mode;
+    LOG(WARNING) << "Attempting to reset context with mode: " << cur_mode;
+    if (!SetFpMode(FpMode(FpMode::Mode::kNone))) {
+      LOG(ERROR) << "Failed to set FP Mode to none.";
+      // Let's continue, it might wtill work out.
+    }
   }
 
   CHECK(biod_metrics_);

@@ -58,6 +58,7 @@ class CrosFpDevice_ResetContext : public testing::Test {
         std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
         : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
     MOCK_METHOD(FpMode, GetFpMode, (), (override));
+    MOCK_METHOD(bool, SetFpMode, (const FpMode&), (override));
     MOCK_METHOD(bool, SetContext, (std::string user_id), (override));
   };
   class MockFpContextFactory : public ec::MockEcCommandFactory {
@@ -90,6 +91,8 @@ TEST_F(CrosFpDevice_ResetContext, WrongMode) {
   EXPECT_CALL(mock_cros_fp_device, GetFpMode).Times(1).WillOnce([]() {
     return FpMode(FpMode::Mode::kMatch);
   });
+  EXPECT_CALL(mock_cros_fp_device, SetFpMode(FpMode(FpMode::Mode::kNone)))
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_cros_fp_device, SetContext(std::string())).Times(1);
   EXPECT_CALL(mock_biod_metrics,
               SendResetContextMode(FpMode(FpMode::Mode::kMatch)));
