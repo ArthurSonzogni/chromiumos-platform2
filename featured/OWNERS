@@ -1,3 +1,5 @@
-joelaf@google.com
+# primary owner
 mutexlox@chromium.org
+# backup owners
+iby@chromium.org
 include /metrics/OWNERS
