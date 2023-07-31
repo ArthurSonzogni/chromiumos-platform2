@@ -32,6 +32,8 @@ pub mod intel_device {
     const GPU_FREQUENCY_GUARD_BUFFER_MHZ: u64 = 200;
 
     pub struct IntelGpuDeviceConfig {
+        root: PathBuf,
+
         min_freq_path: PathBuf,
 
         max_freq_path: PathBuf,
@@ -104,6 +106,7 @@ pub mod intel_device {
                 info!("Tuning thread already running, ignoring new request");
             } else {
                 let gpu_dev = IntelGpuDeviceConfig::new(root.to_owned(), polling_interval_ms)?;
+                gpu_dev.is_active_gpu_tuning_supported()?;
                 let cpu_dev = DeviceCpuStatus::new(root)?;
 
                 *running = true;
@@ -149,13 +152,12 @@ pub mod intel_device {
         ///
         /// New Intel GPU device object.
         pub fn new(root: PathBuf, polling_interval_ms: u64) -> Result<IntelGpuDeviceConfig> {
-            if !is_intel_device(root.to_owned())
-                || !IntelGpuDeviceConfig::is_supported_device(root.to_owned())
-            {
-                bail!("Not a supported intel device");
+            if !is_intel_device(root.to_owned()) {
+                bail!("Not an intel device");
             }
 
             let gpu_dev = IntelGpuDeviceConfig {
+                root: root.to_owned(),
                 min_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_min_freq_mhz"),
                 max_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz"),
                 turbo_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz"),
@@ -169,13 +171,26 @@ pub mod intel_device {
                 polling_interval_ms,
             };
 
+            Ok(gpu_dev)
+        }
+
+        /// Checks if the current device supports active GPU tuning.
+        ///
+        /// # Returns
+        ///
+        /// A `Result` with an `Ok` value if the device supports active GPU tuning, or
+        /// a `Err` value with an error message if the device does not support active GPU
+        /// tuning.
+        pub fn is_active_gpu_tuning_supported(&self) -> Result<()> {
+            if !IntelGpuDeviceConfig::is_supported_device(self.root.to_owned()) {
+                bail!("Not a supported intel device")
+            }
             // Don't attempt to tune if tuning table isn't calibrated for device or another
             // process has already modified the max_freq.
-            if gpu_dev.get_gpu_stats()?.max_freq != EXPECTED_GPU_MAX_FREQ {
-                bail!("Expected GPU max frequency does not match.  Aborting dynamic tuning.");
+            if self.get_gpu_stats()?.max_freq != EXPECTED_GPU_MAX_FREQ {
+                bail!("Expected GPU max frequency does not match.  Aborting dynamic tuning.")
             }
-
-            Ok(gpu_dev)
+            Ok(())
         }
 
         // This function will only filter in 10th gen (Cometlake CPUs).  The current tuning
@@ -600,7 +615,10 @@ mod tests {
             "GenuineIntel",
             "Intel(R) Core(TM) i3-11110U CPU @ 2.10GHz",
         );
-        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100).is_err());
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100)
+            .unwrap()
+            .is_active_gpu_tuning_supported()
+            .is_err());
 
         // Supported model
         write_mock_cpuinfo(
@@ -608,7 +626,22 @@ mod tests {
             "GenuineIntel",
             "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
         );
-        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100).is_ok());
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100)
+            .unwrap()
+            .is_active_gpu_tuning_supported()
+            .is_ok());
+
+        // Wrong max GPU frequency
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+        set_intel_gpu_max(root, 1200);
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100)
+            .unwrap()
+            .is_active_gpu_tuning_supported()
+            .is_err());
     }
 
     #[test]

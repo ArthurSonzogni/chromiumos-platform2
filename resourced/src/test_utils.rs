@@ -231,6 +231,11 @@ model name      : {model_name}"#
         str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
     }
 
+    pub fn set_intel_gpu_max(root: &Path, val: u32) {
+        let gpu_max_path = root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz");
+        std::fs::write(gpu_max_path, val.to_string()).unwrap();
+    }
+
     pub fn get_intel_gpu_boost(root: &Path) -> i32 {
         let gpu_max_path = root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz");
         let read_val = std::fs::read(gpu_max_path).unwrap();
