@@ -1159,7 +1159,7 @@ int FetchStatusUpdateSignal(Printer& printer,
 // The |on_success| callback is triggered whenever the prepare signal that
 // represents a "complete state", i.e., it's the caller's turn to perform the
 // next action now.
-int DoPrepareAuthFactor(
+int PrepareAuthFactorAndWatchSignal(
     Printer& printer,
     base::CommandLine* cl,
     org::chromium::UserDataAuthInterfaceProxy& proxy,
@@ -1254,7 +1254,7 @@ int DoPrepareAddTerminate(
     base::CommandLine* cl,
     org::chromium::UserDataAuthInterfaceProxy& userdataauth_proxy,
     org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
-  auto prepare_add_result = DoPrepareAuthFactor(
+  auto prepare_add_result = PrepareAuthFactorAndWatchSignal(
       printer, cl, userdataauth_proxy, user_data_auth::PURPOSE_ADD_AUTH_FACTOR,
       base::BindRepeating(&AddAfterPrepareDone, &printer, cl,
                           &userdataauth_proxy, &misc_proxy));
@@ -1296,7 +1296,7 @@ int DoPrepareAuthenticateTerminate(
     base::CommandLine* cl,
     org::chromium::UserDataAuthInterfaceProxy& userdataauth_proxy,
     org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
-  auto prepare_auth_result = DoPrepareAuthFactor(
+  auto prepare_auth_result = PrepareAuthFactorAndWatchSignal(
       printer, cl, userdataauth_proxy,
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR,
       base::BindRepeating(&AuthenticateAfterPrepareDone, &printer, cl,
@@ -2820,16 +2820,42 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_PREPARE_AUTH_FACTOR],
                      action.c_str())) {
+    user_data_auth::PrepareAuthFactorRequest request;
+    user_data_auth::PrepareAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex, &auth_session_id);
+    request.set_auth_session_id(auth_session_id);
+
     user_data_auth::AuthFactorPreparePurpose prepare_purpose;
     if (!GetPreparePurpose(printer, cl, &prepare_purpose))
       return 1;
+    request.set_purpose(prepare_purpose);
 
-    auto normal_exit = [](base::RunLoop* run_loop, int* ret_code) {
-      *ret_code = 0;
-      run_loop->Quit();
-    };
-    return DoPrepareAuthFactor(printer, cl, userdataauth_proxy, prepare_purpose,
-                               base::BindRepeating(normal_exit));
+    user_data_auth::AuthFactorType auth_factor_type;
+    if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+      return 1;
+    request.set_auth_factor_type(auth_factor_type);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to PrepareAuthFactor";
+    if (!userdataauth_proxy.PrepareAuthFactor(request, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "PrepareAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to prepare auth factor.\n");
+      return static_cast<int>(reply.error());
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_TERMINATE_AUTH_FACTOR],
                      action.c_str())) {
     return DoTerminateAuthFactor(printer, cl, userdataauth_proxy);
