@@ -5,6 +5,7 @@
 #include "patchpanel/shill_client.h"
 
 #include <algorithm>
+#include <optional>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -673,8 +674,13 @@ void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
     // needs to be advertised as a new Device.
     ScanDevices();
     UpdateDefaultDevices();
-    // TODO(b/294053895): If the shill Device is now active, it might already be
+    // b/294053895: If the shill Device is now active, it might already be
     // connected. Make sure that IP configuration listeners are notified.
+    const auto& device_it = devices_.find(device_path);
+    if (device_it != devices_.end() && IsActiveDevice(device_it->second)) {
+      NotifyIPConfigChangeHandlers(device_it->second);
+      NotifyIPv6NetworkChangeHandlers(device_it->second, std::nullopt);
+    }
     return;
   }
 
@@ -746,14 +752,21 @@ void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
 
   LOG(INFO) << "[" << device_path.value()
             << "]: IPConfig changed: " << new_ip_config;
-  for (const auto& handler : ipconfigs_handlers_) {
-    handler.Run(device_it->second);
-  }
+  NotifyIPConfigChangeHandlers(device_it->second);
+  NotifyIPv6NetworkChangeHandlers(device_it->second, old_ip_config.ipv6_cidr);
+}
 
-  // Compares if the new IPv6 network is the same as the old one by checking
-  // its prefix.
-  const auto& old_cidr = old_ip_config.ipv6_cidr;
-  const auto& new_cidr = new_ip_config.ipv6_cidr;
+void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
+  for (const auto& handler : ipconfigs_handlers_) {
+    handler.Run(device);
+  }
+}
+
+void ShillClient::NotifyIPv6NetworkChangeHandlers(
+    const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr) {
+  // Compares if the new IPv6 network is the same as the old one by checking its
+  // prefix.
+  const auto& new_cidr = device.ipconfig.ipv6_cidr;
   if (!old_cidr && !new_cidr) {
     return;
   }
@@ -761,9 +774,8 @@ void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
       old_cidr->GetPrefixCIDR() == new_cidr->GetPrefixCIDR()) {
     return;
   }
-
   for (const auto& handler : ipv6_network_handlers_) {
-    handler.Run(device_it->second);
+    handler.Run(device);
   }
 }
 

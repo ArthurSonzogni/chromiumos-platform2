@@ -202,6 +202,9 @@ class ShillClient {
       const dbus::ObjectPath& device_path,
       const std::string& primary_multiplexed_interface);
   void OnDeviceIPConfigChange(const dbus::ObjectPath& device_path);
+  void NotifyIPConfigChangeHandlers(const Device& device);
+  void NotifyIPv6NetworkChangeHandlers(
+      const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
   // by |device_path|. Returns false if an error occurs. Note that this method
