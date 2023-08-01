@@ -71,7 +71,11 @@ class UpstartToolsImpl : public UpstartTools {
     }
     dbus::MethodCall method_call(kUpstartJobInterface, method);
     dbus::MessageWriter writer(&method_call);
-    writer.AppendBool(true /* wait for response */);
+    writer.AppendArrayOfStrings(/*environment=*/{});
+    if (method != kGetInstanceMethod) {
+      // GetInstance is the only Job method we call without the wait argument.
+      writer.AppendBool(/*wait=*/true);
+    }
     std::unique_ptr<dbus::Response> method_response =
         job_proxy->CallMethodAndBlock(&method_call,
                                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
