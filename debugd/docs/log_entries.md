@@ -51,7 +51,7 @@ boot.
 
 ## arcvm_psi
 
-PSI of ARCVM that comes from /proc/pressure/memory.
+[Memory PSI] of ARCVM that comes from `/proc/pressure/memory`. [Memory PSI code]
 
 ## arcvm_zram_mm_stat
 
@@ -446,7 +446,7 @@ and base64-encoded.
 
 ## psi
 
-The output of /proc/pressure/memory.
+[Memory PSI] of host, output of `/proc/pressure/memory`.  [Memory PSI code]
 
 ## pvs
 
@@ -594,6 +594,8 @@ Useful to know how much memory is being stored compressed in zram.
 [auditd(8)]: https://man7.org/linux/man-pages/man8/auditd.8.html
 [FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
 [fwupd]: https://github.com/fwupd/fwupd
+[Memory PSI]: https://docs.kernel.org/accounting/psi.html
+[Memory PSI code]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v6.1/kernel/sched/psi.c#1143
 [Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo
 [proc(5)]: https://man7.org/linux/man-pages/man5/proc.5.html
 [segmentation library]: /libsegmentation/README.md
