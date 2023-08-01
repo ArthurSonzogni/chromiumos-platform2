@@ -652,18 +652,65 @@ void ShillClient::OnDevicePropertyChangeRegistration(
 void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                                          const std::string& property_name,
                                          const brillo::Any& property_value) {
-  if (property_name != shill::kIPConfigsProperty &&
-      property_name != shill::kPrimaryMultiplexedInterfaceProperty) {
+  if (property_name == shill::kIPConfigsProperty) {
+    OnDeviceIPConfigChange(device_path);
+  } else if (property_name == shill::kPrimaryMultiplexedInterfaceProperty) {
+    OnDevicePrimaryMultiplexedInterfaceChange(
+        device_path, property_value.TryGet<std::string>());
+  }
+}
+
+void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
+    const dbus::ObjectPath& device_path,
+    const std::string& primary_multiplexed_interface) {
+  LOG(INFO) << __func__ << ": Device " << device_path.value()
+            << " has primary multiplexed interface \""
+            << primary_multiplexed_interface << "\"";
+  const auto& device_it = devices_.find(device_path);
+  if (device_it == devices_.end() && !primary_multiplexed_interface.empty()) {
+    // If the shill Device is not found in |devices_| it is not active. If the
+    // primary multiplexed interface is now defined, that Device is active and
+    // needs to be advertised as a new Device.
+    ScanDevices();
+    UpdateDefaultDevices();
+    // TODO(b/294053895): If the shill Device is now active, it might already be
+    // connected. Make sure that IP configuration listeners are notified.
     return;
   }
 
-  const auto& device_it = devices_.find(device_path);
-  if (device_it == devices_.end()) {
-    // If the Device is not found in |devices_| it is not active. If a property
-    // update is received for an inactive Device, that Device may now be active
-    // and needs to be advertised as a new Device.
+  // The shill Device is already active the primary multiplexed interface is
+  // already known, this event can be ignored.
+  if (primary_multiplexed_interface ==
+      device_it->second.primary_multiplexed_interface) {
+    return;
+  }
+
+  // When the shill Device is already active and the primary multiplexed
+  // interface property changed, it should now be empty and the shill Device
+  // should not be active anymore. Refresh all properties at once and advertise
+  // it as a removed Device.
+  if (!primary_multiplexed_interface.empty()) {
+    LOG(ERROR) << __func__ << ": Device " << device_path.value()
+               << " has primary multiplexed interface \""
+               << primary_multiplexed_interface << "\" but we had "
+               << device_it->second;
+  }
+  if (!GetDeviceProperties(device_path, &device_it->second)) {
+    LOG(ERROR) << "Failed to update properties of Device "
+               << device_path.value();
+    return;
+  }
+  if (!IsActiveDevice(device_it->second)) {
     ScanDevices();
     UpdateDefaultDevices();
+  }
+}
+
+void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
+  const auto& device_it = devices_.find(device_path);
+  if (device_it == devices_.end()) {
+    // If the Device is not found in |devices_| it is not active. Ignore IP
+    // configuration changes until the device becomes active.
     return;
   }
 
@@ -673,14 +720,6 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   if (!GetDeviceProperties(device_path, &device_it->second)) {
     LOG(ERROR) << "Failed to update properties of Device "
                << device_path.value();
-    return;
-  }
-
-  // If the Device is not active anymore, it needs to be advertised as a removed
-  // Device and removed from |deviecs_|.
-  if (!IsActiveDevice(device_it->second)) {
-    ScanDevices();
-    UpdateDefaultDevices();
     return;
   }
 

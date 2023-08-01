@@ -198,6 +198,10 @@ class ShillClient {
   void OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                               const std::string& property_name,
                               const brillo::Any& property_value);
+  void OnDevicePrimaryMultiplexedInterfaceChange(
+      const dbus::ObjectPath& device_path,
+      const std::string& primary_multiplexed_interface);
+  void OnDeviceIPConfigChange(const dbus::ObjectPath& device_path);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
   // by |device_path|. Returns false if an error occurs. Note that this method
