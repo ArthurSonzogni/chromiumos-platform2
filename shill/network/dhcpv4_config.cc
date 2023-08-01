@@ -13,12 +13,12 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/technology.h"
 
@@ -99,7 +99,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
                                       IPConfig::Properties* properties) {
   SLOG(2) << __func__;
   properties->method = kTypeDHCP;
-  properties->address_family = IPAddress::kFamilyIPv4;
+  properties->address_family = net_base::IPFamily::kIPv4;
   std::string classless_static_routes;
   bool default_gateway_parse_error = false;
   for (const auto& it : configuration.properties()) {

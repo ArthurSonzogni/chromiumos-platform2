@@ -109,7 +109,7 @@ class CellularBearer {
   // configuration method and properties and should be non-NULL.
   void GetIPConfigMethodAndProperties(
       const KeyValueStore& properties,
-      IPAddress::Family address_family,
+      net_base::IPFamily address_family,
       IPConfigMethod* ipconfig_method,
       std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const;
 

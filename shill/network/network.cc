@@ -27,7 +27,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
@@ -201,19 +200,16 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
-  if (ipconfig->properties().address_family == IPAddress::kFamilyUnknown) {
+  if (!ipconfig->properties().address_family) {
     LOG(ERROR) << logging_tag_ << ": " << __func__
                << " with invalid address family";
     return;
   }
 
   LOG(INFO) << logging_tag_ << ": Setting "
-            << IPAddress::GetAddressFamilyName(
-                   ipconfig->properties().address_family)
-            << " connection";
+            << *ipconfig->properties().address_family << " connection";
   if (!primary_family_) {
-    primary_family_ =
-        net_base::FromSAFamily(ipconfig->properties().address_family);
+    primary_family_ = ipconfig->properties().address_family;
   }
   ApplyAddress(ipconfig->properties());
   ApplyRoute(ipconfig->properties());
@@ -592,7 +588,7 @@ void Network::OnIPv6AddressChanged() {
     return;
   }
 
-  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.address_family = net_base::IPFamily::kIPv6;
   properties.method = kTypeSLAAC;
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
@@ -1158,7 +1154,7 @@ void Network::ApplyRoutingPolicy() {
 }
 
 void Network::ApplyRoute(const IPConfig::Properties& properties) {
-  auto family = net_base::FromSAFamily(properties.address_family);
+  auto family = properties.address_family;
   if (!family) {
     LOG(ERROR) << logging_tag_ << ": Invalid IP family";
     return;
@@ -1262,7 +1258,7 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
 
 void Network::ApplyAddress(const IPConfig::Properties& properties) {
   SLOG(2) << logging_tag_ << ": " << __func__ << " on "
-          << IPAddress::GetAddressFamilyName(properties.address_family);
+          << *properties.address_family;
 
   // Skip address configuration if the address is from SLAAC.
   const bool skip_ip_configuration = properties.method == kTypeSLAAC;

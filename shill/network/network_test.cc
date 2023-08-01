@@ -110,7 +110,7 @@ NetworkConfig CreateIPv4NetworkConfig(
 // part when necessary.
 IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
   IPConfig::Properties props = {};
-  props.address_family = IPAddress::kFamilyIPv4;
+  props.address_family = net_base::IPFamily::kIPv4;
   props.UpdateFromNetworkConfig(config);
   return props;
 }
@@ -1159,7 +1159,7 @@ TEST_F(NetworkTest, ApplyAddress) {
   const auto ipv6_local =
       net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
 
-  properties.address_family = IPAddress::kFamilyIPv4;
+  properties.address_family = net_base::IPFamily::kIPv4;
   properties.method = kTypeDHCP;
   properties.address = ipv4_local->address().ToString();
   properties.subnet_prefix = ipv4_local->prefix_length();
@@ -1172,7 +1172,7 @@ TEST_F(NetworkTest, ApplyAddress) {
               ApplyAddress(kTestIfindex, *ipv4_local, ipv4_broadcast));
   network_->TriggerApplyAddress(properties);
 
-  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.address_family = net_base::IPFamily::kIPv6;
   properties.method = kTypeSLAAC;
   properties.address = ipv6_local->address().ToString();
   properties.subnet_prefix = ipv6_local->prefix_length();
@@ -1192,7 +1192,7 @@ TEST_F(NetworkTest, ApplyRoute) {
   IPConfig::Properties properties;
   const auto ipv4_gateway =
       net_base::IPAddress::CreateFromString("192.168.1.1");
-  properties.address_family = IPAddress::kFamilyIPv4;
+  properties.address_family = net_base::IPFamily::kIPv4;
   properties.method = kTypeDHCP;
   properties.address = "192.168.100.100";
   properties.subnet_prefix = 16;
@@ -1244,7 +1244,7 @@ TEST_F(NetworkTest, ApplyRouteIPv6) {
   IPConfig::Properties properties;
   const auto ipv6_gateway = net_base::IPAddress::CreateFromString("fe80::abcd");
 
-  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.address_family = net_base::IPFamily::kIPv6;
   properties.method = kTypeVPN;
   properties.gateway = ipv6_gateway->ToString();
   properties.default_route = true;
@@ -1310,14 +1310,14 @@ class NetworkStartTest : public NetworkTest {
     ipv4_link_protocol_with_static_props_ = ipv4_static_props_;
     ipv4_link_protocol_with_static_props_.mtu = kIPv4LinkProtocolMTU;
 
-    ipv6_slaac_props_.address_family = IPAddress::kFamilyIPv6;
+    ipv6_slaac_props_.address_family = net_base::IPFamily::kIPv6;
     ipv6_slaac_props_.method = kTypeSLAAC;
     ipv6_slaac_props_.address = kIPv6SLAACAddress;
     ipv6_slaac_props_.subnet_prefix = kIPv6SLAACPrefix;
     ipv6_slaac_props_.gateway = kIPv6SLAACGateway;
     ipv6_slaac_props_.dns_servers = {kIPv6SLAACNameserver};
 
-    ipv6_link_protocol_props_.address_family = IPAddress::kFamilyIPv6;
+    ipv6_link_protocol_props_.address_family = net_base::IPFamily::kIPv6;
     ipv6_link_protocol_props_.method = kTypeSLAAC;
     ipv6_link_protocol_props_.address = kIPv6LinkProtocolAddress;
     ipv6_link_protocol_props_.subnet_prefix = kIPv6LinkProtocolPrefix;

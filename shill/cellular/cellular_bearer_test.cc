@@ -120,7 +120,8 @@ class CellularBearerTest : public testing::Test {
     const IPConfig::Properties* ipv4_config_properties =
         bearer_.ipv4_config_properties();
     ASSERT_NE(nullptr, ipv4_config_properties);
-    EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_config_properties->address_family);
+    EXPECT_EQ(net_base::IPFamily::kIPv4,
+              ipv4_config_properties->address_family);
     EXPECT_EQ(kIPv4Address, ipv4_config_properties->address);
     EXPECT_EQ(kIPv4Gateway, ipv4_config_properties->gateway);
     EXPECT_EQ(kIPv4SubnetPrefix, ipv4_config_properties->subnet_prefix);
@@ -137,7 +138,8 @@ class CellularBearerTest : public testing::Test {
     const IPConfig::Properties* ipv6_config_properties =
         bearer_.ipv6_config_properties();
     ASSERT_NE(nullptr, ipv6_config_properties);
-    EXPECT_EQ(IPAddress::kFamilyIPv6, ipv6_config_properties->address_family);
+    EXPECT_EQ(net_base::IPFamily::kIPv6,
+              ipv6_config_properties->address_family);
     EXPECT_EQ(kIPv6Address, ipv6_config_properties->address);
     EXPECT_EQ(kIPv6Gateway, ipv6_config_properties->gateway);
     EXPECT_EQ(kIPv6SubnetPrefix, ipv6_config_properties->subnet_prefix);

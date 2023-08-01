@@ -142,9 +142,8 @@ TEST_F(PPPDaemonTest, ParseIPConfiguration) {
   config[kPPPMRU] = "1492";
   config["foo"] = "bar";  // Unrecognized keys don't cause crash.
   IPConfig::Properties props = PPPDaemon::ParseIPConfiguration(config);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
-  EXPECT_EQ(IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4),
-            props.subnet_prefix);
+  EXPECT_EQ(net_base::IPFamily::kIPv4, props.address_family);
+  EXPECT_EQ(net_base::IPv4CIDR::kMaxPrefixLength, props.subnet_prefix);
   EXPECT_EQ("4.5.6.7", props.address);
   EXPECT_EQ("33.44.55.66", props.peer_address);
   EXPECT_EQ("192.168.1.1", props.gateway);

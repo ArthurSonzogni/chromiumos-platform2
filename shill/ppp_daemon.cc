@@ -25,6 +25,7 @@ extern "C" {
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
+#include <net-base/ip_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
@@ -132,9 +133,8 @@ std::string PPPDaemon::GetInterfaceName(
 IPConfig::Properties PPPDaemon::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration) {
   IPConfig::Properties properties;
-  properties.address_family = IPAddress::kFamilyIPv4;
-  properties.subnet_prefix =
-      IPAddress::GetMaxPrefixLength(properties.address_family);
+  properties.address_family = net_base::IPFamily::kIPv4;
+  properties.subnet_prefix = net_base::IPv4CIDR::kMaxPrefixLength;
   for (const auto& it : configuration) {
     const auto& key = it.first;
     const auto& value = it.second;
@@ -152,9 +152,9 @@ IPConfig::Properties PPPDaemon::ParseIPConfiguration(
     } else if (key == kPPPLNSAddress) {
       // This is really a L2TPIPsec property. But it's sent to us by
       // our PPP plugin.
-      size_t prefix = IPAddress::GetMaxPrefixLength(properties.address_family);
-      properties.exclusion_list.push_back(value + "/" +
-                                          base::NumberToString(prefix));
+      properties.exclusion_list.push_back(
+          value + "/" +
+          base::NumberToString(net_base::IPv4CIDR::kMaxPrefixLength));
     } else if (key == kPPPMRU) {
       int mru;
       if (!base::StringToInt(value, &mru)) {

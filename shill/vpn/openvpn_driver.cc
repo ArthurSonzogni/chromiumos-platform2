@@ -369,7 +369,7 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
   const int max_prefix_length = net_base::IPCIDR::GetMaxPrefixLength(family);
   auto properties = std::make_unique<IPConfig::Properties>();
   properties->method = kTypeVPN;
-  properties->address_family = net_base::ToSAFamily(family);
+  properties->address_family = family;
   properties->address = local;
   properties->subnet_prefix = prefix_length.value_or(max_prefix_length);
   // L3 VPN doesn't need gateway. Set it to default to skip RTA_GATEWAY when
@@ -390,7 +390,7 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
     // --topology subnet will set ifconfig_netmask instead
     const auto network_cidr = net_base::IPCIDR::CreateFromStringAndPrefix(
         properties->address, properties->subnet_prefix,
-        net_base::FromSAFamily(properties->address_family));
+        properties->address_family);
     if (!network_cidr.has_value()) {
       LOG(WARNING) << "Error obtaining network address for "
                    << properties->address;

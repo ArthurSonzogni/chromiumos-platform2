@@ -14,10 +14,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
-#include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/network/network_config.h"
 
@@ -59,16 +59,15 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
   ret.dns_search_domains = domain_search;
   ret.dns_servers = dns_servers;
 
-  if (address_family != IPAddress::kFamilyIPv4 &&
-      address_family != IPAddress::kFamilyIPv6) {
-    LOG(INFO) << "The input IPConfig::Properties does not have an valid "
+  if (!address_family) {
+    LOG(INFO) << "The input IPConfig::Properties does not have a valid "
                  "family. Skip setting family-specific fields.";
     return ret;
   }
 
   NetworkConfig::RouteProperties* route_props = nullptr;
-  switch (address_family) {
-    case IPAddress::kFamilyIPv4:
+  switch (address_family.value()) {
+    case net_base::IPFamily::kIPv4:
       if (!address.empty()) {
         ret.ipv4_address_cidr =
             base::StrCat({address, "/", base::NumberToString(subnet_prefix)});
@@ -76,7 +75,7 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
       ret.ipv4_default_route = default_route;
       route_props = &ret.ipv4_route;
       break;
-    case IPAddress::kFamilyIPv6:
+    case net_base::IPFamily::kIPv6:
       if (!address.empty()) {
         ret.ipv6_address_cidrs = std::vector<std::string>{};
         ret.ipv6_address_cidrs->push_back(
@@ -84,10 +83,6 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
       }
       route_props = &ret.ipv6_route;
       break;
-    default:
-      LOG(INFO) << "The input IPConfig::Properties does not have an valid "
-                   "family. Skip setting family-specific fields.";
-      return ret;
   }
 
   route_props->gateway = gateway;
@@ -99,10 +94,10 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
 
 void IPConfig::Properties::UpdateFromNetworkConfig(
     const NetworkConfig& network_config) {
-  if (address_family == IPAddress::kFamilyUnknown) {
+  if (!address_family) {
     // In situations where no address is supplied (bad or missing DHCP config)
     // supply an address family ourselves.
-    address_family = IPAddress::kFamilyIPv4;
+    address_family = net_base::IPFamily::kIPv4;
   }
   if (method.empty()) {
     // When it's empty, it means there is no other IPConfig provider now (e.g.,
@@ -110,18 +105,18 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     method = kTypeIPv4;
   }
 
-  if (address_family != IPAddress::kFamilyIPv4) {
+  if (address_family != net_base::IPFamily::kIPv4) {
     LOG(DFATAL) << "The IPConfig object is not for IPv4, but for "
-                << address_family;
+                << address_family.value();
     return;
   }
 
   if (network_config.ipv4_address_cidr.has_value()) {
-    const auto addr = IPAddress::CreateFromPrefixString(
-        network_config.ipv4_address_cidr.value(), IPAddress::kFamilyIPv4);
-    if (addr.has_value()) {
-      address = addr->ToString();
-      subnet_prefix = addr->prefix();
+    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
+        network_config.ipv4_address_cidr.value());
+    if (cidr.has_value()) {
+      address = cidr->address().ToString();
+      subnet_prefix = cidr->prefix_length();
     } else {
       LOG(ERROR) << "ipv4_address_cidr does not have a valid value "
                  << network_config.ipv4_address_cidr.value();

@@ -1183,7 +1183,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
     // We use ReturnRef() below for this object so use `static` here.
     static IPConfig::Properties ip_props;
-    ip_props.address_family = net_base::ToSAFamily(net_base::IPFamily::kIPv4);
+    ip_props.address_family = net_base::IPFamily::kIPv4;
     ip_props.gateway = ipv4_gateway_address;
     EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
     network_->set_ipconfig(std::move(ipconfig));

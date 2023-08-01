@@ -92,7 +92,7 @@ bool CellularBearer::Init() {
 
 void CellularBearer::GetIPConfigMethodAndProperties(
     const KeyValueStore& properties,
-    IPAddress::Family address_family,
+    net_base::IPFamily address_family,
     IPConfigMethod* ipconfig_method,
     std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const {
   DCHECK(ipconfig_method);
@@ -121,9 +121,9 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   // Set address family and method associated to these IP config right away, as
   // we already know them.
   (*ipconfig_properties)->address_family = address_family;
-  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
+  if (address_family == net_base::IPFamily::kIPv4) {
     (*ipconfig_properties)->method = kTypeIPv4;
-  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
+  } else if (address_family == net_base::IPFamily::kIPv6) {
     (*ipconfig_properties)->method = kTypeIPv6;
   }
 
@@ -159,7 +159,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   // Set network prefix.
   uint32_t prefix;
   if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
-    prefix = IPAddress::GetMaxPrefixLength(address_family);
+    prefix = net_base::IPCIDR::GetMaxPrefixLength(address_family);
   } else {
     prefix = properties.Get<uint32_t>(kPropertyPrefix);
   }
@@ -232,7 +232,7 @@ void CellularBearer::OnPropertiesChanged(
           MM_BEARER_PROPERTY_IP4CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP4CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig, IPAddress::kFamilyIPv4,
+    GetIPConfigMethodAndProperties(ipconfig, net_base::IPFamily::kIPv4,
                                    &ipv4_config_method_,
                                    &ipv4_config_properties_);
   }
@@ -240,7 +240,7 @@ void CellularBearer::OnPropertiesChanged(
           MM_BEARER_PROPERTY_IP6CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP6CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig, IPAddress::kFamilyIPv6,
+    GetIPConfigMethodAndProperties(ipconfig, net_base::IPFamily::kIPv6,
                                    &ipv6_config_method_,
                                    &ipv6_config_properties_);
   }

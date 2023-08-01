@@ -6,12 +6,14 @@
 #define SHILL_IPCONFIG_H_
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
 
+#include <net-base/ip_address.h>
+
 #include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 #include "shill/network/network_config.h"
 #include "shill/store/property_store.h"
 
@@ -47,7 +49,7 @@ class IPConfig {
     // function assumes that |this| is an IPv4 config.
     void UpdateFromNetworkConfig(const NetworkConfig& network_config);
 
-    IPAddress::Family address_family = IPAddress::kFamilyUnknown;
+    std::optional<net_base::IPFamily> address_family = std::nullopt;
     std::string address;
     int32_t subnet_prefix = 0;
     std::string broadcast_address;

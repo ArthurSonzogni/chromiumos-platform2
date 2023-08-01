@@ -29,6 +29,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/io_handler_factory.h"
+#include "shill/net/ip_address.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/vpn_types.h"
@@ -345,7 +346,7 @@ void ThirdPartyVpnDriver::SetParameters(
   }
 
   ipv4_properties_ = std::make_unique<IPConfig::Properties>();
-  ipv4_properties_->address_family = IPAddress::kFamilyIPv4;
+  ipv4_properties_->address_family = net_base::IPFamily::kIPv4;
 
   ProcessIp(parameters, kAddressParameterThirdPartyVpn,
             &ipv4_properties_->address, true, error_message);

@@ -589,7 +589,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   invoke(false);
   ASSERT_NE(ipv4_props, nullptr);
   ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_props->address_family);
+  EXPECT_EQ(net_base::IPFamily::kIPv4, ipv4_props->address_family);
   EXPECT_EQ(32, ipv4_props->subnet_prefix);
 
   // An "ifconfig_remote" parameter that looks like a netmask should be
@@ -619,7 +619,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   invoke(false);
   ASSERT_NE(ipv4_props, nullptr);
   ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_props->address_family);
+  EXPECT_EQ(net_base::IPFamily::kIPv4, ipv4_props->address_family);
   EXPECT_EQ("4.5.6.7", ipv4_props->address);
   EXPECT_EQ("0.0.0.0", ipv4_props->gateway);
   EXPECT_EQ(24, ipv4_props->subnet_prefix);
@@ -662,7 +662,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_TRUE(ipv4_props->default_route);
   EXPECT_FALSE(ipv4_props->blackhole_ipv6);
   EXPECT_EQ(kTypeVPN, ipv6_props->method);
-  EXPECT_EQ(IPAddress::kFamilyIPv6, ipv6_props->address_family);
+  EXPECT_EQ(net_base::IPFamily::kIPv6, ipv6_props->address_family);
   EXPECT_EQ("fd00::1", ipv6_props->address);
   EXPECT_EQ(64, ipv6_props->subnet_prefix);
   EXPECT_EQ(2, ipv6_props->inclusion_list.size());

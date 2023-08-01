@@ -1208,7 +1208,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
   if (local_virtual_ipv4_ != "") {
     ipv4_props = std::make_unique<IPConfig::Properties>();
     ipv4_props->address = local_virtual_ipv4_;
-    ipv4_props->address_family = IPAddress::kFamilyIPv4;
+    ipv4_props->address_family = net_base::IPFamily::kIPv4;
     ipv4_props->subnet_prefix = 32;
     ipv4_props->dns_servers = dns_servers_;
     ipv4_props->blackhole_ipv6 = true;
@@ -1221,7 +1221,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
   if (local_virtual_ipv6_ != "") {
     ipv6_props = std::make_unique<IPConfig::Properties>();
     ipv6_props->address = local_virtual_ipv6_;
-    ipv6_props->address_family = IPAddress::kFamilyIPv6;
+    ipv6_props->address_family = net_base::IPFamily::kIPv6;
     ipv6_props->subnet_prefix = 128;
     ipv6_props->dns_servers = dns_servers_;
     ipv6_props->blackhole_ipv6 = false;

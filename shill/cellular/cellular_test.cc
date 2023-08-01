@@ -2053,7 +2053,7 @@ TEST_F(CellularTest, EstablishLinkMultiplexStatic) {
 }
 
 TEST_F(CellularTest, DefaultLinkUpStatic) {
-  IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
+  auto kAddressFamily = net_base::IPFamily::kIPv4;
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
   const int32_t kSubnetPrefix = 16;
@@ -2103,7 +2103,7 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
 }
 
 TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
-  IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
+  auto kAddressFamily = net_base::IPFamily::kIPv4;
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
   const int32_t kSubnetPrefix = 16;

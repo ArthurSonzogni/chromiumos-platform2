@@ -274,7 +274,7 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   // Checks IPProperties.
   const auto ipv4_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
   EXPECT_EQ(ipv4_properties->address, kIPv4Address);
   EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
   EXPECT_THAT(ipv4_properties->inclusion_list,
@@ -284,7 +284,7 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
 
   const auto ipv6_properties = driver_->GetIPv6Properties();
   ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
   EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
   EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
   EXPECT_THAT(
@@ -580,7 +580,7 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   assert_ip_address_is(std::vector<std::string>{kIPv4Address});
   auto ipv4_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
   EXPECT_EQ(ipv4_properties->address, kIPv4Address);
   EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
   auto ipv6_properties = driver_->GetIPv6Properties();
@@ -597,7 +597,7 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   ASSERT_EQ(ipv4_properties, nullptr);
   ipv6_properties = driver_->GetIPv6Properties();
   ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
   EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
   EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
   driver_->Disconnect();
@@ -610,12 +610,12 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   assert_ip_address_is(std::vector<std::string>{kIPv4Address, kIPv6Address1});
   ipv4_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
   EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
   EXPECT_EQ(ipv4_properties->address, kIPv4Address);
   ipv6_properties = driver_->GetIPv6Properties();
   ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
   EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
   EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
   driver_->Disconnect();
@@ -631,7 +631,7 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   ASSERT_EQ(ipv4_properties, nullptr);
   ipv6_properties = driver_->GetIPv6Properties();
   ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
   EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
   EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
   driver_->Disconnect();

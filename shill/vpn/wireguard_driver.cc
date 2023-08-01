@@ -32,6 +32,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/process_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -234,7 +235,7 @@ void WireGuardDriver::Disconnect() {
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
     const {
-  if (ipv4_properties_.address_family != IPAddress::kFamilyUnknown) {
+  if (ipv4_properties_.address_family) {
     return std::make_unique<IPConfig::Properties>(ipv4_properties_);
   }
   return nullptr;
@@ -242,7 +243,7 @@ std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
     const {
-  if (ipv6_properties_.address_family != IPAddress::kFamilyUnknown) {
+  if (ipv6_properties_.address_family) {
     return std::make_unique<IPConfig::Properties>(ipv6_properties_);
   }
   return nullptr;
@@ -574,7 +575,7 @@ bool WireGuardDriver::PopulateIPProperties() {
   }
   if (ipv4_address_list.size() > 0) {
     ipv4_properties_.address = ipv4_address_list[0];
-    ipv4_properties_.address_family = IPAddress::kFamilyIPv4;
+    ipv4_properties_.address_family = net_base::IPFamily::kIPv4;
     ipv4_properties_.subnet_prefix = 32;
     // This is a point-to-point link, gateway does not make sense here. Set it
     // default to skip RTA_GATEWAY when installing routes, and also make shill
@@ -586,7 +587,7 @@ bool WireGuardDriver::PopulateIPProperties() {
   }
   if (ipv6_address_list.size() > 0) {
     ipv6_properties_.address = ipv6_address_list[0];
-    ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
+    ipv6_properties_.address_family = net_base::IPFamily::kIPv6;
     ipv6_properties_.subnet_prefix = 128;
     // This is a point-to-point link, gateway does not make sense here. Set it
     // default to skip RTA_GATEWAY when installing routes, and also make shill
