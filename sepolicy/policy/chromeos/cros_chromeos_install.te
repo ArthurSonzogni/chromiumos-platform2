@@ -33,6 +33,7 @@ allow cros_chromeos_install self:process setfscreate;
 allow cros_chromeos_install kernel:process setsched;
 
 create_dir_file(cros_chromeos_install cros_dev_tast_test)
+create_dir_file(cros_chromeos_install cros_var_cache_dlcservice_images)
 create_dir_file(cros_chromeos_install cros_var_db_pkg)
 create_dir_file(cros_chromeos_install cros_var_lib_portage)
 rw_dir_file(cros_chromeos_install cros_dev_image_files)
