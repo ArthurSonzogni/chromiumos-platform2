@@ -8,9 +8,12 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <brillo/files/file_util.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <lorgnette-client/lorgnette/dbus-proxies.h>
@@ -24,6 +27,20 @@ const base::FilePath kCupsFilePath =
     base::FilePath("run/cups/debug/debug-flag");
 const base::FilePath kIppusbFilePath =
     base::FilePath("run/ippusb/debug/debug-flag");
+
+// Saves the values of `success` and `error` to `success_out` and `error_out`,
+// respectively.
+void SaveArgs(base::OnceClosure quit_closure,
+              bool* success_out,
+              std::string* error_out,
+              bool success,
+              const std::string& error) {
+  DCHECK(success_out);
+  DCHECK(error_out);
+  *success_out = success;
+  *error_out = error;
+  std::move(quit_closure).Run();
+}
 
 }  // namespace
 
@@ -203,11 +220,11 @@ bool PrintscanTool::RestartServices() {
   // fully restart it.
   std::string error;
   bool success;
-  if (!remote_->RestartUpstartJob(mojom::UpstartJob::kCupsd, &success,
-                                  &error)) {
-    LOG(ERROR)
-        << "Error calling executor mojo method RestartUpstartJob for cupsd.";
-  }
+  base::RunLoop run_loop;
+  remote_->RestartUpstartJob(
+      mojom::UpstartJob::kCupsd,
+      base::BindOnce(&SaveArgs, run_loop.QuitClosure(), &success, &error));
+  run_loop.Run();
   if (!success) {
     LOG(ERROR) << "Executor mojo method RestartUpstartJob for cupsd failed: "
                << error;

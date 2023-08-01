@@ -18,6 +18,5 @@ interface Executor {
   // `errorMsg` contains details about the failure. Note that if `job` is not
   // running, this method will report success and leave `job` in its previous
   // state.
-  [Sync]
   RestartUpstartJob(UpstartJob job) => (bool success, string errorMsg);
 };
