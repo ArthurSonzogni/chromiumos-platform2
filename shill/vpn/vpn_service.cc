@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
@@ -58,11 +59,11 @@ bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
     return false;
   }
 
-  const auto addr = IPAddress::CreateFromPrefixString(
-      *static_config->ipv4_address_cidr, IPAddress::kFamilyIPv4);
+  const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
+      *static_config->ipv4_address_cidr);
   // No matter whether the parsing result is valid or not, reset the property.
   static_config->ipv4_address_cidr = std::nullopt;
-  if (!addr.has_value()) {
+  if (!cidr.has_value()) {
     LOG(WARNING) << __func__ << ": " << *static_config->ipv4_address_cidr
                  << " is not a valid IPv4 CIDR string";
     return true;
@@ -75,7 +76,7 @@ bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
     return true;
   }
 
-  const std::vector<std::string> addrs_to_set{addr->ToString()};
+  const std::vector<std::string> addrs_to_set{cidr->address().ToString()};
   driver->args()->Set<std::vector<std::string>>(kWireGuardIPAddress,
                                                 addrs_to_set);
   return true;
