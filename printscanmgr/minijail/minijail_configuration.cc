@@ -56,6 +56,13 @@ void EnterDaemonMinijail() {
   CHECK_EQ(0, minijail_bind(jail.get(), "/run/cups", "/run/cups",
                             0));  // Shared socket file for talking to cupsd.
   CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/cups"));
+  CHECK_EQ(0, minijail_bind(jail.get(), "/run/cups/debug", "/run/cups/debug",
+                            1));  // Advanced debugging capability for cupsd.
+  CHECK_EQ(0, minijail_bind(jail.get(), "/run/ippusb", "/run/ippusb", 0));
+  CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/ippusb"));
+  CHECK_EQ(0,
+           minijail_bind(jail.get(), "/run/ippusb/debug", "/run/ippusb/debug",
+                         1));  // Advanced debugging capability for ippusb.
 
   // Run as the printscanmgr user and group. Inherit supplementary groups so
   // printscanmgr can run `lpadmin` and `lpstat`.
@@ -71,16 +78,24 @@ void EnterDaemonMinijail() {
 }
 
 void EnterExecutorMinijail() {
-  ScopedMinijail j(minijail_new());
+  ScopedMinijail jail(minijail_new());
 
   // Create a minimalistic mount namespace with just the bare minimum required.
-  minijail_namespace_vfs(j.get());
-  minijail_mount_tmp(j.get());
-  CHECK_EQ(0, minijail_enter_pivot_root(j.get(), "/mnt/empty"));
+  minijail_namespace_vfs(jail.get());
+  minijail_mount_tmp(jail.get());
+  CHECK_EQ(0, minijail_enter_pivot_root(jail.get(), "/mnt/empty"));
 
-  CHECK_EQ(0, minijail_bind(j.get(), "/", "/", 0));
+  CHECK_EQ(0, minijail_bind(jail.get(), "/", "/", 0));
 
-  minijail_enter(j.get());
+  // Create a new tmpfs filesystem for /run and mount necessary files.
+  CHECK_EQ(
+      0, minijail_mount_with_data(jail.get(), "tmpfs", "/run", "tmpfs", 0, ""));
+  CHECK_EQ(0, minijail_bind(
+                  jail.get(), "/run/dbus", "/run/dbus",
+                  0));  // Shared socket file for talking to the D-Bus daemon.
+  CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/dbus"));
+
+  minijail_enter(jail.get());
 }
 
 }  // namespace printscanmgr
