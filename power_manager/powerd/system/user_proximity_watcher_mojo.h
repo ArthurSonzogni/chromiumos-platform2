@@ -62,6 +62,7 @@ class UserProximityWatcherMojo : public UserProximityWatcherInterface,
   void OnNewDeviceAdded(
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) override;
+  void OnDeviceRemoved(int32_t iio_device_id) override;
   void SensorServiceConnected() override;
   void SensorServiceDisconnected() override;
 
@@ -93,10 +94,6 @@ class UserProximityWatcherMojo : public UserProximityWatcherInterface,
                         const std::string& devlink);
 
   void ResetSensorService();
-
-  void OnSensorDeviceDisconnect(int32_t id,
-                                uint32_t custom_reason_code,
-                                const std::string& description);
 
   void GetAttributesCallback(
       int32_t id, const std::vector<std::optional<std::string>>& values);

@@ -37,6 +37,7 @@ class SensorServiceHandler
   void OnNewDeviceAdded(
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) override;
+  void OnDeviceRemoved(int32_t iio_device_id) override;
 
   // Devices will be reported in a new task on the same thread, i.e. in a
   // callback.

@@ -346,9 +346,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
   EXPECT_FALSE(fake_lights_[kFakeBaseId]->HasReceivers());
   EXPECT_FALSE(fake_lights_[kFakeAcpiAlsId]->HasReceivers());
 
-  fake_lights_[kFakeLidId]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
+  sensor_service_.RemoveSensorDevice(kFakeLidId);
   // Overwrite the lid and base light sensors in the iioservice.
   SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
   SetBaseSensor(kCrosECLightName);
@@ -396,9 +394,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
   EXPECT_TRUE(fake_lights_[kFakeBaseId]->HasReceivers());
   EXPECT_FALSE(fake_lights_[kFakeAcpiAlsId]->HasReceivers());
 
-  fake_lights_[kFakeLidId]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
+  sensor_service_.RemoveSensorDevice(kFakeLidId);
   // Overwrite the lid and base light sensors in the iioservice.
   SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
 

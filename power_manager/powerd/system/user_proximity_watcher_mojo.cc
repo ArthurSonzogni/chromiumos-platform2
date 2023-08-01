@@ -82,14 +82,18 @@ void UserProximityWatcherMojo::OnNewDeviceAdded(
 
   sensor_service_handler_->GetDevice(
       iio_device_id, sensor.remote.BindNewPipeAndPassReceiver());
-  sensor.remote.set_disconnect_with_reason_handler(
-      base::BindOnce(&UserProximityWatcherMojo::OnSensorDeviceDisconnect,
-                     base::Unretained(this), iio_device_id));
 
   sensor.remote->GetAttributes(
       std::vector<std::string>{cros::mojom::kSysPath, cros::mojom::kDevlink},
       base::BindOnce(&UserProximityWatcherMojo::GetAttributesCallback,
                      base::Unretained(this), iio_device_id));
+}
+
+void UserProximityWatcherMojo::OnDeviceRemoved(int32_t iio_device_id) {
+  LOG(WARNING) << "OnDeviceRemoved: " << iio_device_id;
+
+  // This proximity sensor is not in use.
+  sensors_.erase(iio_device_id);
 }
 
 void UserProximityWatcherMojo::SensorServiceConnected() {
@@ -120,25 +124,6 @@ void UserProximityWatcherMojo::ResetSensorService() {
   for (auto& sensor : sensors_) {
     sensor.second.remote.reset();
     sensor.second.observer.reset();
-  }
-}
-
-void UserProximityWatcherMojo::OnSensorDeviceDisconnect(
-    int32_t id, uint32_t custom_reason_code, const std::string& description) {
-  const auto reason = static_cast<cros::mojom::SensorDeviceDisconnectReason>(
-      custom_reason_code);
-  LOG(WARNING) << "OnSensorDeviceDisconnect: " << id << ", reason: " << reason
-               << ", description: " << description;
-
-  switch (reason) {
-    case cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED:
-      ResetSensorService();
-      break;
-
-    case cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED:
-      // This proximity sensor is not in use.
-      sensors_.erase(id);
-      break;
   }
 }
 
@@ -245,9 +230,6 @@ void UserProximityWatcherMojo::InitializeSensor(int32_t id) {
   if (!sensor.remote.is_bound()) {
     sensor_service_handler_->GetDevice(
         id, sensor.remote.BindNewPipeAndPassReceiver());
-    sensor.remote.set_disconnect_with_reason_handler(
-        base::BindOnce(&UserProximityWatcherMojo::OnSensorDeviceDisconnect,
-                       base::Unretained(this), id));
   }
 
   sensor.observer = std::make_unique<ProximityEventsObserver>(

@@ -46,6 +46,20 @@ void AmbientLightSensorWatcherMojo::OnNewDeviceAdded(
   device_remotes_.emplace(iio_device_id, std::move(remote));
 }
 
+void AmbientLightSensorWatcherMojo::OnDeviceRemoved(int32_t iio_device_id) {
+  LOG(WARNING) << "OnDeviceRemoved: " << iio_device_id;
+
+  device_remotes_.erase(iio_device_id);
+  for (auto itr = ambient_light_sensors_.begin();
+       itr != ambient_light_sensors_.end(); itr++) {
+    if (itr->id == iio_device_id) {
+      ambient_light_sensors_.erase(itr);
+      NotifyObservers();
+      break;
+    }
+  }
+}
+
 void AmbientLightSensorWatcherMojo::SensorServiceConnected() {
   // Nothing to do.
 }
@@ -64,17 +78,17 @@ AmbientLightSensorWatcherMojo::GetDevice(int32_t iio_device_id) {
   sensor_service_handler_->GetDevice(iio_device_id,
                                      remote.BindNewPipeAndPassReceiver());
 
-  remote.set_disconnect_with_reason_handler(
-      base::BindOnce(&AmbientLightSensorWatcherMojo::OnSensorDeviceDisconnect,
-                     base::Unretained(this), iio_device_id));
-
   return remote;
 }
 
 void AmbientLightSensorWatcherMojo::GetSysPathCallback(
     int32_t iio_device_id,
     const std::vector<std::optional<std::string>>& values) {
-  DCHECK(device_remotes_.find(iio_device_id) != device_remotes_.end());
+  auto it = device_remotes_.find(iio_device_id);
+  DCHECK(it != device_remotes_.end());
+
+  // No longer need to contain the remote, while still keep the id entry.
+  it->second.reset();
 
   if (values.empty() || !values[0].has_value()) {
     LOG(ERROR) << "Sensor values doesn't contain the syspath attribute.";
@@ -93,34 +107,6 @@ void AmbientLightSensorWatcherMojo::GetSysPathCallback(
   };
 
   AddSensorAndNotifyObservers(std::move(new_als));
-}
-
-void AmbientLightSensorWatcherMojo::OnSensorDeviceDisconnect(
-    int32_t iio_device_id,
-    uint32_t custom_reason_code,
-    const std::string& description) {
-  const auto reason = static_cast<cros::mojom::SensorDeviceDisconnectReason>(
-      custom_reason_code);
-  LOG(WARNING) << "OnSensorDeviceDisconnect: " << iio_device_id
-               << ", reason: " << reason << ", description: " << description;
-
-  switch (reason) {
-    case cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED:
-      SensorServiceDisconnected();
-      break;
-
-    case cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED:
-      device_remotes_.erase(iio_device_id);
-      for (auto itr = ambient_light_sensors_.begin();
-           itr != ambient_light_sensors_.end(); itr++) {
-        if (itr->id == iio_device_id) {
-          ambient_light_sensors_.erase(itr);
-          NotifyObservers();
-          break;
-        }
-      }
-      break;
-  }
 }
 
 }  // namespace power_manager::system

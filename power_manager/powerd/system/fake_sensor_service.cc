@@ -20,7 +20,7 @@ void FakeSensorService::ClearReceivers() {
   receiver_set_.Clear();
 
   for (auto& [_, device_info] : device_infos_)
-    device_info.sensor_device->ClearReceiverWithReason();
+    device_info.sensor_device->ClearReceiver();
 }
 
 bool FakeSensorService::HasReceivers() const {
@@ -37,6 +37,17 @@ void FakeSensorService::SetSensorDevice(
     observer->OnNewDeviceAdded(iio_device_id,
                                std::vector<cros::mojom::DeviceType>{type});
   }
+}
+
+void FakeSensorService::RemoveSensorDevice(int32_t iio_device_id) {
+  auto it = device_infos_.find(iio_device_id);
+  if (it == device_infos_.end())
+    return;
+
+  device_infos_.erase(it);
+
+  for (auto& observer : observers_)
+    observer->OnDeviceRemoved(iio_device_id);
 }
 
 void FakeSensorService::GetDeviceIds(cros::mojom::DeviceType type,

@@ -33,6 +33,7 @@ class AmbientLightSensorWatcherMojo : public AmbientLightSensorWatcherInterface,
   void OnNewDeviceAdded(
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) override;
+  void OnDeviceRemoved(int32_t iio_device_id) override;
   void SensorServiceConnected() override;
   void SensorServiceDisconnected() override;
 
@@ -43,10 +44,6 @@ class AmbientLightSensorWatcherMojo : public AmbientLightSensorWatcherInterface,
   void GetSysPathCallback(
       int32_t iio_device_id,
       const std::vector<std::optional<std::string>>& values);
-
-  void OnSensorDeviceDisconnect(int32_t iio_device_id,
-                                uint32_t custom_reason_code,
-                                const std::string& description);
 
   // SensorDevice mojo remotes to query attributes and wait for disconnections.
   std::map<int32_t, mojo::Remote<cros::mojom::SensorDevice>> device_remotes_;

@@ -19,6 +19,7 @@ class SensorServiceHandlerObserver : public base::CheckedObserver {
   virtual void OnNewDeviceAdded(
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) = 0;
+  virtual void OnDeviceRemoved(int32_t iio_device_id) = 0;
 
   virtual void SensorServiceConnected() = 0;
   virtual void SensorServiceDisconnected() = 0;

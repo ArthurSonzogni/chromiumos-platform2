@@ -35,6 +35,17 @@ class FakeObserver : public SensorServiceHandlerObserver {
     if (on_new_device_added_closure_)
       on_new_device_added_closure_.Run();
   }
+  void OnDeviceRemoved(int32_t iio_device_id) override {
+    for (auto it = device_ids_.begin(); it != device_ids_.end(); ++it) {
+      if (*it == iio_device_id) {
+        device_ids_.erase(it);
+        break;
+      }
+    }
+
+    if (on_device_removed_closure_)
+      on_device_removed_closure_.Run();
+  }
   void SensorServiceConnected() override { connected_ = true; }
   void SensorServiceDisconnected() override { connected_ = false; }
 
@@ -42,6 +53,7 @@ class FakeObserver : public SensorServiceHandlerObserver {
   std::optional<bool> connected_;
 
   base::RepeatingClosure on_new_device_added_closure_;
+  base::RepeatingClosure on_device_removed_closure_;
 };
 
 }  // namespace
@@ -104,10 +116,10 @@ TEST_F(SensorServiceHandlerTest, DisconnectCallback) {
   loop.Run();
 }
 
-TEST_F(SensorServiceHandlerTest, ConnectedAndAddNewDevices) {
+TEST_F(SensorServiceHandlerTest, DevicesAddedAndRemoved) {
   EXPECT_TRUE(observer_->connected_.value_or(false));
 
-  base::RunLoop loop, loop2;
+  base::RunLoop loop, loop2, loop3;
 
   observer_->on_new_device_added_closure_ = loop.QuitClosure();
 
@@ -119,10 +131,16 @@ TEST_F(SensorServiceHandlerTest, ConnectedAndAddNewDevices) {
 
   auto observer2 = std::make_unique<FakeObserver>(&sensor_service_handler_);
   observer2->on_new_device_added_closure_ = loop2.QuitClosure();
+  observer2->on_device_removed_closure_ = loop3.QuitClosure();
   loop2.Run();
 
   EXPECT_EQ(observer2->device_ids_.size(), 1);
   EXPECT_EQ(observer2->device_ids_[0], 1);
+
+  sensor_service_.RemoveSensorDevice(1);
+  loop3.Run();
+
+  EXPECT_EQ(observer2->device_ids_.size(), 0);
 }
 
 }  // namespace power_manager::system

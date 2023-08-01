@@ -27,19 +27,9 @@ bool FakeSensorDevice::HasReceivers() const {
   return !receiver_set_.empty();
 }
 
-void FakeSensorDevice::ClearReceiverWithReason(
-    cros::mojom::SensorDeviceDisconnectReason reason,
-    const std::string& description) {
-  uint32_t custom_reason_code = base::checked_cast<uint32_t>(reason);
-
-  for (auto& observer : samples_observers_) {
-    auto remote = mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(
-        std::move(observer.second));
-    remote.ResetWithReason(custom_reason_code, description);
-  }
+void FakeSensorDevice::ClearReceiver() {
   samples_observers_.clear();
-
-  receiver_set_.ClearWithReason(custom_reason_code, description);
+  receiver_set_.Clear();
 }
 
 void FakeSensorDevice::ResetSamplesObserverRemote(mojo::ReceiverId id) {

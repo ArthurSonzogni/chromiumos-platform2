@@ -64,6 +64,15 @@ void SensorServiceHandler::OnNewDeviceAdded(
     observer.OnNewDeviceAdded(iio_device_id, types);
 }
 
+void SensorServiceHandler::OnDeviceRemoved(int32_t iio_device_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  iio_device_ids_types_.erase(iio_device_id);
+
+  for (auto& observer : observers_)
+    observer.OnDeviceRemoved(iio_device_id);
+}
+
 void SensorServiceHandler::AddObserver(SensorServiceHandlerObserver* observer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 

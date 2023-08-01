@@ -236,9 +236,7 @@ TEST_F(UserProximityWatcherMojoTest, Disconnections) {
 
   observer_->devices_.erase(0);
 
-  fake_proximities_[0]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
+  sensor_service_.RemoveSensorDevice(0);
 
   observer_->SetSensorClosure(1);
 
@@ -257,17 +255,33 @@ TEST_F(UserProximityWatcherMojoTest, Disconnections) {
   // Reconnection to the first proximity sensor shouldn't happen.
   EXPECT_FALSE(observer_->devices_[0].roles.has_value());
 
-  observer_->SetSensorClosure(0);
   // Simulate a disconnection between |manager_| and IIO Service.
   ResetMojoChannel();
 
-  // Reconnection to the first proximity sensor should happen as
-  // |UserProximityWatcherMojo| will query again.
-  observer_->devices_[0].loop->Run();
+  // Added a new sensor to utilize the loop to wait until all initialize steps
+  // are done.
+  SetSensor(kActivitySysPath);  // Activity sensor
+  observer_->SetSensorClosure(2);
 
-  EXPECT_TRUE(observer_->devices_[0].roles.has_value());
-  EXPECT_EQ(observer_->devices_[0].roles.value(),
+  observer_->devices_[2].loop->Run();
+
+  // Device 0 is not restored, as it's removed in the server side.
+  EXPECT_FALSE(observer_->devices_[0].roles.has_value());
+  EXPECT_TRUE(observer_->devices_[2].roles.has_value());
+  EXPECT_EQ(observer_->devices_[2].roles.value(),
             UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+
+  // Device 1 is still available.
+  observer_->SetSensorClosure(1);
+  fake_proximities_[1]->OnEventUpdated(cros::mojom::IioEvent::New(
+      cros::mojom::IioChanType::IIO_PROXIMITY,
+      cros::mojom::IioEventType::IIO_EV_TYPE_THRESH,
+      cros::mojom::IioEventDirection::IIO_EV_DIR_RISING, 0 /* channel */,
+      0 /* timestamp */));
+
+  observer_->devices_[1].loop->Run();
+
+  EXPECT_EQ(observer_->devices_[1].value.value(), UserProximity::FAR);
 }
 
 }  // namespace system

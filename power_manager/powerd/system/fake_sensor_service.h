@@ -29,6 +29,7 @@ class FakeSensorService : public cros::mojom::SensorService {
 
   void SetSensorDevice(int32_t iio_device_id,
                        std::unique_ptr<FakeSensorDevice> fake_sensor_device);
+  void RemoveSensorDevice(int32_t iio_device_id);
 
   // Implementation of cros::mojom::SensorService.
   void GetDeviceIds(cros::mojom::DeviceType type,

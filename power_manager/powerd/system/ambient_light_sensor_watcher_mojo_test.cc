@@ -114,12 +114,12 @@ TEST_F(AmbientLightSensorWatcherMojoTest, SensorDeviceDisconnect) {
   EXPECT_EQ(2, observer.num_als_changes());
   EXPECT_EQ(2, observer.num_als());
 
-  EXPECT_TRUE(fake_lights_[1]->HasReceivers());
-  EXPECT_TRUE(fake_lights_[2]->HasReceivers());
+  // AmbientLightSensorWatcherMojo doesn't keep SensorDevice remotes after
+  // getting device attributes.
+  EXPECT_FALSE(fake_lights_[1]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[2]->HasReceivers());
 
-  fake_lights_[2]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
+  sensor_service_.RemoveSensorDevice(2);
 
   // Wait until all tasks are done.
   base::RunLoop().RunUntilIdle();
@@ -127,21 +127,13 @@ TEST_F(AmbientLightSensorWatcherMojoTest, SensorDeviceDisconnect) {
   EXPECT_EQ(3, observer.num_als_changes());
   EXPECT_EQ(1, observer.num_als());
 
-  EXPECT_TRUE(fake_lights_[1]->HasReceivers());
-  EXPECT_FALSE(fake_lights_[2]->HasReceivers());
-
-  fake_lights_[0]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED,
-      "iioservice crashed");
+  sensor_service_.ClearReceivers();
 
   // Wait until all tasks are done.
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(4, observer.num_als_changes());
   EXPECT_EQ(0, observer.num_als());
-
-  EXPECT_FALSE(fake_lights_[1]->HasReceivers());
-  EXPECT_FALSE(fake_lights_[2]->HasReceivers());
 }
 
 }  // namespace power_manager::system

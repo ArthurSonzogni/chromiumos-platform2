@@ -46,6 +46,7 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   void OnNewDeviceAdded(
       int32_t iio_device_id,
       const std::vector<cros::mojom::DeviceType>& types) override;
+  void OnDeviceRemoved(int32_t iio_device_id) override;
   void SensorServiceConnected() override;
   void SensorServiceDisconnected() override;
 
@@ -82,10 +83,6 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   // devices to use.
   void ResetStates();
   void QueryDevices();
-
-  void OnSensorDeviceDisconnect(int32_t id,
-                                uint32_t custom_reason_code,
-                                const std::string& description);
 
   void GetNameCallback(int32_t id,
                        const std::vector<std::optional<std::string>>& values);
