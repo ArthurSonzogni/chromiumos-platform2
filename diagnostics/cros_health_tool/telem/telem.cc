@@ -120,49 +120,40 @@ void DisplayMultipleProcessInfo(const mojom::MultipleProcessResultPtr& result) {
 
   base::Value::Dict output;
   base::Value::Dict process_infos;
-  if (!info->process_infos.empty()) {
-    for (const auto& process_info_key_value : info->process_infos) {
-      base::Value::Dict process_info;
-      SET_DICT(bytes_read, process_info_key_value.second, &process_info);
-      SET_DICT(bytes_written, process_info_key_value.second, &process_info);
-      SET_DICT(cancelled_bytes_written, process_info_key_value.second,
-               &process_info);
-      SET_DICT(command, process_info_key_value.second, &process_info);
-      SET_DICT(free_memory_kib, process_info_key_value.second, &process_info);
-      SET_DICT(name, process_info_key_value.second, &process_info);
-      SET_DICT(nice, process_info_key_value.second, &process_info);
-      SET_DICT(parent_process_id, process_info_key_value.second, &process_info);
-      SET_DICT(process_group_id, process_info_key_value.second, &process_info);
-      SET_DICT(process_id, process_info_key_value.second, &process_info);
-      SET_DICT(physical_bytes_read, process_info_key_value.second,
-               &process_info);
-      SET_DICT(physical_bytes_written, process_info_key_value.second,
-               &process_info);
-      SET_DICT(priority, process_info_key_value.second, &process_info);
-      SET_DICT(read_system_calls, process_info_key_value.second, &process_info);
-      SET_DICT(resident_memory_kib, process_info_key_value.second,
-               &process_info);
-      SET_DICT(state, process_info_key_value.second, &process_info);
-      SET_DICT(threads, process_info_key_value.second, &process_info);
-      SET_DICT(total_memory_kib, process_info_key_value.second, &process_info);
-      SET_DICT(uptime_ticks, process_info_key_value.second, &process_info);
-      SET_DICT(user_id, process_info_key_value.second, &process_info);
-      SET_DICT(write_system_calls, process_info_key_value.second,
-               &process_info);
-      process_infos.Set(base::NumberToString(process_info_key_value.first),
-                        std::move(process_info));
-    }
+  for (const auto& [process_id, process_info] : info->process_infos) {
+    base::Value::Dict out_process_info;
+    SET_DICT(bytes_read, process_info, &out_process_info);
+    SET_DICT(bytes_written, process_info, &out_process_info);
+    SET_DICT(cancelled_bytes_written, process_info, &out_process_info);
+    SET_DICT(command, process_info, &out_process_info);
+    SET_DICT(free_memory_kib, process_info, &out_process_info);
+    SET_DICT(name, process_info, &out_process_info);
+    SET_DICT(nice, process_info, &out_process_info);
+    SET_DICT(parent_process_id, process_info, &out_process_info);
+    SET_DICT(process_group_id, process_info, &out_process_info);
+    SET_DICT(process_id, process_info, &out_process_info);
+    SET_DICT(physical_bytes_read, process_info, &out_process_info);
+    SET_DICT(physical_bytes_written, process_info, &out_process_info);
+    SET_DICT(priority, process_info, &out_process_info);
+    SET_DICT(read_system_calls, process_info, &out_process_info);
+    SET_DICT(resident_memory_kib, process_info, &out_process_info);
+    SET_DICT(state, process_info, &out_process_info);
+    SET_DICT(threads, process_info, &out_process_info);
+    SET_DICT(total_memory_kib, process_info, &out_process_info);
+    SET_DICT(uptime_ticks, process_info, &out_process_info);
+    SET_DICT(user_id, process_info, &out_process_info);
+    SET_DICT(write_system_calls, process_info, &out_process_info);
+    process_infos.Set(base::NumberToString(process_id),
+                      std::move(out_process_info));
   }
   output.Set("process_infos", std::move(process_infos));
 
   base::Value::Dict errors;
-  if (!info->errors.empty()) {
-    for (const auto& error_key_value : info->errors) {
-      base::Value::Dict error;
-      SET_DICT(type, error_key_value.second, &error);
-      SET_DICT(msg, error_key_value.second, &error);
-      errors.Set(base::NumberToString(error_key_value.first), std::move(error));
-    }
+  for (const auto& [process_id, error] : info->errors) {
+    base::Value::Dict out_error;
+    SET_DICT(type, error, &out_error);
+    SET_DICT(msg, error, &out_error);
+    errors.Set(base::NumberToString(process_id), std::move(out_error));
   }
   output.Set("errors", std::move(errors));
 
@@ -547,12 +538,14 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   SET_DICT(architecture, info, &output);
 
   base::Value::Dict vulnerabilities;
-  for (const auto& vulnerability_key_value : *(info->vulnerabilities)) {
-    base::Value::Dict vulnerability;
-    SET_DICT(status, vulnerability_key_value.second, &vulnerability);
-    SET_DICT(message, vulnerability_key_value.second, &vulnerability);
-    vulnerabilities.Set(vulnerability_key_value.first,
-                        std::move(vulnerability));
+  if (info->vulnerabilities) {
+    for (const auto& [vulnerability_name, vulnerability] :
+         *(info->vulnerabilities)) {
+      base::Value::Dict out_vulnerability;
+      SET_DICT(status, vulnerability, &out_vulnerability);
+      SET_DICT(message, vulnerability, &out_vulnerability);
+      vulnerabilities.Set(vulnerability_name, std::move(out_vulnerability));
+    }
   }
 
   if (info->virtualization) {
@@ -1256,8 +1249,8 @@ std::string GetCategoryHelp() {
   std::stringstream ss;
   ss << "Category or categories to probe, as comma-separated list: [";
   const char* sep = "";
-  for (auto pair : kCategorySwitches) {
-    ss << sep << pair.first;
+  for (auto [category_name, _] : kCategorySwitches) {
+    ss << sep << category_name;
     sep = ", ";
   }
   ss << "]";
