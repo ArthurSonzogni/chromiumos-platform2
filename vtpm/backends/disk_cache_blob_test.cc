@@ -4,9 +4,12 @@
 
 #include "vtpm/backends/disk_cache_blob.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/tpm_generated.h>
@@ -17,13 +20,7 @@ namespace vtpm {
 
 namespace {
 
-// A fake path that the object under test reads/writes. `/tmp` is chosen for our
-// testing.
-// Technically it is not perfect to choose `/tmp` because it might not be
-// no-disk, but most of operations that could make difference might not be
-// detectable in unittet environment, still, and the cost could be worse
-// flakiness or staled data on a host machine.
-constexpr char kFakePath[] = "/tmp/fake_blob_file";
+constexpr char kFakeFile[] = "fake_blob_file";
 constexpr char kFakeBlob[] = "blob";
 constexpr char kBadKeyData[] = "0806449 7533967";
 
@@ -31,12 +28,16 @@ constexpr char kBadKeyData[] = "0806449 7533967";
 
 class DiskCacheBlobTest : public testing::Test {
  public:
-  void SetUp() override { ASSERT_TRUE(base::DeleteFile(fake_path_)); }
-  void TearDown() override { ASSERT_TRUE(base::DeleteFile(fake_path_)); }
+  void SetUp() override {
+    ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+    fake_path_ = tmp_dir_.GetPath().Append(kFakeFile);
+    blob_ = std::make_unique<DiskCacheBlob>(fake_path_);
+  }
 
  protected:
-  const base::FilePath fake_path_{std::string{kFakePath}};
-  DiskCacheBlob blob_{fake_path_};
+  base::ScopedTempDir tmp_dir_;
+  base::FilePath fake_path_;
+  std::unique_ptr<DiskCacheBlob> blob_;
 };
 
 namespace {
@@ -45,10 +46,10 @@ namespace {
 // write a fake key before reading cached data back.
 TEST_F(DiskCacheBlobTest, ClosedLoopTest) {
   std::string blob_out;
-  EXPECT_EQ(blob_.Get(blob_out), trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(blob_->Get(blob_out), trunks::TPM_RC_SUCCESS);
   EXPECT_TRUE(blob_out.empty());
-  EXPECT_EQ(blob_.Write(kFakeBlob), trunks::TPM_RC_SUCCESS);
-  EXPECT_EQ(blob_.Get(blob_out), trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(blob_->Write(kFakeBlob), trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(blob_->Get(blob_out), trunks::TPM_RC_SUCCESS);
   EXPECT_EQ(blob_out, kFakeBlob);
 }
 
@@ -62,7 +63,7 @@ TEST_F(DiskCacheBlobTest, FailureParseError) {
       base::ImportantFileWriter::WriteFileAtomically(fake_path_, kBadKeyData));
 
   std::string blob_out;
-  EXPECT_NE(blob_.Get(blob_out), trunks::TPM_RC_SUCCESS);
+  EXPECT_NE(blob_->Get(blob_out), trunks::TPM_RC_SUCCESS);
 }
 
 }  // namespace
