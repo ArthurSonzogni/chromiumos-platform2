@@ -557,7 +557,27 @@ TEST(VMUtilTest, SharedDataParamCacheAlways) {
             "/usr/local/bin:usr_local_bin:type=fs:cache=always:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
             "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
-            "1994950:timeout=3600:rewrite-security-xattrs=true:writeback=true");
+            "1994950:timeout=3600:rewrite-security-xattrs=true:writeback=true:"
+            "negative_timeout=3600");
+}
+
+TEST(VMUtilTest, SharedDataParamCacheAlwaysCaseFold) {
+  SharedDataParam param{
+      .data_dir = base::FilePath("/run/arcvm/android-data"),
+      .tag = "_data_media",
+      .uid_map = kAndroidUidMap,
+      .gid_map = kAndroidGidMap,
+      .enable_caches = SharedDataParam::Cache::kAlways,
+      .ascii_casefold = true,
+      .posix_acl = true,
+      .privileged_quota_uids = {0},
+  };
+  ASSERT_EQ(param.to_string(),
+            "/run/arcvm/android-data:_data_media:type=fs:cache=always:uidmap=0 "
+            "655360 5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 "
+            "1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
+            "1994950:timeout=3600:rewrite-security-xattrs=true:ascii_casefold="
+            "true:writeback=true:negative_timeout=0:privileged_quota_uids=0");
 }
 
 TEST(VMUtilTest, SharedDataParamCacheAuto) {
@@ -572,8 +592,26 @@ TEST(VMUtilTest, SharedDataParamCacheAuto) {
             "/usr/local/bin:usr_local_bin:type=fs:cache=auto:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
             "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
-            "1994950:timeout=1:rewrite-security-xattrs=true:writeback=false");
+            "1994950:timeout=1:rewrite-security-xattrs=true:writeback=false:"
+            "negative_timeout=1");
 }
+
+TEST(VMUtilTest, SharedDataParamCacheNever) {
+  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                        .tag = "usr_local_bin",
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
+                        .enable_caches = SharedDataParam::Cache::kNever,
+                        .ascii_casefold = false,
+                        .posix_acl = true};
+  ASSERT_EQ(param.to_string(),
+            "/usr/local/bin:usr_local_bin:type=fs:cache=never:uidmap=0 655360 "
+            "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
+            "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
+            "1994950:timeout=1:rewrite-security-xattrs=true:writeback=false:"
+            "negative_timeout=1");
+}
+
 // privileged_quota_uids is passed in.
 TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
   SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
@@ -589,7 +627,7 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
             "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
             "1994950:timeout=3600:rewrite-security-xattrs=true:writeback=true:"
-            "privileged_quota_uids=0");
+            "negative_timeout=3600:privileged_quota_uids=0");
 }
 
 TEST(VMUtilTest, GetBalloonStats) {

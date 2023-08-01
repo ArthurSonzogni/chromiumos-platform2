@@ -685,31 +685,52 @@ std::string SharedDataParam::to_string() const {
     std::string_view cache;
     std::string_view timeout;
     std::string_view writeback;
+    std::string_view negative_timeout;
   };
 
   static constexpr auto params_map =
       base::MakeFixedFlatMap<SharedDataParam::Cache, CacheParameters>(
-          base::sorted_unique,
-          {{SharedDataParam::Cache::kAuto, {.cache = "auto", "1", "false"}},
-           {SharedDataParam::Cache::kAlways,
-            {.cache = "always", "3600", "true"}},
-           {SharedDataParam::Cache::kNever, {.cache = "never", "1", "false"}}});
+          base::sorted_unique, {{SharedDataParam::Cache::kAuto,
+                                 {.cache = "auto", "1", "false", "1"}},
+                                {SharedDataParam::Cache::kAlways,
+                                 {.cache = "always", "3600", "true", "3600"}},
+                                {SharedDataParam::Cache::kNever,
+                                 {.cache = "never", "1", "false", "1"}}});
 
   CacheParameters params = params_map.at(enable_caches);
 
+  // Disable negative dentry cache when ascii_casefold is enabled because it
+  // won't work for scenarios like the following:
+  // 1. Lookup "foo", an non-existing file. Negative dentry is cached on the
+  //    guest.
+  // 2. Create "FOO".
+  // 3. Lookup "foo". This needs to be successful on the casefold directory,
+  //    but the lookup can fail due the negative cache created at 1.
+  if (ascii_casefold) {
+    params.negative_timeout = "0";
+  }
+
   std::string result = base::StrCat({
-      data_dir.value(),                              //
-      ":", tag,                                      //
-      ":type=fs",                                    //
-      ":cache=", params.cache,                       //
-      ":uidmap=", uid_map,                           //
-      ":gidmap=", gid_map,                           //
-      ":timeout=", params.timeout,                   //
+      data_dir.value(),  //
+      ":",
+      tag,         //
+      ":type=fs",  //
+      ":cache=",
+      params.cache,  //
+      ":uidmap=",
+      uid_map,  //
+      ":gidmap=",
+      gid_map,  //
+      ":timeout=",
+      params.timeout,                                //
       ":rewrite-security-xattrs=",                   //
       rewrite_security_xattrs ? "true" : "false",    //
       ascii_casefold ? ":ascii_casefold=true" : "",  //
-      ":writeback=", params.writeback,               //
-      posix_acl ? "" : ":posix_acl=false",           //
+      ":writeback=",
+      params.writeback,                     //
+      posix_acl ? "" : ":posix_acl=false",  //
+      ":negative_timeout=",
+      params.negative_timeout,  //
   });
 
   if (!privileged_quota_uids.empty()) {
