@@ -13,7 +13,6 @@
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -46,7 +45,6 @@ class FetchAggregator final {
   FanFetcher fan_fetcher_;
   InputFetcher input_fetcher_;
   MemoryFetcher memory_fetcher_;
-  NetworkFetcher network_fetcher_;
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
 

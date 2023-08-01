@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
@@ -69,7 +70,6 @@ FetchAggregator::FetchAggregator(Context* context)
       fan_fetcher_(context),
       input_fetcher_(context),
       memory_fetcher_(context),
-      network_fetcher_(context),
       timezone_fetcher_(context),
       tpm_fetcher_(context),
       context_(context) {}
@@ -146,8 +146,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kNetwork: {
-        network_fetcher_.FetchNetworkInfo(
-            CreateFetchCallback(&barrier, &info->network_result));
+        FetchNetworkInfo(context_,
+                         CreateFetchCallback(&barrier, &info->network_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kAudio: {

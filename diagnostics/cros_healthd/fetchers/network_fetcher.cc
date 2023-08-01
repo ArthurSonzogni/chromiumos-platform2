@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/functional/callback.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -39,8 +40,8 @@ void HandleNetworkInfoResponse(
 
 }  // namespace
 
-void NetworkFetcher::FetchNetworkInfo(FetchNetworkInfoCallback callback) {
-  context_->network_health_adapter()->GetNetworkHealthState(
+void FetchNetworkInfo(Context* context, FetchNetworkInfoCallback callback) {
+  context->network_health_adapter()->GetNetworkHealthState(
       base::BindOnce(&HandleNetworkInfoResponse, std::move(callback)));
 }
 

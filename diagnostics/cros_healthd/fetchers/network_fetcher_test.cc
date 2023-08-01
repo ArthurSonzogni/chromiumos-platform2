@@ -21,9 +21,9 @@ class NetworkFetcherTest : public testing::Test {
  protected:
   NetworkFetcherTest() = default;
 
-  ash::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfo() {
+  ash::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfoSync() {
     base::test::TestFuture<ash::cros_healthd::mojom::NetworkResultPtr> future;
-    network_fetcher_.FetchNetworkInfo(future.GetCallback());
+    FetchNetworkInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
 
@@ -34,13 +34,12 @@ class NetworkFetcherTest : public testing::Test {
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  NetworkFetcher network_fetcher_{&mock_context_};
 };
 
 // Test an appropriate error is returned if no remote is bound;
 TEST_F(NetworkFetcherTest, NoRemote) {
   network_adapter()->SetRemoteBound(false);
-  auto result = FetchNetworkInfo();
+  auto result = FetchNetworkInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type,
             ash::cros_healthd::mojom::ErrorType::kServiceUnavailable);
@@ -63,7 +62,7 @@ TEST_F(NetworkFetcherTest, GetNetworkHealthState) {
   network_adapter()->SetRemoteBound(true);
   network_adapter()->SetNetworkHealthStateResponse(
       std::move(network_health_state));
-  auto result = FetchNetworkInfo();
+  auto result = FetchNetworkInfoSync();
   ASSERT_TRUE(result->is_network_health());
   EXPECT_EQ(result->get_network_health()->networks.size(), 1);
   EXPECT_EQ(result->get_network_health()->networks[0], network);
