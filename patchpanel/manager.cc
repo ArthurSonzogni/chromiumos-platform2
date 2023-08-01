@@ -5,6 +5,7 @@
 #include "patchpanel/manager.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -573,16 +574,25 @@ void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
 
 patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
-  // b/273741099: For multiplexed Cellular interfaces, callers expect patchpanel
-  // to accept a shill Device kInterfaceProperty value and swap it with the name
-  // of the primary multiplexed interface.
-  const auto* shill_device =
-      shill_client_->GetDevice(request.upstream_ifname());
-  if (!shill_device) {
+  // b/273741099, b/293964582: patchpanel must support callers using either the
+  // shill Device kInterfaceProperty value (Cellular multiplexing disabled) or
+  // the kPrimaryMultiplexedInterfaceProperty value (Cellular multiplexing
+  // enabled). This can be achieved by comparing the interface name specified by
+  // the request for the upstream network with the |ifname| value of the
+  // ShillClient's Devices.
+  std::optional<ShillClient::Device> upstream_shill_device = std::nullopt;
+  for (const auto& shill_device : shill_client_->GetDevices()) {
+    if (shill_device.ifname == request.upstream_ifname()) {
+      upstream_shill_device = shill_device;
+      break;
+    }
+  }
+  if (!upstream_shill_device) {
     LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
     return patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN;
   }
-  const auto info = DownstreamNetworkInfo::Create(request, *shill_device);
+  const auto info =
+      DownstreamNetworkInfo::Create(request, *upstream_shill_device);
   if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
     return patchpanel::DownstreamNetworkResult::INVALID_REQUEST;
