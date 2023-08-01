@@ -112,40 +112,6 @@ void CameraMojoChannelManagerImpl::RegisterServer(
                      base::Unretained(this)));
 }
 
-void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
-    mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
-    Callback on_construct_callback,
-    Callback on_error_callback) {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>
-      pending_task = {.pendingReceiverOrRemote = std::move(receiver),
-                      .on_construct_callback = std::move(on_construct_callback),
-                      .on_error_callback = std::move(on_error_callback)};
-  jda_tasks_.push_back(std::move(pending_task));
-  GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                     base::Unretained(this)));
-}
-
-void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
-    mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
-    Callback on_construct_callback,
-    Callback on_error_callback) {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>
-      pending_task = {.pendingReceiverOrRemote = std::move(receiver),
-                      .on_construct_callback = std::move(on_construct_callback),
-                      .on_error_callback = std::move(on_error_callback)};
-  jea_tasks_.push_back(std::move(pending_task));
-  GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                     base::Unretained(this)));
-}
-
 mojo::Remote<mojom::CameraAlgorithmOps>
 CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsRemote(
     const std::string& socket_path, const std::string& pipe_name) {
@@ -252,22 +218,6 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
           std::move(sensor_hal_client_task_.on_construct_callback));
     }
   }
-
-  for (auto& task : jda_tasks_) {
-    if (task.pendingReceiverOrRemote) {
-      dispatcher_->GetMjpegDecodeAccelerator(
-          std::move(task.pendingReceiverOrRemote));
-      std::move(task.on_construct_callback).Run();
-    }
-  }
-
-  for (auto& task : jea_tasks_) {
-    if (task.pendingReceiverOrRemote) {
-      dispatcher_->GetJpegEncodeAccelerator(
-          std::move(task.pendingReceiverOrRemote));
-      std::move(task.on_construct_callback).Run();
-    }
-  }
 }
 
 void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
@@ -289,20 +239,6 @@ void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
     std::move(sensor_hal_client_task_.on_error_callback).Run();
     sensor_hal_client_task_ = {};
   }
-
-  for (auto& task : jda_tasks_) {
-    if (task.on_error_callback) {
-      std::move(task.on_error_callback).Run();
-    }
-  }
-  jda_tasks_.clear();
-
-  for (auto& task : jea_tasks_) {
-    if (task.on_error_callback) {
-      std::move(task.on_error_callback).Run();
-    }
-  }
-  jea_tasks_.clear();
 
   dispatcher_.reset();
 }

@@ -16,6 +16,7 @@ group("all") {
     ":install_dbus_cros_camera_algo_conf",
     ":install_gen_include_iioservice_mojo",
     ":install_include_cros_camera",
+    ":install_jpeg_accelerator_mojo",
     ":install_libcamera_connector_so",
     ":install_minijail_algo_conf",
     ":install_minijail_gpu_algo_conf",
@@ -81,6 +82,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
     "//camera/mojo/effects/effects_pipeline.mojom",
     "//camera/mojo/file_path.mojom",
     "//camera/mojo/gpu/dmabuf.mojom",
+    "//camera/mojo/gpu/jpeg_accelerator.mojom",
     "//camera/mojo/gpu/jpeg_encode_accelerator.mojom",
     "//camera/mojo/gpu/mjpeg_decode_accelerator.mojom",
     "//camera/mojo/unguessable_token.mojom",
@@ -599,5 +601,10 @@ install_config("install_minijail_gpu_algo_conf") {
 
 install_config("install_camera_hal_dispatcher_mojo") {
   sources = [ "//camera/common/camera_hal_dispatcher_mojo_policy.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
+}
+
+install_config("install_jpeg_accelerator_mojo") {
+  sources = [ "//camera/common/jpeg/jpeg_accelerator_mojo_policy.jsonc" ]
   install_path = "/etc/mojo/service_manager/policy"
 }

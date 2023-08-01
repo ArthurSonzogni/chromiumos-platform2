@@ -65,24 +65,6 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
           on_construct_callback,
       Callback on_error_callback) = 0;
 
-  // Creates a new MjpegDecodeAccelerator connection by |receiver|.
-  // This method is expected to be called on the IPC thread and the
-  // |on_construct_callback| and |on_error_callback| will be run on the IPC
-  // thread as well.
-  virtual void CreateMjpegDecodeAccelerator(
-      mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
-      Callback on_construct_callback,
-      Callback on_error_callback) = 0;
-
-  // Creates a new JpegEncodeAccelerator connection by |receiver|.
-  // This method is expected to be called on the IPC thread and the
-  // |on_construct_callback| and |on_error_callback| will be run on the IPC
-  // thread as well.
-  virtual void CreateJpegEncodeAccelerator(
-      mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
-      Callback on_construct_callback,
-      Callback on_error_callback) = 0;
-
   // Create a new CameraAlgorithmOps remote.
   virtual mojo::Remote<mojom::CameraAlgorithmOps>
   CreateCameraAlgorithmOpsRemote(const std::string& socket_path,

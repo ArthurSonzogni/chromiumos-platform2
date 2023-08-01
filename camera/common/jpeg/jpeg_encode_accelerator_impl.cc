@@ -18,6 +18,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>
 #include <mojo/public/cpp/system/platform_handle.h>
@@ -186,6 +187,14 @@ JpegEncodeAcceleratorImpl::IPCBridge::~IPCBridge() {
   Destroy();
 }
 
+void JpegEncodeAcceleratorImpl::IPCBridge::
+    RequestAcceleratorFromServiceManager() {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  mojo_manager_->RequestServiceFromMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kCrosJpegAccelerator,
+      accelerator_provider_.BindNewPipeAndPassReceiver().PassPipe());
+}
+
 void JpegEncodeAcceleratorImpl::IPCBridge::Start(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -195,19 +204,15 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
     std::move(callback).Run(true);
     return;
   }
-
+  RequestAcceleratorFromServiceManager();
   mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver =
       jea_.BindNewPipeAndPassReceiver();
   jea_.set_disconnect_handler(base::BindOnce(
       &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
       GetWeakPtr()));
-  mojo_manager_->CreateJpegEncodeAccelerator(
-      std::move(receiver),
-      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::Initialize,
-                     GetWeakPtr(), std::move(callback)),
-      base::BindOnce(
-          &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
-          GetWeakPtr()));
+  accelerator_provider_->GetJpegEncodeAccelerator(std::move(receiver));
+
+  Initialize(std::move(callback));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
@@ -215,6 +220,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
   TRACE_JPEG_DEBUG();
 
   jea_.reset();
+  accelerator_provider_.reset();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
@@ -418,7 +424,6 @@ void JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError() {
   TRACE_JPEG();
 
   LOGF(ERROR) << "There is a mojo error for JpegEncodeAccelerator";
-  jea_.reset();
   cancellation_relay_->CancelAllFutures();
   Destroy();
 }

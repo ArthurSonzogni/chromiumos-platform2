@@ -17,6 +17,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/gpu/jpeg_accelerator.mojom.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
@@ -96,6 +97,9 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
     bool IsReady();
 
    private:
+    // Request the kCrosJpegAccelerator service from Mojo Service Manager.
+    void RequestAcceleratorFromServiceManager();
+
     // Initialize the JpegDecodeAccelerator.
     void Initialize(base::OnceCallback<void(bool)> callback);
 
@@ -124,6 +128,8 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
 
     // Tracking the buffer ids sent to decoder.
     std::set<int32_t> inflight_buffer_ids_;
+
+    mojo::Remote<mojom::JpegAcceleratorProvider> accelerator_provider_;
 
     base::WeakPtrFactory<IPCBridge> weak_ptr_factory_{this};
   };

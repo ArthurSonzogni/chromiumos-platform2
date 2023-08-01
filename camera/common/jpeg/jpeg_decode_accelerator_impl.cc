@@ -20,6 +20,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
 #include <base/timer/elapsed_timer.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>
 #include <mojo/public/cpp/system/platform_handle.h>
@@ -176,6 +177,14 @@ JpegDecodeAcceleratorImpl::IPCBridge::~IPCBridge() {
   Destroy();
 }
 
+void JpegDecodeAcceleratorImpl::IPCBridge::
+    RequestAcceleratorFromServiceManager() {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  mojo_manager_->RequestServiceFromMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kCrosJpegAccelerator,
+      accelerator_provider_.BindNewPipeAndPassReceiver().PassPipe());
+}
+
 void JpegDecodeAcceleratorImpl::IPCBridge::Start(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -185,19 +194,15 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Start(
     std::move(callback).Run(true);
     return;
   }
-
+  RequestAcceleratorFromServiceManager();
   mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver =
       jda_.BindNewPipeAndPassReceiver();
   jda_.set_disconnect_handler(base::BindOnce(
       &JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError,
       GetWeakPtr()));
-  mojo_manager_->CreateMjpegDecodeAccelerator(
-      std::move(receiver),
-      base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::Initialize,
-                     GetWeakPtr(), std::move(callback)),
-      base::BindOnce(
-          &JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError,
-          GetWeakPtr()));
+  accelerator_provider_->GetMjpegDecodeAccelerator(std::move(receiver));
+
+  Initialize(std::move(callback));
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::Destroy() {
@@ -205,6 +210,7 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Destroy() {
   TRACE_JPEG_DEBUG();
 
   jda_.reset();
+  accelerator_provider_.reset();
   inflight_buffer_ids_.clear();
 }
 

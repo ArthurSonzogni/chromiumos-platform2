@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/gpu/jpeg_accelerator.mojom.h"
 #include "camera/mojo/gpu/jpeg_encode_accelerator.mojom.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
@@ -124,6 +125,9 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     bool IsReady();
 
    private:
+    // Request the kCrosJpegAccelerator service from Mojo Service Manager.
+    void RequestAcceleratorFromServiceManager();
+
     // Initialize the JpegEncodeAccelerator.
     void Initialize(base::OnceCallback<void(bool)> callback);
 
@@ -155,6 +159,8 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     // implementation.
     // All the Mojo communication to |jea_| happens on |ipc_task_runner_|.
     mojo::Remote<mojom::JpegEncodeAccelerator> jea_;
+
+    mojo::Remote<mojom::JpegAcceleratorProvider> accelerator_provider_;
 
     // A map from buffer id to input and exif shared memory.
     // |input_shm_map_| and |exif_shm_map_| should only be accessed on

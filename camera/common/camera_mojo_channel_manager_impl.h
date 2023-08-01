@@ -48,16 +48,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
           on_construct_callback,
       Callback on_error_callback) override;
 
-  void CreateMjpegDecodeAccelerator(
-      mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
-      Callback on_construct_callback,
-      Callback on_error_callback) override;
-
-  void CreateJpegEncodeAccelerator(
-      mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
-      Callback on_construct_callback,
-      Callback on_error_callback) override;
-
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name) override;
 
@@ -124,12 +114,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // |dispatcher_| is connected.
   ServerPendingMojoTask camera_hal_server_task_;
   SensorClientPendingMojoTask sensor_hal_client_task_;
-  std::vector<
-      JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>>
-      jea_tasks_;
-  std::vector<
-      JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>>
-      jda_tasks_;
 
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.
