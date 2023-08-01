@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+
 namespace printscanmgr {
 
 MojoAdaptor::MojoAdaptor(
@@ -16,6 +18,10 @@ MojoAdaptor::MojoAdaptor(
     : mojo_task_runner_(mojo_task_runner),
       receiver_{/*impl=*/this, std::move(receiver)} {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
+
+  auto bus = connection_.Connect();
+  CHECK(bus) << "Failed to connect to the D-Bus system bus.";
+  upstart_tools_ = UpstartTools::Create(bus);
 }
 
 MojoAdaptor::~MojoAdaptor() = default;

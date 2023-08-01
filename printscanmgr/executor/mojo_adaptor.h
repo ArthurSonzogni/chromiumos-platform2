@@ -10,7 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/single_thread_task_runner.h>
-#include <dbus/bus.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -42,8 +42,8 @@ class MojoAdaptor final : public mojom::Executor {
   // executor's Mojo methods.
   mojo::Receiver<mojom::Executor> receiver_;
 
-  scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<UpstartTools> upstart_tools_ = UpstartTools::Create(bus_);
+  brillo::DBusConnection connection_;
+  std::unique_ptr<UpstartTools> upstart_tools_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<MojoAdaptor> weak_factory_{this};
