@@ -311,9 +311,15 @@ void CrosFpAuthStackManager::AuthenticateCredential(
 DeleteCredentialReply CrosFpAuthStackManager::DeleteCredential(
     const DeleteCredentialRequest& request) {
   DeleteCredentialReply reply;
-  if (!session_manager_->GetUser().has_value()) {
-    LOG(ERROR) << "Can only delete credential when there is a user session.";
-    reply.set_status(DeleteCredentialReply::INCORRECT_STATE);
+  const std::optional<std::string>& current_user = session_manager_->GetUser();
+  if (!current_user.has_value() || current_user.value() != request.user_id()) {
+    if (!session_manager_->DeleteNotLoadedRecord(request.user_id(),
+                                                 request.record_id())) {
+      LOG(ERROR) << "Failed to delete credential.";
+      reply.set_status(DeleteCredentialReply::DELETION_FAILED);
+    } else {
+      reply.set_status(DeleteCredentialReply::SUCCESS);
+    }
     return reply;
   }
   const std::string& record_id = request.record_id();

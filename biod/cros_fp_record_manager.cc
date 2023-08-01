@@ -217,6 +217,17 @@ bool CrosFpRecordManager::DeleteRecord(const std::string& record_id) {
   return true;
 }
 
+bool CrosFpRecordManager::DeleteNotLoadedRecord(const std::string& user_id,
+                                                const std::string& record_id) {
+  auto entry = records_metadata_.find(record_id);
+  if (entry != records_metadata_.end()) {
+    LOG(ERROR) << "Please use DeleteRecord to deleted a record of the "
+                  "currently loaded user.";
+    return false;
+  }
+  return biod_storage_->DeleteRecord(user_id, record_id);
+}
+
 bool CrosFpRecordManager::DeleteAllRecords() {
   // Enumerate through records_metadata_ and delete each record.
   bool delete_all_records = true;

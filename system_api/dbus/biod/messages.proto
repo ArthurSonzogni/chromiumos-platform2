@@ -112,7 +112,8 @@ message AuthenticateCredentialReply {
 }
 
 message DeleteCredentialRequest {
-  optional string record_id = 1;
+  optional string user_id = 1;
+  optional string record_id = 2;
 }
 
 message DeleteCredentialReply {

@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <base/base64.h>
+#include <base/files/dir_reader_posix.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -24,6 +25,7 @@
 #include <base/strings/string_util.h>
 #include <base/uuid.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 #include <brillo/scoped_umask.h>
 
 #include "biod/biometrics_manager_record_interface.h"
@@ -43,6 +45,29 @@ constexpr char kLabel[] = "label";
 constexpr char kRecordId[] = "record_id";
 constexpr char kValidationVal[] = "match_validation_value";
 constexpr char kVersionMember[] = "version";
+
+bool DirIsEmpty(const base::FilePath& source_dir) {
+  bool is_empty = true;
+
+  base::DirReaderPosix reader(source_dir.value().c_str());
+  if (!reader.IsValid()) {
+    LOG(ERROR) << "Error opening source directory";
+    return is_empty;
+  }
+
+  while (reader.Next()) {
+    // Don't count ".", ".."
+    if (reader.name() == std::string(base::FilePath::kCurrentDirectory) ||
+        reader.name() == std::string(base::FilePath::kParentDirectory)) {
+      continue;
+    }
+    is_empty = false;
+    break;
+  }
+
+  return is_empty;
+}
+
 }  // namespace
 
 BiodStorage::BiodStorage(const base::FilePath& root_path,
@@ -302,9 +327,11 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
     return false;
   }
 
-  FilePath record_storage_filename = root_path_.Append(user_id)
-                                         .Append(biometrics_manager_name_)
-                                         .Append(kRecordFileName + record_id);
+  FilePath user_storage_dirname = root_path_.Append(user_id);
+  FilePath record_storage_dirname =
+      user_storage_dirname.Append(biometrics_manager_name_);
+  FilePath record_storage_filename =
+      record_storage_dirname.Append(kRecordFileName + record_id);
 
   if (!base::PathExists(record_storage_filename)) {
     LOG(INFO) << "Trying to delete record " << LogSafeID(record_id)
@@ -317,6 +344,25 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
     return false;
   }
   LOG(INFO) << "Done deleting record " << LogSafeID(record_id) << " from disk.";
+
+  // If the directory is empty now, let's delete the directory too.
+  if (DirIsEmpty(record_storage_dirname)) {
+    if (!brillo::DeleteFile(record_storage_dirname)) {
+      LOG(WARNING) << "Failed to delete empty record directory.";
+    } else {
+      LOG(INFO) << "Deleted empty record directory.";
+    }
+    // Furthermore check whether the user directory as a whole should be
+    // removed. This is necessary because we should not keep user directories
+    // after they're removed from the device.
+    if (DirIsEmpty(user_storage_dirname)) {
+      if (!brillo::DeleteFile(user_storage_dirname)) {
+        LOG(WARNING) << "Failed to delete empty user directory.";
+      } else {
+        LOG(INFO) << "Deleted empty user directory.";
+      }
+    }
+  }
   return true;
 }
 

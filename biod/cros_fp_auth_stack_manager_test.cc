@@ -598,6 +598,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialSuccess) {
       .WillOnce(Return(std::vector<CrosFpSessionManager::SessionRecord>()));
 
   DeleteCredentialRequest request;
+  request.set_user_id(kUserId.value());
   request.set_record_id(kRecordId);
   EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
             DeleteCredentialReply::SUCCESS);
@@ -611,6 +612,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialNonExisting) {
       .WillOnce(Return(false));
 
   DeleteCredentialRequest request;
+  request.set_user_id(kUserId.value());
   request.set_record_id(kRecordId);
   EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
             DeleteCredentialReply::NOT_EXIST);
@@ -626,9 +628,26 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialFailed) {
       .WillOnce(Return(false));
 
   DeleteCredentialRequest request;
+  request.set_user_id(kUserId.value());
   request.set_record_id(kRecordId);
   EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
             DeleteCredentialReply::DELETION_FAILED);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialDifferentUser) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kUserId2("testuser2");
+  const std::string kRecordId("record_id");
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_,
+              DeleteNotLoadedRecord(kUserId2, kRecordId))
+      .WillOnce(Return(true));
+
+  DeleteCredentialRequest request;
+  request.set_user_id(kUserId2);
+  request.set_record_id(kRecordId);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->DeleteCredential(request).status(),
+            DeleteCredentialReply::SUCCESS);
 }
 
 class CrosFpAuthStackManagerInitiallyEnrollDoneTest

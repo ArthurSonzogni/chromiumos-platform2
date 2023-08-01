@@ -63,6 +63,7 @@ lstat64: 1
 readlink: 1
 readlinkat: 1
 unlink: 1
+unlinkat: 1
 rename: 1
 symlink: 1
 epoll_create1: 1

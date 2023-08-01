@@ -43,6 +43,9 @@ class MockCrosFpRecordManager : public CrosFpRecordManagerInterface {
               (const RecordMetadata& record_metadata));
 
   MOCK_METHOD(bool, DeleteRecord, (const std::string& record_id));
+  MOCK_METHOD(bool,
+              DeleteNotLoadedRecord,
+              (const std::string& user_id, const std::string& record_id));
   MOCK_METHOD(bool, DeleteAllRecords, ());
   MOCK_METHOD(void, DeleteInvalidRecords, ());
   MOCK_METHOD(void, RemoveRecordsFromMemory, ());

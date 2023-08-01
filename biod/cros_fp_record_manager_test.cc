@@ -690,5 +690,28 @@ TEST_F(CrosFpRecordManagerTest, UpdateRecordMetadataReadSingleRecordNullptr) {
   EXPECT_EQ(record_metadata1, *metadata);
 }
 
+TEST_F(CrosFpRecordManagerTest, TestDeleteNotLoadedRecord) {
+  EXPECT_CALL(*mock_biod_storage_, ReadRecordsForSingleUser(kUserID1))
+      .WillOnce(Return(std::vector<Record>()));
+  record_manager_->GetRecordsForUser(kUserID1);
+
+  EXPECT_CALL(*mock_biod_storage_, DeleteRecord(kUserID1, kRecordID1))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(record_manager_->DeleteNotLoadedRecord(kUserID1, kRecordID1));
+}
+
+TEST_F(CrosFpRecordManagerTest, TestDeleteNotLoadedRecordFailed) {
+  RecordMetadata record_metadata1{kRecordFormatVersion, kRecordID1, kUserID1,
+                                  kLabel, kFakeValidationValue1};
+
+  std::vector<Record> test_record = {Record{record_metadata1, kData1}};
+  EXPECT_CALL(*mock_biod_storage_, ReadRecordsForSingleUser(kUserID1))
+      .WillOnce(Return(test_record));
+  record_manager_->GetRecordsForUser(kUserID1);
+
+  EXPECT_CALL(*mock_biod_storage_, DeleteRecord(kUserID1, kRecordID1)).Times(0);
+  EXPECT_FALSE(record_manager_->DeleteNotLoadedRecord(kUserID1, kRecordID1));
+}
+
 }  // namespace
 }  // namespace biod

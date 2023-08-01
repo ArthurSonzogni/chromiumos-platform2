@@ -37,6 +37,10 @@ class CrosFpRecordManagerInterface {
   virtual bool UpdateRecordMetadata(const RecordMetadata& record_metadata) = 0;
 
   virtual bool DeleteRecord(const std::string& record_id) = 0;
+  // Delete a record from persistent storage directly. The record mustn't be in
+  // the in-memory records, so that we don't lose sync with disk.
+  virtual bool DeleteNotLoadedRecord(const std::string& user_id,
+                                     const std::string& record_id) = 0;
   virtual bool DeleteAllRecords() = 0;
   virtual void DeleteInvalidRecords() = 0;
   virtual void RemoveRecordsFromMemory() = 0;
@@ -65,6 +69,8 @@ class CrosFpRecordManager : public CrosFpRecordManagerInterface {
   bool UpdateRecordMetadata(const RecordMetadata& record_metadata) override;
 
   bool DeleteRecord(const std::string& record_id) override;
+  bool DeleteNotLoadedRecord(const std::string& user_id,
+                             const std::string& record_id) override;
   bool DeleteAllRecords() override;
   void DeleteInvalidRecords() override;
   void RemoveRecordsFromMemory() override;

@@ -150,6 +150,15 @@ bool CrosFpSessionManagerImpl::DeleteRecord(const std::string& record_id) {
   return true;
 }
 
+bool CrosFpSessionManagerImpl::DeleteNotLoadedRecord(
+    const std::string& user_id, const std::string& record_id) {
+  if (user_.has_value() && user_.value() == user_id) {
+    LOG(ERROR) << "Can't delete active user's record in DeleteNotLoadedRecord.";
+    return false;
+  }
+  return record_manager_->DeleteNotLoadedRecord(user_id, record_id);
+}
+
 std::vector<SessionRecord> CrosFpSessionManagerImpl::GetRecords() {
   return records_;
 }

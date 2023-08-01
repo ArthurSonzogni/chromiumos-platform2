@@ -51,6 +51,11 @@ class CrosFpSessionManager {
   // Delete the record with |record_id|. It will fail if no user session exists.
   virtual bool DeleteRecord(const std::string& record_id) = 0;
 
+  // Delete a record from persistent storage directly. The record mustn't be in
+  // the in-memory records, so that we don't lose sync with disk.
+  virtual bool DeleteNotLoadedRecord(const std::string& user_id,
+                                     const std::string& record_id) = 0;
+
   // Get all of the templates that belong to the current user session. It will
   // return an empty list if no user session exists.
   virtual std::vector<SessionRecord> GetRecords() = 0;
