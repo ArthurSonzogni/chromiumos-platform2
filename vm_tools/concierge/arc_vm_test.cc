@@ -895,7 +895,7 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
       "/run/arcvm/host_generated/oem/etc:oem_etc:type=fs:cache=always:uidmap=0 "
       "299 1, 5000 600 50:gidmap=0 300 1, 5000 600 "
       "50:timeout=3600:rewrite-security-xattrs=true:writeback=true:posix_acl="
-      "false");
+      "false:negative_timeout=3600");
 }
 
 TEST(ArcVmParamsTest, ArcSwitchToKeymintTrue) {
