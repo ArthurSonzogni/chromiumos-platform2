@@ -17,17 +17,17 @@ use libc::c_long;
 use libc::c_ulong;
 use libc::c_void;
 use libc::{self};
-use libchromeos::sys::ioctl_io_nr;
-use libchromeos::sys::ioctl_ior_nr;
-use libchromeos::sys::ioctl_iow_nr;
-use libchromeos::sys::ioctl_with_mut_ptr;
-use libchromeos::sys::ioctl_with_ptr;
-use libchromeos::sys::ioctl_with_val;
 use log::error;
 use log::info;
 
 use crate::hiberutil::get_device_id;
 use crate::hiberutil::HibernateError;
+use crate::ioctl::ioctl_io_nr;
+use crate::ioctl::ioctl_ior_nr;
+use crate::ioctl::ioctl_iow_nr;
+use crate::ioctl::ioctl_with_mut_ptr;
+use crate::ioctl::ioctl_with_ptr;
+use crate::ioctl::ioctl_with_val;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
 
@@ -210,7 +210,7 @@ impl SnapshotDevice {
     /// passed, so those guarantees would mostly be concerned with larger
     /// address space layout or memory model side effects.
     unsafe fn simple_ioctl(&mut self, ioctl: c_ulong, name: &str) -> Result<()> {
-        let rc = libchromeos::sys::ioctl(&self.file, ioctl);
+        let rc = crate::ioctl::ioctl(&self.file, ioctl);
         self.evaluate_ioctl_return(name, rc)
     }
 

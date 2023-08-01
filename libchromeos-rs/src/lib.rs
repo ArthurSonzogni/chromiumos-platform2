@@ -42,30 +42,3 @@ pub mod rand;
 pub mod scoped_path;
 pub mod secure_blob;
 pub mod syslog;
-
-use std::os::unix::io::FromRawFd;
-use std::os::unix::net::UnixDatagram;
-
-use libc::{socketpair, AF_UNIX, FIOCLEX, SOCK_SEQPACKET};
-use sys::ioctl;
-
-pub fn new_seqpacket_pair() -> sys::Result<(UnixDatagram, UnixDatagram)> {
-    let mut fds = [0, 0];
-    // Safe because fds is owned and the return value is checked.
-    let ret = unsafe { socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fds.as_mut_ptr()) };
-    if ret != 0 {
-        return Err(sys::Error::last());
-    }
-
-    // Safe because the file descriptors aren't owned yet.
-    let first = unsafe { UnixDatagram::from_raw_fd(fds[0]) };
-    let second = unsafe { UnixDatagram::from_raw_fd(fds[1]) };
-
-    // Set FD_CLOEXEC. Safe because this will not fail since the fds are valid.
-    unsafe {
-        ioctl(&first, FIOCLEX);
-        ioctl(&second, FIOCLEX);
-    }
-
-    Ok((first, second))
-}

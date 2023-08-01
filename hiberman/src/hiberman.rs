@@ -12,6 +12,7 @@ mod cryptohome;
 mod device_mapper;
 mod files;
 mod hiberutil;
+mod ioctl;
 mod lvm;
 mod mmapbuf;
 mod powerd;

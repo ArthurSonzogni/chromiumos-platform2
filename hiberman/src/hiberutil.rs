@@ -24,7 +24,6 @@ use anyhow::Context;
 use anyhow::Result;
 use libc::c_ulong;
 use libc::c_void;
-use libchromeos::sys::syscall;
 use log::debug;
 use log::error;
 use log::info;
@@ -112,7 +111,7 @@ pub enum HibernateError {
     KeyRetrievalError(),
     /// Syscall stat error
     #[error("Snapshot stat error: {0}")]
-    SnapshotStatDeviceError(libchromeos::sys::Error),
+    SnapshotStatDeviceError(nix::Error),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -153,11 +152,10 @@ pub fn get_device_id<P: AsRef<std::path::Path>>(path: P) -> Result<u32> {
     let mut stats: MaybeUninit<libc::stat> = MaybeUninit::zeroed();
 
     // This is safe because only stats is modified.
-    if syscall!(unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) }).is_err() {
-        return Err(HibernateError::SnapshotStatDeviceError(
-            libchromeos::sys::Error::last(),
-        ))
-        .context("Failed to stat device");
+    let res = unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) };
+    if res != 0 {
+        return Err(HibernateError::SnapshotStatDeviceError(nix::Error::last()))
+            .context("Failed to stat device");
     }
 
     // Safe because the syscall just initialized it, and we just verified

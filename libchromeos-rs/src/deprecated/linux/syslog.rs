@@ -16,6 +16,10 @@ use std::{
     ptr::null,
 };
 
+use libc::socketpair;
+use libc::AF_UNIX;
+use libc::FIOCLEX;
+use libc::SOCK_SEQPACKET;
 use libc::{
     closelog, fcntl, localtime_r, openlog, time, time_t, tm, F_GETFD, LOG_NDELAY, LOG_PERROR,
     LOG_PID, LOG_USER,
@@ -122,7 +126,7 @@ impl Syslog for PlatformSyslog {
 pub fn openlog_and_get_socket() -> Result<(UnixDatagram, Option<UnixDatagram>), Error> {
     // When running unit tests, do not use the real syslog.
     if cfg!(test) {
-        return match crate::new_seqpacket_pair() {
+        return match new_seqpacket_pair() {
             Ok(a) => Ok((a.0, Some(a.1))),
             Err(err) => Err(Error::Socket(err.into())),
         };
@@ -157,6 +161,27 @@ pub fn openlog_and_get_socket() -> Result<(UnixDatagram, Option<UnixDatagram>), 
             Err(Error::InvalidFd)
         }
     }
+}
+
+pub fn new_seqpacket_pair() -> crate::sys::Result<(UnixDatagram, UnixDatagram)> {
+    let mut fds = [0, 0];
+    // Safe because fds is owned and the return value is checked.
+    let ret = unsafe { socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fds.as_mut_ptr()) };
+    if ret != 0 {
+        return Err(crate::sys::Error::last());
+    }
+
+    // Safe because the file descriptors aren't owned yet.
+    let first = unsafe { UnixDatagram::from_raw_fd(fds[0]) };
+    let second = unsafe { UnixDatagram::from_raw_fd(fds[1]) };
+
+    // Set FD_CLOEXEC. Safe because this will not fail since the fds are valid.
+    unsafe {
+        libc::ioctl(first.as_raw_fd(), FIOCLEX, 0);
+        libc::ioctl(second.as_raw_fd(), FIOCLEX, 0);
+    }
+
+    Ok((first, second))
 }
 
 /// Should only be called after `init()` was called.
