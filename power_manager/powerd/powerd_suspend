@@ -327,7 +327,8 @@ else
   # down.
   if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
     error="Failed to hibernate"
-    /sbin/minijail0 -v /usr/sbin/hiberman hibernate
+    /sbin/minijail0 --config=/usr/share/minijail/hiberman.conf \
+        -- /usr/sbin/hiberman hibernate
 
   else
     # Echo freeze to /sys/power/state on platforms that support suspend to idle.
