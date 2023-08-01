@@ -50,7 +50,8 @@ class PinWeaverAuthBlock : public AuthBlock {
 
   // Removing the underlying Pinweaver leaf node before the AuthFactor is
   // removed.
-  void PrepareForRemoval(const AuthBlockState& state,
+  void PrepareForRemoval(const ObfuscatedUsername& obfuscated_username,
+                         const AuthBlockState& state,
                          StatusCallback callback) override;
 
   uint32_t GetLockoutDelay(uint64_t label);

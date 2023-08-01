@@ -331,8 +331,9 @@ TEST_F(AuthFactorManagerTest, RemoveFailureWithAuthBlock) {
   NiceMock<MockAuthBlockUtility> auth_block_utility;
 
   // Intentionally fail the PrepareAuthBlockForRemoval for password factor.
-  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _))
-      .WillOnce([&](const AuthBlockState& auth_state,
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _, _))
+      .WillOnce([&](const ObfuscatedUsername& obfuscated_username,
+                    const AuthBlockState& auth_state,
                     AuthBlockUtility::CryptohomeStatusCallback callback) {
         std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
             error_location_for_testing_auth_factor,
@@ -484,8 +485,9 @@ TEST_F(AuthFactorManagerTest, UpdateFailureWithRemoval) {
               static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(
                   1),
               std::string("MockErrorLocationAuthFactor"));
-  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _))
-      .WillOnce([&](const AuthBlockState& auth_state,
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _, _))
+      .WillOnce([&](const ObfuscatedUsername& obfuscated_username,
+                    const AuthBlockState& auth_state,
                     AuthBlockUtility::CryptohomeStatusCallback callback) {
         std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
             error_location_for_testing_auth_factor,

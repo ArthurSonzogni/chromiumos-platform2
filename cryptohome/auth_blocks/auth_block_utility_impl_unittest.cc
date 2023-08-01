@@ -1451,7 +1451,7 @@ TEST_F(AuthBlockUtilityImplTest,
   MakeAuthBlockUtilityImpl();
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state,
+  auth_block_utility_impl_->PrepareAuthBlockForRemoval(kObfuscated, auth_state,
                                                        result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   ASSERT_THAT(result.Take(), IsOk());
@@ -1489,7 +1489,7 @@ TEST_F(AuthBlockUtilityImplTest,
   MakeAuthBlockUtilityImpl();
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state,
+  auth_block_utility_impl_->PrepareAuthBlockForRemoval(kObfuscated, auth_state,
                                                        result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   ASSERT_THAT(result.Take(), IsOk());

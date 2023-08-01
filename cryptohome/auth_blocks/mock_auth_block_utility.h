@@ -62,7 +62,9 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (const, override));
   MOCK_METHOD(void,
               PrepareAuthBlockForRemoval,
-              (const AuthBlockState& auth_block_state, StatusCallback callback),
+              (const ObfuscatedUsername& obfuscated_username,
+               const AuthBlockState& auth_block_state,
+               StatusCallback callback),
               (override));
   MOCK_METHOD(CryptoStatus,
               GenerateRecoveryRequest,

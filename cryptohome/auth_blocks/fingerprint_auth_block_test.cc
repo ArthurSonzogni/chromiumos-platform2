@@ -175,10 +175,11 @@ class FingerprintAuthBlockTest : public ::testing::Test {
     EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(AnyNumber());
   }
 
-  void ExpectDeleteCredential(const std::string& record_id,
+  void ExpectDeleteCredential(const ObfuscatedUsername& user,
+                              const std::string& record_id,
                               DeleteResult result) {
-    EXPECT_CALL(*mock_processor_, DeleteCredential(record_id, _))
-        .WillOnce([result](auto&&, auto&& callback) {
+    EXPECT_CALL(*mock_processor_, DeleteCredential(user, record_id, _))
+        .WillOnce([result](auto&&, auto&&, auto&& callback) {
           std::move(callback).Run(result);
         });
   }
@@ -882,12 +883,13 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalSuccess) {
   fingerprint_auth_state.template_id = kFakeRecordId;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kSuccess);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
   EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   EXPECT_THAT(result.Take(), IsOk());
 }
@@ -898,12 +900,14 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalRecordNotExist) {
   fingerprint_auth_state.template_id = kFakeRecordId;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kNotExist);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId,
+                         DeleteResult::kNotExist);
   EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   EXPECT_THAT(result.Take(), IsOk());
 }
@@ -914,10 +918,11 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalDeleteRecordFailed) {
   fingerprint_auth_state.template_id = kFakeRecordId;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kFailed);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kFailed);
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   auto status = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -935,7 +940,8 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateId) {
   // Prepare for removal should continue to delete the PinWeaver leaf if the
   // template ID doesn't exist.
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   EXPECT_THAT(result.Take(), IsOk());
 }
@@ -945,11 +951,12 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabel) {
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.template_id = kFakeRecordId;
   auth_state.state = fingerprint_auth_state;
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kSuccess);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
 
   // Prepare for removal should still succeed when the label doesn't exist.
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   EXPECT_THAT(result.Take(), IsOk());
 }
@@ -960,7 +967,7 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
   fingerprint_auth_state.template_id = kFakeRecordId;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kSuccess);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
 
   EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
       .WillOnce(ReturnError<CryptohomeLECredError>(
@@ -970,15 +977,17 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
           LE_CRED_ERROR_INVALID_LABEL));
 
   TestFuture<CryptohomeStatus> result;
-  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 result.GetCallback());
   EXPECT_TRUE(result.IsReady());
   EXPECT_THAT(result.Take(), NotOk());
 
-  ExpectDeleteCredential(kFakeRecordId, DeleteResult::kSuccess);
+  ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
   // Prepare for removal should still succeed when the label doesn't exist in
   // the tree.
   TestFuture<CryptohomeStatus> second_result;
-  auth_block_->PrepareForRemoval(auth_state, second_result.GetCallback());
+  auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
+                                 second_result.GetCallback());
   EXPECT_TRUE(second_result.IsReady());
   EXPECT_THAT(second_result.Take(), IsOk());
 }

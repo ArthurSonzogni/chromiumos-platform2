@@ -44,7 +44,8 @@ class FingerprintAuthBlock : public AuthBlock {
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
-  void PrepareForRemoval(const AuthBlockState& state,
+  void PrepareForRemoval(const ObfuscatedUsername& obfuscated_username,
+                         const AuthBlockState& state,
                          StatusCallback callback) override;
 
   void SelectFactor(const AuthInput& auth_input,

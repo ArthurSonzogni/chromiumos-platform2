@@ -1584,7 +1584,7 @@ void AuthSession::PrepareUserForRemoval() {
       }
     };
     auth_block_utility_->PrepareAuthBlockForRemoval(
-        auth_factor.auth_block_state(),
+        obfuscated_username_, auth_factor.auth_block_state(),
         base::BindOnce(log_status, auth_factor));
   }
 

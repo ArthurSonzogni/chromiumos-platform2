@@ -53,7 +53,9 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
   MOCK_METHOD(void, EndAuthenticateSession, (), (override));
   MOCK_METHOD(void,
               DeleteCredential,
-              (const std::string&, base::OnceCallback<void(DeleteResult)>),
+              (ObfuscatedUsername,
+               const std::string&,
+               base::OnceCallback<void(DeleteResult)>),
               (override));
 };
 

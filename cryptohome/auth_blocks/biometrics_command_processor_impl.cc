@@ -480,10 +480,12 @@ void BiometricsCommandProcessorImpl::EndAuthenticateSession() {
 }
 
 void BiometricsCommandProcessorImpl::DeleteCredential(
+    ObfuscatedUsername obfuscated_username,
     const std::string& record_id,
     base::OnceCallback<void(BiometricsCommandProcessor::DeleteResult)>
         on_done) {
   biod::DeleteCredentialRequest request;
+  request.set_user_id(std::move(*obfuscated_username));
   request.set_record_id(record_id);
   proxy_->DeleteCredential(
       request,

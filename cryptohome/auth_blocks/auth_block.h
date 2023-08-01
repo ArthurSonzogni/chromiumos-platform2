@@ -84,7 +84,8 @@ class AuthBlock {
 
   // This is optionally implemented by concrete auth factor methods which need
   // to execute additional steps before removal of the AuthFactor from disk.
-  virtual void PrepareForRemoval(const AuthBlockState& state,
+  virtual void PrepareForRemoval(const ObfuscatedUsername& obfuscated_username,
+                                 const AuthBlockState& state,
                                  StatusCallback callback) {
     // By default, do nothing. Subclasses can provide custom behavior.
     return std::move(callback).Run(

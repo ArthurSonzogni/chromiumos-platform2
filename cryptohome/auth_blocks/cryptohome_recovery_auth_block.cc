@@ -485,8 +485,10 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                           std::move(key_blobs), std::nullopt);
 }
 
-void CryptohomeRecoveryAuthBlock::PrepareForRemoval(const AuthBlockState& state,
-                                                    StatusCallback callback) {
+void CryptohomeRecoveryAuthBlock::PrepareForRemoval(
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthBlockState& state,
+    StatusCallback callback) {
   CryptoStatus crypto_err = PrepareForRemovalInternal(state);
   if (!crypto_err.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for cryptohome recovery auth "

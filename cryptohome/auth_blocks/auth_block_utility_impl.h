@@ -79,7 +79,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
-  void PrepareAuthBlockForRemoval(const AuthBlockState& auth_block_state,
+  void PrepareAuthBlockForRemoval(const ObfuscatedUsername& obfuscated_username,
+                                  const AuthBlockState& auth_block_state,
                                   CryptohomeStatusCallback callback) override;
 
   CryptoStatus GenerateRecoveryRequest(

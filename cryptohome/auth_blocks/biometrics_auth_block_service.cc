@@ -152,9 +152,11 @@ std::optional<brillo::Blob> BiometricsAuthBlockService::TakeNonce() {
 }
 
 void BiometricsAuthBlockService::DeleteCredential(
+    ObfuscatedUsername obfuscated_username,
     const std::string& record_id,
     base::OnceCallback<void(DeleteResult)> on_done) {
-  processor_->DeleteCredential(record_id, std::move(on_done));
+  processor_->DeleteCredential(obfuscated_username, record_id,
+                               std::move(on_done));
 }
 
 BiometricsAuthBlockService::Token::Token(AuthFactorType auth_factor_type,

@@ -15,8 +15,9 @@ using ::testing::_;
 }  // namespace
 
 MockAuthBlockUtility::MockAuthBlockUtility() {
-  ON_CALL(*this, PrepareAuthBlockForRemoval(_, _))
-      .WillByDefault([&](const AuthBlockState& auth_state,
+  ON_CALL(*this, PrepareAuthBlockForRemoval(_, _, _))
+      .WillByDefault([&](const ObfuscatedUsername& obfuscated_username,
+                         const AuthBlockState& auth_state,
                          AuthBlockUtility::CryptohomeStatusCallback callback) {
         std::move(callback).Run(OkStatus<CryptohomeError>());
       });

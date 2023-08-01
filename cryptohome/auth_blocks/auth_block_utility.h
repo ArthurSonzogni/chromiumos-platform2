@@ -91,6 +91,7 @@ class AuthBlockUtility {
   // Executes additional steps needed for auth block removal, using the given
   // auth block state.
   virtual void PrepareAuthBlockForRemoval(
+      const ObfuscatedUsername& obfuscated_username,
       const AuthBlockState& auth_block_state,
       CryptohomeStatusCallback callback) = 0;
 

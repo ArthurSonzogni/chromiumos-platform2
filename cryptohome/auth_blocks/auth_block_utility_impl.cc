@@ -255,7 +255,9 @@ std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
 }
 
 void AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
-    const AuthBlockState& auth_block_state, CryptohomeStatusCallback callback) {
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthBlockState& auth_block_state,
+    CryptohomeStatusCallback callback) {
   std::optional<AuthBlockType> auth_block_type =
       GetAuthBlockTypeFromState(auth_block_state);
   if (!auth_block_type) {
@@ -297,7 +299,7 @@ void AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
          CryptohomeStatus error) { std::move(callback).Run(std::move(error)); },
       std::move(auth_block.value()), std::move(callback));
 
-  auth_block_ptr->PrepareForRemoval(auth_block_state,
+  auth_block_ptr->PrepareForRemoval(obfuscated_username, auth_block_state,
                                     std::move(managed_callback));
 }
 

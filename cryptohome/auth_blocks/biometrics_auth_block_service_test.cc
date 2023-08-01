@@ -1024,13 +1024,14 @@ TEST_F(BiometricsAuthBlockServiceTest, AuthenticateSessionInvalidActions) {
 TEST_F(BiometricsAuthBlockServiceTest, DeleteCredential) {
   const std::string kRecordId("record_id");
   const DeleteResult kResult = DeleteResult::kSuccess;
-  EXPECT_CALL(*mock_processor_, DeleteCredential(kRecordId, _))
-      .WillOnce([kResult](auto&&, auto&& callback) {
+  EXPECT_CALL(*mock_processor_, DeleteCredential(kFakeUserId, kRecordId, _))
+      .WillOnce([kResult](auto&&, auto&&, auto&& callback) {
         std::move(callback).Run(kResult);
       });
 
   TestFuture<DeleteResult> delete_result;
-  service_->DeleteCredential(kRecordId, delete_result.GetCallback());
+  service_->DeleteCredential(kFakeUserId, kRecordId,
+                             delete_result.GetCallback());
   EXPECT_EQ(delete_result.Get(), kResult);
 }
 

@@ -54,6 +54,7 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   void EndEnrollSession() override;
   void EndAuthenticateSession() override;
   void DeleteCredential(
+      ObfuscatedUsername obfuscated_username,
       const std::string& record_id,
       base::OnceCallback<void(DeleteResult)> on_done) override;
 

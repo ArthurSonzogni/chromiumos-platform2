@@ -82,7 +82,8 @@ class BiometricsAuthBlockService {
   std::optional<brillo::Blob> TakeNonce();
 
   // Calls BiometricsCommandProcessor::DeleteCredential.
-  void DeleteCredential(const std::string& record_id,
+  void DeleteCredential(ObfuscatedUsername obfuscated_username,
+                        const std::string& record_id,
                         base::OnceCallback<void(DeleteResult)> on_done);
 
  private:

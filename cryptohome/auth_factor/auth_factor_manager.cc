@@ -316,7 +316,7 @@ void AuthFactorManager::RemoveAuthFactor(
   }
 
   auth_block_utility->PrepareAuthBlockForRemoval(
-      auth_factor.auth_block_state(),
+      obfuscated_username, auth_factor.auth_block_state(),
       base::BindOnce(&AuthFactorManager::RemoveAuthFactorFiles,
                      base::Unretained(this), obfuscated_username, auth_factor,
                      file_path.value(), std::move(callback)));
@@ -363,7 +363,7 @@ void AuthFactorManager::UpdateAuthFactor(
   // 3. The old auth factor state was removed from disk. Call
   // `PrepareForRemoval()` to complete the removal.
   auth_block_utility->PrepareAuthBlockForRemoval(
-      existing_auth_factor.value()->auth_block_state(),
+      obfuscated_username, existing_auth_factor.value()->auth_block_state(),
       base::BindOnce(&AuthFactorManager::LogPrepareForRemovalStatus,
                      base::Unretained(this), obfuscated_username, auth_factor,
                      std::move(callback)));

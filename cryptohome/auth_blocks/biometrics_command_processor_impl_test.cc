@@ -455,7 +455,7 @@ TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialSuccess) {
       });
 
   TestFuture<BiometricsCommandProcessor::DeleteResult> result;
-  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  processor_->DeleteCredential(kFakeUserId, kRecordId, result.GetCallback());
   EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kSuccess);
 }
 
@@ -470,7 +470,7 @@ TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialNotExist) {
       });
 
   TestFuture<BiometricsCommandProcessor::DeleteResult> result;
-  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  processor_->DeleteCredential(kFakeUserId, kRecordId, result.GetCallback());
   EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kNotExist);
 }
 
@@ -485,7 +485,7 @@ TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialFailed) {
       });
 
   TestFuture<BiometricsCommandProcessor::DeleteResult> result;
-  processor_->DeleteCredential(kRecordId, result.GetCallback());
+  processor_->DeleteCredential(kFakeUserId, kRecordId, result.GetCallback());
   EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kFailed);
 }
 
