@@ -29,7 +29,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/net/ip_address.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/vpn_types.h"
@@ -376,12 +375,12 @@ void ThirdPartyVpnDriver::SetParameters(
     // The first excluded IP is used to find the default gateway. The logic that
     // finds the default gateway does not work for default route "0.0.0.0/0".
     // Hence, this code ensures that the first IP is not default.
-    const auto address = IPAddress::CreateFromPrefixString(
-        ipv4_properties_->exclusion_list[0], IPAddress::kFamilyIPv4);
-    if (!address.has_value()) {
+    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
+        ipv4_properties_->exclusion_list[0]);
+    if (!cidr.has_value()) {
       LOG(ERROR) << "Invalid prefix string: "
                  << ipv4_properties_->exclusion_list[0];
-    } else if (address->IsDefault() && !address->prefix()) {
+    } else if (cidr->address().IsZero() && cidr->prefix_length() == 0) {
       if (ipv4_properties_->exclusion_list.size() > 1) {
         swap(ipv4_properties_->exclusion_list[0],
              ipv4_properties_->exclusion_list[1]);

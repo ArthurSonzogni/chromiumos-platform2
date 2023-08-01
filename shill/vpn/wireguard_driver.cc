@@ -32,7 +32,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/process_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -552,21 +551,19 @@ bool WireGuardDriver::PopulateIPProperties() {
   std::vector<std::string> ipv6_address_list;
 
   for (const auto& ip_address : ip_address_list) {
-    const auto ip = IPAddress::CreateFromString(ip_address);
+    const auto ip = net_base::IPAddress::CreateFromString(ip_address);
     if (!ip.has_value()) {
       LOG(ERROR) << "Address format is wrong: the input string is "
                  << ip_address;
       return false;
     }
-    switch (ip->family()) {
-      case IPAddress::kFamilyIPv4:
+    switch (ip->GetFamily()) {
+      case net_base::IPFamily::kIPv4:
         ipv4_address_list.push_back(ip_address);
         break;
-      case IPAddress::kFamilyIPv6:
+      case net_base::IPFamily::kIPv6:
         ipv6_address_list.push_back(ip_address);
         break;
-      default:
-        NOTREACHED();
     }
   }
   if (ipv4_address_list.size() > 1) {
@@ -607,22 +604,19 @@ bool WireGuardDriver::PopulateIPProperties() {
     std::vector<std::string> allowed_ip_list = base::SplitString(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     for (const auto& allowed_ip : allowed_ip_list) {
-      const auto prefix = IPAddress::CreateFromPrefixString(allowed_ip);
+      const auto prefix = net_base::IPCIDR::CreateFromCIDRString(allowed_ip);
       if (!prefix.has_value()) {
         LOG(ERROR) << "Failed to parse AllowedIP: the input string is "
                    << allowed_ip;
         return false;
       }
-      switch (prefix->family()) {
-        case IPAddress::kFamilyIPv4:
+      switch (prefix->GetFamily()) {
+        case net_base::IPFamily::kIPv4:
           ipv4_properties_.inclusion_list.push_back(allowed_ip);
           break;
-        case IPAddress::kFamilyIPv6:
+        case net_base::IPFamily::kIPv6:
           ipv6_properties_.inclusion_list.push_back(allowed_ip);
           break;
-        default:
-          NOTREACHED();
-          return false;
       }
     }
   }
