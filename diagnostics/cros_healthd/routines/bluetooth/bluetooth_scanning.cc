@@ -31,16 +31,27 @@ namespace mojom = ::ash::cros_healthd::mojom;
 base::Value::Dict ConstructPeripheralDict(
     const ScannedPeripheralDevice& device) {
   base::Value::Dict peripheral;
+  const auto& rssi_history = device.rssi_history;
+
+  // RSSI history.
+  base::Value::List out_rssi_history;
+  for (const auto& rssi : rssi_history)
+    out_rssi_history.Append(rssi);
+  peripheral.Set("rssi_history", std::move(out_rssi_history));
+
+  if (rssi_history.empty() ||
+      std::accumulate(rssi_history.begin(), rssi_history.end(), 0.0) /
+              static_cast<double>(rssi_history.size()) <
+          kNearbyPeripheralMinimumAverageRssi) {
+    return peripheral;
+  }
+
   // Peripheral ID.
   peripheral.Set("peripheral_id", device.peripheral_id);
   // Name.
   if (device.name.has_value())
     peripheral.Set("name", device.name.value());
-  // RSSI history.
-  base::Value::List out_rssi_history;
-  for (const auto& rssi : device.rssi_history)
-    out_rssi_history.Append(rssi);
-  peripheral.Set("rssi_history", std::move(out_rssi_history));
+
   return peripheral;
 }
 

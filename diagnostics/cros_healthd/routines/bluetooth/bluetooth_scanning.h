@@ -25,6 +25,11 @@ namespace diagnostics {
 
 constexpr base::TimeDelta kDefaultBluetoothScanningRuntime = base::Seconds(5);
 
+// We only collect the nearby peripherals information for Bluetooth pairing
+// routine. -60 is the recommended threshold for peripherals at 3ft (0.9m)
+// distance over air.
+constexpr int16_t kNearbyPeripheralMinimumAverageRssi = -60;
+
 struct ScannedPeripheralDevice {
   std::string peripheral_id;
   std::optional<std::string> name;
