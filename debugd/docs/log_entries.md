@@ -195,6 +195,10 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 
 ## cros_ec_pdinfo
 
+USB-C state returned by the ectool typecstatus and typecdiscovery commands. This
+includes the power role, data role, polarity, mux information, source/sink
+capabilities and the SOP/SOP' identity/mode responses if available.
+
 ## cros_fp.log
 
 ## cros_fp.previous

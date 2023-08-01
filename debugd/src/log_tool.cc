@@ -229,8 +229,11 @@ const std::array kCommandLogs {
   Log{kCommand, "cros_ec_pdinfo",
     "for port in 0 1 2 3 4 5 6 7 8; do "
       "echo \"-----------\"; "
-      // stderr output just tells us it failed
-      "ectool usbpd \"${port}\" 2>/dev/null || break; "
+      "ectool typecstatus \"${port}\" 2>/dev/null || break; "
+      "echo \"Port C${port} SOP Discovery\"; "
+      "ectool typecdiscovery \"${port}\" 0 2>/dev/null || break; "
+      "echo \"Port C${port} SOP' Discovery\"; "
+      "ectool typecdiscovery \"${port}\" 1 2>/dev/null || break; "
     "done", kRoot, kRoot},
   Log{kCommand, "cros_fp_panicinfo", "ectool --name=cros_fp panicinfo",
     kRoot, kRoot},

@@ -53,7 +53,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "cros_ec.log",
     "cros_ec.previous",
     "cros_ec_panicinfo",
-    "cros_ec_pdinfo",
     "cros_fp.log",
     "cros_fp.previous",
     "cros_ish.log",
