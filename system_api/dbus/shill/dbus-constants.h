@@ -981,6 +981,8 @@ constexpr char kTetheringConfPassphraseProperty[] = "passphrase";
 constexpr char kTetheringConfSecurityProperty[] = "security";
 constexpr char kTetheringConfSSIDProperty[] = "ssid";
 constexpr char kTetheringConfUpstreamTechProperty[] = "upstream_technology";
+constexpr char kTetheringConfDownstreamDeviceForTestProperty[] =
+    "downstream_device_for_test";
 
 // Manager kTetheringCapabilitiesProperty dictionary key names.
 constexpr char kTetheringCapDownstreamProperty[] = "downstream_technologies";

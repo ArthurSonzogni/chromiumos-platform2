@@ -798,6 +798,9 @@ Properties	object ActiveProfile [readonly]
 				Preferred upstream technology to use, one of "wifi", "cellular",
 				"ethernet". If absent, Shill will use cellular as the default
 				upstream technology.
+			string downstream_device_for_test
+				the assigned downstream device, only used for testing. This
+				property is never persisted.
 
 		dict TetheringStatus [readonly]
 

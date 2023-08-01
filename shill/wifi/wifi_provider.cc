@@ -241,6 +241,17 @@ WiFiProvider::WiFiProvider(Manager* manager)
     : manager_(manager),
       netlink_manager_(NetlinkManager::GetInstance()),
       weak_ptr_factory_while_started_(this),
+      hotspot_device_factory_(
+          base::BindRepeating([](Manager* manager,
+                                 const std::string& primary_link_name,
+                                 const std::string& link_name,
+                                 const std::string& mac_address,
+                                 uint32_t phy_index,
+                                 LocalDevice::EventCallback callback) {
+            return HotspotDeviceRefPtr(
+                new HotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
+          })),
       running_(false),
       disable_vht_(false) {}
 
@@ -1242,6 +1253,7 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
 
 HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     const std::string& mac_address,
+    const std::optional<std::string>& device_name_for_test,
     WiFiBand band,
     WiFiSecurity security,
     LocalDevice::EventCallback callback) {
@@ -1250,22 +1262,53 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     return nullptr;
   }
 
-  // TODO(b/257340615) Select capable WiFiPhy according to band and security
-  // requirement.
-  uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+  uint32_t phy_index;
+  std::string primary_link_name;
+  std::string link_name;
+  if (!device_name_for_test.has_value()) {
+    const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+    if (wifi_devices.empty()) {
+      LOG(ERROR) << "No WiFi device available.";
+      return nullptr;
+    }
 
-  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the primary
-  // interface.
-  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
-  if (wifi_devices.empty()) {
-    LOG(ERROR) << "No WiFi device available.";
-    return nullptr;
+    // TODO(b/257340615) Select capable WiFiPhy according to band and security
+    // requirement.
+    phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+
+    // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the
+    // primary interface.
+    primary_link_name = wifi_devices.front()->link_name();
+
+    link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
+  } else {
+    // Find the wifiphy index and the primary link name of the assigned
+    // interface.
+    bool found = false;
+    for (const auto& [idx, wifi_phy] : wifi_phys_) {
+      for (const auto& dev : wifi_phy->GetWiFiDevices()) {
+        if (dev->UniqueName() == *device_name_for_test) {
+          found = true;
+          phy_index = dev->phy_index();
+          primary_link_name = dev->link_name();
+
+          // TODO(b/301897168): Investigate why mac80211_hwsim cannot work with
+          // the new created interface, and try to use the same logic:
+          // GetUniqueLocalDeviceName(kHotspotIfacePrefix).
+          link_name = primary_link_name;
+          break;
+        }
+      }
+    }
+
+    if (!found) {
+      LOG(ERROR) << "Failed to find the WiFiPhy of the assigned WiFi device.";
+      return nullptr;
+    }
   }
 
-  std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
-  HotspotDeviceRefPtr dev =
-      new HotspotDevice(manager_, wifi_devices.front().get()->link_name(),
-                        link_name, mac_address, phy_index, callback);
+  HotspotDeviceRefPtr dev = hotspot_device_factory_.Run(
+      manager_, primary_link_name, link_name, mac_address, phy_index, callback);
 
   if (dev->SetEnabled(true)) {
     RegisterLocalDevice(dev);

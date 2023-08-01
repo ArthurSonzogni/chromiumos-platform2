@@ -8,8 +8,6 @@
 #include <stdint.h>
 
 #include <iostream>
-#include <numeric>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -198,6 +196,7 @@ void TetheringManager::ResetConfiguration() {
   mar_ = true;
   stable_mac_addr_.Randomize();
   band_ = WiFiBand::kAllBands;
+  downstream_device_for_test_ = std::nullopt;
 }
 
 void TetheringManager::InitPropertyStore(PropertyStore* store) {
@@ -237,6 +236,10 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
   properties->Set<std::string>(kTetheringConfBandProperty, WiFiBandName(band_));
   properties->Set<std::string>(kTetheringConfUpstreamTechProperty,
                                TechnologyName(upstream_technology_));
+  if (downstream_device_for_test_.has_value()) {
+    properties->Set<std::string>(kTetheringConfDownstreamDeviceForTestProperty,
+                                 *downstream_device_for_test_);
+  }
 
   return true;
 }
@@ -308,23 +311,35 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
     auto_disable_ ? StartInactiveTimer() : StopInactiveTimer();
   }
 
-  if (properties.Contains<bool>(kTetheringConfMARProperty))
+  if (properties.Contains<bool>(kTetheringConfMARProperty)) {
     mar_ = properties.Get<bool>(kTetheringConfMARProperty);
+  }
 
-  if (properties.Contains<std::string>(kTetheringConfSSIDProperty))
+  if (properties.Contains<std::string>(kTetheringConfSSIDProperty)) {
     hex_ssid_ = ssid;
+  }
 
-  if (properties.Contains<std::string>(kTetheringConfPassphraseProperty))
+  if (properties.Contains<std::string>(kTetheringConfPassphraseProperty)) {
     passphrase_ = passphrase;
+  }
 
-  if (properties.Contains<std::string>(kTetheringConfSecurityProperty))
+  if (properties.Contains<std::string>(kTetheringConfSecurityProperty)) {
     security_ = sec;
+  }
 
-  if (properties.Contains<std::string>(kTetheringConfBandProperty))
+  if (properties.Contains<std::string>(kTetheringConfBandProperty)) {
     band_ = band;
+  }
 
-  if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty))
+  if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty)) {
     upstream_technology_ = tech;
+  }
+
+  if (properties.Contains<std::string>(
+          kTetheringConfDownstreamDeviceForTestProperty)) {
+    downstream_device_for_test_ = properties.Get<std::string>(
+        kTetheringConfDownstreamDeviceForTestProperty);
+  }
 
   return true;
 }
@@ -677,8 +692,9 @@ void TetheringManager::StartTetheringSession() {
     CHECK(stable_mac_addr_.is_set());
     mac_address = stable_mac_addr_.ToString();
   }
+
   hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
-      mac_address, band_, security_,
+      mac_address, downstream_device_for_test_, band_, security_,
       base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
                           base::Unretained(this)));
   if (!hotspot_dev_) {
@@ -1123,6 +1139,9 @@ void TetheringManager::UnloadConfigFromProfile() {
 }
 
 bool TetheringManager::Save(StoreInterface* storage) {
+  // |storage| should not store kTetheringConfDownstreamDeviceForTestProperty
+  // because the property is only used for testing.
+
   storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
                    auto_disable_);
   storage->SetBool(kStorageId, kTetheringConfMARProperty, mar_);
@@ -1139,6 +1158,9 @@ bool TetheringManager::Save(StoreInterface* storage) {
 }
 
 bool TetheringManager::Load(const StoreInterface* storage) {
+  // We should not load kTetheringConfDownstreamDeviceForTestProperty from
+  // |storage| because the property is only used for testing.
+
   KeyValueStore config;
   bool valid;
   valid = StoreToConfigBool(storage, kStorageId, &config,

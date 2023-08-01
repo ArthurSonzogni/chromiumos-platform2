@@ -283,6 +283,9 @@ class TetheringManager : public Network::EventHandler {
   WiFiBand band_;
   // Preferred upstream technology to use.
   Technology upstream_technology_;
+  // The assigned downstream device, only used for testing. This property is
+  // never persisted.
+  std::optional<std::string> downstream_device_for_test_;
 
   // Pointer to upstream network. This pointer is valid when state_ is not
   // kTetheringIdle.

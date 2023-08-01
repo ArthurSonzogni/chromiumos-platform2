@@ -45,6 +45,11 @@ class WiFiPhy {
   // Return the phy index.
   uint32_t GetPhyIndex() const { return phy_index_; }
 
+  // Return the wifi devices.
+  const std::set<WiFiConstRefPtr>& GetWiFiDevices() const {
+    return wifi_devices_;
+  }
+
   // Remove a WiFi device instance from wifi_devices_.
   void DeleteWiFiDevice(WiFiConstRefPtr device);
 

@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
@@ -232,11 +233,15 @@ class WiFiProvider : public ProviderInterface {
   bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
 
   // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
-  // called when interface event happens. The required WiFi band |band| and
-  // security |security| are used in the WiFiPhy search to find the first
-  // WiFiPhy which meets all the criteria.
+  // called when interface event happens. If |device_name_for_test| is
+  // std::nullopt, then the required WiFi band |band| and security |security|
+  // are used in the WiFiPhy search to find the first WiFiPhy which meets all
+  // the criteria. Otherwise, create the hotspot device on the device
+  // |device_name_for_test|.
+  // Note that |device_name_for_test| is only used for testing.
   mockable HotspotDeviceRefPtr
   CreateHotspotDevice(const std::string& mac_address,
+                      const std::optional<std::string>& device_name_for_test,
                       WiFiBand band,
                       WiFiSecurity security,
                       LocalDevice::EventCallback callback);
@@ -258,6 +263,8 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
+  FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
+  FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest);
   FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_Success);
   FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry);
   FRIEND_TEST(WiFiProviderTest2, UpdatePhyInfo_Success);
@@ -359,6 +366,17 @@ class WiFiProvider : public ProviderInterface {
   // a UpdateRegAndPhy() function).
   base::CancelableOnceClosure phy_update_timeout_cb_;
   base::OnceClosure phy_info_ready_cb_;
+
+  // The factory method to create a HotspotDevice instance. It's used to inject
+  // the mock factory at testing.
+  base::RepeatingCallback<HotspotDeviceRefPtr(
+      Manager* manager,
+      const std::string& primary_link_name,
+      const std::string& link_name,
+      const std::string& mac_address,
+      uint32_t phy_index,
+      LocalDevice::EventCallback callback)>
+      hotspot_device_factory_;
 
   bool running_;
 

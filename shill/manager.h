@@ -791,8 +791,8 @@ class Manager {
   std::unique_ptr<EthernetProvider> ethernet_provider_;
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
   std::unique_ptr<VPNProvider> vpn_provider_;
-  std::unique_ptr<WiFiProvider> wifi_provider_;
   std::unique_ptr<SupplicantManager> supplicant_manager_;
+  std::unique_ptr<WiFiProvider> wifi_provider_;
   // For communication with patchpanel.
   std::unique_ptr<patchpanel::Client> patchpanel_client_;
 

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/format_macros.h>
+#include <base/functional/callback_helpers.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -34,6 +35,7 @@
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/mock_hotspot_device.h"
 #include "shill/wifi/mock_local_device.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -378,7 +380,7 @@ class WiFiProviderTest : public testing::Test {
  public:
   explicit WiFiProviderTest(EventDispatcher* dispatcher = nullptr)
       : manager_(&control_, dispatcher ? dispatcher : &dispatcher_, &metrics_),
-        provider_(&manager_),
+        provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
         user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
         storage_entry_index_(0) {}
@@ -420,7 +422,7 @@ class WiFiProviderTest : public testing::Test {
         .Times(AnyNumber());
 
     Nl80211Message::SetMessageType(kNl80211FamilyId);
-    provider_.netlink_manager_ = &netlink_manager_;
+    provider_->netlink_manager_ = &netlink_manager_;
   }
 
   // Used by mock invocations of RegisterService() to maintain the side-effect
@@ -436,21 +438,21 @@ class WiFiProviderTest : public testing::Test {
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
 
   void CreateServicesFromProfile(Profile* profile) {
-    provider_.CreateServicesFromProfile(profile);
+    provider_->CreateServicesFromProfile(profile);
   }
 
   const std::vector<WiFiServiceRefPtr> GetServices() {
-    return provider_.services_;
+    return provider_->services_;
   }
 
   const WiFiProvider::EndpointServiceMap& GetServiceByEndpoint() {
-    return provider_.service_by_endpoint_;
+    return provider_->service_by_endpoint_;
   }
 
-  bool GetRunning() { return provider_.running_; }
+  bool GetRunning() { return provider_->running_; }
 
   void RemoveCredentials(const PasspointCredentialsRefPtr& credentials) {
-    provider_.RemoveCredentials(credentials);
+    provider_->RemoveCredentials(credentials);
   }
 
   void AddStringParameterToStorage(FakeStore* storage,
@@ -528,7 +530,7 @@ class WiFiProviderTest : public testing::Test {
     KeyValueStore args;
     SetServiceParameters(ssid, mode, security_class, is_hidden, provide_hidden,
                          &args);
-    return provider_.CreateTemporaryService(args, error);
+    return provider_->CreateTemporaryService(args, error);
   }
 
   WiFiServiceRefPtr GetService(const char* ssid,
@@ -540,18 +542,18 @@ class WiFiProviderTest : public testing::Test {
     KeyValueStore args;
     SetServiceParameters(ssid, mode, security_class, is_hidden, provide_hidden,
                          &args);
-    return provider_.GetWiFiService(args, error);
+    return provider_->GetWiFiService(args, error);
   }
 
   WiFiServiceRefPtr GetWiFiService(const KeyValueStore& args, Error* error) {
-    return provider_.GetWiFiService(args, error);
+    return provider_->GetWiFiService(args, error);
   }
 
   WiFiServiceRefPtr FindService(const std::vector<uint8_t>& ssid,
                                 const std::string& mode,
                                 const std::string& security_class,
                                 WiFiSecurity security = {}) {
-    return provider_.FindService(ssid, mode, security_class, security);
+    return provider_->FindService(ssid, mode, security_class, security);
   }
   WiFiEndpointRefPtr MakeOpenEndpoint(const std::string& ssid,
                                       const std::string& bssid,
@@ -586,22 +588,22 @@ class WiFiProviderTest : public testing::Test {
                                        const std::string& security_class,
                                        bool hidden_ssid) {
     MockWiFiServiceRefPtr service =
-        new MockWiFiService(&manager_, &provider_, ssid, mode, security_class,
+        new MockWiFiService(&manager_, provider_, ssid, mode, security_class,
                             WiFiSecurity(), hidden_ssid);
-    provider_.services_.push_back(service);
+    provider_->services_.push_back(service);
     return service;
   }
   MockWiFiPhy* AddMockPhy(uint32_t phy_index) {
     std::unique_ptr<MockWiFiPhy> mock_phy_unique =
         std::make_unique<MockWiFiPhy>(phy_index);
     MockWiFiPhy* mock_phy_raw = mock_phy_unique.get();
-    provider_.wifi_phys_[phy_index] = std::move(mock_phy_unique);
+    provider_->wifi_phys_[phy_index] = std::move(mock_phy_unique);
     return mock_phy_raw;
   }
 
   void AddEndpointToService(WiFiServiceRefPtr service,
                             const WiFiEndpointConstRefPtr& endpoint) {
-    provider_.service_by_endpoint_[endpoint.get()] = service;
+    provider_->service_by_endpoint_[endpoint.get()] = service;
   }
   PasspointCredentialsRefPtr NewCredentials(
       const std::vector<std::string>& domains,
@@ -639,11 +641,11 @@ class WiFiProviderTest : public testing::Test {
     return id;
   }
   PasspointCredentialsRefPtr GetCredentials(const std::string& id) {
-    if (provider_.credentials_by_id_.find(id) ==
-        provider_.credentials_by_id_.end()) {
+    if (provider_->credentials_by_id_.find(id) ==
+        provider_->credentials_by_id_.end()) {
       return nullptr;
     }
-    return provider_.credentials_by_id_[id];
+    return provider_->credentials_by_id_[id];
   }
   std::string AddCredentialsToProvider(
       const std::vector<std::string>& domains,
@@ -659,28 +661,28 @@ class WiFiProviderTest : public testing::Test {
     PasspointCredentialsRefPtr creds = new PasspointCredentials(
         id, domains, realm, home_ois, required_home_ois, roaming_consortia,
         metered_override, app_package_name, friendly_name, expiration_time);
-    provider_.AddCredentials(creds);
+    provider_->AddCredentials(creds);
     return id;
   }
 
   void OnNewWiphy(const Nl80211Message& nl80211_message) {
-    provider_.OnNewWiphy(nl80211_message);
+    provider_->OnNewWiphy(nl80211_message);
   }
 
   void HandleNetlinkBroadcast(const shill::NetlinkMessage& message) {
-    provider_.HandleNetlinkBroadcast(message);
+    provider_->HandleNetlinkBroadcast(message);
   }
 
   void RegisterDeviceToPhy(WiFiConstRefPtr device, uint32_t phy_index) {
-    provider_.RegisterDeviceToPhy(device, phy_index);
+    provider_->RegisterDeviceToPhy(device, phy_index);
   }
 
   void DeregisterDeviceFromPhy(WiFiConstRefPtr device, uint32_t phy_index) {
-    provider_.DeregisterDeviceFromPhy(device, phy_index);
+    provider_->DeregisterDeviceFromPhy(device, phy_index);
   }
 
   const WiFiPhy* GetPhyAtIndex(uint32_t phy_index) {
-    return provider_.GetPhyAtIndex(phy_index);
+    return provider_->GetPhyAtIndex(phy_index);
   }
 
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
@@ -694,14 +696,14 @@ class WiFiProviderTest : public testing::Test {
     return dev;
   }
 
-  void SetCountry(std::string alpha2) { provider_.country_ = alpha2; }
+  void SetCountry(std::string alpha2) { provider_->country_ = alpha2; }
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockNetlinkManager netlink_manager_;
   StrictMock<MockManager> manager_;
-  WiFiProvider provider_;
+  WiFiProvider* provider_;
   scoped_refptr<MockProfile> default_profile_;
   scoped_refptr<MockProfile> user_profile_;
   FakeStore default_profile_storage_;
@@ -745,11 +747,11 @@ TEST_F(WiFiProviderTest, Start) {
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                 NetlinkManager::kEventTypeMlme));
-  provider_.Start();
+  provider_->Start();
   EXPECT_TRUE(GetServices().empty());
   EXPECT_TRUE(GetRunning());
   EXPECT_TRUE(GetServiceByEndpoint().empty());
-  EXPECT_FALSE(provider_.disable_vht());
+  EXPECT_FALSE(provider_->disable_vht());
 }
 
 TEST_F(WiFiProviderTest, Stop) {
@@ -766,7 +768,7 @@ TEST_F(WiFiProviderTest, Stop) {
   EXPECT_CALL(*service1, ResetWiFi()).Times(1);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service1))).Times(1);
-  provider_.Stop();
+  provider_->Stop();
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(service0.get());
@@ -935,7 +937,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileNonWiFi) {
   const std::string kEntryName("name");
   Error error;
-  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_EQ(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, kEntryName, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
@@ -947,7 +949,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSSID) {
       AddServiceToProfileStorage(default_profile_.get(), nullptr, kModeManaged,
                                  kSecurityClassNone, false, true);
   Error error;
-  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_EQ(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Unspecified or invalid SSID"));
@@ -958,7 +960,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingMode) {
       default_profile_.get(), "foo", "", kSecurityClassNone, false, true);
 
   Error error;
-  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_EQ(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Network mode not specified"));
@@ -969,7 +971,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSecurity) {
       default_profile_.get(), "foo", kModeManaged, "", false, true);
 
   Error error;
-  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_EQ(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
@@ -982,7 +984,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingHidden) {
                                  kSecurityClassNone, false, false);
 
   Error error;
-  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_EQ(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Hidden SSID not specified"));
@@ -994,7 +996,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfile) {
                                  kSecurityClassNone, false, true);
 
   Error error;
-  EXPECT_NE(nullptr, provider_.CreateTemporaryServiceFromProfile(
+  EXPECT_NE(nullptr, provider_->CreateTemporaryServiceFromProfile(
                          default_profile_, entry_name, &error));
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -1323,7 +1325,7 @@ TEST_F(WiFiProviderTest, GetServiceByHexSsid) {
 
   // While here, make sure FindSimilarService also supports kWifiHexSsid.
   Error find_error;
-  ServiceRefPtr find_service = provider_.FindSimilarService(args, &find_error);
+  ServiceRefPtr find_service = provider_->FindSimilarService(args, &find_error);
   EXPECT_TRUE(find_error.IsSuccess());
   EXPECT_EQ(service, find_service);
 }
@@ -1390,7 +1392,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
 
   {
     Error error;
-    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_->FindSimilarService(args, &error);
     EXPECT_EQ(service, find_service);
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -1399,7 +1401,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
 
   {
     Error error;
-    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_->FindSimilarService(args, &error);
     EXPECT_EQ(service, find_service);
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -1408,7 +1410,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
 
   {
     Error error;
-    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_->FindSimilarService(args, &error);
     EXPECT_EQ(nullptr, find_service);
     EXPECT_EQ(Error::kNotFound, error.type());
   }
@@ -1474,7 +1476,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
-      provider_.FindServiceForEndpoint(endpoint);
+      provider_->FindServiceForEndpoint(endpoint);
   // Just because a matching service exists, we shouldn't necessarily have
   // it returned.  We will test that this function returns the correct
   // service if the endpoint is added below.
@@ -1482,7 +1484,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAdded) {
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityClassNone));
@@ -1490,7 +1492,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
       MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(
@@ -1499,14 +1501,14 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(1, GetServiceByEndpoint().size());
   WiFiServiceRefPtr endpoint_service =
-      provider_.FindServiceForEndpoint(endpoint0);
+      provider_->FindServiceForEndpoint(endpoint0);
   EXPECT_EQ(service0, endpoint_service);
 
   WiFiEndpointRefPtr endpoint1 =
       MakeOpenEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
-  provider_.OnEndpointAdded(endpoint1);
+  provider_->OnEndpointAdded(endpoint1);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
 
@@ -1517,7 +1519,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
       MakeOpenEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint2);
+  provider_->OnEndpointAdded(endpoint2);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
@@ -1529,7 +1531,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityClassNone));
@@ -1539,7 +1541,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
       MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0, rsn_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(FindService(
@@ -1554,7 +1556,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
       MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0, wpa_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
-  provider_.OnEndpointAdded(endpoint1);
+  provider_->OnEndpointAdded(endpoint1);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
   EXPECT_EQ(WiFiSecurity::kWpaWpa2, service0->security());
@@ -1566,7 +1568,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
       MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0, wpa_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint2);
+  provider_->OnEndpointAdded(endpoint2);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
@@ -1580,7 +1582,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
 TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
   // Multiple security modes with the same SSID.
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
 
@@ -1590,7 +1592,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
       MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0, rsn_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
 
@@ -1605,7 +1607,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
       MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0, none_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint1);
+  provider_->OnEndpointAdded(endpoint1);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
@@ -1618,13 +1620,13 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAddedWhileStopped) {
-  // If we don't call provider_.Start(), OnEndpointAdded should have no effect.
+  // If we don't call provider_->Start(), OnEndpointAdded should have no effect.
   const std::string ssid("an_ssid");
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(_)).Times(0);
-  provider_.OnEndpointAdded(endpoint);
+  provider_->OnEndpointAdded(endpoint);
   EXPECT_TRUE(GetServices().empty());
 }
 
@@ -1633,7 +1635,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   // WiFiServices, which hides some of what we can test with mock
   // services.  Re-do an add-endpoint operation by seeding the provider
   // with a mock service.
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 =
@@ -1650,7 +1652,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service1, AddEndpoint(_)).Times(0);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(service0.get());
   Mock::VerifyAndClearExpectations(service1.get());
@@ -1661,7 +1663,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(RefPtrMatch(endpoint1))).Times(1);
   EXPECT_CALL(*service1, AddEndpoint(_)).Times(0);
-  provider_.OnEndpointAdded(endpoint1);
+  provider_->OnEndpointAdded(endpoint1);
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(service0.get());
   Mock::VerifyAndClearExpectations(service1.get());
@@ -1672,11 +1674,11 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service1))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(_)).Times(0);
   EXPECT_CALL(*service1, AddEndpoint(RefPtrMatch(endpoint2))).Times(1);
-  provider_.OnEndpointAdded(endpoint2);
+  provider_->OnEndpointAdded(endpoint2);
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemoved) {
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 =
@@ -1700,7 +1702,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   EXPECT_CALL(*service0, ResetWiFi()).Times(1);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(0);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service0))).Times(1);
-  provider_.OnEndpointRemoved(endpoint0);
+  provider_->OnEndpointRemoved(endpoint0);
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(&manager_);
@@ -1712,7 +1714,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 =
@@ -1731,7 +1733,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, ResetWiFi()).Times(0);
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
-  provider_.OnEndpointRemoved(endpoint0);
+  provider_->OnEndpointRemoved(endpoint0);
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(&manager_);
@@ -1741,7 +1743,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
-  provider_.Start();
+  provider_->Start();
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 =
@@ -1760,7 +1762,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, ResetWiFi()).Times(0);
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
-  provider_.OnEndpointRemoved(endpoint0);
+  provider_->OnEndpointRemoved(endpoint0);
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(&manager_);
@@ -1770,16 +1772,16 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedWhileStopped) {
-  // If we don't call provider_.Start(), OnEndpointRemoved should not
+  // If we don't call provider_->Start(), OnEndpointRemoved should not
   // cause a crash even if a service matching the endpoint does not exist.
   const std::string ssid("an_ssid");
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
-  provider_.OnEndpointRemoved(endpoint);
+  provider_->OnEndpointRemoved(endpoint);
 }
 
 TEST_F(WiFiProviderTest, OnEndpointUpdated) {
-  provider_.Start();
+  provider_->Start();
 
   // Create an endpoint and associate it with a mock service.
   const std::string ssid("an_ssid");
@@ -1791,13 +1793,13 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
       AddMockService(ssid_bytes, kModeManaged, kSecurityClassNone, false);
   EXPECT_CALL(*open_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
-  provider_.OnEndpointAdded(endpoint);
+  provider_->OnEndpointAdded(endpoint);
   Mock::VerifyAndClearExpectations(open_service.get());
 
   // WiFiProvider is running and endpoint matches this service.
   EXPECT_CALL(*open_service, NotifyEndpointUpdated(RefPtrMatch(endpoint)));
   EXPECT_CALL(*open_service, AddEndpoint(_)).Times(0);
-  provider_.OnEndpointUpdated(endpoint);
+  provider_->OnEndpointUpdated(endpoint);
   Mock::VerifyAndClearExpectations(open_service.get());
 
   // If the endpoint is changed in a way that causes it to match a different
@@ -1813,16 +1815,16 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(rsn_service)));
   endpoint->set_security_mode(WiFiSecurity::kWpa2);
-  provider_.OnEndpointUpdated(endpoint);
+  provider_->OnEndpointUpdated(endpoint);
 }
 
 TEST_F(WiFiProviderTest, OnEndpointUpdatedWhileStopped) {
-  // If we don't call provider_.Start(), OnEndpointUpdated should not
+  // If we don't call provider_->Start(), OnEndpointUpdated should not
   // cause a crash even if a service matching the endpoint does not exist.
   const std::string ssid("an_ssid");
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
-  provider_.OnEndpointUpdated(endpoint);
+  provider_->OnEndpointUpdated(endpoint);
 }
 
 TEST_F(WiFiProviderTest, OnServiceUnloaded) {
@@ -1836,13 +1838,13 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   EXPECT_EQ(1, GetServices().size());
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(true));
   EXPECT_CALL(*service, ResetWiFi()).Times(0);
-  EXPECT_FALSE(provider_.OnServiceUnloaded(service, nullptr));
+  EXPECT_FALSE(provider_->OnServiceUnloaded(service, nullptr));
   EXPECT_EQ(1, GetServices().size());
   Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   EXPECT_CALL(*service, ResetWiFi()).Times(1);
-  EXPECT_TRUE(provider_.OnServiceUnloaded(service, nullptr));
+  EXPECT_TRUE(provider_->OnServiceUnloaded(service, nullptr));
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(service.get());
@@ -1852,22 +1854,22 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
 }
 
 TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
-  EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
+  EXPECT_TRUE(provider_->GetHiddenSSIDList().empty());
   const std::vector<uint8_t> ssid0(1, '0');
   AddMockService(ssid0, kModeManaged, kSecurityClassNone, false);
-  EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
+  EXPECT_TRUE(provider_->GetHiddenSSIDList().empty());
 
   const std::vector<uint8_t> ssid1(1, '1');
   MockWiFiServiceRefPtr service1 =
       AddMockService(ssid1, kModeManaged, kSecurityClassNone, true);
   EXPECT_CALL(*service1, IsRemembered()).WillRepeatedly(Return(false));
-  EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
+  EXPECT_TRUE(provider_->GetHiddenSSIDList().empty());
 
   const std::vector<uint8_t> ssid2(1, '2');
   MockWiFiServiceRefPtr service2 =
       AddMockService(ssid2, kModeManaged, kSecurityClassNone, true);
   EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
-  ByteArrays ssid_list = provider_.GetHiddenSSIDList();
+  ByteArrays ssid_list = provider_->GetHiddenSSIDList();
 
   EXPECT_EQ(1, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid2);
@@ -1877,7 +1879,7 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
       AddMockService(ssid3, kModeManaged, kSecurityClassNone, false);
   EXPECT_CALL(*service3, IsRemembered()).WillRepeatedly(Return(true));
 
-  ssid_list = provider_.GetHiddenSSIDList();
+  ssid_list = provider_->GetHiddenSSIDList();
   EXPECT_EQ(1, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid2);
 
@@ -1886,7 +1888,7 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
       AddMockService(ssid4, kModeManaged, kSecurityClassNone, true);
   EXPECT_CALL(*service4, IsRemembered()).WillRepeatedly(Return(true));
 
-  ssid_list = provider_.GetHiddenSSIDList();
+  ssid_list = provider_->GetHiddenSSIDList();
   EXPECT_EQ(2, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid2);
   EXPECT_TRUE(ssid_list[1] == ssid4);
@@ -1897,7 +1899,7 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
       AddMockService(ssid5, kModeManaged, kSecurityClassNone, true);
   EXPECT_CALL(*service5, IsRemembered()).WillRepeatedly(Return(true));
   service5->source_ = Service::ONCSource::kONCSourceDevicePolicy;
-  ssid_list = provider_.GetHiddenSSIDList();
+  ssid_list = provider_->GetHiddenSSIDList();
   EXPECT_EQ(3, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid4);
   EXPECT_TRUE(ssid_list[1] == ssid5);
@@ -1922,13 +1924,13 @@ TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
   // With 1 auto connectable service.
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricWifiAutoConnectableServices, 1));
-  provider_.ReportAutoConnectableServices();
+  provider_->ReportAutoConnectableServices();
 
   // With no auto connectable service.
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricWifiAutoConnectableServices, _))
       .Times(0);
-  provider_.ReportAutoConnectableServices();
+  provider_->ReportAutoConnectableServices();
 }
 
 TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
@@ -1947,14 +1949,14 @@ TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
   EXPECT_CALL(*service1, IsAutoConnectable(_)).WillRepeatedly(Return(true));
 
   // 2 auto-connectable services.
-  EXPECT_EQ(2, provider_.NumAutoConnectableServices());
+  EXPECT_EQ(2, provider_->NumAutoConnectableServices());
 
   // 1 auto-connectable service.
-  EXPECT_EQ(1, provider_.NumAutoConnectableServices());
+  EXPECT_EQ(1, provider_->NumAutoConnectableServices());
 }
 
 TEST_F(WiFiProviderTest, ResetAutoConnectCooldownTime) {
-  provider_.Start();
+  provider_->Start();
   MockWiFiServiceRefPtr service0 = AddMockService(
       std::vector<uint8_t>(1, '0'), kModeManaged, kSecurityClassNone, false);
   MockWiFiServiceRefPtr service1 = AddMockService(
@@ -1962,7 +1964,7 @@ TEST_F(WiFiProviderTest, ResetAutoConnectCooldownTime) {
 
   EXPECT_CALL(*service0, ResetAutoConnectCooldownTime).Times(1);
   EXPECT_CALL(*service1, ResetAutoConnectCooldownTime).Times(1);
-  provider_.ResetServicesAutoConnectCooldownTime();
+  provider_->ResetServicesAutoConnectCooldownTime();
 }
 
 TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
@@ -1976,7 +1978,7 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   service0->SetAutoConnect(true);
   service1->SetAutoConnect(true);
   std::vector<std::vector<uint8_t>> service_list_0 =
-      provider_.GetSsidsConfiguredForAutoConnect();
+      provider_->GetSsidsConfiguredForAutoConnect();
   EXPECT_EQ(2, service_list_0.size());
   EXPECT_EQ(ssid0, service_list_0[0]);
   EXPECT_EQ(ssid1, service_list_0[1]);
@@ -1985,7 +1987,7 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   service0->SetAutoConnect(false);
   service1->SetAutoConnect(true);
   std::vector<std::vector<uint8_t>> service_list_1 =
-      provider_.GetSsidsConfiguredForAutoConnect();
+      provider_->GetSsidsConfiguredForAutoConnect();
   EXPECT_EQ(1, service_list_1.size());
   EXPECT_EQ(ssid1, service_list_1[0]);
 }
@@ -2009,7 +2011,7 @@ TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
       user_profile_.get(), domains, realm, home_ois, required_home_ois,
       roaming_consortia,
       /*metered_override=*/true, app_name, friendly_name, expiration_time);
-  provider_.LoadCredentialsFromProfile(user_profile_.get());
+  provider_->LoadCredentialsFromProfile(user_profile_.get());
 
   // Check the credentials are correct.
   PasspointCredentialsRefPtr creds = GetCredentials(id);
@@ -2025,7 +2027,7 @@ TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
   EXPECT_EQ(app_name, creds->android_package_name());
 
   // Remove it
-  provider_.UnloadCredentialsFromProfile(user_profile_.get());
+  provider_->UnloadCredentialsFromProfile(user_profile_.get());
   EXPECT_TRUE(!GetCredentials(id));
 }
 
@@ -2049,14 +2051,14 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
       /*required_home_ois=*/ois,
       /*roaming_consortia=*/ois,
       /*metered_override=*/true, app_name, friendly_name, expiration_time);
-  provider_.LoadCredentialsFromProfile(default_profile_.get());
+  provider_->LoadCredentialsFromProfile(default_profile_.get());
   std::string id_user = AddCredentialsToProfileStorage(
       user_profile_.get(), domains, realm,
       /*home_ois=*/ois,
       /*required_home_ois=*/ois,
       /*roaming_consortia=*/ois,
       /*metered_override=*/true, app_name, friendly_name, expiration_time);
-  provider_.LoadCredentialsFromProfile(user_profile_.get());
+  provider_->LoadCredentialsFromProfile(user_profile_.get());
 
   // Check both credentials are available
   PasspointCredentialsRefPtr creds;
@@ -2068,10 +2070,10 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
   EXPECT_EQ(user_profile_.get(), creds->profile());
 
   // Remove it
-  provider_.UnloadCredentialsFromProfile(user_profile_.get());
+  provider_->UnloadCredentialsFromProfile(user_profile_.get());
   EXPECT_TRUE(GetCredentials(id_user) == nullptr);
   EXPECT_TRUE(GetCredentials(id_default) != nullptr);
-  provider_.UnloadCredentialsFromProfile(default_profile_.get());
+  provider_->UnloadCredentialsFromProfile(default_profile_.get());
   EXPECT_TRUE(GetCredentials(id_default) == nullptr);
 }
 
@@ -2096,14 +2098,14 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
   EXPECT_TRUE(creds != nullptr);
 
   // Check it is present
-  std::vector<PasspointCredentialsRefPtr> list = provider_.GetCredentials();
+  std::vector<PasspointCredentialsRefPtr> list = provider_->GetCredentials();
   EXPECT_EQ(1, list.size());
   EXPECT_EQ(creds, list[0]);
 
   // Remove the set of credentials
   list.clear();
   RemoveCredentials(creds);
-  list = provider_.GetCredentials();
+  list = provider_->GetCredentials();
   EXPECT_EQ(0, list.size());
 }
 
@@ -2128,19 +2130,19 @@ TEST_F(WiFiProviderTest, HasActiveCredentials) {
   PasspointCredentialsRefPtr creds1 =
       NewCredentials(domains, realm, ois, ois, ois, metered_override, app_name,
                      friendly_name, expiration_time);
-  EXPECT_TRUE(provider_.HasCredentials(creds1, user_profile_.get()));
+  EXPECT_TRUE(provider_->HasCredentials(creds1, user_profile_.get()));
 
   // Mismatched FQDN.
   PasspointCredentialsRefPtr creds2 = NewCredentials(
       /*domains=*/{"sp-green.com"}, realm, ois, ois, ois, metered_override,
       app_name, friendly_name, expiration_time);
-  EXPECT_FALSE(provider_.HasCredentials(creds2, user_profile_.get()));
+  EXPECT_FALSE(provider_->HasCredentials(creds2, user_profile_.get()));
 
   // Mismatched provisioning source.
   PasspointCredentialsRefPtr creds3 = NewCredentials(
       domains, realm, ois, ois, ois, metered_override,
       /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
-  EXPECT_FALSE(provider_.HasCredentials(creds3, user_profile_.get()));
+  EXPECT_FALSE(provider_->HasCredentials(creds3, user_profile_.get()));
 }
 
 TEST_F(WiFiProviderTest, HasSavedCredentials) {
@@ -2164,30 +2166,30 @@ TEST_F(WiFiProviderTest, HasSavedCredentials) {
   PasspointCredentialsRefPtr creds1 =
       NewCredentials(domains, realm, ois, ois, ois, metered_override, app_name,
                      friendly_name, expiration_time);
-  EXPECT_TRUE(provider_.HasCredentials(creds1, user_profile_.get()));
+  EXPECT_TRUE(provider_->HasCredentials(creds1, user_profile_.get()));
 
   // Mismatched FQDN.
   PasspointCredentialsRefPtr creds2 = NewCredentials(
       /*domains=*/{"sp-green.com"}, realm, ois, ois, ois, metered_override,
       app_name, friendly_name, expiration_time);
-  EXPECT_FALSE(provider_.HasCredentials(creds2, user_profile_.get()));
+  EXPECT_FALSE(provider_->HasCredentials(creds2, user_profile_.get()));
 
   // Mismatched provisioning source.
   PasspointCredentialsRefPtr creds3 = NewCredentials(
       domains, realm, ois, ois, ois, metered_override,
       /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
-  EXPECT_FALSE(provider_.HasCredentials(creds3, user_profile_.get()));
+  EXPECT_FALSE(provider_->HasCredentials(creds3, user_profile_.get()));
 }
 
 TEST_F(WiFiProviderTest, ForgetCredentials) {
-  provider_.Start();
+  provider_->Start();
 
   // Add a set of credentials
   PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
   creds0->SetProfile(user_profile_);
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
       .WillRepeatedly(Return(nullptr));
-  provider_.AddCredentials(creds0);
+  provider_->AddCredentials(creds0);
 
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
@@ -2205,8 +2207,8 @@ TEST_F(WiFiProviderTest, ForgetCredentials) {
       Make8021xEndpoint(ssid1, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service1)));
-  provider_.OnEndpointAdded(endpoint0);
-  provider_.OnEndpointAdded(endpoint1);
+  provider_->OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint1);
 
   // Report two matches that will fill the two services
   std::vector<WiFiProvider::PasspointMatch> matches{
@@ -2214,16 +2216,16 @@ TEST_F(WiFiProviderTest, ForgetCredentials) {
       {creds0, endpoint1, WiFiProvider::MatchPriority::kRoaming}};
   EXPECT_CALL(manager_, UpdateService(_)).Times(2);
   EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(2);
-  provider_.OnPasspointCredentialsMatches(matches);
+  provider_->OnPasspointCredentialsMatches(matches);
 
   // Ensure both services are removed.
   EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service0)));
   EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service1)));
-  provider_.ForgetCredentials(creds0);
+  provider_->ForgetCredentials(creds0);
 }
 
 TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
-  provider_.Start();
+  provider_->Start();
 
   // Add few sets of credentials
   PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
@@ -2231,9 +2233,9 @@ TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
       .WillRepeatedly(Return(nullptr));
   creds0->SetProfile(user_profile_);
-  provider_.AddCredentials(creds0);
+  provider_->AddCredentials(creds0);
   creds1->SetProfile(user_profile_);
-  provider_.AddCredentials(creds1);
+  provider_->AddCredentials(creds1);
 
   // Provide some scan results
   const std::string ssid0("an_ssid");
@@ -2242,14 +2244,14 @@ TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
       Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
 
   // Report a match
   std::vector<WiFiProvider::PasspointMatch> match{
       {creds0, endpoint0, WiFiProvider::MatchPriority::kRoaming}};
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(1);
-  provider_.OnPasspointCredentialsMatches(match);
+  provider_->OnPasspointCredentialsMatches(match);
 
   // The best match for endpoint0 is cred0 with "Roaming" priority.
   WiFiServiceRefPtr service0(
@@ -2262,7 +2264,7 @@ TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
       {creds1, endpoint0, WiFiProvider::MatchPriority::kHome}};
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(1);
-  provider_.OnPasspointCredentialsMatches(better_match);
+  provider_->OnPasspointCredentialsMatches(better_match);
 
   service0 = FindService(ssid0_bytes, kModeManaged, kSecurityClass8021x);
   EXPECT_EQ(WiFiProvider::MatchPriority::kHome, service0->match_priority());
@@ -2270,15 +2272,15 @@ TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
 }
 
 TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
-  provider_.Start();
+  provider_->Start();
 
   // Add few sets of credentials
   PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
   PasspointCredentialsRefPtr creds1 = new MockPasspointCredentials("creds1");
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
       .WillRepeatedly(Return(nullptr));
-  provider_.AddCredentials(creds0);
-  provider_.AddCredentials(creds1);
+  provider_->AddCredentials(creds0);
+  provider_->AddCredentials(creds1);
 
   // Provide some scan results
   const std::string ssid0("an_ssid");
@@ -2287,14 +2289,14 @@ TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
       Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnEndpointAdded(endpoint0);
+  provider_->OnEndpointAdded(endpoint0);
 
   // Report matches
   std::vector<WiFiProvider::PasspointMatch> matches{
       {creds0, endpoint0, WiFiProvider::MatchPriority::kHome},
       {creds1, endpoint0, WiFiProvider::MatchPriority::kRoaming}};
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
-  provider_.OnPasspointCredentialsMatches(matches);
+  provider_->OnPasspointCredentialsMatches(matches);
 
   // The best match for endpoint0 is cred0 because of the "Home" priority.
   WiFiServiceRefPtr service0(
@@ -2426,9 +2428,9 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesAbsentPhy) {
 }
 
 TEST_F(WiFiProviderTest, RemoveNetlinkHandler) {
-  provider_.Start();
+  provider_->Start();
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_));
-  provider_.Stop();
+  provider_->Stop();
 }
 
 TEST_F(WiFiProviderTest, RegisterWiFiLocalDevice) {
@@ -2438,13 +2440,13 @@ TEST_F(WiFiProviderTest, RegisterWiFiLocalDevice) {
   AddMockPhy(phy_index);
   scoped_refptr<MockLocalDevice> device =
       CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name);
-  provider_.RegisterLocalDevice(device);
-  EXPECT_EQ(provider_.local_devices_[link_name], device);
+  provider_->RegisterLocalDevice(device);
+  EXPECT_EQ(provider_->local_devices_[link_name], device);
 
   // Register same device again should be a no-op.
-  provider_.RegisterLocalDevice(device);
-  EXPECT_EQ(provider_.local_devices_[link_name], device);
-  EXPECT_EQ(provider_.local_devices_.count(link_name), 1);
+  provider_->RegisterLocalDevice(device);
+  EXPECT_EQ(provider_->local_devices_[link_name], device);
+  EXPECT_EQ(provider_->local_devices_.count(link_name), 1);
 }
 
 TEST_F(WiFiProviderTest, DeregisterWiFiLocalDevice) {
@@ -2453,14 +2455,14 @@ TEST_F(WiFiProviderTest, DeregisterWiFiLocalDevice) {
   AddMockPhy(phy_index);
   scoped_refptr<MockLocalDevice> device =
       CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name);
-  provider_.RegisterLocalDevice(device);
+  provider_->RegisterLocalDevice(device);
 
-  provider_.DeregisterLocalDevice(device);
-  EXPECT_EQ(provider_.local_devices_.count(link_name), 0);
+  provider_->DeregisterLocalDevice(device);
+  EXPECT_EQ(provider_->local_devices_.count(link_name), 0);
 
   // Deregister a non-existent  device should be a no-op.
-  provider_.DeregisterLocalDevice(device);
-  EXPECT_EQ(provider_.local_devices_.count(link_name), 0);
+  provider_->DeregisterLocalDevice(device);
+  EXPECT_EQ(provider_->local_devices_.count(link_name), 0);
 }
 
 TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
@@ -2468,22 +2470,87 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
   std::string iface_prefix = "testlocaldevice";
   AddMockPhy(phy_index);
 
-  std::string link_name0 = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  std::string link_name0 = provider_->GetUniqueLocalDeviceName(iface_prefix);
   scoped_refptr<MockLocalDevice> device0 =
       CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name0);
-  provider_.RegisterLocalDevice(device0);
+  provider_->RegisterLocalDevice(device0);
 
   // Use a new interface name different from the registered one.
-  std::string link_name1 = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  std::string link_name1 = provider_->GetUniqueLocalDeviceName(iface_prefix);
   EXPECT_NE(link_name0, link_name1);
   scoped_refptr<MockLocalDevice> device1 =
       CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name1);
-  provider_.RegisterLocalDevice(device1);
+  provider_->RegisterLocalDevice(device1);
 
   // Reuse the first available interface name after device is deregistered.
-  provider_.DeregisterLocalDevice(device0);
-  std::string link_name = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  provider_->DeregisterLocalDevice(device0);
+  std::string link_name = provider_->GetUniqueLocalDeviceName(iface_prefix);
   EXPECT_EQ(link_name0, link_name);
+}
+
+TEST_F(WiFiProviderTest, CreateHotspotDeviceWithoutWiFiDevice) {
+  // Failed to create hotspot device when there is no WiFi device.
+  EXPECT_EQ(provider_->CreateHotspotDevice(
+                /*mac_address=*/"b6:13:c9:d7:32:0c", std::nullopt,
+                WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing()),
+            nullptr);
+}
+
+TEST_F(WiFiProviderTest, CreateHotspotDevice) {
+  EXPECT_CALL(manager_, device_info()).Times(1);
+
+  WiFiRefPtr wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", /*address=*/"4c77cb549cdc",
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillRepeatedly(Return(std::vector<DeviceRefPtr>{wifi_device}));
+
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  phy0->AddWiFiDevice(std::move(wifi_device));
+
+  provider_->hotspot_device_factory_ = base::BindRepeating(
+      [](Manager* manager, const std::string& primary_link_name,
+         const std::string& link_name, const std::string& mac_address,
+         uint32_t phy_index, LocalDevice::EventCallback callback) {
+        return HotspotDeviceRefPtr(
+            new MockHotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
+      });
+
+  // The hotspot device should be created and registered at |local_devices_|.
+  const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
+      /*mac_address=*/"b6:13:c9:d7:32:0c", std::nullopt, WiFiBand::kLowBand,
+      WiFiSecurity::kWpa2, base::DoNothing());
+  ASSERT_NE(device, nullptr);
+  EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
+}
+
+TEST_F(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest) {
+  const std::string link_name = "wlan1";
+
+  EXPECT_CALL(manager_, device_info()).Times(1);
+
+  AddMockPhy(0);
+  MockWiFiPhy* phy1 = AddMockPhy(1);
+  phy1->AddWiFiDevice(new MockWiFi(
+      &manager_, link_name, /*address=*/"020000000000",
+      /*interface_index=*/7, /*phy_index=*/1, new MockWakeOnWiFi()));
+
+  provider_->hotspot_device_factory_ = base::BindRepeating(
+      [](Manager* manager, const std::string& primary_link_name,
+         const std::string& link_name, const std::string& mac_address,
+         uint32_t phy_index, LocalDevice::EventCallback callback) {
+        return HotspotDeviceRefPtr(
+            new MockHotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
+      });
+
+  // The hotspot device should be created and registered at |local_devices_|.
+  const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
+      /*mac_address=*/"b6:13:c9:d7:32:0c", link_name, WiFiBand::kLowBand,
+      WiFiSecurity::kWpa2, base::DoNothing());
+  ASSERT_NE(device, nullptr);
+  EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
 }
 
 TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoChange) {
@@ -2494,7 +2561,7 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoChange) {
       .WillOnce(Return(kUS_Alpha2));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   int times_called = 0;
-  provider_.UpdateRegAndPhyInfo(
+  provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_EQ(times_called, 1);
 }
@@ -2513,7 +2580,7 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Timeout) {
                   _, _, _));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _))
       .WillOnce(WithArg<1>(Invoke([&](auto cb) { std::move(cb).Run(); })));
-  provider_.UpdateRegAndPhyInfo(
+  provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_EQ(times_called, 1);
 }
@@ -2529,7 +2596,7 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Success) {
                   IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
                   _, _, _));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
-  provider_.UpdateRegAndPhyInfo(
+  provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
 
   // Now simulate reception of region change, expect phy dump and simulate
@@ -2541,10 +2608,10 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Success) {
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
       .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
-  provider_.RegionChanged("US");
-  provider_.OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  provider_->RegionChanged("US");
+  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
 }
 
 TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry) {
@@ -2558,7 +2625,7 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry) {
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
-  provider_.UpdateRegAndPhyInfo(
+  provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
 
   // Now simulate reception of region change, expect phy dump and simulate
@@ -2566,9 +2633,9 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry) {
   Mock::VerifyAndClearExpectations(&dispatcher_);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
       .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
-  provider_.OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
 }
 
 TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
@@ -2579,7 +2646,7 @@ TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _))
       .WillOnce(WithArg<1>(Invoke([&](auto cb) { std::move(cb).Run(); })));
-  provider_.UpdatePhyInfo(
+  provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
@@ -2592,7 +2659,7 @@ TEST_F(WiFiProviderTest2, UpdatePhyInfo_Success) {
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
-  provider_.UpdatePhyInfo(
+  provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
 
   // Now simulate reception of expect phy dump and simulate reception of "Done"
@@ -2600,9 +2667,9 @@ TEST_F(WiFiProviderTest2, UpdatePhyInfo_Success) {
   Mock::VerifyAndClearExpectations(&dispatcher_);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
       .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
-  provider_.OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
 }
 
 }  // namespace shill
