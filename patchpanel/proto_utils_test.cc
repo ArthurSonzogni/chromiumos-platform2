@@ -47,14 +47,9 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
-
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr), std::move(lxd_subnet));
-  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
-                                         "vmtap0", "", std::move(config));
   auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kTermina, std::move(device));
+      CrostiniService::VMType::kTermina, "vmtap0", mac_addr,
+      std::move(ipv4_subnet), std::move(lxd_subnet));
 
   TerminaVmStartupResponse proto;
   FillTerminaAllocationProto(*termina_device, &proto);
@@ -86,16 +81,9 @@ TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
-                               "vmtap1", "", std::move(config));
   auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, std::move(device));
+      CrostiniService::VMType::kParallels, "vmtap1", mac_addr,
+      std::move(ipv4_subnet), nullptr);
 
   ParallelsVmStartupResponse proto;
   FillParallelsAllocationProto(*parallels_device, &proto);

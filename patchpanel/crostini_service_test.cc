@@ -433,22 +433,16 @@ TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kTerminaVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
-
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr), std::move(lxd_subnet));
-  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
-                                         "vmtap0", "", std::move(config));
   auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kTermina, std::move(device));
+      CrostiniService::VMType::kTermina, "vmtap0", mac_addr,
+      std::move(ipv4_subnet), std::move(lxd_subnet));
 
   NetworkDevice proto_device;
   termina_device->ConvertToProto(&proto_device);
@@ -474,21 +468,14 @@ TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
-
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
-                               "vmtap1", "", std::move(config));
   auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, std::move(device));
+      CrostiniService::VMType::kParallels, "vmtap1", mac_addr,
+      std::move(ipv4_subnet), nullptr);
 
   NetworkDevice proto_device;
   parallels_device->ConvertToProto(&proto_device);
