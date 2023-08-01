@@ -666,6 +666,55 @@ chromeos:
         }
         cros_config_schema.ValidateConfig(json.dumps(config))
 
+    def testSideVolumeButtonConsistent(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 1},
+                        "ui": {
+                            "side-volume-button": {
+                                "region": "screen",
+                                "side": "left",
+                            }
+                        },
+                        "hardware-properties": {"has-side-volume-button": True},
+                    },
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 2},
+                        "hardware-properties": {"has-side-volume-button": True},
+                    },
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 3},
+                    },
+                ],
+            },
+        }
+        cros_config_schema.ValidateConfig(json.dumps(config))
+
+    def testSideVolumeButtonInconsistent(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 1},
+                        "ui": {
+                            "side-volume-button": {
+                                "region": "screen",
+                                "side": "left",
+                            }
+                        },
+                    },
+                ],
+            },
+        }
+        try:
+            cros_config_schema.ValidateConfig(json.dumps(config))
+        except cros_config_schema.ValidationError as err:
+            self.assertIn("has-side-volume-button is not", err.__str__())
+        else:
+            self.fail("ValidationError not raised")
+
     def testFeatureDeviceTypeValid(self):
         config = {
             "chromeos": {

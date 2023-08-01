@@ -846,6 +846,25 @@ def _ValidateConsistentFingerprintFirmwareROVersion(configs):
             )
 
 
+def _ValidateConsistentSideVolumeButton(json_config):
+    """Validate /hardware-properties/has-side-volume-button.
+
+       /hardware-properties/has-side-volume-button should be True whenever
+       /ui/side-volume-button is set.
+
+    Args:
+        json_config: JSON config dictionary
+    """
+    for config in json_config["chromeos"]["configs"]:
+        if config.get("ui", {}).get("side-volume-button") and not config.get(
+            "hardware-properties", {}
+        ).get("has-side-volume-button"):
+            raise ValidationError(
+                "/ui/side-volume-button is set but "
+                "/hardware-properties/has-side-volume-button is not"
+            )
+
+
 def _ValidateFeatureDeviceTypeIdentities(json_config):
     """Validates that each feature-device-type identity matches.
 
@@ -891,9 +910,8 @@ def ValidateConfig(config):
     _ValidateCustomLabelBrandChangesOnly(json_config)
     _ValidateHardwarePropertiesAreValidType(json_config)
     _ValidateConsistentFingerprintFirmwareROVersion(json_config)
+    _ValidateConsistentSideVolumeButton(json_config)
     _ValidateFeatureDeviceTypeIdentities(json_config)
-    # TODO(b/293243494): verify /hardware-properties/has-side-volume-button is
-    # set when /ui/side-volume-button is set.
 
 
 def MergeConfigs(configs):
