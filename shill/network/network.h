@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -342,7 +343,8 @@ class Network {
     routing_table_ = routing_table;
   }
   void set_state_for_testing(State state) { state_ = state; }
-  void set_primary_family_for_testing(IPAddress::Family family) {
+  void set_primary_family_for_testing(
+      std::optional<net_base::IPFamily> family) {
     primary_family_ = family;
   }
   const std::vector<EventHandler*>& event_handlers() const {
@@ -460,10 +462,10 @@ class Network {
 
   // A temporary helper flag simulating the legacy SetupConnection() state. Also
   // indicates which IPConfig will be seen by legacy Service->IPConfig dbus API.
-  //  kFamilyUnknown - network configuration has not been applied.
-  //  kFamilyIPv6 - IPv6 configuration has been applied, but not IPv4.
-  //  kFamilyIPv4 - IPv4 configuration has been applied (IPv6 can be yes or no).
-  IPAddress::Family primary_family_ = IPAddress::kFamilyUnknown;
+  //  std::nullopt - network configuration has not been applied.
+  //  kIPv6 - IPv6 configuration has been applied, but not IPv4.
+  //  kIPv4 - IPv4 configuration has been applied (IPv6 can be yes or no).
+  std::optional<net_base::IPFamily> primary_family_ = std::nullopt;
 
   std::unique_ptr<ProcFsStub> proc_fs_;
 

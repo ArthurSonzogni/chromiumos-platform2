@@ -201,12 +201,19 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
+  if (ipconfig->properties().address_family == IPAddress::kFamilyUnknown) {
+    LOG(ERROR) << logging_tag_ << ": " << __func__
+               << " with invalid address family";
+    return;
+  }
+
   LOG(INFO) << logging_tag_ << ": Setting "
             << IPAddress::GetAddressFamilyName(
                    ipconfig->properties().address_family)
             << " connection";
-  if (primary_family_ == IPAddress::kFamilyUnknown) {
-    primary_family_ = ipconfig->properties().address_family;
+  if (!primary_family_) {
+    primary_family_ =
+        net_base::FromSAFamily(ipconfig->properties().address_family);
   }
   ApplyAddress(ipconfig->properties());
   ApplyRoute(ipconfig->properties());
@@ -292,7 +299,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   routing_table_->DeregisterDevice(interface_index_, interface_name_);
   state_ = State::kIdle;
-  primary_family_ = IPAddress::kFamilyUnknown;
+  primary_family_ = std::nullopt;
   network_applier_->Clear(interface_index_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
@@ -469,13 +476,13 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
     LOG(INFO) << logging_tag_ << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
-    if (primary_family_ == IPAddress::kFamilyIPv4) {
+    if (primary_family_ == net_base::IPFamily::kIPv4) {
       // Clear the state in kernel at first. It is possible that this function
       // is called when we have a valid DHCP lease now (e.g., triggered by a
       // renew failure). We need to withdraw the effect of the previous IPv4
       // lease at first. Static IP is handled above so it's guaranteed that
       // there is no valid IPv4 lease. Also see b/261681299.
-      primary_family_ = IPAddress::kFamilyUnknown;
+      primary_family_ = std::nullopt;
       network_applier_->Clear(interface_index_);
       SetupConnection(ip6config());
     }
@@ -559,7 +566,7 @@ void Network::OnIPv6AddressChanged() {
 
   // No matter whether the primary address changes, any address change will
   // need to trigger address-based routing rule to be updated.
-  if (primary_family_ != IPAddress::kFamilyUnknown) {
+  if (primary_family_) {
     ApplyRoutingPolicy();
   }
 
@@ -637,7 +644,7 @@ void Network::OnIPv6ConfigUpdated() {
     // is ready for connection (contained both IP address and DNS servers), and
     // there is no existing IPv4 connection. We always prefer IPv4 configuration
     // over IPv6.
-    if (primary_family_ != IPAddress::kFamilyIPv4) {
+    if (primary_family_ != net_base::IPFamily::kIPv4) {
       SetupConnection(ip6config());
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
@@ -696,7 +703,7 @@ void Network::EnableARPFiltering() {
 }
 
 void Network::SetPriority(NetworkPriority priority) {
-  if (primary_family_ == IPAddress::kFamilyUnknown) {
+  if (!primary_family_) {
     LOG(WARNING) << logging_tag_ << ": " << __func__
                  << " called but no connection exists";
     return;
@@ -1022,7 +1029,7 @@ void Network::StartConnectionDiagnostics() {
               << ": Not connected, cannot start connection diagnostics";
     return;
   }
-  DCHECK(primary_family_ != IPAddress::kFamilyUnknown);
+  DCHECK(primary_family_);
 
   const auto local_address = local();
   if (!local_address) {

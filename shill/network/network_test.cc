@@ -226,7 +226,7 @@ class NetworkTest : public ::testing::Test {
 
   void SetNetworkStateToConnected() {
     network_->set_state_for_testing(Network::State::kConnected);
-    network_->set_primary_family_for_testing(IPAddress::kFamilyIPv4);
+    network_->set_primary_family_for_testing(net_base::IPFamily::kIPv4);
   }
 
   // Ensure local() and gateway() being available for portal detection.

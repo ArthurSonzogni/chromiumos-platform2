@@ -15,6 +15,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/net/ip_address.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network_config.h"
 #include "shill/service_under_test.h"
@@ -75,6 +76,9 @@ class StaticIPParametersTest : public Test {
         &dispatcher_, &metrics_, &network_applier_);
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
+    auto properties = network_->ipconfig()->properties();
+    properties.address_family = IPAddress::kFamilyIPv4;
+    network_->ipconfig()->set_properties(properties);
     // Call SetupConnection() explicitly to make this IPConfig object being
     // selected.
     network_->SetupConnection(network_->ipconfig());
