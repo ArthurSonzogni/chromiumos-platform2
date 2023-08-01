@@ -12,18 +12,19 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
+#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_eap_listener.h"
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
@@ -592,14 +593,15 @@ TEST_F(EthernetTest,
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
   SetBusType(kDeviceBusTypeUsb);
 
-  constexpr char kBuiltinAdapterMacAddress[] = "abcdef123456";
+  constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
+                                                           0x12, 0x34, 0x56);
+  constexpr char kBuiltinAdapterMacAddressHexString[] = "abcdef123456";
+
   EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddress));
+      .WillOnce(Return(kBuiltinAdapterMacAddressHexString));
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
-                                             ByteString::CreateFromHexString(
-                                                 kBuiltinAdapterMacAddress),
-                                             _))
+                                             kBuiltinAdapterMacAddress, _))
       .WillOnce(WithArg<2>(
           Invoke([](base::OnceCallback<void(int32_t)> response_callback) {
             ASSERT_TRUE(!response_callback.is_null());
@@ -617,13 +619,14 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
   SetBusType(kDeviceBusTypeUsb);
 
-  constexpr char kBuiltinAdapterMacAddress[] = "abcdef123456";
+  constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
+                                                           0x12, 0x34, 0x56);
+  constexpr char kBuiltinAdapterMacAddressHexString[] = "abcdef123456";
+
   EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddress));
+      .WillOnce(Return(kBuiltinAdapterMacAddressHexString));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
-                                             ByteString::CreateFromHexString(
-                                                 kBuiltinAdapterMacAddress),
-                                             _))
+                                             kBuiltinAdapterMacAddress, _))
       .WillOnce(WithArg<2>(
           Invoke([](base::OnceCallback<void(int32_t)> response_callback) {
             ASSERT_FALSE(response_callback.is_null());
@@ -635,7 +638,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
-  EXPECT_EQ(kBuiltinAdapterMacAddress, ethernet_->mac_address());
+  EXPECT_EQ(kBuiltinAdapterMacAddressHexString, ethernet_->mac_address());
   EXPECT_EQ(GetUsbEthernetMacAddressSource(nullptr),
             kUsbEthernetMacAddressSourceBuiltinAdapterMac);
 }

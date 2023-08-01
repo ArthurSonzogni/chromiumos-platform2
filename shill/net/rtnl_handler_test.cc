@@ -18,8 +18,9 @@
 #include <base/functional/bind.h>
 #include <base/test/test_future.h>
 #include <base/test/task_environment.h>
-
 #include <net-base/byte_utils.h>
+#include <net-base/mac_address.h>
+
 #include "shill/mock_log.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
@@ -539,7 +540,7 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   base::test::TestFuture<int32_t> error_future;
 
   RTNLHandler::GetInstance()->SetInterfaceMac(
-      3, ByteString::CreateFromHexString("abcdef123456"),
+      3, *net_base::MacAddress::CreateFromString("ab:cd:ef:12:34:56"),
       error_future.GetCallback());
 
   ReturnError(kSequenceNumber, kErrorNumber);
@@ -557,10 +558,11 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   const std::string kIfType = "wireguard";
   SetRequestSequence(kSequenceNumber);
 
-  ByteString msg_bytes;
+  std::vector<uint8_t> msg_bytes;
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0))
       .WillOnce([&](int, const void* buf, size_t len, int flags) {
-        msg_bytes = ByteString{reinterpret_cast<const char*>(buf), len};
+        msg_bytes = {reinterpret_cast<const uint8_t*>(buf),
+                     reinterpret_cast<const uint8_t*>(buf) + len};
         return len;
       });
 
@@ -569,8 +571,7 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   RTNLHandler::GetInstance()->AddInterface(kIfName, kIfType, {},
                                            error_future.GetCallback());
 
-  const auto sent_msg =
-      RTNLMessage::Decode({msg_bytes.GetConstData(), msg_bytes.GetLength()});
+  const auto sent_msg = RTNLMessage::Decode(msg_bytes);
   EXPECT_EQ(sent_msg->flags(),
             NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK);
   EXPECT_EQ(sent_msg->GetIflaIfname(), kIfName);

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/net/rtnl_handler.h"
 
@@ -32,7 +33,7 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD(void, SetInterfaceMTU, (int, unsigned int), (override));
   MOCK_METHOD(void,
               SetInterfaceMac,
-              (int, const ByteString&, ResponseCallback),
+              (int, const net_base::MacAddress&, ResponseCallback),
               (override));
   MOCK_METHOD(bool,
               AddInterfaceAddress,

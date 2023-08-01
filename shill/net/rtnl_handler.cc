@@ -15,7 +15,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <limits>
@@ -175,12 +174,12 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
 }
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
-                                  const ByteString& mac_address) {
+                                  const net_base::MacAddress& mac_address) {
   SetInterfaceMac(interface_index, mac_address, ResponseCallback());
 }
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
-                                  const ByteString& mac_address,
+                                  const net_base::MacAddress& mac_address,
                                   ResponseCallback response_callback) {
   auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST | NLM_F_ACK,
@@ -188,8 +187,7 @@ void RTNLHandler::SetInterfaceMac(int interface_index,
       0,  // pid.
       interface_index, AF_UNSPEC);
 
-  msg->SetAttribute(IFLA_ADDRESS,
-                    {mac_address.GetConstData(), mac_address.GetLength()});
+  msg->SetAttribute(IFLA_ADDRESS, mac_address.ToBytes());
 
   uint32_t seq;
   CHECK(SendMessage(std::move(msg), &seq));
@@ -279,8 +277,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
 
     const uint8_t* payload = reinterpret_cast<const uint8_t*>(hdr);
     VLOG(5) << __func__ << "RTNL received payload length " << hdr->nlmsg_len
-            << ": \"" << ByteString(payload, hdr->nlmsg_len).HexEncode()
-            << "\"";
+            << ": \"" << base::HexEncode(payload, hdr->nlmsg_len) << "\"";
 
     // Swapping out of |stored_requests_| here ensures that the RTNLMessage will
     // be destructed regardless of the control flow below.

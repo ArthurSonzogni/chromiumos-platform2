@@ -10,14 +10,13 @@
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/netdevice.h>
 #include <linux/sockios.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <time.h>
-#include <utility>
 
 #include <memory>
 #include <set>
+#include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -26,9 +25,11 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/mac_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
@@ -738,6 +739,17 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
+  std::vector<uint8_t> mac_addr_bytes;
+  if (!base::HexStringToBytes(new_mac_address, &mac_addr_bytes) ||
+      mac_addr_bytes.size() != net_base::MacAddress::kAddressLength) {
+    Error error;
+    Error::PopulateAndLog(
+        FROM_HERE, &error, Error::kInvalidArguments,
+        "Failed to convert the hex string to MAC address: " + new_mac_address);
+    std::move(callback).Run(error);
+    return;
+  }
+
   if (new_mac_address == mac_address()) {
     SLOG(this, 4) << __func__ << " new MAC address is equal to the old one";
     if (usb_ethernet_mac_address_source_ != source) {
@@ -754,7 +766,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
                 << new_mac_address;
 
   rtnl_handler()->SetInterfaceMac(
-      interface_index(), ByteString::CreateFromHexString(new_mac_address),
+      interface_index(), *net_base::MacAddress::CreateFromBytes(mac_addr_bytes),
       base::BindOnce(&Ethernet::OnSetInterfaceMacResponse,
                      weak_ptr_factory_.GetWeakPtr(), source, new_mac_address,
                      std::move(callback)));

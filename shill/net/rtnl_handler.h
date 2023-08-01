@@ -20,8 +20,8 @@
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/mac_address.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -89,13 +89,13 @@ class SHILL_EXPORT RTNLHandler {
   // Set the MAC address for the network interface that has a kernel index of
   // |interface_index|.
   virtual void SetInterfaceMac(int interface_index,
-                               const ByteString& mac_address);
+                               const net_base::MacAddress& mac_address);
 
   // Set the MAC address for the network interface that has a kernel index of
   // |interface_index|. |response_callback| will be called when appropriate
   // |NLMSG_ERROR| message received.
   virtual void SetInterfaceMac(int interface_index,
-                               const ByteString& mac_address,
+                               const net_base::MacAddress& mac_address,
                                ResponseCallback response_callback);
 
   // Set address of a network interface that has a kernel index of
