@@ -1771,6 +1771,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFingerprintIsExpiredReadFailed = 3402,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockDeleteRecordFailed = 3403,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialMatchFailed = 3404,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
