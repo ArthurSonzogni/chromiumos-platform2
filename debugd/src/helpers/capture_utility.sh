@@ -459,7 +459,9 @@ start_capture ()
 # usage displays a help message explaining the available options.
 usage ()
 {
-  echo "Usage: $0 [ --device <device> ] [ --frequency <frequency> ] "
+  echo "Available options are: "
+  echo "        [ --device <device> ] "
+  echo "        [ --frequency <frequency> ] "
   echo "        [ --max-size <max size in MiB> ] "
   echo "        [ --ht-location <above|below> ] "
   echo "        [ --vht-width <80|160> ] "
