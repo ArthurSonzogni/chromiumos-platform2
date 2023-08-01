@@ -4,6 +4,7 @@
 
 #include "shill/icmp_session.h"
 
+#include <cstdint>
 #include <utility>
 
 #include <arpa/inet.h>
@@ -11,6 +12,7 @@
 #include <netinet/ip.h>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/default_tick_clock.h>
@@ -18,9 +20,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/net/sockets.h"
 
 namespace {
 const int kIPHeaderLengthUnitBytes = 4;
@@ -157,19 +157,17 @@ void IcmpSession::TransmitEchoRequestTask() {
 
 int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
   DCHECK_GE(data->len, 0);
-
-  ByteString message(data->buf, data->len);
-  if (message.GetLength() < sizeof(struct iphdr) + sizeof(struct icmphdr)) {
+  base::span<const uint8_t> message(data->buf, static_cast<size_t>(data->len));
+  if (message.size() < sizeof(struct iphdr) + sizeof(struct icmphdr)) {
     LOG(WARNING) << "Received ICMP packet is too short to contain ICMP header";
     return -1;
   }
 
   const struct iphdr* received_ip_header =
-      reinterpret_cast<const struct iphdr*>(message.GetConstData());
+      reinterpret_cast<const struct iphdr*>(message.data());
   const struct icmphdr* received_icmp_header =
-      reinterpret_cast<const struct icmphdr*>(message.GetConstData() +
-                                              received_ip_header->ihl *
-                                                  kIPHeaderLengthUnitBytes);
+      reinterpret_cast<const struct icmphdr*>(
+          message.data() + received_ip_header->ihl * kIPHeaderLengthUnitBytes);
   // We might have received other types of ICMP traffic, so ensure that the
   // message is an echo reply before handling it.
   if (received_icmp_header->type != ICMP_ECHOREPLY) {
@@ -193,8 +191,9 @@ int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
 }
 
 int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
-  ByteString message(data->buf, data->len);
-  if (message.GetLength() < sizeof(struct icmp6_hdr)) {
+  DCHECK_GE(data->len, 0);
+  base::span<const uint8_t> message(data->buf, static_cast<size_t>(data->len));
+  if (message.size() < sizeof(struct icmp6_hdr)) {
     LOG(WARNING)
         << "Received ICMP packet is too short to contain ICMPv6 header";
     return -1;
@@ -203,7 +202,7 @@ int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
   // Per RFC3542 section 3, ICMPv6 raw sockets do not contain the IP header
   // (unlike ICMPv4 raw sockets).
   const struct icmp6_hdr* received_icmp_header =
-      reinterpret_cast<const struct icmp6_hdr*>(message.GetConstData());
+      reinterpret_cast<const struct icmp6_hdr*>(message.data());
   // We might have received other types of ICMP traffic, so ensure that the
   // message is an echo reply before handling it.
   if (received_icmp_header->icmp6_type != ICMP6_ECHO_REPLY) {
