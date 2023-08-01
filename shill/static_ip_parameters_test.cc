@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gmock/gmock.h"
 #include "shill/service.h"
 
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/network/mock_network_applier.h"
+#include "shill/network/network.h"
 #include "shill/network/network_config.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
@@ -76,12 +76,9 @@ class StaticIPParametersTest : public Test {
         &dispatcher_, &metrics_, &network_applier_);
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
-    auto properties = network_->ipconfig()->properties();
-    properties.address_family = net_base::IPFamily::kIPv4;
-    network_->ipconfig()->set_properties(properties);
-    // Call SetupConnection() explicitly to make this IPConfig object being
-    // selected.
-    network_->SetupConnection(network_->ipconfig());
+    // Explicitly select this IPConfig object.
+    network_->set_primary_family_for_testing(net_base::IPFamily::kIPv4);
+    network_->set_state_for_testing(Network::State::kConnected);
   }
 
   ~StaticIPParametersTest() {

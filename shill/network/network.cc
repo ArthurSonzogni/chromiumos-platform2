@@ -206,7 +206,6 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 
   LOG(INFO) << *this << ": Setting " << *ipconfig->properties().address_family
             << " connection";
-  primary_family_ = ipconfig->properties().address_family;
   ApplyAddress(ipconfig->properties());
   ApplyRoute(ipconfig->properties());
   ApplyRoutingPolicy();
@@ -228,9 +227,10 @@ void Network::SetupConnection(IPConfig* ipconfig) {
     ev->OnConnectionUpdated(interface_index_);
   }
 
-  const bool ipconfig_changed = current_ipconfig_ != ipconfig;
-  current_ipconfig_ = ipconfig;
-  if (ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
+  bool current_ipconfig_changed =
+      primary_family_ != ipconfig->properties().address_family;
+  primary_family_ = ipconfig->properties().address_family;
+  if (current_ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
     current_ipconfig_change_handler_.Run();
   }
 }
@@ -283,15 +283,14 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       ev->OnIPConfigsPropertyUpdated(interface_index_);
     }
   }
-  if (current_ipconfig_) {
-    current_ipconfig_ = nullptr;
+  if (primary_family_) {
+    primary_family_ = std::nullopt;
     if (!current_ipconfig_change_handler_.is_null()) {
       current_ipconfig_change_handler_.Run();
     }
   }
   routing_table_->DeregisterDevice(interface_index_, interface_name_);
   state_ = State::kIdle;
-  primary_family_ = std::nullopt;
   network_applier_->Clear(interface_index_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
@@ -382,11 +381,11 @@ void Network::RegisterCurrentIPConfigChangeHandler(
 
 IPConfig* Network::GetCurrentIPConfig() const {
   // Make sure that the |current_ipconfig_| is still valid.
-  if (current_ipconfig_ == ipconfig_.get()) {
-    return current_ipconfig_;
+  if (primary_family_ == net_base::IPFamily::kIPv4) {
+    return ipconfig_.get();
   }
-  if (current_ipconfig_ == ip6config_.get()) {
-    return current_ipconfig_;
+  if (primary_family_ == net_base::IPFamily::kIPv6) {
+    return ip6config_.get();
   }
   return nullptr;
 }

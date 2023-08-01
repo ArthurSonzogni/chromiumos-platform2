@@ -478,10 +478,6 @@ class Network {
   NetworkPriority priority_;
 
   base::RepeatingClosure current_ipconfig_change_handler_;
-  // If not empty, |current_ipconfig_| should points to either |ipconfig_| or
-  // |ip6config_| which is used to setup the connection. GetCurrentIPConfig()
-  // should be used to get this property so that its validity can be checked.
-  IPConfig* current_ipconfig_ = nullptr;
 
   // The technology-specific IPv4 config properties. Currently only used by
   // cellular and VPN. Assume that when this field is not empty, it must have
