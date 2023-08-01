@@ -84,16 +84,16 @@ constexpr uint32_t kPD31DFPHubComp = 0x00800000;
 constexpr uint32_t kPD31DFPHostComp = 0x01000000;
 constexpr uint32_t kPD31PowerBrickComp = 0x01800000;
 
-// VDO descriptions to obfuscate PID/VID with unknown PD revision.
-const std::vector<VdoField> kOtherIDHeaderVDO = {{16, 0xffff0000, "Undefined"}};
-const std::vector<VdoField> kOtherProductVDO = {{0, 0xffff, "Undefined"}};
-
 // VDO descriptions from the USB PD Revision 2.0 and 3.1 specifications.
 const std::vector<VdoField> kPD20CertStatVDO = {{0, 0xffffffff, "XID"}};
 
-const std::vector<VdoField> kPD20ProductVDO = {{0, 0xffff, "bcdDevice"}};
+const std::vector<VdoField> kPD20ProductVDO = {
+    {0, 0x0000ffff, "bcdDevice"},
+    {16, 0xffff0000, "USB Product ID"},
+};
 
 const std::vector<VdoField> kPD20IDHeaderVDO = {
+    {0, 0x0000ffff, "USB Vendor ID"},
     {16, 0x03ff0000, "Reserved"},
     {26, 0x04000000, "Modal Operation Supported"},
     {27, 0x38000000, "Product Type"},
@@ -153,9 +153,13 @@ const std::vector<VdoField> kPD20AMAVDO = {
 
 const std::vector<VdoField> kPD30CertStatVDO = {{0, 0xffffffff, "XID"}};
 
-const std::vector<VdoField> kPD30ProductVDO = {{0, 0xffff, "bcdDevice"}};
+const std::vector<VdoField> kPD30ProductVDO = {
+    {0, 0x0000ffff, "bcdDevice"},
+    {16, 0xffff0000, "USB Product ID"},
+};
 
 const std::vector<VdoField> kPD30IDHeaderVDO = {
+    {0, 0x0000ffff, "USB Vendor ID"},
     {16, 0x007f0000, "Reserved"},
     {23, 0x03800000, "Product Type (DFP)"},
     {26, 0x04000000, "Modal Operation Supported"},
@@ -256,9 +260,13 @@ const std::vector<VdoField> kPD30DFPVDO = {
 
 const std::vector<VdoField> kPD31CertStatVDO = {{0, 0xffffffff, "XID"}};
 
-const std::vector<VdoField> kPD31ProductVDO = {{0, 0xffff, "bcdDevice"}};
+const std::vector<VdoField> kPD31ProductVDO = {
+    {0, 0x0000ffff, "bcdDevice"},
+    {16, 0xffff0000, "USB Product ID"},
+};
 
 const std::vector<VdoField> kPD31IDHeaderVDO = {
+    {0, 0x0000ffff, "USB Vendor ID"},
     {16, 0x001f0000, "Reserved"},
     {21, 0x00600000, "Connector Type"},
     {23, 0x03800000, "Product Type (DFP)"},
@@ -389,11 +397,9 @@ bool ReadVdo(const base::FilePath& path, uint32_t* vdo);
 
 // PrintVdo reads a vdo value from a text file and converts it to a uint32_t
 // variable then prints out the values of each field according to the
-// vdo_description. If hide_data is set, the full vdo will not be printed to
-// obfuscate user information.
+// vdo_description.
 void PrintVdo(const base::FilePath& vdo_file,
               const std::vector<VdoField> vdo_description,
-              bool hide_data,
               int indent);
 
 // PrintAltMode will print the immediate files in an alternate mode directory,

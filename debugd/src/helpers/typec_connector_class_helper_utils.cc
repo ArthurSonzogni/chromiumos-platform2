@@ -94,18 +94,13 @@ bool ReadVdo(const base::FilePath& path, uint32_t* vdo) {
 
 void PrintVdo(const base::FilePath& vdo_file,
               const std::vector<VdoField> vdo_description,
-              bool hide_data,
               int indent) {
   uint32_t vdo;
   if (!ReadVdo(vdo_file, &vdo))
     return;
 
-  if (hide_data)
-    std::cout << GetIndentStr(indent) << vdo_file.BaseName().value()
-              << std::endl;
-  else
-    std::cout << GetIndentStr(indent) << vdo_file.BaseName().value() << ": 0x"
-              << std::hex << vdo << std::endl;
+  std::cout << GetIndentStr(indent) << vdo_file.BaseName().value() << ": 0x"
+            << std::hex << vdo << std::endl;
 
   for (auto field : vdo_description) {
     int field_val = (vdo & field.mask) >> field.index;
@@ -271,98 +266,78 @@ void PrintPartnerIdentity(const base::FilePath& partner, int indent) {
   PDRev pd_rev = GetPDRev(partner);
   switch (pd_rev) {
     case PDRev::kPD20:
-      PrintVdo(identity.Append("id_header"), kPD20IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD20ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD20CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD20IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD20ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD20CertStatVDO, indent + 2);
       break;
     case PDRev::kPD30:
-      PrintVdo(identity.Append("id_header"), kPD30IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD30ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD30CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD30IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD30ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD30CertStatVDO, indent + 2);
       break;
     case PDRev::kPD31:
-      PrintVdo(identity.Append("id_header"), kPD31IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD31ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD31CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD31IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD31ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD31CertStatVDO, indent + 2);
       break;
     default:
-      PrintVdo(identity.Append("id_header"), kOtherIDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kOtherProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), {}, false, indent + 2);
+      PrintVdo(identity.Append("id_header"), {}, indent + 2);
+      PrintVdo(identity.Append("product"), {}, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), {}, indent + 2);
       break;
   }
 
   ProductType product_type = GetPartnerProductType(partner);
   switch (product_type) {
     case ProductType::kPD20AMA:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD20AMAVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20AMAVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30VPD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30VPDVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30VPDVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30AMA:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30AMAVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30AMAVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30UFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30DFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30DFPVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30DFPVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30DRD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), kPD30DFPVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), kPD30DFPVDO, indent + 2);
       break;
     case ProductType::kPD31UFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD31DFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31DFPVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31DFPVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD31DRD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), kPD31DFPVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), kPD31DFPVDO, indent + 2);
       break;
     default:
-      PrintVdo(identity.Append("product_type_vdo1"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
   }
 }
@@ -377,84 +352,76 @@ void PrintCableIdentity(const base::FilePath& cable, int indent) {
   PDRev pd_rev = GetPDRev(cable);
   switch (pd_rev) {
     case PDRev::kPD20:
-      PrintVdo(identity.Append("id_header"), kPD20IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD20ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD20CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD20IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD20ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD20CertStatVDO, indent + 2);
       break;
     case PDRev::kPD30:
-      PrintVdo(identity.Append("id_header"), kPD30IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD30ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD30CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD30IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD30ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD30CertStatVDO, indent + 2);
       break;
     case PDRev::kPD31:
-      PrintVdo(identity.Append("id_header"), kPD31IDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kPD31ProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), kPD31CertStatVDO, false,
-               indent + 2);
+      PrintVdo(identity.Append("id_header"), kPD31IDHeaderVDO, indent + 2);
+      PrintVdo(identity.Append("product"), kPD31ProductVDO, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), kPD31CertStatVDO, indent + 2);
       break;
     default:
-      PrintVdo(identity.Append("id_header"), kOtherIDHeaderVDO, true,
-               indent + 2);
-      PrintVdo(identity.Append("product"), kOtherProductVDO, true, indent + 2);
-      PrintVdo(identity.Append("cert_stat"), {}, false, indent + 2);
+      PrintVdo(identity.Append("id_header"), {}, indent + 2);
+      PrintVdo(identity.Append("product"), {}, indent + 2);
+      PrintVdo(identity.Append("cert_stat"), {}, indent + 2);
       break;
   }
 
   ProductType product_type = GetCableProductType(cable);
   switch (product_type) {
     case ProductType::kPD20PassiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD20PassiveVDO, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20PassiveVDO,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD20ActiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD20ActiveVDO, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20ActiveVDO,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30PassiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30PassiveVDO, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30PassiveVDO,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD30ActiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD30ActiveVDO1, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30ActiveVDO1,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), kPD30ActiveVDO2, false,
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30ActiveVDO2,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD31PassiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31PassiveVDO, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31PassiveVDO,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD31ActiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31ActiveVDO1, false,
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31ActiveVDO1,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), kPD31ActiveVDO2, false,
+      PrintVdo(identity.Append("product_type_vdo2"), kPD31ActiveVDO2,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     case ProductType::kPD31VPD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD31VPDVDO, false,
-               indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31VPDVDO, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
     default:
-      PrintVdo(identity.Append("product_type_vdo1"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo1"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, indent + 2);
       break;
   }
 }

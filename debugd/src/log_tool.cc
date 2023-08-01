@@ -378,11 +378,10 @@ const std::array kCommandLogs {
     " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
     " /var/log/messages | tail -n 20"},
   Log{kCommand, "tpm_version", "/usr/bin/tpm_manager_client get_version_info"},
-  // Type-C data from the type-c connector class, VID/PIDs are obfuscated.
+  // Type-C data from the type-c connector class.
   Log{kCommand, "typec_connector_class",
     "/usr/libexec/debugd/helpers/typec_connector_class_helper"},
-  // typecd logs average around 56K. VID/PIDs are obfuscated from the printed
-  // PD identity information.
+  // typecd logs average around 56K.
   Log{kCommand, "uname", "/bin/uname -a"},
   Log{kCommand, "update_engine.log",
     "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"

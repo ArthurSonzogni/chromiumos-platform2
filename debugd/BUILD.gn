@@ -441,8 +441,6 @@ if (use.test) {
       "src/helpers/modetest_helper_utils.cc",
       "src/helpers/modetest_helper_utils_test.cc",
       "src/helpers/scheduler_configuration_utils_test.cc",
-      "src/helpers/typec_connector_class_helper_test.cc",
-      "src/helpers/typec_connector_class_helper_utils.cc",
       "src/log_tool_doc_test.cc",
       "src/log_tool_test.cc",
       "src/metrics_test.cc",
