@@ -8,6 +8,7 @@
 
 import contextlib
 import io
+from itertools import zip_longest
 import json
 import os
 import re
@@ -17,7 +18,6 @@ import cros_config_schema
 import jsonschema
 import libcros_schema
 from packaging import version
-from six.moves import zip_longest
 
 from chromite.lib import cros_test_lib
 

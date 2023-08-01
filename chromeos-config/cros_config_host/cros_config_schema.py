@@ -18,8 +18,6 @@ import os
 import re
 import sys
 
-import six
-
 
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
@@ -241,12 +239,12 @@ def _ApplyTemplateVars(template_input, template_vars):
             for list_val in val:
                 if isinstance(list_val, collections.abc.Mapping):
                     lists.append(list_val)
-                elif isinstance(list_val, six.string_types):
+                elif isinstance(list_val, str):
                     val[index] = _GetVarTemplateValue(
                         list_val, template_input, template_vars
                     )
                 index += 1
-        elif isinstance(val, six.string_types):
+        elif isinstance(val, str):
             template_input[key] = _GetVarTemplateValue(
                 val, template_input, template_vars
             )
@@ -297,7 +295,7 @@ def _HasTemplateVariables(template_vars):
         True if they are still unevaluated template variables.
     """
     for val in template_vars.values():
-        if isinstance(val, six.string_types) and TEMPLATE_PATTERN.findall(val):
+        if isinstance(val, str) and TEMPLATE_PATTERN.findall(val):
             return True
 
 
@@ -813,7 +811,7 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
         hardware_properties = config.get("hardware-properties", None)
         if hardware_properties:
             for key, value in hardware_properties.items():
-                if not isinstance(value, (bool, six.string_types)):
+                if not isinstance(value, (bool, str)):
                     raise ValidationError(
                         f"All configs under hardware-properties must be "
                         f"boolean or an enum\n"
