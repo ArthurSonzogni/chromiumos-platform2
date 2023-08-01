@@ -33,6 +33,11 @@ constexpr int kWXMountCountHistogramNumBuckets = 20;
 // attempted to execute a memory file descriptor.
 constexpr char kAttemptedMemfdExecHistogramName[] =
     "ChromeOS.AnomalousProcCount.AttemptedMemfdExec";
+// `ForbiddenIntersection` shows the number of processes on the system that are
+// not sandboxed to avoid the forbidden intersection:
+// https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#The-forbidden-intersection.
+constexpr char kForbiddenIntersectionHistogramName[] =
+    "ChromeOS.AnomalousProcCount.ForbiddenIntersection";
 constexpr int kAnomalousProcCountMinBucket = 0;
 constexpr int kAnomalousProcCountMaxBucket = 100;
 constexpr int kAnomalousProcCountNumBuckets = 100;
@@ -78,6 +83,14 @@ bool SendWXMountCountToUMA(size_t wx_mount_count) {
       kWXMountCountHistogramName, base::checked_cast<int>(wx_mount_count),
       kWXMountCountHistogramMinBucket, kWXMountCountHistogramMaxBucket,
       kWXMountCountHistogramNumBuckets);
+}
+
+bool SendForbiddenIntersectionProcCountToUMA(size_t proc_count) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendToUMA(
+      kForbiddenIntersectionHistogramName, base::checked_cast<int>(proc_count),
+      kAnomalousProcCountMinBucket, kAnomalousProcCountMaxBucket,
+      kAnomalousProcCountNumBuckets);
 }
 
 bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count) {

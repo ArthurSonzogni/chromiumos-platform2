@@ -99,6 +99,8 @@ void FilterKernelProcesses(const ProcEntries& all_procs,
 bool FilterNonInitPidNsProcesses(const ProcEntries& all_procs,
                                  ProcEntries& filtered_procs);
 
+bool IsProcInForbiddenIntersection(const ProcEntry& process,
+                                   const ProcEntry& init_proc);
 MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries);
 
 }  // namespace secanomalyd

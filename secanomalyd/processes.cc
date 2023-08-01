@@ -293,4 +293,27 @@ MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
   return std::nullopt;
 }
 
+bool IsProcInForbiddenIntersection(const ProcEntry& proc,
+                                   const ProcEntry& init_proc) {
+  // The process is properly sandboxed if at least one of these conditions is
+  // met:
+  //   - The process is not running as root and does not have CAP_SYS_ADMIN in
+  //     the init user namespace.
+  //   - The process is not in the init PID and mount namespace;
+  //   - The process is covered by SecComp.
+  if (proc.sandbox_status()[ProcEntry::kNonRootBit] &&
+      (proc.sandbox_status()[ProcEntry::kNoCapSysAdminBit] ||
+       proc.userns() != init_proc.userns())) {
+    return false;
+  }
+  if (proc.mntns() != init_proc.mntns() && proc.pidns() != init_proc.pidns()) {
+    return false;
+  }
+  if (proc.sandbox_status()[ProcEntry::kSecCompBit]) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace secanomalyd

@@ -53,6 +53,7 @@ class Daemon : public brillo::DBusDaemon {
 
   // UMA Reporting tasks are invoked by |ReportUmaMetrics()|.
   void EmitWXMountCountUma();
+  void EmitForbiddenIntersectionProcCountUma();
   void EmitMemfdExecProcCountUma();
   void EmitSandboxingUma();
 
@@ -61,6 +62,9 @@ class Daemon : public brillo::DBusDaemon {
   // Only one crash report upload is attempted for an anomaly of type W+X mount
   // during the lifetime of the daemon.
   bool has_attempted_anomaly_report_ = false;
+
+  // Forbidden intersection process count is sent once per boot.
+  bool has_emitted_forbidden_intersection_uma_ = false;
 
   // Used to track whether an UMA metric was emitted for the memfd execution
   // baseline metric, as we only need one emission of the metric.
@@ -87,6 +91,7 @@ class Daemon : public brillo::DBusDaemon {
 
   MountEntryMap wx_mounts_;
   MaybeMountEntries all_mounts_;
+  MaybeProcEntries forbidden_intersection_procs_;
   MaybeProcEntries all_procs_;
   MaybeProcEntry init_proc_;
 

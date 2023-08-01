@@ -231,6 +231,7 @@ void Daemon::ReportUmaMetrics() {
   }
 
   EmitWXMountCountUma();
+  EmitForbiddenIntersectionProcCountUma();
   EmitMemfdExecProcCountUma();
   EmitSandboxingUma();
 
@@ -310,13 +311,31 @@ void Daemon::DoProcScan() {
   if (!init_proc_) {
     init_proc_ = GetInitProcEntry(all_procs_.value());
   }
-  // TODO(enlightened) Check for anomalies in the process list and save them for
-  // reporting.
+  if (!init_proc_) {
+    return;
+  }
+
+  ProcEntries procs;
+  FilterKernelProcesses(all_procs_.value(), procs);
+
+  ProcEntries flagged_procs;
+  std::copy_if(procs.begin(), procs.end(), std::back_inserter(flagged_procs),
+               [&](const ProcEntry& e) {
+                 return IsProcInForbiddenIntersection(e, init_proc_.value());
+               });
+
+  forbidden_intersection_procs_ = MaybeProcEntries(flagged_procs);
+  if (forbidden_intersection_procs_) {
+    VLOG(1) << "|forbidden_intersection_procs_.size()| = "
+            << forbidden_intersection_procs_->size();
+  }
 }
 
 void Daemon::DoAnomalousSystemReporting() {
   // Skip reporting if the if the daemon has previously attempted to send a
   // report or there is no anomalous condition.
+  // TODO(b/293928928) Check for and append any forbidden intersection
+  // violations to the anomaly report.
   if (has_attempted_anomaly_report_ || wx_mounts_.empty()) {
     return;
   }
@@ -409,6 +428,26 @@ void Daemon::EmitWXMountCountUma() {
     wx_mounts_.clear();
   } else {
     LOG(WARNING) << "Could not upload W+X mount count UMA metric";
+  }
+}
+
+void Daemon::EmitForbiddenIntersectionProcCountUma() {
+  // Skip if already emitted or |forbidden_intersection_procs_| has not yet been
+  // populated.
+  if (has_emitted_forbidden_intersection_uma_ ||
+      !forbidden_intersection_procs_) {
+    return;
+  }
+  // Only report forbidden intersection process count in the logged-in state.
+  system_context_->Refresh(/*skip_known_mount_refresh=*/true);
+  if (!system_context_->IsUserLoggedIn()) {
+    return;
+  }
+  VLOG(1) << "Reporting forbidden intersection process count UMA metric";
+  if (!SendForbiddenIntersectionProcCountToUMA(
+          forbidden_intersection_procs_->size())) {
+    LOG(WARNING)
+        << "Could not upload forbidden intersection process count UMA metric";
   }
 }
 
