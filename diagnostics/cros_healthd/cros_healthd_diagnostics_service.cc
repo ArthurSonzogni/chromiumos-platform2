@@ -273,8 +273,8 @@ void CrosHealthdDiagnosticsService::RunCpuCacheRoutine(
     exec_duration = base::Seconds(length_seconds->value);
   }
 
-  auto args = mojom::RoutineArgument::NewCpuStress(
-      mojom::CpuStressRoutineArgument::New(exec_duration));
+  auto args = mojom::RoutineArgument::NewCpuCache(
+      mojom::CpuCacheRoutineArgument::New(exec_duration));
   RunRoutineWithAdapter(std::move(args),
                         mojom::DiagnosticRoutineEnum::kCpuCache,
                         std::move(callback));
