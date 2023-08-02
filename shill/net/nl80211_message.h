@@ -5,13 +5,13 @@
 #ifndef SHILL_NET_NL80211_MESSAGE_H_
 #define SHILL_NET_NL80211_MESSAGE_H_
 
-#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/no_destructor.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/shill_export.h"
 
@@ -67,7 +67,7 @@ class SHILL_EXPORT Nl80211Frame {
     kIllegalFrameType = 0xff
   };
 
-  explicit Nl80211Frame(const ByteString& init);
+  explicit Nl80211Frame(base::span<const uint8_t> raw_frame);
   Nl80211Frame(const Nl80211Frame&) = delete;
   Nl80211Frame& operator=(const Nl80211Frame&) = delete;
 
@@ -85,7 +85,7 @@ class SHILL_EXPORT Nl80211Frame {
   uint8_t frame_type_;
   uint16_t reason_;
   uint16_t status_;
-  ByteString frame_;
+  std::vector<uint8_t> frame_;
 };
 
 //

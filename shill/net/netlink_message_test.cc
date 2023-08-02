@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/net/mock_netlink_socket.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 
 using testing::_;
@@ -530,9 +529,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame(rawdata);
-    Nl80211Frame expected_frame(
-        ByteString(kAuthenticateFrame, sizeof(kAuthenticateFrame)));
+    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    Nl80211Frame expected_frame(kAuthenticateFrame);
     EXPECT_EQ(Nl80211Frame::kAuthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
@@ -571,9 +569,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame(rawdata);
-    Nl80211Frame expected_frame(
-        ByteString(kAssociateFrame, sizeof(kAssociateFrame)));
+    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    Nl80211Frame expected_frame(kAssociateFrame);
     EXPECT_EQ(Nl80211Frame::kAssocResponseFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
@@ -710,9 +707,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame(rawdata);
-    Nl80211Frame expected_frame(
-        ByteString(kDeauthenticateFrame, sizeof(kDeauthenticateFrame)));
+    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    Nl80211Frame expected_frame(kDeauthenticateFrame);
     EXPECT_EQ(Nl80211Frame::kDeauthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
@@ -851,9 +847,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame(rawdata);
-    Nl80211Frame expected_frame(
-        ByteString(kDisassociateFrame, sizeof(kDisassociateFrame)));
+    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    Nl80211Frame expected_frame(kDisassociateFrame);
     EXPECT_EQ(Nl80211Frame::kDisassocFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }

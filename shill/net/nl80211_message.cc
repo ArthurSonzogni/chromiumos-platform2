@@ -24,7 +24,6 @@
 
 #include "shill/net/nl80211_message.h"
 
-#include <iomanip>
 #include <limits>
 
 #include <base/functional/bind.h>
@@ -75,16 +74,15 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
       attributes_);
 }
 
-Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
+Nl80211Frame::Nl80211Frame(base::span<const uint8_t> raw_frame)
     : frame_type_(kIllegalFrameType),
       reason_(std::numeric_limits<uint16_t>::max()),
       status_(std::numeric_limits<uint16_t>::max()),
-      frame_(raw_frame) {
+      frame_({std::begin(raw_frame), std::end(raw_frame)}) {
   const IEEE_80211::ieee80211_frame* frame =
-      reinterpret_cast<const IEEE_80211::ieee80211_frame*>(
-          frame_.GetConstData());
+      reinterpret_cast<const IEEE_80211::ieee80211_frame*>(frame_.data());
 
-  if (frame_.GetLength() < sizeof(frame->hdr))
+  if (frame_.size() < sizeof(frame->hdr))
     return;
 
   mac_from_ =
@@ -97,7 +95,7 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
   switch (frame_type_) {
     case kAssocResponseFrameType:
     case kReassocResponseFrameType:
-      if (frame_.GetLength() <
+      if (frame_.size() <
           sizeof(frame->hdr) + sizeof(frame->associate_response)) {
         frame_type_ = kIllegalFrameType;
         break;
@@ -106,7 +104,7 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
       break;
 
     case kAuthFrameType:
-      if (frame_.GetLength() <
+      if (frame_.size() <
           sizeof(frame->hdr) + sizeof(frame->authentiate_message)) {
         frame_type_ = kIllegalFrameType;
         break;
@@ -116,7 +114,7 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
 
     case kDisassocFrameType:
     case kDeauthFrameType:
-      if (frame_.GetLength() <
+      if (frame_.size() <
           sizeof(frame->hdr) + sizeof(frame->deauthentiate_message)) {
         frame_type_ = kIllegalFrameType;
         break;
@@ -130,12 +128,12 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
 }
 
 std::string Nl80211Frame::ToString() const {
-  if (frame_.IsEmpty()) {
+  if (frame_.empty()) {
     return "[no frame]";
   }
 
   std::string output;
-  if (frame_.GetLength() < sizeof(IEEE_80211::ieee80211_frame().hdr)) {
+  if (frame_.size() < sizeof(IEEE_80211::ieee80211_frame().hdr)) {
     output.append("[invalid frame: ");
   } else {
     base::StringAppendF(&output, "%s -> %s", mac_from_.c_str(),
@@ -185,8 +183,8 @@ std::string Nl80211Frame::ToString() const {
     output.append(" [frame: ");
   }
 
-  const unsigned char* frame = frame_.GetConstData();
-  for (size_t i = 0; i < frame_.GetLength(); ++i) {
+  const unsigned char* frame = frame_.data();
+  for (size_t i = 0; i < frame_.size(); ++i) {
     base::StringAppendF(&output, "%02x, ", frame[i]);
   }
   output.append("]");
@@ -195,7 +193,7 @@ std::string Nl80211Frame::ToString() const {
 }
 
 bool Nl80211Frame::IsEqual(const Nl80211Frame& other) const {
-  return frame_.Equals(other.frame_);
+  return frame_ == other.frame_;
 }
 
 //

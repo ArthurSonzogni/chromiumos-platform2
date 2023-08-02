@@ -5,11 +5,8 @@
 #include "shill/net/nl80211_message.h"
 
 #include <string>
-#include <vector>
 
 #include <gtest/gtest.h>
-
-#include "shill/net/byte_string.h"
 
 namespace shill {
 namespace {
@@ -33,14 +30,13 @@ const unsigned char kDeauthenticateFrame[] = {
 };
 
 TEST(Nl80211FrameTest, EmptyFrameToString) {
-  Nl80211Frame frame(ByteString{});
+  Nl80211Frame frame({});
   EXPECT_EQ(frame.ToString(), "[no frame]");
   EXPECT_EQ(frame.frame_type(), Nl80211Frame::kIllegalFrameType);
 }
 
 TEST(Nl80211FrameTest, ToStringWithStatus) {
-  Nl80211Frame frame(
-      ByteString(kAuthenticateFrame, sizeof(kAuthenticateFrame)));
+  Nl80211Frame frame(kAuthenticateFrame);
   std::string expected_output =
       "48:5d:60:77:2d:cf -> c0:3f:0e:77:e8:7f; Auth status: 0: Successful "
       "[frame: b0, 00, 3a, 01, 48, 5d, 60, 77, 2d, cf, c0, 3f, 0e, 77, e8, 7f, "
@@ -49,8 +45,7 @@ TEST(Nl80211FrameTest, ToStringWithStatus) {
 }
 
 TEST(Nl80211FrameTest, ToStringWithReason) {
-  Nl80211Frame frame(
-      ByteString(kDeauthenticateFrame, sizeof(kDeauthenticateFrame)));
+  Nl80211Frame frame(kDeauthenticateFrame);
   std::string expected_output =
       "ff:ff:ff:ff:ff:ff -> c0:3f:0e:77:e8:7f; Deauth reason 2: Previous "
       "authentication no longer valid [frame: c0, 00, 00, 00, ff, ff, ff, ff, "
