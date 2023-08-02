@@ -19,6 +19,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
+#include "biod/maintenance_scheduler.h"
 #include "biod/pairing_key_storage.h"
 #include "biod/power_button_filter_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
@@ -53,6 +54,8 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
       pk_storage_(std::move(pk_storage)),
       pinweaver_(std::move(pinweaver)),
       state_(state),
+      maintenance_scheduler_(std::make_unique<MaintenanceScheduler>(
+          cros_dev_.get(), biod_metrics_)),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
@@ -63,6 +66,8 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpAuthStackManager::OnMkbpEvent, base::Unretained(this)));
+
+  maintenance_scheduler_->Start();
 }
 
 bool CrosFpAuthStackManager::Initialize() {

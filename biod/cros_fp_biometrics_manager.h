@@ -15,10 +15,10 @@
 
 #include <base/values.h>
 #include <dbus/bus.h>
-#include <base/timer/timer.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
+#include "biod/maintenance_scheduler.h"
 #include "biod/power_button_filter_interface.h"
 
 namespace biod {
@@ -47,8 +47,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool DestroyAllRecords() override;
   void RemoveRecordsFromMemory() override;
   bool ReadRecordsForSingleUser(const std::string& user_id) override;
-
-  void ScheduleMaintenance(const base::TimeDelta& delta) override;
 
   void SetEnrollScanDoneHandler(const BiometricsManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;
@@ -82,8 +80,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
  protected:
   void EndEnrollSession() override;
   void EndAuthSession() override;
-
-  virtual void OnMaintenanceTimerFired();
 
   // Returns RecordId for given template id.
   virtual std::optional<std::string> GetLoadedRecordId(int id);
@@ -159,7 +155,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
 
-  std::unique_ptr<base::OneShotTimer> maintenance_timer_;
+  std::unique_ptr<MaintenanceScheduler> maintenance_scheduler_;
 
   uint8_t num_enrollment_captures_ = 0;
 };

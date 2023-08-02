@@ -650,6 +650,41 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialDifferentUser) {
             DeleteCredentialReply::SUCCESS);
 }
 
+TEST_F(CrosFpAuthStackManagerTest, TestMaintenanceTimerTooShort) {
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode).Times(0);
+  task_environment_.FastForwardBy(base::Hours(12));
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestMaintenanceTimerOnce) {
+  constexpr int kNumDeadPixels = 1;
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(mock_metrics_, SendDeadPixelCount(kNumDeadPixels)).Times(1);
+  EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
+      .WillOnce(testing::Return(kNumDeadPixels));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kSensorMaintenance)))
+      .Times(1);
+  task_environment_.FastForwardBy(base::Days(1));
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestOnMaintenanceTimerRescheduled) {
+  constexpr int kNumDeadPixels = 1;
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kEnrollSession)));
+  task_environment_.FastForwardBy(base::Days(1));
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(mock_metrics_, SendDeadPixelCount(kNumDeadPixels)).Times(1);
+  EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
+      .WillOnce(testing::Return(kNumDeadPixels));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kSensorMaintenance)))
+      .Times(1);
+  task_environment_.FastForwardBy(base::Minutes(10));
+}
+
 class CrosFpAuthStackManagerInitiallyEnrollDoneTest
     : public CrosFpAuthStackManagerTest {
  public:

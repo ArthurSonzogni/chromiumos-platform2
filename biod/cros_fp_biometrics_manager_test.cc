@@ -836,6 +836,41 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessUpdated) {
   EXPECT_EQ(received_matches, kExpectedMatches);
 }
 
+TEST_F(CrosFpBiometricsManagerTest, TestMaintenanceTimer_TooShort) {
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode).Times(0);
+  task_environment_.FastForwardBy(base::Hours(12));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestMaintenanceTimer_Once) {
+  constexpr int kNumDeadPixels = 1;
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(*mock_metrics_, SendDeadPixelCount(kNumDeadPixels)).Times(1);
+  EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
+      .WillOnce(testing::Return(kNumDeadPixels));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kSensorMaintenance)))
+      .Times(1);
+  task_environment_.FastForwardBy(base::Days(1));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestOnMaintenanceTimerRescheduled) {
+  constexpr int kNumDeadPixels = 1;
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kEnrollSession)));
+  task_environment_.FastForwardBy(base::Days(1));
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(*mock_metrics_, SendDeadPixelCount(kNumDeadPixels)).Times(1);
+  EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
+      .WillOnce(testing::Return(kNumDeadPixels));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kSensorMaintenance)))
+      .Times(1);
+  task_environment_.FastForwardBy(base::Minutes(10));
+}
+
 class CrosFpBiometricsManagerMockTest : public ::testing::Test {
  protected:
   CrosFpBiometricsManagerMockTest() {
@@ -883,51 +918,6 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   MockCrosFpDevice* mock_cros_dev_;
   MockCrosFpRecordManager* mock_record_manager_;
 };
-
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_TooShort) {
-  EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
-  task_environment_.FastForwardBy(base::Hours(12));
-}
-
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Once) {
-  EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(1);
-  task_environment_.FastForwardBy(base::Days(1));
-}
-
-TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {
-  constexpr int kNumDeadPixels = 1;
-  const base::TimeDelta delta = base::Days(1);
-
-  EXPECT_NE(mock_cros_dev_, nullptr);
-  EXPECT_NE(mock_metrics_, nullptr);
-
-  EXPECT_CALL(*mock_metrics_, SendDeadPixelCount(kNumDeadPixels)).Times(1);
-
-  EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
-      .WillOnce(testing::Return(kNumDeadPixels));
-
-  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
-      .WillOnce(Return(ec::FpMode(Mode::kNone)));
-
-  EXPECT_CALL(*mock_cros_dev_,
-              SetFpMode(ec::FpMode(ec::FpMode::Mode::kSensorMaintenance)))
-      .Times(1);
-  EXPECT_CALL(*mock_, ScheduleMaintenance(delta)).Times(1);
-
-  mock_->OnMaintenanceTimerFiredDelegate();
-}
-
-TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerRescheduled) {
-  const base::TimeDelta delta = base::Minutes(10);
-  EXPECT_NE(mock_cros_dev_, nullptr);
-
-  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
-      .Times(1)
-      .WillOnce(Return(ec::FpMode(Mode::kEnrollSession)));
-  EXPECT_CALL(*mock_, ScheduleMaintenance(delta)).Times(1);
-
-  mock_->OnMaintenanceTimerFiredDelegate();
-}
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList_Empty) {
   EXPECT_CALL(*mock_cros_dev_, GetDirtyMap).WillOnce(Return(std::bitset<32>()));

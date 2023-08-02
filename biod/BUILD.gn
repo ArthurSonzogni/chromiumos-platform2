@@ -78,6 +78,7 @@ static_library("libbiod") {
     "cros_fp_record_manager.cc",
     "cros_fp_session_manager_impl.cc",
     "crypto_init/bio_crypto_init.cc",
+    "maintenance_scheduler.cc",
     "pairing_key_storage_impl.cc",
     "power_button_filter.cc",
     "power_manager_client.cc",

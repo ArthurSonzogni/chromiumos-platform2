@@ -19,8 +19,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/threading/platform_thread.h>
-#include <base/time/time.h>
-#include <base/timer/timer.h>
 #include <crypto/random.h>
 #include <dbus/bus.h>
 #include <metrics/metrics_library.h>
@@ -28,6 +26,7 @@
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_record.h"
+#include "biod/maintenance_scheduler.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
 #include "libec/fingerprint/cros_fp_device_interface.h"
@@ -287,11 +286,11 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
       record_manager_(std::move(record_manager)),
-      maintenance_timer_(std::make_unique<base::OneShotTimer>()) {
+      maintenance_scheduler_(std::make_unique<MaintenanceScheduler>(
+          cros_dev_.get(), biod_metrics_)) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
   CHECK(biod_metrics_);
-  CHECK(maintenance_timer_);
   CHECK(record_manager_);
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
@@ -299,15 +298,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
 
   CHECK(cros_dev_->SupportsPositiveMatchSecret());
 
-  ScheduleMaintenance(base::Days(1));
-}
-
-void CrosFpBiometricsManager::ScheduleMaintenance(
-    const base::TimeDelta& delta) {
-  maintenance_timer_->Start(
-      FROM_HERE, delta,
-      base::BindOnce(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
-                     base::Unretained(this)));
+  maintenance_scheduler_->Start();
 }
 
 CrosFpBiometricsManager::~CrosFpBiometricsManager() {}
@@ -725,27 +716,6 @@ bool CrosFpBiometricsManager::LoadRecord(
 
   loaded_records_.emplace_back(record.metadata.record_id);
   return true;
-}
-
-void CrosFpBiometricsManager::OnMaintenanceTimerFired() {
-  auto fp_sensor_mode = cros_dev_->GetFpMode();
-  if (fp_sensor_mode != ec::FpMode(Mode::kNone)) {
-    LOG(INFO) << "Rescheduling maintenance due to fp_sensor_mode: "
-              << fp_sensor_mode;
-    ScheduleMaintenance(base::Minutes(10));
-    return;
-  }
-  LOG(INFO) << "Maintenance timer fired";
-
-  // Report the number of dead pixels
-  cros_dev_->UpdateFpInfo();
-  biod_metrics_->SendDeadPixelCount(cros_dev_->DeadPixelCount());
-
-  // The maintenance operation can take a couple hundred milliseconds, so it's
-  // an asynchronous mode (the state is cleared by the FPMCU after it is
-  // finished with the operation).
-  cros_dev_->SetFpMode(ec::FpMode(Mode::kSensorMaintenance));
-  ScheduleMaintenance(base::Days(1));
 }
 
 std::vector<int> CrosFpBiometricsManager::GetDirtyList() {

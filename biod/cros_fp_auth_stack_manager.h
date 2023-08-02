@@ -17,6 +17,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_session_manager.h"
+#include "biod/maintenance_scheduler.h"
 #include "biod/pairing_key_storage.h"
 #include "biod/power_button_filter_interface.h"
 #include "biod/proto_bindings/constants.pb.h"
@@ -181,6 +182,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   // multi-login, but as biod and FPMCU can only hold state for a single user,
   // we stick to the first logged-in user.
   bool locked_to_current_user_ = false;
+
+  std::unique_ptr<MaintenanceScheduler> maintenance_scheduler_;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };

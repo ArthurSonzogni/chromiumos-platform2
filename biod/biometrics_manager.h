@@ -94,8 +94,6 @@ class BiometricsManager {
   // Read all the records for one user. Return true if successful.
   virtual bool ReadRecordsForSingleUser(const std::string& user_id) = 0;
 
-  virtual void ScheduleMaintenance(const base::TimeDelta& delta) = 0;
-
   // The callbacks should remain valid as long as this object is valid.
 
   // Enrollment progress passed to EnrollScanDoneCallback.
