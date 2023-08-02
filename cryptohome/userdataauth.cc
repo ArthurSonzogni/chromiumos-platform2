@@ -1608,8 +1608,6 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     auth_session = std::move(auth_session_status).value();
   }
 
-  auth_session->PrepareUserForRemoval();
-
   Username account_id = auth_session->username();
   if (account_id->empty()) {
     // RemoveRequest must have valid account_id.
@@ -1637,6 +1635,8 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
         &reply);
     return reply;
   }
+
+  auth_session->PrepareUserForRemoval();
 
   if (!homedirs_->Remove(obfuscated)) {
     // User vault removal failed.
