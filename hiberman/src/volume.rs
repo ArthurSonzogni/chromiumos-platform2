@@ -772,7 +772,7 @@ impl VolumeManager {
     fn create_hiberimage_integrity_dm_dev(&self, format_device: bool) -> Result<()> {
         let backing_dev = lv_path(&self.vg_name, Self::HIBERIMAGE);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-        let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY).unwrap();
+        let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY)?;
 
         if format_device {
             // Inititialize the first blocks of the integrity device with
@@ -803,7 +803,7 @@ impl VolumeManager {
 
         keyctl_add_key(key_desc, key_data)?;
 
-        let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY).unwrap();
+        let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY)?;
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
         let table = format!(
             "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random :32:logon:{key_desc} \

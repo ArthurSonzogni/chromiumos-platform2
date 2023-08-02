@@ -330,7 +330,7 @@ impl ResumeConductor {
         )?;
 
         SnapshotDevice::new(SnapshotMode::Read)?
-            .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
+            .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE)?)
     }
 
     fn get_tpm_derived_integrity_key(&self) -> Result<SecureBlob> {
