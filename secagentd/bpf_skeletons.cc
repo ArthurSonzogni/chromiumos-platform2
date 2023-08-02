@@ -63,7 +63,6 @@ void NetworkBpfSkeleton::OnShillAvailable(bool success) {
   shill_->RegisterProcessChangedHandler(
       base::BindRepeating(&NetworkBpfSkeleton::OnShillProcessChanged,
                           weak_ptr_factory_.GetWeakPtr()));
-
   shill_->RegisterDeviceAddedHandler(base::BindRepeating(
       &NetworkBpfSkeleton::OnShillDeviceAdded, weak_ptr_factory_.GetWeakPtr()));
   shill_->RegisterDeviceRemovedHandler(

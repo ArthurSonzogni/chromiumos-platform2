@@ -216,11 +216,19 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
         process_cache_->GetProcessHierarchy(task.pid, task.start_time, 2);
     if (hierarchy.empty()) {
       LOG(ERROR) << absl::StrFormat(
-          "ProcessCache hierarchy fetch for pid %d cmdline(%s) failed. "
-          "Creating a "
-          "NetworkSocketListen with unpopulated process and parent_process "
-          "fields.",
-          task.pid, task.commandline);
+          "pid %d cmdline(%s) not in process cache. "
+          "Creating a degraded %s filled with information available from BPF "
+          "process map.",
+          task.pid, task.commandline, proto->GetTypeName());
+
+      ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+          task, proto->mutable_process(),
+          device_user_->GetUsernamesForRedaction());
+      auto parent_process = process_cache_->GetProcessHierarchy(
+          task.ppid, task.parent_start_time, 1);
+      if (parent_process.size() == 1) {
+        proto->set_allocated_parent_process(parent_process[0].release());
+      }
     }
     if (hierarchy.size() >= 1) {
       proto->set_allocated_process(hierarchy[0].release());

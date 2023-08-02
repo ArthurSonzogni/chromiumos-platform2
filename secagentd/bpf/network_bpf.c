@@ -315,16 +315,11 @@ static inline __attribute__((always_inline)) bool cros_socket_is_monitored(
   return bpf_map_lookup_elem(&active_socket_map, &sock_key) != NULL;
 }
 
-static inline __attribute__((always_inline)) int cros_maybe_new_socket(
+static inline __attribute__((always_inline)) int create_process_map_entry(
     struct socket* sock) {
   struct cros_sock_to_process_map_value* process_value;
-  uint64_t sock_key = (uint64_t)(sock);
-  uint32_t zero = 0;
-  if (bpf_map_update_elem(&active_socket_map, &sock_key, &sock_key,
-                          BPF_NOEXIST) != 0) {
-    return -1;
-  }
-  /* Use the heap instead of the stack. */
+  const uint32_t zero = 0;
+  uint64_t key = (uint64_t)sock;
   process_value = bpf_map_lookup_elem(&heap_cros_network_common_map, &zero);
   if (process_value == NULL) {
     return -1;
@@ -333,7 +328,16 @@ static inline __attribute__((always_inline)) int cros_maybe_new_socket(
                    sizeof(struct cros_sock_to_process_map_value));
   cros_fill_common(&process_value->common, sock);
   process_value->garbage_collect_me = false;
-  if (bpf_map_update_elem(&process_map, &sock_key, process_value,
+  bpf_map_update_elem(&process_map, &sock, process_value, BPF_ANY);
+  return 0;
+}
+
+static inline __attribute__((always_inline)) int cros_maybe_new_socket(
+    struct socket* sock) {
+  struct cros_sock_to_process_map_value* process_value;
+  uint64_t sock_key = (uint64_t)(sock);
+  uint32_t zero = 0;
+  if (bpf_map_update_elem(&active_socket_map, &sock_key, &sock_key,
                           BPF_NOEXIST) != 0) {
     return -1;
   }
@@ -365,6 +369,10 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
   }
   struct sock* sk = BPF_CORE_READ(skb, sk);
   struct socket* sock = BPF_CORE_READ(skb, sk, sk_socket);
+  if (sock == NULL) {
+    // don't care about flows that aren't associated with sockets.
+    return -1;
+  }
   cros_maybe_new_socket(sock);
   struct cros_flow_map_value* value_ref;
   struct cros_flow_map_key key;
@@ -568,4 +576,27 @@ int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
   uint64_t key = (uint64_t)sock;
   bpf_map_delete_elem(&active_socket_map, &key);
   return 0;
+}
+
+CROS_IF_FUNCTION_HOOK("fexit/inet_sendmsg",
+                      "raw_tracepoint/cros_inet_sendmsg_exit")
+int BPF_PROG(cros_handle_inet_sendmsg_exit,
+             struct socket* sock,
+             struct msghdr* msg,
+             size_t size,
+             int rv) {
+  // This is a safe area to grab process context.
+  create_process_map_entry(sock);
+}
+
+CROS_IF_FUNCTION_HOOK("fexit/inet_recvmsg",
+                      "raw_tracepoint/cros_inet_recvmsg_exit")
+int BPF_PROG(cros_handle_inet_recvmsg_exit,
+             struct socket* sock,
+             struct msghdr* msg,
+             size_t size,
+             int flags,
+             int rv) {
+  // This is a safe area to grab process context.
+  create_process_map_entry(sock);
 }
