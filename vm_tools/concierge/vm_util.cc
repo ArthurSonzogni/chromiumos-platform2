@@ -655,9 +655,6 @@ std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
 }
 
 std::string SharedDataParam::to_string() const {
-  // TODO(b/169446394): Go back to using "never" when caching is disabled
-  // once we can switch /data/media to use 9p.
-
   // We can relax this condition later if we want to serve users which do not
   // set uid_map and gid_map, but today there is none.
   CHECK_NE(uid_map, "");
