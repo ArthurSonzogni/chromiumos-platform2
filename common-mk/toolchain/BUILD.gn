@@ -81,7 +81,7 @@ toolchain("toolchain") {
   }
 
   tool("link") {
-    outfile = "{{target_output_name}}{{output_extension}}"
+    outfile = "{{output_dir}}/{{target_output_name}}{{output_extension}}"
 
     command = "$cxx {{ldflags}} -o $outfile -Wl,--start-group {{inputs}} -Wl,--end-group {{solibs}} {{libs}}"
     description = "LINK $outfile"
