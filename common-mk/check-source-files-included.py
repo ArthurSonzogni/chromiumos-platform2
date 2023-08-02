@@ -10,6 +10,10 @@ but is not included in the build. This kind of mistake can often evade code
 review, or is discovered only later in the review stage and wasted time for
 early discovery of errors. This script examines each source file and checks
 whether they are present in a *.gn file in their project directory.
+
+Additionally, when a build file is changed, occasionally some source files
+(especially test files) are left unbuilt. This script also checks for source
+files that are not included anywhere when a build file is modified.
 """
 
 import argparse
@@ -17,10 +21,11 @@ import os
 from pathlib import Path
 from pathlib import PurePath
 import sys
-from typing import FrozenSet, Iterable, List, Optional, Tuple
+from typing import FrozenSet, Iterable, List, Optional, Tuple, Union
 
 
 TOP_DIR = Path(__file__).resolve().parent.parent
+SOURCE_FILE_SUFFICES = (".c", ".cc", ".cpp", ".cxx")
 
 # Find chromite.
 sys.path.insert(0, str(TOP_DIR.parent.parent))
@@ -92,7 +97,7 @@ class ProjectLiterals:
             _resolve(gn_file, literal) for gn_file, literal in _gather()
         )
 
-    def _ReadFileAtCommit(self, project: str, file_path: str) -> str:
+    def _ReadFileAtCommit(self, project: str, file_path: os.PathLike) -> str:
         """Read a file at a commit.
 
         Args:
@@ -104,10 +109,29 @@ class ProjectLiterals:
             The content of the file.
         """
         return git.GetObjectAtRev(
-            TOP_DIR / project, os.path.join(project, file_path), self._commit
+            TOP_DIR / project, project / file_path, self._commit
         )
 
-    def _FindGnFiles(self, project: str) -> Iterable[str]:
+    def _FindFilesEndingWith(
+        self, project: str, suffix: Union[str, Tuple[str]]
+    ) -> Iterable[PurePath]:
+        """Find all gn files in a project.
+
+        Args:
+            project: The project to find files in.
+            suffix: The suffix that files end with. Can also be a tuple of
+                    suffices.
+
+        Returns:
+            An iterable of all files ending with the given suffix.
+        """
+        yield from (
+            f.name
+            for f in git.LsTree(TOP_DIR / project, self._commit)
+            if f.is_file and f.name.name.endswith(suffix)
+        )
+
+    def _FindGnFiles(self, project: str) -> Iterable[PurePath]:
         """Find all gn files in a project.
 
         Args:
@@ -116,15 +140,18 @@ class ProjectLiterals:
         Returns:
             An iterable of all gn files.
         """
-        # Any failure of RunGit will throw an uncaught exception and is
-        # considered a failure of the script.
-        result = git.RunGit(
-            TOP_DIR / project,
-            ["ls-tree", "--name-only", "-r", "-z", self._commit],
-        )
-        yield from (
-            line for line in result.stdout.split("\0") if line.endswith(".gn")
-        )
+        yield from self._FindFilesEndingWith(project, ".gn")
+
+    def FindSourceFiles(self, project: str) -> Iterable[PurePath]:
+        """Find all source files in a project.
+
+        Args:
+            project: The project to find source files in.
+
+        Returns:
+            An iterable of all source files.
+        """
+        yield from self._FindFilesEndingWith(project, SOURCE_FILE_SUFFICES)
 
     @staticmethod
     def _GatherLiteralsFromGn(gn_data: str) -> List[dict]:
@@ -148,12 +175,15 @@ class ProjectLiterals:
         )
 
 
-def CheckSourceFileIncludedInBuild(commit: str, file_paths: List[str]) -> bool:
+def CheckSourceFileIncludedInBuild(
+    commit: str, file_paths: Iterable[Union[str, os.PathLike]]
+) -> bool:
     """Check that source files are included in builds.
 
     Args:
         commit: The commit to check in.
-        file_paths: Files modified in this commit.
+        file_paths: Files modified in this commit. Non-source files in this list
+                    would be ignored.
 
     Returns:
         True if source files are included in a *.gn file in the project
@@ -164,12 +194,12 @@ def CheckSourceFileIncludedInBuild(commit: str, file_paths: List[str]) -> bool:
     project_literals = ProjectLiterals(commit)
 
     for path in file_paths:
-        if not path.endswith((".c", ".cc", ".cpp", ".cxx")):
+        path = PurePath(path)
+        if not path.name.endswith(SOURCE_FILE_SUFFICES):
             # Header files are not checked here because they do not necessarily
             # need to be present in a build file.
             continue
 
-        path = PurePath(path)
         project = path.parts[0]
         if not (Path(project) / "BUILD.gn").exists():
             # This project does not use gn.
@@ -180,10 +210,39 @@ def CheckSourceFileIncludedInBuild(commit: str, file_paths: List[str]) -> bool:
             print(
                 f"{__file__}: {path} is not included in any "
                 f"*.gn files in {project}. "
-                "If you believe you have added the file via an intermediate "
-                "variable, please ensure the source is set via source_set().",
+                "If you have added the file via an intermediate variable, "
+                "please ensure the source is set via source_set().",
                 file=sys.stderr,
             )
+            ret = False
+
+    return ret
+
+
+def CheckBuildFileIncludingAllSourceFiles(
+    commit: str, file_paths: Iterable[str]
+) -> bool:
+    """Check that BUILD.gn files including all source files.
+
+    Args:
+        commit: The commit to check in.
+        file_paths: Files modified in this commit. Non-build files in this list
+                    would be ignored.
+    """
+    ret = True
+    project_literals = ProjectLiterals(commit)
+
+    # Calling CheckSourceFileIncludedInBuild with all source files in that
+    # project as parameter to examine if all source files are included.
+    for path in file_paths:
+        if not path.endswith(".gn"):
+            continue
+
+        project = PurePath(path).parts[0]
+        if not CheckSourceFileIncludedInBuild(
+            commit,
+            (project / f for f in project_literals.FindSourceFiles(project)),
+        ):
             ret = False
 
     return ret
@@ -200,15 +259,14 @@ def get_parser():
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = get_parser()
     opts = parser.parse_args(argv)
-    # TODO(b/280853454): Extend the check to ensure that, when a build file is
-    # changed, no source file (especially test file) is left unbuilt.
-    #
-    # This feature can be implemented as follows:
-    # 1. If a BUILD.gn file is fed to the script, use git ls-tree to gather all
-    #    source files in that project,
-    # 2. Calling CheckSourceFileIncludedInBuild with all source files in that
-    #    project as parameter to examine if all source files are included.
-    return 0 if CheckSourceFileIncludedInBuild(opts.commit, opts.files) else 1
+    return (
+        0
+        if (
+            CheckSourceFileIncludedInBuild(opts.commit, opts.files)
+            and CheckBuildFileIncludingAllSourceFiles(opts.commit, opts.files)
+        )
+        else 1
+    )
 
 
 if __name__ == "__main__":
