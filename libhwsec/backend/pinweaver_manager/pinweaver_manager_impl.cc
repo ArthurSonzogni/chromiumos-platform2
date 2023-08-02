@@ -4,6 +4,7 @@
 
 #include "libhwsec/backend/pinweaver_manager/pinweaver_manager_impl.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -181,7 +182,9 @@ StatusOr<uint64_t> LECredentialManagerImpl::InsertRateLimiter(
     const DelaySchedule& delay_sched,
     std::optional<uint32_t> expiration_delay) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  return InsertLeaf(auth_channel, policies, nullptr, nullptr, reset_secret,
+                    delay_sched, expiration_delay,
+                    /*is_rate_limiter=*/true);
 }
 
 StatusOr<LECredentialManagerImpl::StartBiometricsAuthReply>
@@ -189,7 +192,45 @@ LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
                                              uint64_t label,
                                              const brillo::Blob& client_nonce) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+  RETURN_IF_ERROR(RetrieveLabelInfo(label_object, h_aux, orig_cred, orig_mac,
+                                    metadata_lost));
+  if (metadata_lost) {
+    return MakeStatus<TPMError>(
+        "Invalid cred metadata for label: " + std::to_string(label),
+        TPMRetryAction::kNoRetry);
+  }
+
+  ASSIGN_OR_RETURN(const CredentialTreeResult& result,
+                   pinweaver_.StartBiometricsAuth(auth_channel, label, h_aux,
+                                                  orig_cred, client_nonce));
+
+  root_hash_ = result.new_root;
+
+  if (result.new_cred_metadata.has_value() && result.new_mac.has_value()) {
+    RETURN_IF_ERROR(UpdateHashTree(
+        label_object, &result.new_cred_metadata.value(),
+        &result.new_mac.value(), UpdateHashTreeType::kUpdateLeaf));
+  }
+  RETURN_IF_ERROR(MakeStatus<PinWeaverError>(result.error));
+
+  if (!result.server_nonce.has_value() || !result.iv.has_value() ||
+      !result.encrypted_he_secret.has_value()) {
+    return MakeStatus<TPMError>("Invalid output for StartBiometricsAuth",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  LECredentialManager::StartBiometricsAuthReply reply{
+      .server_nonce = std::move(result.server_nonce.value()),
+      .iv = std::move(result.iv.value()),
+      .encrypted_he_secret = std::move(result.encrypted_he_secret.value()),
+  };
+
+  return reply;
 }
 
 StatusOr<uint64_t> LECredentialManagerImpl::InsertLeaf(

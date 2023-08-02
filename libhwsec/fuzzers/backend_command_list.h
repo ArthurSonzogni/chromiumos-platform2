@@ -68,6 +68,8 @@ using FuzzCommandList =
                 &Backend::KeyManagement::GetECCPublicInfo,
                 &Backend::LECredentialManager::CheckCredential,
                 &Backend::LECredentialManager::InsertCredential,
+                &Backend::LECredentialManager::InsertRateLimiter,
+                &Backend::LECredentialManager::StartBiometricsAuth,
                 &Backend::PinWeaver::IsEnabled,
                 &Backend::PinWeaver::GetVersion,
                 &Backend::PinWeaver::Reset,

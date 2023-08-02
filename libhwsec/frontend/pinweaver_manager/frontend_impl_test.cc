@@ -40,6 +40,7 @@ using ::testing::Eq;
 using ::testing::Ge;
 
 constexpr int kLEMaxIncorrectAttempt = 5;
+constexpr uint8_t kAuthChannel = 0;
 
 MATCHER_P(HasTPMRetryAction, matcher, "") {
   if (arg.ok()) {
@@ -77,6 +78,12 @@ constexpr uint8_t kClientNonceArray[] = {
     0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15};
 
 constexpr char kCredDirName[] = "low_entropy_creds";
+
+// As the point needs to be valid, the point is pre-generated.
+constexpr char kClientEccPointXHex[] =
+    "78D184E439FD4EC5BADC5431C8A6DD8EC039F945E7AD9DEDC5166BEF390E9AFD";
+constexpr char kClientEccPointYHex[] =
+    "4E411B61F1B48601ED3A218E4EE6075A3053130E6F25BBFF7FE08BB6D3EC6BF6";
 
 }  // namespace
 
@@ -193,6 +200,39 @@ class LECredentialManagerImplTest : public ::testing::Test {
                                     temp_dir_.GetPath(), true));
   }
 
+  void GeneratePk(uint8_t auth_channel) {
+    hwsec::PinWeaverFrontend::PinWeaverEccPoint pt;
+    brillo::Blob x_blob, y_blob;
+    base::HexStringToBytes(kClientEccPointXHex, &x_blob);
+    base::HexStringToBytes(kClientEccPointYHex, &y_blob);
+    memcpy(pt.x, x_blob.data(), sizeof(pt.x));
+    memcpy(pt.y, y_blob.data(), sizeof(pt.y));
+    EXPECT_TRUE(backend_->GetPinWeaverTpm2().GeneratePk(auth_channel, pt).ok());
+  }
+
+  // Helper function to create a rate-limiter & then lock it out.
+  uint64_t CreateLockedOutRateLimiter(uint8_t auth_channel) {
+    const std::map<uint32_t, uint32_t> delay_sched = {
+        {kLEMaxIncorrectAttempt, UINT32_MAX},
+    };
+
+    uint64_t label =
+        le_mgr_
+            ->InsertRateLimiter(auth_channel,
+                                std::vector<hwsec::OperationPolicySetting>(),
+                                kResetSecret1, delay_sched,
+                                /*expiration_delay=*/std::nullopt)
+            .AssertOk()
+            .value();
+
+    for (int i = 0; i < kLEMaxIncorrectAttempt; i++) {
+      EXPECT_THAT(
+          le_mgr_->StartBiometricsAuth(auth_channel, label, kClientNonce),
+          IsOk());
+    }
+    return label;
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
@@ -240,6 +280,49 @@ TEST_F(LECredentialManagerImplTest, BasicInsertAndCheck) {
   EXPECT_EQ(result->he_secret, kHeSecret1);
 }
 
+// Basic check: Insert 2 rate-limiters, then verify we can retrieve them
+// correctly.
+TEST_F(LECredentialManagerImplTest, BiometricsBasicInsertAndCheck) {
+  constexpr uint8_t kWrongAuthChannel = 1;
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  GeneratePk(kAuthChannel);
+  uint64_t label1 =
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  auto reply1 =
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
+  ASSERT_OK(reply1);
+
+  auto reply2 =
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label2, kClientNonce);
+  ASSERT_OK(reply2);
+  // Server should return different values every time.
+  EXPECT_NE(reply1->server_nonce, reply2->server_nonce);
+  EXPECT_NE(reply1->iv, reply2->iv);
+  EXPECT_NE(reply1->encrypted_he_secret, reply2->encrypted_he_secret);
+
+  // Incorrect auth channel passed should result in INVALID_LE_SECRET.
+  GeneratePk(kWrongAuthChannel);
+  EXPECT_THAT(
+      le_mgr_->StartBiometricsAuth(kWrongAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+}
+
 // Verify invalid secrets and getting locked out due to too many attempts.
 TEST_F(LECredentialManagerImplTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
@@ -254,6 +337,25 @@ TEST_F(LECredentialManagerImplTest, LockedOutSecret) {
   // right metadata is stored.
   EXPECT_THAT(
       le_mgr_->CheckCredential(label1, kLeSecret1),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+}
+
+// Verify getting locked out due to too many attempts for biometrics
+// rate-limiters.
+TEST_F(LECredentialManagerImplTest, BiometricsLockedOutRateLimiter) {
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+  EXPECT_THAT(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+
+  // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
+  // right metadata is stored.
+  EXPECT_THAT(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
