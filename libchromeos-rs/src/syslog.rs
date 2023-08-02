@@ -4,9 +4,9 @@
 
 use std::env;
 
-use crosvm_base::unix::getpid;
 pub use log::LevelFilter;
 use log::SetLoggerError;
+use nix::unistd::getpid;
 use stderrlog::StdErrLog;
 use syslog::{BasicLogger, Facility, Formatter3164};
 
@@ -33,7 +33,7 @@ pub fn get_syslog_logger(ident: String) -> Result<BasicLogger> {
         syslog::unix(Formatter3164 {
             facility: Facility::LOG_USER,
             hostname: None,
-            pid: getpid() as u32,
+            pid: getpid().as_raw() as u32,
             process: ident,
         })
         .map_err(Error::SyslogUnix)?,

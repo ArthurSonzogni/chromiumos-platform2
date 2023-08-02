@@ -42,3 +42,38 @@ pub mod rand;
 pub mod scoped_path;
 pub mod secure_blob;
 pub mod syslog;
+
+use std::fs::File;
+use std::os::unix::io::FromRawFd;
+
+use nix::fcntl::OFlag;
+
+/// Spawns a pipe pair where the first pipe is the read end and the second pipe is the write end.
+///
+/// If `close_on_exec` is true, the `O_CLOEXEC` flag will be set during pipe creation.
+pub fn pipe(close_on_exec: bool) -> nix::Result<(File, File)> {
+    let flags = if close_on_exec {
+        OFlag::O_CLOEXEC
+    } else {
+        OFlag::empty()
+    };
+    // Safe because the file descriptors aren't owned yet.
+    nix::unistd::pipe2(flags).map(|(a, b)| unsafe { (File::from_raw_fd(a), File::from_raw_fd(b)) })
+}
+
+#[macro_export]
+macro_rules! handle_eintr_errno {
+    ($x:expr) => {{
+        use libc::EINTR;
+        use nix::errno::errno;
+
+        let mut res;
+        loop {
+            res = $x;
+            if res != -1 || errno() != EINTR {
+                break;
+            }
+        }
+        res
+    }};
+}

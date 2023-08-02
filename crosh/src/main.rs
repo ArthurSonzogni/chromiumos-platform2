@@ -15,8 +15,9 @@ use libc::{
     c_int, c_void, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, STDERR_FILENO, WIFSTOPPED,
 };
 use libchromeos::chromeos::is_dev_mode;
+use libchromeos::handle_eintr_errno;
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::{block_signal, handle_eintr_errno, unblock_signal};
+use libchromeos::sys::{block_signal, unblock_signal};
 use libchromeos::syslog;
 use log::error;
 use rustyline::completion::Completer;

@@ -26,7 +26,7 @@ use libc::{
 };
 
 use crate::deprecated::syslog::{Error, Facility, Priority, Syslog};
-use crate::sys::getpid;
+use nix::unistd::getpid;
 
 const SYSLOG_PATH: &str = "/dev/log";
 

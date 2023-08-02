@@ -17,7 +17,7 @@ use dbus::arg::{self, OwnedFd, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
 use libc::{c_int, SIGINT};
-use libchromeos::sys::pipe;
+use libchromeos::pipe;
 use log::error;
 use system_api::client::OrgChromiumDebugd;
 

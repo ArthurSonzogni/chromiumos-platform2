@@ -9,7 +9,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::thread::panicking;
 
-use crosvm_base::{getpid, gettid};
+use nix::unistd::getpid;
+use nix::unistd::gettid;
 
 /// Returns a stable path based on the label, pid, and tid. If the label isn't provided the
 /// current_exe is used instead.

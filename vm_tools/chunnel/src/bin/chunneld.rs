@@ -20,10 +20,12 @@ use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
+use libchromeos::pipe;
+use libchromeos::sys::block_signal;
 use libchromeos::sys::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
-use libchromeos::sys::{block_signal, pipe};
 use libchromeos::syslog;
 use log::{error, warn};
+use nix;
 use protobuf::{self, Message as ProtoMessage};
 
 use chunnel::forwarder::ForwarderSession;
@@ -70,7 +72,7 @@ enum Error {
     EventFdClone(libchromeos::sys::Error),
     EventFdNew(libchromeos::sys::Error),
     IncorrectCid(VsockCid),
-    LifelinePipe(libchromeos::sys::Error),
+    LifelinePipe(nix::Error),
     NoListenerForPort(u16),
     NoSessionForTag(SessionTag),
     PollContextAdd(libchromeos::sys::Error),

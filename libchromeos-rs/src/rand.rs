@@ -8,7 +8,7 @@ use std::{thread::sleep, time::Duration};
 
 use libc::{c_uint, c_void};
 
-use crosvm_base::handle_eintr_errno;
+use crate::handle_eintr_errno;
 use crosvm_base::sys::unix::{errno_result, Result};
 
 /// How long to wait before calling getrandom again if it does not return

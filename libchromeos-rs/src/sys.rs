@@ -8,16 +8,9 @@
 // Do not add to this list.
 pub use crosvm_base::block_signal;
 pub use crosvm_base::errno_result;
-pub use crosvm_base::getpid;
-pub use crosvm_base::gettid;
-pub use crosvm_base::handle_eintr;
-pub use crosvm_base::handle_eintr_errno;
-pub use crosvm_base::pagesize;
-pub use crosvm_base::pipe;
 pub use crosvm_base::set_rt_prio_limit;
 pub use crosvm_base::set_rt_round_robin;
 pub use crosvm_base::signal::Error as SignalError;
-pub use crosvm_base::syscall;
 pub use crosvm_base::unblock_signal;
 pub use crosvm_base::unix::clear_signal_handler;
 pub use crosvm_base::unix::duration_to_timespec;

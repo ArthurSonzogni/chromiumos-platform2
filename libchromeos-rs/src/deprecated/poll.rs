@@ -14,7 +14,8 @@ use std::{
     time::Duration,
 };
 
-use crate::sys::{errno_result, handle_eintr_errno, Result};
+use crate::handle_eintr_errno;
+use crate::sys::{errno_result, Result};
 use libc::{
     c_int, epoll_create1, epoll_ctl, epoll_event, epoll_wait, EPOLLHUP, EPOLLIN, EPOLLOUT,
     EPOLLRDHUP, EPOLL_CLOEXEC, EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLL_CTL_MOD,
