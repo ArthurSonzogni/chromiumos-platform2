@@ -775,10 +775,13 @@ class Platform2Test:
             # This is the default value, but doesn't handle per-package
             # PATH or ROOTPATH extensions.  Which doesn't seem to be a big
             # deal atm as we don't really use those on DUTs.
-            os.environ["PATH"] = (
-                "/usr/local/sbin:/usr/local/bin:"
-                "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin"
-            )
+            if self.user == "root":
+                os.environ["PATH"] = (
+                    "/usr/local/sbin:/usr/local/bin:"
+                    "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin"
+                )
+            else:
+                os.environ["PATH"] = "/usr/local/bin:/usr/bin:/bin:/opt/bin"
             os.environ.pop("TMPDIR", None)
 
             # Remove sysroot from path environment variables.
