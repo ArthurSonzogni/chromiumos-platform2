@@ -31,9 +31,6 @@ PlatformFeatures* g_instance = nullptr;
 }  // namespace
 
 constexpr char kActiveTrialFileDirectory[] = "/run/featured/active";
-constexpr char kFeatureLibInterface[] = "org.chromium.feature_lib";
-constexpr char kFeatureLibPath[] = "/org/chromium/feature_lib";
-constexpr char kRefetchSignal[] = "RefetchFeatureState";
 
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                                    dbus::ObjectProxy* chrome_proxy,
@@ -58,8 +55,8 @@ bool PlatformFeatures::Initialize(scoped_refptr<dbus::Bus> bus) {
     return false;
   }
 
-  auto* feature_proxy = bus->GetObjectProxy(kFeatureLibInterface,
-                                            dbus::ObjectPath(kFeatureLibPath));
+  auto* feature_proxy = bus->GetObjectProxy(
+      kFeatureLibInterface, dbus::ObjectPath(kFeatureLibServicePath));
   if (!feature_proxy) {
     LOG(ERROR) << "Failed to create object proxy for " << kFeatureLibInterface;
     return false;

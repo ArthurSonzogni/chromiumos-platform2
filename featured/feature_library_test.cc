@@ -30,10 +30,6 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
 
-constexpr char kFeatureLibInterface[] = "org.chromium.feature_lib";
-constexpr char kFeatureLibPath[] = "/org/chromium/feature_lib";
-constexpr char kRefetchSignal[] = "RefetchFeatureState";
-
 }  // namespace
 
 namespace feature {
@@ -46,10 +42,10 @@ class FeatureLibraryTest : public testing::Test {
             mock_bus_.get(),
             chromeos::kChromeFeaturesServiceName,
             dbus::ObjectPath(chromeos::kChromeFeaturesServicePath))),
-        mock_feature_proxy_(
-            new dbus::MockObjectProxy(mock_bus_.get(),
-                                      kFeatureLibInterface,
-                                      dbus::ObjectPath(kFeatureLibPath))) {
+        mock_feature_proxy_(new dbus::MockObjectProxy(
+            mock_bus_.get(),
+            kFeatureLibInterface,
+            dbus::ObjectPath(kFeatureLibServicePath))) {
     EXPECT_TRUE(dir_.CreateUniqueTempDir());
     active_trials_dir_ = dir_.GetPath().Append("active_trials");
     EXPECT_TRUE(base::CreateDirectory(active_trials_dir_));
