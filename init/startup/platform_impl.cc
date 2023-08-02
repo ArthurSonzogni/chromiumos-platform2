@@ -190,6 +190,9 @@ void Platform::RunProcess(const base::FilePath& cmd_path) {
 
 bool Platform::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
+  hiberman.AddArg("/sbin/minijail0");
+  hiberman.AddArg("-v");
+  hiberman.AddArg("--");
   hiberman.AddArg("/usr/sbin/hiberman");
   hiberman.AddArg("resume-init");
   hiberman.AddArg("-v");
