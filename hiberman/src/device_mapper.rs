@@ -5,14 +5,14 @@
 //! Implements an API for managing device mapper (DM) devices
 
 use std::ffi::OsStr;
-use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use regex::Regex;
 
 use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
@@ -102,9 +102,29 @@ impl DeviceMapper {
 
     /// Get the path of a DM device.
     pub fn device_path(name: &str) -> Result<PathBuf> {
-        let symlink_path = Path::new("/dev/mapper").join(name);
+        // Unfortunately we can't just follow /dev/mapper/<name>, udev might
+        // not have created it yet.
 
-        fs::canonicalize(symlink_path).map_err(anyhow::Error::from)
+        let out = checked_command_output(Command::new(DMSETUP_PATH).args(["info", name]))
+            .context(format!("Failed to get DM info for device '{name}'"))?;
+
+        let output_string = String::from_utf8_lossy(&out.stdout);
+
+        for line in output_string.lines() {
+            if !line.starts_with("Major, minor:") {
+                continue;
+            }
+
+            let re = Regex::new(r"^Major, minor:\s+\d+, (\d+)").unwrap();
+            let caps = re
+                .captures(line)
+                .ok_or(anyhow!("dmsetup info has unexpected format: |{line}|"))?;
+            return Ok(PathBuf::from(format!("/dev/dm-{}", &caps[1])));
+        }
+
+        Err(anyhow!(
+            "Could not determine the device path for DM device '{name}'"
+        ))
     }
 
     fn run_dmsetup<I, S>(args: I) -> Result<()>
