@@ -43,28 +43,60 @@ void ZeroTpmSpaceIfExists() {
   }
 }
 
-}  // namespace
+// If encrypted rollback data is present it means that enterprise rollback just
+// finished. Should be called only when the device is owned and before cleaning
+// up the leftovers.
+bool RollbackJustFinished() {
+  oobe_config::FileHandler file_handler;
+  return file_handler.HasOpensslEncryptedRollbackData() ||
+         file_handler.HasTpmEncryptedRollbackData();
+}
 
-// Deletes leftovers from a preceding enterprise rollback. Should be called
-// only when the device is owned.
-int main(int argc, char* argv[]) {
-  InitLog();
+// Should be called only when enterprise rollback has finished, otherwise we may
+// be cleaning data too early.
+void CleanEnterpriseRollbackMetrics() {
+  oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
+  if (metrics_handler.IsTrackingRollbackEvents()) {
+    metrics_handler.StopTrackingRollback();
+  }
+}
+
+// Delete leftovers from a preceding enterprise rollback. Should be called only
+// when the device is owned.
+void CleanEnterpriseRollbackLeftovers() {
   oobe_config::FileHandler file_handler;
   file_handler.RemoveRestorePath();
-
-  // Only clean metrics file when encrypted rollback data is present, as that is
-  // a sign that a rollback process just finished. Otherwise we may be cleaning
-  // data too early.
-  if (file_handler.HasOpensslEncryptedRollbackData() ||
-      file_handler.HasTpmEncryptedRollbackData()) {
-    oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
-    if (metrics_handler.IsTrackingRollbackEvents()) {
-      metrics_handler.StopTrackingRollback();
-    }
-  }
-
   file_handler.RemoveOpensslEncryptedRollbackData();
   file_handler.RemoveTpmEncryptedRollbackData();
   ZeroTpmSpaceIfExists();
+}
+
+// Should be called when the device is not owned to ensure the rollback metrics
+// file is deleted if it has not been updated in a while.
+void CleanEnterpriseRollbackMetricsIfStale() {
+  oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
+  if (metrics_handler.IsTrackingRollbackEvents()) {
+    metrics_handler.CleanRollbackTrackingIfStale();
+  }
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+  InitLog();
+
+  oobe_config::FileHandler file_handler;
+  if (file_handler.HasOobeCompletedFlag()) {
+    // Device is owned so enterprise rollback data is not necessary anymore.
+    if (RollbackJustFinished()) {
+      CleanEnterpriseRollbackMetrics();
+    }
+    CleanEnterpriseRollbackLeftovers();
+  } else {
+    // If the device is not owned and the enterprise rollback metrics file has
+    // not been updated in a while, clean it to avoid leaking information.
+    CleanEnterpriseRollbackMetricsIfStale();
+  }
+
   return 0;
 }
