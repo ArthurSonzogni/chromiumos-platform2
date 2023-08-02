@@ -173,6 +173,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   }
 
   cfg_msg.set_mask_offensive_words(spec->mask_offensive_words);
+  cfg_msg.set_enable_speaker_change_detection(spec->speaker_change_detection);
 
   std::string serialized = cfg_msg.SerializeAsString();
 
