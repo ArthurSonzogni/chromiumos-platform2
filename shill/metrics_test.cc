@@ -22,6 +22,7 @@
 #include <metrics/structured_events.h>
 #include <metrics/timer_mock.h>
 
+#include "shill/cellular/apn_list.h"
 #include "shill/metrics_enums.h"
 #include "shill/mock_control.h"
 #include "shill/mock_eap_credentials.h"
@@ -826,7 +827,8 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Valid) {
                                kCellularConnectResultOperationFailed),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(error, ApnList::ApnType::kDefault);
+  metrics_.NotifyCellularConnectionResult(
+      error, Metrics::DetailedCellularConnectionResult::APNType::kDefault);
 }
 
 TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Unknown) {
@@ -839,8 +841,9 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Default_Unknown) {
               Metrics::CellularConnectResult::kCellularConnectResultUnknown),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(invalid_error,
-                                          ApnList::ApnType::kDefault);
+  metrics_.NotifyCellularConnectionResult(
+      invalid_error,
+      Metrics::DetailedCellularConnectionResult::APNType::kDefault);
 }
 
 TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Valid) {
@@ -853,7 +856,8 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Valid) {
                                kCellularConnectResultOperationFailed),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(error, ApnList::ApnType::kDun);
+  metrics_.NotifyCellularConnectionResult(
+      error, Metrics::DetailedCellularConnectionResult::APNType::kDUN);
 }
 
 TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Unknown) {
@@ -866,8 +870,8 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Dun_Unknown) {
               Metrics::CellularConnectResult::kCellularConnectResultUnknown),
           static_cast<int>(
               Metrics::CellularConnectResult::kCellularConnectResultMax)));
-  metrics_.NotifyCellularConnectionResult(invalid_error,
-                                          ApnList::ApnType::kDun);
+  metrics_.NotifyCellularConnectionResult(
+      invalid_error, Metrics::DetailedCellularConnectionResult::APNType::kDUN);
 }
 
 TEST_F(MetricsTest, IntGid1) {

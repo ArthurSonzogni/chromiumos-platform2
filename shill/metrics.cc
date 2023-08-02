@@ -113,6 +113,18 @@ std::string VPNTypeToMetricString(VPNType type) {
   return "";
 }
 
+std::string GetApnTypeString(
+    Metrics::DetailedCellularConnectionResult::APNType apn_type) {
+  switch (apn_type) {
+    case Metrics::DetailedCellularConnectionResult::APNType::kDefault:
+      return kApnTypeDefault;
+    case Metrics::DetailedCellularConnectionResult::APNType::kAttach:
+      return kApnTypeIA;
+    case Metrics::DetailedCellularConnectionResult::APNType::kDUN:
+      return kApnTypeDun;
+  }
+}
+
 }  // namespace
 
 Metrics::Metrics()
@@ -136,13 +148,13 @@ void Metrics::SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample) {
 }
 
 void Metrics::SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
-                            ApnList::ApnType type,
+                            DetailedCellularConnectionResult::APNType type,
                             int sample) {
   // Using the format Network.Shill.Cellular.{MetricName}.{ApnType} to make it
   // easier to find the metrics using autocomplete in UMA.
   const std::string name =
       base::StringPrintf("%s.Cellular.%s.%s", kMetricPrefix, metric.n.name,
-                         ApnList::GetApnTypeString(type).c_str());
+                         GetApnTypeString(type).c_str());
   library_->SendEnumToUMA(name, sample, metric.max);
 }
 
@@ -699,10 +711,10 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
   SendToUMA(kMetricCellularSignalStrengthBeforeDrop, signal_strength);
 }
 
-void Metrics::NotifyCellularConnectionResult(Error::Type error,
-                                             ApnList::ApnType apn_type) {
+void Metrics::NotifyCellularConnectionResult(
+    Error::Type error, DetailedCellularConnectionResult::APNType apn_type) {
   SLOG(2) << __func__ << ": " << error;
-  DCHECK(apn_type != ApnList::ApnType::kAttach)
+  DCHECK(apn_type != DetailedCellularConnectionResult::APNType::kAttach)
       << "shill should not send this metric for Attach APNs";
   CellularConnectResult connect_result =
       ConvertErrorToCellularConnectResult(error);
@@ -814,13 +826,13 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   for (auto& apn_type : result.connection_apn_types) {
     uint digit = 0;
     switch (apn_type) {
-      case ApnList::ApnType::kAttach:
+      case DetailedCellularConnectionResult::APNType::kAttach:
         digit = 1;
         break;
-      case ApnList::ApnType::kDefault:
+      case DetailedCellularConnectionResult::APNType::kDefault:
         digit = 2;
         break;
-      case ApnList::ApnType::kDun:
+      case DetailedCellularConnectionResult::APNType::kDUN:
         digit = 3;
         break;
     }

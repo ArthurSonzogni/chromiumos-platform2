@@ -17,7 +17,6 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
-#include "shill/cellular/apn_list.h"
 #include "shill/error.h"
 #include "shill/metrics_enums.h"
 #include "shill/net/ieee80211.h"
@@ -1672,16 +1671,17 @@ class Metrics {
   void NotifyCellularDeviceDrop(const std::string& network_technology,
                                 uint16_t signal_strength);
 
-  // Notifies this object of the resulting status of a cellular connection
-  virtual void NotifyCellularConnectionResult(Error::Type error,
-                                              ApnList::ApnType apn_type);
-
   // Notifies this object of the entitlement check result
   virtual void NotifyCellularEntitlementCheckResult(
       Metrics::CellularEntitlementCheck result);
 
   struct DetailedCellularConnectionResult {
     // The values are used in metrics and thus should not be changed.
+    enum class APNType {
+      kDefault,
+      kAttach,
+      kDUN,
+    };
     enum class IPConfigMethod {
       kUnknown = 0,
       kPPP = 1,
@@ -1697,7 +1697,7 @@ class Metrics {
     std::string detailed_error;
     std::string uuid;
     shill::Stringmap apn_info;
-    std::vector<ApnList::ApnType> connection_apn_types;
+    std::vector<APNType> connection_apn_types;
     IPConfigMethod ipv4_config_method;
     IPConfigMethod ipv6_config_method;
     std::string home_mccmnc;
@@ -1713,6 +1713,10 @@ class Metrics {
     ConnectionAttemptType connection_attempt_type;
     uint32_t subscription_error_seen;
   };
+
+  // Notifies this object of the resulting status of a cellular connection
+  virtual void NotifyCellularConnectionResult(
+      Error::Type error, DetailedCellularConnectionResult::APNType apn_type);
 
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
@@ -2087,7 +2091,7 @@ class Metrics {
 
   // Sends linear histogram data to UMA for a metric split by APN type.
   virtual void SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
-                             ApnList::ApnType type,
+                             DetailedCellularConnectionResult::APNType type,
                              int sample);
 
   // Sends linear histogram data to UMA for a metric split by shill

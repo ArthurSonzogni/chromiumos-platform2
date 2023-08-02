@@ -57,6 +57,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/net/netlink_sock_diag.h"
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
@@ -178,12 +179,25 @@ ConnectionAttemptTypeToMetrics(CellularServiceRefPtr service) {
   return MetricsType::kAutoConnect;
 }
 
-std::vector<ApnList::ApnType> ConnectionApnTypesToMetrics(
+Metrics::DetailedCellularConnectionResult::APNType ApnTypeToMetricEnum(
     ApnList::ApnType apn_type) {
-  std::vector<ApnList::ApnType> connection_apn_types;
+  switch (apn_type) {
+    case ApnList::ApnType::kDefault:
+      return Metrics::DetailedCellularConnectionResult::APNType::kDefault;
+    case ApnList::ApnType::kAttach:
+      return Metrics::DetailedCellularConnectionResult::APNType::kAttach;
+    case ApnList::ApnType::kDun:
+      return Metrics::DetailedCellularConnectionResult::APNType::kDUN;
+  }
+}
+
+std::vector<Metrics::DetailedCellularConnectionResult::APNType>
+ConnectionApnTypesToMetrics(ApnList::ApnType apn_type) {
+  std::vector<Metrics::DetailedCellularConnectionResult::APNType>
+      connection_apn_types;
   // TODO(b:249372214): Add existing connections. We might be able to sort them
   // using the LastConnected property.
-  connection_apn_types.push_back(apn_type);
+  connection_apn_types.push_back(ApnTypeToMetricEnum(apn_type));
   return connection_apn_types;
 }
 
@@ -1199,7 +1213,8 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
             << error.message();
     return;
   }
-  metrics()->NotifyCellularConnectionResult(error.type(), apn_type);
+  metrics()->NotifyCellularConnectionResult(error.type(),
+                                            ApnTypeToMetricEnum(apn_type));
   last_cellular_connection_results_[iccid] = error.type();
   if (error.IsSuccess()) {
     return;

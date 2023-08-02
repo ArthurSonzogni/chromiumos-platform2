@@ -56,6 +56,7 @@ extern "C" {
 #include "shill/dbus/fake_properties_proxy.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -3216,8 +3217,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
   device_->set_skip_establish_link_for_testing(true);
 
   // Metrics for the DUN APN should be reported.
-  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(Error::kSuccess,
-                                                       ApnList::ApnType::kDun));
+  EXPECT_CALL(metrics_,
+              NotifyCellularConnectionResult(
+                  Error::kSuccess,
+                  Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
   // Service is connected and portal detection is supported.
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
@@ -3346,8 +3349,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
   SetCapability3gppModemSimpleProxy();
 
   // Metrics for the DUN APN should be reported.
-  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(Error::kOperationFailed,
-                                                       ApnList::ApnType::kDun));
+  EXPECT_CALL(metrics_,
+              NotifyCellularConnectionResult(
+                  Error::kOperationFailed,
+                  Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
   // Service is connected.
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
@@ -3529,8 +3534,11 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
   device_->set_skip_establish_link_for_testing(true);
 
   // Metrics for the DEFAULT APN should be reported.
-  EXPECT_CALL(metrics_, NotifyCellularConnectionResult(
-                            Error::kSuccess, ApnList::ApnType::kDefault));
+  EXPECT_CALL(
+      metrics_,
+      NotifyCellularConnectionResult(
+          Error::kSuccess,
+          Metrics::DetailedCellularConnectionResult::APNType::kDefault));
 
   // Service is connected and portal detection is supported.
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));

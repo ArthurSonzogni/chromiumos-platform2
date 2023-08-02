@@ -42,7 +42,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, ResetConnectTimer, (int), (override));
   MOCK_METHOD(void,
               NotifyCellularConnectionResult,
-              (Error::Type, ApnList::ApnType),
+              (Error::Type, DetailedCellularConnectionResult::APNType),
               (override));
   MOCK_METHOD(void,
               NotifyDetailedCellularConnectionResult,
