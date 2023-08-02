@@ -260,6 +260,19 @@ class Manager {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
+  // b/294287313: Temporary solution to support tethering with a multiplexed PDN
+  // brought up specifically for tethering and with no associated shill Device.
+  // This method creates a fake ShillClient::Device and creates the minimal
+  // Datapath setup to support CreateTetheredNetwork() pointing at
+  // |upstream_ifname| as the upstream network.
+  std::optional<ShillClient::Device> StartTetheringUpstreamNetwork(
+      const TetheredNetworkRequest& request);
+  // Teardowns the minimal Datapath setup created with
+  // StartTetheringUpstreamNetwork().
+  void StopTetheringUpstreamNetwork(
+      // const std::string& upstream_ifname);
+      const ShillClient::Device& upstream_network);
+
   // patchpanel::System shared for all subsystems.
   System* system_;
 

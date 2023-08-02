@@ -649,7 +649,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   return true;
 }
 
-const ShillClient::Device* ShillClient::GetDevice(
+const ShillClient::Device* ShillClient::GetDeviceByShillDeviceName(
     const std::string& shill_device_interface_property) const {
   // To find the VPN Device, the default logical Device must be checked
   // separately.
@@ -661,6 +661,20 @@ const ShillClient::Device* ShillClient::GetDevice(
   for (const auto& [_, device] : devices_) {
     if (device.shill_device_interface_property ==
         shill_device_interface_property) {
+      return &device;
+    }
+  }
+  return nullptr;
+}
+
+const ShillClient::Device* ShillClient::GetDeviceByIfindex(int ifindex) const {
+  // To find the VPN Device, the default logical Device must be checked
+  // separately.
+  if (default_logical_device_ && default_logical_device_->ifindex == ifindex) {
+    return default_logical_device_.operator->();
+  }
+  for (const auto& [_, device] : devices_) {
+    if (device.ifindex == ifindex) {
       return &device;
     }
   }

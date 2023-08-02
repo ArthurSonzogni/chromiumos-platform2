@@ -190,8 +190,13 @@ class ShillClient {
   // DBus RPCs for DownstreamNetwork and ConnectNamespace.
   // TODO(b/273744897): Migrate callers to use the future Network primitive
   // directly.
-  virtual const Device* GetDevice(
+  virtual const Device* GetDeviceByShillDeviceName(
       const std::string& shill_device_interface_property) const;
+  // Finds the shill physical or VPN Device whose underlying data interface
+  // matches the interface index value |ifindex|. For Devices associated to
+  // Cellular multiplexed interfaces, this is the interface index value of the
+  // multiplexed interface.
+  virtual const Device* GetDeviceByIfindex(int ifindex) const;
   // Returns the cached default logical shill Device, or nullptr if there is no
   // default logical Device defined. Does not initiate a property fetch and does
   // not block.

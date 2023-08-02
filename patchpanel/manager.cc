@@ -652,8 +652,16 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     }
   }
   if (!upstream_shill_device) {
-    LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
-    return patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN;
+    // b/294287313: if the tethering request is asking for a multiplexed PDN
+    // request, ShillClient has no knowledge of the associated Network as there
+    // are no shill Device associated with the Network. If the network interface
+    // specified in the request exists, create a fake ShillClient::Device to
+    // represent that tethering Network.
+    upstream_shill_device = StartTetheringUpstreamNetwork(request);
+    if (!upstream_shill_device) {
+      LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
+      return patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN;
+    }
   }
   const auto info =
       DownstreamNetworkInfo::Create(request, *upstream_shill_device);
@@ -731,6 +739,70 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
   return client_infos;
 }
 
+std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
+    const TetheredNetworkRequest& request) {
+  const auto& upstream_ifname = request.upstream_ifname();
+  const int ifindex = system_->IfNametoindex(upstream_ifname);
+  if (ifindex < 0) {
+    LOG(ERROR) << __func__ << ": unknown interface " << upstream_ifname;
+    return std::nullopt;
+  }
+
+  // Assume the Network is a Cellular network, and assume there is a known
+  // Cellular Device for the primary multiplexed Network already tracked by
+  // ShillClient.
+  ShillClient::Device upstream_network;
+  for (const auto& shill_device : shill_client_->GetDevices()) {
+    if (shill_device.type == ShillClient::Device::Type::kCellular) {
+      // Copy the shill Device and Service properties common to both the primary
+      // multiplexed Network and the tethering Network.
+      upstream_network.shill_device_interface_property =
+          shill_device.shill_device_interface_property;
+      upstream_network.service_path = shill_device.service_path;
+      break;
+    }
+  }
+  if (upstream_network.shill_device_interface_property.empty()) {
+    LOG(ERROR) << __func__
+               << ": no Cellular ShillDevice to associate with tethering "
+                  "uplink interface "
+               << upstream_ifname;
+    return std::nullopt;
+  }
+  upstream_network.type = ShillClient::Device::Type::kCellular;
+  upstream_network.ifindex = ifindex;
+  upstream_network.ifname = upstream_ifname;
+
+  // TODO(b/294287313): copy the IPv6 configuration of the upstream Network
+  // directly from shill's tethering request and notify GuestIPv6Service about
+  // the prefix of the upstream Network.
+
+  // Setup the datapath for this interface, as if the device was advertised in
+  // OnShillDevicesChanged. We skip services or setup that don'tr apply to
+  // cellular (multicast traffic counters) or that are not interacting with the
+  // separate PDN network exclusively used for tethering (ConnectNamespace,
+  // dns-proxy redirection, ArcService, CrostiniService, neighbor monitoring).
+  LOG(INFO) << __func__ << ": Configuring datapath for fake shill Device "
+            << upstream_network;
+  counters_svc_->OnPhysicalDeviceAdded(upstream_ifname);
+  datapath_->StartConnectionPinning(upstream_network);
+  // TODO(b/294287313): Also call Datapath::StartSourceIPv6PrefixEnforcement()
+  // once it can support multiple different IPv6 prefixes for different
+  // interfaces at the same time.
+  return upstream_network;
+}
+
+void Manager::StopTetheringUpstreamNetwork(
+    const ShillClient::Device& upstream_network) {
+  LOG(INFO) << __func__ << ": Tearing down datapath for fake shill Device "
+            << upstream_network;
+  datapath_->StopConnectionPinning(upstream_network);
+  counters_svc_->OnPhysicalDeviceRemoved(upstream_network.ifname);
+  // TODO(b/294287313): Also call Datapath::StopSourceIPv6PrefixEnforcement()
+  // once it can support multiple different IPv6 prefixes for different
+  // interfaces at the same time.
+}
+
 void Manager::OnNeighborReachabilityEvent(
     int ifindex,
     const net_base::IPAddress& ip_addr,
@@ -766,7 +838,8 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     // b/273741099: For multiplexed Cellular interfaces, callers expect
     // patchpanel to accept a shill Device kInterfaceProperty value and swap it
     // with the name of the primary multiplexed interface.
-    auto* shill_device = shill_client_->GetDevice(outbound_ifname);
+    auto* shill_device =
+        shill_client_->GetDeviceByShillDeviceName(outbound_ifname);
     if (!shill_device) {
       LOG(ERROR) << __func__ << ": no shill Device for upstream ifname "
                  << outbound_ifname;
@@ -934,6 +1007,14 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     dhcp_server_controllers_.erase(info.downstream_ifname);
 
     datapath_->StopDownstreamNetwork(info);
+
+    // b/294287313: if the upstream network was created in an ad-hoc
+    // fashion through StartTetheringUpstreamNetwork and is not managed by
+    // ShillClient, the datapath tear down must also be triggered specially.
+    if (!shill_client_->GetDeviceByIfindex(info.upstream_device->ifindex)) {
+      StopTetheringUpstreamNetwork(*info.upstream_device);
+    }
+
     LOG(INFO) << "Disconnected Downstream Network " << info;
     downstream_networks_.erase(downstream_network_it);
     return;
@@ -1208,8 +1289,8 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
     if (!arc_device->shill_device_ifname()) {
       continue;
     }
-    auto* upstream_shill_device =
-        shill_client_->GetDevice(*arc_device->shill_device_ifname());
+    auto* upstream_shill_device = shill_client_->GetDeviceByShillDeviceName(
+        *arc_device->shill_device_ifname());
     if (!upstream_shill_device) {
       LOG(ERROR) << __func__
                  << ": no upstream shill Device found for ARC Device "
@@ -1255,8 +1336,8 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
     if (!arc_device->shill_device_ifname()) {
       continue;
     }
-    auto* upstream_shill_device =
-        shill_client_->GetDevice(*arc_device->shill_device_ifname());
+    auto* upstream_shill_device = shill_client_->GetDeviceByShillDeviceName(
+        *arc_device->shill_device_ifname());
     if (!upstream_shill_device) {
       LOG(ERROR) << __func__
                  << ": no upstream shill Device found for ARC Device "
