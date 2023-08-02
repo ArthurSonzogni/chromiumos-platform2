@@ -597,7 +597,7 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
       result.should_stop = true;
-      return result;
+      break;
     }
   }
 
