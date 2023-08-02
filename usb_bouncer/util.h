@@ -266,9 +266,6 @@ int GetConnectedDuration(base::FilePath normalized_devpath);
 // Returns the PCI device class for a sysfs device.
 int GetPciDeviceClass(base::FilePath normalized_devpath);
 
-// Returns the busnum for a sysfs device.
-int GetBusnum(base::FilePath normalized_devpath);
-
 // Returns the kernel boot_id, which is a unique identifier randomly generated
 // each time a system boots.
 std::string GetBootId();

@@ -333,17 +333,17 @@ int HandleUdev(const Configuration& config,
   // Gather data used for device metrics before daemonizing.
   bool session_metric_available = false;
   usb_bouncer::UsbSessionMetric session_metric;
-  if (argv.size() == 4) {
+  if (argv.size() == 5) {
     base::FilePath root_dir("/");
     base::FilePath normalized_devpath = root_dir.Append("sys").Append(
         usb_bouncer::StripLeadingPathSeparators(devpath));
     session_metric.boot_id = usb_bouncer::GetBootId();
     session_metric.system_time = usb_bouncer::GetSystemTime();
     session_metric.action = static_cast<int>(action);
-    session_metric.busnum = usb_bouncer::GetBusnum(normalized_devpath);
     session_metric.depth = usb_bouncer::GetUsbTreeDepth(normalized_devpath);
-    base::StringToInt(argv[2], &session_metric.devnum);
-    usb_bouncer::GetVidPidFromEnvVar(argv[3], &session_metric.vid,
+    base::StringToInt(argv[2], &session_metric.busnum);
+    base::StringToInt(argv[3], &session_metric.devnum);
+    usb_bouncer::GetVidPidFromEnvVar(argv[4], &session_metric.vid,
                                      &session_metric.pid);
     session_metric_available = true;
   }

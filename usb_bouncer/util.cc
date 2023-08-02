@@ -1161,19 +1161,6 @@ int GetPciDeviceClass(base::FilePath normalized_devpath) {
   return 0;
 }
 
-int GetBusnum(base::FilePath normalized_devpath) {
-  std::string busnum;
-  int busnum_int;
-  if (base::ReadFileToString(normalized_devpath.Append("busnum"), &busnum)) {
-    base::TrimWhitespaceASCII(busnum, base::TRIM_ALL, &busnum);
-    if (base::StringToInt(busnum, &busnum_int)) {
-      return busnum_int;
-    }
-  }
-
-  return 0;
-}
-
 std::string GetBootId() {
   std::string boot_id;
   if (base::ReadFileToString(base::FilePath("/proc/sys/kernel/random/boot_id"),
