@@ -197,12 +197,17 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
 
 AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
     const ObfuscatedUsername& obfuscated_username,
+    const std::set<std::string_view>& uss_labels,
     AuthFactorVaultKeysetConverter& converter) {
   AuthFactorMap auth_factor_map;
 
   // Load all of the USS-based auth factors.
   for (const auto& [label, auth_factor_type] :
        ListAuthFactors(obfuscated_username)) {
+    if (!uss_labels.contains(label)) {
+      LOG(WARNING) << "Skipping auth factor which has no key in USS " << label;
+      continue;
+    }
     CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
         LoadAuthFactor(obfuscated_username, auth_factor_type, label);
     if (!auth_factor.ok()) {

@@ -10,9 +10,9 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -31,6 +31,7 @@
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
@@ -3152,12 +3153,30 @@ void UserDataAuth::ListAuthFactors(
 
   std::vector<AuthFactorType> supported_auth_factors;
   if (is_persistent_user) {
+    // Load the USS so that we can use it to check the validity of any auth
+    // factors being loaded.
+    UserSecretStash::Container uss_container;
+    std::set<std::string_view> uss_labels;
+    if (auto uss_blob =
+            user_secret_stash_storage_->LoadPersisted(obfuscated_username);
+        uss_blob.ok()) {
+      if (auto loaded_container =
+              UserSecretStash::Container::FromBlob(*uss_blob);
+          loaded_container.ok()) {
+        uss_container = std::move(*loaded_container);
+      }
+    }
+    for (const auto& [label, unused] : uss_container.wrapped_key_blocks) {
+      uss_labels.insert(label);
+    }
+
     // Prepare the response for configured AuthFactors (with status) with all of
     // the auth factors from the disk.
+
     // Load the AuthFactorMap.
     AuthFactorVaultKeysetConverter converter(keyset_management_);
     AuthFactorMap auth_factor_map = auth_factor_manager_->LoadAllAuthFactors(
-        obfuscated_username, converter);
+        obfuscated_username, uss_labels, converter);
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {

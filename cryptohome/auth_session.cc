@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,8 +31,6 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "base/functional/callback_forward.h"
-#include "base/functional/callback_helpers.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -354,9 +353,27 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   // If we have an existing persistent user, load all of their auth factors.
   AuthFactorMap auth_factor_map;
   if (persistent_user_exists) {
+    // Load the USS so that we can use it to check the validity of any auth
+    // factors being loaded.
+    UserSecretStash::Container uss_container;
+    std::set<std::string_view> uss_labels;
+    if (auto uss_blob = backing_apis.user_secret_stash_storage->LoadPersisted(
+            obfuscated_username);
+        uss_blob.ok()) {
+      if (auto loaded_container =
+              UserSecretStash::Container::FromBlob(*uss_blob);
+          loaded_container.ok()) {
+        uss_container = std::move(*loaded_container);
+      }
+    }
+    for (const auto& [label, unused] : uss_container.wrapped_key_blocks) {
+      uss_labels.insert(label);
+    }
+
+    // Load all of the auth factors.
     AuthFactorVaultKeysetConverter converter(backing_apis.keyset_management);
     auth_factor_map = backing_apis.auth_factor_manager->LoadAllAuthFactors(
-        obfuscated_username, converter);
+        obfuscated_username, uss_labels, converter);
 
     // If only uss factors exists, then we should remove all the backups.
     if (!auth_factor_map.HasFactorWithStorage(

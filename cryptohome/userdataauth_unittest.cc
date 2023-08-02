@@ -23,12 +23,14 @@
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/secure_blob.h>
 #include <chaps/token_manager_client_mock.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
 #include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libhwsec/backend/mock_backend.h>
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/factory/mock_factory.h>
@@ -88,6 +90,7 @@
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/username.h"
+#include "libhwsec-foundation/crypto/aes.h"
 
 using base::FilePath;
 using base::test::TestFuture;
@@ -106,6 +109,7 @@ using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::ReturnError;
@@ -2537,6 +2541,48 @@ class UserDataAuthExTest : public UserDataAuthTest {
     return mvk;
   }
 
+  // Create a USS with wrapped keys registered for all of the given labels. Note
+  // that the generated USS will not contain any "real" keys.
+  void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
+                         const std::vector<std::string>& labels) {
+    // Create a random USS.
+    auto uss_ptr =
+        UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+    if (!uss_ptr.ok()) {
+      ADD_FAILURE() << "Making a test USS failed at CreateRandom: "
+                    << uss_ptr.status();
+      return;
+    }
+    UserSecretStash& uss = **uss_ptr;
+    // Generate a main key and some wrap it for each label. Note that we just
+    // make up junk wrapping keys because we don't actually plan to decrypt the
+    // container.
+    SecureBlob main_key = UserSecretStash::CreateRandomMainKey();
+    for (const std::string& label : labels) {
+      SecureBlob wrapping_key(kAesGcm256KeySize, 0xC0);
+      CryptohomeStatus status = uss.AddWrappedMainKey(
+          main_key, label, wrapping_key, OverwriteExistingKeyBlock::kDisabled);
+      if (!status.ok()) {
+        ADD_FAILURE() << "Making a test USS failed adding label " << label
+                      << ": " << status;
+        return;
+      }
+    }
+    // Persist the USS we constructed.
+    auto container = uss.GetEncryptedContainer(main_key);
+    if (!container.ok()) {
+      ADD_FAILURE() << "Making a test USS failed at GetEncryptedContainer: "
+                    << container.status();
+      return;
+    }
+    if (auto status = userdataauth_->user_secret_stash_storage_->Persist(
+            *container, obfuscated_username);
+        !status.ok()) {
+      ADD_FAILURE() << "Making a test USS failed during Persist: " << status;
+      return;
+    }
+  }
+
  protected:
   void PrepareArguments() {
     list_keys_req_ = std::make_unique<user_data_auth::ListKeysRequest>();
@@ -3640,6 +3686,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   // ListAuthFactors() load the factors according to the USS experiment status.
   SetUserSecretStashExperimentForTesting(true);
@@ -3732,6 +3779,107 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   ResetUserSecretStashExperimentForTesting();
 }
 
+TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
+  const Username kUser("foo@example.com");
+  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
+  AuthFactorManager manager(&platform_);
+  userdataauth_->set_auth_factor_manager_for_testing(&manager);
+  SetUserSecretStashExperimentForTesting(false);
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+
+  // Set up standard list auth factor parameters, we'll be calling this a few
+  // times during the test.
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id(*kUser);
+  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_1;
+
+  // List all the auth factors, there should be none at the start.
+  userdataauth_->ListAuthFactors(
+      list_request,
+      list_reply_future_1
+          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
+  EXPECT_EQ(list_reply_future_1.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply_future_1.Get().configured_auth_factors_with_status(),
+              IsEmpty());
+  EXPECT_THAT(
+      list_reply_future_1.Get().supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
+
+  // Add uss auth factors, but with only one of them having both the auth factor
+  // and USS components of the fact. Only the complete one should work.
+  auto password_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPassword, "password-label",
+      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
+      AuthBlockState{
+          .state = TpmBoundToPcrAuthBlockState{
+              .scrypt_derived = false,
+              .salt = SecureBlob("fake salt"),
+              .tpm_key = SecureBlob("fake tpm key"),
+              .extended_tpm_key = SecureBlob("fake extended tpm key"),
+              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+          }});
+  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+              IsOk());
+  auto pin_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, "pin-label",
+      AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState{
+                         .le_label = 0xbaadf00d,
+                         .salt = SecureBlob("fake salt"),
+                         .chaps_iv = SecureBlob("fake chaps IV"),
+                         .fek_iv = SecureBlob("fake file encryption IV"),
+                         .reset_salt = SecureBlob("more fake salt"),
+                     }});
+  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label"});
+
+  // ListAuthFactors() should just list the single complete factor.
+  SetUserSecretStashExperimentForTesting(true);
+  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
+  userdataauth_->ListAuthFactors(
+      list_request,
+      list_reply_future_2
+          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
+  user_data_auth::ListAuthFactorsReply list_reply_2 =
+      list_reply_future_2.Take();
+  EXPECT_EQ(list_reply_2.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::sort(
+      list_reply_2.mutable_configured_auth_factors_with_status()
+          ->pointer_begin(),
+      list_reply_2.mutable_configured_auth_factors_with_status()->pointer_end(),
+      [](const user_data_auth::AuthFactorWithStatus* lhs,
+         const user_data_auth::AuthFactorWithStatus* rhs) {
+        return lhs->auth_factor().label() < rhs->auth_factor().label();
+      });
+  ASSERT_EQ(list_reply_2.configured_auth_factors_with_status_size(), 1);
+  EXPECT_EQ(
+      list_reply_2.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
+  EXPECT_THAT(
+      list_reply_2.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
+}
+
 TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   // Setup.
   const Username kUser("foo@example.com");
@@ -3791,6 +3939,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
     return UINT32_MAX;
@@ -3917,6 +4066,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
     return 30;
@@ -4039,6 +4189,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
     return UINT32_MAX;
@@ -4175,6 +4326,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
     return 30;
@@ -4304,6 +4456,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  MakeUssWithLabels(kObfuscatedUser, {"pin-label"});
 
   // ListAuthFactors() load the factors according to the USS experiment status.
   SetUserSecretStashExperimentForTesting(true);

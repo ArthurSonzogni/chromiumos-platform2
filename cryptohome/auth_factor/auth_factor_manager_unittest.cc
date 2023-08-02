@@ -675,7 +675,8 @@ class LoadAllAuthFactorsTest : public ::testing::Test {
 TEST_F(LoadAllAuthFactorsTest, NoFactors) {
   InstallVaultKeysets({});
 
-  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
+  auto af_map =
+      manager_.LoadAllAuthFactors(kObfuscatedUsername, {}, converter_);
 
   EXPECT_THAT(af_map, IsEmpty());
 }
@@ -685,7 +686,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyVaultKeysets) {
   InstallVaultKeysets({{"primary", &CreatePasswordVaultKeyset},
                        {"secondary", &CreatePasswordVaultKeyset}});
 
-  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
+  auto af_map =
+      manager_.LoadAllAuthFactors(kObfuscatedUsername, {}, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -704,7 +706,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
                               {.metadata = auth_factor::PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
-  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(
+      kObfuscatedUsername, {"primary", "secondary"}, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -726,7 +729,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
                               {.metadata = auth_factor::PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
 
-  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
+  auto af_map = manager_.LoadAllAuthFactors(
+      kObfuscatedUsername, {"primary", "secondary"}, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -747,7 +751,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
                               {.metadata = auth_factor::PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
 
-  auto af_map = manager_.LoadAllAuthFactors(kObfuscatedUsername, converter_);
+  auto af_map =
+      manager_.LoadAllAuthFactors(kObfuscatedUsername, {"primary"}, converter_);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -755,6 +760,30 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
                                     AuthFactorStorageType::kUserSecretStash),
                   AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
                                     AuthFactorStorageType::kVaultKeyset)));
+}
+
+TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
+  auto uss = EnableUssExperiment();
+  InstallVaultKeysets({});
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
+                              {.metadata = auth_factor::PinMetadata()},
+                              {.state = PinWeaverAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "broken",
+                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+
+  auto af_map = manager_.LoadAllAuthFactors(
+      kObfuscatedUsername, {"primary", "secondary"}, converter_);
+
+  EXPECT_THAT(af_map,
+              UnorderedElementsAre(
+                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                    AuthFactorStorageType::kUserSecretStash),
+                  AuthFactorMapItem(AuthFactorType::kPin, "secondary",
+                                    AuthFactorStorageType::kUserSecretStash)));
 }
 
 }  // namespace

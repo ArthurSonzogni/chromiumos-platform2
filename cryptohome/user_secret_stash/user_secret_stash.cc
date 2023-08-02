@@ -234,107 +234,6 @@ GetKeyBlocksFromSerializableStructs(
   return key_blocks;
 }
 
-// Parses the USS container flatbuffer. On success, populates `ciphertext`,
-// `iv`, `tag`, `wrapped_key_blocks`, `created_on_os_version`; on failure,
-// returns false.
-CryptohomeStatus GetContainerFromFlatbuffer(
-    const brillo::Blob& flatbuffer,
-    brillo::Blob* ciphertext,
-    brillo::Blob* iv,
-    brillo::Blob* tag,
-    std::map<std::string, UserSecretStash::WrappedKeyBlock>* wrapped_key_blocks,
-    std::string* created_on_os_version) {
-  // This check is redundant to the flatbuffer parsing below, but we check it
-  // here in order to distinguish "empty file" from "corrupted file" in metrics
-  // and logs.
-  if (flatbuffer.empty()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSEmptySerializedInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDeleteVault, PossibleAction::kAuth,
-                        PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  std::optional<UserSecretStashContainer> deserialized =
-      UserSecretStashContainer::Deserialize(flatbuffer);
-  if (!deserialized.has_value()) {
-    LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  if (!deserialized.value().encryption_algorithm.has_value()) {
-    LOG(ERROR) << "UserSecretStashContainer has no algorithm set";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSNoAlgInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  if (deserialized.value().encryption_algorithm.value() !=
-      UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
-    LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
-               << static_cast<int>(deserialized->encryption_algorithm.value());
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  if (deserialized.value().ciphertext.empty()) {
-    LOG(ERROR) << "UserSecretStash has empty ciphertext";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSNoCiphertextInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  *ciphertext = deserialized.value().ciphertext;
-
-  if (deserialized.value().iv.empty()) {
-    LOG(ERROR) << "UserSecretStash has empty IV";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSNoIVInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  if (deserialized.value().iv.size() != kAesGcmIVSize) {
-    LOG(ERROR) << "UserSecretStash has IV of wrong length: "
-               << deserialized.value().iv.size()
-               << ", expected: " << kAesGcmIVSize;
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSIVWrongSizeInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  *iv = deserialized.value().iv;
-
-  if (deserialized.value().gcm_tag.empty()) {
-    LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSNoGCMTagInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  if (deserialized.value().gcm_tag.size() != kAesGcmTagSize) {
-    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
-               << deserialized.value().gcm_tag.size()
-               << ", expected: " << kAesGcmTagSize;
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSTagWrongSizeInGetContainerFromFB),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  *tag = deserialized.value().gcm_tag;
-
-  *wrapped_key_blocks = GetKeyBlocksFromSerializableStructs(
-      deserialized.value().wrapped_key_blocks);
-
-  *created_on_os_version = deserialized.value().created_on_os_version;
-
-  return OkStatus<CryptohomeError>();
-}
-
 CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
         wrapped_key_blocks,
@@ -445,6 +344,102 @@ std::optional<bool> SetUserSecretStashExperimentForTesting(
   return original;
 }
 
+CryptohomeStatusOr<UserSecretStash::Container>
+UserSecretStash::Container::FromBlob(const brillo::Blob& flatbuffer) {
+  Container container;
+
+  // This check is redundant to the flatbuffer parsing below, but we check it
+  // here in order to distinguish "empty file" from "corrupted file" in metrics
+  // and logs.
+  if (flatbuffer.empty()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSEmptySerializedInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDeleteVault, PossibleAction::kAuth,
+                        PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
+  std::optional<UserSecretStashContainer> deserialized =
+      UserSecretStashContainer::Deserialize(flatbuffer);
+  if (!deserialized.has_value()) {
+    LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
+  if (!deserialized->encryption_algorithm.has_value()) {
+    LOG(ERROR) << "UserSecretStashContainer has no algorithm set";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoAlgInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (deserialized->encryption_algorithm.value() !=
+      UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
+    LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
+               << static_cast<int>(deserialized->encryption_algorithm.value());
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
+  if (deserialized->ciphertext.empty()) {
+    LOG(ERROR) << "UserSecretStash has empty ciphertext";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoCiphertextInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  container.ciphertext = deserialized->ciphertext;
+
+  if (deserialized->iv.empty()) {
+    LOG(ERROR) << "UserSecretStash has empty IV";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoIVInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (deserialized->iv.size() != kAesGcmIVSize) {
+    LOG(ERROR) << "UserSecretStash has IV of wrong length: "
+               << deserialized->iv.size() << ", expected: " << kAesGcmIVSize;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSIVWrongSizeInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  container.iv = deserialized->iv;
+
+  if (deserialized->gcm_tag.empty()) {
+    LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSNoGCMTagInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (deserialized->gcm_tag.size() != kAesGcmTagSize) {
+    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
+               << deserialized->gcm_tag.size()
+               << ", expected: " << kAesGcmTagSize;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSTagWrongSizeInGetContainerFromFB),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  container.gcm_tag = deserialized->gcm_tag;
+
+  container.wrapped_key_blocks =
+      GetKeyBlocksFromSerializableStructs(deserialized->wrapped_key_blocks);
+
+  container.created_on_os_version = deserialized->created_on_os_version;
+
+  container.user_metadata = deserialized->user_metadata;
+
+  return std::move(container);
+}
+
 // static
 CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
 UserSecretStash::CreateRandom(const FileSystemKeyset& file_system_keyset) {
@@ -470,31 +465,19 @@ UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  brillo::Blob ciphertext, iv, gcm_tag;
-  std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
-  std::string created_on_os_version;
-  CryptohomeStatus status =
-      GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                 &wrapped_key_blocks, &created_on_os_version);
-  if (!status.ok()) {
+  CryptohomeStatusOr<Container> container = Container::FromBlob(flatbuffer);
+  if (!container.ok()) {
     // Note: the error is already logged.
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSGetFromFBFailedInFromEncContainer))
-        .Wrap(std::move(status));
-  }
-
-  CryptohomeStatusOr<UserMetadata> user_metadata = GetUserMetadata(flatbuffer);
-  if (!user_metadata.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUSSGetUserMetadataFailedInFromEncContainer))
-        .Wrap(std::move(user_metadata).err_status());
+        .Wrap(std::move(container).err_status());
   }
 
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> result =
-      FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                           created_on_os_version, user_metadata.value(),
-                           main_key);
+      FromEncryptedPayload(container->ciphertext, container->iv,
+                           container->gcm_tag, container->wrapped_key_blocks,
+                           container->created_on_os_version,
+                           container->user_metadata, main_key);
   if (!result.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSFromPayloadFailedInFromEncContainer))
@@ -597,30 +580,18 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key,
     brillo::SecureBlob* main_key) {
-  brillo::Blob ciphertext, iv, gcm_tag;
-  std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
-  std::string created_on_os_version;
-  CryptohomeStatus status =
-      GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                 &wrapped_key_blocks, &created_on_os_version);
-  if (!status.ok()) {
+  CryptohomeStatusOr<Container> container = Container::FromBlob(flatbuffer);
+  if (!container.ok()) {
     // Note: the error is already logged.
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUSSGetFromFBFailedInFromEncContainerWithWK))
-        .Wrap(std::move(status));
-  }
-
-  CryptohomeStatusOr<UserMetadata> user_metadata = GetUserMetadata(flatbuffer);
-  if (!user_metadata.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey))
-        .Wrap(std::move(user_metadata).err_status());
+        .Wrap(std::move(container).err_status());
   }
 
   CryptohomeStatusOr<brillo::SecureBlob> main_key_optional =
-      UnwrapMainKeyFromBlocks(wrapped_key_blocks, wrapping_id, wrapping_key);
+      UnwrapMainKeyFromBlocks(container->wrapped_key_blocks, wrapping_id,
+                              wrapping_key);
   if (!main_key_optional.ok()) {
     // Note: the error is already logged.
     return MakeStatus<CryptohomeError>(
@@ -630,9 +601,10 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
   }
 
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash =
-      FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                           created_on_os_version, user_metadata.value(),
-                           main_key_optional.value());
+      FromEncryptedPayload(container->ciphertext, container->iv,
+                           container->gcm_tag, container->wrapped_key_blocks,
+                           container->created_on_os_version,
+                           container->user_metadata, main_key_optional.value());
   if (!stash.ok()) {
     // Note: the error is already logged.
     return MakeStatus<CryptohomeError>(

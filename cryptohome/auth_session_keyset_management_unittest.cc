@@ -333,8 +333,14 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   AuthSession StartAuthSessionWithMockAuthBlockUtility() {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
+    std::map<std::string, AuthFactorType> af_types =
+        auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
+    std::set<std::string_view> labels;
+    for (const auto& [label, unused] : af_types) {
+      labels.insert(label);
+    }
     AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, converter);
+        users_[0].obfuscated, labels, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -350,8 +356,14 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   AuthSession StartAuthSession() {
     AuthFactorVaultKeysetConverter converter{&keyset_management_};
 
+    std::map<std::string, AuthFactorType> af_types =
+        auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
+    std::set<std::string_view> labels;
+    for (const auto& [label, unused] : af_types) {
+      labels.insert(label);
+    }
     AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, converter);
+        users_[0].obfuscated, labels, converter);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,

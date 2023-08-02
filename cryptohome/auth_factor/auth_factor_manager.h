@@ -7,7 +7,9 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <string_view>
 
 #include <libhwsec-foundation/status/status_chain_or.h>
 
@@ -50,10 +52,13 @@ class AuthFactorManager final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);
 
-  // Loads all configured auth factors for the given user from the disk.
-  // Malformed factors are logged and skipped.
+  // Loads all configured auth factors for the given user from the disk. For
+  // each USS-based factor the given validity-check function will be called and
+  // the factor will only be loaded if the check return true. If any factors are
+  // malformed they will be logged and skipped.
   AuthFactorMap LoadAllAuthFactors(
       const ObfuscatedUsername& obfuscated_username,
+      const std::set<std::string_view>& uss_labels,
       AuthFactorVaultKeysetConverter& converter);
 
   // Loads the list of configured auth factors from the user's data vault.
