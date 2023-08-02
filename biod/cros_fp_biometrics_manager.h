@@ -61,8 +61,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   bool ResetSensor() override;
 
-  bool ResetEntropy(bool factory_init) override;
-
   // Returns RecordMetadata for given record.
   virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
       const std::string& record_id) const;

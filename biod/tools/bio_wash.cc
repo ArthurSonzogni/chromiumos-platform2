@@ -17,21 +17,16 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <cros_config/cros_config.h>
-#include <dbus/bus.h>
 
 #include "biod/biod_config.h"
-#include "biod/biod_storage.h"
 #include "biod/biod_version.h"
-#include "biod/cros_fp_biometrics_manager.h"
 #include "biod/cros_fp_device.h"
-#include "biod/power_button_filter.h"
 
 namespace {
 
 static constexpr base::TimeDelta kTimeout = base::Seconds(30);
 
 constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
-constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
 
 bool IsFingerprintSupported() {
   brillo::CrosConfig cros_config;
@@ -41,45 +36,16 @@ bool IsFingerprintSupported() {
 int DoBioWash(const bool factory_init = false) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  // It's o.k to not connect to the bus as we don't really care about D-Bus
-  // events for BioWash.
-  auto bus = base::MakeRefCounted<dbus::Bus>(options);
   auto biod_metrics = std::make_unique<biod::BiodMetrics>();
-  auto biod_storage = std::make_unique<biod::BiodStorage>(
-      base::FilePath(kBiodDaemonStorePath), biod::kCrosFpBiometricsManagerName);
-  // Add all the possible BiometricsManagers available.
-  auto cros_fp_bio = std::make_unique<biod::CrosFpBiometricsManager>(
-      biod::PowerButtonFilter::Create(bus),
-      biod::CrosFpDevice::Create(biod_metrics.get(),
-                                 std::make_unique<ec::EcCommandFactory>()),
-      biod_metrics.get(),
-      std::make_unique<biod::CrosFpRecordManager>(std::move(biod_storage)));
-
-  // Declare vector of biometrics managers here to ensure correct destruction
-  // order (CrosFpBiometricsManager is moved to a vector. It's destructed when
-  // vector is destructed).
-  std::vector<std::unique_ptr<biod::BiometricsManager>> managers;
-  if (cros_fp_bio) {
-    managers.emplace_back(std::move(cros_fp_bio));
-  }
-
-  if (managers.empty()) {
-    LOG(ERROR) << "No biometrics managers instantiated correctly.";
+  auto cros_fp_device = biod::CrosFpDevice::Create(
+      biod_metrics.get(), std::make_unique<ec::EcCommandFactory>());
+  bool success = cros_fp_device->InitEntropy(!factory_init);
+  if (!success) {
+    LOG(INFO) << "Entropy source reset failed.";
     return -1;
   }
-
-  int ret = 0;
-  for (const auto& biometrics_manager : managers) {
-    if (!biometrics_manager->ResetEntropy(factory_init)) {
-      LOG(ERROR) << "Failed to reset entropy for sensor type: "
-                 << biometrics_manager->GetType();
-      ret = -1;
-    }
-  }
-
-  return ret;
+  LOG(INFO) << "Entropy source has been successfully reset.";
+  return 0;
 }
 
 }  // namespace

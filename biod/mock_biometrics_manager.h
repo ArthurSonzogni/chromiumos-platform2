@@ -53,7 +53,6 @@ class MockBiometricsManager : public BiometricsManager {
   MOCK_METHOD(bool, SendStatsOnLogin, (), (override));
   MOCK_METHOD(void, SetDiskAccesses, (bool allow), (override));
   MOCK_METHOD(bool, ResetSensor, (), (override));
-  MOCK_METHOD(bool, ResetEntropy, (bool factory_init), (override));
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthSession, (), (override));
 

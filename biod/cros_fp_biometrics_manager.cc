@@ -248,16 +248,6 @@ bool CrosFpBiometricsManager::ResetSensor() {
   return true;
 }
 
-bool CrosFpBiometricsManager::ResetEntropy(bool factory_init) {
-  bool success = cros_dev_->InitEntropy(!factory_init);
-  if (!success) {
-    LOG(INFO) << "Entropy source reset failed.";
-    return false;
-  }
-  LOG(INFO) << "Entropy source has been successfully reset.";
-  return true;
-}
-
 void CrosFpBiometricsManager::EndEnrollSession() {
   LOG(INFO) << __func__;
   KillMcuSession();

@@ -141,12 +141,6 @@ class BiometricsManager {
   // software state associated with that sensor).
   virtual bool ResetSensor() { return true; }
 
-  // Perform the reset of any internal key/secret which is used for local
-  // encryption of data handled by the biometrics manager.
-  // If |factory_init| is true, we do not actually reset the secret, only
-  // initialise one if hadn't been initialised before.
-  virtual bool ResetEntropy(bool factory_init) = 0;
-
  protected:
   virtual void EndEnrollSession() = 0;
   virtual void EndAuthSession() = 0;
