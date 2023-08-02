@@ -37,6 +37,7 @@ getresgid32: 1
 getresuid32: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == TCGETS
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
