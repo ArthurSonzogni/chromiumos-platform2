@@ -598,9 +598,9 @@ bool GuestIPv6Service::StartRAServer(const std::string& ifname,
                                      const std::vector<std::string>& rdnss,
                                      const std::optional<int>& mtu) {
   base::FilePath run_path(kRadvdRunDir);
-  if (!base::CreateDirectory(run_path)) {
-    PLOG(ERROR) << "Configuration directory " << kRadvdRunDir
-                << " is not available.";
+  if (!base::DirectoryExists(run_path)) {
+    LOG(ERROR) << "Configuration directory " << kRadvdRunDir
+               << " is not available.";
     return false;
   }
   return CreateConfigFile(ifname, prefix, rdnss, mtu) && StartRadvd(ifname);
