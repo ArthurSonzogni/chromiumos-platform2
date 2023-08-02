@@ -72,3 +72,4 @@ mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 socket: arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0 || \
         arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
 pselect6: 1
+getrandom: 1

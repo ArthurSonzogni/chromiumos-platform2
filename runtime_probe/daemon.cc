@@ -10,9 +10,12 @@
 #include <base/functional/bind.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/values.h>
 #include <dbus/runtime_probe/dbus-constants.h>
 #include <google/protobuf/util/json_util.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "runtime_probe/avl_probe_config_loader.h"
 #include "runtime_probe/daemon.h"
@@ -36,6 +39,13 @@ Daemon::Daemon()
 int Daemon::OnInit() {
   VLOG(1) << "Starting D-Bus service";
   const auto exit_code = brillo::DBusServiceDaemon::OnInit();
+
+  // Required by mojo
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
   return exit_code;
 }
 

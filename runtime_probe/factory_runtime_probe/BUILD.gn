@@ -14,7 +14,9 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libmojo",
     "libshill-client",
+    "mojo_service_manager",
     "protobuf",
     "system_api",
   ]

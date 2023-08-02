@@ -13,8 +13,11 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "runtime_probe/avl_probe_config_loader.h"
 #include "runtime_probe/daemon.h"
@@ -91,7 +94,12 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   base::AtExitManager at_exit_manager;
   runtime_probe::ContextRuntimeImpl context;
 
+  // Required by mojo
   base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport ipc_support(
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   std::unique_ptr<runtime_probe::ProbeConfigLoader> config_loader;
   if (config_file_path.empty()) {

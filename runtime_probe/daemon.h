@@ -11,6 +11,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 // Include the protobuf before generated D-Bus adaptors to ensure the protobuf
 // messages are defined before adaptors.
@@ -56,6 +57,8 @@ class Daemon : public brillo::DBusServiceDaemon,
                      base::Value::Dict probe_result);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 };
 
 }  // namespace runtime_probe

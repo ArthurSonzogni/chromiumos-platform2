@@ -53,6 +53,7 @@ arch_prctl: 1
 rt_sigaction: 1
 set_tid_address: 1
 prlimit64: 1
+getrandom: 1
 
 # The following are syscalls enabled by -L in minijail.
 # Document those syscalls here because runtime_probe daemon doesn't use -L by

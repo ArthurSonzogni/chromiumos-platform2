@@ -12,8 +12,11 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "runtime_probe/probe_config.h"
 #include "runtime_probe/system/context_factory_impl.h"
@@ -32,7 +35,12 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
   runtime_probe::ContextFactoryImpl context;
 
+  // Required by mojo
   base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport ipc_support(
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   const auto* command_line = base::CommandLine::ForCurrentProcess();
   const auto args = command_line->GetArgs();
