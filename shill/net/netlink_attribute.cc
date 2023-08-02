@@ -7,11 +7,13 @@
 #include <linux/genetlink.h>
 
 #include <cctype>
+#include <vector>
 
 #include <base/check.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/control_netlink_attribute.h"
@@ -327,21 +329,24 @@ std::string NetlinkAttribute::HeaderToPrint(int indent) const {
                             ((has_a_value()) ? "" : "UNINITIALIZED "));
 }
 
-ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
-                                           size_t num_bytes) const {
-  ByteString result;
-  if (has_a_value_) {
-    nlattr header;
-    header.nla_type = id();
-    header.nla_len = NLA_HDRLEN + num_bytes;
-    result =
-        ByteString(reinterpret_cast<unsigned char*>(&header), sizeof(header));
-    result.Resize(NLA_HDRLEN);  // Add padding after the header.
-    if (data && (num_bytes != 0)) {
-      result.Append(ByteString(data, num_bytes));
-    }
-    result.Resize(NLA_ALIGN(result.GetLength()));  // Add padding.
+std::vector<uint8_t> NetlinkAttribute::EncodeGeneric(
+    base::span<const unsigned char> data) const {
+  if (!has_a_value_) {
+    return {};
   }
+
+  nlattr header;
+  header.nla_type = id();
+  header.nla_len = NLA_HDRLEN + data.size();
+
+  std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
+  result.resize(NLA_HDRLEN, 0);  // Add padding after the header.
+
+  if (data.size() != 0) {
+    result.insert(result.end(), std::begin(data), std::end(data));
+  }
+  result.resize(NLA_ALIGN(result.size()), 0);  // Add padding.
+
   return result;
 }
 
@@ -393,9 +398,8 @@ bool NetlinkU8Attribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkU8Attribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
+std::vector<uint8_t> NetlinkU8Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(net_base::byte_utils::ToBytes(value_));
 }
 
 // NetlinkU16Attribute
@@ -447,9 +451,8 @@ bool NetlinkU16Attribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkU16Attribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
+std::vector<uint8_t> NetlinkU16Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(net_base::byte_utils::ToBytes(value_));
 }
 
 // NetlinkU32Attribute::
@@ -501,9 +504,8 @@ bool NetlinkU32Attribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkU32Attribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
+std::vector<uint8_t> NetlinkU32Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(net_base::byte_utils::ToBytes(value_));
 }
 
 // NetlinkU64Attribute
@@ -554,9 +556,8 @@ bool NetlinkU64Attribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkU64Attribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
+std::vector<uint8_t> NetlinkU64Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(net_base::byte_utils::ToBytes(value_));
 }
 
 // NetlinkFlagAttribute
@@ -597,11 +598,11 @@ bool NetlinkFlagAttribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkFlagAttribute::Encode() const {
+std::vector<uint8_t> NetlinkFlagAttribute::Encode() const {
   if (has_a_value_ && value_) {
-    return NetlinkAttribute::EncodeGeneric(nullptr, 0);
+    return NetlinkAttribute::EncodeGeneric({});
   }
-  return ByteString();  // Encoding of nothing implies 'false'.
+  return {};  // Encoding of nothing implies 'false'.
 }
 
 // NetlinkStringAttribute
@@ -666,10 +667,9 @@ bool NetlinkStringAttribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkStringAttribute::Encode() const {
+std::vector<uint8_t> NetlinkStringAttribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char*>(value_.c_str()),
-      value_.size() + 1);
+      net_base::byte_utils::StringToCStringBytes(value_));
 }
 
 // SSID attribute.
@@ -709,24 +709,26 @@ NetlinkNestedAttribute::NetlinkNestedAttribute(int id, const char* id_string)
     : NetlinkAttribute(id, id_string, kType, kMyTypeString),
       value_(new AttributeList) {}
 
-ByteString NetlinkNestedAttribute::Encode() const {
+std::vector<uint8_t> NetlinkNestedAttribute::Encode() const {
   // Encode attribute header.
   nlattr header;
   header.nla_type = id();
   header.nla_len = 0;  // Filled in at the end.
-  ByteString result(reinterpret_cast<unsigned char*>(&header), sizeof(header));
-  result.Resize(NLA_HDRLEN);  // Add padding after the header.
+
+  std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
+  result.resize(NLA_HDRLEN, 0);  // Add padding after the header.
 
   // Encode all nested attributes.
   for (const auto& id_attribute_pair : value_->attributes_) {
     // Each attribute appends appropriate padding so it's not necessary to
     // re-add padding.
-    result.Append(id_attribute_pair.second->Encode());
+    const auto bytes = id_attribute_pair.second->Encode();
+    result.insert(result.end(), bytes.begin(), bytes.end());
   }
 
   // Go back and fill-in the size.
-  nlattr* new_header = reinterpret_cast<nlattr*>(result.GetData());
-  new_header->nla_len = result.GetLength();
+  nlattr* new_header = reinterpret_cast<nlattr*>(result.data());
+  new_header->nla_len = result.size();
 
   return result;
 }
@@ -981,9 +983,9 @@ bool NetlinkRawAttribute::ToString(std::string* output) const {
   return true;
 }
 
-ByteString NetlinkRawAttribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(data_.GetConstData(),
-                                         data_.GetLength());
+std::vector<uint8_t> NetlinkRawAttribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
+      {data_.GetConstData(), data_.GetLength()});
 }
 
 NetlinkAttributeGeneric::NetlinkAttributeGeneric(int id)

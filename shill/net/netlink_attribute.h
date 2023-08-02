@@ -9,7 +9,9 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 
 #include "shill/net/attribute_list.h"
@@ -105,7 +107,7 @@ class SHILL_EXPORT NetlinkAttribute {
   // Encodes the attribute suitably for the attributes in the payload portion
   // of a netlink message suitable for Sockets::Send.  Return value is empty on
   // failure.
-  virtual ByteString Encode() const = 0;
+  virtual std::vector<uint8_t> Encode() const = 0;
 
   bool has_a_value() const { return has_a_value_; }
 
@@ -116,7 +118,8 @@ class SHILL_EXPORT NetlinkAttribute {
   // Encodes the attribute suitably for the attributes in the payload portion
   // of a netlink message suitable for Sockets::Send.  Return value is empty on
   // failure.
-  ByteString EncodeGeneric(const unsigned char* data, size_t num_bytes) const;
+  std::vector<uint8_t> EncodeGeneric(
+      base::span<const unsigned char> data) const;
 
   // Attribute data (NOT including the nlattr header) corresponding to the
   // value in any of the child classes.
@@ -145,7 +148,7 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   bool GetU8Value(uint8_t* value) const override;
   bool SetU8Value(uint8_t new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  private:
   uint8_t value_;
@@ -164,7 +167,7 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   bool GetU16Value(uint16_t* value) const override;
   bool SetU16Value(uint16_t new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  private:
   uint16_t value_;
@@ -184,7 +187,7 @@ class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   bool GetU32Value(uint32_t* value) const override;
   bool SetU32Value(uint32_t new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  private:
   uint32_t value_;
@@ -203,7 +206,7 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   bool GetU64Value(uint64_t* value) const override;
   bool SetU64Value(uint64_t new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  private:
   uint64_t value_;
@@ -222,7 +225,7 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   bool GetFlagValue(bool* value) const override;
   bool SetFlagValue(bool new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  private:
   bool value_;
@@ -242,7 +245,7 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
   bool GetStringValue(std::string* value) const override;
   bool SetStringValue(const std::string& new_value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
   std::string value() const { return value_; }
   void set_value(const std::string& value) { value_ = value; }
 
@@ -277,7 +280,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   bool SetNestedHasAValue() override;
   void Print(int log_level, int indent) const override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 
  protected:
   // Describes a single nested attribute.  Provides the expected values and
@@ -379,7 +382,7 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   // Should set the value of the data (not the attribute header).
   bool SetRawValue(const ByteString value) override;
   bool ToString(std::string* value) const override;
-  ByteString Encode() const override;
+  std::vector<uint8_t> Encode() const override;
 };
 
 class NetlinkAttributeGeneric : public NetlinkRawAttribute {

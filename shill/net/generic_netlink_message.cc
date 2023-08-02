@@ -49,7 +49,7 @@ ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number) {
 
   // Build and append attributes (padding is included by
   // AttributeList::Encode).
-  ByteString attribute_string = attributes_->Encode();
+  ByteString attribute_string(attributes_->Encode());
 
   // Need to re-calculate |header| since |Append|, above, moves the data.
   nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.GetData());

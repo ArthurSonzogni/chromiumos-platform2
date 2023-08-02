@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
@@ -78,7 +79,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no
   // attributes exist).
-  ByteString Encode() const;
+  std::vector<uint8_t> Encode() const;
 
   // Create, get, and set attributes of the given types.  Attributes are
   // accessed via an integer |id|.  |id_string| is a string used to describe

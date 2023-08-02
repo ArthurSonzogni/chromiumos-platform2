@@ -4,14 +4,14 @@
 
 #include "shill/net/attribute_list.h"
 
-#include <ctype.h>
 #include <linux/nl80211.h>
 
-#include <iomanip>
+#include <vector>
 
 #include <base/containers/contains.h>
 #include <base/logging.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {
@@ -120,10 +120,11 @@ bool AttributeList::Decode(const ByteString& payload,
                           base::Unretained(this), factory));
 }
 
-ByteString AttributeList::Encode() const {
-  ByteString result;
+std::vector<uint8_t> AttributeList::Encode() const {
+  std::vector<uint8_t> result;
   for (const auto& id_attribute_pair : attributes_) {
-    result.Append(id_attribute_pair.second->Encode());
+    const auto bytes = id_attribute_pair.second->Encode();
+    result.insert(result.end(), bytes.begin(), bytes.end());
   }
   return result;
 }
