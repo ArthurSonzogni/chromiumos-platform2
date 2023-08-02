@@ -24,6 +24,8 @@
 
 #include <absl/strings/str_split.h>
 #include <base/base64.h>
+#include <base/containers/cxx20_erase.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -674,22 +676,35 @@ std::string SharedDataParam::to_string() const {
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
 
+  struct CacheParameters {
+    std::string_view cache;
+    std::string_view timeout;
+    std::string_view writeback;
+  };
+
+  static constexpr auto params_map =
+      base::MakeFixedFlatMap<SharedDataParam::Cache, CacheParameters>(
+          base::sorted_unique,
+          {{SharedDataParam::Cache::kAuto, {.cache = "auto", "1", "false"}},
+           {SharedDataParam::Cache::kAlways,
+            {.cache = "always", "3600", "true"}},
+           {SharedDataParam::Cache::kNever, {.cache = "never", "1", "false"}}});
+
+  CacheParameters params = params_map.at(enable_caches);
+
   std::string result = base::StrCat({
-      data_dir.value(), ":", tag, ":type=fs",  //
-      ":cache=",
-      (enable_caches == SharedDataParam::Cache::kAlways)  ? "always"
-      : (enable_caches == SharedDataParam::Cache::kNever) ? "never"
-                                                          : "auto",
-      ":uidmap=", uid_map,  //
-      ":gidmap=", gid_map,  //
-      ":timeout=",
-      (enable_caches == SharedDataParam::Cache::kAlways) ? "3600" : "1",  //
-      ":rewrite-security-xattrs=",
+      data_dir.value(),                              //
+      ":", tag,                                      //
+      ":type=fs",                                    //
+      ":cache=", params.cache,                       //
+      ":uidmap=", uid_map,                           //
+      ":gidmap=", gid_map,                           //
+      ":timeout=", params.timeout,                   //
+      ":rewrite-security-xattrs=",                   //
       rewrite_security_xattrs ? "true" : "false",    //
       ascii_casefold ? ":ascii_casefold=true" : "",  //
-      ":writeback=",
-      (enable_caches == SharedDataParam::Cache::kAlways) ? "true" : "false",  //
-      posix_acl ? "" : ":posix_acl=false"                                     //
+      ":writeback=", params.writeback,               //
+      posix_acl ? "" : ":posix_acl=false",           //
   });
 
   if (!privileged_quota_uids.empty()) {
