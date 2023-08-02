@@ -29,14 +29,12 @@ class NetworkHealthAdapterImpl final
   ~NetworkHealthAdapterImpl() override;
 
   // NetworkHealthAdapterInterface overrides:
-  void GetNetworkHealthState(FetchNetworkStateCallback callback) override;
   void SetServiceRemote(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) override;
   void AddObserver(mojo::PendingRemote<
                    chromeos::network_health::mojom::NetworkEventsObserver>
                        observer) override;
-  bool ServiceRemoteBound() override;
 
  private:
   // network_health::mojom::NetworkEventsObserver overrides:

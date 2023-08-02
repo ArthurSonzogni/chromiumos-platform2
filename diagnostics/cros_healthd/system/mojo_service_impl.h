@@ -66,6 +66,10 @@ class MojoServiceImpl : public MojoService {
   mojo::Remote<cros::mojom::SensorService>& sensor_service() {
     return sensor_service_;
   }
+  mojo::Remote<chromeos::network_health::mojom::NetworkHealthService>&
+  network_health_service() {
+    return network_health_service_;
+  }
 
  private:
   // Requests the service from service manager. This will also setup the
@@ -99,7 +103,7 @@ class MojoServiceImpl : public MojoService {
   mojo::Remote<ash::cros_healthd::internal::mojom::ChromiumDataCollector>
       chromium_data_collector_;
   mojo::Remote<chromeos::network_health::mojom::NetworkHealthService>
-      network_health_;
+      network_health_service_;
   mojo::Remote<chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
       network_diagnostics_routines_;
   mojo::Remote<cros::mojom::SensorService> sensor_service_;

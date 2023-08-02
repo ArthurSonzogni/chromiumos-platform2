@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "diagnostics/cros_healthd/fake/fake_chromium_data_collector.h"
+#include "diagnostics/cros_healthd/fake/fake_network_health_service.h"
 #include "diagnostics/cros_healthd/fake/fake_sensor_service.h"
 #include "diagnostics/cros_healthd/fake/fake_service_manager.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
@@ -34,14 +35,21 @@ class FakeMojoService : public MojoServiceImpl {
     return fake_chromium_data_collector_;
   }
 
-  // Gets fake_chromium_data_collector.
   FakeSensorService& fake_sensor_service() { return fake_sensor_service_; }
+
+  FakeNetworkHealthService& fake_network_health_service() {
+    return fake_network_health_service_;
+  }
+
+  // Reset network health service to an unbound state.
+  void ResetNetworkHealthService();
 
  private:
   // Fake implementations.
   FakeServiceManager fake_service_manager_;
   FakeChromiumDataCollector fake_chromium_data_collector_;
   FakeSensorService fake_sensor_service_;
+  FakeNetworkHealthService fake_network_health_service_;
 };
 
 }  // namespace diagnostics

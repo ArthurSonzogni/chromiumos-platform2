@@ -21,6 +21,13 @@ void FakeMojoService::InitializeFakeMojoService() {
 
   sensor_service().Bind(
       fake_sensor_service_.receiver().BindNewPipeAndPassRemote());
+
+  network_health_service().Bind(
+      fake_network_health_service_.receiver().BindNewPipeAndPassRemote());
+}
+
+void FakeMojoService::ResetNetworkHealthService() {
+  network_health_service().reset();
 }
 
 }  // namespace diagnostics

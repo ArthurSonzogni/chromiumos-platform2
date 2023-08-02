@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include <base/functional/callback.h>
@@ -149,30 +148,6 @@ class NetworkHealthAdapterImplTest : public testing::Test {
   std::unique_ptr<NetworkHealthAdapterImpl> network_health_adapter_;
 };
 
-// Test that the NetworkHealthAdapterImpl can set the NetworkHealthService
-// remote and request the NetworkHealthState.
-TEST_F(NetworkHealthAdapterImplTest, RequestNetworkHealthState) {
-  MockNetworkHealthService service;
-  network_health_adapter()->SetServiceRemote(service.pending_remote());
-
-  base::RunLoop run_loop;
-  auto canned_response = network_health_ipc::NetworkHealthState::New();
-  EXPECT_CALL(service, GetHealthSnapshot(testing::_))
-      .WillOnce([&](network_health_ipc::NetworkHealthService::
-                        GetHealthSnapshotCallback callback) {
-        std::move(callback).Run(canned_response.Clone());
-      });
-
-  network_health_adapter()->GetNetworkHealthState(base::BindLambdaForTesting(
-      [&](std::optional<network_health_ipc::NetworkHealthStatePtr> response) {
-        ASSERT_TRUE(response.has_value());
-        EXPECT_EQ(canned_response, response);
-        run_loop.Quit();
-      }));
-
-  run_loop.Run();
-}
-
 // Test that NetworkHealthAdapterImpl can set the NetworkHealthService remote
 // and adds itself as an observer of the NetworkEventsObserver interface.
 TEST_F(NetworkHealthAdapterImplTest, AddNetworkEventsObserver) {
@@ -241,27 +216,6 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveSignalStrengthChangeEvent) {
       kFakeGuid, network_health_ipc::UInt32Value::New(network_signal_strength));
 
   run_loop.Run();
-}
-
-// Test a std::nullopt is returned if no remote is bound;
-TEST_F(NetworkHealthAdapterImplTest, NoRemote) {
-  base::RunLoop run_loop;
-  network_health_adapter()->GetNetworkHealthState(base::BindLambdaForTesting(
-      [&](std::optional<network_health_ipc::NetworkHealthStatePtr> response) {
-        EXPECT_FALSE(response.has_value());
-        run_loop.Quit();
-      }));
-
-  run_loop.Run();
-}
-
-// Test that the correct status of the bound remote is returned on request.
-TEST_F(NetworkHealthAdapterImplTest, RemoteBoundCheck) {
-  EXPECT_FALSE(network_health_adapter()->ServiceRemoteBound());
-
-  MockNetworkHealthService service;
-  network_health_adapter()->SetServiceRemote(service.pending_remote());
-  EXPECT_TRUE(network_health_adapter()->ServiceRemoteBound());
 }
 
 }  // namespace

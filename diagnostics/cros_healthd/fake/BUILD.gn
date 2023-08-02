@@ -16,10 +16,14 @@ pkg_config("libfake_cros_healthd_pkg_deps") {
 
 source_set("libfake_cros_healthd") {
   configs += [ ":libfake_cros_healthd_pkg_deps" ]
-  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+  deps = [
+    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
   sources = [
     "fake_chromium_data_collector.cc",
     "fake_diagnostics_service.cc",
+    "fake_network_health_service.cc",
     "fake_probe_service.cc",
     "fake_sensor_device.cc",
     "fake_sensor_service.cc",

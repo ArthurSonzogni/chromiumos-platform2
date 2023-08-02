@@ -60,7 +60,7 @@ std::unique_ptr<MojoServiceImpl> MojoServiceImpl::Create(
       chromeos::mojo_services::kChromiumCrosHealthdDataCollector,
       impl->chromium_data_collector_, kFirstConnectDelay);
   impl->RequestService(chromeos::mojo_services::kChromiumNetworkHealth,
-                       impl->network_health_, kFirstConnectDelay);
+                       impl->network_health_service_, kFirstConnectDelay);
   impl->RequestService(
       chromeos::mojo_services::kChromiumNetworkDiagnosticsRoutines,
       impl->network_diagnostics_routines_, kFirstConnectDelay);
@@ -83,8 +83,10 @@ MojoServiceImpl::GetChromiumDataCollector() {
 
 chromeos::network_health::mojom::NetworkHealthService*
 MojoServiceImpl::GetNetworkHealth() {
-  DCHECK(network_health_.is_bound());
-  return network_health_.get();
+  if (network_health_service_.is_bound()) {
+    return network_health_service_.get();
+  }
+  return nullptr;
 }
 
 chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*

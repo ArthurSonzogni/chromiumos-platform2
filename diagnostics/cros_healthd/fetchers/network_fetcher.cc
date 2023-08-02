@@ -4,10 +4,8 @@
 
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 
-#include <optional>
 #include <utility>
 
-#include <base/check.h>
 #include <base/functional/callback.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
@@ -23,26 +21,28 @@ namespace cros_healthd_ipc = ::ash::cros_healthd::mojom;
 namespace network_health_ipc = ::chromeos::network_health::mojom;
 
 // Forwards the response from Chrome's NetworkHealthService to the caller.
-void HandleNetworkInfoResponse(
+void HandleNetworkHealthStateResponse(
     base::OnceCallback<void(cros_healthd_ipc::NetworkResultPtr)> callback,
-    std::optional<network_health_ipc::NetworkHealthStatePtr> result) {
-  if (result == std::nullopt) {
-    std::move(callback).Run(cros_healthd_ipc::NetworkResult::NewError(
-        CreateAndLogProbeError(cros_healthd_ipc::ErrorType::kServiceUnavailable,
-                               "Network Health Service unavailable")));
-    return;
-  }
-
-  auto info = cros_healthd_ipc::NetworkResult::NewNetworkHealth(
-      std::move(result.value()));
+    network_health_ipc::NetworkHealthStatePtr result) {
+  auto info =
+      cros_healthd_ipc::NetworkResult::NewNetworkHealth(std::move(result));
   std::move(callback).Run(std::move(info));
 }
 
 }  // namespace
 
 void FetchNetworkInfo(Context* context, FetchNetworkInfoCallback callback) {
-  context->network_health_adapter()->GetNetworkHealthState(
-      base::BindOnce(&HandleNetworkInfoResponse, std::move(callback)));
+  auto* network_health = context->mojo_service()->GetNetworkHealth();
+
+  if (!network_health) {
+    std::move(callback).Run(cros_healthd_ipc::NetworkResult::NewError(
+        CreateAndLogProbeError(cros_healthd_ipc::ErrorType::kServiceUnavailable,
+                               "Network Health Service unavailable")));
+    return;
+  }
+
+  network_health->GetHealthSnapshot(
+      base::BindOnce(&HandleNetworkHealthStateResponse, std::move(callback)));
 }
 
 }  // namespace diagnostics
