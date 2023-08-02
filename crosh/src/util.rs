@@ -25,8 +25,9 @@ use chrono::Local;
 use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::chromeos;
-use libchromeos::sys::{clear_signal_handler, register_signal_handler};
+use libchromeos::signal::{clear_signal_handler, register_signal_handler};
 use log::error;
+use nix::sys::signal::Signal;
 use regex::Regex;
 use system_api::client::OrgChromiumSessionManagerInterface;
 
@@ -190,7 +191,7 @@ pub fn usb_commands_included() -> bool {
 
 /// # Safety
 /// handler needs to be async safe.
-pub unsafe fn set_signal_handlers(signums: &[c_int], handler: extern "C" fn(c_int)) {
+pub unsafe fn set_signal_handlers(signums: &[Signal], handler: extern "C" fn(c_int)) {
     for signum in signums {
         // Safe as long as handler is async safe.
         if unsafe { register_signal_handler(*signum, handler) }.is_err() {
@@ -199,7 +200,7 @@ pub unsafe fn set_signal_handlers(signums: &[c_int], handler: extern "C" fn(c_in
     }
 }
 
-pub fn clear_signal_handlers(signums: &[c_int]) {
+pub fn clear_signal_handlers(signums: &[Signal]) {
     for signum in signums {
         if clear_signal_handler(*signum).is_err() {
             error!("sigaction failed for {}", signum);
@@ -211,9 +212,9 @@ pub fn board_name() -> String {
     let file = File::open("/etc/lsb-release").unwrap();
 
     for line in BufReader::new(file).lines().flatten() {
-         if let Some(board) = line.strip_prefix(BOARD_NAME_PREFIX) {
-             return board.to_string();
-         }
+        if let Some(board) = line.strip_prefix(BOARD_NAME_PREFIX) {
+            return board.to_string();
+        }
     }
 
     "UNKNOWN".to_string()

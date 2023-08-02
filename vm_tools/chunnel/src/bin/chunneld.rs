@@ -15,20 +15,19 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use chunnel::forwarder::ForwarderSession;
 use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::pipe;
-use libchromeos::sys::block_signal;
+use libchromeos::signal::block_signal;
 use libchromeos::sys::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use libchromeos::syslog;
 use log::{error, warn};
-use nix;
+use nix::sys::signal::Signal;
 use protobuf::{self, Message as ProtoMessage};
-
-use chunnel::forwarder::ForwarderSession;
 use system_api::chunneld_service::*;
 use system_api::cicerone_service;
 
@@ -63,7 +62,7 @@ const IDENT: &str = "chunneld";
 #[derive(Debug)]
 enum Error {
     BindVsock(io::Error),
-    BlockSigpipe(libchromeos::sys::SignalError),
+    BlockSigpipe(nix::Error),
     ConnectChunnelFailure(String),
     CreateProtobusService(dbus::Error),
     DBusGetSystemBus(DBusError),
@@ -596,7 +595,7 @@ fn main() -> Result<()> {
     syslog::init(IDENT.to_string(), false /* log_to_stderr */).map_err(Error::Syslog)?;
 
     // Block SIGPIPE so the process doesn't exit when writing to a socket that's been shutdown.
-    block_signal(libc::SIGPIPE).map_err(Error::BlockSigpipe)?;
+    block_signal(Signal::SIGPIPE).map_err(Error::BlockSigpipe)?;
 
     let update_evt = EventFd::new().map_err(Error::EventFdNew)?;
     let update_queue = Arc::new(Mutex::new(VecDeque::new()));

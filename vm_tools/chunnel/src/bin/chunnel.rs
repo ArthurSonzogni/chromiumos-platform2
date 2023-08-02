@@ -7,15 +7,15 @@ use std::fmt;
 use std::process;
 use std::result;
 
+use chunnel::forwarder::{ForwarderError, ForwarderSession};
+use chunnel::stream::{StreamSocket, StreamSocketError};
 use getopts::Options;
 use libchromeos::deprecated::{PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::block_signal;
+use libchromeos::signal::block_signal;
 use libchromeos::syslog;
 use log::warn;
-
-use chunnel::forwarder::{ForwarderError, ForwarderSession};
-use chunnel::stream::{StreamSocket, StreamSocketError};
+use nix::sys::signal::Signal;
 
 // Program name.
 const IDENT: &str = "chunnel";
@@ -23,7 +23,7 @@ const IDENT: &str = "chunnel";
 #[remain::sorted]
 #[derive(Debug)]
 enum Error {
-    BlockSigpipe(libchromeos::sys::SignalError),
+    BlockSigpipe(nix::Error),
     ConnectSocket(StreamSocketError),
     Forward(ForwarderError),
     PollContextDelete(libchromeos::sys::Error),
@@ -58,7 +58,7 @@ fn print_usage(program: &str, opts: &Options) {
 }
 
 fn run_forwarder(local_stream: StreamSocket, remote_stream: StreamSocket) -> Result<()> {
-    block_signal(libc::SIGPIPE).map_err(Error::BlockSigpipe)?;
+    block_signal(Signal::SIGPIPE).map_err(Error::BlockSigpipe)?;
 
     #[derive(PollToken)]
     enum Token {

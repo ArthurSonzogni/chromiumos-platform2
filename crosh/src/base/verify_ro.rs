@@ -14,9 +14,10 @@ use std::time::Duration;
 
 use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
-use libc::{c_int, SIGINT};
+use libc::c_int;
 use libchromeos::pipe;
 use log::error;
+use nix::sys::signal::Signal;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
@@ -102,7 +103,7 @@ fn execute_verify_ro(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
     );
 
     // Safe because sigint_handler is async-signal safe.
-    unsafe { set_signal_handlers(&[SIGINT], sigint_handler) }
+    unsafe { set_signal_handlers(&[Signal::SIGINT], sigint_handler) }
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
     let handle = conn_path
@@ -132,7 +133,7 @@ fn execute_verify_ro(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
     // Print the response.
     copy(&mut read_pipe, &mut stdout()).map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
-    clear_signal_handlers(&[SIGINT]);
+    clear_signal_handlers(&[Signal::SIGINT]);
     DONE_FLAG.store(true, Ordering::Release);
     watcher
         .join()

@@ -16,9 +16,10 @@ use std::time::Duration;
 use dbus::arg::{self, OwnedFd, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
-use libc::{c_int, SIGINT};
+use libc::c_int;
 use libchromeos::pipe;
 use log::error;
+use nix::sys::signal::Signal;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
@@ -200,7 +201,7 @@ fn execute_packet_capture_helper(
     );
 
     // Safe because sigint_handler is async signal safe.
-    unsafe { set_signal_handlers(&[SIGINT], sigint_handler) };
+    unsafe { set_signal_handlers(&[Signal::SIGINT], sigint_handler) };
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
     let handle = conn_path
@@ -216,7 +217,7 @@ fn execute_packet_capture_helper(
                 eprintln!("ERROR: Failed to print the output: {}", err);
             }
             STOP_FLAG.store(true, Ordering::Release);
-            clear_signal_handlers(&[SIGINT]);
+            clear_signal_handlers(&[Signal::SIGINT]);
             dispatcher::Error::CommandReturnedError
         })?;
 
@@ -236,11 +237,11 @@ fn execute_packet_capture_helper(
     if let Err(err) = copy(&mut read_pipe, &mut stdout()) {
         eprintln!("ERROR: Failed to print the output: {}", err);
         STOP_FLAG.store(true, Ordering::Release);
-        clear_signal_handlers(&[SIGINT]);
+        clear_signal_handlers(&[Signal::SIGINT]);
         watcher.join().ok();
         return Err(dispatcher::Error::CommandReturnedError);
     }
-    clear_signal_handlers(&[SIGINT]);
+    clear_signal_handlers(&[Signal::SIGINT]);
     DONE_FLAG.store(true, Ordering::Release);
     watcher
         .join()

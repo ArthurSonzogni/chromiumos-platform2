@@ -19,9 +19,10 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
-use libchromeos::sys::register_signal_handler;
+use libchromeos::signal::register_signal_handler;
 use libchromeos::syslog;
 use log::{debug, error, info};
+use nix::sys::signal::Signal;
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;
@@ -36,7 +37,7 @@ pub enum Error {
     EventFd(libchromeos::sys::Error),
     ParseArgs(arguments::Error),
     PollEvents(libchromeos::sys::Error),
-    RegisterHandler(libchromeos::sys::Error),
+    RegisterHandler(nix::Error),
     Syslog(syslog::Error),
     SysUtil(libchromeos::sys::Error),
 }
@@ -85,16 +86,15 @@ extern "C" fn sigint_handler(_: c_int) {
 
 /// Registers a SIGINT handler that, when triggered, will write to `shutdown_fd`
 /// to notify any listeners of a pending shutdown.
-fn add_sigint_handler(shutdown_fd: EventFd) -> libchromeos::sys::Result<()> {
+fn add_sigint_handler(shutdown_fd: EventFd) -> nix::Result<()> {
     // Leak our copy of the fd to ensure SHUTDOWN_FD remains valid until ippusb_bridge closes, so
     // that we aren't inadvertently writing to an invalid FD in the SIGINT handler. The FD will be
     // reclaimed by the OS once our process has stopped.
     SHUTDOWN_FD.store(shutdown_fd.into_raw_fd(), Ordering::Relaxed);
 
-    const SIGINT: libc::c_int = 2;
     // Safe because sigint_handler is an extern "C" function that only performs
     // async signal-safe operations.
-    unsafe { register_signal_handler(SIGINT, sigint_handler) }
+    unsafe { register_signal_handler(Signal::SIGINT, sigint_handler) }
 }
 
 struct Daemon {

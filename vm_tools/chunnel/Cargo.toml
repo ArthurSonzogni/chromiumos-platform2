@@ -11,7 +11,7 @@ getopts = "0.2"
 libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 log = "0.4"
-nix = "0.26"
+nix = { version = "0.26", features = ["signal"] }
 protobuf = "3.2"
 remain = "0.2"
 system_api = { path = "system_api" }

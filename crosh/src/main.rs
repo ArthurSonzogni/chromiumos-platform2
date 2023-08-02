@@ -11,15 +11,14 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 use crosh::dispatcher::{CompletionResult, Dispatcher};
 use crosh::{setup_dispatcher, util};
-use libc::{
-    c_int, c_void, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, STDERR_FILENO, WIFSTOPPED,
-};
+use libc::{c_int, c_void, fork, kill, pid_t, waitpid, SIGINT, SIGKILL, STDERR_FILENO, WIFSTOPPED};
 use libchromeos::chromeos::is_dev_mode;
 use libchromeos::handle_eintr_errno;
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::{block_signal, unblock_signal};
+use libchromeos::signal::{block_signal, unblock_signal};
 use libchromeos::syslog;
 use log::error;
+use nix::sys::signal::Signal;
 use rustyline::completion::Completer;
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
@@ -214,15 +213,15 @@ extern "C" fn sigint_handler(_: c_int) {
 
 fn register_signal_handlers() {
     // Safe because sigint_handler is async-signal-safe.
-    unsafe { util::set_signal_handlers(&[SIGINT], sigint_handler) };
-    if let Err(err) = block_signal(SIGHUP) {
+    unsafe { util::set_signal_handlers(&[Signal::SIGINT], sigint_handler) };
+    if let Err(err) = block_signal(Signal::SIGHUP) {
         error!("Failed to block SIGHUP: {}", err);
     }
 }
 
 fn clear_signal_handlers() {
-    util::clear_signal_handlers(&[SIGINT]);
-    if let Err(err) = unblock_signal(SIGHUP) {
+    util::clear_signal_handlers(&[Signal::SIGINT]);
+    if let Err(err) = unblock_signal(Signal::SIGHUP) {
         error!("Failed to unblock SIGHUP: {}", err);
     }
 }

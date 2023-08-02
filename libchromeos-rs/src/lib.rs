@@ -41,6 +41,7 @@ pub mod deprecated;
 pub mod rand;
 pub mod scoped_path;
 pub mod secure_blob;
+pub mod signal;
 pub mod syslog;
 
 use std::fs::File;

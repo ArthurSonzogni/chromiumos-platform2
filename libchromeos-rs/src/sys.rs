@@ -6,16 +6,11 @@
 // Note: This list is supposed to shrink over time as crosvm_base functionality is replaced with
 // third_party crates or ChromeOS specific implementations.
 // Do not add to this list.
-pub use crosvm_base::block_signal;
 pub use crosvm_base::errno_result;
 pub use crosvm_base::set_rt_prio_limit;
 pub use crosvm_base::set_rt_round_robin;
-pub use crosvm_base::signal::Error as SignalError;
-pub use crosvm_base::unblock_signal;
-pub use crosvm_base::unix::clear_signal_handler;
 pub use crosvm_base::unix::duration_to_timespec;
 pub use crosvm_base::unix::panic_handler;
-pub use crosvm_base::unix::register_signal_handler;
 pub use crosvm_base::unix::vsock;
 pub use crosvm_base::unix::SharedMemory;
 pub use crosvm_base::AsRawDescriptor;
