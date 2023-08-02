@@ -158,16 +158,23 @@ void IcmpSession::TransmitEchoRequestTask() {
 int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
   DCHECK_GE(data->len, 0);
   base::span<const uint8_t> message(data->buf, static_cast<size_t>(data->len));
-  if (message.size() < sizeof(struct iphdr) + sizeof(struct icmphdr)) {
+
+  if (message.size() < sizeof(struct iphdr)) {
+    LOG(WARNING) << "Received ICMP packet is too short to contain IP header";
+    return -1;
+  }
+  const struct iphdr* received_ip_header =
+      reinterpret_cast<const struct iphdr*>(message.data());
+
+  if (message.size() < received_ip_header->ihl * kIPHeaderLengthUnitBytes +
+                           sizeof(struct icmphdr)) {
     LOG(WARNING) << "Received ICMP packet is too short to contain ICMP header";
     return -1;
   }
-
-  const struct iphdr* received_ip_header =
-      reinterpret_cast<const struct iphdr*>(message.data());
   const struct icmphdr* received_icmp_header =
       reinterpret_cast<const struct icmphdr*>(
           message.data() + received_ip_header->ihl * kIPHeaderLengthUnitBytes);
+
   // We might have received other types of ICMP traffic, so ensure that the
   // message is an echo reply before handling it.
   if (received_icmp_header->type != ICMP_ECHOREPLY) {
