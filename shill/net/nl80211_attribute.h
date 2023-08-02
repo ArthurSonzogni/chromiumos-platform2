@@ -265,7 +265,7 @@ class SHILL_EXPORT Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
   Nl80211AttributeRegInitiator& operator=(const Nl80211AttributeRegInitiator&) =
       delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
 };
 
 class Nl80211AttributeWiphy : public NetlinkU32Attribute {

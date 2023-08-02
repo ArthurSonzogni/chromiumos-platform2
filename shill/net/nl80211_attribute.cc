@@ -8,6 +8,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/ieee80211.h"
 
@@ -553,7 +554,7 @@ bool Nl80211AttributeMac::ToString(std::string* value) const {
     LOG(ERROR) << "Null |value| parameter";
     return false;
   }
-  *value = StringFromMacAddress(data_.GetConstData());
+  *value = StringFromMacAddress(data_.data());
   return true;
 }
 
@@ -627,17 +628,14 @@ const char Nl80211AttributeRegInitiator::kNameString[] =
 // The RegInitiator type can be interpreted as either a U8 or U32 depending
 // on context.  Override the default InitFromValue implementation to be
 // flexible to either encoding.
-bool Nl80211AttributeRegInitiator::InitFromValue(const ByteString& input) {
-  uint8_t u8_data;
-  if (input.GetLength() != sizeof(u8_data))
+bool Nl80211AttributeRegInitiator::InitFromValue(
+    base::span<const uint8_t> input) {
+  const auto u8_data = net_base::byte_utils::FromBytes<uint8_t>(input);
+  if (!u8_data) {
     return NetlinkU32Attribute::InitFromValue(input);
-
-  if (!input.CopyData(sizeof(u8_data), &u8_data)) {
-    LOG(ERROR) << "Invalid |input| parameter.";
-    return false;
   }
 
-  SetU32Value(static_cast<uint32_t>(u8_data));
+  SetU32Value(static_cast<uint32_t>(*u8_data));
   return NetlinkAttribute::InitFromValue(input);
 }
 

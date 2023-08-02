@@ -15,8 +15,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/net/byte_string.h"
-
 using testing::Test;
 
 namespace shill {
@@ -26,32 +24,38 @@ class NetlinkAttributeTest : public Test {};
 TEST_F(NetlinkAttributeTest, StringAttribute) {
   NetlinkStringAttribute attr(0, "string id");
 
-  // An empty ByteString should yield an empty string.
-  EXPECT_TRUE(attr.InitFromValue(ByteString()));
+  // An empty input should yield an empty string.
+  EXPECT_TRUE(attr.InitFromValue({}));
   std::string value;
   EXPECT_TRUE(attr.GetStringValue(&value));
   EXPECT_EQ("", value);
 
-  // An un-terminated ByteString should yield a terminated string.
-  ByteString unterminated(std::string("hello"), false);
-  EXPECT_EQ(5, unterminated.GetLength());
-  EXPECT_TRUE(attr.InitFromValue(unterminated));
+  // An un-terminated string span should yield a terminated string.
+  std::string str("hello");
+  base::span<const uint8_t> unterminated_span{
+      reinterpret_cast<const uint8_t*>(str.data()), str.size()};
+  EXPECT_EQ(5, unterminated_span.size());
+  EXPECT_TRUE(attr.InitFromValue(unterminated_span));
   EXPECT_TRUE(attr.GetStringValue(&value));
   EXPECT_EQ("hello", value);
   EXPECT_EQ(5, value.size());
 
-  // A terminated ByteString should also work correctly.
-  ByteString terminated(std::string("hello"), true);
-  EXPECT_EQ(6, terminated.GetLength());
-  EXPECT_TRUE(attr.InitFromValue(terminated));
+  // A terminated string span should also work correctly.
+  str.push_back('\0');
+  base::span<const uint8_t> terminated_span{
+      reinterpret_cast<const uint8_t*>(str.data()), str.size()};
+  EXPECT_EQ(6, terminated_span.size());
+  EXPECT_TRUE(attr.InitFromValue(terminated_span));
   EXPECT_TRUE(attr.GetStringValue(&value));
   EXPECT_EQ("hello", value);
   EXPECT_EQ(5, value.size());
 
   // Extra data after termination should be removed.
-  terminated.Append(ByteString(3));
-  EXPECT_EQ(9, terminated.GetLength());
-  EXPECT_TRUE(attr.InitFromValue(terminated));
+  str += "abc";
+  base::span<const uint8_t> span_with_extra{
+      reinterpret_cast<const uint8_t*>(str.c_str()), str.size()};
+  EXPECT_EQ(9, span_with_extra.size());
+  EXPECT_TRUE(attr.InitFromValue(span_with_extra));
   EXPECT_TRUE(attr.GetStringValue(&value));
   EXPECT_EQ("hello", value);
   EXPECT_EQ(5, value.size());

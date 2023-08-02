@@ -204,8 +204,8 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewControlAttributeFromId(
 }
 
 // Duplicate attribute data, store in map indexed on |id|.
-bool NetlinkAttribute::InitFromValue(const ByteString& input) {
-  data_ = input;
+bool NetlinkAttribute::InitFromValue(base::span<const uint8_t> input) {
+  data_ = {std::begin(input), std::end(input)};
   return true;
 }
 
@@ -285,12 +285,12 @@ bool NetlinkAttribute::SetNestedHasAValue() {
   return false;
 }
 
-bool NetlinkAttribute::GetRawValue(ByteString* value) const {
+bool NetlinkAttribute::GetRawValue(std::vector<uint8_t>* value) const {
   LOG(ERROR) << "Attribute is not of type 'Raw'";
   return false;
 }
 
-bool NetlinkAttribute::SetRawValue(const ByteString new_value) {
+bool NetlinkAttribute::SetRawValue(base::span<const uint8_t> value) {
   LOG(ERROR) << "Attribute is not of type 'Raw'";
   return false;
 }
@@ -310,13 +310,10 @@ std::string NetlinkAttribute::RawToString() const {
     return output;
   }
 
-  uint16_t length = data_.GetLength();
-  const uint8_t* const_data = data_.GetConstData();
-
-  base::StringAppendF(&output, "len=%u", length);
+  base::StringAppendF(&output, "len=%zu", data_.size());
   output.append(" DATA: ");
-  for (int i = 0; i < length; ++i) {
-    base::StringAppendF(&output, "[%d]=%02x ", i, *(const_data) + i);
+  for (size_t i = 0; i < data_.size(); ++i) {
+    base::StringAppendF(&output, "[%zu]=%02x ", i, data_[i]);
   }
   output.append(" ==== ");
   return output;
@@ -356,15 +353,16 @@ const char NetlinkU8Attribute::kMyTypeString[] = "uint8_t";
 const NetlinkAttribute::Type NetlinkU8Attribute::kType =
     NetlinkAttribute::kTypeU8;
 
-bool NetlinkU8Attribute::InitFromValue(const ByteString& input) {
-  uint8_t data;
-  if (!input.CopyData(sizeof(data), &data)) {
+bool NetlinkU8Attribute::InitFromValue(base::span<const uint8_t> input) {
+  if (input.size() < sizeof(uint8_t)) {
     LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
-               << datatype_string() << ": expected " << sizeof(data)
-               << " bytes but only had " << input.GetLength() << ".";
+               << datatype_string() << ": expected " << sizeof(uint8_t)
+               << " bytes but only had " << input.size() << ".";
     return false;
   }
-  SetU8Value(data);
+
+  SetU8Value(*net_base::byte_utils::FromBytes<uint8_t>(
+      input.subspan(0, sizeof(uint8_t))));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -408,16 +406,16 @@ const char NetlinkU16Attribute::kMyTypeString[] = "uint16_t";
 const NetlinkAttribute::Type NetlinkU16Attribute::kType =
     NetlinkAttribute::kTypeU16;
 
-bool NetlinkU16Attribute::InitFromValue(const ByteString& input) {
-  uint16_t data;
-  if (!input.CopyData(sizeof(data), &data)) {
+bool NetlinkU16Attribute::InitFromValue(base::span<const uint8_t> input) {
+  if (input.size() < sizeof(uint16_t)) {
     LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
-               << datatype_string() << ": expected " << sizeof(data)
-               << " bytes but only had " << input.GetLength() << ".";
+               << datatype_string() << ": expected " << sizeof(uint16_t)
+               << " bytes but only had " << input.size() << ".";
     return false;
   }
 
-  SetU16Value(data);
+  SetU16Value(*net_base::byte_utils::FromBytes<uint16_t>(
+      input.subspan(0, sizeof(uint16_t))));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -461,16 +459,16 @@ const char NetlinkU32Attribute::kMyTypeString[] = "uint32_t";
 const NetlinkAttribute::Type NetlinkU32Attribute::kType =
     NetlinkAttribute::kTypeU32;
 
-bool NetlinkU32Attribute::InitFromValue(const ByteString& input) {
-  uint32_t data;
-  if (!input.CopyData(sizeof(data), &data)) {
+bool NetlinkU32Attribute::InitFromValue(base::span<const uint8_t> input) {
+  if (input.size() < sizeof(uint32_t)) {
     LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
-               << datatype_string() << ": expected " << sizeof(data)
-               << " bytes but only had " << input.GetLength() << ".";
+               << datatype_string() << ": expected " << sizeof(uint32_t)
+               << " bytes but only had " << input.size() << ".";
     return false;
   }
 
-  SetU32Value(data);
+  SetU32Value(*net_base::byte_utils::FromBytes<uint32_t>(
+      input.subspan(0, sizeof(uint32_t))));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -514,15 +512,16 @@ const char NetlinkU64Attribute::kMyTypeString[] = "uint64_t";
 const NetlinkAttribute::Type NetlinkU64Attribute::kType =
     NetlinkAttribute::kTypeU64;
 
-bool NetlinkU64Attribute::InitFromValue(const ByteString& input) {
-  uint64_t data;
-  if (!input.CopyData(sizeof(data), &data)) {
+bool NetlinkU64Attribute::InitFromValue(base::span<const uint8_t> input) {
+  if (input.size() < sizeof(uint64_t)) {
     LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
-               << datatype_string() << ": expected " << sizeof(data)
-               << " bytes but only had " << input.GetLength() << ".";
+               << datatype_string() << ": expected " << sizeof(uint64_t)
+               << " bytes but only had " << input.size() << ".";
     return false;
   }
-  SetU64Value(data);
+
+  SetU64Value(*net_base::byte_utils::FromBytes<uint64_t>(
+      input.subspan(0, sizeof(uint64_t))));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -566,7 +565,7 @@ const char NetlinkFlagAttribute::kMyTypeString[] = "flag";
 const NetlinkAttribute::Type NetlinkFlagAttribute::kType =
     NetlinkAttribute::kTypeFlag;
 
-bool NetlinkFlagAttribute::InitFromValue(const ByteString& input) {
+bool NetlinkFlagAttribute::InitFromValue(base::span<const uint8_t> input) {
   // The existence of the parameter means it's true
   SetFlagValue(true);
   return NetlinkAttribute::InitFromValue(input);
@@ -611,28 +610,8 @@ const char NetlinkStringAttribute::kMyTypeString[] = "string";
 const NetlinkAttribute::Type NetlinkStringAttribute::kType =
     NetlinkAttribute::kTypeString;
 
-bool NetlinkStringAttribute::InitFromValue(const ByteString& input) {
-  if (!input.GetLength()) {
-    // Assume an empty string.
-    SetStringValue("");
-  } else {
-    const char* string_ptr =
-        reinterpret_cast<const char*>(input.GetConstData());
-    const char* first_null_pos = reinterpret_cast<const char*>(
-        memchr(string_ptr, '\0', input.GetLength()));
-    if (first_null_pos == string_ptr + input.GetLength() - 1) {
-      SetStringValue(string_ptr);
-    } else if (first_null_pos) {
-      LOG(WARNING) << "String appears to be terminated "
-                   << (input.GetLength() - 1) - (first_null_pos - string_ptr)
-                   << " bytes early.";
-      SetStringValue(string_ptr);
-    } else {
-      VLOG(1) << "String is unterminated.";
-      SetStringValue(std::string(string_ptr, input.GetLength()));
-    }
-  }
-
+bool NetlinkStringAttribute::InitFromValue(base::span<const uint8_t> input) {
+  SetStringValue(net_base::byte_utils::StringFromCStringBytes(input));
   return NetlinkAttribute::InitFromValue(input);
 }
 
@@ -753,8 +732,9 @@ bool NetlinkNestedAttribute::ToString(std::string* output) const {
   return true;
 }
 
-bool NetlinkNestedAttribute::InitFromValue(const ByteString& input) {
-  if (!InitNestedFromValue(value_, nested_template_, input)) {
+bool NetlinkNestedAttribute::InitFromValue(base::span<const uint8_t> input) {
+  if (!InitNestedFromValue(value_, nested_template_,
+                           {input.data(), input.size()})) {
     LOG(ERROR) << "InitNestedFromValue() failed";
     return false;
   }
@@ -937,7 +917,7 @@ const char NetlinkRawAttribute::kMyTypeString[] = "<raw>";
 const NetlinkAttribute::Type NetlinkRawAttribute::kType =
     NetlinkAttribute::kTypeRaw;
 
-bool NetlinkRawAttribute::InitFromValue(const ByteString& input) {
+bool NetlinkRawAttribute::InitFromValue(base::span<const uint8_t> input) {
   if (!NetlinkAttribute::InitFromValue(input)) {
     return false;
   }
@@ -945,7 +925,7 @@ bool NetlinkRawAttribute::InitFromValue(const ByteString& input) {
   return true;
 }
 
-bool NetlinkRawAttribute::GetRawValue(ByteString* output) const {
+bool NetlinkRawAttribute::GetRawValue(std::vector<uint8_t>* output) const {
   if (!has_a_value_) {
     VLOG(7) << "Raw attribute " << id_string()
             << " hasn't been set to any value.";
@@ -957,8 +937,8 @@ bool NetlinkRawAttribute::GetRawValue(ByteString* output) const {
   return true;
 }
 
-bool NetlinkRawAttribute::SetRawValue(const ByteString new_value) {
-  data_ = new_value;
+bool NetlinkRawAttribute::SetRawValue(base::span<const uint8_t> value) {
+  data_ = {std::begin(value), std::end(value)};
   has_a_value_ = true;
   return true;
 }
@@ -973,19 +953,16 @@ bool NetlinkRawAttribute::ToString(std::string* output) const {
             << " hasn't been set to any value.";
     return false;
   }
-  int total_bytes = data_.GetLength();
-  const uint8_t* const_data = data_.GetConstData();
 
-  *output = base::StringPrintf("%d bytes:", total_bytes);
-  for (int i = 0; i < total_bytes; ++i) {
-    base::StringAppendF(output, " %02x", const_data[i]);
+  *output = base::StringPrintf("%zu bytes:", data_.size());
+  for (const auto byte : data_) {
+    base::StringAppendF(output, " %02x", byte);
   }
   return true;
 }
 
 std::vector<uint8_t> NetlinkRawAttribute::Encode() const {
-  return NetlinkAttribute::EncodeGeneric(
-      {data_.GetConstData(), data_.GetLength()});
+  return NetlinkAttribute::EncodeGeneric(data_);
 }
 
 NetlinkAttributeGeneric::NetlinkAttributeGeneric(int id)

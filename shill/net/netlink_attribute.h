@@ -58,7 +58,7 @@ class SHILL_EXPORT NetlinkAttribute {
   static std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
       NetlinkMessage::MessageContext context, int id);
 
-  virtual bool InitFromValue(const ByteString& input);
+  virtual bool InitFromValue(base::span<const uint8_t> input);
 
   // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
@@ -90,8 +90,8 @@ class SHILL_EXPORT NetlinkAttribute {
       AttributeListConstRefPtr* value) const;
   virtual bool SetNestedHasAValue();
 
-  virtual bool GetRawValue(ByteString* value) const;
-  virtual bool SetRawValue(const ByteString value);
+  virtual bool GetRawValue(std::vector<uint8_t>* value) const;
+  virtual bool SetRawValue(base::span<const uint8_t> value);
 
   // Prints the attribute info -- for debugging.
   virtual void Print(int log_level, int indent) const;
@@ -123,7 +123,7 @@ class SHILL_EXPORT NetlinkAttribute {
 
   // Attribute data (NOT including the nlattr header) corresponding to the
   // value in any of the child classes.
-  ByteString data_;
+  std::vector<uint8_t> data_;
 
   // True if a value has been assigned to the attribute; false, otherwise.
   bool has_a_value_;
@@ -144,7 +144,7 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   NetlinkU8Attribute(const NetlinkU8Attribute&) = delete;
   NetlinkU8Attribute& operator=(const NetlinkU8Attribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetU8Value(uint8_t* value) const override;
   bool SetU8Value(uint8_t new_value) override;
   bool ToString(std::string* value) const override;
@@ -163,7 +163,7 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   NetlinkU16Attribute(const NetlinkU16Attribute&) = delete;
   NetlinkU16Attribute& operator=(const NetlinkU16Attribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetU16Value(uint16_t* value) const override;
   bool SetU16Value(uint16_t new_value) override;
   bool ToString(std::string* value) const override;
@@ -183,7 +183,7 @@ class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   NetlinkU32Attribute(const NetlinkU32Attribute&) = delete;
   NetlinkU32Attribute& operator=(const NetlinkU32Attribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetU32Value(uint32_t* value) const override;
   bool SetU32Value(uint32_t new_value) override;
   bool ToString(std::string* value) const override;
@@ -202,7 +202,7 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   NetlinkU64Attribute(const NetlinkU64Attribute&) = delete;
   NetlinkU64Attribute& operator=(const NetlinkU64Attribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetU64Value(uint64_t* value) const override;
   bool SetU64Value(uint64_t new_value) override;
   bool ToString(std::string* value) const override;
@@ -221,7 +221,7 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   NetlinkFlagAttribute(const NetlinkFlagAttribute&) = delete;
   NetlinkFlagAttribute& operator=(const NetlinkFlagAttribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetFlagValue(bool* value) const override;
   bool SetFlagValue(bool new_value) override;
   bool ToString(std::string* value) const override;
@@ -241,7 +241,7 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
   NetlinkStringAttribute(const NetlinkStringAttribute&) = delete;
   NetlinkStringAttribute& operator=(const NetlinkStringAttribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetStringValue(std::string* value) const override;
   bool SetStringValue(const std::string& new_value) override;
   bool ToString(std::string* value) const override;
@@ -273,7 +273,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   NetlinkNestedAttribute(const NetlinkNestedAttribute&) = delete;
   NetlinkNestedAttribute& operator=(const NetlinkNestedAttribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   bool GetNestedAttributeList(AttributeListRefPtr* value) override;
   bool ConstGetNestedAttributeList(
       AttributeListConstRefPtr* value) const override;
@@ -376,11 +376,11 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   NetlinkRawAttribute(const NetlinkRawAttribute&) = delete;
   NetlinkRawAttribute& operator=(const NetlinkRawAttribute&) = delete;
 
-  bool InitFromValue(const ByteString& data) override;
+  bool InitFromValue(base::span<const uint8_t> input) override;
   // Gets the value of the data (the header is not stored).
-  bool GetRawValue(ByteString* value) const override;
+  bool GetRawValue(std::vector<uint8_t>* value) const override;
   // Should set the value of the data (not the attribute header).
-  bool SetRawValue(const ByteString value) override;
+  bool SetRawValue(base::span<const uint8_t> value) override;
   bool ToString(std::string* value) const override;
   std::vector<uint8_t> Encode() const override;
 };
