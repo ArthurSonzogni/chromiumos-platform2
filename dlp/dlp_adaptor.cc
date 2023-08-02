@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <sys/types.h>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -310,11 +311,19 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
   std::vector<FileId> request_ids;
   std::vector<FileId> granted_ids;
 
+  bool allow_all_files =
+      request.has_destination_component() &&
+      request.destination_component() == DlpComponent::SYSTEM;
+
   for (const auto& file_path : request.files_paths()) {
     const FileId id = GetFileId(file_path);
     auto it = file_entries.find(id);
     if (it == std::end(file_entries)) {
       // Skip file if it's not DLP-protected as access to it is always allowed.
+      continue;
+    }
+    if (allow_all_files) {
+      granted_ids.emplace_back(id);
       continue;
     }
     RestrictionLevel cached_level = requests_cache_.Get(

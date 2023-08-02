@@ -644,6 +644,80 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
+TEST_F(DlpAdaptorTest, RestrictedFileSystemRequestedAllowed) {
+  InitDatabase();
+
+  // Create files to request access by ids.
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  const FileId id = GetFileId(file_path.value());
+
+  // Add the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/true);
+
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
+  FileMetadata file_metadata;
+  file_metadata.set_inode(id.first);
+  file_metadata.set_crtime(id.second);
+  file_metadata.set_path(file_path.value());
+  files_restrictions_.push_back(
+      {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
+  ON_CALL(*GetMockDlpFilesPolicyServiceProxy(), DoCallMethodWithErrorCallback)
+      .WillByDefault(
+          Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
+  // Called for both ProcessFileOpen after the closed ScopedFD.
+  // RequestFileAccess is allowed with only checking component.
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback)
+      .Times(2);
+
+  // Both runs should be answered without getting the cache involved.
+  for (int i = 0; i < 2; ++i) {
+    // Request access to the file.
+    auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+        std::vector<uint8_t>, base::ScopedFD>>(nullptr);
+    bool allowed;
+    base::ScopedFD lifeline_fd;
+    base::RunLoop request_file_access_run_loop;
+    response->set_return_callback(base::BindOnce(
+        [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+           const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
+          RequestFileAccessResponse response =
+              ParseResponse<RequestFileAccessResponse>(proto_blob);
+          *allowed = response.allowed();
+          lifeline_fd->reset(dup(fd.get()));
+          run_loop->Quit();
+        },
+        &allowed, &lifeline_fd, &request_file_access_run_loop));
+    GetDlpAdaptor()->RequestFileAccess(
+        std::move(response),
+        CreateSerializedRequestFileAccessRequest({file_path.value()}, kPid,
+                                                 DlpComponent::SYSTEM));
+    request_file_access_run_loop.Run();
+
+    EXPECT_TRUE(allowed);
+    EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
+
+    // Access the file.
+    FileOpenRequestResultWaiter waiter;
+    helper_.ProcessFileOpenRequest(id, kPid, waiter.GetCallback());
+    EXPECT_TRUE(waiter.GetResult());
+
+    // Cancel access to the file.
+    lifeline_fd.reset();
+
+    // Let DlpAdaptor process that lifeline_fd is closed.
+    base::RunLoop().RunUntilIdle();
+
+    // Second request: still allowed
+    FileOpenRequestResultWaiter waiter2;
+    helper_.ProcessFileOpenRequest(id, kPid, waiter2.GetCallback());
+    EXPECT_TRUE(waiter2.GetResult());
+  }
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
+}
+
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
   InitDatabase();
 
