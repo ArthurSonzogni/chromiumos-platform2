@@ -12,7 +12,6 @@ group("all") {
   ]
   if (use.fuzzer) {
     deps += [
-      ":ip_address_fuzzer",
       ":netlink_attribute_list_fuzzer",
       ":nl80211_message_fuzzer",
       ":rtnl_handler_fuzzer",
@@ -36,7 +35,6 @@ install_config("install_headers") {
     "io_handler_factory_container.h",
     "io_input_handler.h",
     "io_ready_handler.h",
-    "ip_address.h",
     "mock_io_handler_factory.h",
     "mock_netlink_manager.h",
     "mock_netlink_socket.h",
@@ -103,7 +101,6 @@ shared_library("libshill-net") {
     "io_handler_factory_container.cc",
     "io_input_handler.cc",
     "io_ready_handler.cc",
-    "ip_address.cc",
     "netlink_attribute.cc",
     "netlink_fd.cc",
     "netlink_manager.cc",
@@ -128,14 +125,6 @@ shared_library("libshill-net") {
 if (use.fuzzer) {
   pkg_config("fuzzed_data_config") {
     pkg_deps = [ "libchrome-test" ]
-  }
-  executable("ip_address_fuzzer") {
-    sources = [ "ip_address_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-    ]
-    deps = [ ":libshill-net" ]
   }
   executable("netlink_attribute_list_fuzzer") {
     sources = [ "attribute_list_fuzzer.cc" ]
@@ -195,7 +184,6 @@ if (use.test) {
       "attribute_list_test.cc",
       "byte_string_test.cc",
       "event_history_test.cc",
-      "ip_address_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",
       "netlink_message_test.cc",
