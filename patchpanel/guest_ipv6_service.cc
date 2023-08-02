@@ -55,28 +55,6 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
   }
 }
 
-bool PrepareRunPath() {
-  base::FilePath run_path(kRadvdRunDir);
-  if (!base::DirectoryExists(run_path) && !base::CreateDirectory(run_path)) {
-    PLOG(ERROR) << "Unable to create configuration directory  " << kRadvdRunDir;
-    return false;
-  }
-
-  if (chown(kRadvdRunDir, kPatchpaneldUid, kPatchpaneldGid) != 0) {
-    PLOG(ERROR) << "Failed to change owner group of configuration directory "
-                << kRadvdRunDir;
-    base::DeletePathRecursively(run_path);
-    return false;
-  }
-
-  if (chmod(kRadvdRunDir, S_IRWXU | S_IRGRP | S_IXGRP)) {
-    PLOG(ERROR) << "Failed to set permissions on " << kRadvdRunDir;
-    base::DeletePathRecursively(run_path);
-    return false;
-  }
-  return true;
-}
-
 bool CreateConfigFile(const std::string& ifname,
                       const net_base::IPv6CIDR& prefix,
                       const std::vector<std::string>& rdnss,
@@ -109,7 +87,7 @@ bool CreateConfigFile(const std::string& ifname,
     return false;
   }
 
-  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP)) {
+  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
     PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
     base::DeletePathRecursively(conf_file_path);
     return false;
@@ -619,8 +597,13 @@ bool GuestIPv6Service::StartRAServer(const std::string& ifname,
                                      const net_base::IPv6CIDR& prefix,
                                      const std::vector<std::string>& rdnss,
                                      const std::optional<int>& mtu) {
-  return PrepareRunPath() && CreateConfigFile(ifname, prefix, rdnss, mtu) &&
-         StartRadvd(ifname);
+  base::FilePath run_path(kRadvdRunDir);
+  if (!base::CreateDirectory(run_path)) {
+    PLOG(ERROR) << "Configuration directory " << kRadvdRunDir
+                << " is not available.";
+    return false;
+  }
+  return CreateConfigFile(ifname, prefix, rdnss, mtu) && StartRadvd(ifname);
 }
 
 bool GuestIPv6Service::StopRAServer(const std::string& ifname) {
