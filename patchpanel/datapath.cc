@@ -689,8 +689,8 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
 }
 
 std::string Datapath::AddTAP(const std::string& name,
-                             const MacAddress* mac_addr,
-                             const net_base::IPv4CIDR* ipv4_cidr,
+                             const std::optional<MacAddress>& mac_addr,
+                             const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
                              const std::string& user) {
   base::ScopedFD dev = system_->OpenTunDev();
   if (!dev.is_valid()) {
@@ -768,7 +768,7 @@ std::string Datapath::AddTAP(const std::string& name,
   if (mac_addr) {
     struct sockaddr* hwaddr = &ifr.ifr_hwaddr;
     hwaddr->sa_family = ARPHRD_ETHER;
-    memcpy(&hwaddr->sa_data, mac_addr, sizeof(*mac_addr));
+    memcpy(&hwaddr->sa_data, mac_addr.operator->(), sizeof(MacAddress));
     if (system_->Ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set mac address for vmtap interface " << ifname
                   << " {" << MacAddressToString(*mac_addr) << "}";

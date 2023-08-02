@@ -51,8 +51,8 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(std::string,
               AddTAP,
               (const std::string& name,
-               const MacAddress* mac_addr,
-               const net_base::IPv4CIDR* ipv4_cidr,
+               const std::optional<MacAddress>& mac_addr,
+               const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
                const std::string& user),
               (override));
   MOCK_METHOD(bool,

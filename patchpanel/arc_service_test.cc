@@ -222,7 +222,8 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
 }
 
 TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillRepeatedly(Return("vmtap"));
   EXPECT_CALL(*datapath_, AddBridge(_, Property(&IPv4CIDR::prefix_length, 30)))
       .WillRepeatedly(Return(true));
@@ -729,7 +730,8 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
 
 TEST_F(ArcServiceTest, VmImpl_Start) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -751,7 +753,8 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
 
 TEST_F(ArcServiceTest, VmImpl_StartDevice) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -791,7 +794,8 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
 
 TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -867,7 +871,8 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
 
 TEST_F(ArcServiceTest, VmImpl_Stop) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -905,7 +910,8 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
 
 TEST_F(ArcServiceTest, VmImpl_Restart) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -962,7 +968,8 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   // Expectations for arc0, eth0, and tap device pre-creation on restart.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -994,7 +1001,8 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
 
 TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -1045,7 +1053,8 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
 
 TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -1103,7 +1112,8 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"))
@@ -1150,7 +1160,8 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
 
 TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
   // Expectations for tap devices pre-creation.
-  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+  EXPECT_CALL(*datapath_,
+              AddTAP(StrEq(""), _, Eq(std::nullopt), StrEq("crosvm")))
       .WillOnce(Return("vmtap2"))
       .WillOnce(Return("vmtap3"))
       .WillOnce(Return("vmtap4"))

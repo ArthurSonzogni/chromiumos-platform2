@@ -659,7 +659,7 @@ TEST(DatapathTest, AddTAP) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
-  auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "");
+  auto ifname = datapath.AddTAP("foo0", mac, addr->cidr(), "");
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -679,7 +679,7 @@ TEST(DatapathTest, AddTAPWithOwner) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
-  auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "root");
+  auto ifname = datapath.AddTAP("foo0", mac, addr->cidr(), "root");
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -694,7 +694,7 @@ TEST(DatapathTest, AddTAPNoAddrs) {
   FakeSystem system;
 
   Datapath datapath(runner, firewall, &system);
-  auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
+  auto ifname = datapath.AddTAP("foo0", std::nullopt, std::nullopt, "");
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
