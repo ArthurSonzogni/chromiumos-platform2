@@ -52,11 +52,13 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session_flatbuffer.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
@@ -125,11 +127,31 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 }
 
+// This function returns the AuthFactorPolicy from the UserPolicy. It will
+// return std::nullopt if the user policy doesn't exist, or if the
+// auth_factor_type doesn't exist in the user policy.
+std::optional<SerializedUserAuthFactorTypePolicy>
+GetAuthFactorPolicyFromUserPolicy(
+    const std::optional<SerializedUserPolicy>& user_policy,
+    AuthFactorType auth_factor_type) {
+  if (!user_policy.has_value()) {
+    return std::nullopt;
+  }
+  for (auto policy : user_policy->auth_factor_type_policy) {
+    if (policy.type != std::nullopt &&
+        policy.type == SerializeAuthFactorType(auth_factor_type)) {
+      return policy;
+    }
+  }
+  return std::nullopt;
+}
+
 // Builder function for AuthFactorWithStatus. This function takes into account
 // type and calls various library functions needed to convert AuthFactor to a
 // proto for a persistent user.
 std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     const ObfuscatedUsername& username,
+    UserPolicyFile* user_policy_file,
     AuthFactorDriverManager* auth_factor_driver_manager,
     const AuthFactor& auth_factor) {
   const AuthFactorDriver& factor_driver =
@@ -142,8 +164,10 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
-  auto supported_intents =
-      GetSupportedIntents(username, auth_factor, *auth_factor_driver_manager);
+  auto supported_intents = GetFullAuthSupportedIntents(
+      username, auth_factor, *auth_factor_driver_manager,
+      GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
+                                        auth_factor.type()));
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -162,6 +186,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
 // AuthFactor to a proto.
 std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     const ObfuscatedUsername& username,
+    UserPolicyFile* user_policy_file,
     AuthFactorDriverManager* auth_factor_driver_manager,
     const CredentialVerifier* verifier) {
   const AuthFactorDriver& factor_driver =
@@ -174,8 +199,10 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   }
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() = std::move(*proto_factor);
-  auto supported_intents =
-      GetSupportedIntents(username, *verifier, *auth_factor_driver_manager);
+  auto supported_intents = GetLightAuthSupportedIntents(
+      username, verifier->auth_factor_type(), *auth_factor_driver_manager,
+      GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
+                                        verifier->auth_factor_type()));
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -188,6 +215,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
 template <typename ReplyType>
 void ReplyWithAuthFactorStatus(
     AuthSession* auth_session,
+    UserPolicyFile* user_policy_file,
     AuthFactorDriverManager* auth_factor_driver_manager,
     UserSession* user_session,
     user_data_auth::AuthFactor auth_factor,
@@ -209,19 +237,20 @@ void ReplyWithAuthFactorStatus(
   CHECK(auth_factor_driver_manager);
 
   std::optional<user_data_auth::AuthFactorWithStatus> auth_factor_with_status;
-
   // Select which AuthFactorWithStatus to build based on user type.
   if (auth_session->ephemeral_user()) {
     CHECK(user_session);
     auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_session->obfuscated_username(), auth_factor_driver_manager,
+        auth_session->obfuscated_username(), user_policy_file,
+        auth_factor_driver_manager,
         user_session->FindCredentialVerifier(auth_factor.label()));
   } else {
-    auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_session->obfuscated_username(), auth_factor_driver_manager,
-        auth_session->auth_factor_map()
-            .Find(auth_factor.label())
-            ->auth_factor());
+    auth_factor_with_status =
+        GetAuthFactorWithStatus(auth_session->obfuscated_username(),
+                                user_policy_file, auth_factor_driver_manager,
+                                auth_session->auth_factor_map()
+                                    .Find(auth_factor.label())
+                                    ->auth_factor());
   }
 
   if (!auth_factor_with_status.has_value()) {
@@ -733,6 +762,20 @@ void UserDataAuth::CreateMountThreadDBus() {
     CHECK(mount_thread_bus_->Connect())
         << "Failed to connect to system D-Bus on mount thread";
   }
+}
+
+CryptohomeStatusOr<UserPolicyFile*> UserDataAuth::LoadUserPolicyFile(
+    const ObfuscatedUsername& obfuscated_username) {
+  auto [iter, is_new] = user_policy_files_.try_emplace(
+      obfuscated_username, platform_, GetUserPolicyPath(obfuscated_username));
+  if (is_new && !iter->second.LoadFromFile().ok()) {
+    // The file could not be found, so either the policy file doesn't exist, or
+    // the file is corrupted and thus could not be read. Regardless, we need to
+    // revert to the default settings (which is an empty file).
+    iter->second.UpdateUserPolicy(
+        SerializedUserPolicy({.auth_factor_type_policy = {}}));
+  }
+  return &iter->second;
 }
 
 void UserDataAuth::ShutdownTask() {
@@ -2303,9 +2346,32 @@ void UserDataAuth::StartAuthSession(
       // authentication.
       // AuthFactorWithStatus is populated irresptive of what is available or
       // not.
-      auto supported_intents =
-          GetSupportedIntents(auth_session->obfuscated_username(), auth_factor,
-                              *auth_factor_driver_manager_);
+      auto user_policy_file_status =
+          LoadUserPolicyFile(auth_session->obfuscated_username());
+      if (!user_policy_file_status.ok()) {
+        ReplyWithError(
+            std::move(on_done), reply,
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocCouldntLoadUserPolicyFileInStartAuthSession),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                PossibleAction::kReboot})));
+        return;
+      }
+      auto user_policy = user_policy_file_status.value()->GetUserPolicy();
+      if (!user_policy.has_value()) {
+        ReplyWithError(
+            std::move(on_done), reply,
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(kLocCouldntGetUserPolicyInStartAuthSession),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                PossibleAction::kReboot})));
+        return;
+      }
+      auto supported_intents = GetFullAuthSupportedIntents(
+          auth_session->obfuscated_username(), auth_factor,
+          *auth_factor_driver_manager_,
+          GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
       user_data_auth::AuthFactorWithStatus auth_factor_with_status;
@@ -2944,7 +3010,17 @@ void UserDataAuth::AddAuthFactor(
 
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
-
+  auto user_policy_file_status =
+      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCouldntLoadUserPolicyFileInAddAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot})));
+    return;
+  }
   auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
@@ -2959,7 +3035,8 @@ void UserDataAuth::AddAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
-          auth_session_status->Get(), auth_factor_driver_manager_,
+          auth_session_status->Get(), user_policy_file_status.value(),
+          auth_factor_driver_manager_,
           sessions_->Find(auth_session_status.value()->username()),
           request.auth_factor(), std::move(on_done)));
 }
@@ -3050,6 +3127,17 @@ void UserDataAuth::UpdateAuthFactor(
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
+  auto user_policy_file_status =
+      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCouldntLoadUserPolicyFileInUpdateAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot})));
+    return;
+  }
   auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
@@ -3064,7 +3152,8 @@ void UserDataAuth::UpdateAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
-          auth_session_status->Get(), auth_factor_driver_manager_,
+          auth_session_status->Get(), user_policy_file_status.value(),
+          auth_factor_driver_manager_,
           sessions_->Find(auth_session_status.value()->username()),
           request.auth_factor(), std::move(on_done)));
 }
@@ -3088,15 +3177,26 @@ void UserDataAuth::UpdateAuthFactorMetadata(
   }
 
   // Populate the request auth factor with accurate sysinfo.
-  PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
-
+  auto user_policy_file_status =
+      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocCouldntLoadUserPolicyFileInUpdateAuthFactorMetadata),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot})));
+    return;
+  }
   auth_session_status.value()->UpdateAuthFactorMetadata(
-      request,
-      base::BindOnce(&ReplyWithAuthFactorStatus<
-                         user_data_auth::UpdateAuthFactorMetadataReply>,
-                     auth_session_status->Get(), auth_factor_driver_manager_,
-                     sessions_->Find(auth_session_status.value()->username()),
-                     request.auth_factor(), std::move(on_done)));
+      request, base::BindOnce(
+                   &ReplyWithAuthFactorStatus<
+                       user_data_auth::UpdateAuthFactorMetadataReply>,
+                   auth_session_status->Get(), user_policy_file_status.value(),
+                   auth_factor_driver_manager_,
+                   sessions_->Find(auth_session_status.value()->username()),
+                   request.auth_factor(), std::move(on_done)));
 }
 
 void UserDataAuth::RemoveAuthFactor(
@@ -3163,6 +3263,16 @@ void UserDataAuth::ListAuthFactors(
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  auto user_policy_file_status = LoadUserPolicyFile(obfuscated_username);
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCouldntLoadUserPolicyFileInListAuthFactors),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot})));
+    return;
+  }
 
   // Helper function to filter out types of auth factor that are supported
   // internally but which should not be reported as supported in the public API.
@@ -3213,8 +3323,8 @@ void UserDataAuth::ListAuthFactors(
     for (AuthFactorMap::ValueView item : auth_factor_map) {
       if (IsPublicType(item.auth_factor().type())) {
         auto auth_factor_with_status = GetAuthFactorWithStatus(
-            obfuscated_username, auth_factor_driver_manager_,
-            item.auth_factor());
+            obfuscated_username, user_policy_file_status.value(),
+            auth_factor_driver_manager_, item.auth_factor());
         if (auth_factor_with_status.has_value()) {
           *reply.add_configured_auth_factors_with_status() =
               std::move(auth_factor_with_status.value());
@@ -3273,7 +3383,8 @@ void UserDataAuth::ListAuthFactors(
            user_session->GetCredentialVerifiers()) {
         if (IsPublicType(verifier->auth_factor_type())) {
           auto auth_factor_with_status = GetAuthFactorWithStatus(
-              obfuscated_username, auth_factor_driver_manager_, verifier);
+              obfuscated_username, user_policy_file_status.value(),
+              auth_factor_driver_manager_, verifier);
           if (auth_factor_with_status.has_value()) {
             *reply.add_configured_auth_factors_with_status() =
                 std::move(auth_factor_with_status.value());

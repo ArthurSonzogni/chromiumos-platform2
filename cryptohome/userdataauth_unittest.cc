@@ -3123,9 +3123,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
-      .WillOnce([key_data](const ObfuscatedUsername&, int) {
+      .WillRepeatedly([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -3186,9 +3186,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
-      .WillOnce([key_data](const ObfuscatedUsername&, int) {
+      .WillRepeatedly([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -3519,9 +3519,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   // test that the listing correctly skips it.
   std::vector<int> vk_indicies = {0, 1, 2};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
-      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
-      .WillOnce([](const ObfuscatedUsername&, int) {
+      .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -3534,9 +3534,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
         return vk;
       });
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 1))
-      .WillOnce(Return(ByMove(nullptr)));
+      .WillRepeatedly([](const ObfuscatedUsername&, int) { return nullptr; });
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 2))
-      .WillOnce([](const ObfuscatedUsername&, int) {
+      .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
         KeyData key_data;
@@ -4430,9 +4430,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   // Set up mocks for a VK.
   std::vector<int> vk_indice = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
-      .WillOnce(DoAll(SetArgPointee<1>(vk_indice), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indice), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
-      .WillOnce([](const ObfuscatedUsername&, int) {
+      .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);

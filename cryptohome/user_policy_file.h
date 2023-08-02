@@ -30,7 +30,7 @@ class UserPolicyFile final {
   // permanent, the |StoreUserPolicyInFile| should be called.
   void UpdateUserPolicy(const SerializedUserPolicy& serialized_user_policy);
   // Gets the user policy.
-  std::optional<SerializedUserPolicy> GetUserPolicy();
+  std::optional<SerializedUserPolicy> GetUserPolicy() const;
 
  private:
   const FlatbufferFile file_;

@@ -157,6 +157,13 @@ base::FilePath GetUserMountDirectory(
   return UserPath(obfuscated_username).Append(kMountDir);
 }
 
+base::FilePath GetUserPolicyPath(
+    const ObfuscatedUsername& obfuscated_username) {
+  return UserPath(obfuscated_username)
+      .Append(kUserPolicyDir)
+      .Append(kPolicyFile);
+}
+
 base::FilePath GetUserTemporaryMountDirectory(
     const ObfuscatedUsername& obfuscated_username) {
   return UserPath(obfuscated_username).Append(kTemporaryMountDir);

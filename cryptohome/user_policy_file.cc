@@ -53,7 +53,7 @@ CryptohomeStatus UserPolicyFile::StoreInFile() {
   return OkStatus<CryptohomeError>();
 }
 
-std::optional<SerializedUserPolicy> UserPolicyFile::GetUserPolicy() {
+std::optional<SerializedUserPolicy> UserPolicyFile::GetUserPolicy() const {
   return serialized_user_policy_;
 }
 
@@ -66,16 +66,16 @@ CryptohomeStatus UserPolicyFile::LoadFromFile() {
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  std::optional<SerializedUserPolicy> serialized_user_policy_status =
+  std::optional<SerializedUserPolicy> serialized_user_policy =
       SerializedUserPolicy::Deserialize(file_contents_status.value());
-  if (!serialized_user_policy_status.has_value()) {
+  if (!serialized_user_policy.has_value()) {
     LOG(ERROR) << "Failed to deserialize the user policies from the file";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocDeserializeFailedInLoadUserPolicyFromFile),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  serialized_user_policy_ = serialized_user_policy_status;
+  serialized_user_policy_ = serialized_user_policy.value();
   return OkStatus<CryptohomeError>();
 }
 

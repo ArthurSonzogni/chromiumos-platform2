@@ -46,6 +46,8 @@ inline constexpr char kUserSecretStashDir[] = "user_secret_stash";
 inline constexpr char kUserSecretStashFileBase[] = "uss";
 inline constexpr int kUserSecretStashDefaultSlot = 0;
 inline constexpr char kAuthFactorsDir[] = "auth_factors";
+inline constexpr char kUserPolicyDir[] = "policy";
+inline constexpr char kPolicyFile[] = "user_policy";
 
 base::FilePath ShadowRoot();
 base::FilePath SystemSaltFile();
@@ -67,6 +69,7 @@ base::FilePath AuthFactorPath(const ObfuscatedUsername& obfuscated_username,
 std::string LogicalVolumePrefix(const ObfuscatedUsername& obfuscated_username);
 std::string DmcryptVolumePrefix(const ObfuscatedUsername& obfuscated_username);
 
+base::FilePath GetUserPolicyPath(const ObfuscatedUsername& obfuscated_username);
 base::FilePath GetEcryptfsUserVaultPath(
     const ObfuscatedUsername& obfuscated_username);
 base::FilePath GetUserMountDirectory(

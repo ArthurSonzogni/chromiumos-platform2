@@ -121,8 +121,8 @@ TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
       CreateFactor(AuthFactorType::kPassword, auth_factor::PasswordMetadata(),
                    TpmEccAuthBlockState());
 
-  auto intents =
-      GetSupportedIntents(kObfuscatedUser, password_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, password_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -133,7 +133,8 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithNoHardware) {
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(false));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, pin_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -147,7 +148,8 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithDelay) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, pin_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -161,7 +163,8 @@ TEST_F(AuthFactorWithDriverTest, PinSupportAllIntentsWhenUnlocked) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, pin_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -172,7 +175,8 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
                                       FingerprintAuthBlockState{});
   EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(false));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -191,7 +195,8 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -212,7 +217,8 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -233,7 +239,8 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor, manager_);
+  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
+                                             manager_, std::nullopt);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly,
                                             AuthIntent::kWebAuthn));
@@ -243,7 +250,8 @@ TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
   std::unique_ptr<CredentialVerifier> verifier =
       ScryptVerifier::Create(kLabel, brillo::SecureBlob("password"));
 
-  auto intents = GetSupportedIntents(kObfuscatedUser, *verifier, manager_);
+  auto intents = GetLightAuthSupportedIntents(
+      kObfuscatedUser, verifier->auth_factor_type(), manager_, std::nullopt);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }

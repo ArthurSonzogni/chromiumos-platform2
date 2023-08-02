@@ -45,6 +45,7 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/with_driver.h"
@@ -69,6 +70,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_policy_file.h"
 #include "cryptohome/user_secret_stash/migrator.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
@@ -334,6 +336,22 @@ WrapCallbackWithMetricsReporting(
                         auth_factor_type, std::move(bucket_name));
 }
 
+std::optional<SerializedUserAuthFactorTypePolicy>
+GetAuthFactorPolicyFromUserPolicy(
+    const std::optional<SerializedUserPolicy>& user_policy,
+    AuthFactorType auth_factor_type) {
+  if (!user_policy.has_value()) {
+    return std::nullopt;
+  }
+  for (auto policy : user_policy->auth_factor_type_policy) {
+    if (policy.type != std::nullopt &&
+        policy.type == SerializeAuthFactorType(auth_factor_type)) {
+      return policy;
+    }
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
@@ -538,6 +556,16 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     LOG(ERROR) << "Auth factor status update callback has not been set.";
     return;
   }
+  UserPolicyFile user_policy_file(platform_,
+                                  GetUserPolicyPath(obfuscated_username_));
+  if (!user_policy_file.LoadFromFile().ok()) {
+    LOG(ERROR) << "Couldn't load user policy from file, attempting to create "
+                  "an empty default file in SendAuthFactorWithStatusUpdate";
+    user_policy_file.UpdateUserPolicy(
+        SerializedUserPolicy({.auth_factor_type_policy = {}}));
+  }
+  auto user_policy = user_policy_file.GetUserPolicy();
+
   for (AuthFactorMap::ValueView item : auth_factor_map_) {
     const AuthFactor& auth_factor = item.auth_factor();
     AuthFactorDriver& driver =
@@ -552,11 +580,14 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     if (!auth_factor_proto) {
       continue;
     }
+
     user_data_auth::AuthFactorWithStatus auth_factor_with_status;
     *auth_factor_with_status.mutable_auth_factor() =
         std::move(*auth_factor_proto);
-    auto supported_intents = GetSupportedIntents(
-        obfuscated_username_, auth_factor, *auth_factor_driver_manager_);
+    base::flat_set<AuthIntent> supported_intents = GetFullAuthSupportedIntents(
+        obfuscated_username_, auth_factor, *auth_factor_driver_manager_,
+        GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
+
     for (const auto& auth_intent : supported_intents) {
       auth_factor_with_status.add_available_for_intents(
           AuthIntentToProto(auth_intent));
