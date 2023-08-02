@@ -20,9 +20,6 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <brillo/flag_helper.h>
-#include <diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_exception.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
@@ -30,6 +27,9 @@
 #include "diagnostics/cros_health_tool/diag/routine_v2_client.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 

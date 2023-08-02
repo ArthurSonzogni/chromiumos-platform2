@@ -9,8 +9,9 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <diagnostics/mojom/external/network_health.mojom.h>
-#include <diagnostics/mojom/external/network_health_types.mojom.h>
+
+#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health_types.mojom.h"
 
 namespace diagnostics {
 

@@ -12,14 +12,14 @@
 #include <base/functional/bind.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <diagnostics/mojom/external/network_health.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_events.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_exception.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
+#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {
 

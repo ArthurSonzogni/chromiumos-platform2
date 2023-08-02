@@ -7,4 +7,5 @@ import("//common-mk/pkg_config.gni")
 source_set("libtelem") {
   configs += [ "//diagnostics/cros_health_tool:cros_health_tool_pkg_deps" ]
   sources = [ "telem.cc" ]
+  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
 }

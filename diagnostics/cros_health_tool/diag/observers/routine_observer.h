@@ -6,8 +6,9 @@
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_OBSERVERS_ROUTINE_OBSERVER_H_
 
 #include <base/values.h>
-#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 

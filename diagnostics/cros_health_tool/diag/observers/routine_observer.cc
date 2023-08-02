@@ -11,9 +11,9 @@
 #include <base/notreached.h>
 #include <base/functional/callback_forward.h>
 #include <base/values.h>
-#include <diagnostics/mojom/public/cros_healthd_routines.mojom.h>
 
 #include "diagnostics/cros_health_tool/output_util.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 

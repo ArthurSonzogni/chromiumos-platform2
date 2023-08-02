@@ -18,9 +18,9 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
-#include <diagnostics/mojom/public/cros_healthd_events.mojom.h>
 
 #include "diagnostics/cros_health_tool/event/event_subscriber.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 

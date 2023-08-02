@@ -11,4 +11,5 @@ source_set("libevent") {
     "network_subscriber.cc",
   ]
   configs += [ "//diagnostics/cros_health_tool:cros_health_tool_pkg_deps" ]
+  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
 }
