@@ -11,6 +11,11 @@ chromeos {
         project: "chromeos/config-internal"
         path: "test/plans/v2/ctpv1_compatible/hwsec_cq.star"
       }
+      test_plan_starlark_files {
+        host: "chrome-internal.googlesource.com"
+        project: "chromeos/config-internal"
+        path: "test/plans/v2/ctpv1_compatible/hwsec_vtpm_cq.star"
+      }
     }
   }
 }
