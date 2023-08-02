@@ -124,6 +124,7 @@ class DiskCleanup {
   struct DiskCleanupActionResult {
     bool success = true;
     bool should_stop = false;
+    bool cleaned_over_minimum = false;
 
     DiskCleanupActionResult();
     DiskCleanupActionResult& operator|=(const DiskCleanupActionResult& rhs);

@@ -262,64 +262,23 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     return result.success;
   }
 
+  result |= RemoveGCaches(normal_cleanup_homedirs);
+  if (result.should_stop) {
+    return result.success;
+  }
+
   auto free_disk_space = AmountOfFreeDiskSpace();
   if (!free_disk_space) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return false;
   }
 
-  result |= RemoveGCaches(normal_cleanup_homedirs);
-  if (result.should_stop) {
-    return result.success;
-  }
-
-  auto old_free_disk_space = free_disk_space;
-  free_disk_space = AmountOfFreeDiskSpace();
-  if (!free_disk_space) {
-    LOG(ERROR) << "Failed to get the amount of free space";
-    return false;
-  }
-
-  const int64_t freed_gcache_space =
-      free_disk_space.value() - old_free_disk_space.value();
-  // Report only if something was deleted.
-  if (freed_gcache_space > 0) {
-    ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
-  }
-
-  free_disk_space = AmountOfFreeDiskSpace();
-  if (!free_disk_space) {
-    LOG(ERROR) << "Failed to get the amount of free space";
-    return false;
-  }
-
-  bool cleaned_over_minimum = false;
-
-  switch (GetFreeDiskSpaceState(free_disk_space)) {
-    case DiskCleanup::FreeSpaceState::kAboveTarget:
-      LOG(WARNING) << "Spece freed up unexpectedly";
-      return false;
-    case DiskCleanup::FreeSpaceState::kAboveThreshold:
-    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      cleaned_over_minimum = true;
-      ReportDiskCleanupProgress(
-          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
-      // continue cleanup
-      break;
-    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
-    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
-      // continue cleanup
-      break;
-    case DiskCleanup::FreeSpaceState::kError:
-      LOG(ERROR) << "Failed to get the amount of free space";
-      return false;
-  }
-
   bool return_result = result.success;
   bool early_stop = false;
+  bool cleaned_over_minimum = result.cleaned_over_minimum;
 
   // Purge up daemon store cache
-  old_free_disk_space = free_disk_space;
+  auto old_free_disk_space = free_disk_space;
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
     if (!routines_->DeleteDaemonStoreCache(dir->obfuscated))
@@ -577,6 +536,7 @@ DiskCleanup::DiskCleanupActionResult::operator|=(
     const DiskCleanup::DiskCleanupActionResult& rhs) {
   success = success && rhs.success;
   should_stop = should_stop || rhs.should_stop;
+  cleaned_over_minimum = cleaned_over_minimum || rhs.cleaned_over_minimum;
 
   return *this;
 }
@@ -645,6 +605,13 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
     const std::vector<HomeDirs::HomeDir>& homedirs) {
   DiskCleanupActionResult result;
 
+  auto free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
   for (auto dir = homedirs.rbegin(); dir != homedirs.rend(); dir++) {
     if (!routines_->DeleteUserGCache(dir->obfuscated))
       result.success = false;
@@ -655,6 +622,43 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
       result.should_stop = true;
       return result;
     }
+  }
+
+  auto old_free_disk_space = free_disk_space;
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
+  const int64_t freed_gcache_space =
+      free_disk_space.value() - old_free_disk_space.value();
+  // Report only if something was deleted.
+  if (freed_gcache_space > 0) {
+    ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
+  }
+
+  switch (GetFreeDiskSpaceState()) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      LOG(WARNING) << "Spece freed up unexpectedly";
+      result.success = false;
+      return result;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      result.cleaned_over_minimum = true;
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
+      // continue cleanup
+      break;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // continue cleanup
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      result.success = false;
+      return result;
   }
 
   return result;

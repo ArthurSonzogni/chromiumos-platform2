@@ -132,7 +132,12 @@ class DiskCleanupTest : public ::testing::Test {
     // (GetTestHomedirs().size() + 1) for each step
     // -1 to allow control over next cleanup step
 
-    return cleanups * (GetTestHomedirs().size() + 1);
+    int queries = cleanups * (GetTestHomedirs().size() + 1);
+
+    if (cleanups > 1)
+      queries++;  // GCache cleanup reports UMA stats.
+
+    return queries;
   }
 
   StrictMock<MockPlatform> platform_;
