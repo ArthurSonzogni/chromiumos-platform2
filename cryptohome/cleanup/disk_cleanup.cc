@@ -267,54 +267,21 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     return result.success;
   }
 
-  auto free_disk_space = AmountOfFreeDiskSpace();
-  if (!free_disk_space) {
-    LOG(ERROR) << "Failed to get the amount of free space";
-    return false;
+  result |= RemoveDaemonStoreCache(normal_cleanup_homedirs,
+                                   result.cleaned_over_minimum);
+  if (result.should_stop) {
+    return result.success;
   }
 
-  bool return_result = result.success;
-  bool early_stop = false;
-  bool cleaned_over_minimum = result.cleaned_over_minimum;
+  // Normal cleanup processed all folders. Move the cutoff forward.
+  last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
 
-  // Purge up daemon store cache
-  auto old_free_disk_space = free_disk_space;
-  for (auto dir = normal_cleanup_homedirs.rbegin();
-       dir != normal_cleanup_homedirs.rend(); dir++) {
-    if (!routines_->DeleteDaemonStoreCache(dir->obfuscated))
-      return_result = false;
-
-    if (HasTargetFreeSpace()) {
-      early_stop = true;
-      break;
-    }
-  }
-  free_disk_space = AmountOfFreeDiskSpace();
-  const int64_t freed_daemon_store_cache_space =
-      free_disk_space.value() - old_free_disk_space.value();
-  // Report only if something was deleted.
-  if (freed_daemon_store_cache_space > 0) {
-    ReportFreedDaemonStoreCacheDiskSpaceInMb(freed_daemon_store_cache_space /
-                                             1024 / 1024);
-  }
-
-  if (!early_stop)
-    last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
-
-  switch (GetFreeDiskSpaceState(free_disk_space)) {
+  // Normal cleanup is done, stop if we don't need aggressive cleanup.
+  switch (GetFreeDiskSpaceState()) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
-      ReportDiskCleanupProgress(
-          DiskCleanupProgress::kDaemonStoreCacheCleanedAboveTarget);
-      return return_result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
-      // by previous clean up routine (i.e. gcache cleanup).
-      if (!cleaned_over_minimum) {
-        ReportDiskCleanupProgress(
-            DiskCleanupProgress::kDaemonStoreCacheCleanedAboveMinimum);
-      }
-      return return_result;
+      return result.success;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
       // Continue cleanup.
@@ -324,11 +291,21 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return false;
   }
 
+  auto free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    return false;
+  }
+
+  bool return_result = result.success;
+  bool cleaned_over_minimum = result.cleaned_over_minimum;
+  bool early_stop = result.should_stop;
+
   // Purge up daemon store cache for the mounted (logged in) users.
   if (!routines_->DeleteDaemonStoreCacheMountedUsers()) {
     return_result = false;
   }
-  old_free_disk_space = free_disk_space;
+  auto old_free_disk_space = free_disk_space;
   free_disk_space = AmountOfFreeDiskSpace();
   const int64_t freed_daemon_store_cache_logged_in_space =
       free_disk_space.value() - old_free_disk_space.value();
@@ -654,6 +631,74 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
       // continue cleanup
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      result.success = false;
+      return result;
+  }
+
+  return result;
+}
+
+// Purge up daemon store cache for every unmounted user that has logged out
+// after the last normal cleanup happened.
+DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
+    const std::vector<HomeDirs::HomeDir>& homedirs, bool cleaned_over_minimum) {
+  DiskCleanupActionResult result;
+
+  auto free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
+  auto old_free_disk_space = free_disk_space;
+  for (auto dir = homedirs.rbegin(); dir != homedirs.rend(); dir++) {
+    if (!routines_->DeleteDaemonStoreCache(dir->obfuscated))
+      result.success = false;
+
+    if (HasTargetFreeSpace()) {
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kDaemonStoreCacheCleanedAboveTarget);
+      result.should_stop = true;
+      break;
+    }
+  }
+
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
+  const int64_t freed_daemon_store_cache_space =
+      free_disk_space.value() - old_free_disk_space.value();
+  // Report only if something was deleted.
+  if (freed_daemon_store_cache_space > 0) {
+    ReportFreedDaemonStoreCacheDiskSpaceInMb(freed_daemon_store_cache_space /
+                                             1024 / 1024);
+  }
+
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      LOG(WARNING) << "Spece freed up unexpectedly";
+      result.success = false;
+      return result;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
+      // by previous clean up routine (i.e. gcache cleanup).
+      if (!cleaned_over_minimum) {
+        ReportDiskCleanupProgress(
+            DiskCleanupProgress::kDaemonStoreCacheCleanedAboveMinimum);
+      }
+      break;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // Continue cleanup.
       break;
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";

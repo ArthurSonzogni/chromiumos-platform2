@@ -137,6 +137,11 @@ class DiskCleanupTest : public ::testing::Test {
     if (cleanups > 1)
       queries++;  // GCache cleanup reports UMA stats.
 
+    if (cleanups > 2) {
+      queries++;  // Daemon cache cleanup reports UMA stats.
+      queries++;  // Disk cleanup decides if it continues.
+    }
+
     return queries;
   }
 

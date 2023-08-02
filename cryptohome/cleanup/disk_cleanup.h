@@ -135,6 +135,9 @@ class DiskCleanup {
       const std::vector<HomeDirs::HomeDir>& homedirs);
   DiskCleanupActionResult RemoveGCaches(
       const std::vector<HomeDirs::HomeDir>& homedirs);
+  DiskCleanupActionResult RemoveDaemonStoreCache(
+      const std::vector<HomeDirs::HomeDir>& homedirs,
+      bool cleaned_over_minimum);
 
   // Actually performs disk cleanup. Called by FreeDiskSpaceDuringLogin.
   bool FreeDiskSpaceDuringLoginInternal(const ObfuscatedUsername& obfuscated);
