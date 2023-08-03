@@ -13,11 +13,12 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service_impl.h"
+
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace wilco {

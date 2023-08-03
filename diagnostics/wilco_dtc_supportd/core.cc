@@ -15,12 +15,13 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
+
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace wilco {

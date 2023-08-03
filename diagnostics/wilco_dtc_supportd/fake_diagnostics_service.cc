@@ -8,8 +8,7 @@
 #include <optional>
 #include <utility>
 
-#include <diagnostics/mojom/public/nullable_primitives.mojom.h>
-
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"
 
 namespace diagnostics {

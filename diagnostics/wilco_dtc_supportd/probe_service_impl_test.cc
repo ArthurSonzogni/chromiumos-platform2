@@ -9,13 +9,13 @@
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
 
 namespace diagnostics {

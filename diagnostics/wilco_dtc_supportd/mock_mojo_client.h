@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/buffer.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {

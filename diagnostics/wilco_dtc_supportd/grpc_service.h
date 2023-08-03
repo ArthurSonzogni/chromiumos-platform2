@@ -12,10 +12,10 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service.h"

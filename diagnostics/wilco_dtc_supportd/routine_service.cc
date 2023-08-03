@@ -9,15 +9,15 @@
 #include <utility>
 #include <vector>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
+#include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h>
-#include <diagnostics/mojom/public/nullable_primitives.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-
-#include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"
 
 namespace diagnostics {
 namespace wilco {

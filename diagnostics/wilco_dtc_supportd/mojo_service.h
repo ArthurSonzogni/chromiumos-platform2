@@ -10,7 +10,6 @@
 
 #include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <grpcpp/grpcpp.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -18,6 +17,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/buffer.h>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 

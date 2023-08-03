@@ -16,10 +16,10 @@
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>
 #include <dbus/bus.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_service.h"
