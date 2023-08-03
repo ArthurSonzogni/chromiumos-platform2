@@ -195,24 +195,35 @@ Status LECredentialManagerImpl::RemoveCredential(uint64_t label) {
 StatusOr<uint32_t> LECredentialManagerImpl::GetWrongAuthAttempts(
     uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  RETURN_IF_ERROR(RetrieveLabelInfo(label_object, h_aux, orig_cred, orig_mac,
+                                    metadata_lost));
+  return pinweaver_.GetWrongAuthAttempts(orig_cred);
 }
 
 StatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
+  return pinweaver_.GetDelayInSeconds(metadata);
 }
 
 StatusOr<std::optional<uint32_t>>
 LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
+  return pinweaver_.GetExpirationInSeconds(metadata);
 }
 
 StatusOr<LECredentialManagerImpl::DelaySchedule>
 LECredentialManagerImpl::GetDelaySchedule(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
+  return pinweaver_.GetDelaySchedule(metadata);
 }
 
 StatusOr<uint64_t> LECredentialManagerImpl::InsertRateLimiter(
@@ -271,6 +282,25 @@ LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
   };
 
   return reply;
+}
+
+StatusOr<brillo::Blob> LECredentialManagerImpl::GetCredentialMetadata(
+    uint64_t label) {
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  RETURN_IF_ERROR(RetrieveLabelInfo(label_object, h_aux, orig_cred, orig_mac,
+                                    metadata_lost));
+
+  if (metadata_lost) {
+    return MakeStatus<TPMError>(
+        "Invalid cred metadata for label: " + std::to_string(label),
+        TPMRetryAction::kNoRetry);
+  }
+  return orig_cred;
 }
 
 StatusOr<uint64_t> LECredentialManagerImpl::InsertLeaf(

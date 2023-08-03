@@ -91,6 +91,11 @@ class LECredentialManagerImpl : public LECredentialManager {
   // All public PW operation functions should first call StateIsReady().
   Status StateIsReady();
 
+  // Helper to turn a label into an original credential. Helper for a lot of the
+  // Get* functions which starts with a label and first need to turn it into a
+  // credential to call the actual Pinweaver function they need to call.
+  StatusOr<brillo::Blob> GetCredentialMetadata(uint64_t label);
+
   // Since the InsertCredential() and InsertRateLimiter() functions are very
   // similar, this function combines the common parts of both the calls
   // into a generic "insert leaf" function. |auth_channel| is only valid in

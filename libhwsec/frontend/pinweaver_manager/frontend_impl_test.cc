@@ -491,4 +491,58 @@ TEST_F(LECredentialManagerImplTest, BiometricsResetSecretNegative) {
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
+TEST_F(LECredentialManagerImplTest, CheckCredentialExpirations) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+
+  // Insert the secrets with no expiration.
+  uint64_t label1 =
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label1),
+              IsOkAndHolds(std::nullopt));
+
+  // Another way to insert never-expiring secrets, with expiration_delay of 0.
+  uint64_t label2 =
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/0)
+          .AssertOk()
+          .value();
+  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label2),
+              IsOkAndHolds(std::nullopt));
+
+  // Non-zero expiration_delay would leads to non-empty response.
+  uint64_t label3 =
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/1)
+          .AssertOk()
+          .value();
+  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label3), IsOkAnd(Ge(0)));
+}
+
+TEST_F(LECredentialManagerImplTest, GetDelaySchedule) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+
+  // We should be able to read the delay schedule back out.
+  uint64_t label1 =
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  EXPECT_THAT(le_mgr_->GetDelaySchedule(label1), IsOkAndHolds(delay_sched));
+}
+
 }  // namespace hwsec
