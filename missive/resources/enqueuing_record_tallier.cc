@@ -73,9 +73,18 @@ StatusOr<uint64_t> EnqueuingRecordTallier::ComputeAverage() {
 
   // Both wall times were obtained. Return the average rate of enqueuing
   // records.
-  CHECK(wall_time.ValueOrDie() >= last_wall_time.ValueOrDie());
-  return cumulated_size /
-         std::max<uint64_t>(
-             wall_time.ValueOrDie() - last_wall_time.ValueOrDie(), 1U);
+  // wall_time is expected to be no earlier than last_wall_time. No CHECK should
+  // be added here because the system time may be adjusted. If last_wall_time is
+  // earlier than wall_time, the time difference would be conservatively treated
+  // as 1, which is consistent with the browser's treatment in case of
+  // unavailable average.
+  //
+  // We don't use a simple max operator here because of the unsignedness of the
+  // variables.
+  const uint64_t time_elapsed =
+      (wall_time.ValueOrDie() <= last_wall_time.ValueOrDie())
+          ? 1U
+          : (wall_time.ValueOrDie() - last_wall_time.ValueOrDie());
+  return cumulated_size / time_elapsed;
 }
 }  // namespace reporting

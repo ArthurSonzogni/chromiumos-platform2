@@ -21,6 +21,9 @@ using ::testing::Eq;
 
 namespace reporting {
 
+// A fake enquequing record tallier. It does not use the real wall time. The
+// wall time it uses is always set by
+// `FakeEnqueuingRecordTallier::SetCurrentWallTime`.
 class FakeEnqueuingRecordTallier : public EnqueuingRecordTallier {
  public:
   explicit FakeEnqueuingRecordTallier(base::TimeDelta interval)
@@ -84,14 +87,15 @@ TEST_F(EnqueuingRecordTallierTest, SucceedWhenNormal) {
   tallier_.TallyTimes(kRecord, kNumRecords);
   tallier_.SetCurrentWallTime(kWallTime);
 
-  // Move forward time
+  // No average before the timer interval has passed.
   ASSERT_FALSE(tallier_.GetAverage().has_value());
   task_environment_.FastForwardBy(kInterval - base::Seconds(1));
   task_environment_.RunUntilIdle();
   ASSERT_FALSE(tallier_.GetAverage().has_value());
+
+  // kInterval has passed and the rate has now become available.
   task_environment_.FastForwardBy(kInterval);
   task_environment_.RunUntilIdle();
-
   const auto rate = tallier_.GetAverage();
   ASSERT_TRUE(rate.has_value());
   ASSERT_THAT(rate.value(), Eq(kNumRecords * kRecordSize / kWallTime));
@@ -100,21 +104,50 @@ TEST_F(EnqueuingRecordTallierTest, SucceedWhenNormal) {
 TEST_F(EnqueuingRecordTallierTest, AssumeOneWhenNoTimeDifference) {
   // If time has passed for less than one second, assume one second has passed
   constexpr uint64_t kNumRecords = 2U;
-  constexpr uint64_t kWallTime = 0U;  // time has elapsed for less than 1 sec
-  tallier_.TallyTimes(kRecord, kNumRecords);
+  // No time passed since test starts with last wall time being 0.
+  constexpr uint64_t kWallTime = 0U;
   tallier_.SetCurrentWallTime(kWallTime);
+  tallier_.TallyTimes(kRecord, kNumRecords);
 
-  // Move forward time
+  // No average before the timer interval has passed.
   ASSERT_FALSE(tallier_.GetAverage().has_value());
   task_environment_.FastForwardBy(kInterval - base::Seconds(1));
   task_environment_.RunUntilIdle();
   ASSERT_FALSE(tallier_.GetAverage().has_value());
+  // Time has elapsed for less than 1 sec -- current time does not reset to a
+  // later time in the test.
   task_environment_.FastForwardBy(kInterval);
   task_environment_.RunUntilIdle();
-
   const auto rate = tallier_.GetAverage();
   ASSERT_TRUE(rate.has_value());
-  ASSERT_THAT(rate.value(), Eq(kNumRecords * kRecordSize / 1U));
+  EXPECT_THAT(rate.value(),
+              Eq(kNumRecords * kRecordSize / /*elapsed time=*/1U));
+}
+
+TEST_F(EnqueuingRecordTallierTest, AssumeOneWhenNegativeTimeDifference) {
+  // If time has moved backward, assume one second has passed.
+  constexpr uint64_t kNumRecords = 2U;
+  constexpr uint64_t kLaterWallTime = 10U;
+  constexpr uint64_t kEarlierWallTime = 8U;
+
+  // Set last wall time to the later time.
+  tallier_.SetCurrentWallTime(kLaterWallTime);
+  tallier_.ResetLastWallTime();
+
+  // No average before the timer interval has passed.
+  tallier_.TallyTimes(kRecord, kNumRecords);
+  ASSERT_FALSE(tallier_.GetAverage().has_value());
+  task_environment_.FastForwardBy(kInterval - base::Seconds(1));
+  task_environment_.RunUntilIdle();
+  ASSERT_FALSE(tallier_.GetAverage().has_value());
+  // Move backward time.
+  tallier_.SetCurrentWallTime(kEarlierWallTime);
+  task_environment_.FastForwardBy(kInterval);
+  task_environment_.RunUntilIdle();
+  const auto rate = tallier_.GetAverage();
+  ASSERT_TRUE(rate.has_value());
+  EXPECT_THAT(rate.value(),
+              Eq(kNumRecords * kRecordSize / /*elapsed time=*/1U));
 }
 
 TEST_F(EnqueuingRecordTallierTest, FailedToGetCurrentWallTime) {

@@ -59,8 +59,9 @@ class EnqueuingRecordTallier {
   // Resets |cumulated_size_| and |last_wall_time_|. Returns the average rate of
   // enqueuing records in bytes/sec since last time this method is called. If
   // the wall-clock time or the last wall-clock time was not successfully
-  // obtained, an error status is returned. All calls to this method must be on
-  // the same sequence.
+  // obtained, an error status is returned. If the current wall time is no later
+  // than the last wall time, treats as if one second had passed. All calls to
+  // this method must be on the same sequence.
   [[nodiscard]] StatusOr<uint64_t> ComputeAverage()
       VALID_CONTEXT_REQUIRED(sequence_checker_);
 
