@@ -89,6 +89,8 @@ constexpr char kClientEccPointYHex[] =
 
 namespace hwsec {
 
+using ResetType = LECredentialManager::ResetType;
+
 class LECredentialManagerImplTest : public ::testing::Test {
  public:
   LECredentialManagerImplTest()
@@ -385,6 +387,108 @@ TEST_F(LECredentialManagerImplTest, InvalidLabelCheck) {
   invalid_label = label1 ^ 0x1;
   EXPECT_THAT(le_mgr_->CheckCredential(invalid_label, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+}
+
+// Insert a credential and then remove it.
+// Check that a subsequent CheckCredential on that label fails.
+TEST_F(LECredentialManagerImplTest, BasicInsertRemove) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  ASSERT_THAT(le_mgr_->RemoveCredential(label1), IsOk());
+  EXPECT_THAT(le_mgr_->CheckCredential(label1, kLeSecret1),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+}
+
+// Check that a reset unlocks a locked out credential.
+TEST_F(LECredentialManagerImplTest, ResetSecret) {
+  uint64_t label1 = CreateLockedOutCredential();
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+
+  EXPECT_THAT(le_mgr_->ResetCredential(label1, kResetSecret1,
+                                       ResetType::kWrongAttempts),
+              IsOk());
+
+  // Make sure we can Check successfully, post reset.
+  auto result = le_mgr_->CheckCredential(label1, kLeSecret1);
+  ASSERT_OK(result);
+  EXPECT_EQ(result->he_secret, kHeSecret1);
+}
+
+// Check that an invalid reset doesn't unlock a locked credential.
+TEST_F(LECredentialManagerImplTest, ResetSecretNegative) {
+  uint64_t label1 = CreateLockedOutCredential();
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+
+  EXPECT_THAT(
+      le_mgr_->ResetCredential(label1, kLeSecret1, ResetType::kWrongAttempts),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+
+  // Make sure that Check still fails.
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+}
+
+// Check that a reset unlocks a locked out rate-limiter.
+TEST_F(LECredentialManagerImplTest, BiometricsResetSecret) {
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_THAT(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+
+  EXPECT_THAT(le_mgr_->ResetCredential(label1, kResetSecret1,
+                                       ResetType::kWrongAttempts),
+              IsOk());
+
+  // Make sure we can Check successfully, post reset.
+  EXPECT_THAT(le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+              IsOk());
+}
+
+// Check that an invalid reset doesn't unlock a locked rate-limiter.
+TEST_F(LECredentialManagerImplTest, BiometricsResetSecretNegative) {
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_THAT(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+
+  EXPECT_THAT(
+      le_mgr_->ResetCredential(label1, kLeSecret1, ResetType::kWrongAttempts),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+
+  // Make sure that StartBiometricsAuth still fails.
+  EXPECT_THAT(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
 }  // namespace hwsec

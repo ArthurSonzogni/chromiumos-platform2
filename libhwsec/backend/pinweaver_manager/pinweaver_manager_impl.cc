@@ -144,12 +144,52 @@ Status LECredentialManagerImpl::ResetCredential(
     const brillo::SecureBlob& reset_secret,
     ResetType reset_type) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+  RETURN_IF_ERROR(RetrieveLabelInfo(label_object, h_aux, orig_cred, orig_mac,
+                                    metadata_lost));
+
+  if (metadata_lost) {
+    return MakeStatus<TPMError>(
+        "Invalid cred metadata for label: " + std::to_string(label),
+        TPMRetryAction::kNoRetry);
+  }
+
+  bool strong_reset = reset_type == ResetType::kWrongAttemptsAndExpirationTime;
+  ASSIGN_OR_RETURN(const CredentialTreeResult& result,
+                   pinweaver_.ResetCredential(label, h_aux, orig_cred,
+                                              reset_secret, strong_reset));
+  root_hash_ = result.new_root;
+
+  if (result.new_cred_metadata.has_value() && result.new_mac.has_value()) {
+    RETURN_IF_ERROR(UpdateHashTree(
+        label_object, &result.new_cred_metadata.value(),
+        &result.new_mac.value(), UpdateHashTreeType::kUpdateLeaf));
+  }
+  return MakeStatus<PinWeaverError>(result.error);
 }
 
 Status LECredentialManagerImpl::RemoveCredential(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
-  NOTREACHED_NORETURN();
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  RETURN_IF_ERROR(RetrieveLabelInfo(label_object, h_aux, orig_cred, orig_mac,
+                                    metadata_lost));
+
+  ASSIGN_OR_RETURN(const CredentialTreeResult& result,
+                   pinweaver_.RemoveCredential(label, h_aux, orig_mac));
+  root_hash_ = result.new_root;
+
+  RETURN_IF_ERROR(UpdateHashTree(label_object, nullptr, nullptr,
+                                 UpdateHashTreeType::kRemoveLeaf));
+  return OkStatus();
 }
 
 StatusOr<uint32_t> LECredentialManagerImpl::GetWrongAuthAttempts(
