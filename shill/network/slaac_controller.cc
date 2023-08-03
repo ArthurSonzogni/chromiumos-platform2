@@ -273,6 +273,15 @@ void SLAACController::SendRouterSolicitation() {
   nd_router_solicit packet;
   bzero(&packet, sizeof(packet));
   packet.nd_rs_hdr.icmp6_type = ND_ROUTER_SOLICIT;
+
+  // b/294334471: Define maximum hop limit for the packet.
+  constexpr int kIPv6MaxHopLimit = 255;
+  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &kIPv6MaxHopLimit,
+                 sizeof(kIPv6MaxHopLimit)) < 0) {
+    PLOG(WARNING) << "interface " << interface_index_
+                  << ": Error configuring hop limit in RS.";
+  }
+
   if (sendto(sockfd, &packet, sizeof(packet), 0,
              reinterpret_cast<sockaddr*>(&dst_addr), sizeof(dst_addr)) < 0) {
     PLOG(WARNING) << "interface " << interface_index_ << ": Error sending RS.";
