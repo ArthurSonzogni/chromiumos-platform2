@@ -4,7 +4,6 @@
 
 #include "shill/wifi/wifi.h"
 
-#include <inttypes.h>
 #include <limits.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 #include <linux/nl80211.h>
@@ -1781,24 +1780,21 @@ void WiFi::ParseCipherSuites(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  ByteString cipher_suites_raw;
+  std::vector<uint8_t> cipher_suites_raw;
   if (!nl80211_message.const_attributes()->GetRawAttributeValue(
           NL80211_ATTR_CIPHER_SUITES, &cipher_suites_raw)) {
     return;
   }
 
-  int num_bytes = cipher_suites_raw.GetLength();
-  const uint8_t* cipher_suites = cipher_suites_raw.GetConstData();
-
   // NL80211_ATTR_CIPHER_SUITES is a set of U32 values, each of which represent
   // a supported cipher suite. Each of these U32 values is represented as 4
   // consecutive bytes in the raw data, which we parse here.
   supported_cipher_suites_.clear();
-  for (int i = 0; i + 3 < num_bytes; i += 4) {
-    uint32_t cipher_suite = ((uint32_t)cipher_suites[i + 3]) << 24 |
-                            ((uint32_t)cipher_suites[i + 2]) << 16 |
-                            ((uint32_t)cipher_suites[i + 1]) << 8 |
-                            ((uint32_t)cipher_suites[i]);
+  for (size_t i = 0; i + 3 < cipher_suites_raw.size(); i += 4) {
+    uint32_t cipher_suite = ((uint32_t)cipher_suites_raw[i + 3]) << 24 |
+                            ((uint32_t)cipher_suites_raw[i + 2]) << 16 |
+                            ((uint32_t)cipher_suites_raw[i + 1]) << 8 |
+                            ((uint32_t)cipher_suites_raw[i]);
     supported_cipher_suites_.insert(cipher_suite);
   }
 }

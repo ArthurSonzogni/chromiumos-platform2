@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <sys/timerfd.h>
 
-#include <algorithm>
 #include <optional>
 #include <set>
 #include <string>
@@ -24,13 +23,14 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
-
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/byte_string.h"
 #include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
@@ -359,7 +359,8 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
             return false;
           }
           if (!single_ssid->SetRawAttributeValue(
-                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID, ssid_bytes)) {
+                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID,
+                  {ssid_bytes.GetConstData(), ssid_bytes.GetLength()})) {
             Error::PopulateAndLog(
                 FROM_HERE, error, Error::kOperationFailed,
                 "Could not set NL80211_SCHED_SCAN_MATCH_ATTR_SSID");
@@ -478,10 +479,10 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         size_t ssid_num_mismatch = expected_ssids.size();
         AttributeIdIterator ssid_iter(*ssids);
         AttributeListConstRefPtr single_ssid;
-        ByteString ssid;
+        std::vector<uint8_t> ssid;
         int ssid_index;
         while (!ssid_iter.AtEnd()) {
-          ssid.Clear();
+          ssid.clear();
           ssid_index = ssid_iter.GetId();
           if (!ssids->ConstGetNestedAttributeList(ssid_index, &single_ssid)) {
             LOG(ERROR) << __func__ << ": "
@@ -496,7 +497,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                           "NL80211_SCHED_SCAN_MATCH_ATTR_SSID";
             return false;
           }
-          if (!base::Contains(expected_ssids, ssid)) {
+          if (!base::Contains(expected_ssids, ByteString(ssid))) {
             ssid_mismatch_found = true;
             break;
           } else {
@@ -1041,17 +1042,15 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
                  << " in ssid_results";
       return freqs;
     }
-    ByteString ssid_bytestring;
-    if (!result->GetRawAttributeValue(NL80211_ATTR_SSID, &ssid_bytestring)) {
+    std::vector<uint8_t> ssid;
+    if (!result->GetRawAttributeValue(NL80211_ATTR_SSID, &ssid)) {
       // We assume that the SSID attribute must be present in each result.
       LOG(ERROR) << __func__ << ": "
                  << "No SSID available for result #" << results_iter.GetId();
       continue;
     }
     SLOG(2) << "SSID " << ssid_num << ": "
-            << std::string(ssid_bytestring.GetConstData(),
-                           ssid_bytestring.GetConstData() +
-                               ssid_bytestring.GetLength());
+            << net_base::byte_utils::ByteStringFromBytes(ssid);
     AttributeListConstRefPtr frequencies;
     uint32_t freq_value;
     if (result->ConstGetNestedAttributeList(NL80211_ATTR_SCAN_FREQUENCIES,

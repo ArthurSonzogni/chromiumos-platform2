@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/mock_netlink_socket.h"
 #include "shill/net/netlink_packet.h"
@@ -330,13 +331,12 @@ class NetlinkMessageTest : public Test {
     AttributeIdIterator ssid_iter(*ssid_list);
     value->clear();
     for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
-      ByteString bytes;
+      std::vector<uint8_t> bytes;
       if (ssid_list->GetRawAttributeValue(ssid_iter.GetId(), &bytes)) {
-        if (bytes.IsEmpty()) {
+        if (bytes.empty()) {
           value->push_back("");
         } else {
-          value->push_back(
-              std::string(bytes.GetConstCString(), bytes.GetLength()));
+          value->push_back(net_base::byte_utils::ByteStringFromBytes(bytes));
         }
       }
     }
@@ -525,11 +525,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
   }
 
   {
-    ByteString rawdata;
+    std::vector<uint8_t> rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
-    EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    EXPECT_FALSE(rawdata.empty());
+    Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(kAuthenticateFrame);
     EXPECT_EQ(Nl80211Frame::kAuthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
@@ -565,11 +565,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
   }
 
   {
-    ByteString rawdata;
+    std::vector<uint8_t> rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
-    EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    EXPECT_FALSE(rawdata.empty());
+    Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(kAssociateFrame);
     EXPECT_EQ(Nl80211Frame::kAssocResponseFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
@@ -619,11 +619,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
   }
 
   {
-    ByteString rawdata;
+    std::vector<uint8_t> rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_RESP_IE, &rawdata));
-    EXPECT_TRUE(
-        rawdata.Equals(ByteString(kRespIeBytes, std::size(kRespIeBytes))));
+    EXPECT_EQ(rawdata,
+              std::vector(std::begin(kRespIeBytes), std::end(kRespIeBytes)));
   }
 }
 
@@ -642,9 +642,8 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 
   EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
       NL80211_ATTR_MAC, NetlinkMessage::MessageContext()));
-  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_MAC,
-      ByteString(kMacAddressBytes, std::size(kMacAddressBytes))));
+  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_MAC,
+                                                         kMacAddressBytes));
 
   // In the middle, let's try adding an attribute without populating it.
   EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
@@ -657,8 +656,8 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 
   EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
       NL80211_ATTR_RESP_IE, NetlinkMessage::MessageContext()));
-  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_RESP_IE, ByteString(kRespIeBytes, std::size(kRespIeBytes))));
+  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_RESP_IE,
+                                                         kRespIeBytes));
 
   // Encode the message to a ByteString and remove all the run-specific
   // values.
@@ -703,11 +702,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
   }
 
   {
-    ByteString rawdata;
+    std::vector<uint8_t> rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
-    EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    EXPECT_FALSE(rawdata.empty());
+    Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(kDeauthenticateFrame);
     EXPECT_EQ(Nl80211Frame::kDeauthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
@@ -843,11 +842,11 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
   }
 
   {
-    ByteString rawdata;
+    std::vector<uint8_t> rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_FRAME, &rawdata));
-    EXPECT_FALSE(rawdata.IsEmpty());
-    Nl80211Frame frame({rawdata.GetConstData(), rawdata.GetLength()});
+    EXPECT_FALSE(rawdata.empty());
+    Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(kDisassociateFrame);
     EXPECT_EQ(Nl80211Frame::kDisassocFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));

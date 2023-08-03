@@ -839,7 +839,8 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
   switch (nested_template.type) {
     case kTypeRaw:
       list->CreateRawAttribute(id, attribute_name.c_str());
-      return list->SetRawAttributeValue(id, value);
+      return list->SetRawAttributeValue(
+          id, {value.GetConstData(), value.GetLength()});
     case kTypeU8:
       list->CreateU8Attribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);

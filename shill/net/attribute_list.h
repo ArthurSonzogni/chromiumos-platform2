@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 
@@ -123,8 +124,8 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   bool CreateRawAttribute(int id, const char* id_string);
   // |value| should point to the data (after the |nlattr| header, if there is
   // one).
-  bool SetRawAttributeValue(int id, ByteString value);
-  bool GetRawAttributeValue(int id, ByteString* output) const;
+  bool SetRawAttributeValue(int id, base::span<const uint8_t> value);
+  bool GetRawAttributeValue(int id, std::vector<uint8_t>* output) const;
 
   // This retrieves a string from any kind of attribute.
   bool GetAttributeAsString(int id, std::string* value) const;

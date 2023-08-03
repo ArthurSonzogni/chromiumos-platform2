@@ -5,10 +5,11 @@
 #ifndef SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
 #define SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
 
+#include <vector>
+
 #include <base/logging.h>
 #include <gmock/gmock.h>
 
-#include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"
 
 namespace shill {
@@ -70,8 +71,9 @@ MATCHER_P(HasHiddenSSID, nl80211_message_type, "") {
           NL80211_ATTR_SCAN_SSIDS, &ssids)) {
     return false;
   }
-  ByteString ssid;
   AttributeIdIterator ssid_iter(*ssids);
+
+  std::vector<uint8_t> ssid;
   if (!ssids->GetRawAttributeValue(ssid_iter.GetId(), &ssid)) {
     return false;
   }
@@ -80,13 +82,13 @@ MATCHER_P(HasHiddenSSID, nl80211_message_type, "") {
   // two SSID entries: one containing the SSID we are looking for,
   // and an empty entry, signifying that we also want to do a
   // broadcast probe request for all non-hidden APs as well.
-  ByteString empty_ssid;
+  std::vector<uint8_t> empty_ssid;
   if (ssid_iter.AtEnd()) {
     return false;
   }
   ssid_iter.Advance();
   if (!ssids->GetRawAttributeValue(ssid_iter.GetId(), &empty_ssid) ||
-      !empty_ssid.IsEmpty()) {
+      !empty_ssid.empty()) {
     return false;
   }
 

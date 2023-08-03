@@ -348,7 +348,8 @@ bool AttributeList::CreateNestedAttribute(int id, const char* id_string) {
 
 // Raw Attribute.
 
-bool AttributeList::GetRawAttributeValue(int id, ByteString* output) const {
+bool AttributeList::GetRawAttributeValue(int id,
+                                         std::vector<uint8_t>* output) const {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute) {
     return false;
@@ -360,17 +361,18 @@ bool AttributeList::GetRawAttributeValue(int id, ByteString* output) const {
   }
 
   if (output) {
-    *output = ByteString(raw_value);
+    *output = raw_value;
   }
   return true;
 }
 
-bool AttributeList::SetRawAttributeValue(int id, ByteString value) {
+bool AttributeList::SetRawAttributeValue(int id,
+                                         base::span<const uint8_t> value) {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute) {
     return false;
   }
-  return attribute->SetRawValue({value.GetConstData(), value.GetLength()});
+  return attribute->SetRawValue(value);
 }
 
 bool AttributeList::CreateRawAttribute(int id, const char* id_string) {

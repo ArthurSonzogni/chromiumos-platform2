@@ -159,30 +159,22 @@ bool Nl80211AttributeBss::ParseInformationElements(
       }
       case kHtCapAttributeId: {
         ie_attribute->CreateRawAttribute(type, kHtCapString);
-        ie_attribute->SetRawAttributeValue(
-            type,
-            ByteString(reinterpret_cast<const char*>(payload), payload_bytes));
+        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
         break;
       }
       case kHtInfoAttributeId: {
         ie_attribute->CreateRawAttribute(type, kHtOperString);
-        ie_attribute->SetRawAttributeValue(
-            type,
-            ByteString(reinterpret_cast<const char*>(payload), payload_bytes));
+        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
         break;
       }
       case kVhtCapAttributeId: {
         ie_attribute->CreateRawAttribute(type, kVhtCapString);
-        ie_attribute->SetRawAttributeValue(
-            type,
-            ByteString(reinterpret_cast<const char*>(payload), payload_bytes));
+        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
         break;
       }
       case kVhtInfoAttributeId: {
         ie_attribute->CreateRawAttribute(type, kVhtOperString);
-        ie_attribute->SetRawAttributeValue(
-            type,
-            ByteString(reinterpret_cast<const char*>(payload), payload_bytes));
+        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
         break;
       }
       case kMeshIdAttributeId: {
