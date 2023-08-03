@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <set>
 #include <string>
 #include <utility>
@@ -304,6 +305,7 @@ class Network {
     ip6config_ = std::move(config);
   }
   bool fixed_ip_params() const { return fixed_ip_params_; }
+  const std::string& logging_tag() const { return logging_tag_; }
   void set_logging_tag(const std::string& logging_tag) {
     logging_tag_ = logging_tag;
   }
@@ -543,6 +545,8 @@ class Network {
 
   base::WeakPtrFactory<Network> weak_factory_{this};
 };
+
+std::ostream& operator<<(std::ostream& stream, const Network& network);
 
 }  // namespace shill
 

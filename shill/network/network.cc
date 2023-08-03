@@ -101,7 +101,7 @@ void Network::Start(const Network::StartOptions& opts) {
 
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
-    LOG(INFO) << logging_tag_
+    LOG(INFO) << *this
               << ": Network has been started, stop it before starting with the "
                  "new options";
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
@@ -168,26 +168,25 @@ void Network::Start(const Network::StartOptions& opts) {
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   } else if (!dhcp_started && !ipv6_started) {
     // Neither v4 nor v6 is running, trigger the failure callback directly.
-    LOG(WARNING) << logging_tag_ << ": Failed to start IP provisioning";
+    LOG(WARNING) << *this << ": Failed to start IP provisioning";
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                        /*is_failure=*/true, /*trigger_callback=*/true));
   }
 
-  LOG(INFO) << logging_tag_ << ": Started IP provisioning, dhcp: "
+  LOG(INFO) << *this << ": Started IP provisioning, dhcp: "
             << (dhcp_started ? "started" : "no")
             << ", accept_ra: " << std::boolalpha << opts.accept_ra;
   if (static_network_config_.ipv4_address_cidr.has_value()) {
-    LOG(INFO) << logging_tag_ << ": has IPv4 static config "
-              << static_network_config_;
+    LOG(INFO) << *this << ": has IPv4 static config " << static_network_config_;
   }
   if (link_protocol_ipv4_properties_) {
-    LOG(INFO) << logging_tag_ << ": has IPv4 link properties "
+    LOG(INFO) << *this << ": has IPv4 link properties "
               << *link_protocol_ipv4_properties_;
   }
   if (link_protocol_ipv6_properties_) {
-    LOG(INFO) << logging_tag_ << ": has IPv6 link properties "
+    LOG(INFO) << *this << ": has IPv6 link properties "
               << *link_protocol_ipv6_properties_;
   }
 }
@@ -201,13 +200,12 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
   if (!ipconfig->properties().address_family) {
-    LOG(ERROR) << logging_tag_ << ": " << __func__
-               << " with invalid address family";
+    LOG(ERROR) << *this << ": " << __func__ << " with invalid address family";
     return;
   }
 
-  LOG(INFO) << logging_tag_ << ": Setting "
-            << *ipconfig->properties().address_family << " connection";
+  LOG(INFO) << *this << ": Setting " << *ipconfig->properties().address_family
+            << " connection";
   if (!primary_family_) {
     primary_family_ = ipconfig->properties().address_family;
   }
@@ -251,7 +249,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   if (ip6config()) {
     ss << ", IPv6 config: " << *ip6config();
   }
-  LOG(INFO) << logging_tag_ << ": Stopping "
+  LOG(INFO) << *this << ": Stopping "
             << (is_failure ? "after failure" : "normally") << ss.str();
 
   weak_factory_for_connection_.InvalidateWeakPtrs();
@@ -306,12 +304,12 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
 }
 
 void Network::InvalidateIPv6Config() {
-  SLOG(2) << logging_tag_ << ": " << __func__;
+  SLOG(2) << *this << ": " << __func__;
   if (!ip6config_) {
     return;
   }
 
-  SLOG(2) << logging_tag_ << "Waiting for new IPv6 configuration";
+  SLOG(2) << *this << "Waiting for new IPv6 configuration";
   if (slaac_controller_) {
     slaac_controller_->Stop();
     slaac_controller_->Start();
@@ -359,7 +357,7 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
     return;
   }
 
-  LOG(INFO) << logging_tag_ << ": static IPv4 config update " << config;
+  LOG(INFO) << *this << ": static IPv4 config update " << config;
 
   // Clear the previously applied static IP parameters. The new config will be
   // applied in ConfigureStaticIPTask().
@@ -400,7 +398,7 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
-  LOG(INFO) << logging_tag_ << ": DHCP lease "
+  LOG(INFO) << *this << ": DHCP lease "
             << (new_lease_acquired ? "acquired " : "update ") << properties;
   if (new_lease_acquired) {
     for (auto* ev : event_handlers_) {
@@ -421,8 +419,7 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
 }
 
 void Network::OnDHCPDrop(bool is_voluntary) {
-  LOG(INFO) << logging_tag_ << ": " << __func__
-            << ": is_voluntary = " << is_voluntary;
+  LOG(INFO) << *this << ": " << __func__ << ": is_voluntary = " << is_voluntary;
   if (!is_voluntary) {
     for (auto* ev : event_handlers_) {
       ev->OnGetDHCPFailure(interface_index_);
@@ -470,7 +467,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
 
   // Fallback to IPv6 if possible.
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    LOG(INFO) << logging_tag_ << ": operating in IPv6-only because of "
+    LOG(INFO) << *this << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (primary_family_ == net_base::IPFamily::kIPv4) {
       // Clear the state in kernel at first. It is possible that this function
@@ -490,7 +487,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // DHCPv4 reports to prefer v6 only. Continue to wait for SLAAC.
       return;
     } else {
-      LOG(ERROR) << logging_tag_
+      LOG(ERROR) << *this
                  << ": DHCP option 108 received but no valid IPv6 network is "
                     "usable. Likely a network configuration error.";
     }
@@ -503,7 +500,7 @@ bool Network::RenewDHCPLease() {
   if (!dhcp_controller_) {
     return false;
   }
-  SLOG(2) << logging_tag_ << ": renewing DHCP lease";
+  SLOG(2) << *this << ": renewing DHCP lease";
   // If RenewIP() fails, DHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP();
 }
@@ -531,7 +528,7 @@ void Network::OnIPv6AddressChanged() {
   auto slaac_addresses = slaac_controller_->GetAddresses();
   if (slaac_addresses.size() == 0) {
     if (ip6config()) {
-      LOG(INFO) << logging_tag_ << ": Removing all observed IPv6 addresses";
+      LOG(INFO) << *this << ": Removing all observed IPv6 addresses";
       set_ip6config(nullptr);
       for (auto* ev : event_handlers_) {
         ev->OnIPConfigsPropertyUpdated(interface_index_);
@@ -555,8 +552,7 @@ void Network::OnIPv6AddressChanged() {
     // The kernel normally populates the default route before it performs
     // a neighbor solicitation for the new address, so it shouldn't be
     // missing at this point.
-    LOG(WARNING) << logging_tag_
-                 << ": No default route for global IPv6 address "
+    LOG(WARNING) << *this << ": No default route for global IPv6 address "
                  << properties.address;
   }
 
@@ -573,7 +569,7 @@ void Network::OnIPv6AddressChanged() {
     addresses_str += addr.address().ToString();
     sep = ",";
   }
-  LOG(INFO) << logging_tag_ << ": Updating IPv6 addresses to [" << addresses_str
+  LOG(INFO) << *this << ": Updating IPv6 addresses to [" << addresses_str
             << "]";
 
   if (!ip6config()) {
@@ -583,7 +579,7 @@ void Network::OnIPv6AddressChanged() {
              properties.subnet_prefix ==
                  ip6config()->properties().subnet_prefix &&
              properties.gateway == ip6config()->properties().gateway) {
-    SLOG(2) << logging_tag_ << ": " << __func__ << ": primary address for "
+    SLOG(2) << *this << ": " << __func__ << ": primary address for "
             << interface_name_ << " is unchanged";
     return;
   }
@@ -615,7 +611,7 @@ void Network::OnIPv6AddressChanged() {
 
 void Network::OnIPv6ConfigUpdated() {
   if (!ip6config()) {
-    LOG(WARNING) << logging_tag_ << ": " << __func__
+    LOG(WARNING) << *this << ": " << __func__
                  << " called but |ip6config_| is empty";
     return;
   }
@@ -657,7 +653,7 @@ void Network::OnIPv6DnsServerAddressesChanged() {
     if (!ip6config()) {
       return;
     }
-    LOG(INFO) << logging_tag_ << ": Removing all observed IPv6 DNS addresses";
+    LOG(INFO) << *this << ": Removing all observed IPv6 DNS addresses";
     ip6config()->UpdateDNSServers(std::vector<std::string>());
     for (auto* ev : event_handlers_) {
       ev->OnIPConfigsPropertyUpdated(interface_index_);
@@ -677,12 +673,12 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 
   // Done if no change in server addresses.
   if (ip6config()->properties().dns_servers == addresses_str) {
-    SLOG(2) << logging_tag_ << ": " << __func__ << " IPv6 DNS server list for "
+    SLOG(2) << *this << ": " << __func__ << " IPv6 DNS server list for "
             << interface_name_ << " is unchanged.";
     return;
   }
 
-  LOG(INFO) << logging_tag_ << ": Updating DNS IPv6 addresses to ["
+  LOG(INFO) << *this << ": Updating DNS IPv6 addresses to ["
             << base::JoinString(addresses_str, ",") << "]";
   ip6config()->UpdateDNSServers(std::move(addresses_str));
   for (auto* ev : event_handlers_) {
@@ -700,7 +696,7 @@ void Network::EnableARPFiltering() {
 
 void Network::SetPriority(NetworkPriority priority) {
   if (!primary_family_) {
-    LOG(WARNING) << logging_tag_ << ": " << __func__
+    LOG(WARNING) << *this << ": " << __func__
                  << " called but no connection exists";
     return;
   }
@@ -758,7 +754,7 @@ std::vector<net_base::IPAddress> Network::GetDNSServers() const {
     for (const auto& dns4 : ipconfig_->properties().dns_servers) {
       auto addr = net_base::IPAddress::CreateFromString(dns4);
       if (!addr) {
-        LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns4;
+        LOG(ERROR) << *this << ": Invalid DNS address: " << dns4;
         continue;
       }
       result.push_back(*addr);
@@ -768,7 +764,7 @@ std::vector<net_base::IPAddress> Network::GetDNSServers() const {
     for (const auto& dns6 : ip6config_->properties().dns_servers) {
       auto addr = net_base::IPAddress::CreateFromString(dns6);
       if (!addr) {
-        LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns6;
+        LOG(ERROR) << *this << ": Invalid DNS address: " << dns6;
         continue;
       }
       result.push_back(*addr);
@@ -784,7 +780,7 @@ void Network::OnNeighborReachabilityEvent(
 
   const auto ip_address = net_base::IPAddress::CreateFromString(event.ip_addr);
   if (!ip_address) {
-    LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid IP address "
+    LOG(ERROR) << *this << ": " << __func__ << ": invalid IP address "
                << event.ip_addr;
     return;
   }
@@ -794,8 +790,7 @@ void Network::OnNeighborReachabilityEvent(
     case Status::kReachable:
       break;
     default:
-      LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid event "
-                 << event;
+      LOG(ERROR) << *this << ": " << __func__ << ": invalid event " << event;
       return;
   }
 
@@ -805,13 +800,13 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   if (state_ == State::kIdle) {
-    LOG(INFO) << logging_tag_ << ": " << __func__ << ": Idle state, ignoring "
+    LOG(INFO) << *this << ": " << __func__ << ": Idle state, ignoring "
               << event;
     return;
   }
 
   if (ignore_link_monitoring_) {
-    LOG(INFO) << logging_tag_ << ": " << __func__
+    LOG(INFO) << *this << ": " << __func__
               << " link monitor events ignored, ignoring " << event;
     return;
   }
@@ -834,15 +829,14 @@ void Network::OnNeighborReachabilityEvent(
     // before Network knows the IPConfig for the current connection: patchpanel
     // would not emit reachability event for the correct connection yet.
     if (!ipconfig) {
-      LOG(INFO) << logging_tag_ << ": " << __func__ << ": "
-                << ip_address->GetFamily()
+      LOG(INFO) << *this << ": " << __func__ << ": " << ip_address->GetFamily()
                 << " not configured, ignoring neighbor reachability event "
                 << event;
       return;
     }
     // Ignore reachability events related to a prior connection.
     if (ipconfig->properties().gateway != event.ip_addr) {
-      LOG(INFO) << logging_tag_ << ": " << __func__
+      LOG(INFO) << *this << ": " << __func__
                 << ": ignored neighbor reachability event with conflicting "
                    "gateway address "
                 << event;
@@ -898,19 +892,19 @@ std::optional<net_base::IPAddress> Network::gateway() const {
 
 bool Network::StartPortalDetection(bool reset) {
   if (!IsConnected()) {
-    LOG(INFO) << logging_tag_
+    LOG(INFO) << *this
               << ": Cannot start portal detection: Network is not connected";
     return false;
   }
 
   if (!reset && IsPortalDetectionInProgress()) {
-    LOG(INFO) << logging_tag_ << ": Portal detection is already running.";
+    LOG(INFO) << *this << ": Portal detection is already running.";
     return true;
   }
 
   const auto local_address = local();
   if (!local_address) {
-    LOG(ERROR) << logging_tag_
+    LOG(ERROR) << *this
                << ": Cannot start portal detection: No valid IP address";
     return false;
   }
@@ -918,12 +912,12 @@ bool Network::StartPortalDetection(bool reset) {
   portal_detector_ = CreatePortalDetector();
   if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
                                dns_servers(), logging_tag_)) {
-    LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
+    LOG(ERROR) << *this << ": Portal detection failed to start.";
     portal_detector_.reset();
     return false;
   }
 
-  LOG(INFO) << logging_tag_ << ": Portal detection started.";
+  LOG(INFO) << *this << ": Portal detection started.";
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationStart(interface_index_);
   }
@@ -932,26 +926,25 @@ bool Network::StartPortalDetection(bool reset) {
 
 bool Network::RestartPortalDetection() {
   if (!portal_detector_) {
-    LOG(ERROR) << logging_tag_
-               << ": Portal detection was not started, cannot restart";
+    LOG(ERROR) << *this << ": Portal detection was not started, cannot restart";
     return false;
   }
 
   const auto local_address = local();
   if (!local_address) {
-    LOG(ERROR) << logging_tag_
+    LOG(ERROR) << *this
                << ": Cannot restart portal detection: No valid IP address";
     return false;
   }
 
   if (!portal_detector_->Restart(interface_name_, local_address->GetFamily(),
                                  dns_servers(), logging_tag_)) {
-    LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
+    LOG(ERROR) << *this << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;
   }
 
-  LOG(INFO) << logging_tag_ << ": Portal detection restarted.";
+  LOG(INFO) << *this << ": Portal detection restarted.";
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
@@ -963,7 +956,7 @@ bool Network::RestartPortalDetection() {
 
 void Network::StopPortalDetection() {
   if (IsPortalDetectionInProgress()) {
-    LOG(INFO) << logging_tag_ << ": Portal detection stopped.";
+    LOG(INFO) << *this << ": Portal detection stopped.";
     for (auto* ev : event_handlers_) {
       ev->OnNetworkValidationStop(interface_index_);
     }
@@ -987,12 +980,12 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
     previous_validation_state = PortalDetector::ValidationStateToString(
         network_validation_result_->GetValidationState());
   }
-  LOG(INFO) << logging_tag_
+  LOG(INFO) << *this
             << ": OnPortalDetectorResult: " << previous_validation_state
             << " -> " << result.GetValidationState();
 
   if (!IsConnected()) {
-    LOG(INFO) << logging_tag_
+    LOG(INFO) << *this
               << ": Portal detection completed but Network is not connected";
     return;
   }
@@ -1021,7 +1014,7 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
 
 void Network::StartConnectionDiagnostics() {
   if (!IsConnected()) {
-    LOG(INFO) << logging_tag_
+    LOG(INFO) << *this
               << ": Not connected, cannot start connection diagnostics";
     return;
   }
@@ -1030,14 +1023,14 @@ void Network::StartConnectionDiagnostics() {
   const auto local_address = local();
   if (!local_address) {
     LOG(ERROR)
-        << logging_tag_
+        << *this
         << ": Local address unavailable, aborting connection diagnostics";
     return;
   }
 
   const auto gateway_address = gateway();
   if (!gateway_address) {
-    LOG(ERROR) << logging_tag_
+    LOG(ERROR) << *this
                << ": Gateway unavailable, aborting connection diagnostics";
     return;
   }
@@ -1046,14 +1039,14 @@ void Network::StartConnectionDiagnostics() {
       *local_address, *gateway_address, dns_servers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
-    LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
+    LOG(WARNING) << *this << ": Failed to start connection diagnostics";
     return;
   }
-  LOG(INFO) << logging_tag_ << ": Connection diagnostics started";
+  LOG(INFO) << *this << ": Connection diagnostics started";
 }
 
 void Network::StopConnectionDiagnostics() {
-  LOG(INFO) << logging_tag_ << ": Connection diagnostics stopping";
+  LOG(INFO) << *this << ": Connection diagnostics stopping";
   connection_diagnostics_.reset();
 }
 
@@ -1074,15 +1067,15 @@ void Network::StartConnectivityTest(
                           weak_factory_.GetWeakPtr(), logging_tag_));
   const auto local_address = local();
   if (!local_address) {
-    LOG(DFATAL) << logging_tag_ << ": Does not have a valid address";
+    LOG(DFATAL) << *this << ": Does not have a valid address";
     return;
   }
   if (connectivity_test_portal_detector_->Start(interface_name_,
                                                 local_address->GetFamily(),
                                                 dns_servers(), logging_tag_)) {
-    LOG(WARNING) << logging_tag_ << ": Failed to start connectivity test";
+    LOG(WARNING) << *this << ": Failed to start connectivity test";
   } else {
-    LOG(INFO) << logging_tag_ << ": Started connectivity test";
+    LOG(INFO) << *this << ": Started connectivity test";
   }
 }
 
@@ -1131,7 +1124,7 @@ void Network::ReportIPType() {
 }
 
 void Network::ApplyRoutingPolicy() {
-  SLOG(2) << logging_tag_ << ": " << __func__;
+  SLOG(2) << *this << ": " << __func__;
   std::vector<net_base::IPv4CIDR> rfc3442_dsts;
   if (ipconfig_) {
     for (const auto& route :
@@ -1139,7 +1132,7 @@ void Network::ApplyRoutingPolicy() {
       const auto dst = net_base::IPv4CIDR::CreateFromStringAndPrefix(
           route.host, route.prefix);
       if (!dst) {
-        LOG(WARNING) << logging_tag_
+        LOG(WARNING) << *this
                      << ": Failed to parse static route destination address "
                      << route.host << ", prefix length" << route.prefix;
         continue;
@@ -1156,18 +1149,17 @@ void Network::ApplyRoutingPolicy() {
 void Network::ApplyRoute(const IPConfig::Properties& properties) {
   auto family = properties.address_family;
   if (!family) {
-    LOG(ERROR) << logging_tag_ << ": Invalid IP family";
+    LOG(ERROR) << *this << ": Invalid IP family";
     return;
   }
-  SLOG(2) << logging_tag_ << ": " << __func__ << " on "
-          << net_base::ToString(*family);
+  SLOG(2) << *this << ": " << __func__ << " on " << net_base::ToString(*family);
 
   // nullopt means no gateway, a valid value for p2p networks. Present of
   // |peer_address| also suggest that this is a p2p network. Also accepts
   // "0.0.0.0" and "::" as indicators of no gateway.
   auto gateway = net_base::IPAddress::CreateFromString(properties.gateway);
   if (!gateway && !properties.gateway.empty()) {
-    LOG(ERROR) << logging_tag_ << ": Gateway address " << properties.gateway
+    LOG(ERROR) << *this << ": Gateway address " << properties.gateway
                << " is invalid";
     return;
   }
@@ -1178,7 +1170,7 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
     const auto peer =
         net_base::IPAddress::CreateFromString(properties.peer_address);
     if (!peer) {
-      LOG(ERROR) << logging_tag_ << ": Peer address " << properties.peer_address
+      LOG(ERROR) << *this << ": Peer address " << properties.peer_address
                  << " is invalid";
       return;
     }
@@ -1194,7 +1186,7 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
     auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
         properties.address, properties.subnet_prefix);
     if (!local) {
-      LOG(ERROR) << logging_tag_ << ": Local address " << properties.address
+      LOG(ERROR) << *this << ": Local address " << properties.address
                  << " with prefix length " << properties.subnet_prefix
                  << " is invalid";
       return;
@@ -1202,7 +1194,7 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
     fix_gateway_reachability = !local->InSameSubnetWith(*gateway);
     if (fix_gateway_reachability) {
       LOG(WARNING)
-          << logging_tag_ << ": Gateway " << gateway->ToString()
+          << *this << ": Gateway " << gateway->ToString()
           << " is unreachable from local address/prefix " << local->ToString()
           << ", mitigating this by creating a link route to the gateway.";
     }
@@ -1238,14 +1230,13 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
     auto prefix =
         net_base::IPv4CIDR::CreateFromStringAndPrefix(route.host, route.prefix);
     if (!prefix) {
-      LOG(WARNING) << logging_tag_ << ": Invalid route destination "
-                   << route.host << "/" << route.prefix;
+      LOG(WARNING) << *this << ": Invalid route destination " << route.host
+                   << "/" << route.prefix;
       continue;
     }
     auto gateway = net_base::IPv4Address::CreateFromString(route.gateway);
     if (!gateway) {
-      LOG(WARNING) << logging_tag_ << ": Invalid route gateway "
-                   << route.gateway;
+      LOG(WARNING) << *this << ": Invalid route gateway " << route.gateway;
       continue;
     }
     rfc3442_routes.emplace_back(*prefix, *gateway);
@@ -1257,8 +1248,7 @@ void Network::ApplyRoute(const IPConfig::Properties& properties) {
 }
 
 void Network::ApplyAddress(const IPConfig::Properties& properties) {
-  SLOG(2) << logging_tag_ << ": " << __func__ << " on "
-          << *properties.address_family;
+  SLOG(2) << *this << ": " << __func__ << " on " << *properties.address_family;
 
   // Skip address configuration if the address is from SLAAC.
   const bool skip_ip_configuration = properties.method == kTypeSLAAC;
@@ -1269,7 +1259,7 @@ void Network::ApplyAddress(const IPConfig::Properties& properties) {
   auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
       properties.address, properties.subnet_prefix);
   if (!local) {
-    LOG(ERROR) << logging_tag_ << ":Local address " << properties.address
+    LOG(ERROR) << *this << ":Local address " << properties.address
                << " with prefix length " << properties.subnet_prefix
                << " is invalid";
     return;
@@ -1277,7 +1267,7 @@ void Network::ApplyAddress(const IPConfig::Properties& properties) {
   auto broadcast =
       net_base::IPv4Address::CreateFromString(properties.broadcast_address);
   if (properties.broadcast_address != "" && !broadcast) {
-    LOG(WARNING) << logging_tag_ << ": Broadcast address "
+    LOG(WARNING) << *this << ": Broadcast address "
                  << properties.broadcast_address
                  << " is invalid, will use default instead";
   }
@@ -1285,7 +1275,7 @@ void Network::ApplyAddress(const IPConfig::Properties& properties) {
 }
 
 void Network::ApplyMTU() {
-  SLOG(2) << logging_tag_ << ": " << __func__;
+  SLOG(2) << *this << ": " << __func__;
   int mtu = INT32_MAX;
   if (ipconfig_ && ipconfig_->properties().mtu > 0 &&
       ipconfig_->properties().mtu < mtu) {
@@ -1339,6 +1329,10 @@ void Network::ReportNeighborLinkMonitorFailure(
 
   metrics_->SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure, tech,
                           failure);
+}
+
+std::ostream& operator<<(std::ostream& stream, const Network& network) {
+  return stream << network.logging_tag();
 }
 
 }  // namespace shill
