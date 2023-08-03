@@ -780,12 +780,12 @@ bool NetlinkNestedAttribute::InitNestedFromValue(
   }
   if (templates.size() == 1 && templates.cbegin()->second.is_array) {
     return AttributeList::IterateAttributes(
-        value, 0,
+        {value.GetConstData(), value.GetLength()}, 0,
         base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedArray,
                             templates.cbegin()->second, list));
   } else {
     return AttributeList::IterateAttributes(
-        value, 0,
+        {value.GetConstData(), value.GetLength()}, 0,
         base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedMap,
                             templates, list));
   }

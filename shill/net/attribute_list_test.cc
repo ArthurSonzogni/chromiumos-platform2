@@ -61,7 +61,7 @@ TEST_F(AttributeListTest, IterateEmptyPayload) {
   EXPECT_CALL(*this, AttributeMethod(_, _)).Times(0);
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
-      ByteString(), 0,
+      {}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
 }
@@ -89,7 +89,7 @@ TEST_F(AttributeListTest, IteratePayload) {
       .WillOnce(Return(true));
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -102,7 +102,7 @@ TEST_F(AttributeListTest, IteratePayload) {
   EXPECT_CALL(*this, AttributeMethod(kType3, PayloadIs("12345")))
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
-      payload, kLength1,
+      {payload.GetConstData(), payload.GetLength()}, kLength1,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -114,7 +114,7 @@ TEST_F(AttributeListTest, IteratePayload) {
       .WillOnce(Return(false));
   EXPECT_CALL(*this, AttributeMethod(kType3, PayloadIs("12345"))).Times(0);
   EXPECT_FALSE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -124,17 +124,19 @@ TEST_F(AttributeListTest, SmallPayloads) {
   // A payload must be at least 4 bytes long to incorporate the nlattr header.
   EXPECT_CALL(*this, AttributeMethod(_, _)).Times(0);
   AttributeListRefPtr list(new AttributeList());
+  const auto payload1 = MakeNetlinkAttribute(kHeaderLength - 1, kType1, "0123");
   EXPECT_FALSE(list->IterateAttributes(
-      MakeNetlinkAttribute(kHeaderLength - 1, kType1, "0123"), 0,
+      {payload1.GetConstData(), payload1.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
 
   // This is a minimal valid payload.
+  const auto payload2 = MakeNetlinkAttribute(kHeaderLength, kType2, "");
   EXPECT_CALL(*this, AttributeMethod(kType2, PayloadIs("")))
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
-      MakeNetlinkAttribute(kHeaderLength, kType2, ""), 0,
+      {payload2.GetConstData(), payload2.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -142,9 +144,10 @@ TEST_F(AttributeListTest, SmallPayloads) {
   // This is a minmal payload except there are not enough bytes to retrieve
   // the attribute value.
   const uint16_t kType3 = 1;
+  const auto payload3 = MakeNetlinkAttribute(kHeaderLength + 1, kType3, "");
   EXPECT_CALL(*this, AttributeMethod(_, _)).Times(0);
   EXPECT_FALSE(list->IterateAttributes(
-      MakeNetlinkAttribute(kHeaderLength + 1, kType3, ""), 0,
+      {payload3.GetConstData(), payload3.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
 }
@@ -161,7 +164,7 @@ TEST_F(AttributeListTest, TrailingGarbage) {
       .WillOnce(Return(true));
   AttributeListRefPtr list(new AttributeList());
   EXPECT_TRUE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -176,7 +179,7 @@ TEST_F(AttributeListTest, TrailingGarbage) {
   EXPECT_CALL(*this, AttributeMethod(kType1, PayloadIs("0")))
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -192,7 +195,7 @@ TEST_F(AttributeListTest, TrailingGarbage) {
   EXPECT_CALL(*this, AttributeMethod(kType1, PayloadIs("0")))
       .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);
@@ -209,7 +212,7 @@ TEST_F(AttributeListTest, TrailingGarbage) {
   EXPECT_CALL(*this, AttributeMethod(kType1, PayloadIs("0")))
       .WillOnce(Return(true));
   EXPECT_FALSE(list->IterateAttributes(
-      payload, 0,
+      {payload.GetConstData(), payload.GetLength()}, 0,
       base::BindRepeating(&AttributeListTest::AttributeMethod,
                           base::Unretained(this))));
   Mock::VerifyAndClearExpectations(this);

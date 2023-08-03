@@ -67,7 +67,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // for each attribute.  If |method| returns false, the travesal is terminated
   // and false is returned.  If a malformed attribute entry is encountered,
   // this method also returns false.
-  static bool IterateAttributes(const ByteString& payload,
+  static bool IterateAttributes(base::span<const uint8_t> payload,
                                 size_t offset,
                                 const AttributeMethod& method);
 

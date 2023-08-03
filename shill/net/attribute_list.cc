@@ -70,47 +70,52 @@ void AttributeList::Print(int log_level, int indent) const {
 
 // static
 bool AttributeList::IterateAttributes(
-    const ByteString& payload,
+    base::span<const uint8_t> payload,
     size_t offset,
     const AttributeList::AttributeMethod& method) {
   // Nothing to iterate over.
-  if (payload.IsEmpty()) {
+  if (payload.empty()) {
     return true;
   }
 
   // Invalid offset.
-  if (payload.GetLength() < NLA_ALIGN(offset)) {
+  if (payload.size() < NLA_ALIGN(offset)) {
     LOG(ERROR) << "Attribute offset " << offset
-               << " was larger than payload length " << payload.GetLength();
+               << " was larger than payload length " << payload.size();
     return false;
   }
+  auto remaining = payload.subspan(NLA_ALIGN(offset));
 
-  const unsigned char* ptr = payload.GetConstData() + NLA_ALIGN(offset);
-  const unsigned char* end = payload.GetConstData() + payload.GetLength();
-  // TODO(b/206049224) Remove all pointer arithmetic in favor of direct offset
-  // comparisons to prevent bugs caused by pointer address numeric overflow.
-  while (ptr + sizeof(nlattr) <= end) {
-    const nlattr* attribute = reinterpret_cast<const nlattr*>(ptr);
+  while (remaining.size() >= sizeof(nlattr)) {
+    const nlattr* attribute = reinterpret_cast<const nlattr*>(remaining.data());
     if (attribute->nla_len < sizeof(*attribute) ||
-        ptr + attribute->nla_len > end) {
+        attribute->nla_len > remaining.size()) {
       LOG(ERROR) << "Malformed nla attribute indicates length "
-                 << attribute->nla_len << ".  " << (end - ptr - NLA_HDRLEN)
+                 << attribute->nla_len << ".  "
+                 << (remaining.size() - NLA_HDRLEN)
                  << " bytes remain in buffer.  "
                  << "Error occurred at offset "
-                 << (ptr - payload.GetConstData()) << ".";
+                 << (remaining.data() - payload.data()) << ".";
       return false;
     }
+
     ByteString value;
     if (attribute->nla_len > NLA_HDRLEN) {
-      value = ByteString(ptr + NLA_HDRLEN, attribute->nla_len - NLA_HDRLEN);
+      value = ByteString(remaining.data() + NLA_HDRLEN,
+                         attribute->nla_len - NLA_HDRLEN);
     }
     if (!method.Run(attribute->nla_type, value)) {
       return false;
     }
-    ptr += NLA_ALIGN(attribute->nla_len);
+
+    if (remaining.size() >= NLA_ALIGN(attribute->nla_len)) {
+      remaining = remaining.subspan(NLA_ALIGN(attribute->nla_len));
+    } else {
+      remaining = {};
+    }
   }
-  if (ptr < end) {
-    LOG(INFO) << "Decode left " << (end - ptr) << " unparsed bytes.";
+  if (!remaining.empty()) {
+    LOG(INFO) << "Decode left " << remaining.size() << " unparsed bytes.";
   }
   return true;
 }
@@ -119,7 +124,7 @@ bool AttributeList::Decode(const ByteString& payload,
                            size_t offset,
                            const AttributeList::NewFromIdMethod& factory) {
   return IterateAttributes(
-      payload, offset,
+      {payload.GetConstData(), payload.GetLength()}, offset,
       base::BindRepeating(&AttributeList::CreateAndInitAttribute,
                           base::Unretained(this), factory));
 }
