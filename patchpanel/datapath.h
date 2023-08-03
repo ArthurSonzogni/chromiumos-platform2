@@ -74,6 +74,10 @@ struct ConnectedNamespace {
   std::string peer_ifname;
   // IPv4 subnet assigned to the client namespace.
   std::unique_ptr<Subnet> peer_subnet;
+  // IPv4 CIDR of the "local" veth interface visible on the host namespace.
+  net_base::IPv4CIDR host_cidr;
+  // IPv4 CIDR of the "remote" veth interface.
+  net_base::IPv4CIDR peer_cidr;
   // MAC address of the "local" veth interface visible on the host namespace.
   MacAddress host_mac_addr;
   // MAC address of the "remote" veth interface.

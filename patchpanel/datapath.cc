@@ -886,16 +886,9 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
-  const auto remote_cidr = nsinfo.peer_subnet->CIDRAtOffset(2);
-  if (!peer_cidr || !remote_cidr) {
-    LOG(ERROR) << "Failed to create CIDR from peer_subnet: "
-               << nsinfo.peer_subnet->base_cidr();
-    return false;
-  }
-
   if (!ConnectVethPair(nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname,
-                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, *remote_cidr,
+                       nsinfo.peer_ifname, nsinfo.peer_mac_addr,
+                       nsinfo.peer_cidr,
                        /*enable_multicast=*/false)) {
     LOG(ERROR) << "Failed to create veth pair for"
                   " namespace pid "
@@ -904,7 +897,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, *peer_cidr,
+  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr,
+                          nsinfo.host_cidr,
                           /*up=*/true, /*enable_multicast=*/false)) {
     LOG(ERROR) << "Cannot configure host interface " << nsinfo.host_ifname;
     RemoveInterface(nsinfo.host_ifname);
@@ -921,7 +915,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       return false;
     }
 
-    if (!AddIPv4Route(peer_cidr->address(), /*subnet_cidr=*/{})) {
+    if (!AddIPv4Route(nsinfo.host_cidr.address(), /*subnet_cidr=*/{})) {
       LOG(ERROR) << "Failed to add default /0 route to " << nsinfo.host_ifname
                  << " inside namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);
@@ -950,8 +944,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   } else if (!nsinfo.route_on_vpn) {
     StartRoutingDeviceAsSystem(nsinfo.host_ifname, nsinfo.source);
   } else {
-    StartRoutingDeviceAsUser(nsinfo.host_ifname, peer_cidr->address(),
-                             nsinfo.source, remote_cidr->address());
+    StartRoutingDeviceAsUser(nsinfo.host_ifname, nsinfo.host_cidr.address(),
+                             nsinfo.source, nsinfo.peer_cidr.address());
   }
   return true;
 }

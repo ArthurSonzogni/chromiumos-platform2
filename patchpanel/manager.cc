@@ -724,6 +724,13 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
 
+  const auto host_cidr = subnet->CIDRAtOffset(1);
+  const auto peer_cidr = subnet->CIDRAtOffset(2);
+  if (!host_cidr || !peer_cidr) {
+    LOG(ERROR) << "Failed to create CIDR from subnet: " << subnet->base_cidr();
+    return response;
+  }
+
   base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
@@ -742,6 +749,8 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   nsinfo.host_ifname = "arc_ns" + ifname_id;
   nsinfo.peer_ifname = "veth" + ifname_id;
   nsinfo.peer_subnet = std::move(subnet);
+  nsinfo.host_cidr = *host_cidr;
+  nsinfo.peer_cidr = *peer_cidr;
   nsinfo.host_mac_addr = addr_mgr_.GenerateMacAddress();
   nsinfo.peer_mac_addr = addr_mgr_.GenerateMacAddress();
   if (nsinfo.host_mac_addr == nsinfo.peer_mac_addr) {
@@ -760,14 +769,6 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
 
-  // Prepare the response before storing ConnectedNamespace.
-  const auto host_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
-  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(2);
-  if (!host_cidr || !peer_cidr) {
-    LOG(ERROR) << "Failed to create CIDR from subnet: "
-               << nsinfo.peer_subnet->base_cidr();
-    return response;
-  }
   response.set_peer_ifname(nsinfo.peer_ifname);
   response.set_peer_ipv4_address(peer_cidr->address().ToInAddr().s_addr);
   response.set_host_ifname(nsinfo.host_ifname);

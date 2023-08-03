@@ -854,6 +854,8 @@ TEST(DatapathTest, StartRoutingNamespace) {
   nsinfo.peer_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
+  nsinfo.host_cidr = *nsinfo.peer_subnet->CIDRAtOffset(1);
+  nsinfo.peer_cidr = *nsinfo.peer_subnet->CIDRAtOffset(2);
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
   Datapath datapath(runner, firewall, &system);
