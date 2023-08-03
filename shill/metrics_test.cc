@@ -88,6 +88,12 @@ class MetricsTest : public Test {
         std::move(recorder));
   }
 
+  void TearDown() override {
+    // Destroy the MockRecorder object explicitly to trigger the verification.
+    metrics::structured::RecorderSingleton::GetInstance()->SetRecorderForTest(
+        nullptr);
+  }
+
  protected:
   void ExpectCommonPostReady(Metrics::WiFiChannel channel,
                              Metrics::WiFiNetworkPhyMode mode,
