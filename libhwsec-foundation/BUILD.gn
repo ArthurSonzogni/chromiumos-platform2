@@ -46,6 +46,7 @@ pkg_config("target_defaults") {
     "re2",
   ]
   cflags = [ "-Wconsumed" ]
+  cflags_cc = [ "-Wno-error=deprecated-declarations" ]
 }
 
 shared_library("libhwsec-foundation") {
