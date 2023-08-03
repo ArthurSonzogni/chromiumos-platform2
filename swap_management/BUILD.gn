@@ -35,6 +35,7 @@ static_library("libswapmanagement") {
   sources = [
     "swap_management_dbus_adaptor.cc",
     "swap_tool.cc",
+    "swap_tool_metrics.cc",
     "swap_tool_status.cc",
     "swap_tool_util.cc",
   ]

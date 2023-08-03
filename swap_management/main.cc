@@ -7,6 +7,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <absl/status/status.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -16,8 +17,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <memory>
 
 #include "swap_management/swap_management_dbus_adaptor.h"
+#include "swap_management/swap_tool_metrics.h"
 
 namespace {
 
@@ -46,13 +49,40 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<base::OneShotTimer> daemon_shutdown_timer_;
   base::WeakPtrFactory<Daemon> weak_factory_{this};
 };
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(swap_start, false, "Start zram swap");
+  DEFINE_bool(swap_stop, false, "Stop zram swap");
   brillo::FlagHelper::Init(argc, argv, "CrOS swap_management");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (argc > 1) {
+  if (FLAGS_swap_start && FLAGS_swap_stop) {
+    LOG(ERROR) << "--swap_start and --swap_stop can not be set together.";
+    return EX_USAGE;
+  }
+
+  if (FLAGS_swap_start || FLAGS_swap_stop) {
+    std::unique_ptr<swap_management::SwapTool> swap_tool =
+        std::make_unique<swap_management::SwapTool>();
+    absl::Status status = absl::OkStatus();
+
+    if (FLAGS_swap_start) {
+      status = swap_tool->SwapStart();
+      swap_management::SwapToolMetrics::Get()->ReportSwapStartStatus(status);
+    } else if (FLAGS_swap_stop) {
+      status = swap_tool->SwapStop();
+      swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
+    }
+
+    if (!status.ok()) {
+      LOG(ERROR) << status.ToString();
+      return EX_SOFTWARE;
+    }
+
+    return EX_OK;
+  } else if (argc > 1) {
     LOG(ERROR) << "Unhandled arguments; please see --help for more info.";
     return EX_USAGE;
   }

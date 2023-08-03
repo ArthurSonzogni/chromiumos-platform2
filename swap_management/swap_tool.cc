@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
-#include "swap_management/swap_tool_status.h"
 
 #include <cinttypes>
 #include <utility>
@@ -195,9 +194,9 @@ absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
 // given in bips. A "bip" or "basis point" is 1/100 of 1%.
 absl::Status SwapTool::SetDefaultLowMemoryMargin(uint64_t mem_total) {
   // Calculate critical margin in MiB, which is 5.2% free. Ignore the decimal.
-  uint64_t critical_margin = (mem_total / 1024) * 0.052;
+  uint64_t critical_margin = (static_cast<double>(mem_total) / 1024) * 0.052;
   // Calculate moderate margin in MiB, which is 40% free. Ignore the decimal.
-  uint64_t moderate_margin = (mem_total / 1024) * 0.4;
+  uint64_t moderate_margin = (static_cast<double>(mem_total) / 1024) * 0.4;
   // Write into margin special file.
   return SwapToolUtil::Get()->WriteFile(
       base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),

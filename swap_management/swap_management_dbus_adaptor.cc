@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_management_dbus_adaptor.h"
+#include "swap_management/swap_tool_metrics.h"
 
 #include <memory>
 #include <utility>
@@ -14,9 +15,6 @@
 #include <dbus/object_path.h>
 
 namespace swap_management {
-// Metrics file needs to be in stateful partition since it could be replayed in
-// next boot time.
-constexpr char kSwapMetricsFile[] = "/var/lib/swap/swap_metrics";
 
 SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
     scoped_refptr<dbus::Bus> bus,
@@ -24,9 +22,7 @@ SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
       swap_tool_(std::make_unique<SwapTool>()),
-      shutdown_timer_(std::move(shutdown_timer)) {
-  metrics_.SetOutputFile(kSwapMetricsFile);
-}
+      shutdown_timer_(std::move(shutdown_timer)) {}
 
 SwapManagementDBusAdaptor::~SwapManagementDBusAdaptor() {
   if (shutdown_timer_)
@@ -49,9 +45,7 @@ void SwapManagementDBusAdaptor::ResetShutdownTimer() {
 bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
   ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStart();
-  metrics_.SendEnumToUMA("ChromeOS.SwapManagement.SwapStart.Status",
-                         static_cast<int>(status.code()),
-                         21);  // There are 21 absl status.
+  swap_management::SwapToolMetrics::Get()->ReportSwapStartStatus(status);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStart",
@@ -64,9 +58,7 @@ bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
 bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
   ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStop();
-  metrics_.SendEnumToUMA("ChromeOS.SwapManagement.SwapStop.Status",
-                         static_cast<int>(status.code()),
-                         21);  // There are 21 absl status.
+  swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStop",
