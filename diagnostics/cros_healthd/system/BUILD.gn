@@ -47,7 +47,7 @@ source_set("libcros_healthd_system") {
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
     "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
     "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter",
-    "//diagnostics/mojom/external:cros_healthd_internal",
+    "//diagnostics/mojom/external:libcros_healthd_internal",
   ]
   sources = [
     "bluetooth_event_hub.cc",

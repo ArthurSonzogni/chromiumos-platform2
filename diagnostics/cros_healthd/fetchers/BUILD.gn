@@ -35,7 +35,7 @@ source_set("libcros_healthd_fetchers") {
     "//diagnostics/cros_healthd/fetchers/storage:storage_data_source",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
   sources = [
     "audio_fetcher.cc",

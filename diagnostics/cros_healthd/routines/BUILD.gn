@@ -54,7 +54,7 @@ source_set("libdiag_routine") {
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
   sources = [
     "android_network/arc_dns_resolution.cc",
@@ -135,7 +135,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     deps = [
       "//diagnostics/base",
-      "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
     sources = [
       "routine_observer_for_testing.cc",

@@ -8,10 +8,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":cros_healthd-client",
-    "//diagnostics/mojom/external:network_diagnostics_mojo_bindings",
-    "//diagnostics/mojom/external:network_health_mojo_bindings",
-    "//diagnostics/mojom/external:public_dependencies",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
+    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
+    "//diagnostics/mojom/external:libpublic_dependencies",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 

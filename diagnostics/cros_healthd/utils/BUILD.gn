@@ -31,7 +31,7 @@ source_set("libcros_healthd_utils") {
   ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 
@@ -45,7 +45,7 @@ if (use.test || use.fuzzer) {
 
   source_set("libcros_healthd_utils_test_utils") {
     configs += [ ":libcros_healthd_utils_test_utils_pkg_deps" ]
-    deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
+    deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
     sources = [ "mojo_type_utils.cc" ]
   }
 }

@@ -27,7 +27,7 @@ source_set("libcros_healthd_events") {
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
   sources = [
     "audio_events_impl.cc",
@@ -78,7 +78,7 @@ if (use.test) {
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
-      "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }
 }

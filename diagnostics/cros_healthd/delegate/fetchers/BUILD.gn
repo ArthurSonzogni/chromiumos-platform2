@@ -22,7 +22,7 @@ source_set("fetchers") {
   libs = [ "bootstat" ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 
