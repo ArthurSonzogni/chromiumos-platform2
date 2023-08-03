@@ -8,9 +8,11 @@
 #include <map>
 #include <memory>
 
+#include <base/containers/flat_set.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
@@ -59,9 +61,28 @@ class BRILLO_EXPORT AddressManager {
   std::unique_ptr<Subnet> AllocateIPv4Subnet(GuestType guest_type,
                                              uint32_t index = kAnySubnetIndex);
 
+  // Allocates an IPv6 ULA subnet with a fixed prefix length of 64. The caller
+  // is responsible to release the subnet through ReleaseIPv6Subnet().
+  net_base::IPv6CIDR AllocateIPv6Subnet();
+
+  // Releases previously allocated IPv6 subnet through AllocateIPv6Subnet().
+  void ReleaseIPv6Subnet(const net_base::IPv6CIDR& subnet);
+
+  // Gets randomized IPv6 address inside |subnet|. Caller is responsible to
+  // handle possible duplicated addresses. This method guarantess that the base
+  // address of |subnet| is not returned.
+  net_base::IPv6CIDR GetRandomizedIPv6Address(const net_base::IPv6CIDR& subnet);
+
+  // Generates IPv6 subnet of |prefix_length| inside |net_block|. This method
+  // guarantees that the subnet address created is not equal to the base
+  // |net_block| address.
+  net_base::IPv6CIDR GenerateIPv6Subnet(const net_base::IPv6CIDR& net_block,
+                                        int prefix_length);
+
  private:
   MacAddressGenerator mac_addrs_;
   std::map<GuestType, std::unique_ptr<SubnetPool>> pools_;
+  base::flat_set<net_base::IPv6CIDR> allocated_ipv6_subnets_;
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};
 };

@@ -4,7 +4,16 @@
 
 #include "patchpanel/address_manager.h"
 
+#include <array>
+#include <climits>
+#include <vector>
+
+#include <base/containers/contains.h>
 #include <base/logging.h>
+#include <crypto/random.h>
+#include <net-base/ipv6_address.h>
+
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -23,6 +32,14 @@ namespace {
 // +---------------+------------+----------------------------------------------+
 //
 // The 100.115.93.0/24 subnet is reserved for Parallels VMs.
+
+// Prefix length of allocated subnet for static ULA IPv6 addresses.
+constexpr int kStaticIPv6PrefixLength = 64;
+
+// RFC4193: IPv6 prefix of fd00::/8 is defined for locally assigned unique local
+// addresses (ULA).
+const net_base::IPv6CIDR kULASubnet =
+    *net_base::IPv6CIDR::CreateFromStringAndPrefix("fd00::", 8);
 
 }  // namespace
 
@@ -66,6 +83,65 @@ std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
   }
   const auto it = pools_.find(guest);
   return (it != pools_.end()) ? it->second->Allocate(index) : nullptr;
+}
+
+net_base::IPv6CIDR AddressManager::AllocateIPv6Subnet() {
+  net_base::IPv6CIDR subnet;
+  do {
+    subnet = GenerateIPv6Subnet(kULASubnet, kStaticIPv6PrefixLength);
+  } while (base::Contains(allocated_ipv6_subnets_, subnet));
+  allocated_ipv6_subnets_.insert(subnet);
+
+  return subnet;
+}
+
+void AddressManager::ReleaseIPv6Subnet(const net_base::IPv6CIDR& subnet) {
+  if (allocated_ipv6_subnets_.erase(subnet) == 0) {
+    LOG(ERROR) << "Releasing unallocated subnet: " << subnet;
+  }
+}
+
+net_base::IPv6CIDR AddressManager::GetRandomizedIPv6Address(
+    const net_base::IPv6CIDR& subnet) {
+  // |subnet| must at least holds 1 IPv6 address, excluding the base address.
+  DCHECK_LT(subnet.prefix_length(), 128);
+
+  net_base::IPv6Address::DataType addr = {};
+  do {
+    crypto::RandBytes(addr.data(), addr.size());
+    std::vector<uint8_t> mask =
+        net_base::IPv6CIDR::GetNetmask(subnet.prefix_length())->ToBytes();
+    std::vector<uint8_t> subnet_addr = subnet.address().ToBytes();
+    for (size_t i = 0; i < net_base::IPv6Address::kAddressLength; ++i) {
+      addr[i] = subnet_addr[i] | (~mask[i] & addr[i]);
+    }
+  } while (net_base::IPv6Address(addr) == subnet.address());
+
+  return *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+      net_base::IPv6Address(addr), subnet.prefix_length());
+}
+
+net_base::IPv6CIDR AddressManager::GenerateIPv6Subnet(
+    const net_base::IPv6CIDR& net_block, int prefix_length) {
+  // Avoid invalid |net_block| and |prefix_length| combination.
+  DCHECK(prefix_length > net_block.prefix_length() && prefix_length <= 128);
+
+  // Generates randomized subnet that is not equal to the base |net_block|
+  // address.
+  net_base::IPv6Address::DataType addr = {};
+  do {
+    crypto::RandBytes(addr.data(), addr.size());
+    std::vector<uint8_t> mask =
+        net_base::IPv6CIDR::GetNetmask(net_block.prefix_length())->ToBytes();
+    std::vector<uint8_t> net_block_addr = net_block.address().ToBytes();
+    for (size_t i = 0; i < net_base::IPv6Address::kAddressLength; ++i) {
+      addr[i] = net_block_addr[i] | (~mask[i] & addr[i]);
+    }
+  } while (net_base::IPv6Address(addr) == net_block.address());
+
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+             net_base::IPv6Address(addr), prefix_length)
+      ->GetPrefixCIDR();
 }
 
 std::ostream& operator<<(std::ostream& stream,
