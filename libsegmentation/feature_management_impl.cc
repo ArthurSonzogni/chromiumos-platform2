@@ -58,6 +58,11 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 
 #endif
 
+FeatureManagementInterface::FeatureLevel
+FeatureManagementImpl::GetMaxFeatureLevel() {
+  return FeatureLevel::kMaxValue;
+}
+
 FeatureManagementImpl::FeatureManagementImpl()
     : FeatureManagementImpl(nullptr,
                             base::FilePath(kDeviceInfoFilePath),

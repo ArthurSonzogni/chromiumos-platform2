@@ -25,12 +25,21 @@ FeatureManagementFake::GetFeatureLevel() {
   return system_features_level_;
 }
 
+FeatureManagementInterface::FeatureLevel
+FeatureManagementFake::GetMaxFeatureLevel() {
+  return max_features_level_;
+}
+
 FeatureManagementInterface::ScopeLevel FeatureManagementFake::GetScopeLevel() {
   return system_scope_level_;
 }
 
 void FeatureManagementFake::SetFeatureLevel(FeatureLevel level) {
   system_features_level_ = level;
+}
+
+void FeatureManagementFake::SetMaxFeatureLevel(FeatureLevel level) {
+  max_features_level_ = level;
 }
 
 void FeatureManagementFake::SetScopeLevel(ScopeLevel level) {

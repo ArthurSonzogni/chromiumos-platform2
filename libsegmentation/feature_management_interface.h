@@ -33,13 +33,19 @@ class FeatureManagementInterface {
   //
   // @return 0 when no additional features can be used,
   //         >0 when some feature can be used.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
   enum FeatureLevel {
     FEATURE_LEVEL_UNKNOWN = 0,
     FEATURE_LEVEL_VALID_OFFSET = 1,
     FEATURE_LEVEL_0 = 1,
     FEATURE_LEVEL_1 = 2,
+    kMaxValue = FEATURE_LEVEL_1,  // keep this in sync with the actual max
+                                  // value. Used for UMA metrics.
   };
   virtual FeatureLevel GetFeatureLevel() = 0;
+  // Return the max feature level for any device.
+  virtual FeatureLevel GetMaxFeatureLevel() = 0;
 
   // Return the scope level for the device
   //

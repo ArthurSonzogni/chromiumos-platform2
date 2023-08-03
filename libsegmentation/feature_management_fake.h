@@ -28,6 +28,7 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
   bool IsFeatureEnabled(const std::string& name) override;
 
   FeatureLevel GetFeatureLevel() override;
+  FeatureLevel GetMaxFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
 
   const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
@@ -36,6 +37,11 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
   //
   // @param level: the feature level.
   void SetFeatureLevel(FeatureLevel level);
+
+  // Set the max feature level for any device.
+  //
+  // @param level: the feature level.
+  void SetMaxFeatureLevel(FeatureLevel level);
 
   // Set the scope level for the device.
   //
@@ -58,6 +64,7 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
 
  private:
   FeatureLevel system_features_level_;
+  FeatureLevel max_features_level_;
   ScopeLevel system_scope_level_;
   std::map<const FeatureUsage, std::set<std::string>>
       system_features_properties_;

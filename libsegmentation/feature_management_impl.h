@@ -43,6 +43,7 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   bool IsFeatureEnabled(const std::string& name) override;
 
   FeatureLevel GetFeatureLevel() override;
+  FeatureLevel GetMaxFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
 
   const std::set<std::string> ListFeatures(const FeatureUsage usage) override;

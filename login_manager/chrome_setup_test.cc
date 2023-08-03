@@ -319,27 +319,43 @@ TEST_F(ChromeSetupTest, TestSchedulerFlags) {
   EXPECT_EQ(kBoostUrgentVal, GetFlag(argv, "--scheduler-boost-urgent"));
 }
 
-TEST_F(ChromeSetupTest, TestAddFeatureManagementFlag) {
+TEST_F(ChromeSetupTest, TestAddFeatureManagementFlagEmpty) {
+  fake_feature_management_->SetFeatureLevel(
+      segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0);
+  fake_feature_management_->SetMaxFeatureLevel(
+      segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1);
+
+  login_manager::AddFeatureManagementFlags(&builder_,
+                                           feature_management_.get());
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(2, argv.size());
+  EXPECT_EQ("0", GetFlag(argv, "--feature-management-level"));
+  EXPECT_EQ("1", GetFlag(argv, "--feature-management-max-level"));
+}
+
+TEST_F(ChromeSetupTest, TestAddFeatureManagementFlagNonEmpty) {
   std::string feat1 =
       base::StrCat({segmentation::FeatureManagement::kPrefix, "Feat1"});
   std::string feat2 =
       base::StrCat({segmentation::FeatureManagement::kPrefix, "Feat2"});
 
+  fake_feature_management_->SetFeature(feat1, segmentation::USAGE_CHROME);
+  fake_feature_management_->SetFeature(feat2, segmentation::USAGE_CHROME);
+  fake_feature_management_->SetFeatureLevel(
+      segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0);
+  fake_feature_management_->SetMaxFeatureLevel(
+      segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1);
+
   login_manager::AddFeatureManagementFlags(&builder_,
                                            feature_management_.get());
   std::vector<std::string> argv = builder_.arguments();
-  ASSERT_EQ(0, argv.size());
-
-  fake_feature_management_->SetFeature(feat1, segmentation::USAGE_CHROME);
-  fake_feature_management_->SetFeature(feat2, segmentation::USAGE_CHROME);
-  login_manager::AddFeatureManagementFlags(&builder_,
-                                           feature_management_.get());
-  argv = builder_.arguments();
-  ASSERT_EQ(1, argv.size());
+  ASSERT_EQ(3, argv.size());
   std::vector<std::string> result =
       base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::UnorderedElementsAre(feat1, feat2));
+  EXPECT_EQ("0", GetFlag(argv, "--feature-management-level"));
+  EXPECT_EQ("1", GetFlag(argv, "--feature-management-max-level"));
 }
 
 void InitWithUseFlag(std::optional<std::string> flag,

@@ -1055,6 +1055,10 @@ void AddFeatureManagementFlags(
   for (auto feature : features) {
     builder->AddFeatureEnableOverride(feature);
   }
+  builder->AddArg(base::StringPrintf("--feature-management-level=%d",
+                                     feature_management->GetFeatureLevel()));
+  builder->AddArg(base::StringPrintf("--feature-management-max-level=%d",
+                                     feature_management->GetMaxFeatureLevel()));
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,

@@ -32,6 +32,9 @@ class BRILLO_EXPORT FeatureManagement {
   // Return the maximal feature level available on the device.
   int GetFeatureLevel() const;
 
+  // Returns the highest possible feature level for *any* device.
+  int GetMaxFeatureLevel() const;
+
   // Return the maximal scope level available on the device.
   int GetScopeLevel() const;
 
