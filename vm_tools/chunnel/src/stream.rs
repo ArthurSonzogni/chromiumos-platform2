@@ -10,7 +10,26 @@ use std::os::unix::net::UnixStream;
 use std::result;
 
 use libc::{self, c_void, shutdown, EPIPE, SHUT_WR};
-use libchromeos::sys::vsock::VsockStream;
+use vsock::VsockAddr;
+use vsock::VsockStream;
+
+/// Parse a vsock SocketAddr from a string. vsock socket addresses are of the form
+/// "vsock:cid:port".
+pub fn parse_vsock_addr(addr: &str) -> result::Result<VsockAddr, io::Error> {
+    let components: Vec<&str> = addr.split(':').collect();
+    if components.len() != 3 || components[0] != "vsock" {
+        return Err(io::Error::from_raw_os_error(libc::EINVAL));
+    }
+
+    Ok(VsockAddr::new(
+        components[1]
+            .parse()
+            .map_err(|_| io::Error::from_raw_os_error(libc::EINVAL))?,
+        components[2]
+            .parse()
+            .map_err(|_| io::Error::from_raw_os_error(libc::EINVAL))?,
+    ))
+}
 
 /// StreamSocket provides a generic abstraction around any connection-oriented stream socket.
 /// The socket will be closed when StreamSocket is dropped, but writes to the socket can also
@@ -27,7 +46,9 @@ impl StreamSocket {
         const VSOCK_PREFIX: &str = "vsock:";
 
         if sockaddr.starts_with(VSOCK_PREFIX) {
-            let vsock_stream = VsockStream::connect(sockaddr)
+            let addr = parse_vsock_addr(sockaddr)
+                .map_err(|e| StreamSocketError::ConnectVsock(sockaddr.to_string(), e))?;
+            let vsock_stream = VsockStream::connect(&addr)
                 .map_err(|e| StreamSocketError::ConnectVsock(sockaddr.to_string(), e))?;
             Ok(vsock_stream.into())
         } else if sockaddr.starts_with(UNIX_PREFIX) {

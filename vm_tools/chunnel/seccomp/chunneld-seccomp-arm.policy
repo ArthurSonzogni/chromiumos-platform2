@@ -13,6 +13,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 epoll_wait: 1
 recvmsg: 1
+recv: 1
 send: 1
 fstat64: 1
 fstatat64: 1
@@ -64,3 +65,4 @@ exit_group: 1
 rt_sigreturn: 1
 getpid: 1
 pipe2: 1
+ioctl: arg1 == FIONBIO

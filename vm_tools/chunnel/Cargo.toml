@@ -15,6 +15,7 @@ nix = { version = "0.26", features = ["signal"] }
 protobuf = "3.2"
 remain = "0.2"
 system_api = { path = "system_api" }
+vsock = "0.3"
 
 [patch.crates-io] # ignored by ebuild
 audio_streams = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild

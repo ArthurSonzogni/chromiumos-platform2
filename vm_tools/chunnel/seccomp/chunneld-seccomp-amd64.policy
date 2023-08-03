@@ -59,3 +59,4 @@ prctl: arg0 == PR_SET_NAME
 getpid: 1
 pipe2: 1
 clock_gettime: 1
+ioctl: arg1 == FIONBIO

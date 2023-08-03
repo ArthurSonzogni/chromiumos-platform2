@@ -23,13 +23,14 @@ use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::pipe;
 use libchromeos::signal::block_signal;
-use libchromeos::sys::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use libchromeos::syslog;
 use log::{error, warn};
 use nix::sys::signal::Signal;
 use protobuf::{self, Message as ProtoMessage};
 use system_api::chunneld_service::*;
 use system_api::cicerone_service;
+use vsock::VsockListener;
+use vsock::VMADDR_CID_ANY;
 
 // chunnel dbus-constants.h
 const CHUNNELD_INTERFACE: &str = "org.chromium.Chunneld";
@@ -58,6 +59,8 @@ const DBUS_TIMEOUT: Duration = Duration::from_secs(30);
 // Program name.
 const IDENT: &str = "chunneld";
 
+const VMADDR_PORT_ANY: u32 = u32::max_value();
+
 #[remain::sorted]
 #[derive(Debug)]
 enum Error {
@@ -70,7 +73,7 @@ enum Error {
     DBusProcessMessage(DBusError),
     EventFdClone(libchromeos::sys::Error),
     EventFdNew(libchromeos::sys::Error),
-    IncorrectCid(VsockCid),
+    IncorrectCid(u32),
     LifelinePipe(nix::Error),
     NoListenerForPort(u16),
     NoSessionForTag(SessionTag),
@@ -138,7 +141,7 @@ struct TcpForwardTarget {
     pub vm_name: String,
     pub container_name: String,
     pub owner_id: String,
-    pub vsock_cid: VsockCid,
+    pub vsock_cid: u32,
 }
 
 /// A tag that uniquely identifies a particular forwarding session. This has arbitrarily been
@@ -461,8 +464,8 @@ fn create_forwarder_session(
 ) -> Result<ForwarderSession> {
     let (tcp_stream, _) = listener.accept().map_err(Error::TcpAccept)?;
     // Bind a vsock port, tell the guest to connect, and accept the connection.
-    let mut vsock_listener =
-        VsockListener::bind((VsockCid::Any, VMADDR_PORT_ANY)).map_err(Error::BindVsock)?;
+    let vsock_listener = VsockListener::bind_with_cid_port(VMADDR_CID_ANY, VMADDR_PORT_ANY)
+        .map_err(Error::BindVsock)?;
     vsock_listener
         .set_nonblocking(true)
         .map_err(Error::SetVsockNonblocking)?;
@@ -475,8 +478,9 @@ fn create_forwarder_session(
     launch_chunnel(
         dbus_conn,
         vsock_listener
-            .local_port()
-            .map_err(Error::VsockListenerPort)?,
+            .local_addr()
+            .map_err(Error::VsockListenerPort)?
+            .port(),
         tcp4_port,
         target,
     )?;
@@ -499,8 +503,8 @@ fn create_forwarder_session(
         Some(_) => {
             let (vsock_stream, sockaddr) = vsock_listener.accept().map_err(Error::VsockAccept)?;
 
-            if sockaddr.cid != target.vsock_cid {
-                Err(Error::IncorrectCid(sockaddr.cid))
+            if sockaddr.cid() != target.vsock_cid {
+                Err(Error::IncorrectCid(sockaddr.cid()))
             } else {
                 Ok(ForwarderSession::new(
                     tcp_stream.into(),
@@ -529,7 +533,7 @@ fn update_listening_ports(
             vm_name: forward_target.vm_name,
             owner_id: forward_target.owner_id,
             container_name: forward_target.container_name,
-            vsock_cid: forward_target.vsock_cid.into(),
+            vsock_cid: forward_target.vsock_cid,
         });
     }
 
