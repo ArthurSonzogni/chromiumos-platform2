@@ -6,7 +6,9 @@
 #define SECAGENTD_COMMON_H_
 
 #include <unistd.h>
+
 #include "absl/strings/str_format.h"
+#include "dbus/bus.h"
 
 namespace secagentd {
 // Used by BPF skeleton wrappers to help call a C++ class method from a C style
@@ -14,6 +16,19 @@ namespace secagentd {
 // RepeatingCallback<void(const bpf::event&)>. void* data is cast into a
 // bpf::event and then passed into this RepeatingCallback.
 extern "C" int indirect_c_callback(void* ctx, void* data, size_t size);
+namespace common {
+void SetDBus(scoped_refptr<dbus::Bus>);
+
+scoped_refptr<dbus::Bus> GetDBus();
+
+int if_nametoindex(const char* ifname);
+
+class PlatformInterface {
+ public:
+  virtual int IfNameToIndex(std::string_view ifname) = 0;
+  virtual ~PlatformInterface();
+};
+}  // namespace common
 
 namespace Types {
 enum class BpfSkeleton { kProcess, kNetwork };

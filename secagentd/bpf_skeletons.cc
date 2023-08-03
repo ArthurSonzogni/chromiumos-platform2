@@ -1,13 +1,19 @@
 // Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include "base/check.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/common.h"
 
 namespace secagentd {
-NetworkBpfSkeleton::NetworkBpfSkeleton(uint32_t batch_interval_s)
+NetworkBpfSkeleton::NetworkBpfSkeleton(uint32_t batch_interval_s,
+                                       std::unique_ptr<shill::Client> shill)
     : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
   SkeletonCallbacks<network_bpf> skel_cbs;
+  CHECK(shill != nullptr);
+  shill_ = std::move(shill);
   skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
   skel_cbs.open = base::BindRepeating(network_bpf__open);
   skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
@@ -21,6 +27,8 @@ int NetworkBpfSkeleton::ConsumeEvent() {
 
 std::pair<absl::Status, metrics::BpfAttachResult>
 NetworkBpfSkeleton::LoadAndAttach() {
+  shill_->RegisterOnAvailableCallback(base::BindOnce(
+      &NetworkBpfSkeleton::OnShillAvailable, weak_ptr_factory_.GetWeakPtr()));
   auto rv = default_bpf_skeleton_->LoadAndAttach();
   if (!rv.first.ok()) {
     return rv;
@@ -31,6 +39,87 @@ NetworkBpfSkeleton::LoadAndAttach() {
                           weak_ptr_factory_.GetWeakPtr()));
   return rv;
 }
+
+void NetworkBpfSkeleton::OnShillProcessChanged(bool is_reset) {
+  if (is_reset) {
+    LOG(INFO) << "Shill was reset.";
+    return;
+  }
+  LOG(INFO) << "Shill was shutdown.";
+  shill_->RegisterOnAvailableCallback(base::BindOnce(
+      &NetworkBpfSkeleton::OnShillAvailable, weak_ptr_factory_.GetWeakPtr()));
+}
+
+void NetworkBpfSkeleton::OnShillAvailable(bool success) {
+  if (!success) {
+    LOG(ERROR) << __func__ << "Shill not actually ready.";
+    // TODO(b:277815178): Add a UMA metric to log errors related to external
+    // interface fetching.
+    return;
+  }
+  brillo::VariantDictionary properties;
+  brillo::ErrorPtr error;
+  LOG(INFO) << "Shill is now available.";
+  shill_->RegisterProcessChangedHandler(
+      base::BindRepeating(&NetworkBpfSkeleton::OnShillProcessChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
+
+  shill_->RegisterDeviceAddedHandler(base::BindRepeating(
+      &NetworkBpfSkeleton::OnShillDeviceAdded, weak_ptr_factory_.GetWeakPtr()));
+  shill_->RegisterDeviceRemovedHandler(
+      base::BindRepeating(&NetworkBpfSkeleton::OnShillDeviceRemoved,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
+
+void NetworkBpfSkeleton::AddExternalDevice(
+    const shill::Client::Device* device) {
+  auto map =
+      default_bpf_skeleton_->skel_->maps.cros_network_external_interfaces;
+  int64_t key = common::if_nametoindex(device->ifname.c_str());
+  int64_t value = key;
+  int rv = bpf_map__update_elem(map, &key, sizeof(key), &value, sizeof(value),
+                                BPF_NOEXIST);
+  if (rv == EEXIST) {
+    LOG(WARNING) << "Network: External device " << device->ifname
+                 << " already in the BPF external device map.";
+  } else if (rv < 0) {
+    LOG(ERROR) << "Network: Unable to add " << device->ifname
+               << " to the BPF external device map.";
+    // TODO(b:277815178): Add a UMA metric to log errors related to external
+    // interface fetching.
+  } else {
+    VLOG(1) << device->ifname << ":" << key << " added to external device map.";
+  }
+}
+
+void NetworkBpfSkeleton::RemoveExternalDevice(
+    const shill::Client::Device* device) {
+  auto map =
+      default_bpf_skeleton_->skel_->maps.cros_network_external_interfaces;
+  int64_t key = common::if_nametoindex(device->ifname.c_str());
+  if (bpf_map__delete_elem(map, &key, sizeof(key), 0) < 0) {
+    LOG(ERROR) << "Failed to remove " << device->ifname
+               << " from BPF external device map.";
+    // TODO(b:277815178): Add a UMA metric to log errors related to external
+    // interface fetching.
+  } else {
+    VLOG(1) << device->ifname << ":" << key
+            << " removed from external device map.";
+  }
+}
+
+void NetworkBpfSkeleton::OnShillDeviceAdded(
+    const shill::Client::Device* const device) {
+  // Called when a new device is added (even if it's a VPN device)
+  // Other virtual, non-external devices are not added.
+  AddExternalDevice(device);
+}
+
+void NetworkBpfSkeleton::OnShillDeviceRemoved(
+    const shill::Client::Device* const device) {
+  RemoveExternalDevice(device);
+}
+
 std::unordered_set<uint64_t> NetworkBpfSkeleton::GetActiveSocketsSet() {
   uint64_t* cur_key = nullptr;
   uint64_t next_key;
@@ -82,6 +171,7 @@ void NetworkBpfSkeleton::ScanFlowMap() {
                                &event_flow_map_value,
                                sizeof(event_flow_map_value), 0) < 0) {
         LOG(ERROR) << "Flow metrics map retrieval failed for a given key.";
+        // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
       }
       if (active_sockets.find(next_key->sock) == active_sockets.end()) {
@@ -96,6 +186,7 @@ void NetworkBpfSkeleton::ScanFlowMap() {
                                sizeof(event_flow.process_map_value), 0) < 0) {
         LOG(ERROR) << "Error fetching process related information for a "
                       "flow entry.";
+        // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
       }
       if (event_flow_map_value.garbage_collect_me) {
