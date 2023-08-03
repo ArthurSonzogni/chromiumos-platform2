@@ -76,20 +76,9 @@ enum ControlType {
   kControlPowerLineFrequency
 };
 struct RoiControl {
-  // ROI auto-controls flags. It is a bitwise flag for
-  // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
-  uint32_t roi_flags = 0;
   Rect<int> roi_bounds_default;
   Rect<int> roi_bounds;
   Size min_roi_size;
-
-  // The control we should use to set ROI flags on this device.
-  // Either kControlRegionOfInterestAuto or kControlRegionOfInterestAutoLegacy.
-  ControlType control_region_of_interest_auto =
-      kControlRegionOfInterestAutoLegacy;
-
-  // The API we should use to set ROI on this device.
-  RoiControlApi api = RoiControlApi::kSelection;
 };
 
 constexpr uint32_t kColorTemperatureAuto = 0;
@@ -256,7 +245,9 @@ class V4L2CameraDevice {
 
   // Return false if device doesn't support ROI controls.
   static bool IsRegionOfInterestSupported(std::string device_path,
-                                          RoiControl* roi_control);
+                                          ControlType* control_roi_auto,
+                                          RoiControlApi* api,
+                                          uint32_t* roi_flags);
 
  private:
   static std::vector<float> GetFrameRateList(int fd,
@@ -277,11 +268,19 @@ class V4L2CameraDevice {
   static int GetControlValue(int fd, ControlType type, int32_t* value);
 
   // Return false if device doesn't support ROI controls.
-  static bool IsRegionOfInterestSupported(int fd, RoiControl* roi_control);
+  static bool IsRegionOfInterestSupported(int fd,
+                                          ControlType* control_roi_auto,
+                                          RoiControlApi* api,
+                                          uint32_t* roi_flags);
 
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
   static int RetryDeviceOpen(const std::string& device_path, int flags);
+
+  // Get ROI information from camera;
+  static bool GetRegionOfInterestInfo(int fd,
+                                      RoiControlApi api,
+                                      RoiControl* roi_control);
 
   int QueryControl(ControlType type, ControlInfo* info);
 
@@ -300,10 +299,9 @@ class V4L2CameraDevice {
   // Call the VIDIOC_STREAMOFF ioctl.
   int StopStreaming();
 
-  // Get coordination transform from active array coordinate to stream
-  // coordinate
-  void TransformFromActiveArrayToStreamCoordinate(const Size& active_array_size,
-                                                  Rect<int>& roi);
+  // Get coordination transform from active array coordinate to ROI coordinate
+  void TransformFromActiveArrayToROICoordinate(const Size& active_array_size,
+                                               Rect<int>& roi);
 
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
@@ -347,8 +345,17 @@ class V4L2CameraDevice {
   // guard all variables.
   base::Lock lock_;
 
-  // The height and width of the stream
-  Size stream_size_;
+  // The control we should use to set ROI flags on this device.
+  // Either kControlRegionOfInterestAuto or kControlRegionOfInterestAutoLegacy.
+  ControlType control_region_of_interest_auto_ =
+      kControlRegionOfInterestAutoLegacy;
+
+  // The API we should use to set ROI on this device.
+  RoiControlApi roi_control_api_ = RoiControlApi::kSelection;
+
+  // ROI auto-controls flags. It is a bitwise flag for
+  // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
+  uint32_t roi_flags_ = 0;
 };
 
 }  // namespace cros

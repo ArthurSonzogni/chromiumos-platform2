@@ -673,9 +673,12 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   info.is_vivid = is_vivid;
   info.constant_framerate_unsupported |=
       !V4L2CameraDevice::IsControlSupported(path, kControlExposureAutoPriority);
-  RoiControl roi_control;
+  ControlType control_roi_auto;
+  RoiControlApi api;
+  uint32_t max_roi_auto;
   info.region_of_interest_supported =
-      V4L2CameraDevice::IsRegionOfInterestSupported(path, &roi_control);
+      V4L2CameraDevice::IsRegionOfInterestSupported(path, &control_roi_auto,
+                                                    &api, &max_roi_auto);
 
   if (info.region_of_interest_supported) {
     if (!info.enable_face_detection) {
