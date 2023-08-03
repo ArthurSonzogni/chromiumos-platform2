@@ -29,6 +29,8 @@ using testing::Assign;
 using testing::DoAll;
 using testing::Eq;
 using testing::InSequence;
+using testing::IsFalse;
+using testing::IsTrue;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -64,38 +66,39 @@ constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 constexpr bool kNewIsChassisBranded = true;
 constexpr int kNewHwComplianceVersion = 1;
 
-struct StateHandlerArgs {
-  const std::vector<bool> wp_status_list = {false};
-  bool has_serial_number = true;
-  bool has_region = true;
-  bool has_sku = true;
-  std::string custom_label = std::string(kCustomLabelTag);
-  bool has_dram_part_num = true;
-  bool has_region_list = true;
-  bool has_sku_list = true;
-  const std::vector<uint64_t> sku_list = kSkuList;
-  bool has_custom_label_list = true;
-  bool is_feature_enabled = true;
-  bool is_feature_mutable = false;
-  int feature_level = 0;
-  bool set_serial_number_success = true;
-  bool set_region_success = true;
-  bool set_sku_success = true;
-  bool set_custom_label_success = true;
-  bool set_dram_part_num_success = true;
-  bool sku_overflow = false;
-  bool flush_out_vpd_success = true;
-  bool has_cbi = true;
-};
-
 }  // namespace
 
 namespace rmad {
 
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    const std::vector<bool> wp_status_list = {false};
+    bool has_serial_number = true;
+    bool has_region = true;
+    bool has_sku = true;
+    std::string custom_label = std::string(kCustomLabelTag);
+    bool has_dram_part_num = true;
+    bool has_region_list = true;
+    bool has_sku_list = true;
+    const std::vector<uint64_t> sku_list = kSkuList;
+    bool has_custom_label_list = true;
+    bool is_feature_enabled = true;
+    bool is_feature_mutable = false;
+    int feature_level = 0;
+    bool set_serial_number_success = true;
+    bool set_region_success = true;
+    bool set_sku_success = true;
+    bool set_custom_label_success = true;
+    bool set_dram_part_num_success = true;
+    bool sku_overflow = false;
+    bool flush_out_vpd_success = true;
+    bool has_cbi = true;
+    bool use_legacy_custom_label = false;
+  };
+
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Mock |WriteProtectUtils|.
     auto write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
@@ -149,8 +152,11 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     if (args.set_custom_label_success) {
-      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _))
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, IsFalse()))
           .WillByDefault(DoAll(SaveArg<0>(&custom_label_set_), Return(true)));
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, IsTrue()))
+          .WillByDefault(
+              DoAll(SaveArg<0>(&legacy_custom_label_set_), Return(true)));
     } else {
       ON_CALL(*vpd_utils, SetCustomLabelTag(_, _)).WillByDefault(Return(false));
     }
@@ -201,7 +207,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*cros_config_utils, GetRmadConfig(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = args.has_cbi}),
+            DoAll(SetArgPointee<0>(RmadConfig{
+                      .has_cbi = args.has_cbi,
+                      .use_legacy_custom_label = args.use_legacy_custom_label}),
                   Return(true)));
     if (args.has_sku_list) {
       ON_CALL(*cros_config_utils, GetSkuIdList(_))
@@ -257,25 +265,26 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
   std::string region_set_;
   uint64_t sku_set_;
   std::string custom_label_set_;
+  std::string legacy_custom_label_set_;
   std::string dram_part_num_set_;
 };
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Mlb_Success) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, true);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoMlb_Success) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_VarMissing_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   // No kMlbRepair set in |json_store_|.
 
   EXPECT_EQ(handler->InitializeState(),
@@ -434,7 +443,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -460,8 +469,37 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
 
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_LegacyCustomLabel_Success) {
+  auto handler = CreateStateHandler({.use_legacy_custom_label = true});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewCustomLabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
+
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+  EXPECT_EQ(legacy_custom_label_set_,
+            kCustomLabelTagList[kNewCustomLabelSelection]);
+
+  EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
+}
+
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -613,7 +651,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmpty_Faled) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -633,7 +671,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmpty_Faled) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_RegionWrongIndex_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -652,7 +690,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmpty_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -672,7 +710,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmpty_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_SkuWrongIndex_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -692,7 +730,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CustomLabelEmpty_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -711,7 +749,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CustomLabelWrongIndex_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -730,7 +768,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyMlb_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -752,7 +790,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyMlb_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySerialNumber_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -774,7 +812,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegion_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -796,7 +834,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySku_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -819,7 +857,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySku_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabel_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -841,7 +879,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDram_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -863,7 +901,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDram_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegionListSize_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -885,7 +923,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegionListItem_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -907,7 +945,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySkuListSize_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -929,7 +967,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySkuListItem_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -951,7 +989,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabelListSize_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -973,7 +1011,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabelListItem_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -1136,7 +1174,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
