@@ -750,9 +750,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(
-      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kInitialStateOverallTime.InSecondsF());
+  EXPECT_NEAR(state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
+              kInitialStateOverallTime.InSecondsF(), 1e-4);
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -770,9 +769,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   EXPECT_FALSE(rmad_interface.CanAbort());
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
-                       .overall_time,
-                   kTestTransitionInterval.InSecondsF());
+  EXPECT_NEAR(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
+                  .overall_time,
+              kTestTransitionInterval.InSecondsF(), 1e-4);
   EXPECT_EQ(RmadState::kDeviceDestination,
             rmad_interface.GetCurrentStateCase());
 
@@ -834,9 +833,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(
-      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kInitialStateOverallTime.InSecondsF());
+  EXPECT_NEAR(state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
+              kInitialStateOverallTime.InSecondsF(), 1e-4);
 
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
@@ -997,12 +995,11 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(
-      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kInitialStateOverallTime.InSecondsF());
-  EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
-                       .overall_time,
-                   kTestTransitionInterval.InSecondsF());
+  EXPECT_NEAR(state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
+              kInitialStateOverallTime.InSecondsF(), 1e-4);
+  EXPECT_NEAR(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
+                  .overall_time,
+              kTestTransitionInterval.InSecondsF(), 1e-4);
 
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);

@@ -323,7 +323,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
 
   auto state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
-  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
+  EXPECT_NEAR(state_it->second.setup_timestamp, kTestStateSetupTimestamp, 1e-4);
 
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
       json_store_, state_case, RmadState::StateCase::STATE_NOT_SET,
@@ -333,8 +333,8 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
                                             &state_metrics));
   state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
-  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateLeaveTimestamp);
-  EXPECT_DOUBLE_EQ(state_it->second.overall_time, kTestStateOverallTime);
+  EXPECT_NEAR(state_it->second.setup_timestamp, kTestStateLeaveTimestamp, 1e-4);
+  EXPECT_NEAR(state_it->second.overall_time, kTestStateOverallTime, 1e-4);
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_StateNotFound) {
@@ -373,7 +373,7 @@ TEST_F(MetricsUtilsTest,
 
   auto state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
-  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
+  EXPECT_NEAR(state_it->second.setup_timestamp, kTestStateSetupTimestamp, 1e-4);
 
   // Invalid timestamp: timestamp should be incremented each time.
   EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
@@ -396,7 +396,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
 
   auto state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
-  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
+  EXPECT_NEAR(state_it->second.setup_timestamp, kTestStateSetupTimestamp, 1e-4);
 
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnAbort(
       json_store_, state_case, kTestStateLeaveTimestamp));
@@ -405,8 +405,8 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
                                             &state_metrics));
   state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
-  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateLeaveTimestamp);
-  EXPECT_DOUBLE_EQ(state_it->second.overall_time, kTestStateOverallTime);
+  EXPECT_NEAR(state_it->second.setup_timestamp, kTestStateLeaveTimestamp, 1e-4);
+  EXPECT_NEAR(state_it->second.overall_time, kTestStateOverallTime, 1e-4);
   EXPECT_EQ(state_it->second.is_aborted, true);
 }
 

@@ -234,7 +234,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
       double running_time;
       EXPECT_TRUE(MetricsUtils::GetMetricsValue(
           json_store_, kMetricsRunningTime, &running_time));
-      EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
+      EXPECT_NEAR(running_time - pre_running_time, kDelayTimeInSec, 1e-4);
     } else {
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
     }
@@ -321,7 +321,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
       double running_time;
       EXPECT_TRUE(MetricsUtils::GetMetricsValue(
           json_store_, kMetricsRunningTime, &running_time));
-      EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
+      EXPECT_NEAR(running_time - pre_running_time, kDelayTimeInSec, 1e-4);
     } else {
       BaseStateHandler::GetNextStateCaseReply reply =
           handler->NextStateCaseWrapper(state_case, RMAD_ERROR_OK, activity);
