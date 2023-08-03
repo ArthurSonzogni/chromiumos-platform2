@@ -370,12 +370,9 @@ void CrosGtkIMContext::FocusIn() {
 }
 
 void CrosGtkIMContext::FocusOut() {
-  // TODO(b/283915925): This function gets called twice in gtk4 whenever we
-  // switch out from a Crostini window, which can cause multiple warnings to
-  // spam logs.
   if (pending_activation_) {
     pending_activation_ = false;
-  } else {
+  } else if (backend_->IsActive()) {
     backend_->Deactivate();
   }
 }
@@ -527,6 +524,10 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
 
 void CrosGtkIMContext::Activate() {
 #ifdef GTK4
+  // GTK4 may trigger multiple calls to Activate() (b/294469470).
+  if (backend_->IsActive())
+    return;
+
   if (!root_surface_) {
     LOG(WARNING) << "Tried to activate without an active window.";
     return;

@@ -80,13 +80,27 @@ IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
 }
 
 IMContextBackend::~IMContextBackend() {
+  if (is_active_) {
+    Deactivate();
+  }
+
   if (extended_text_input_)
     zcr_extended_text_input_v1_destroy(extended_text_input_);
   if (text_input_)
     zwp_text_input_v1_destroy(text_input_);
 }
 
+bool IMContextBackend::IsActive() {
+  return is_active_;
+}
+
 void IMContextBackend::Activate(wl_surface* surface) {
+  if (is_active_) {
+    LOG(WARNING)
+        << "Attempted to activate text input which was already activated.";
+    return;
+  }
+
   MaybeInitialize();
 
   if (!text_input_) {
@@ -100,6 +114,12 @@ void IMContextBackend::Activate(wl_surface* surface) {
 }
 
 void IMContextBackend::ActivateX11(uint32_t x11_id) {
+  if (is_active_) {
+    LOG(WARNING)
+        << "Attempted to activate text input which was already activated.";
+    return;
+  }
+
   MaybeInitialize();
 
   if (!text_input_) {
