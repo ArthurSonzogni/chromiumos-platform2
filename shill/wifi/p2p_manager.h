@@ -33,12 +33,35 @@ class P2PManager {
   // Stop P2PManager.
   void Stop();
 
+  // The following methods are used to handle P2P-related actions.
+
+  // Create a new P2P group-owner mode interface and initialize a P2P group on
+  // that interface.
+  void CreateP2PGroup(base::OnceCallback<void(KeyValueStore result)> callback,
+                      const KeyValueStore& args);
+
+  // Creates a P2P client mode interface to and connects it to an existing P2P
+  // group.
+  void ConnectToP2PGroup(
+      base::OnceCallback<void(KeyValueStore result)> callback,
+      const KeyValueStore& args);
+
+  // Destroy the existing P2P group and tear down the P2P group-owner interface.
+  void DestroyP2PGroup(base::OnceCallback<void(KeyValueStore result)> callback,
+                       int shill_id);
+
+  // Disconnect from a P2P group. Will destroy the P2P client interface.
+  void DisconnectFromP2PGroup(
+      base::OnceCallback<void(KeyValueStore result)> callback, int shill_id);
+
   // D-Bus property getters
   // This property is temporary and will be removed when the feature is mature.
   bool allowed() const { return allowed_; }
 
  private:
   friend class P2PManagerTest;
+  FRIEND_TEST(P2PManagerTest, SetP2PAllowed);
+
   void HelpRegisterDerivedBool(PropertyStore* store,
                                std::string_view name,
                                bool (P2PManager::*get)(Error* error),

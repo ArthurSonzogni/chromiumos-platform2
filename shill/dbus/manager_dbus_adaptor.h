@@ -142,6 +142,17 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
       DBusMethodResponsePtr<std::string> response) override;
   void SetLOHSEnabled(DBusMethodResponsePtr<std::string> response,
                       bool enabled) override;
+  void CreateP2PGroup(DBusMethodResponsePtr<brillo::VariantDictionary> response,
+                      const brillo::VariantDictionary& args) override;
+  void ConnectToP2PGroup(
+      DBusMethodResponsePtr<brillo::VariantDictionary> response,
+      const brillo::VariantDictionary& args) override;
+  void DestroyP2PGroup(
+      DBusMethodResponsePtr<brillo::VariantDictionary> response,
+      int shill_id) override;
+  void DisconnectFromP2PGroup(
+      DBusMethodResponsePtr<brillo::VariantDictionary> response,
+      int shill_id) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

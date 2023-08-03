@@ -145,6 +145,26 @@
 			<arg type="s" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="CreateP2PGroup">
+			<arg type="a{sv}" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
+		<method name="ConnectToP2PGroup">
+			<arg type="a{sv}" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
+		<method name="DestroyP2PGroup">
+			<arg type="i" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
+		<method name="DisconnectFromP2PGroup">
+			<arg type="i" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

@@ -496,6 +496,22 @@ Methods		dict GetProperties()
 			Manager.LOHSConfig. Returns a string through an asynchronous callback
 			indicating the result. This currently only returns "NotImplemented".
 
+		dict CreateP2PGroup(dict properties)
+
+			Non-operational stub function.
+
+		dict ConnectToP2PGroup(dict properties)
+
+			Non-operational stub function.
+
+		dict DestroyP2PGroup(uint32 shill_id)
+
+			Non-operational stub function.
+
+		dict DisconnectFromP2PGroup(uint32 shill_id)
+
+			Non-operational stub function.
+
 
 Signals		PropertyChanged(string name, variant value)
 

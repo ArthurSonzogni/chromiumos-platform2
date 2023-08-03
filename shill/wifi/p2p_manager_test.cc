@@ -65,9 +65,9 @@ class P2PManagerTest : public testing::Test {
 
 TEST_F(P2PManagerTest, SetP2PAllowed) {
   SetAllowed(p2p_manager_, true);
-  EXPECT_EQ(p2p_manager->allowed_, true);
+  EXPECT_EQ(p2p_manager_->allowed_, true);
   SetAllowed(p2p_manager_, false);
-  EXPECT_EQ(p2p_manager->allowed_, false);
+  EXPECT_EQ(p2p_manager_->allowed_, false);
 }
 
 }  // namespace shill

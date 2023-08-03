@@ -45,6 +45,10 @@ constexpr char kRemovePasspointCredentialsFunction[] =
     "RemovePasspointCredentials";
 constexpr char kSetTetheringEnabledFunction[] = "SetTetheringEnabled";
 constexpr char kCheckTetheringReadinessFunction[] = "CheckTetheringReadiness";
+constexpr char kConnectToP2PGroupFunction[] = "ConnectToP2PGroup";
+constexpr char kDisconnectFromP2PGroupFunction[] = "DisconnectFromP2PGroup";
+constexpr char kCreateP2PGroupFunction[] = "CreateP2PGroup";
+constexpr char kDestroyP2PGroupFunction[] = "DestroyP2PGroup";
 
 // Service function names.
 constexpr char kClearPropertiesFunction[] = "ClearProperties";

@@ -6,6 +6,7 @@
 
 #include <ios>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -28,6 +29,40 @@ void P2PManager::InitPropertyStore(PropertyStore* store) {
 void P2PManager::Start() {}
 
 void P2PManager::Stop() {}
+
+void P2PManager::CreateP2PGroup(
+    base::OnceCallback<void(KeyValueStore result)> callback,
+    const KeyValueStore& args) {
+  LOG(INFO) << __func__;
+  KeyValueStore response_dict;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), response_dict));
+}
+
+void P2PManager::ConnectToP2PGroup(
+    base::OnceCallback<void(KeyValueStore result)> callback,
+    const KeyValueStore& args) {
+  LOG(INFO) << __func__;
+  KeyValueStore response_dict;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), response_dict));
+}
+
+void P2PManager::DestroyP2PGroup(
+    base::OnceCallback<void(KeyValueStore result)> callback, int shill_id) {
+  LOG(INFO) << __func__;
+  KeyValueStore response_dict;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), response_dict));
+}
+
+void P2PManager::DisconnectFromP2PGroup(
+    base::OnceCallback<void(KeyValueStore result)> callback, int shill_id) {
+  LOG(INFO) << __func__;
+  KeyValueStore response_dict;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), response_dict));
+}
 
 void P2PManager::HelpRegisterDerivedBool(PropertyStore* store,
                                          std::string_view name,

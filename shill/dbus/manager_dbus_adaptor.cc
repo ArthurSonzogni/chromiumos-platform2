@@ -497,4 +497,65 @@ void ManagerDBusAdaptor::SetLOHSEnabled(
   manager_->SetLOHSEnabled(base::BindOnce(on_result_fn, std::move(response)),
                            enabled);
 }
+
+void ManagerDBusAdaptor::CreateP2PGroup(
+    DBusMethodResponsePtr<brillo::VariantDictionary> response,
+    const brillo::VariantDictionary& args) {
+  SLOG(this, 2) << __func__;
+  auto on_result_fn =
+      [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,
+         const KeyValueStore result) {
+        std::move(response)->Return(
+            KeyValueStore::ConvertToVariantDictionary(result));
+      };
+
+  manager_->wifi_provider()->p2p_manager()->CreateP2PGroup(
+      base::BindOnce(on_result_fn, std::move(response)),
+      KeyValueStore::ConvertFromVariantDictionary(args));
+}
+
+void ManagerDBusAdaptor::ConnectToP2PGroup(
+    DBusMethodResponsePtr<brillo::VariantDictionary> response,
+    const brillo::VariantDictionary& args) {
+  SLOG(this, 2) << __func__;
+  auto on_result_fn =
+      [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,
+         const KeyValueStore result) {
+        std::move(response)->Return(
+            KeyValueStore::ConvertToVariantDictionary(result));
+      };
+
+  manager_->wifi_provider()->p2p_manager()->ConnectToP2PGroup(
+      base::BindOnce(on_result_fn, std::move(response)),
+      KeyValueStore::ConvertFromVariantDictionary(args));
+}
+
+void ManagerDBusAdaptor::DestroyP2PGroup(
+    DBusMethodResponsePtr<brillo::VariantDictionary> response, int shill_id) {
+  SLOG(this, 2) << __func__;
+  auto on_result_fn =
+      [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,
+         const KeyValueStore result) {
+        std::move(response)->Return(
+            KeyValueStore::ConvertToVariantDictionary(result));
+      };
+
+  manager_->wifi_provider()->p2p_manager()->DestroyP2PGroup(
+      base::BindOnce(on_result_fn, std::move(response)), shill_id);
+}
+
+void ManagerDBusAdaptor::DisconnectFromP2PGroup(
+    DBusMethodResponsePtr<brillo::VariantDictionary> response, int shill_id) {
+  SLOG(this, 2) << __func__;
+  auto on_result_fn =
+      [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,
+         const KeyValueStore result) {
+        std::move(response)->Return(
+            KeyValueStore::ConvertToVariantDictionary(result));
+      };
+
+  manager_->wifi_provider()->p2p_manager()->DisconnectFromP2PGroup(
+      base::BindOnce(on_result_fn, std::move(response)), shill_id);
+}
+
 }  // namespace shill
