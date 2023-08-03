@@ -843,23 +843,28 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
           id, {value.GetConstData(), value.GetLength()});
     case kTypeU8:
       list->CreateU8Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(id, value);
+      return list->InitAttributeFromValue(
+          id, {value.GetConstData(), value.GetLength()});
     case kTypeU16:
       list->CreateU16Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(id, value);
+      return list->InitAttributeFromValue(
+          id, {value.GetConstData(), value.GetLength()});
     case kTypeU32:
       list->CreateU32Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(id, value);
+      return list->InitAttributeFromValue(
+          id, {value.GetConstData(), value.GetLength()});
       break;
     case kTypeU64:
       list->CreateU64Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(id, value);
+      return list->InitAttributeFromValue(
+          id, {value.GetConstData(), value.GetLength()});
     case kTypeFlag:
       list->CreateFlagAttribute(id, attribute_name.c_str());
       return list->SetFlagAttributeValue(id, true);
     case kTypeString:
       list->CreateStringAttribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(id, value);
+      return list->InitAttributeFromValue(
+          id, {value.GetConstData(), value.GetLength()});
     case kTypeNested: {
       if (nested_template.deeper_nesting.empty()) {
         LOG(ERROR) << "No rules for nesting " << attribute_name

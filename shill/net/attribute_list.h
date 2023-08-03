@@ -56,7 +56,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
                               const ByteString& value);
 
   // Initializes the attribute |id| from the data in |value|.
-  bool InitAttributeFromValue(int id, const ByteString& value);
+  bool InitAttributeFromValue(int id, base::span<const uint8_t> value);
 
   // Prints the attribute list with each attribute using no less than 1 line.
   // |indent| indicates the amout of leading spaces to be printed (useful for

@@ -936,7 +936,7 @@ bool Nl80211AttributeSupportedIftypes::ParseIfaceTypes(
   attribute_list->CreateU32Attribute(id, attribute_name.c_str());
   // nl80211 attribute saves the iface types in |id| rather than payload.
   return attribute_list->InitAttributeFromValue(
-      id, ByteString::CreateFromCPUUInt32(id));
+      id, net_base::byte_utils::ToBytes<uint32_t>(id));
 }
 
 const int Nl80211AttributeStatusCode::kName = NL80211_ATTR_STATUS_CODE;

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 
 #include "shill/net/byte_string.h"
@@ -49,15 +50,16 @@ bool AttributeList::CreateAndInitAttribute(
   if (!CreateAttribute(id, factory)) {
     return false;
   }
-  return InitAttributeFromValue(id, value);
+  return InitAttributeFromValue(id, {value.GetConstData(), value.GetLength()});
 }
 
-bool AttributeList::InitAttributeFromValue(int id, const ByteString& value) {
+bool AttributeList::InitAttributeFromValue(int id,
+                                           base::span<const uint8_t> value) {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute) {
     return false;
   }
-  return attribute->InitFromValue({value.GetConstData(), value.GetLength()});
+  return attribute->InitFromValue(value);
 }
 
 void AttributeList::Print(int log_level, int indent) const {
