@@ -269,6 +269,8 @@ int HandleReportError(const Configuration& config,
         return EXIT_FAILURE;
       }
 
+      LOG(INFO) << "Reporting hub error (" << error_code << ") from "
+                << normalized_devpath;
       usb_bouncer::StructuredMetricsHubError(
           abs(error_code), usb_bouncer::GetVendorId(normalized_devpath),
           usb_bouncer::GetProductId(normalized_devpath),
@@ -276,6 +278,8 @@ int HandleReportError(const Configuration& config,
           usb_bouncer::GetUsbTreePath(normalized_devpath),
           usb_bouncer::GetConnectedDuration(normalized_devpath));
     } else if (subsystem == "pci") {
+      LOG(INFO) << "Reporting xHCI error (" << error_code << ") from "
+                << normalized_devpath;
       usb_bouncer::StructuredMetricsXhciError(
           abs(error_code), usb_bouncer::GetPciDeviceClass(normalized_devpath));
     }
