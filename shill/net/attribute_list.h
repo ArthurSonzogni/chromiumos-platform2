@@ -73,7 +73,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 
   // Decode an attribute list starting from |offset| within |payload|.  Use
   // |factory| to create each attribute object.
-  bool Decode(const ByteString& payload,
+  bool Decode(base::span<const uint8_t> payload,
               size_t offset,
               const NewFromIdMethod& factory);
 

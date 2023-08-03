@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {
@@ -21,10 +22,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   FuzzedDataProvider provider(data, size);
-  size_t offset = provider.ConsumeIntegral<size_t>();
-  int log_level = provider.ConsumeIntegralInRange<int>(0, 8);
-  int indent = provider.ConsumeIntegralInRange<int>(0, 1024);
-  ByteString payload(provider.ConsumeRemainingBytes<uint8_t>());
+  const size_t offset = provider.ConsumeIntegral<size_t>();
+  const int log_level = provider.ConsumeIntegralInRange<int>(0, 8);
+  const int indent = provider.ConsumeIntegralInRange<int>(0, 1024);
+  const std::vector<uint8_t> payload =
+      provider.ConsumeRemainingBytes<uint8_t>();
 
   AttributeListRefPtr attributes(new AttributeList);
   attributes->Decode(

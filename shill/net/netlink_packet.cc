@@ -59,7 +59,9 @@ const ByteString& NetlinkPacket::GetPayload() const {
 bool NetlinkPacket::ConsumeAttributes(
     const AttributeList::NewFromIdMethod& factory,
     const AttributeListRefPtr& attributes) {
-  bool result = attributes->Decode(GetPayload(), consumed_bytes_, factory);
+  const ByteString& payload = GetPayload();
+  bool result = attributes->Decode(
+      {payload.GetConstData(), payload.GetLength()}, consumed_bytes_, factory);
   consumed_bytes_ = GetPayload().GetLength();
   return result;
 }

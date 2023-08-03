@@ -120,11 +120,11 @@ bool AttributeList::IterateAttributes(
   return true;
 }
 
-bool AttributeList::Decode(const ByteString& payload,
+bool AttributeList::Decode(base::span<const uint8_t> payload,
                            size_t offset,
                            const AttributeList::NewFromIdMethod& factory) {
   return IterateAttributes(
-      {payload.GetConstData(), payload.GetLength()}, offset,
+      payload, offset,
       base::BindRepeating(&AttributeList::CreateAndInitAttribute,
                           base::Unretained(this), factory));
 }
