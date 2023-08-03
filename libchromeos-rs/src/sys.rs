@@ -7,8 +7,6 @@
 // third_party crates or ChromeOS specific implementations.
 // Do not add to this list.
 pub use crosvm_base::errno_result;
-pub use crosvm_base::set_rt_prio_limit;
-pub use crosvm_base::set_rt_round_robin;
 pub use crosvm_base::unix::duration_to_timespec;
 pub use crosvm_base::unix::panic_handler;
 pub use crosvm_base::unix::vsock;
@@ -21,8 +19,3 @@ pub use crosvm_base::RawDescriptor;
 pub use crosvm_base::Result;
 pub use crosvm_base::SafeDescriptor;
 pub use crosvm_base::ScmSocket;
-
-pub mod net {
-    // TODO: b/293488266 - still used by libcras, remove after refactoring.
-    pub use crosvm_base::net::UnixSeqpacket;
-}
