@@ -4,8 +4,12 @@
 
 import("//common-mk/pkg_config.gni")
 
-# For cros_healthd-client package.
+# TODO(b/291680002): Removed this target.
 group("all") {
+}
+
+# For cros_healthd-client package.
+group("mojom") {
   deps = [
     ":cros_healthd-client",
     "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",

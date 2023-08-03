@@ -18,6 +18,7 @@ group("all") {
     "//diagnostics/cros_healthd/routines:prime-search",
     "//diagnostics/cros_healthd/routines:urandom",
     "//diagnostics/cros_healthd/seccomp",
+    "//diagnostics/mojom",
     "//diagnostics/wilco_dtc_supportd:wilco_dtc_supportd",
     "//diagnostics/wilco_dtc_supportd/seccomp",
   ]
