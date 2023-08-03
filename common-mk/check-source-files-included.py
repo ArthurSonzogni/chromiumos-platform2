@@ -13,6 +13,7 @@ whether they are present in a *.gn file in their project directory.
 """
 
 import argparse
+import os
 from pathlib import Path
 from pathlib import PurePath
 import sys
@@ -70,9 +71,7 @@ class ProjectLiterals:
                 yield from (
                     (gn_file, literal)
                     for literal in ProjectLiterals._GatherLiteralsFromGn(
-                        (TOP_DIR / project / gn_file).read_text(
-                            encoding="utf-8"
-                        )
+                        self._ReadFileAtCommit(project, gn_file)
                     )
                 )
 
@@ -91,6 +90,21 @@ class ProjectLiterals:
 
         return frozenset(
             _resolve(gn_file, literal) for gn_file, literal in _gather()
+        )
+
+    def _ReadFileAtCommit(self, project: str, file_path: str) -> str:
+        """Read a file at a commit.
+
+        Args:
+            project: The project to read the file from.
+            file_path: The path to the file to read. Path is relative to the
+            project root directory.
+
+        Returns:
+            The content of the file.
+        """
+        return git.GetObjectAtRev(
+            TOP_DIR / project, os.path.join(project, file_path), self._commit
         )
 
     def _FindGnFiles(self, project: str) -> Iterable[str]:
