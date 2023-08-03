@@ -859,9 +859,6 @@ bool UserDataAuth::PostTaskToMountThread(const base::Location& from_here,
   if (delay.is_zero()) {
     // Increase and report the parallel task count.
     parallel_task_count_ += 1;
-    if (parallel_task_count_ > 1) {
-      ReportParallelTasks(parallel_task_count_);
-    }
 
     // Reduce the parallel task count after finished the task.
     auto full_task = base::BindOnce(

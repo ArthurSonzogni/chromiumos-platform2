@@ -41,18 +41,6 @@ class DircryptoMigrationHelperDelegate
   std::string GetAtimeXattrName() override;
   void RecordSkippedFile(const base::FilePath& path) override;
   int64_t FreeSpaceForMigrator() override;
-  void ReportStartTime() override;
-  void ReportEndTime() override;
-  void ReportStartStatus(data_migrator::MigrationStartStatus status) override;
-  void ReportEndStatus(data_migrator::MigrationEndStatus status) override;
-  void ReportTotalSize(int total_byte_count_mb, int total_file_count) override;
-  void ReportFailure(base::File::Error error_code,
-                     data_migrator::MigrationFailedOperationType type,
-                     const base::FilePath& path,
-                     data_migrator::FailureLocationType location_type) override;
-  void ReportFailedNoSpace(int initial_migration_free_space_mb,
-                           int failure_free_space_mb) override;
-  void ReportFailedNoSpaceXattrSizeInBytes(int total_xattr_size_bytes) override;
 
  private:
   Platform* const platform_;

@@ -53,24 +53,6 @@ constexpr char kCryptohomeFreeDiskSpaceDuringLoginTotalFreedInMbHistogram[] =
     "Cryptohome.FreeDiskSpaceDuringLoginTotalFreedInMb";
 constexpr char kCryptohomeTimeBetweenFreeDiskSpaceHistogram[] =
     "Cryptohome.TimeBetweenFreeDiskSpace";
-constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
-    "Cryptohome.DircryptoMigrationStartStatus";
-constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
-    "Cryptohome.DircryptoMigrationEndStatus";
-constexpr char kCryptohomeDircryptoMinimalMigrationStartStatusHistogram[] =
-    "Cryptohome.DircryptoMinimalMigrationStartStatus";
-constexpr char kCryptohomeDircryptoMinimalMigrationEndStatusHistogram[] =
-    "Cryptohome.DircryptoMinimalMigrationEndStatus";
-constexpr char kCryptohomeDircryptoMigrationFailedErrorCodeHistogram[] =
-    "Cryptohome.DircryptoMigrationFailedErrorCode";
-constexpr char kCryptohomeDircryptoMigrationFailedOperationTypeHistogram[] =
-    "Cryptohome.DircryptoMigrationFailedOperationType";
-constexpr char kCryptohomeDircryptoMigrationFailedPathTypeHistogram[] =
-    "Cryptohome.DircryptoMigrationFailedPathType";
-constexpr char kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram[] =
-    "Cryptohome.DircryptoMigrationTotalByteCountInMb";
-constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
-    "Cryptohome.DircryptoMigrationTotalFileCount";
 constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
     "Cryptohome.DiskCleanupProgress";
 constexpr char kCryptohomeDiskCleanupResultHistogram[] =
@@ -85,15 +67,8 @@ constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
 constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
     "Cryptohome.LECredential.LogReplayEntryCount";
-constexpr char kCryptohomeParallelTasksPrefix[] = "Cryptohome.ParallelTasks";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
-constexpr char kDircryptoMigrationNoSpaceFailureFreeSpaceInMbHistogram[] =
-    "Cryptohome.DircryptoMigrationNoSpaceFailureFreeSpaceInMb";
-constexpr char kDircryptoMigrationInitialFreeSpaceInMbHistogram[] =
-    "Cryptohome.DircryptoMigrationInitialFreeSpaceInMb";
-constexpr char kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram[] =
-    "Cryptohome.DircryptoMigrationNoSpaceXattrSizeInBytes";
 constexpr char kOOPMountOperationResultHistogram[] =
     "Cryptohome.OOPMountOperationResult";
 constexpr char kOOPMountCleanupResultHistogram[] =
@@ -145,15 +120,6 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // These will all fall into the first histogram bucket.
     {kPkcs11InitTimer, "Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
     {kMountExTimer, "Cryptohome.TimeToMountEx", 0, 4000, 50},
-    // Ext4 crypto migration is expected to takes few minutes in a fast case,
-    // and with many tens of thousands of files it may take hours.
-    {kDircryptoMigrationTimer, "Cryptohome.TimeToCompleteDircryptoMigration",
-     1000, 10 * 60 * 60 * 1000, 50},
-    // Minimal migration is expected to take few seconds in a fast case,
-    // and minutes in the worst case if we forgot to blocklist files.
-    {kDircryptoMinimalMigrationTimer,
-     "Cryptohome.TimeToCompleteDircryptoMinimalMigration", 200, 2 * 60 * 1000,
-     50},
 
     {kMountGuestExTimer, "Cryptohome.TimeToMountGuestEx", 0, 4000, 50},
     // This is only being reported from the out-of-process helper so it's
@@ -509,78 +475,6 @@ void ReportFreeDiskSpaceDuringLoginTotalFreedInMb(int mb) {
       kMax, kNumBuckets);
 }
 
-void ReportDircryptoMigrationStartStatus(
-    MigrationType migration_type, data_migrator::MigrationStartStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-  const char* metric =
-      migration_type == MigrationType::FULL
-          ? kCryptohomeDircryptoMigrationStartStatusHistogram
-          : kCryptohomeDircryptoMinimalMigrationStartStatusHistogram;
-  g_metrics->SendEnumToUMA(metric, status,
-                           data_migrator::kMigrationStartStatusNumBuckets);
-}
-
-void ReportDircryptoMigrationEndStatus(
-    MigrationType migration_type, data_migrator::MigrationEndStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-  const char* metric =
-      migration_type == MigrationType::FULL
-          ? kCryptohomeDircryptoMigrationEndStatusHistogram
-          : kCryptohomeDircryptoMinimalMigrationEndStatusHistogram;
-  g_metrics->SendEnumToUMA(metric, status,
-                           data_migrator::kMigrationEndStatusNumBuckets);
-}
-
-void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(
-      kCryptohomeDircryptoMigrationFailedErrorCodeHistogram, -error_code,
-      -base::File::FILE_ERROR_MAX);
-}
-
-void ReportDircryptoMigrationFailedOperationType(
-    data_migrator::MigrationFailedOperationType type) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(
-      kCryptohomeDircryptoMigrationFailedOperationTypeHistogram, type,
-      data_migrator::kMigrationFailedOperationTypeNumBuckets);
-}
-
-void ReportDircryptoMigrationFailedPathType(
-    DircryptoMigrationFailedPathType type) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationFailedPathTypeHistogram,
-                           type, kMigrationFailedPathTypeNumBuckets);
-}
-
-void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb) {
-  if (!g_metrics) {
-    return;
-  }
-  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
-  g_metrics->SendToUMA(kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram,
-                       total_byte_count_mb, kMin, kMax, kNumBuckets);
-}
-
-void ReportDircryptoMigrationTotalFileCount(int total_file_count) {
-  if (!g_metrics) {
-    return;
-  }
-  constexpr int kMin = 1, kMax = 100000000, kNumBuckets = 50;
-  g_metrics->SendToUMA(kCryptohomeDircryptoMigrationTotalFileCountHistogram,
-                       total_file_count, kMin, kMax, kNumBuckets);
-}
-
 void ReportDiskCleanupProgress(DiskCleanupProgress progress) {
   if (!g_metrics) {
     return;
@@ -692,39 +586,6 @@ void ReportLEReplayResult(bool is_full_replay, LEReplayError result) {
 
   g_metrics->SendEnumToUMA(hist_str, static_cast<int>(result),
                            static_cast<int>(LEReplayError::kMaxValue));
-}
-
-void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
-                                           int failure_free_space_mb) {
-  if (!g_metrics) {
-    return;
-  }
-  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
-  g_metrics->SendToUMA(kDircryptoMigrationInitialFreeSpaceInMbHistogram,
-                       initial_migration_free_space_mb, kMin, kMax,
-                       kNumBuckets);
-  g_metrics->SendToUMA(kDircryptoMigrationNoSpaceFailureFreeSpaceInMbHistogram,
-                       failure_free_space_mb, kMin, kMax, kNumBuckets);
-}
-
-void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
-    int total_xattr_size_bytes) {
-  if (!g_metrics) {
-    return;
-  }
-  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
-  g_metrics->SendToUMA(kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram,
-                       total_xattr_size_bytes, kMin, kMax, kNumBuckets);
-}
-
-void ReportParallelTasks(int amount_of_task) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr int kMin = 1, kMax = 50, kNumBuckets = 50;
-  g_metrics->SendToUMA(kCryptohomeParallelTasksPrefix, amount_of_task, kMin,
-                       kMax, kNumBuckets);
 }
 
 void ReportOOPMountOperationResult(OOPMountOperationResult result) {

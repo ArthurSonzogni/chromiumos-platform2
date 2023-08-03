@@ -92,30 +92,28 @@ enum CryptohomeErrorMetric {
 enum TimerType {
   kPkcs11InitTimer = 0,
   kMountExTimer = 1,
-  kDircryptoMigrationTimer = 2,
-  kDircryptoMinimalMigrationTimer = 3,
-  kMountGuestExTimer = 4,
-  kPerformEphemeralMountTimer = 5,
-  kPerformMountTimer = 6,
-  kGenerateEccAuthValueTimer = 7,
-  kAuthSessionAddAuthFactorVKTimer = 8,
-  kAuthSessionAddAuthFactorUSSTimer = 9,
-  kAuthSessionAuthenticateAuthFactorVKTimer = 10,
-  kAuthSessionAuthenticateAuthFactorUSSTimer = 11,
-  kAuthSessionUpdateAuthFactorVKTimer = 12,
-  kAuthSessionUpdateAuthFactorUSSTimer = 13,
-  kAuthSessionRemoveAuthFactorVKTimer = 14,
-  kAuthSessionRemoveAuthFactorUSSTimer = 15,
-  kCreatePersistentUserTimer = 16,
-  kAuthSessionTotalLifetimeTimer = 17,
-  kAuthSessionAuthenticatedLifetimeTimer = 18,
-  kUSSPersistTimer = 19,
-  kUSSLoadPersistedTimer = 20,
-  kUSSMigrationTimer = 21,
-  kVaultSetupTimer = 22,
-  kSELinuxRelabelTimer = 23,
-  kStoreUserPolicyTimer = 24,
-  kLoadUserPolicyTimer = 25,
+  kMountGuestExTimer = 2,
+  kPerformEphemeralMountTimer = 3,
+  kPerformMountTimer = 4,
+  kGenerateEccAuthValueTimer = 5,
+  kAuthSessionAddAuthFactorVKTimer = 6,
+  kAuthSessionAddAuthFactorUSSTimer = 7,
+  kAuthSessionAuthenticateAuthFactorVKTimer = 8,
+  kAuthSessionAuthenticateAuthFactorUSSTimer = 9,
+  kAuthSessionUpdateAuthFactorVKTimer = 10,
+  kAuthSessionUpdateAuthFactorUSSTimer = 11,
+  kAuthSessionRemoveAuthFactorVKTimer = 12,
+  kAuthSessionRemoveAuthFactorUSSTimer = 13,
+  kCreatePersistentUserTimer = 14,
+  kAuthSessionTotalLifetimeTimer = 15,
+  kAuthSessionAuthenticatedLifetimeTimer = 16,
+  kUSSPersistTimer = 17,
+  kUSSLoadPersistedTimer = 18,
+  kUSSMigrationTimer = 19,
+  kVaultSetupTimer = 20,
+  kSELinuxRelabelTimer = 21,
+  kStoreUserPolicyTimer = 22,
+  kLoadUserPolicyTimer = 23,
   kNumTimerTypes  // For the number of timer types.
 };
 
@@ -480,45 +478,6 @@ void ReportLoginDiskCleanupTotalTime(int ms);
 // the "Cryptohome.FreeDiskSpaceDuringLoginTotalFreedInMb" histogram.
 void ReportFreeDiskSpaceDuringLoginTotalFreedInMb(int mb);
 
-// The |status| value is reported to the
-// "Cryptohome.DircryptoMigrationStartStatus" (full migration)
-// or the "Cryptohome.DircryptoMinimalMigrationStartStatus" (minimal migration)
-// enum histogram.
-void ReportDircryptoMigrationStartStatus(
-    MigrationType migration_type, data_migrator::MigrationStartStatus status);
-
-// The |status| value is reported to the
-// "Cryptohome.DircryptoMigrationEndStatus" (full migration)
-// or the "Cryptohome.DircryptoMinimalMigrationEndStatus" (minimal migration)
-// enum histogram.
-void ReportDircryptoMigrationEndStatus(
-    MigrationType migration_type, data_migrator::MigrationEndStatus status);
-
-// The |error_code| value is reported to the
-// "Cryptohome.DircryptoMigrationFailedErrorCode"
-// enum histogram.
-void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code);
-
-// The |type| value is reported to the
-// "Cryptohome.DircryptoMigrationFailedOperationType"
-// enum histogram.
-void ReportDircryptoMigrationFailedOperationType(
-    data_migrator::MigrationFailedOperationType type);
-
-// The |type| value is reported to the
-// "Cryptohome.DircryptoMigrationFailedPathType"
-// enum histogram.
-void ReportDircryptoMigrationFailedPathType(
-    DircryptoMigrationFailedPathType type);
-
-// Reports the total byte count in MB to migrate to the
-// "Cryptohome.DircryptoMigrationTotalByteCountInMb" histogram.
-void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb);
-
-// Reports the total file count to migrate to the
-// "Cryptohome.DircryptoMigrationTotalFileCount" histogram.
-void ReportDircryptoMigrationTotalFileCount(int total_file_count);
-
 // Reports which topmost priority was reached to fulfill a cleanup request
 // to the "Cryptohome.DiskCleanupProgress" enum histogram.
 void ReportDiskCleanupProgress(DiskCleanupProgress progress);
@@ -566,19 +525,6 @@ void ReportLELogReplayEntryCount(size_t entry_count);
 // a best-effort attempt hoping that we are only 1 entry behind the first log
 // entry).
 void ReportLEReplayResult(bool is_full_replay, LEReplayError result);
-
-// Reports the free space in MB when the migration fails and what the free space
-// was initially when the migration was started.
-void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
-                                           int failure_free_space_mb);
-
-// Reports the total size in bytes of the current xattrs already set on a file
-// and the xattr that caused the setxattr call to fail.
-void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
-    int total_xattr_size_bytes);
-
-// Reports the amount of total tasks waiting in the queue of mount thread.
-void ReportParallelTasks(int amount_of_task);
 
 // Reports the result of an out-of-process mount operation.
 void ReportOOPMountOperationResult(OOPMountOperationResult result);

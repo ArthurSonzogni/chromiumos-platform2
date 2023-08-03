@@ -62,13 +62,6 @@ struct PathTypeMapping {
   DircryptoMigrationFailedPathType type;
 };
 
-const PathTypeMapping kPathTypeMappings[] = {
-    {"root/android-data", kMigrationFailedUnderAndroidOther},
-    {"user/Downloads", kMigrationFailedUnderDownloads},
-    {"user/Cache", kMigrationFailedUnderCache},
-    {"user/GCache", kMigrationFailedUnderGcache},
-};
-
 }  // namespace
 
 DircryptoMigrationHelperDelegate::DircryptoMigrationHelperDelegate(
@@ -118,11 +111,13 @@ bool DircryptoMigrationHelperDelegate::ShouldMigrateFile(
     for (const auto& migration_path : minimal_migration_paths_) {
       // If the current path is one of the allowlisted paths, or its
       // parent, migrate it.
-      if (child == migration_path || child.IsParent(migration_path))
+      if (child == migration_path || child.IsParent(migration_path)) {
         return true;
+      }
       // Recursively migrate contents of directories specified for migration.
-      if (migration_path.IsParent(child))
+      if (migration_path.IsParent(child)) {
         return true;
+      }
     }
 
     return false;
@@ -180,88 +175,16 @@ void DircryptoMigrationHelperDelegate::RecordSkippedFile(
   }
   if (skipped_file_list.created()) {
     // Sync the parent directory to persist the file.
-    if (!platform_->SyncDirectory(skipped_file_list_path_.DirName()))
+    if (!platform_->SyncDirectory(skipped_file_list_path_.DirName())) {
       PLOG(ERROR) << "Failed to sync parent directory when creating list of "
                      "skipped files "
                   << skipped_file_list_path_.value();
+    }
   }
 }
 
 int64_t DircryptoMigrationHelperDelegate::FreeSpaceForMigrator() {
   return platform_->AmountOfFreeDiskSpace(to_dir_);
-}
-
-void DircryptoMigrationHelperDelegate::ReportStartTime() {
-  const auto migration_timer_id = migration_type_ == MigrationType::MINIMAL
-                                      ? kDircryptoMinimalMigrationTimer
-                                      : kDircryptoMigrationTimer;
-  ReportTimerStart(migration_timer_id);
-}
-
-void DircryptoMigrationHelperDelegate::ReportEndTime() {
-  const auto migration_timer_id = migration_type_ == MigrationType::MINIMAL
-                                      ? kDircryptoMinimalMigrationTimer
-                                      : kDircryptoMigrationTimer;
-  ReportTimerStop(migration_timer_id);
-}
-
-void DircryptoMigrationHelperDelegate::ReportStartStatus(
-    data_migrator::MigrationStartStatus status) {
-  ReportDircryptoMigrationStartStatus(migration_type_, status);
-}
-
-void DircryptoMigrationHelperDelegate::ReportEndStatus(
-    data_migrator::MigrationEndStatus status) {
-  ReportDircryptoMigrationEndStatus(migration_type_, status);
-}
-
-void DircryptoMigrationHelperDelegate::ReportFailure(
-    base::File::Error error_code,
-    data_migrator::MigrationFailedOperationType operation_type,
-    const base::FilePath& path,
-    data_migrator::FailureLocationType location_type) {
-  DircryptoMigrationFailedPathType path_type = kMigrationFailedUnderOther;
-  for (const auto& path_type_mapping : kPathTypeMappings) {
-    if (base::FilePath(path_type_mapping.path).IsParent(path)) {
-      path_type = path_type_mapping.type;
-      break;
-    }
-  }
-  // Android cache files are either under
-  //   root/android-data/data/data/<package name>/cache
-  //   root/android-data/data/media/0/Android/data/<package name>/cache
-  if (path_type == kMigrationFailedUnderAndroidOther) {
-    std::vector<std::string> components = path.GetComponents();
-    if ((components.size() >= 7u && components[2] == "data" &&
-         components[3] == "data" && components[5] == "cache") ||
-        (components.size() >= 10u && components[2] == "data" &&
-         components[3] == "media" && components[4] == "0" &&
-         components[5] == "Android" && components[6] == "data" &&
-         components[8] == "cache")) {
-      path_type = kMigrationFailedUnderAndroidCache;
-    }
-  }
-
-  ReportDircryptoMigrationFailedOperationType(operation_type);
-  ReportDircryptoMigrationFailedPathType(path_type);
-  ReportDircryptoMigrationFailedErrorCode(error_code);
-}
-
-void DircryptoMigrationHelperDelegate::ReportTotalSize(int total_byte_count_mb,
-                                                       int total_file_count) {
-  ReportDircryptoMigrationTotalByteCountInMb(total_byte_count_mb);
-  ReportDircryptoMigrationTotalFileCount(total_file_count);
-}
-
-void DircryptoMigrationHelperDelegate::ReportFailedNoSpace(
-    int initial_migration_free_space_mb, int failure_free_space_mb) {
-  ReportDircryptoMigrationFailedNoSpace(initial_migration_free_space_mb,
-                                        failure_free_space_mb);
-}
-
-void DircryptoMigrationHelperDelegate::ReportFailedNoSpaceXattrSizeInBytes(
-    int total_xattr_size_bytes) {
-  ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(total_xattr_size_bytes);
 }
 
 }  // namespace cryptohome
