@@ -59,7 +59,7 @@ class Sensor:
 
 SENSORS = {
     "FPC1145": Sensor(
-        "FPC1145", 192, 56, 8, frame_size=35460, frame_offset_image=2340
+        "FPC1145", 56, 192, 8, frame_size=35460, frame_offset_image=2340
     ),
     "FPC1025": Sensor(
         "FPC1025", 160, 160, 8, frame_size=26260, frame_offset_image=400
