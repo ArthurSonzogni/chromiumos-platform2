@@ -112,4 +112,73 @@ TEST(EphemeralUtilTest, GenerateDeviceLocalAccountUserId_WEB_KIOSK_APP) {
       account_id, em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP);
   EXPECT_EQ("6b696f736b5f617070@web-kiosk-apps.device-local.localhost", user);
 }
+
+TEST(GetDeviceLocalAccountTypeTest, ExtractDomainName) {
+  const char domain[] = "example.com";
+  EXPECT_EQ(domain, ExtractDomainName("who@example.com"));
+  EXPECT_EQ(domain, ExtractDomainName("who@EXAMPLE.cOm"));
+}
+
+TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_PUBLIC_SESSION) {
+  std::string account_id =
+      "6b696f736b5f617070@public-accounts.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_TRUE(account_type.has_value());
+  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION,
+            account_type.value());
+}
+
+TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_KIOSK_APP) {
+  std::string account_id =
+      "6b696f736b5f617070@web-kiosk-apps.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_TRUE(account_type.has_value());
+  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,
+            account_type.value());
+}
+
+TEST(GetDeviceLocalAccountTypeTest,
+     GetDeviceLocalAccountType_KIOSK_ANDROID_APP) {
+  std::string account_id =
+      "6b696f736b5f617070@arc-kiosk-apps.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_TRUE(account_type.has_value());
+  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP,
+            account_type.value());
+}
+
+TEST(GetDeviceLocalAccountTypeTest,
+     GetDeviceLocalAccountType_SAML_PUBLIC_SESSION) {
+  std::string account_id =
+      "6b696f736b5f617070@saml-public-accounts.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_TRUE(account_type.has_value());
+  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
+            account_type.value());
+}
+
+TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_WEB_KIOSK_APP) {
+  std::string account_id =
+      "6b696f736b5f617070@web-kiosk-apps.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_TRUE(account_type.has_value());
+  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,
+            account_type.value());
+}
+
+TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_NoAtSymbol) {
+  std::string account_id =
+      "6b696f736b5f617070(Missing symbol)web-kiosk-apps.device-local.localhost";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_EQ(GetDeviceLocalAccountTypeError::kNoDeviceLocalAccountUser,
+            account_type.error());
+}
+
+TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_IncorrectDomain) {
+  std::string account_id = "6b696f736b5f617070@gmail.com";
+  auto account_type = GetDeviceLocalAccountType(&account_id);
+  ASSERT_EQ(GetDeviceLocalAccountTypeError::kNoDeviceLocalAccountUser,
+            account_type.error());
+}
+
 }  // namespace policy

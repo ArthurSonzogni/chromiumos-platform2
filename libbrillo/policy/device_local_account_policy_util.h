@@ -8,7 +8,9 @@
 #include <string>
 
 #include <brillo/brillo_export.h>
+#include "base/types/expected.h"
 #include "bindings/chrome_device_policy.pb.h"
+#include "components/policy/core/common/device_local_account_type.h"
 
 namespace policy {
 // Both CanonicalizeEmail and GenerateDeviceLocalAccountUserId is
@@ -23,6 +25,13 @@ BRILLO_EXPORT std::string CanonicalizeEmail(const std::string& email_address);
 BRILLO_EXPORT std::string GenerateDeviceLocalAccountUserId(
     const std::string& account_id,
     enterprise_management::DeviceLocalAccountInfoProto::AccountType type);
+
+BRILLO_EXPORT base::expected<
+    enterprise_management::DeviceLocalAccountInfoProto_AccountType,
+    GetDeviceLocalAccountTypeError>
+GetDeviceLocalAccountType(std::string* account_id);
+
+BRILLO_EXPORT std::string ExtractDomainName(const std::string& email_address);
 
 }  // namespace policy
 
