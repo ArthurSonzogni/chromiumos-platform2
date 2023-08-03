@@ -4883,11 +4883,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::nullopt);
       });
-  // Set expectations that rate-limiter and fingerprint credential leaves with
-  // non-zero wrong auth attempts will be reset after a successful
-  // authentication.
-  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeRateLimiterLabel))
-      .WillOnce(Return(1));
+  // Set expectations that fingerprint credential leaves with non-zero wrong
+  // auth attempts will be reset after a successful authentication.
   EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeFpLabel))
       .WillOnce(Return(1));
   EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeSecondFpLabel))
@@ -4895,7 +4892,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
   EXPECT_CALL(*mock_le_manager_ptr,
               ResetCredential(kFakeRateLimiterLabel,
                               brillo::SecureBlob(kFakeResetSecret),
-                              /*strong_reset=*/false));
+                              /*strong_reset=*/true));
   EXPECT_CALL(
       *mock_le_manager_ptr,
       ResetCredential(kFakeFpLabel, brillo::SecureBlob(kFakeResetSecret),

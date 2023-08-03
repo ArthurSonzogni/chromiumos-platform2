@@ -60,7 +60,7 @@ constexpr struct {
 } kDefaultDelaySchedule[] = {
     {5, kInfiniteDelay},
 };
-constexpr base::TimeDelta kExpirationLockout = base::Days(14);
+constexpr base::TimeDelta kExpirationLockout = base::Days(1);
 
 std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
     const ObfuscatedUsername& obfuscated_username) {

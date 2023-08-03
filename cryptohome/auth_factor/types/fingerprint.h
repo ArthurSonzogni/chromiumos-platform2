@@ -40,7 +40,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithMetadata<auth_factor::FingerprintMetadata>,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverResetCapability<
-          AuthFactorDriver::ResetCapability::kResetWrongAttemptsOnly>,
+          AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
       public AfDriverWithConfigurableIntents<
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
           AuthIntentSequence<AuthIntent::kDecrypt>>,

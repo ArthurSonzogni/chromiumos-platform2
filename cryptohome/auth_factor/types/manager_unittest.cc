@@ -296,7 +296,7 @@ TEST_F(AuthFactorDriverManagerTest, GetResetCapability) {
   EXPECT_EQ(reset_capability(AuthFactorType::kLegacyFingerprint),
             ResetCapability::kNoReset);
   EXPECT_EQ(reset_capability(AuthFactorType::kFingerprint),
-            ResetCapability::kResetWrongAttemptsOnly);
+            ResetCapability::kResetWrongAttemptsAndExpiration);
   EXPECT_EQ(reset_capability(AuthFactorType::kUnspecified),
             ResetCapability::kNoReset);
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
