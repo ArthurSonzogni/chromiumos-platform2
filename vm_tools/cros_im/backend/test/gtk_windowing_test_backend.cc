@@ -11,11 +11,12 @@ namespace test {
 
 BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
   ExpectCreateTextInput<0>();
-  ExpectCreateTextInput<1>();
-
   Expect<0>(Request::kActivate);
+
   SendCommitString<0>("ツ");
   Expect<0>(Request::kDeactivate);
+
+  ExpectCreateTextInput<1>();
   Expect<1>(Request::kActivate);
   Expect<1>(Request::kReset);
 

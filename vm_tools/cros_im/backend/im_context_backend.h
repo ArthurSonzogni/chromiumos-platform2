@@ -76,11 +76,12 @@ class IMContextBackend {
   void SetSupportsSurrounding(bool is_supported);
 
  private:
-  // We usually initialize in the constructor, but if the Wayland connection
-  // isn't ready yet we retry in Activate().
+  // IMContextBackend is lazily initialized upon first use, e.g. on Activate(),
+  // to avoid sending unnecessary Wayland events for instances not actually
+  // used. If the Wayland connection is not ready, returns false.
   // TODO(timloh): We should queue up requests from the front-end and send them
   // once the connection is ready.
-  void MaybeInitialize();
+  bool EnsureInitialized();
 
   // Wayland text_input_v1 event handlers.
   void SetPreedit(uint32_t serial, const char* text, const char* commit);

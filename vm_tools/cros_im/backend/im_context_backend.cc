@@ -75,8 +75,6 @@ IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
   const char* env = std::getenv(kVirtualKeyboardEnv);
   virtual_keyboard_enabled_ =
       env && std::string(env) == kVirtualKeyboardEnabled;
-
-  MaybeInitialize();
 }
 
 IMContextBackend::~IMContextBackend() {
@@ -95,15 +93,7 @@ bool IMContextBackend::IsActive() {
 }
 
 void IMContextBackend::Activate(wl_surface* surface) {
-  if (is_active_) {
-    LOG(WARNING)
-        << "Attempted to activate text input which was already activated.";
-    return;
-  }
-
-  MaybeInitialize();
-
-  if (!text_input_) {
+  if (!EnsureInitialized()) {
     LOG(INFO) << "The text input manager is not ready yet or not available.";
     return;
   }
@@ -114,15 +104,7 @@ void IMContextBackend::Activate(wl_surface* surface) {
 }
 
 void IMContextBackend::ActivateX11(uint32_t x11_id) {
-  if (is_active_) {
-    LOG(WARNING)
-        << "Attempted to activate text input which was already activated.";
-    return;
-  }
-
-  MaybeInitialize();
-
-  if (!text_input_) {
+  if (!EnsureInitialized()) {
     LOG(INFO) << "The text input manager is not ready yet or not available.";
     return;
   }
@@ -150,7 +132,7 @@ void IMContextBackend::Deactivate() {
 }
 
 void IMContextBackend::ShowInputPanel() {
-  if (!text_input_ || !virtual_keyboard_enabled_)
+  if (!EnsureInitialized() || !virtual_keyboard_enabled_)
     return;
   zwp_text_input_v1_show_input_panel(text_input_);
 }
@@ -162,14 +144,14 @@ void IMContextBackend::Reset() {
 }
 
 void IMContextBackend::SetContentTypeOld(ContentTypeOld content_type) {
-  if (!text_input_)
+  if (!EnsureInitialized())
     return;
   zwp_text_input_v1_set_content_type(text_input_, content_type.hints,
                                      content_type.purpose);
 }
 
 void IMContextBackend::SetContentType(ContentType content_type) {
-  if (!text_input_)
+  if (!EnsureInitialized())
     return;
   zcr_extended_text_input_v1_set_input_type(
       extended_text_input_, content_type.input_type, content_type.input_mode,
@@ -178,13 +160,13 @@ void IMContextBackend::SetContentType(ContentType content_type) {
 }
 
 void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {
-  if (!text_input_)
+  if (!EnsureInitialized())
     return;
   zwp_text_input_v1_set_cursor_rectangle(text_input_, x, y, width, height);
 }
 
 void IMContextBackend::SetSupportsSurrounding(bool is_supported) {
-  if (!text_input_)
+  if (!EnsureInitialized())
     return;
   if (WaylandManager::Get()->GetTextInputExtensionVersion() <
       ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION)
@@ -193,9 +175,9 @@ void IMContextBackend::SetSupportsSurrounding(bool is_supported) {
                                                           is_supported);
 }
 
-void IMContextBackend::MaybeInitialize() {
+bool IMContextBackend::EnsureInitialized() {
   if (text_input_)
-    return;
+    return true;
 
   text_input_ =
       WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);
@@ -203,7 +185,9 @@ void IMContextBackend::MaybeInitialize() {
     extended_text_input_ = WaylandManager::Get()->CreateExtendedTextInput(
         text_input_, &extended_text_input_listener_, this);
     assert(extended_text_input_);
+    return true;
   }
+  return false;
 }
 
 void IMContextBackend::SetPreeditStyling(uint32_t index,
