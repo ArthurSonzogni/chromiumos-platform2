@@ -134,6 +134,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/resourced              u:object_r:cros_resourced_exec:s0
 /usr/bin/rmtfs                  u:object_r:cros_rmtfs_exec:s0
 /usr/bin/rootdev                u:object_r:cros_rootdev_exec:s0
+/usr/bin/runtime_probe          u:object_r:cros_runtime_probe_exec:s0
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
@@ -245,6 +246,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # partition.
 /usr/local/bin/[^/]+            u:object_r:cros_dev_image_exec:s0
 
+/usr/local/bin/factory_runtime_probe    u:object_r:cros_runtime_probe_exec:s0
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
 # To allow test tools to access Mojo Service Manager.
