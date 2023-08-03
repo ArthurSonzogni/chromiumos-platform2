@@ -139,7 +139,7 @@ void Network::Start(const Network::StartOptions& opts) {
   bool dhcp_started = false;
   if (opts.dhcp) {
     auto dhcp_opts = *opts.dhcp;
-    if (static_network_config_.ipv4_address_cidr) {
+    if (static_network_config_.ipv4_address) {
       dhcp_opts.use_arp_gateway = false;
     }
     dhcp_controller_ = dhcp_provider_->CreateController(interface_name_,
@@ -159,8 +159,7 @@ void Network::Start(const Network::StartOptions& opts) {
     DCHECK(ipv6_started);
   }
 
-  if (link_protocol_ipv4_properties_ ||
-      static_network_config_.ipv4_address_cidr) {
+  if (link_protocol_ipv4_properties_ || static_network_config_.ipv4_address) {
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
     // static information.
@@ -178,7 +177,7 @@ void Network::Start(const Network::StartOptions& opts) {
   LOG(INFO) << *this << ": Started IP provisioning, dhcp: "
             << (dhcp_started ? "started" : "no")
             << ", accept_ra: " << std::boolalpha << opts.accept_ra;
-  if (static_network_config_.ipv4_address_cidr.has_value()) {
+  if (static_network_config_.ipv4_address.has_value()) {
     LOG(INFO) << *this << ": has IPv4 static config " << static_network_config_;
   }
   if (link_protocol_ipv4_properties_) {
@@ -323,9 +322,8 @@ void Network::OnIPv4ConfigUpdated() {
     return;
   }
   saved_network_config_ =
-      ipconfig()->ApplyNetworkConfig(static_network_config_);
-  if (static_network_config_.ipv4_address_cidr.has_value() &&
-      dhcp_controller_) {
+      ipconfig()->ApplyNetworkConfig(static_network_config_, false);
+  if (static_network_config_.ipv4_address.has_value() && dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
     // address, release any acquired lease so it may be used by others.  This
     // allows us to merge other non-leased parameters (like DNS) when they're
@@ -358,12 +356,15 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
 
   // Clear the previously applied static IP parameters. The new config will be
   // applied in ConfigureStaticIPTask().
-  ipconfig()->ApplyNetworkConfig(saved_network_config_);
-  saved_network_config_ = {};
+  if (saved_network_config_) {
+    ipconfig()->ApplyNetworkConfig(*saved_network_config_,
+                                   /*force_overwrite=*/true);
+  }
+  saved_network_config_ = std::nullopt;
 
   // TODO(b/232177767): Apply the static IP parameters no matter if there is a
   // valid IPv4 in it.
-  if (config.ipv4_address_cidr.has_value()) {
+  if (config.ipv4_address.has_value()) {
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   }
@@ -426,7 +427,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
-  if (static_network_config_.ipv4_address_cidr.has_value()) {
+  if (static_network_config_.ipv4_address.has_value()) {
     // Consider three cases:
     //
     // 1. We're here because DHCP failed while starting up. There
@@ -622,9 +623,9 @@ void Network::OnIPv6ConfigUpdated() {
   // on a connected network. This limitation should be acceptable that it cannot
   // be changed via UI, but only through policy.
   const auto& search_domains = static_network_config_.dns_search_domains;
-  if (search_domains.has_value() && !search_domains->empty() &&
-      ip6config()->properties().domain_search != *search_domains) {
-    ip6config()->UpdateSearchDomains(*search_domains);
+  if (!search_domains.empty() &&
+      ip6config()->properties().domain_search != search_domains) {
+    ip6config()->UpdateSearchDomains(search_domains);
   }
 
   if (ip6config()->properties().HasIPAddressAndDNS()) {

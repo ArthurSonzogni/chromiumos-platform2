@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -96,12 +97,15 @@ NetworkConfig CreateIPv4NetworkConfig(
     const std::vector<std::string>& dns_servers,
     std::optional<int> mtu) {
   NetworkConfig config;
-  config.ipv4_address_cidr =
-      base::StringPrintf("%s/%d", addr.c_str(), prefix_len);
-  config.ipv4_route = NetworkConfig::RouteProperties{
-      .gateway = gateway,
-  };
-  config.dns_servers = dns_servers;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromStringAndPrefix(addr, prefix_len);
+  config.ipv4_gateway = *net_base::IPv4Address::CreateFromString(gateway);
+  config.dns_servers = {};
+  std::transform(dns_servers.begin(), dns_servers.end(),
+                 std::back_inserter(config.dns_servers),
+                 [](const std::string& dns) {
+                   return *net_base::IPAddress::CreateFromString(dns);
+                 });
   config.mtu = mtu;
   return config;
 }
@@ -111,7 +115,7 @@ NetworkConfig CreateIPv4NetworkConfig(
 IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
   IPConfig::Properties props = {};
   props.address_family = net_base::IPFamily::kIPv4;
-  props.UpdateFromNetworkConfig(config);
+  props.UpdateFromNetworkConfig(config, /*force_overwrite=*/true);
   return props;
 }
 
@@ -451,7 +455,8 @@ TEST_F(NetworkTest, DHCPOptions) {
               CreateController(
                   _, Field(&DHCPProvider::Options::use_arp_gateway, false), _));
   NetworkConfig static_config;
-  static_config.ipv4_address_cidr = "192.168.1.1/24";
+  static_config.ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
   network_->OnStaticIPConfigChanged(static_config);
   network_->Start({.dhcp = opts});
 }
@@ -1618,7 +1623,8 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
 
   // Nothing should happen if IP address is not set.
   NetworkConfig partial_config;
-  partial_config.dns_servers = {kIPv4StaticNameServer};
+  partial_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString(kIPv4StaticNameServer)};
   network_->OnStaticIPConfigChanged(partial_config);
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);

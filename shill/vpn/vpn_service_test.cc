@@ -603,19 +603,19 @@ TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
   setup_wg_and_static_addr(nullptr, &kAddr1);
   EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
             Strings{kAddr1});
-  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address_cidr,
+  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address,
             std::nullopt);
 
   setup_wg_and_static_addr(&kAddr2, &kAddr1);
   EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
             Strings{kAddr2});
-  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address_cidr,
+  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address,
             std::nullopt);
 
   setup_wg_and_static_addr(&kAddr2, nullptr);
   EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
             Strings{kAddr2});
-  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address_cidr,
+  EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address,
             std::nullopt);
 }
 

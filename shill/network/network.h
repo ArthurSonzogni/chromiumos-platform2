@@ -211,7 +211,7 @@ class Network {
   // Network. Returns nullptr if there is no such IPConfig.
   mockable IPConfig* GetCurrentIPConfig() const;
   // The NetworkConfig before applying the static one. Only needed by Service.
-  const NetworkConfig& saved_network_config() const {
+  const std::optional<NetworkConfig>& saved_network_config() const {
     return saved_network_config_;
   }
 
@@ -493,7 +493,7 @@ class Network {
   // The NetworkConfig before applying a static one. This will be used for 1)
   // able to restore the config to the previous state and 2) being exposed as a
   // Service property via D-Bus.
-  NetworkConfig saved_network_config_;
+  std::optional<NetworkConfig> saved_network_config_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_ = false;

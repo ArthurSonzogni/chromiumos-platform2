@@ -10,43 +10,44 @@
 #include <string>
 #include <vector>
 
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+
 namespace shill {
 
-// Properties related to the IP layer used to represent a configuration. All
-// fields are optional. A nullopt value means this field is not set.
-// TODO(b/232177767): Add more fields and replace IPConfig::Properties.
-// TODO(b/232177767): Add unit tests.
+// Properties related to the IP layer used to represent a configuration.
+// TODO(b/269401899): Add more fields and replace IPConfig::Properties.
+// TODO(b/269401899): Add unit tests.
 struct NetworkConfig {
-  // Common properties for IPv4 and IPv6.
-  struct RouteProperties {
-    // The gateway address in string format.
-    std::optional<std::string> gateway;
-    // A list of IP blocks in CIDR format that should be included on this
-    // network.
-    std::optional<std::vector<std::string>> included_route_prefixes;
-    // A list of IP blocks in CIDR format that should be excluded from this
-    // connection.
-    std::optional<std::vector<std::string>> excluded_route_prefixes;
-  };
-
   NetworkConfig();
   ~NetworkConfig();
 
-  // IPv4 address in CIDR format on the interface.
-  std::optional<std::string> ipv4_address_cidr;
-  RouteProperties ipv4_route;
-  // If the interface should be used as default route. Currently this field is
-  // mainly used by VPN and thus it is IPv4-only. Since this information can be
-  // inferred from included and excluded routes, we plan to remove this later.
-  std::optional<bool> ipv4_default_route;
+  // IPv4 configurations. If |ipv4_address| is null, no IPv4 is configured on
+  // the Network. If |ipv4_address| is present but |ipv4_gateway| is null,
+  // routes are to be added on-link to the netdevice.
+  std::optional<net_base::IPv4CIDR> ipv4_address;
+  std::optional<net_base::IPv4Address> ipv4_broadcast;
+  std::optional<net_base::IPv4Address> ipv4_gateway;
 
-  // IPv6 addresses in CIDR format on the interface.
-  std::optional<std::vector<std::string>> ipv6_address_cidrs;
-  RouteProperties ipv6_route;
+  // IPv6 configurations. If |ipv6_gateway| is null, routes are to be added
+  // on-link to the netdevice.
+  std::vector<net_base::IPv6CIDR> ipv6_addresses;
+  std::optional<net_base::IPv6Address> ipv6_gateway;
 
+  // Routing configurations. If a destination is included, it will be routed
+  // through the gateway of corresponding IP family (or on-link if gateway is
+  // null). |ipv4_default_route| is a historical field used by VPNs. Since this
+  // information is redundant with included routes, we plan to remove this
+  // later.
+  bool ipv4_default_route = true;
+  std::vector<net_base::IPCIDR> excluded_route_prefixes;
+  std::vector<net_base::IPCIDR> included_route_prefixes;
+
+  // DNS and MTU configurations.
+  std::vector<net_base::IPAddress> dns_servers;
+  std::vector<std::string> dns_search_domains;
   std::optional<int> mtu;
-  std::optional<std::vector<std::string>> dns_servers;
-  std::optional<std::vector<std::string>> dns_search_domains;
 };
 
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);

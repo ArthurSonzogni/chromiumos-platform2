@@ -55,19 +55,13 @@ bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
   if (driver->vpn_type() != VPNType::kWireGuard) {
     return false;
   }
-  if (!static_config->ipv4_address_cidr) {
+
+  auto static_config_address = static_config->ipv4_address;
+  if (!static_config_address) {
     return false;
   }
-
-  const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
-      *static_config->ipv4_address_cidr);
   // No matter whether the parsing result is valid or not, reset the property.
-  static_config->ipv4_address_cidr = std::nullopt;
-  if (!cidr.has_value()) {
-    LOG(WARNING) << __func__ << ": " << *static_config->ipv4_address_cidr
-                 << " is not a valid IPv4 CIDR string";
-    return true;
-  }
+  static_config->ipv4_address = std::nullopt;
 
   const auto& current_addrs =
       driver->const_args()->Lookup<std::vector<std::string>>(
@@ -76,7 +70,8 @@ bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
     return true;
   }
 
-  const std::vector<std::string> addrs_to_set{cidr->address().ToString()};
+  const std::vector<std::string> addrs_to_set{
+      static_config_address->address().ToString()};
   driver->args()->Set<std::vector<std::string>>(kWireGuardIPAddress,
                                                 addrs_to_set);
   return true;

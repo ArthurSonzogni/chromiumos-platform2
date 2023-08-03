@@ -4,6 +4,7 @@
 
 #include "shill/ipconfig.h"
 
+#include <algorithm>
 #include <limits>
 #include <string>
 #include <utility>
@@ -57,43 +58,77 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
     ret.mtu = mtu;
   }
   ret.dns_search_domains = domain_search;
-  ret.dns_servers = dns_servers;
+  for (const auto& item : dns_servers) {
+    auto dns = net_base::IPAddress::CreateFromString(item);
+    if (dns) {
+      ret.dns_servers.push_back(*dns);
+    } else {
+      LOG(WARNING) << "Ignoring invalid DNS server \"" << item << "\"";
+    }
+  }
+  for (const auto& item : inclusion_list) {
+    auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+    if (cidr) {
+      ret.included_route_prefixes.push_back(*cidr);
+    } else {
+      LOG(WARNING) << "Ignoring invalid included route \"" << item << "\"";
+    }
+  }
+  for (const auto& item : exclusion_list) {
+    auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+    if (cidr) {
+      ret.excluded_route_prefixes.push_back(*cidr);
+    } else {
+      LOG(WARNING) << "Ignoring invalid excluded route \"" << item << "\"";
+    }
+  }
 
   if (!address_family) {
     LOG(INFO) << "The input IPConfig::Properties does not have a valid "
                  "family. Skip setting family-specific fields.";
     return ret;
   }
-
-  NetworkConfig::RouteProperties* route_props = nullptr;
   switch (address_family.value()) {
     case net_base::IPFamily::kIPv4:
-      if (!address.empty()) {
-        ret.ipv4_address_cidr =
-            base::StrCat({address, "/", base::NumberToString(subnet_prefix)});
+      ret.ipv4_address =
+          net_base::IPv4CIDR::CreateFromStringAndPrefix(address, subnet_prefix);
+      if (!ret.ipv4_address && !address.empty()) {
+        LOG(WARNING) << "Ignoring invalid IP address \"" << address << "\"";
+      }
+      ret.ipv4_gateway = net_base::IPv4Address::CreateFromString(gateway);
+      if (!ret.ipv4_gateway && !gateway.empty()) {
+        LOG(WARNING) << "Ignoring invalid gateway address \"" << gateway
+                     << "\"";
+      }
+      ret.ipv4_broadcast =
+          net_base::IPv4Address::CreateFromString(broadcast_address);
+      if (!ret.ipv4_broadcast && !broadcast_address.empty()) {
+        LOG(WARNING) << "Ignoring invalid broadcast address \""
+                     << broadcast_address << "\"";
       }
       ret.ipv4_default_route = default_route;
-      route_props = &ret.ipv4_route;
       break;
     case net_base::IPFamily::kIPv6:
-      if (!address.empty()) {
-        ret.ipv6_address_cidrs = std::vector<std::string>{};
-        ret.ipv6_address_cidrs->push_back(
-            base::StrCat({address, "/", base::NumberToString(subnet_prefix)}));
+      ret.ipv6_addresses = {};
+      auto parsed_ipv6_address =
+          net_base::IPv6CIDR::CreateFromStringAndPrefix(address, subnet_prefix);
+      if (parsed_ipv6_address) {
+        ret.ipv6_addresses.push_back(parsed_ipv6_address.value());
+      } else if (!address.empty()) {
+        LOG(WARNING) << "Ignoring invalid IP address \"" << address << "\"";
       }
-      route_props = &ret.ipv6_route;
+      ret.ipv6_gateway = net_base::IPv6Address::CreateFromString(gateway);
+      if (!ret.ipv6_gateway && !gateway.empty()) {
+        LOG(WARNING) << "Ignoring invalid gateway address \"" << gateway
+                     << "\"";
+      }
       break;
   }
-
-  route_props->gateway = gateway;
-  route_props->included_route_prefixes = inclusion_list;
-  route_props->excluded_route_prefixes = exclusion_list;
-
   return ret;
 }
 
 void IPConfig::Properties::UpdateFromNetworkConfig(
-    const NetworkConfig& network_config) {
+    const NetworkConfig& network_config, bool force_overwrite) {
   if (!address_family) {
     // In situations where no address is supplied (bad or missing DHCP config)
     // supply an address family ourselves.
@@ -111,26 +146,46 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     return;
   }
 
-  if (network_config.ipv4_address_cidr.has_value()) {
-    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
-        network_config.ipv4_address_cidr.value());
-    if (cidr.has_value()) {
-      address = cidr->address().ToString();
-      subnet_prefix = cidr->prefix_length();
-    } else {
-      LOG(ERROR) << "ipv4_address_cidr does not have a valid value "
-                 << network_config.ipv4_address_cidr.value();
-    }
+  if (network_config.ipv4_address) {
+    address = network_config.ipv4_address->address().ToString();
+    subnet_prefix = network_config.ipv4_address->prefix_length();
   }
-  ApplyOptional(network_config.ipv4_default_route, &default_route);
-  ApplyOptional(network_config.ipv4_route.gateway, &gateway);
-  ApplyOptional(network_config.ipv4_route.included_route_prefixes,
-                &inclusion_list);
-  ApplyOptional(network_config.ipv4_route.excluded_route_prefixes,
-                &exclusion_list);
+  if (network_config.ipv4_gateway) {
+    gateway = network_config.ipv4_gateway->ToString();
+  }
+  if (network_config.ipv4_broadcast) {
+    broadcast_address = network_config.ipv4_broadcast->ToString();
+  }
+
+  default_route = network_config.ipv4_default_route;
+
+  if (force_overwrite || !network_config.included_route_prefixes.empty()) {
+    inclusion_list = {};
+    std::transform(network_config.included_route_prefixes.begin(),
+                   network_config.included_route_prefixes.end(),
+                   std::back_inserter(inclusion_list),
+                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+  }
+  if (force_overwrite || !network_config.excluded_route_prefixes.empty()) {
+    exclusion_list = {};
+    std::transform(network_config.excluded_route_prefixes.begin(),
+                   network_config.excluded_route_prefixes.end(),
+                   std::back_inserter(exclusion_list),
+                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+  }
+
   ApplyOptional(network_config.mtu, &mtu);
-  ApplyOptional(network_config.dns_servers, &dns_servers);
-  ApplyOptional(network_config.dns_search_domains, &domain_search);
+
+  if (force_overwrite || !network_config.dns_servers.empty()) {
+    dns_servers = {};
+    std::transform(network_config.dns_servers.begin(),
+                   network_config.dns_servers.end(),
+                   std::back_inserter(dns_servers),
+                   [](net_base::IPAddress dns) { return dns.ToString(); });
+  }
+  if (force_overwrite || !network_config.dns_search_domains.empty()) {
+    domain_search = network_config.dns_search_domains;
+  }
 }
 
 // static
@@ -178,9 +233,10 @@ const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-NetworkConfig IPConfig::ApplyNetworkConfig(const NetworkConfig& config) {
+NetworkConfig IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
+                                           bool force_overwrite) {
   auto current_config = properties_.ToNetworkConfig();
-  properties_.UpdateFromNetworkConfig(config);
+  properties_.UpdateFromNetworkConfig(config, force_overwrite);
   EmitChanges();
   return current_config;
 }

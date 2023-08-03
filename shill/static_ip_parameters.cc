@@ -4,6 +4,7 @@
 
 #include "shill/static_ip_parameters.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -11,9 +12,11 @@
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece_forward.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
 #include "shill/error.h"
@@ -59,28 +62,70 @@ NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
   NetworkConfig ret;
   if (kvs.Contains<std::string>(kAddressProperty)) {
     const int prefix = kvs.Lookup<int32_t>(kPrefixlenProperty, 0);
-    const std::string addr = kvs.Get<std::string>(kAddressProperty);
-    ret.ipv4_address_cidr =
-        base::StrCat({addr, "/", base::NumberToString(prefix)});
+    const std::string addr_str = kvs.Get<std::string>(kAddressProperty);
+    ret.ipv4_address =
+        net_base::IPv4CIDR::CreateFromStringAndPrefix(addr_str, prefix);
   }
-  ret.ipv4_route.gateway = kvs.GetOptionalValue<std::string>(kGatewayProperty);
-  ret.ipv4_route.included_route_prefixes =
-      kvs.GetOptionalValue<Strings>(kIncludedRoutesProperty);
-  ret.ipv4_route.excluded_route_prefixes =
-      kvs.GetOptionalValue<Strings>(kExcludedRoutesProperty);
+  auto gateway_str = kvs.GetOptionalValue<std::string>(kGatewayProperty);
+  if (gateway_str) {
+    ret.ipv4_gateway = net_base::IPv4Address::CreateFromString(*gateway_str);
+  }
+  ret.included_route_prefixes = {};
+  if (kvs.Contains<Strings>(kIncludedRoutesProperty)) {
+    for (const auto& item : kvs.Get<Strings>(kIncludedRoutesProperty)) {
+      auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+      if (cidr) {
+        ret.included_route_prefixes.push_back(*cidr);
+      }
+    }
+  }
+  ret.excluded_route_prefixes = {};
+  if (kvs.Contains<Strings>(kExcludedRoutesProperty)) {
+    for (const auto& item : kvs.Get<Strings>(kExcludedRoutesProperty)) {
+      auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+      if (cidr) {
+        ret.excluded_route_prefixes.push_back(*cidr);
+      }
+    }
+  }
   ret.mtu = kvs.GetOptionalValue<int32_t>(kMtuProperty);
-  ret.dns_servers = kvs.GetOptionalValue<Strings>(kNameServersProperty);
-  ret.dns_search_domains =
-      kvs.GetOptionalValue<Strings>(kSearchDomainsProperty);
+  ret.dns_servers = {};
+  if (kvs.Contains<Strings>(kNameServersProperty)) {
+    for (const auto& item : kvs.Get<Strings>(kNameServersProperty)) {
+      auto dns = net_base::IPAddress::CreateFromString(item);
+      if (dns) {
+        ret.dns_servers.push_back(*dns);
+      }
+    }
+  }
+  ret.dns_search_domains = kvs.GetOptionalValue<Strings>(kSearchDomainsProperty)
+                               .value_or(std::vector<std::string>{});
 
-  // TODO(b/232177767): Currently this is only used by VPN. Check that if the
+  // TODO(b/269401899): Currently this is only used by VPN. Check that if the
   // Network class can make this decision by itself after finishing the
   // refactor.
-  if (ret.ipv4_route.included_route_prefixes.has_value()) {
+  if (!ret.included_route_prefixes.empty()) {
     ret.ipv4_default_route = false;
   }
 
   return ret;
+}
+
+// Set a Strings property from a vector of objects, by calling ToString()
+// function on each of the elements and adding the result to the property string
+// vector. Remove the property if |input| is empty.
+template <class T>
+void SetStringsValueByObjectVector(KeyValueStore& kvs,
+                                   std::string_view key,
+                                   const std::vector<T>& input) {
+  if (!input.empty()) {
+    std::vector<std::string> strings;
+    std::transform(input.begin(), input.end(), std::back_inserter(strings),
+                   [](T item) { return item.ToString(); });
+    kvs.Set<Strings>(key, strings);
+  } else {
+    kvs.Remove(key);
+  }
 }
 
 }  // namespace
@@ -88,29 +133,23 @@ NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
 KeyValueStore StaticIPParameters::NetworkConfigToKeyValues(
     const NetworkConfig& props) {
   KeyValueStore kvs;
-  if (props.ipv4_address_cidr.has_value()) {
-    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
-        props.ipv4_address_cidr.value());
-    if (cidr.has_value()) {
-      kvs.Set<std::string>(kAddressProperty, cidr->address().ToString());
-      kvs.Set<int32_t>(kPrefixlenProperty, cidr->prefix_length());
-    } else {
-      LOG(ERROR) << "props does not have a valid IPv4 address in CIDR "
-                 << props.ipv4_address_cidr.value();
-    }
+  if (props.ipv4_address.has_value()) {
+    kvs.Set<std::string>(kAddressProperty,
+                         props.ipv4_address->address().ToString());
+    kvs.Set<int32_t>(kPrefixlenProperty, props.ipv4_address->prefix_length());
   }
-
-  kvs.SetFromOptionalValue<std::string>(kGatewayProperty,
-                                        props.ipv4_route.gateway);
+  if (props.ipv4_gateway.has_value()) {
+    kvs.Set<std::string>(kGatewayProperty, props.ipv4_gateway->ToString());
+  }
   kvs.SetFromOptionalValue<int32_t>(kMtuProperty, props.mtu);
-  kvs.SetFromOptionalValue<Strings>(kNameServersProperty, props.dns_servers);
-  kvs.SetFromOptionalValue<Strings>(kSearchDomainsProperty,
-                                    props.dns_search_domains);
-  kvs.SetFromOptionalValue<Strings>(kIncludedRoutesProperty,
-                                    props.ipv4_route.included_route_prefixes);
-  kvs.SetFromOptionalValue<Strings>(kExcludedRoutesProperty,
-                                    props.ipv4_route.excluded_route_prefixes);
-
+  if (!props.dns_search_domains.empty()) {
+    kvs.Set<Strings>(kSearchDomainsProperty, props.dns_search_domains);
+  }
+  SetStringsValueByObjectVector(kvs, kNameServersProperty, props.dns_servers);
+  SetStringsValueByObjectVector(kvs, kIncludedRoutesProperty,
+                                props.included_route_prefixes);
+  SetStringsValueByObjectVector(kvs, kExcludedRoutesProperty,
+                                props.excluded_route_prefixes);
   return kvs;
 }
 

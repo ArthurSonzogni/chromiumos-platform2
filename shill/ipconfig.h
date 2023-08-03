@@ -46,8 +46,11 @@ class IPConfig {
     NetworkConfig ToNetworkConfig() const;
 
     // Applies all non-empty properties in |network_config| to this object. This
-    // function assumes that |this| is an IPv4 config.
-    void UpdateFromNetworkConfig(const NetworkConfig& network_config);
+    // function assumes that |this| is an IPv4 config. When |force_overwrite| is
+    // false, field will be kept unchanged if the corresponding field in
+    // |network_config| is empty.
+    void UpdateFromNetworkConfig(const NetworkConfig& network_config,
+                                 bool force_overwrite);
 
     std::optional<net_base::IPFamily> address_family = std::nullopt;
     std::string address;
@@ -59,7 +62,7 @@ class IPConfig {
     std::string gateway;
     std::string method;
     // The address of the remote endpoint for pointopoint interfaces.
-    // Note that presense of this field indicates that this is a p2p interface,
+    // Note that presence of this field indicates that this is a p2p interface,
     // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
     // Set the flag to true when the interface should be set as the default
@@ -131,8 +134,12 @@ class IPConfig {
   const PropertyStore& store() const { return store_; }
 
   // Applies |config| to this object and inform D-Bus listeners of the change.
-  // Returns the current config before applying the incoming one.
-  NetworkConfig ApplyNetworkConfig(const NetworkConfig& config);
+  // Returns the current config before applying the incoming one. When
+  // |force_overwrite| is false, field will be kept unchanged if the
+  // corresponding field in |network_config| is empty. This is used in scenarios
+  // such as combining IP address from static IP config with DNS from DHCP.
+  NetworkConfig ApplyNetworkConfig(const NetworkConfig& config,
+                                   bool force_overwrite);
 
  private:
   friend class IPConfigTest;

@@ -189,6 +189,7 @@ class StaticIPParametersTest : public Test {
   }
   void PopulateIPConfig() {
     IPConfig::Properties ipconfig_props;
+    ipconfig_props.address_family = net_base::IPFamily::kIPv4;
     ipconfig_props.address = kAddress;
     ipconfig_props.gateway = kGateway;
     ipconfig_props.mtu = kMtu;

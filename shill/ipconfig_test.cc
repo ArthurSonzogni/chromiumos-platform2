@@ -98,7 +98,7 @@ TEST_F(IPConfigTest, PropertyChanges) {
 
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
-  ipconfig_->ApplyNetworkConfig({});
+  ipconfig_->ApplyNetworkConfig({}, true);
   Mock::VerifyAndClearExpectations(adaptor);
 
   IPConfig::Properties ip_properties;
