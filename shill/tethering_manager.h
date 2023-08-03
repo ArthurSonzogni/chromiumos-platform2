@@ -62,8 +62,10 @@ class TetheringManager : public Network::EventHandler {
     kInvalidProperties,
     // Start/stop tethering when it is in a wrong state
     kWrongState,
-    // Upstream is not connected or does not have Internet access
+    // Upstream network was not created or was not connected.
     kUpstreamNetworkNotAvailable,
+    // Upstream network had no Internet connectivity.
+    kUpstreamNetworkWithoutInternet,
     // Upstream network operation failure
     kUpstreamFailure,
     // Downstream WiFi operation failure

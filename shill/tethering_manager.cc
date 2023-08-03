@@ -498,7 +498,12 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
   }
 
   if (!upstream_network_->HasInternetConnectivity()) {
-    return;
+    LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
+                 << " has not validated Internet access";
+    // TODO(b/273975270): Re-enable checking Internet connectivity on the
+    // upstream network once the Network class can manage portal detection
+    // retries by itself, and returning early if there is no Internet
+    // connectivity.
   }
 
   SetState(TetheringState::kTetheringActive);
@@ -532,9 +537,10 @@ void TetheringManager::OnStartingTetheringTimeout() {
 
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     result = SetEnabledResult::kDownstreamWiFiFailure;
-  } else if (!upstream_network_ ||
-             !upstream_network_->HasInternetConnectivity()) {
+  } else if (!upstream_network_) {
     result = SetEnabledResult::kUpstreamNetworkNotAvailable;
+  } else if (!upstream_network_->HasInternetConnectivity()) {
+    result = SetEnabledResult::kUpstreamNetworkWithoutInternet;
   }
   PostSetEnabledResult(result);
   StopTetheringSession(StopReason::kError);
@@ -923,6 +929,8 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultWrongState;
     case SetEnabledResult::kUpstreamNetworkNotAvailable:
       return kTetheringEnableResultUpstreamNotAvailable;
+    case SetEnabledResult::kUpstreamNetworkWithoutInternet:
+      return kTetheringEnableResultUpstreamWithoutInternet;
     case SetEnabledResult::kUpstreamFailure:
       return kTetheringEnableResultUpstreamFailure;
     case SetEnabledResult::kDownstreamWiFiFailure:
@@ -1134,10 +1142,15 @@ void TetheringManager::OnNetworkValidationResult(
   DCHECK(upstream_network_);
   if (state_ == TetheringState::kTetheringStarting) {
     if (!upstream_network_->HasInternetConnectivity()) {
+      LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
+                   << " has failed validating Internet access";
+      // TODO(b/273975270): Re-enable stopping the tethering session if an
+      // Internet connectivity check fails for more than X seconds or N attempts
+      // one the Network class can manage portal detection retries by itself.
       // Upstream network validation failed, post result.
-      // TODO(b/273975270): Retry StartPortalDetection on failure.
-      PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
-      StopTetheringSession(StopReason::kUpstreamDisconnect);
+      // PostSetEnabledResult(
+      //        SetEnabledResult::kUpstreamNetworkWithoutInternet);
+      // StopTetheringSession(StopReason::kUpstreamDisconnect);
     } else {
       CheckAndPostTetheringStartResult();
     }

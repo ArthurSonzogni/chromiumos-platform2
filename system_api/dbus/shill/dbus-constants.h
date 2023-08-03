@@ -1024,6 +1024,8 @@ constexpr char kTetheringEnableResultSuccess[] = "success";
 constexpr char kTetheringEnableResultUpstreamFailure[] = "upstream_failure";
 constexpr char kTetheringEnableResultUpstreamNotAvailable[] =
     "upstream_not_available";
+constexpr char kTetheringEnableResultUpstreamWithoutInternet[] =
+    "upstream_network_without_Internet";
 constexpr char kTetheringEnableResultWrongState[] = "wrong_state";
 
 // kCheckTetheringReadinessFunction return status

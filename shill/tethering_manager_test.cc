@@ -1283,7 +1283,9 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
-TEST_F(TetheringManagerTest, UpstreamNetworkValidationFailed) {
+// TODO(b/273975270) Re-enable this test once Internet connectivity check on the
+// upstream network has been re-enabled in TetheringManager.
+TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
   TetheringPrerequisite(tethering_manager_);
 
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
