@@ -38,7 +38,6 @@ namespace {
 
 constexpr pid_t kInitPid = 1;
 constexpr pid_t kKThreadDPid = 2;
-constexpr pid_t kKThreadDPPid = 0;
 
 constexpr char kProcSubdirPattern[] = "[0-9]*";
 
@@ -259,11 +258,11 @@ MaybeProcEntries ReadProcesses(ProcessFilter filter,
 
 void FilterKernelProcesses(const ProcEntries& all_procs,
                            ProcEntries& filtered_procs) {
-  // Keeps processes that do not have the same parent as the kernel thread and
-  // do not have the kernel thread as their parent.
+  // Keeps processes that do not have the kernel thread as their parent and are
+  // not the kernel thread itself.
   std::copy_if(all_procs.begin(), all_procs.end(),
                std::back_inserter(filtered_procs), [](const ProcEntry& pe) {
-                 return pe.ppid() != kKThreadDPPid && pe.ppid() != kKThreadDPid;
+                 return pe.ppid() != kKThreadDPid && pe.pid() != kKThreadDPid;
                });
 }
 

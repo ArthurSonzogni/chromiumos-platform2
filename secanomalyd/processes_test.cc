@@ -161,9 +161,9 @@ class ProcessesTestFixture : public ::testing::Test {
   void DestroyFakeProcfs() { ASSERT_TRUE(fake_root_.Delete()); }
 
   base::ScopedTempDir fake_root_;
-  const std::set<pid_t> kAllProcs = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  const std::set<pid_t> kInitPidNamespaceOnlyProcs = {1, 2, 3, 4, 6, 7, 9};
-  const std::set<pid_t> kNoKernelTasksProcs = {2, 3, 4, 5, 7, 8};
+  const std::set<pid_t> kAllProcs = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  const std::set<pid_t> kInitPidNamespaceOnlyProcs = {1, 2, 3, 4, 5, 7, 8, 10};
+  const std::set<pid_t> kNoKernelTasksProcs = {1, 3, 4, 5, 6, 7, 8, 9};
   // Each key corresponds to the name of the test.
   std::map<std::string, MockProccess> mock_processes_ = {
       {"InitProcess",
@@ -180,9 +180,23 @@ class ProcessesTestFixture : public ::testing::Test {
            .mnt_ns_symlink = base::FilePath("mnt:[4026531836]"),
            .user_ns_symlink = base::FilePath("user:[4026531837]"),
        }},
-      {"NormalProcess",
+      {"KernelThread",
        {
            .pid = "2",
+           .uid = "0",
+           .ppid = "0",
+           .name = "kthreadd",
+           .cap_eff = "000001ffffffffff",
+           .no_new_privs = "0",
+           .seccomp = "0",
+           .cmdline = "",
+           .pid_ns_symlink = base::FilePath("pid:[4026531841]"),
+           .mnt_ns_symlink = base::FilePath("mnt:[4026531836]"),
+           .user_ns_symlink = base::FilePath("user:[4026531837]"),
+       }},
+      {"NormalProcess",
+       {
+           .pid = "3",
            .uid = "0",
            .ppid = "1",
            .name = "normal_process",
@@ -196,9 +210,9 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"NormalProcessSecure",
        {
-           .pid = "3",
-           .uid = "3",
-           .ppid = "4",
+           .pid = "4",
+           .uid = "4",
+           .ppid = "5",
            .name = "normal_process_secure",
            .cap_eff = "0000000000000000",  // No caps present
            .no_new_privs = "1",
@@ -210,8 +224,8 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"EmptyCmdline",
        {
-           .pid = "4",
-           .uid = "4",
+           .pid = "5",
+           .uid = "5",
            .ppid = "1",
            .name = "no_cmdline",
            .cap_eff = "ffffffffffdfffff",  // Only missing CAP_SYS_ADMIN
@@ -224,8 +238,8 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"InvalidPIDNS",
        {
-           .pid = "5",
-           .uid = "5",
+           .pid = "6",
+           .uid = "6",
            .ppid = "1",
            .name = "invalid_pidns",
            .cap_eff = "0000000000200000",  // Only CAP_SYS_ADMIN present
@@ -238,8 +252,8 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"InvalidPPID",
        {
-           .pid = "6",
-           .uid = "6",
+           .pid = "7",
+           .uid = "7",
            .ppid = "abc",
            .name = "invalid_ppid",
            .cap_eff = "efg",  // Invalid hex
@@ -250,10 +264,10 @@ class ProcessesTestFixture : public ::testing::Test {
            .mnt_ns_symlink = base::FilePath("mnt:[4026531836]"),
            .user_ns_symlink = base::FilePath("user:[4026531837]"),
        }},
-      {"StatusReadFailure",
+      {"StatusReadFailure",  // Valid unless procfs is destroyed.
        {
-           .pid = "7",
-           .uid = "7",
+           .pid = "8",
+           .uid = "8",
            .ppid = "1",
            .name = "status_read_failure",
            .cap_eff = "000003ffffffffff",
@@ -280,9 +294,9 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"NotInInitPidNs",
        {
-           .pid = "8",
-           .uid = "8",
-           .ppid = "9",
+           .pid = "9",
+           .uid = "9",
+           .ppid = "8",
            .name = "not_in_init_pid_ns",
            .cap_eff = "000003ffffffffff",
            .no_new_privs = "1",
@@ -294,7 +308,7 @@ class ProcessesTestFixture : public ::testing::Test {
        }},
       {"KernelTask",
        {
-           .pid = "9",
+           .pid = "10",
            .uid = "0",
            .ppid = "2",
            .name = "kernel_task",
@@ -346,7 +360,7 @@ TEST_F(ProcessesTestFixture, NormalProcess) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe = CreateMockProcEntry(
-      2, 1, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
+      3, 1, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
       "normal_process --start", 0b000000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -358,7 +372,7 @@ TEST_F(ProcessesTestFixture, NormalProcessSecure) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe = CreateMockProcEntry(
-      3, 4, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
+      4, 5, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
       "normal_process --start", 0b111010);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -370,7 +384,7 @@ TEST_F(ProcessesTestFixture, EmptyCmdline) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe = CreateMockProcEntry(
-      4, 1, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
+      5, 1, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
       "[" + mock_processes_[key].name + "]", 0b110000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -382,7 +396,7 @@ TEST_F(ProcessesTestFixture, InvalidPIDNS) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe = CreateMockProcEntry(
-      5, 1, 0, 4026531836, 4026531837, mock_processes_[key].name,
+      6, 1, 0, 4026531836, 4026531837, mock_processes_[key].name,
       "invalid_pidns --start", 0b010000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
@@ -394,7 +408,7 @@ TEST_F(ProcessesTestFixture, InvalidPPID) {
   base::FilePath pid_dir;
   ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(mock_processes_[key], pid_dir));
   ProcEntry expected_pe = CreateMockProcEntry(
-      6, 0, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
+      7, 0, 4026531841, 4026531836, 4026531837, mock_processes_[key].name,
       "invalid_ppid --start", 0b010000);
   MaybeProcEntry actual_pe_ptr = ProcEntry::CreateFromPath(pid_dir);
   ASSERT_TRUE(actual_pe_ptr.has_value());
