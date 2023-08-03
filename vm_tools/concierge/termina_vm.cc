@@ -187,6 +187,19 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   if (classification_ == apps::BOREALIS) {
     vm_builder.EnableWorkingSetReporting(true);
+
+    // Disable split lock detection in the guest kernel.
+    //
+    // Split lock detection has the potential to negatively impact performance.
+    // Typically, this setting only makes sense on the host kernel.
+    // However, some x86 architectures have a way to send
+    // this notification to user space applications (vCPU's). To ensure we
+    // don't see any issues on these architectures, we disable split lock
+    // detection completely in Borealis.
+    //
+    // Other guests in the system may want to preserve this behavior as it
+    // can be useful for application development/debugging.
+    vm_builder.AppendKernelParam("split_lock_detect=off");
   }
 
   // Open the tap device.
