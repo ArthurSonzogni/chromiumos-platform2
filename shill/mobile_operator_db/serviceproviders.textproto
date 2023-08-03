@@ -14720,6 +14720,24 @@ mno {
   }
 }
 
+# Test network with sysmoUSIM/sysmoISIM cards.
+mno {
+  data {
+    uuid : "0277c02e-31c1-11ee-aada-00163e3660d1"
+    country : "int"
+    localized_name {
+      name : "Test Network"
+    }
+    mccmnc : "90170"
+    mccmnc : "99970"
+    mobile_apn {
+      apn : "internet"
+      type : DEFAULT
+      type : IA
+    }
+  }
+}
+
 mno {
   data {
     uuid : "e46650bd-ac00-433f-a6df-b94fdc1a20e4"
