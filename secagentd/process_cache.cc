@@ -253,10 +253,21 @@ void RedactCommandline(std::string* commandline,
     return;
   }
 
+  int pos = 0;
   for (auto username : redacted_usernames) {
     if (!username.empty()) {
-      absl::StrReplaceAll({{username, kRedactMessage}}, commandline);
+      int result =
+          absl::StrReplaceAll({{username, kRedactMessage}}, commandline);
+      if (result != 0) {
+        // Sends which position the redacted username was found. Should always
+        // be <= 2, but goes up to 5 to be safe.
+        secagentd::MetricsSender::GetInstance().SendLinearMetricToUMA(
+            secagentd::metrics::kRedaction,
+            std::min(pos, secagentd::metrics::kRedactionBucketCount - 1),
+            secagentd::metrics::kRedactionBucketCount);
+      }
     }
+    pos++;
   }
 }
 

@@ -151,6 +151,10 @@ static constexpr EnumMetric<ProcessEvent> kExecEvent = {
     .name = "Process.ExecEvent"};
 static constexpr EnumMetric<ProcessEvent> kTerminateEvent = {
     .name = "Process.TerminateEvent"};
+
+constexpr char kRedaction[] = "Redaction";
+static constexpr int kRedactionBucketCount = 6;
+
 }  // namespace metrics
 
 // Class for sending UMA metrics. Expected to be accessed as a Singleton via
@@ -176,6 +180,12 @@ class MetricsSender {
   bool SendPercentageMetricToUMA(std::string_view name, int sample) {
     return metrics_library_->SendPercentageToUMA(
         base::StrCat({metrics::kMetricNamePrefix, name}), sample);
+  }
+
+  // Same as SendEnumMetricToUMA except sends linear data instead.
+  bool SendLinearMetricToUMA(std::string_view name, int sample, int max) {
+    return metrics_library_->SendLinearToUMA(
+        base::StrCat({metrics::kMetricNamePrefix, name}), sample, max);
   }
 
   // Creates a key with the given metric sample pair and increments the map
