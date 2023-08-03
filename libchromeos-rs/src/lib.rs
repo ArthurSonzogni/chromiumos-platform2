@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 pub mod sys;
-pub use crosvm_base::unix::panic_handler;
 
 // Exports dependencies which are locked to `crosvm_base` versions. This allows us to have a single
 // point of declaration for these, rather than N.
@@ -38,6 +37,7 @@ pub mod chromeos {
 }
 
 pub mod deprecated;
+pub mod panic_handler;
 pub mod rand;
 pub mod scoped_path;
 pub mod secure_blob;
