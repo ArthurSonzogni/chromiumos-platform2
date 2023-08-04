@@ -4,10 +4,6 @@
 
 import("//common-mk/pkg_config.gni")
 
-# TODO(b/291680002): Removed this target.
-group("all") {
-}
-
 # For cros_healthd-client package.
 group("mojom") {
   deps = [
