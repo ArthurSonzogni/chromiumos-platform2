@@ -39,6 +39,7 @@ munmap: 1
 openat: 1
 pidfd_open: 1
 poll: 1
+prctl: arg0 == PR_SET_NAME
 prlimit64: 1
 read: 1
 recvfrom: 1
