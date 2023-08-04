@@ -4,7 +4,6 @@
 
 #include "missive/analytics/resource_collector_storage.h"
 
-#include <memory>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -21,13 +20,19 @@
 using ::testing::Return;
 
 namespace reporting::analytics {
+namespace {
+
+// The time interval that resource collector is expected to collect resources
+constexpr base::TimeDelta kInterval{base::Minutes(8)};
+// The time interval that resource collector is expected to report on
+// non-uploading device.
+constexpr base::TimeDelta kNonUploadingInterval{base::Days(1)};
+}  // namespace
 
 class ResourceCollectorStorageTest
     : public ::testing::TestWithParam<std::vector<uint64_t>> {
  protected:
-  void SetUp() override {
-    DeployFilesToStorageDirectory();
-  }
+  void SetUp() override { DeployFilesToStorageDirectory(); }
 
   // Deploy some files to the storage directory for testing
   void DeployFilesToStorageDirectory() const {
@@ -42,8 +47,6 @@ class ResourceCollectorStorageTest
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  // The time interval that resource collector is expected to collect resources
-  const base::TimeDelta kInterval{base::Minutes(8)};
   // The mock storage directory
   const base::FilePath storage_directory_{
       base::CreateUniqueTempDirectoryScopedToTest()};
@@ -78,6 +81,43 @@ TEST_P(ResourceCollectorStorageTest, SuccessfullySend) {
       .WillOnce(Return(true));
   task_environment_.FastForwardBy(kInterval);
   task_environment_.RunUntilIdle();
+
+  // Now verify that the non-upload UMA is uploaded as well.
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendToUMA(
+                  /*name=*/ResourceCollectorStorage::kUmaName,
+                  /*sample=*/sample,
+                  /*min=*/ResourceCollectorStorage::kMin,
+                  /*max=*/ResourceCollectorStorage::kMax,
+                  /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendToUMA(
+                  /*name=*/ResourceCollectorStorage::kNonUploadingUmaName,
+                  /*sample=*/sample,
+                  /*min=*/ResourceCollectorStorage::kMin,
+                  /*max=*/ResourceCollectorStorage::kMax,
+                  /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
+      .Times(1)
+      .WillOnce(Return(true));
+  task_environment_.FastForwardBy(kNonUploadingInterval);
+  task_environment_.RunUntilIdle();
+
+  // And if the timer is reset periodically, no upload takes place.
+  for (base::TimeDelta period = base::TimeDelta();
+       period <= 2 * kNonUploadingInterval; period += kInterval) {
+    EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+                SendToUMA(
+                    /*name=*/ResourceCollectorStorage::kNonUploadingUmaName,
+                    /*sample=*/sample,
+                    /*min=*/ResourceCollectorStorage::kMin,
+                    /*max=*/ResourceCollectorStorage::kMax,
+                    /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
+        .Times(0);
+    task_environment_.FastForwardBy(kInterval);
+    resource_collector_.RecordUploadProgress();
+    task_environment_.RunUntilIdle();
+  }
 }
 
 // Each element in the array represent the size of one file.

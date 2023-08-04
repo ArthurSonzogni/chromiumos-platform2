@@ -7,7 +7,7 @@
 
 #include "missive/analytics/resource_collector.h"
 
-#include <ctime>
+#include <atomic>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
@@ -27,14 +27,20 @@ class ResourceCollectorStorage : public ResourceCollector {
                            const base::FilePath& storage_directory);
   ~ResourceCollectorStorage() override;
 
+  // Update upload progress timestamp. Reset every time the device makes
+  // progress uploading events.
+  void RecordUploadProgress();
+
  private:
   friend class ::reporting::MissiveArgsTest;
   friend class ::reporting::MissiveImplTest;
   friend class ResourceCollectorStorageTest;
   FRIEND_TEST(ResourceCollectorStorageTest, SuccessfullySend);
 
-  // UMA name
+  // UMA names
   static constexpr char kUmaName[] = "Platform.Missive.StorageUsage";
+  static constexpr char kNonUploadingUmaName[] =
+      "Platform.Missive.StorageUsageNonUploading";
   // The min of the storage usage in MiB that we are collecting: 1MiB
   static constexpr int kMin = 1;
   // The max of the storage usage in MiB that we are collecting: 301MiB.
@@ -52,11 +58,15 @@ class ResourceCollectorStorage : public ResourceCollector {
   // each fixed time interval as this method is called (see comments for
   // |ResourceCollector::Collect|).
   void Collect() override;
+
   // Send directory size data to UMA.
-  bool SendDirectorySizeToUma(int directory_size);
+  bool SendDirectorySizeToUma(std::string_view uma_name, int directory_size);
 
   // The directory in which record files are saved.
   const base::FilePath storage_directory_;
+
+  // Upload progress time stamp.
+  std::atomic<base::Time> upload_progress_timestamp_{base::Time::Now()};
 };
 
 }  // namespace analytics

@@ -17,6 +17,7 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/analytics/registry.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
@@ -178,6 +179,8 @@ class MissiveImpl : public MissiveService {
   Scheduler scheduler_;
   analytics::Registry analytics_registry_
       GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  base::RepeatingCallback<void()> storage_upload_success_cb_;
 
   // References to `Storage` components for dynamic parameters update.
   // Set up once by `StorageCreate` method.

@@ -154,10 +154,16 @@ void MissiveImpl::OnCollectionParameters(
       collection_parameters.enqueuing_record_tallier);
   CHECK(!reporting_storage_dir_.empty())
       << "Reporting storage dir must have been set upon startup.";
-  analytics_registry_.Add("Storage",
-                          std::make_unique<analytics::ResourceCollectorStorage>(
-                              collection_parameters.storage_collector_interval,
-                              reporting_storage_dir_));
+  auto storage_collector =
+      std::make_unique<analytics::ResourceCollectorStorage>(
+          collection_parameters.storage_collector_interval,
+          reporting_storage_dir_);
+  storage_upload_success_cb_ = base::BindRepeating(
+      &analytics::ResourceCollectorStorage::RecordUploadProgress,
+      // ResourceCollectorStorage expected to outlive StorageModule that will
+      // own this callback.
+      base::Unretained(storage_collector.get()));
+  analytics_registry_.Add("Storage", std::move(storage_collector));
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
                               collection_parameters.cpu_collector_interval));
@@ -256,6 +262,7 @@ void MissiveImpl::OnStorageModuleConfigured(
     return;
   }
   storage_module_ = std::move(storage_module_result.ValueOrDie());
+  storage_module_->AttachUploadSuccessCb(storage_upload_success_cb_);
   std::move(cb).Run(Status::StatusOK());
 }
 

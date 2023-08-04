@@ -5,10 +5,12 @@
 #include "missive/analytics/resource_collector_storage.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/sequence_checker.h>
+#include <base/time/time.h>
 
 namespace reporting::analytics {
 
@@ -29,17 +31,32 @@ int ResourceCollectorStorage::ConvertBytesToMibs(int bytes) {
 
 void ResourceCollectorStorage::Collect() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!SendDirectorySizeToUma(base::ComputeDirectorySize(storage_directory_))) {
+  const auto storage_size = base::ComputeDirectorySize(storage_directory_);
+  // Upload storage size as total usage UMA.
+  if (!SendDirectorySizeToUma(kUmaName, storage_size)) {
     LOG(ERROR) << "Failed to send directory size to UMA.";
+  }
+  // If there was no successful uploads for more than 1 day, upload the same
+  // storage size as non-uploading usage as well.
+  if (upload_progress_timestamp_.load() + base::Days(1) < base::Time::Now()) {
+    if (!SendDirectorySizeToUma(kNonUploadingUmaName, storage_size)) {
+      LOG(ERROR) << "Failed to send directory size to UMA.";
+    }
+    upload_progress_timestamp_ = base::Time::Now();  // reset for the next time.
   }
 }
 
-bool ResourceCollectorStorage::SendDirectorySizeToUma(int directory_size) {
+bool ResourceCollectorStorage::SendDirectorySizeToUma(std::string_view uma_name,
+                                                      int directory_size) {
   return Metrics::SendToUMA(
-      /*name=*/kUmaName,
+      /*name=*/std::string(uma_name),
       /*sample=*/ConvertBytesToMibs(directory_size),
       /*min=*/kMin,
       /*max=*/kMax,
       /*nbuckets=*/kUmaNumberOfBuckets);
+}
+
+void ResourceCollectorStorage::RecordUploadProgress() {
+  upload_progress_timestamp_ = base::Time::Now();
 }
 }  // namespace reporting::analytics

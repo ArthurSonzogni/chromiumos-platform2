@@ -4,9 +4,8 @@
 
 #include "missive/storage/storage_module.h"
 
-#include <algorithm>
-#include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -25,6 +24,7 @@
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 
+#include "base/containers/flat_map.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/new_storage.h"
@@ -36,11 +36,48 @@
 
 namespace reporting {
 
+namespace {
 const Status kStorageUnavailableStatus =
     Status(error::UNAVAILABLE, "Storage unavailable");
+}  // namespace
+
+// Tracker class is used in SequenceBound, and as such its state is guarded by
+// sequence.
+class StorageModule::UploadProgressTracker {
+ public:
+  UploadProgressTracker() = default;
+  ~UploadProgressTracker() = default;
+
+  // Invokes the callback if it is the first upload or if progress is detected.
+  // It also updates the progress for future calls.
+  void Record(const SequenceInformation& seq_info,
+              base::RepeatingCallback<void()> cb) {
+    auto state_it = state_.find(std::make_tuple(seq_info.priority(),
+                                                seq_info.generation_id(),
+                                                seq_info.generation_guid()));
+    if (state_it != state_.end() &&
+        seq_info.sequencing_id() <= state_it->second) {
+      // No progress detected.
+      return;
+    }
+    state_.insert_or_assign(
+        std::make_tuple(seq_info.priority(), seq_info.generation_id(),
+                        seq_info.generation_guid()),
+        seq_info.sequencing_id());
+    cb.Run();
+  }
+
+ private:
+  base::flat_map<std::tuple<Priority,
+                            int64_t /*generation_id*/,
+                            std::string /*genration_giud*/>,
+                 int64_t /*sequencing_id*/>
+      state_;
+};
 
 StorageModule::StorageModule(const Settings& settings)
-    : options_(settings.options) {}
+    : upload_progress_tracker_(base::ThreadPool::CreateSequencedTaskRunner({})),
+      options_(settings.options) {}
 
 StorageModule::~StorageModule() = default;
 
@@ -68,6 +105,10 @@ void StorageModule::ReportSuccess(SequenceInformation sequence_information,
     LOG(ERROR) << kStorageUnavailableStatus.error_message();
     return;
   }
+  // See whether the device makes any progress, and if so, update the timestamp.
+  upload_progress_tracker_.AsyncCall(&UploadProgressTracker::Record)
+      .WithArgs(sequence_information, storage_upload_success_cb_);
+  // Hand over to the Storage.
   storage_->Confirm(std::move(sequence_information), force,
                     base::BindOnce([](Status status) {
                       LOG_IF(ERROR, !status.ok())
@@ -161,6 +202,11 @@ void StorageModule::SetStorage(
   }
   storage_ = storage.ValueOrDie();
   std::move(callback).Run(base::WrapRefCounted(this));
+}
+
+void StorageModule::AttachUploadSuccessCb(
+    base::RepeatingCallback<void()> storage_upload_success_cb) {
+  storage_upload_success_cb_ = storage_upload_success_cb;
 }
 
 void StorageModule::InjectStorageUnavailableErrorForTesting() {

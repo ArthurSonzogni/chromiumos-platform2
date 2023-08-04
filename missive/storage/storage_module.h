@@ -17,6 +17,7 @@
 #include <base/strings/string_piece_forward.h>
 #include <base/task/sequenced_task_runner.h>
 
+#include "base/threading/sequence_bound.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -84,6 +85,11 @@ class StorageModule : public StorageModuleInterface {
   // from now on. All other priorities are in multi-generation action state.
   void SetLegacyEnabledPriorities(base::StringPiece legacy_storage_enabled);
 
+  // Attaches a repeating callback to be invoked every time `ReportSuccess`
+  // detects material progress in upload.
+  void AttachUploadSuccessCb(
+      base::RepeatingCallback<void()> storage_upload_success_cb);
+
  protected:
   // Constructor can only be called by `Create` factory method.
   explicit StorageModule(const Settings& settings);
@@ -105,8 +111,16 @@ class StorageModule : public StorageModuleInterface {
   void InjectStorageUnavailableErrorForTesting();
 
  private:
+  class UploadProgressTracker;
   friend class StorageModuleTest;
   friend base::RefCountedThreadSafe<StorageModule>;
+
+  // Upload progress tracker.
+  base::SequenceBound<UploadProgressTracker> upload_progress_tracker_;
+
+  // Callback to be invoked every time `ReportSuccess`
+  // detects material progress in upload.
+  base::RepeatingCallback<void()> storage_upload_success_cb_;
 
   // Reference to `Storage` object.
   scoped_refptr<StorageInterface> storage_;
