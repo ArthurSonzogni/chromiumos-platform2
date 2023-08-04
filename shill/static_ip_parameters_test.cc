@@ -36,7 +36,7 @@ namespace shill {
 namespace {
 
 const char kAddress[] = "10.0.0.1";
-const char kGateway[] = "10.0.0.254";
+const char kGateway[] = "10.0.0.192";
 const int32_t kMtu = 512;
 
 const char kNameServer0[] = "10.0.1.253";
