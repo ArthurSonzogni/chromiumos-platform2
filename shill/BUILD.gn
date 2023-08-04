@@ -107,7 +107,6 @@ pkg_config("target_defaults") {
     "libnet-base",
     "libpatchpanel-client",
     "libshill-net",
-    "libtirpc",
     "mojo_service_manager",
     "re2",
 
