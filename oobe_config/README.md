@@ -28,11 +28,10 @@ and marks the device to be powerwashed
 - [oobe_config_save](http://cs/chromeos_public/src/platform2/oobe_config/etc/init/oobe_config_save.conf)
 is triggered during shutdown. Because the `.save_rollback_data` flag is present
 it will:
-	- Collect information for
-	[rollback_data.proto](https://source.chromium.org/chromium/chromiumos/platform2/+/HEAD:oobe_config/rollback_data.proto)
+	- Collect information for [rollback_data.proto](./rollback_data.proto)
 	by connecting to Chrome via mojo
 	- Serialize and encrypt data with
-	[openssl](https://source.chromium.org/chromium/chromiumos/platform2/+/HEAD:oobe_config/rollback_openssl_encryption.h)
+	[openssl](./config/rollback_openssl_encryption.h)
 	- The encryption key is randomly created by software
 	- Encrypted data is put into
 	`/mnt/stateful_partition/unencrypted/preserve/rollback_data`
@@ -40,7 +39,7 @@ it will:
 
 
 - Upon booting into the rollback image, the device
-[powerwashes](https://source.chromium.org/chromium/chromiumos/platform2/+/HEAD:init/clobber_state.cc)
+[powerwashes](/init/clobber_state.cc)
 	- `/var/lib/oobe_config_save/data_for_pstore` is moved into pstore
 	`/dev/pmsg0`
 	- `/mnt/stateful_partition/unencrypted/preserve/rollback_data` is
@@ -48,7 +47,7 @@ it will:
 	- Once the device is wiped, it is rebooted
 
 
-- [oobe_config_restore](https://source.corp.google.com/chromeos_public/src/platform2/oobe_config/etc/init/oobe_config_restore.conf)
+- [oobe_config_restore](./etc/init/oobe_config_restore.conf)
 service always runs when oobe is not finished
 - Chrome requests oobe configuration from `oobe_config_restore`
 	- Encrypted rollback data is loaded from
