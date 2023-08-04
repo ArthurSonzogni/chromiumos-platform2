@@ -206,9 +206,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 
   LOG(INFO) << *this << ": Setting " << *ipconfig->properties().address_family
             << " connection";
-  if (!primary_family_) {
-    primary_family_ = ipconfig->properties().address_family;
-  }
+  primary_family_ = ipconfig->properties().address_family;
   ApplyAddress(ipconfig->properties());
   ApplyRoute(ipconfig->properties());
   ApplyRoutingPolicy();
@@ -475,7 +473,6 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // renew failure). We need to withdraw the effect of the previous IPv4
       // lease at first. Static IP is handled above so it's guaranteed that
       // there is no valid IPv4 lease. Also see b/261681299.
-      primary_family_ = std::nullopt;
       network_applier_->Clear(interface_index_);
       SetupConnection(ip6config());
     }
