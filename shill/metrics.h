@@ -2124,6 +2124,10 @@ class Metrics {
                          const std::string& suffix,
                          int sample);
 
+  // Reports the elapsed time recorded by |timer| for the histogram name and
+  // settings defined by |timer|.
+  void ReportMilliseconds(const chromeos_metrics::TimerReporter& timer);
+
   void SetLibraryForTesting(MetricsLibraryInterface* library);
 
  private:

@@ -134,8 +134,6 @@ Metrics::Metrics()
       time_between_rekey_and_connection_failure_timer_(
           new chromeos_metrics::Timer),
       time_(Time::GetInstance()) {
-  chromeos_metrics::TimerReporter::set_metrics_lib(library_);
-
   char salt[kPseudoTagSaltLen];
   crypto::RandBytes(salt, kPseudoTagSaltLen);
   pseudo_tag_salt_ = base::StringPiece(salt, kPseudoTagSaltLen);
@@ -580,11 +578,13 @@ void Metrics::DeregisterDevice(int interface_index) {
 
 void Metrics::NotifyDeviceInitialized(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
-  if (!device_metrics->initialization_timer->Stop())
+  }
+  if (!device_metrics->initialization_timer->Stop()) {
     return;
-  device_metrics->initialization_timer->ReportMilliseconds();
+  }
+  ReportMilliseconds(*device_metrics->initialization_timer);
 }
 
 void Metrics::NotifyDeviceEnableStarted(int interface_index) {
@@ -596,51 +596,60 @@ void Metrics::NotifyDeviceEnableStarted(int interface_index) {
 
 void Metrics::NotifyDeviceEnableFinished(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
-  if (!device_metrics->enable_timer->Stop())
+  }
+  if (!device_metrics->enable_timer->Stop()) {
     return;
-  device_metrics->enable_timer->ReportMilliseconds();
+  }
+  ReportMilliseconds(*device_metrics->enable_timer);
 }
 
 void Metrics::NotifyDeviceDisableStarted(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->disable_timer->Start();
 }
 
 void Metrics::NotifyDeviceDisableFinished(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
-  if (!device_metrics->disable_timer->Stop())
+  }
+  if (!device_metrics->disable_timer->Stop()) {
     return;
-  device_metrics->disable_timer->ReportMilliseconds();
+  }
+  ReportMilliseconds(*device_metrics->disable_timer);
 }
 
 void Metrics::NotifyDeviceScanStarted(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->scan_timer->Start();
   device_metrics->scan_connect_timer->Start();
 }
 
 void Metrics::NotifyDeviceScanFinished(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
-  if (!device_metrics->scan_timer->Stop())
+  }
+  if (!device_metrics->scan_timer->Stop()) {
     return;
+  }
   // Don't send TimeToScan metrics if the elapsed time exceeds the max metrics
   // value.  Huge scan times usually mean something's gone awry; for cellular,
   // for instance, this usually means that the modem is in an area without
   // service and we're not interested in this scenario.
   base::TimeDelta elapsed_time;
   device_metrics->scan_timer->GetElapsedTime(&elapsed_time);
-  if (elapsed_time.InMilliseconds() <= kMetricTimeToScanMillisecondsMax)
-    device_metrics->scan_timer->ReportMilliseconds();
+  if (elapsed_time.InMilliseconds() <= kMetricTimeToScanMillisecondsMax) {
+    ReportMilliseconds(*device_metrics->scan_timer);
+  }
 }
 
 void Metrics::ReportDeviceScanResultToUma(Metrics::WiFiScanResult result) {
@@ -663,21 +672,24 @@ void Metrics::NotifyDeviceConnectStarted(int interface_index) {
 
 void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
-  if (!device_metrics->connect_timer->Stop())
+  }
+  if (!device_metrics->connect_timer->Stop()) {
     return;
-  device_metrics->connect_timer->ReportMilliseconds();
+  }
+  ReportMilliseconds(*device_metrics->connect_timer);
 
   if (!device_metrics->scan_connect_timer->Stop())
     return;
-  device_metrics->scan_connect_timer->ReportMilliseconds();
+  ReportMilliseconds(*device_metrics->scan_connect_timer);
 }
 
 void Metrics::ResetConnectTimer(int interface_index) {
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == nullptr)
+  if (device_metrics == nullptr) {
     return;
+  }
   device_metrics->connect_timer->Reset();
   device_metrics->scan_connect_timer->Reset();
 }
@@ -925,6 +937,14 @@ bool Metrics::SendSparseToUMA(const std::string& name, int sample) {
   SLOG(5) << "Sending sparse metric " << name << " with value " << sample
           << ".";
   return library_->SendSparseToUMA(name, sample);
+}
+
+void Metrics::ReportMilliseconds(const chromeos_metrics::TimerReporter& timer) {
+  base::TimeDelta elapsed_time;
+  if (timer.GetElapsedTime(&elapsed_time)) {
+    SendToUMA(timer.histogram_name(), elapsed_time.InMilliseconds(),
+              timer.min(), timer.max(), timer.num_buckets());
+  }
 }
 
 void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
@@ -1369,8 +1389,9 @@ void Metrics::UpdateServiceStateTransitionMetrics(
   for (auto& stop_timer : stop_timers) {
     SLOG(5) << "Stopping timer for " << stop_timer->histogram_name()
             << " due to new state " << state_string << ".";
-    if (stop_timer->Stop())
-      stop_timer->ReportMilliseconds();
+    if (stop_timer->Stop()) {
+      ReportMilliseconds(*stop_timer);
+    }
   }
 }
 
@@ -1408,7 +1429,6 @@ std::string Metrics::PseudonymizeTag(uint64_t tag) {
 }
 
 void Metrics::SetLibraryForTesting(MetricsLibraryInterface* library) {
-  chromeos_metrics::TimerReporter::set_metrics_lib(library);
   library_ = library;
 }
 
