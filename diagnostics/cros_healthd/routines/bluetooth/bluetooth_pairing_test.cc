@@ -364,13 +364,9 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
   // Failed to remove device.
   EXPECT_CALL(mock_target_device_, GetObjectPath())
       .WillOnce(ReturnRef(target_device_path_));
-  EXPECT_CALL(mock_adapter_proxy_, RemoveDeviceAsync(_, _, _, _))
-      .WillOnce(WithArgs<0, 2>(
-          [&](const dbus::ObjectPath& in_device,
-              base::OnceCallback<void(brillo::Error*)> on_error) {
-            EXPECT_EQ(in_device, target_device_path_);
-            std::move(on_error).Run(nullptr);
-          }));
+  EXPECT_CALL(mock_adapter_proxy_,
+              RemoveDeviceAsync(target_device_path_, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<2>(nullptr));
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,

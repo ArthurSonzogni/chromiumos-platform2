@@ -283,10 +283,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
-            std::move(on_error).Run(nullptr);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.
@@ -310,10 +307,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
   SetGetHciDeviceConfigCall(/*hci_result_discovering=*/true);
   // Failed to stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
-            std::move(on_error).Run(nullptr);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 

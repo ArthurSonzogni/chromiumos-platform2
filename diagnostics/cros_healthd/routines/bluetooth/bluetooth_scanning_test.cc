@@ -101,9 +101,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
       }
     }
     EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>([](base::OnceCallback<void()> on_success) {
-          std::move(on_success).Run();
-        }));
+        .WillOnce(base::test::RunOnceCallback<0>());
   }
 
   void SetDeviceAddedCall(const dbus::ObjectPath& device_path,
@@ -224,7 +222,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   // Low signal RSSI history.
   SetScannedDeviceData(
       dbus::ObjectPath("/org/bluez/dev_6F_92_B8_03_F3_4E"),
-      /*address=*/"6F:92:B8:03:F3:4E", /*name=*/"Log signal device name",
+      /*address=*/"6F:92:B8:03:F3:4E", /*name=*/"Low signal device name",
       /*rssi_history=*/{kNearbyPeripheralMinimumAverageRssi - 1},
       /*is_high_signal=*/false);
 
@@ -289,10 +287,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Failed to start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
-            std::move(on_error).Run(nullptr);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
@@ -311,15 +306,10 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
-        std::move(on_success).Run();
-      }));
+      .WillOnce(base::test::RunOnceCallback<0>());
   // Failed to stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<1>([](base::OnceCallback<void(brillo::Error*)> on_error) {
-            std::move(on_error).Run(nullptr);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
