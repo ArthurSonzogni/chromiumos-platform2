@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -262,7 +260,7 @@ class PerfettoSession:
         self.tmp_cfg_file.flush()
         if self.remote is not None:
             subprocess.run(
-                ["scp", self.tmp_cfg_file.name, "%s:/tmp/" % self.remote],
+                ["scp", self.tmp_cfg_file.name, f"{self.remote}:/tmp/"],
                 check=True,
             )
         logging.debug("Trace config file: %s", self.tmp_cfg_file.name)
@@ -382,7 +380,7 @@ class PerfettoSession:
             subprocess.run(
                 [
                     "scp",
-                    "%s:%s" % (self.remote, self.tmp_out_file.name),
+                    f"{self.remote}:{self.tmp_out_file.name}",
                     self.output_file,
                 ],
                 check=True,

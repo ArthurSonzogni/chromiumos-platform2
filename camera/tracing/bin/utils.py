@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -28,7 +26,7 @@ def is_inside_chroot() -> bool:
 
 def is_on_dut() -> bool:
     try:
-        with open("/etc/lsb-release") as f:
+        with open("/etc/lsb-release", encoding="utf-8") as f:
             return (
                 re.search(r"CHROMEOS_RELEASE_BOARD", f.read(), re.MULTILINE)
                 is not None

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -49,7 +47,7 @@ class TraceProcessorEnv:
         cmd = [
             self.trace_processor_path,
             "--metric-extension",
-            "%s@/" % self.metrics_dir,
+            f"{self.metrics_dir}@/",
             "--dev",
             "--run-metrics",
             args.metrics,
@@ -83,7 +81,9 @@ class TraceProcessorEnv:
         all_metrics = {}
         protos_dir = os.path.join(self.metrics_dir, "protos")
         for proto_file in os.listdir(protos_dir):
-            with open(os.path.join(protos_dir, proto_file)) as f:
+            with open(
+                os.path.join(protos_dir, proto_file), encoding="utf-8"
+            ) as f:
                 m = metric_def_re.search(f.read())
                 if m is None:
                     continue
@@ -94,7 +94,7 @@ class TraceProcessorEnv:
             "List of camera metrics:\n%s",
             "\n".join(
                 [
-                    "%5d: %s" % (k, all_metrics[k])
+                    f"{k:5d}: {all_metrics[k]}"
                     for k in sorted(all_metrics.keys())
                 ]
             ),
