@@ -88,7 +88,8 @@ data_sources: {{
             ftrace_events: "power/cpu_frequency"
             ftrace_events: "power/cpu_idle"
             ftrace_events: "power/suspend_resume"
-            #ftrace_events: "sched/sched_switch"
+            ftrace_events: "sched/sched_switch"
+            # optional: precise thread lifetime tracking:
             #ftrace_events: "sched/sched_process_exit"
             #ftrace_events: "sched/sched_process_free"
             #ftrace_events: "task/task_newtask"
