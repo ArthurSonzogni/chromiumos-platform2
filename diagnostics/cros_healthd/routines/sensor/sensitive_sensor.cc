@@ -5,8 +5,6 @@
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 
 #include <algorithm>
-#include <memory>
-#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -367,8 +365,8 @@ void SensitiveSensorRoutine::OnSampleUpdated(
   const auto& sensor_id = observer_receiver_set_.current_context();
   auto& sensor = pending_sensors_[sensor_id];
 
-  for (auto channel : sample)
-    sensor.UpdateChannelSample(channel.first, channel.second);
+  for (const auto& [channel_indice, channel_value] : sample)
+    sensor.UpdateChannelSample(channel_indice, channel_value);
 
   // All channels have finished checking.
   if (sensor.checking_channel_sample.empty()) {
