@@ -38,7 +38,8 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
  private:
   bool GetMatchedItemsFromCategory(const std::string& category,
                                    const std::string& key,
-                                   std::vector<std::string>* list) const;
+                                   std::vector<std::string>* list,
+                                   bool allow_empty = false) const;
   std::string GetStringWithDefault(const std::string& path,
                                    const std::string& key,
                                    const std::string& default_value) const;

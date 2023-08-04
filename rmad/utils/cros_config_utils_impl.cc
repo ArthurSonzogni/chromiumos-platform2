@@ -158,7 +158,8 @@ bool CrosConfigUtilsImpl::GetCustomLabelTagList(
 
   std::vector<std::string> values;
   if (!GetMatchedItemsFromCategory(kCrosIdentityPath,
-                                   kCrosIdentityCustomLabelTagKey, &values)) {
+                                   kCrosIdentityCustomLabelTagKey, &values,
+                                   /*allow_empty=*/true)) {
     return false;
   }
 
@@ -174,7 +175,8 @@ bool CrosConfigUtilsImpl::GetCustomLabelTagList(
 bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
     const std::string& category,
     const std::string& key,
-    std::vector<std::string>* list) const {
+    std::vector<std::string>* list,
+    bool allow_empty) const {
   DCHECK(list);
 
   std::string model_name;
@@ -205,7 +207,10 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
       // attributes with empty strings.
       DLOG(WARNING) << "Failed to read key from " << key_path.value();
     }
-    items.insert(key_str);
+
+    if (!key_str.empty() || allow_empty) {
+      items.insert(key_str);
+    }
   }
 
   *list = std::vector<std::string>(items.begin(), items.end());

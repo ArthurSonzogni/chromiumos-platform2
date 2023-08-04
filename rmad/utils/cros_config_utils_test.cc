@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -93,7 +94,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
 
   base::FilePath CreateCrosConfigFs(
       const std::vector<std::string>& model_names,
-      const std::vector<uint64_t>& sku_ids,
+      const std::vector<std::optional<uint64_t>>& sku_ids,
       const std::vector<std::string>& custom_label_tags) {
     EXPECT_EQ(model_names.size(), sku_ids.size());
     EXPECT_EQ(model_names.size(), custom_label_tags.size());
@@ -112,8 +113,12 @@ class CrosConfigUtilsImplTest : public testing::Test {
           config_path.AppendASCII(kCrosIdentityPathKey);
       EXPECT_TRUE(base::CreateDirectory(identity_path));
 
-      base::FilePath sku_path = identity_path.AppendASCII(kCrosIdentitySkuKey);
-      EXPECT_TRUE(base::WriteFile(sku_path, base::NumberToString(sku_ids[i])));
+      if (sku_ids[i].has_value()) {
+        base::FilePath sku_path =
+            identity_path.AppendASCII(kCrosIdentitySkuKey);
+        EXPECT_TRUE(base::WriteFile(sku_path,
+                                    base::NumberToString(sku_ids[i].value())));
+      }
 
       if (!custom_label_tags[i].empty()) {
         base::FilePath custom_label_tag_path =
@@ -140,10 +145,12 @@ class CrosConfigUtilsImplTest : public testing::Test {
     base::FilePath cros_config_root_path;
     if (custom_label) {
       cros_config_root_path = CreateCrosConfigFs(
-          {kModelName, kModelName, kModelName, kModelName, kModelNameUnused},
-          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdOther1, kSkuIdUnused},
+          {kModelName, kModelName, kModelName, kModelName, kModelNameUnused,
+           kModelName},
+          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdOther1, kSkuIdUnused,
+           std::nullopt},
           {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTag,
-           kCustomLabelTagOther, kCustomLabelTagUnused});
+           kCustomLabelTagOther, kCustomLabelTagUnused, kCustomLabelTagOther});
       fake_cros_config->SetString(std::string(kCrosIdentityPath),
                                   kCrosIdentityCustomLabelTagKey,
                                   kCustomLabelTag);
