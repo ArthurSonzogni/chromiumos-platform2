@@ -329,16 +329,6 @@ void AddPluginVmFlags(ChromiumCommandBuilder* builder) {
 void AddBorealisFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("borealis_host")) {
     builder->AddFeatureEnableOverride("Borealis");
-    // TODO(b/161952658): Remove the feature override for the exo-pointer lock
-    // when it is completed. This is only meant to be a temporary work-around.
-    std::string channel_string;
-    if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                                          &channel_string) &&
-        channel_string != "beta-channel" &&
-        channel_string != "stable-channel" && channel_string != "ltc-channel" &&
-        channel_string != "lts-channel") {
-      builder->AddFeatureEnableOverride("ExoPointerLock");
-    }
   }
 }
 

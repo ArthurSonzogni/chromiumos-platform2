@@ -574,8 +574,6 @@ constexpr FeatureMappingEntry kFeaturesMap[] = {
     {"ExoGamepadVibration", "1", "exo-gamepad-vibration", 1},
     {"ExoOrdinalMotion", "0", "exo-ordinal-motion", 2},
     {"ExoOrdinalMotion", "1", "exo-ordinal-motion", 1},
-    {"ExoPointerLock", "0", "exo-pointer-lock", 2},
-    {"ExoPointerLock", "1", "exo-pointer-lock", 1},
     {"ExpensiveBackgroundTimerThrottling", "0",
      "expensive-background-timer-throttling", 2},
     {"ExpensiveBackgroundTimerThrottling", "1",
