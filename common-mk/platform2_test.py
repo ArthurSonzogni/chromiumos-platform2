@@ -616,6 +616,13 @@ class Platform2Test:
         # configured to allow non-root access, but we haven't gotten to it.
         if self.strategy == "sudo":
             self._remount_ro(new_sys)
+        else:
+            # Just ensure we don't own the tree.
+            if os.access(new_sys, os.W_OK):
+                raise RuntimeError(
+                    "The process has write access to /sys but cannot remount "
+                    "it read-only"
+                )
 
     def _setup_build(self, new_sysroot: str) -> None:
         """Set up /build, namely ${SYSROOT}/${SYSROOT}.
@@ -964,8 +971,6 @@ def _ReExecuteIfNeeded(
             cmd = _SudoCommand() + ["--"] + argv
             os.execvp(cmd[0], cmd)
     else:
-        if os.geteuid() == 0:
-            raise RuntimeError("--strategy=unprivileged is for non-root users")
         namespaces.CreateUserNs()
         # We're now UID=GID=0, so fix up user-related environment variables.
         # Note that we also modify other environment variables later.
