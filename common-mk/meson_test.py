@@ -34,6 +34,8 @@ def main(argv):
     DIR = Path(__file__).resolve().parent
     real_argv = [DIR / "platform2_test.py"]
 
+    real_argv += ["--strategy=unprivileged", "--user=root", "--bind-mount-dev"]
+
     sysroot = os.environ["SYSROOT"]
     real_argv += ["--sysroot", sysroot]
 
