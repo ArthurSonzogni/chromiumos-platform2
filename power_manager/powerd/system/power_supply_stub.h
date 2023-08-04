@@ -45,6 +45,7 @@ class PowerSupplyStub : public PowerSupplyInterface {
   void ClearAdaptiveChargingChargeDelay() override;
   void SetChargeLimited(double hold_percent) override;
   void ClearChargeLimited() override;
+  void OnBatterySaverStateChanged() override;
 
  private:
   // Result to return from RefreshImmediately().

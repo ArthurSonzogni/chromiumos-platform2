@@ -282,6 +282,11 @@ class PowerSupplyInterface {
   // Clears the charge limit, meaning that the display battery percentage should
   // no longer be locked to the |hold_percent| set via |SetChargeLimited|.
   virtual void ClearChargeLimited() = 0;
+
+  // On any Battery Saver state change updates the status immediately,
+  // notifies observers asynchronously, and schedules a poll for the near
+  // future.
+  virtual void OnBatterySaverStateChanged() = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -404,6 +409,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void ClearAdaptiveChargingChargeDelay() override;
   void SetChargeLimited(double hold_percent) override;
   void ClearChargeLimited() override;
+  void OnBatterySaverStateChanged() override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -596,6 +602,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::TimeDelta battery_stabilized_after_line_power_connected_delay_;
   base::TimeDelta battery_stabilized_after_line_power_disconnected_delay_;
   base::TimeDelta battery_stabilized_after_resume_delay_;
+  base::TimeDelta battery_stabilized_after_battery_saver_delay_;
 
   // Time at which the reported current and charge are expected to have
   // stabilized to the point where they can be recorded in

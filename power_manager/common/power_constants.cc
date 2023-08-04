@@ -66,6 +66,8 @@ const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[] =
     "battery_stabilized_after_line_power_disconnected_ms";
 const char kBatteryStabilizedAfterResumeMsPref[] =
     "battery_stabilized_after_resume_ms";
+const char kBatteryStabilizedAfterBatterySaverMsPref[] =
+    "battery_stabilized_after_battery_saver_ms";
 const char kMultipleBatteriesPref[] = "multiple_batteries";
 const char kHasBarreljackPref[] = "has_barreljack";
 const char kMaxCurrentSamplesPref[] = "max_current_samples";

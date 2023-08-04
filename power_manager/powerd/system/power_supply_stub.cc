@@ -48,4 +48,6 @@ void PowerSupplyStub::SetChargeLimited(double hold_percent) {}
 
 void PowerSupplyStub::ClearChargeLimited() {}
 
+void PowerSupplyStub::OnBatterySaverStateChanged() {}
+
 }  // namespace power_manager::system

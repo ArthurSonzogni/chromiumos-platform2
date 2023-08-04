@@ -1259,6 +1259,8 @@ void Daemon::OnBatterySaverStateChanged(const BatterySaverModeState& state) {
 
   for (auto controller : all_backlight_controllers_)
     controller->HandleBatterySaverModeChange(state);
+
+  power_supply_->OnBatterySaverStateChanged();
 }
 
 void Daemon::InitDBus() {

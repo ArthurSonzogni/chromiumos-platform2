@@ -143,6 +143,7 @@ extern const char kBatteryStabilizedAfterStartupMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerConnectedMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[];
 extern const char kBatteryStabilizedAfterResumeMsPref[];
+extern const char kBatteryStabilizedAfterBatterySaverMsPref[];
 
 // If true, multiple battery directories will be read from sysfs if present.
 extern const char kMultipleBatteriesPref[];

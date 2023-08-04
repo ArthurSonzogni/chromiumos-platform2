@@ -1198,6 +1198,20 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, 900, 0), UpdateAndGetEstimateString());
+
+  // Verify that turning on Battery Saver will reset the estimate.
+  power_supply_->OnBatterySaverStateChanged();
+  SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
+  EXPECT_EQ(MakeEstimateString(false, 1200, 0), UpdateAndGetEstimateString());
+
+  // Verify that turning off Battery Saver by charging will reset the estimate.
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kCharging);
+  power_supply_->OnBatterySaverStateChanged();
+  UpdateChargeAndCurrent(0.5, 0.25);
+  SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
+  EXPECT_EQ(MakeEstimateString(false, 0, 7200), UpdateAndGetEstimateString());
 }
 
 TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {

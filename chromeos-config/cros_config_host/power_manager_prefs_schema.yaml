@@ -115,6 +115,9 @@ powerd_prefs: &powerd_prefs
   battery-stabilized-after-resume-ms:
     <<: *powerd_prefs_default
     default: "5000"
+  battery-stabilized-after-battery-saver-ms:
+    <<: *powerd_prefs_default
+    default: "5000"
   multiple-batteries:
     <<: *powerd_prefs_default
     default: "1"

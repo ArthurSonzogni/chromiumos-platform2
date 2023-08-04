@@ -67,6 +67,8 @@ constexpr base::TimeDelta
     kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelay = base::Seconds(5);
 constexpr base::TimeDelta kDefaultBatteryStabilizedAfterResumeDelay =
     base::Seconds(5);
+constexpr base::TimeDelta kDefaultBatteryStabilizedAfterBatterySaverDelay =
+    base::Seconds(5);
 
 // Number of retry attempts for reading the PowerStatus.
 constexpr int kPowerRefreshRetries = 5;
@@ -654,6 +656,9 @@ void PowerSupply::Init(
   battery_stabilized_after_resume_delay_ =
       GetMsPref(kBatteryStabilizedAfterResumeMsPref)
           .value_or(kDefaultBatteryStabilizedAfterResumeDelay);
+  battery_stabilized_after_battery_saver_delay_ =
+      GetMsPref(kBatteryStabilizedAfterBatterySaverMsPref)
+          .value_or(kDefaultBatteryStabilizedAfterBatterySaverDelay);
 
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
 
@@ -793,6 +798,15 @@ void PowerSupply::SetChargeLimited(double hold_percent) {
 
 void PowerSupply::ClearChargeLimited() {
   charge_limited_ = false;
+}
+
+void PowerSupply::OnBatterySaverStateChanged() {
+  DeferBatterySampling(battery_stabilized_after_battery_saver_delay_);
+  charge_samples_->Clear();
+  current_samples_on_line_power_->Clear();
+  current_samples_on_battery_power_->Clear();
+  has_max_samples_ = false;
+  PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::ASYNCHRONOUSLY);
 }
 
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
