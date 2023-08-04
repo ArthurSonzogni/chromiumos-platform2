@@ -311,6 +311,12 @@ NetworkPlugin::MakeFlowEvent(
   }
   FillProcessTree(flow_proto.get(),
                   flow_event.process_map_value.common.process);
+  // TODO(b:294579287): Make event filtering more generic, before doing that
+  // process cache hits need to be drastically improved.
+  if (flow_proto->process().commandline().starts_with(
+          "\'avahi-daemon: running")) {
+    return nullptr;
+  }
   return flow_proto;
 }
 
