@@ -54,6 +54,7 @@ using ::testing::AtMost;
 using ::testing::Between;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Gt;
 using ::testing::Invoke;
 using ::testing::Ne;
 using ::testing::Return;
@@ -82,6 +83,9 @@ const char kInvalidDirectoryPath[] = "o:\\some\\inaccessible\\dir";
 #else
 const char kInvalidDirectoryPath[] = "////////////";
 #endif
+
+// UMA Id for the test.
+constexpr char kUmaId[] = "SomeUmaId";
 
 // Ensure files as specified by the parameters are deleted. Take the same
 // parameters as base::FileEnumerator().
@@ -661,21 +665,25 @@ class StorageQueueTest
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
-        {.generation_guid = "GENERATION_GUID",
-         .options = options,
-         .async_start_upload_cb = base::BindRepeating(
-             &StorageQueueTest::AsyncStartMockUploader, base::Unretained(this)),
-         .degradation_candidates_cb = base::BindRepeating(
-             [](scoped_refptr<StorageQueue> queue,
-                base::OnceCallback<void(
-                    std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
-               // Returns empty candidates queue - no degradation allowed.
-               std::move(result_cb).Run({});
-             }),
-         .encryption_module = test_encryption_module_,
-         .compression_module = CompressionModule::Create(
-             /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
-         .init_retry_cb = init_retry_cb},
+        {
+            .generation_guid = "GENERATION_GUID",
+            .options = options,
+            .async_start_upload_cb =
+                base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
+                                    base::Unretained(this)),
+            .degradation_candidates_cb = base::BindRepeating(
+                [](scoped_refptr<StorageQueue> queue,
+                   base::OnceCallback<void(
+                       std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
+                  // Returns empty candidates queue - no degradation allowed.
+                  std::move(result_cb).Run({});
+                }),
+            .encryption_module = test_encryption_module_,
+            .compression_module = CompressionModule::Create(
+                /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
+            .init_retry_cb = init_retry_cb,
+            .uma_id = kUmaId,
+        },
         storage_queue_create_event.cb());
     return storage_queue_create_event.result();
   }
@@ -827,8 +835,15 @@ class StorageQueueTest
 
   void ResetExpectedUploadsCount() { expected_uploads_count_ = 0u; }
 
-  void SetExpectedUploadsCount(size_t count = 1u) {
+  void SetExpectedUploadsCount(size_t count = 1u, size_t uma_count = 1u) {
     EXPECT_THAT(expected_uploads_count_, Eq(0u));
+    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+                SendSparseToUMA(
+                    StrEq(base::StrCat(
+                        {StorageQueue::kUploadToStorageRatePrefix, kUmaId})),
+                    Gt(0)))
+        .Times(uma_count)
+        .WillRepeatedly(Return(true));
     expected_uploads_count_ = count;
   }
 
@@ -1093,7 +1108,8 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen, starting a new generation.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1165,7 +1181,8 @@ TEST_P(
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen, starting a new generation.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1219,7 +1236,8 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen with the same generation and sequencing information.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1340,7 +1358,8 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWriteMoreAndFlush) {
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
   }
 
@@ -1632,7 +1651,8 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -1767,7 +1787,8 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -2569,7 +2590,8 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
             }))
         .RetiresOnSaturation();
     // Trigger upload which will experience insufficient memory.
-    SetExpectedUploadsCount();
+    SetExpectedUploadsCount(/*count=*/1u,
+                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     task_environment_.FastForwardBy(base::Seconds(5));
   }
 

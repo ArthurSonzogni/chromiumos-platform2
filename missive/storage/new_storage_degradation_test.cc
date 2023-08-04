@@ -61,6 +61,7 @@ using ::testing::Invoke;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
+using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
 using ::testing::WithoutArgs;
@@ -185,6 +186,12 @@ class NewStorageDegradationTest
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(location_.GetPath());
+
+    // Let upload statistics UMA accept all results.
+    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+                SendSparseToUMA(
+                    StartsWith(StorageQueue::kUploadToStorageRatePrefix), _))
+        .WillRepeatedly(Return(true));
 
     // Turn uploads to no-ops unless other expectation is set (any later
     // EXPECT_CALL will take precedence over this one).

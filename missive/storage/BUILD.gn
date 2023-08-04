@@ -139,6 +139,11 @@ static_library("new_storage") {
     "//missive/health:health_module",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+
+    # Temporary replacement for `Priority_Name` that does
+    # not work in certain CQ.
+    # TODO(b/294756107): Remove this function once fixed.
+    "//missive/proto:priority_name",
     "//missive/util:file",
     "//missive/util:status",
     "//missive/util:status_macros",

@@ -234,8 +234,10 @@ StorageQueue::StorageQueue(
       async_start_upload_cb_(settings.async_start_upload_cb),
       degradation_candidates_cb_(settings.degradation_candidates_cb),
       encryption_module_(settings.encryption_module),
-      compression_module_(settings.compression_module) {
+      compression_module_(settings.compression_module),
+      uma_id_(settings.uma_id) {
   DETACH_FROM_SEQUENCE(storage_queue_sequence_checker_);
+  CHECK(!uma_id_.empty());
 }
 
 StorageQueue::~StorageQueue() {
@@ -1052,6 +1054,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       return;
     }
 
+    // Calculate total size of all files for UMA.
+    for (const auto& file : storage_queue_->files_) {
+      total_files_size_ += file.second->size();
+    }
+
     // Collect and set aside the files in the set that might have data
     // for the Upload.
     files_ =
@@ -1148,6 +1155,19 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     current_file_ = files_.end();
     // If uploader was created, notify it about completion.
     if (uploader_) {
+      // In case of success, upload UMA.
+      if (status.ok() && storage_queue_) {
+        const auto res = analytics::Metrics::SendSparseToUMA(
+            base::StrCat({kUploadToStorageRatePrefix, storage_queue_->uma_id_}),
+            static_cast<int>(
+                std::ceil(total_upload_size_ * 100uL  // per-cent
+                          / std::max(total_files_size_, total_upload_size_))));
+        LOG_IF(ERROR, !res)
+            << "Send upload statistics UMA failure, ID="
+            << storage_queue_->uma_id_ << " " << total_upload_size_
+            << " out of " << total_files_size_;
+      }
+
       uploader_->Completed(status);
     }
     // If retry delay is specified, check back after the delay.
@@ -1243,6 +1263,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // Fill in sequence information.
     // Priority is attached by the Storage layer.
     *encrypted_record.mutable_sequence_information() = sequence_info_;
+    total_upload_size_ += encrypted_record.ByteSizeLong();
     uploader_->ProcessRecord(std::move(encrypted_record),
                              std::move(scoped_reservation),
                              base::BindOnce(&ReadContext::ScheduleNextRecord,
@@ -1488,6 +1509,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   std::map<int64_t, scoped_refptr<SingleFile>>::iterator current_file_;
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
   std::unique_ptr<UploaderInterface> uploader_;
+
+  // Statistics collected for UMA.
+  uint64_t total_files_size_ = 0u;
+  uint64_t total_upload_size_ = 0u;
+
   base::WeakPtr<StorageQueue> storage_queue_;
 };
 

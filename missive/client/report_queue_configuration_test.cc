@@ -8,9 +8,12 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -44,6 +47,10 @@ class ReportQueueConfigurationTest : public ::testing::Test {
   }
 
   ReportQueueConfigurationTest() = default;
+
+  base::test::TaskEnvironment task_environment_;
+  // Replace the metrics library instance with a mock one
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 };
 
 // Tests to ensure that only valid parameters are used to generate a

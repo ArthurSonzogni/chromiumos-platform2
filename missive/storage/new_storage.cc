@@ -62,6 +62,11 @@
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
 
+// Temporary replacement for `Priority_Name` that does
+// not work in certain CQ.
+// TODO(b/294756107): Remove this function once fixed.
+#include "missive/proto/priority_name.h"
+
 namespace reporting {
 
 // Context for creating a single queue. Upon success, calls the callback with
@@ -123,6 +128,7 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
             .compression_module = storage_->compression_module_,
             .init_retry_cb =
                 base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
+            .uma_id = Priority_Name_Substitute(priority),
         },
         base::BindPostTaskToCurrentDefault(base::BindOnce(
             &CreateQueueContext::AddQueue, base::Unretained(this),

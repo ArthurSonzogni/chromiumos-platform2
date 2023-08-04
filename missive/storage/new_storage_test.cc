@@ -4,6 +4,7 @@
 
 #include "missive/storage/new_storage.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -135,6 +136,9 @@ constexpr char kKeyDeliveryErrorMessage[] = "Test cannot start upload";
 
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
+
+// Maximum length of debug data prints to prevent excessive output.
+static constexpr size_t kDebugDataPrintSize = 16uL;
 
 // NewStorage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
@@ -283,7 +287,9 @@ class SingleDecryptionContext {
 };
 
 class NewStorageTest
-    : public ::testing::TestWithParam<::testing::tuple<bool, size_t>> {
+    : public ::testing::TestWithParam<
+          ::testing::tuple<bool /*is_encryption_enabled*/,
+                           size_t /*single_file_size_limit*/>> {
  private:
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
@@ -553,7 +559,7 @@ class NewStorageTest
           .append("/")
           .append(generation_guid)
           .append(" '")
-          .append(data.data(), data.size())
+          .append(data.data(), 0, std::min(data.size(), kDebugDataPrintSize))
           .append("'\n");
       std::move(processed_cb)
           .Run(mock_upload_->UploadRecord(uploader_id, priority, sequencing_id,
@@ -1085,8 +1091,8 @@ class NewStorageTest
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
     record.set_dm_token(dm_token);
-    LOG(ERROR) << "Write priority=" << priority << " data='" << record.data()
-               << "'";
+    LOG(ERROR) << "Write priority=" << priority << " data='"
+               << record.data().substr(0, kDebugDataPrintSize) << "'";
     storage_->Write(priority, std::move(record), w.cb());
     return w.result();
   }
@@ -1988,6 +1994,14 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
             }))
         .RetiresOnSaturation();
     SetExpectedUploadsCount();
+    // Check UMA matches priority.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(
+            StrEq(base::StrCat(
+                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
+            Gt(0)))
+        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[0]);
   }
 
@@ -2006,6 +2020,14 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
             }))
         .RetiresOnSaturation();
     SetExpectedUploadsCount();
+    // Check UMA matches priority.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(
+            StrEq(base::StrCat(
+                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
+            Gt(0)))
+        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[1]);
   }
 
@@ -2014,7 +2036,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   // Confirm #1 IMMEDIATE, removing data #0 and #1, to prevent upload retry.
   ConfirmOrDie(IMMEDIATE, /*sequencing_id=*/1);
 
-  // Set uploader expectations for FAST_BATCH and SLOW_BATCH.
+  // Set uploader expectations for SLOW_BATCH.
   {
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
@@ -2028,6 +2050,14 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
             }))
         .RetiresOnSaturation();
     SetExpectedUploadsCount();
+    // Check UMA matches priority.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(
+            StrEq(base::StrCat(
+                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
+            Gt(0)))
+        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 
@@ -2047,6 +2077,14 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
             }))
         .RetiresOnSaturation();
     SetExpectedUploadsCount();
+    // Check UMA matches priority.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(
+            StrEq(base::StrCat(
+                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
+            Gt(0)))
+        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[2]);
   }
   WriteStringOrDie(SLOW_BATCH, kMoreData[2]);
@@ -2054,7 +2092,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   // Confirm #2 IMMEDIATE, to prevent upload retry.
   ConfirmOrDie(IMMEDIATE, /*sequencing_id=*/2);
 
-  // Set uploader expectations for FAST_BATCH and SLOW_BATCH.
+  // Set uploader expectations for SLOW_BATCH.
   {
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
@@ -2068,6 +2106,14 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
             }))
         .RetiresOnSaturation();
     SetExpectedUploadsCount();
+    // Check UMA matches priority.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(
+            StrEq(base::StrCat(
+                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
+            Gt(0)))
+        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 }
@@ -2265,7 +2311,7 @@ TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   // NewStorage doesn't have a key yet, so key request should succeed, and thus
   // we expect UMA to log success for key delivery
   EXPECT_CALL(
-      reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
 
   // Forward time to trigger key request.
@@ -2275,7 +2321,7 @@ TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   expect_to_need_key_ = true;
 
   EXPECT_CALL(
-      reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
 
   // Forward time to trigger key request.
@@ -2318,10 +2364,9 @@ TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
         << write_result;
 
     // NewStorage will continue to request the encryption key
-    EXPECT_CALL(
-        reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
-                      error::MAX_VALUE));
+    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+                SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
+                              error::MAX_VALUE));
 
     // Forward time to trigger key request
     task_environment_.FastForwardBy(options_.key_check_period());
@@ -2345,7 +2390,7 @@ TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
     // Key request should succeed, so expect UMA to log success for key
     // delivery
     EXPECT_CALL(
-        reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
         SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
 
     // Forward time to trigger key request

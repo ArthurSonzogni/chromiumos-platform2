@@ -114,6 +114,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
     const InitRetryCb init_retry_cb;
+    const std::string uma_id;  // ID string for queue-specific UMAs.
   };
 
   // UMA names
@@ -121,6 +122,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       "Platform.Missive.ResourceExhaustedCase";
   static constexpr char kStorageDegradationAmount[] =
       "Platform.Missive.StorageDegradationAmount";
+  static constexpr char kUploadToStorageRatePrefix[] =
+      "Platform.Missive.UploadToStorageRate.";
 
   // Creates StorageQueue instance with the specified options, and returns it
   // with the |completion_cb| callback. |async_start_upload_cb| is a factory
@@ -580,6 +583,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Compression module.
   const scoped_refptr<CompressionModule> compression_module_;
+
+  // ID for queue-specific UMA.
+  const std::string uma_id_;
 
   // Test only: records callback to be invoked. It will be called with operation
   // kind and seq id, and will return Status (non-OK status indicates the
