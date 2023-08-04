@@ -15,6 +15,23 @@ namespace shill {
 NetworkConfig::NetworkConfig() = default;
 NetworkConfig::~NetworkConfig() = default;
 
+bool NetworkConfig::IsEmpty() const {
+  return *this == NetworkConfig{};
+}
+
+bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs) {
+  return lhs.ipv4_address == rhs.ipv4_address &&
+         lhs.ipv4_broadcast == rhs.ipv4_broadcast &&
+         lhs.ipv4_gateway == lhs.ipv4_gateway &&
+         lhs.ipv6_addresses == rhs.ipv6_addresses &&
+         lhs.ipv6_gateway == rhs.ipv6_gateway &&
+         lhs.ipv4_default_route == rhs.ipv4_default_route &&
+         lhs.excluded_route_prefixes == rhs.excluded_route_prefixes &&
+         lhs.included_route_prefixes == rhs.included_route_prefixes &&
+         lhs.dns_servers == rhs.dns_servers &&
+         lhs.dns_search_domains == rhs.dns_search_domains && lhs.mtu == rhs.mtu;
+}
+
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   stream << "{IPv4 address: "
          << (config.ipv4_address.has_value() ? config.ipv4_address->ToString()

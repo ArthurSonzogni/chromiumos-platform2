@@ -23,6 +23,8 @@ struct NetworkConfig {
   NetworkConfig();
   ~NetworkConfig();
 
+  bool IsEmpty() const;
+
   // IPv4 configurations. If |ipv4_address| is null, no IPv4 is configured on
   // the Network. If |ipv4_address| is present but |ipv4_gateway| is null,
   // routes are to be added on-link to the netdevice.
@@ -49,6 +51,8 @@ struct NetworkConfig {
   std::vector<std::string> dns_search_domains;
   std::optional<int> mtu;
 };
+
+bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs);
 
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);
 
