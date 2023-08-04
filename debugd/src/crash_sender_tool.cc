@@ -24,9 +24,12 @@
 namespace debugd {
 namespace {
 constexpr char kErrorIOError[] = "org.chromium.debugd.error.IOError";
+
 }  // namespace
 
 constexpr char CrashSenderTool::kErrorBadFileName[];
+
+CrashSenderTool::CrashSenderTool() = default;
 
 void CrashSenderTool::UploadCrashes() {
   RunCrashSender(false /* ignore_hold_off_time */,
@@ -38,21 +41,14 @@ bool CrashSenderTool::UploadSingleCrash(
     const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
     brillo::ErrorPtr* error,
     bool consent_already_checked_by_crash_reporter) {
+  base::ScopedTempDir temp_dir;
   // debugd runs in a non-root mount namespace and mounts a new tmpfs on /tmp
   // inside the namespace, so this should be invisible to all other processes
   // and not written to disk.
   //
   // *It is a privacy violation* if these files are visible to non-root
   // processes or are written unencrypted to disk!
-  base::FilePath crash_directory("/tmp/crash");
-  crash_directory = crash_directory.AddExtension(
-      base::NumberToString(next_crash_directory_id_));
-  next_crash_directory_id_++;
-
-  // We need to be sure to clean up the tmp directory to avoid leaking
-  // resources.
-  base::ScopedTempDir crash_directory_holder;
-  if (!crash_directory_holder.Set(crash_directory)) {
+  if (!temp_dir.CreateUniqueTempDir()) {
     DEBUGD_ADD_ERROR(error, kErrorIOError, "Create directory failed");
     return false;
   }
@@ -73,8 +69,8 @@ bool CrashSenderTool::UploadSingleCrash(
     }
 
     // Copy contents of file_descriptor to a new file named file_name inside
-    // crash_directory.
-    base::FilePath file_path = crash_directory.Append(file_name);
+    // the temporary directory.
+    base::FilePath file_path = temp_dir.GetPath().Append(file_name);
     base::File new_file(file_path,
                         base::File::FLAG_CREATE | base::File::FLAG_WRITE);
     if (!new_file.IsValid()) {
@@ -106,11 +102,11 @@ bool CrashSenderTool::UploadSingleCrash(
     new_file.Flush();
   }
 
-  // Since crash_sender jails itself, it won't actually see our /tmp/crash.###
+  // Since crash_sender jails itself, it won't actually see our /tmp/<files>
   // directory. Instead, open the directory and pass the /proc path to the
   // directory file descriptor as the crash directory.
   base::ScopedFD crash_directory_fd(
-      HANDLE_EINTR(open(crash_directory.value().c_str(), O_RDONLY)));
+      HANDLE_EINTR(open(temp_dir.GetPath().value().c_str(), O_RDONLY)));
   if (!crash_directory_fd.is_valid()) {
     DEBUGD_ADD_ERROR(error, kErrorIOError, "Open directory failed");
     return false;

@@ -22,7 +22,7 @@ class CrashSenderTool : public SubprocessTool {
   static constexpr char kErrorBadFileName[] =
       "org.chromium.debugd.error.BadFileName";
 
-  CrashSenderTool() = default;
+  CrashSenderTool();
   CrashSenderTool(const CrashSenderTool&) = delete;
   CrashSenderTool& operator=(const CrashSenderTool&) = delete;
 
@@ -37,12 +37,11 @@ class CrashSenderTool : public SubprocessTool {
       brillo::ErrorPtr* error,
       bool consent_already_checked_by_crash_reporter);
 
-  // Called when the SetCrashSenderTestMode dbus property is changed.
+  // Called when the SetCrashSenderTestMode dbus property is changed. This is
+  // used by tast tests.
   void SetTestMode(bool mode);
 
  private:
-  int next_crash_directory_id_ = 1;
-
   // If true, pass the "--test_mode" flag to crash_sender. This is bound to the
   // "CrashSenderTestMode" dbus property, so tast tests (and anyone else) can
   // change it easily.

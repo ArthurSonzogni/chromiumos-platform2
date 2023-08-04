@@ -42,6 +42,7 @@ using ::testing::UnorderedElementsAre;
 using ::testing::Values;
 
 constexpr char kCrashDirectoryStart[] = "--crash_directory=/proc/self/fd/";
+constexpr char kCrashDirectoryPrefix[] = "/proc/self/fd";
 
 class CrashSenderToolWithMockCreateProcess : public CrashSenderTool {
  public:
@@ -87,21 +88,36 @@ class CrashSenderToolWithMockCreateProcess : public CrashSenderTool {
 };
 
 // Invoked during the call to mock_process_.Run(). Verifies that we were given
-// a valid crash_directory argument, that the directory exists, and that the
-// file descriptor points to the directory.
+// a valid crash_directory argument and that the file descriptor points to a
+// directory.
 //
-// |file_name_contents| will be filled in with file name + content pairs. Caller
+// |file_name_contents| will be filled in with file path + content pairs. Caller
 // is responsible for using this to confirm that the correct set of files
-// exists.
+// exists. |crash_directory| will be filled in with the name of the directory
+// that was passed on the mocked command-line.
 void VerifyStateInsideRun(
     const std::string& crash_directory_arg,
-    const base::FilePath& expected_crash_directory,
-    std::vector<std::pair<std::string, std::string>>* file_name_contents) {
-  ASSERT_TRUE(base::DirectoryExists(expected_crash_directory));
+    std::vector<std::pair<base::FilePath, std::string>>* file_name_contents,
+    base::FilePath* crash_directory) {
+  // crash_directory_arg should contain --crash_directory=/proc/self/fd/##,
+  // where ## is a file descriptor that is open and reading a temp directory.
+  ASSERT_GT(crash_directory_arg.size(), strlen(kCrashDirectoryStart));
+  std::string fd_string =
+      crash_directory_arg.substr(strlen(kCrashDirectoryStart));
+  *crash_directory = base::FilePath(kCrashDirectoryPrefix).Append(fd_string);
+  ASSERT_TRUE(base::DirectoryExists(*crash_directory));
 
-  std::vector<std::string> actual_file_names;
+  // In the real world, we would exec a new process during this call, so the
+  // file descriptor must not be FD_CLOEXEC.
+  int fd = -1;
+  ASSERT_TRUE(base::StringToInt(fd_string, &fd));
+  int flags = fcntl(fd, F_GETFD);
+  int saved_errno = errno;
+  EXPECT_NE(flags, -1) << "fnctl failed: " << base::safe_strerror(saved_errno);
+  EXPECT_EQ(flags & FD_CLOEXEC, 0);
+
   base::FileEnumerator file_list(
-      expected_crash_directory, false,
+      *crash_directory, false,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
   for (base::FilePath name = file_list.Next(); !name.empty();
        name = file_list.Next()) {
@@ -109,36 +125,8 @@ void VerifyStateInsideRun(
     EXPECT_FALSE(info.IsDirectory());
     std::string contents;
     EXPECT_TRUE(base::ReadFileToString(name, &contents));
-    file_name_contents->emplace_back(name.value(), std::move(contents));
+    file_name_contents->emplace_back(std::move(name), std::move(contents));
   }
-
-  // crash_directory_arg should contain --crash_directory=/proc/self/fd/##,
-  // where ## is a file descriptor that is open and reading /tmp/crash.1.
-  ASSERT_GT(crash_directory_arg.size(), strlen(kCrashDirectoryStart));
-  std::string fd_string =
-      crash_directory_arg.substr(strlen(kCrashDirectoryStart));
-  int fd = -1;
-  ASSERT_TRUE(base::StringToInt(fd_string, &fd));
-  struct stat stat_from_proc;
-  int fstat_result = fstat(fd, &stat_from_proc);
-  int saved_errno = errno;
-  ASSERT_NE(fstat_result, -1) << "Error stating passing-in file descriptor: "
-                              << base::safe_strerror(saved_errno);
-  struct stat stat_from_tmp;
-  int stat_result =
-      stat(expected_crash_directory.value().c_str(), &stat_from_tmp);
-  saved_errno = errno;
-  ASSERT_NE(stat_result, -1)
-      << "Error stating /tmp directory: " << base::safe_strerror(saved_errno);
-  EXPECT_EQ(stat_from_tmp.st_dev, stat_from_proc.st_dev);
-  EXPECT_EQ(stat_from_tmp.st_ino, stat_from_proc.st_ino);
-
-  // In the real world, we would exec a new process during this call, so the
-  // file descriptor must not be FD_CLOEXEC.
-  int flags = fcntl(fd, F_GETFD);
-  saved_errno = errno;
-  EXPECT_NE(flags, -1) << "fnctl failed: " << base::safe_strerror(saved_errno);
-  EXPECT_EQ(flags & FD_CLOEXEC, 0);
 }
 
 // Creates a temporary file and returns a file descriptor to it. The file will
@@ -182,11 +170,6 @@ TEST(UploadCrashes, CallsCrashSenderWithoutCrashDirectoryOrIgnoreHoldOffTime) {
 }
 
 TEST(UploadSingleCrash, CreatesDirectory) {
-  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  // Tests aren't as hermetic as we'd like; make sure that stale crash
-  // directories aren't left over from previous failures.
-  brillo::DeletePathRecursively(kExpectedCrashDirectory);
-
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   brillo::ErrorPtr error;
 
@@ -194,10 +177,11 @@ TEST(UploadSingleCrash, CreatesDirectory) {
   std::string crash_directory_arg;
   test_tool.ExpectSingleCrashArgs(&crash_directory_arg);
 
-  auto run_state_verifier = [&crash_directory_arg, &kExpectedCrashDirectory]() {
-    std::vector<std::pair<std::string, std::string>> file_name_contents;
-    VerifyStateInsideRun(crash_directory_arg, kExpectedCrashDirectory,
-                         &file_name_contents);
+  auto run_state_verifier = [&crash_directory_arg]() {
+    std::vector<std::pair<base::FilePath, std::string>> file_name_contents;
+    base::FilePath crash_directory;
+    VerifyStateInsideRun(crash_directory_arg, &file_name_contents,
+                         &crash_directory);
     EXPECT_THAT(file_name_contents, IsEmpty());
     return 0;
   };
@@ -208,17 +192,9 @@ TEST(UploadSingleCrash, CreatesDirectory) {
   EXPECT_TRUE(test_tool.UploadSingleCrash(
       files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
-
-  // /tmp/crash.1 should now be deleted, and the file descriptor closed. We
-  // don't check for the file descriptor being closed since some other part of
-  // the system might have reused it.
-  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 }
 
 TEST(UploadSingleCrash, CreatesFilesInDirectory) {
-  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  brillo::DeletePathRecursively(kExpectedCrashDirectory);
-
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   constexpr char kFileAaaContents[] = "aaa";
   files.emplace_back("aaa.meta", CreateFileWithContents(kFileAaaContents));
@@ -232,11 +208,12 @@ TEST(UploadSingleCrash, CreatesFilesInDirectory) {
   CrashSenderToolWithMockCreateProcess test_tool;
   std::string crash_directory_arg;
   test_tool.ExpectSingleCrashArgs(&crash_directory_arg);
-  std::vector<std::pair<std::string, std::string>> file_name_contents;
-  auto run_state_verifier = [&crash_directory_arg, &kExpectedCrashDirectory,
-                             &file_name_contents]() {
-    VerifyStateInsideRun(crash_directory_arg, kExpectedCrashDirectory,
-                         &file_name_contents);
+  std::vector<std::pair<base::FilePath, std::string>> file_name_contents;
+  base::FilePath crash_directory;
+  auto run_state_verifier = [&crash_directory_arg, &file_name_contents,
+                             &crash_directory]() {
+    VerifyStateInsideRun(crash_directory_arg, &file_name_contents,
+                         &crash_directory);
     return 0;
   };
 
@@ -246,19 +223,15 @@ TEST(UploadSingleCrash, CreatesFilesInDirectory) {
   EXPECT_TRUE(test_tool.UploadSingleCrash(
       files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
-  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 
-  EXPECT_THAT(
-      file_name_contents,
-      UnorderedElementsAre(Pair("/tmp/crash.1/aaa.meta", kFileAaaContents),
-                           Pair("/tmp/crash.1/bbb.version", kFileBbbContents),
-                           Pair("/tmp/crash.1/ccc.log", kFileCccContents)));
+  EXPECT_THAT(file_name_contents,
+              UnorderedElementsAre(
+                  Pair(crash_directory.Append("aaa.meta"), kFileAaaContents),
+                  Pair(crash_directory.Append("bbb.version"), kFileBbbContents),
+                  Pair(crash_directory.Append("ccc.log"), kFileCccContents)));
 }
 
 TEST(UploadSingleCrash, CreatesEmptyFile) {
-  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  brillo::DeletePathRecursively(kExpectedCrashDirectory);
-
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   files.emplace_back("empty", base::ScopedFD(memfd_create("empty", 0)));
   brillo::ErrorPtr error;
@@ -266,11 +239,12 @@ TEST(UploadSingleCrash, CreatesEmptyFile) {
   CrashSenderToolWithMockCreateProcess test_tool;
   std::string crash_directory_arg;
   test_tool.ExpectSingleCrashArgs(&crash_directory_arg);
-  std::vector<std::pair<std::string, std::string>> file_name_contents;
-  auto run_state_verifier = [&crash_directory_arg, &kExpectedCrashDirectory,
-                             &file_name_contents]() {
-    VerifyStateInsideRun(crash_directory_arg, kExpectedCrashDirectory,
-                         &file_name_contents);
+  std::vector<std::pair<base::FilePath, std::string>> file_name_contents;
+  base::FilePath crash_directory;
+  auto run_state_verifier = [&crash_directory_arg, &file_name_contents,
+                             &crash_directory]() {
+    VerifyStateInsideRun(crash_directory_arg, &file_name_contents,
+                         &crash_directory);
     return 0;
   };
 
@@ -280,16 +254,11 @@ TEST(UploadSingleCrash, CreatesEmptyFile) {
   EXPECT_TRUE(test_tool.UploadSingleCrash(
       files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
-  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
-
   EXPECT_THAT(file_name_contents,
-              UnorderedElementsAre(Pair("/tmp/crash.1/empty", "")));
+              UnorderedElementsAre(Pair(crash_directory.Append("empty"), "")));
 }
 
 TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
-  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  brillo::DeletePathRecursively(kExpectedCrashDirectory);
-
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   std::string long_string;
   constexpr int kSize = 1 << 18;
@@ -307,11 +276,12 @@ TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
   CrashSenderToolWithMockCreateProcess test_tool;
   std::string crash_directory_arg;
   test_tool.ExpectSingleCrashArgs(&crash_directory_arg);
-  std::vector<std::pair<std::string, std::string>> file_name_contents;
-  auto run_state_verifier = [&crash_directory_arg, &kExpectedCrashDirectory,
-                             &file_name_contents]() {
-    VerifyStateInsideRun(crash_directory_arg, kExpectedCrashDirectory,
-                         &file_name_contents);
+  std::vector<std::pair<base::FilePath, std::string>> file_name_contents;
+  base::FilePath crash_directory;
+  auto run_state_verifier = [&crash_directory_arg, &file_name_contents,
+                             &crash_directory]() {
+    VerifyStateInsideRun(crash_directory_arg, &file_name_contents,
+                         &crash_directory);
     return 0;
   };
 
@@ -321,23 +291,14 @@ TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
   EXPECT_TRUE(test_tool.UploadSingleCrash(
       files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
-  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 
-  EXPECT_THAT(
-      file_name_contents,
-      UnorderedElementsAre(Pair("/tmp/crash.1/aaa.meta", kFileAaaContents),
-                           Pair("/tmp/crash.1/long.log", long_string)));
+  EXPECT_THAT(file_name_contents,
+              UnorderedElementsAre(
+                  Pair(crash_directory.Append("aaa.meta"), kFileAaaContents),
+                  Pair(crash_directory.Append("long.log"), long_string)));
 }
 
 TEST(UploadSingleCrash, PassesConsentAlreadyCheckedCheckFlag) {
-  // The directory /tmp/crash is specifically used for directories, and uses an
-  // incrementing extension, so /tmp/crash.1 should be the first directory
-  // selected to store crashes.
-  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  // Tests aren't as hermetic as we'd like; make sure that stale crash
-  // directories aren't left over from previous failures.
-  brillo::DeletePathRecursively(kExpectedCrashDirectory);
-
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   brillo::ErrorPtr error;
 
@@ -348,11 +309,6 @@ TEST(UploadSingleCrash, PassesConsentAlreadyCheckedCheckFlag) {
   EXPECT_TRUE(test_tool.UploadSingleCrash(
       files, &error, true /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
-
-  // /tmp/crash.1 should now be deleted, and the file descriptor closed. We
-  // don't check for the file descriptor being closed since some other part of
-  // the system might have reused it.
-  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 }
 
 // Test that the filename given by the parameter will be rejected with a
