@@ -15,12 +15,13 @@ use std::{
 };
 
 use crate::handle_eintr_errno;
-use crate::sys::{errno_result, Result};
 use libc::{
     c_int, epoll_create1, epoll_ctl, epoll_event, epoll_wait, EPOLLHUP, EPOLLIN, EPOLLOUT,
     EPOLLRDHUP, EPOLL_CLOEXEC, EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLL_CTL_MOD,
 };
 use log::warn;
+use nix::Error;
+use nix::Result;
 
 const POLL_CONTEXT_MAX_EVENTS: usize = 16;
 
@@ -303,7 +304,7 @@ impl<T: PollToken> EpollContext<T> {
         // Safe because we check the return value.
         let epoll_fd = unsafe { epoll_create1(EPOLL_CLOEXEC) };
         if epoll_fd < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         Ok(EpollContext {
             epoll_ctx: unsafe { File::from_raw_fd(epoll_fd) },
@@ -371,7 +372,7 @@ impl<T: PollToken> EpollContext<T> {
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         };
         Ok(())
     }
@@ -394,7 +395,7 @@ impl<T: PollToken> EpollContext<T> {
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         };
         Ok(())
     }
@@ -417,7 +418,7 @@ impl<T: PollToken> EpollContext<T> {
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         };
         Ok(())
     }
@@ -471,7 +472,7 @@ impl<T: PollToken> EpollContext<T> {
             }
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         let epoll_events = events.0.borrow();
         let events = PollEvents {
@@ -501,7 +502,7 @@ impl<T: PollToken> IntoRawFd for EpollContext<T> {
 ///
 /// ```
 /// # use libchromeos::deprecated::{EventFd, PollContext, PollEvents};
-/// # use libchromeos::sys::Result;
+/// # use nix::Result;
 /// # fn test() -> Result<()> {
 ///     let evt1 = EventFd::new()?;
 ///     let evt2 = EventFd::new()?;

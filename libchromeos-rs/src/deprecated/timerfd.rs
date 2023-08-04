@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::io;
 use std::{
     fs::File,
     mem,
@@ -15,7 +16,8 @@ use sync::Mutex;
 use libc::{self, clock_getres, timerfd_create, timerfd_settime, CLOCK_MONOTONIC, TFD_CLOEXEC};
 
 use crate::deprecated::{EventFd, FakeClock};
-use crate::sys::{errno_result, Result};
+use nix::Error;
+use nix::Result;
 
 /// A safe wrapper around a Linux timerfd (man 2 timerfd_create).
 pub struct TimerFd(File);
@@ -27,7 +29,7 @@ impl TimerFd {
         // Safe because this doesn't modify any memory and we check the return value.
         let ret = unsafe { timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC) };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         // Safe because we uniquely own the file descriptor.
@@ -61,7 +63,7 @@ impl TimerFd {
         // Safe because this doesn't modify any memory and we check the return value.
         let ret = unsafe { timerfd_settime(self.as_raw_fd(), 0, &spec, ptr::null_mut()) };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         Ok(())
@@ -82,7 +84,7 @@ impl TimerFd {
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         // The bytes in the buffer are guaranteed to be in native byte-order so we don't need to
@@ -98,7 +100,7 @@ impl TimerFd {
         // Safe because this doesn't modify any memory and we check the return value.
         let ret = unsafe { timerfd_settime(self.as_raw_fd(), 0, &spec, ptr::null_mut()) };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         Ok(())
@@ -113,7 +115,7 @@ impl TimerFd {
         let ret = unsafe { clock_getres(CLOCK_MONOTONIC, &mut res) };
 
         if ret != 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         Ok(Duration::new(res.tv_sec as u64, res.tv_nsec as u32))
@@ -165,7 +167,7 @@ impl FakeTimerFd {
     /// Sets the timer to expire after `dur`.  If `interval` is not `None` it represents
     /// the period for repeated expirations after the initial expiration.  Otherwise
     /// the timer will expire just once.  Cancels any existing duration and repeating interval.
-    pub fn reset(&mut self, dur: Duration, interval: Option<Duration>) -> Result<()> {
+    pub fn reset(&mut self, dur: Duration, interval: Option<Duration>) -> io::Result<()> {
         let mut guard = self.clock.lock();
         let deadline = guard.nanos() + FakeTimerFd::duration_to_nanos(dur);
         self.deadline_ns = Some(deadline);
@@ -177,7 +179,7 @@ impl FakeTimerFd {
     /// Waits until the timer expires.  The return value represents the number of times the timer
     /// has expired since the last time `wait` was called.  If the timer has not yet expired once
     /// this call will block until it does.
-    pub fn wait(&mut self) -> Result<u64> {
+    pub fn wait(&mut self) -> io::Result<u64> {
         loop {
             self.fd.read()?;
             if let Some(deadline_ns) = &mut self.deadline_ns {

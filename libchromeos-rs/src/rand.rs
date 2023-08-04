@@ -7,9 +7,10 @@
 use std::{thread::sleep, time::Duration};
 
 use libc::{c_uint, c_void};
+use nix::Error;
+use nix::Result;
 
 use crate::handle_eintr_errno;
-use crosvm_base::sys::unix::{errno_result, Result};
 
 /// How long to wait before calling getrandom again if it does not return
 /// enough bytes.
@@ -52,7 +53,7 @@ pub fn rand_bytes(mut output: &mut [u8], source: Source) -> Result<()> {
         });
 
         if bytes < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         if bytes as usize == output.len() {
             return Ok(());

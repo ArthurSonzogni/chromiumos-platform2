@@ -36,7 +36,7 @@ pub enum Error {
     NoDevice,
     NoFreeInterface,
     NotIppUsb,
-    Poll(libchromeos::sys::Error),
+    Poll(nix::Error),
 }
 
 impl std::error::Error for Error {}

@@ -163,12 +163,12 @@ pub fn openlog_and_get_socket() -> Result<(UnixDatagram, Option<UnixDatagram>), 
     }
 }
 
-pub fn new_seqpacket_pair() -> crate::sys::Result<(UnixDatagram, UnixDatagram)> {
+pub fn new_seqpacket_pair() -> nix::Result<(UnixDatagram, UnixDatagram)> {
     let mut fds = [0, 0];
     // Safe because fds is owned and the return value is checked.
     let ret = unsafe { socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fds.as_mut_ptr()) };
     if ret != 0 {
-        return Err(crate::sys::Error::last());
+        return Err(nix::Error::last());
     }
 
     // Safe because the file descriptors aren't owned yet.

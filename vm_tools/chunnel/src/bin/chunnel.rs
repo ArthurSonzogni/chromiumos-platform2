@@ -26,9 +26,9 @@ enum Error {
     BlockSigpipe(nix::Error),
     ConnectSocket(StreamSocketError),
     Forward(ForwarderError),
-    PollContextDelete(libchromeos::sys::Error),
-    PollContextNew(libchromeos::sys::Error),
-    PollWait(libchromeos::sys::Error),
+    PollContextDelete(nix::Error),
+    PollContextNew(nix::Error),
+    PollWait(nix::Error),
     Syslog(libchromeos::syslog::Error),
 }
 

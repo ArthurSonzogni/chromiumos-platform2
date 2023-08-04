@@ -10,7 +10,7 @@
 //! # Examples
 //!
 //! ```
-//! use libchromeos::sys::{error, warn};
+//! use log::{error, warn};
 //! use libchromeos::deprecated::syslog;
 //!
 //! if let Err(e) = syslog::init() {
@@ -39,7 +39,6 @@ use sync::Mutex;
 use thiserror::Error as ThisError;
 
 use crate::deprecated::linux::syslog::PlatformSyslog;
-use crate::sys::RawDescriptor;
 
 /// The priority (i.e. severity) of a syslog message.
 ///
@@ -306,11 +305,6 @@ pub fn push_fds(fds: &mut Vec<RawFd>) {
     let state = lock!();
     state.syslog.push_fds(fds);
     fds.extend(state.file.iter().map(|f| f.as_raw_fd()));
-}
-
-/// Does the same as push_fds, but using the RawDescriptorType
-pub fn push_descriptors(descriptors: &mut Vec<RawDescriptor>) {
-    push_fds(descriptors)
 }
 
 /// Records a log message with the given details.

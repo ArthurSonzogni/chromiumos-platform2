@@ -249,7 +249,7 @@ impl SnapshotDevice {
         if rc < 0 {
             return Err(HibernateError::SnapshotIoctlError(
                 name.to_string(),
-                libchromeos::sys::Error::last(),
+                nix::Error::last(),
             ))
             .context("Failed to execute ioctl on snapshot device");
         }

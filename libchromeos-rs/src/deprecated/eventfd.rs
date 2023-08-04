@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::io;
+use std::os::fd::OwnedFd;
 use std::{
     mem,
     ops::Deref,
@@ -11,23 +13,29 @@ use std::{
 };
 
 use libc::{c_void, eventfd, read, write, POLLIN};
-use serde::{Deserialize, Serialize};
 
 use crate::generate_scoped_event;
-use crate::sys::duration_to_timespec;
-use crate::sys::{
-    errno_result, AsRawDescriptor, FromRawDescriptor, IntoRawDescriptor, RawDescriptor, Result,
-    SafeDescriptor,
-};
+use nix::Error;
+use nix::Result;
+
+/// Return a timespec filed with the specified Duration `duration`.
+#[allow(clippy::useless_conversion)]
+pub fn duration_to_timespec(duration: Duration) -> libc::timespec {
+    // nsec always fits in i32 because subsec_nanos is defined to be less than one billion.
+    let nsec = duration.subsec_nanos() as i32;
+    libc::timespec {
+        tv_sec: duration.as_secs() as libc::time_t,
+        tv_nsec: nsec.into(),
+    }
+}
 
 /// A safe wrapper around a Linux eventfd (man 2 eventfd).
 ///
 /// An eventfd is useful because it is sendable across processes and can be used for signaling in
 /// and out of the KVM API. They can also be polled like any other file descriptor.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Debug)]
 pub struct EventFd {
-    event_handle: SafeDescriptor,
+    event_handle: OwnedFd,
 }
 
 /// Wrapper around the return value of doing a read on an EventFd which distinguishes between
@@ -46,12 +54,12 @@ impl EventFd {
         // the error case.
         let ret = unsafe { eventfd(0, 0) };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         // This is safe because we checked ret for success and know the kernel gave us an fd that we
         // own.
         Ok(EventFd {
-            event_handle: unsafe { SafeDescriptor::from_raw_descriptor(ret) },
+            event_handle: unsafe { OwnedFd::from_raw_fd(ret) },
         })
     }
 
@@ -67,7 +75,7 @@ impl EventFd {
             )
         };
         if ret <= 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         Ok(())
     }
@@ -85,7 +93,7 @@ impl EventFd {
             )
         };
         if ret <= 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         Ok(buf)
     }
@@ -96,7 +104,7 @@ impl EventFd {
     /// EventReadResult::Timeout.
     pub fn read_timeout(&self, timeout: Duration) -> Result<EventReadResult> {
         let mut pfd = libc::pollfd {
-            fd: self.as_raw_descriptor(),
+            fd: self.as_raw_fd(),
             events: POLLIN,
             revents: 0,
         };
@@ -111,7 +119,7 @@ impl EventFd {
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
 
         // no return events (revents) means we got a timeout
@@ -124,20 +132,20 @@ impl EventFd {
         // we give the syscall's size parameter properly.
         let ret = unsafe {
             libc::read(
-                self.as_raw_descriptor(),
+                self.as_raw_fd(),
                 &mut buf as *mut _ as *mut c_void,
                 mem::size_of::<u64>(),
             )
         };
         if ret < 0 {
-            return errno_result();
+            return Err(Error::last());
         }
         Ok(EventReadResult::Count(buf))
     }
 
     /// Clones this EventFd, internally creating a new file descriptor. The new EventFd will share
     /// the same underlying count within the kernel.
-    pub fn try_clone(&self) -> Result<EventFd> {
+    pub fn try_clone(&self) -> io::Result<EventFd> {
         self.event_handle
             .try_clone()
             .map(|event_handle| EventFd { event_handle })
@@ -150,29 +158,17 @@ impl AsRawFd for EventFd {
     }
 }
 
-impl AsRawDescriptor for EventFd {
-    fn as_raw_descriptor(&self) -> RawDescriptor {
-        self.event_handle.as_raw_descriptor()
-    }
-}
-
 impl FromRawFd for EventFd {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         EventFd {
-            event_handle: SafeDescriptor::from_raw_descriptor(fd),
+            event_handle: OwnedFd::from_raw_fd(fd),
         }
     }
 }
 
 impl IntoRawFd for EventFd {
     fn into_raw_fd(self) -> RawFd {
-        self.event_handle.into_raw_descriptor()
-    }
-}
-
-impl From<EventFd> for SafeDescriptor {
-    fn from(evt: EventFd) -> Self {
-        evt.event_handle
+        self.event_handle.into_raw_fd()
     }
 }
 

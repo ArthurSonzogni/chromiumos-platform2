@@ -34,12 +34,12 @@ use crate::usb_connector::{UnplugDetector, UsbConnector};
 pub enum Error {
     CreateSocket(io::Error),
     CreateUsbConnector(usb_connector::Error),
-    EventFd(libchromeos::sys::Error),
+    EventFd(io::Error),
     ParseArgs(arguments::Error),
-    PollEvents(libchromeos::sys::Error),
+    PollEvents(nix::Error),
     RegisterHandler(nix::Error),
     Syslog(syslog::Error),
-    SysUtil(libchromeos::sys::Error),
+    SysUtil(nix::Error),
 }
 
 impl std::error::Error for Error {}
@@ -205,7 +205,7 @@ fn run() -> Result<()> {
         Some(args) => args,
     };
 
-    let shutdown_fd = EventFd::new().map_err(Error::EventFd)?;
+    let shutdown_fd = EventFd::new().map_err(|e| Error::EventFd(e.into()))?;
     let sigint_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
     add_sigint_handler(sigint_shutdown_fd).map_err(Error::RegisterHandler)?;
 

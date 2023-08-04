@@ -69,16 +69,16 @@ pub enum HibernateError {
     NoHiberimageError(),
     /// Failed to lock process memory.
     #[error("Failed to mlockall: {0}")]
-    MlockallError(libchromeos::sys::Error),
+    MlockallError(nix::Error),
     /// Mmap error.
     #[error("mmap error: {0}")]
-    MmapError(libchromeos::sys::Error),
+    MmapError(nix::Error),
     /// Snapshot device error.
     #[error("Snapshot device error: {0}")]
     SnapshotError(String),
     /// Snapshot ioctl error.
     #[error("Snapshot ioctl error: {0}: {1}")]
-    SnapshotIoctlError(String, libchromeos::sys::Error),
+    SnapshotIoctlError(String, nix::Error),
     /// Mount not found.
     #[error("Mount not found")]
     MountNotFoundError(),
@@ -87,7 +87,7 @@ pub enum HibernateError {
     SwapInfoNotFoundError(),
     /// Failed to shut down
     #[error("Failed to shut down: {0}")]
-    ShutdownError(libchromeos::sys::Error),
+    ShutdownError(nix::Error),
     /// Hibernate volume error
     #[error("Hibernate volume error")]
     HibernateVolumeError(),
@@ -386,10 +386,8 @@ pub fn lock_process_memory() -> Result<LockedProcessMemory> {
     let rc = unsafe { libc::mlockall(libc::MCL_CURRENT | libc::MCL_FUTURE) };
 
     if rc < 0 {
-        return Err(HibernateError::MlockallError(
-            libchromeos::sys::Error::last(),
-        ))
-        .context("Cannot lock process memory");
+        return Err(HibernateError::MlockallError(nix::Error::last()))
+            .context("Cannot lock process memory");
     }
 
     Ok(LockedProcessMemory {})
@@ -516,7 +514,7 @@ pub fn mount_filesystem<P: AsRef<OsStr>>(
         );
 
         if rc < 0 {
-            return Err(libchromeos::sys::Error::last())
+            return Err(nix::Error::last())
                 .context(format!("Failed to mount {}", bdev_cstr.to_string_lossy()));
         }
     }
@@ -533,7 +531,7 @@ pub fn unmount_filesystem<P: AsRef<OsStr>>(mountpoint: P) -> Result<()> {
     unsafe {
         let rc = libc::umount(mp_cstr.as_ptr());
         if rc < 0 {
-            return Err(libchromeos::sys::Error::last())
+            return Err(nix::Error::last())
                 .context(format!("Failed to unmount {}", mp_cstr.to_string_lossy()));
         }
     }

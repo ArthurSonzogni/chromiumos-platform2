@@ -211,7 +211,7 @@ impl SuspendConductor<'_> {
 
         if let Err(e) = self.snapshot_and_save(frozen_userspace) {
             if let Some(HibernateError::SnapshotIoctlError(_, err)) = e.downcast_ref() {
-                if err.errno() == libc::ENOMEM {
+                if *err == nix::Error::ENOMEM {
                     Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
                 } else {
                     Self::log_suspend_abort(SuspendAbortReason::Other);
@@ -396,10 +396,7 @@ impl SuspendConductor<'_> {
             // On success, we shouldn't be executing, so the return code can be
             // ignored because we already know it's a failure.
             let _ = reboot(RB_POWER_OFF);
-            Err(HibernateError::ShutdownError(
-                libchromeos::sys::Error::last(),
-            ))
-            .context("Failed to shut down")
+            Err(HibernateError::ShutdownError(nix::Error::last())).context("Failed to shut down")
         }
     }
 
@@ -411,10 +408,7 @@ impl SuspendConductor<'_> {
             // On success, we shouldn't be executing, so the return code can be
             // ignored because we already know it's a failure.
             let _ = reboot(RB_AUTOBOOT);
-            Err(HibernateError::ShutdownError(
-                libchromeos::sys::Error::last(),
-            ))
-            .context("Failed to reboot")
+            Err(HibernateError::ShutdownError(nix::Error::last())).context("Failed to reboot")
         }
     }
 
