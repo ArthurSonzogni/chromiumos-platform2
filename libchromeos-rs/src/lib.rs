@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-pub mod sys;
-
 // Exports dependencies which are locked to `crosvm_base` versions. This allows us to have a single
 // point of declaration for these, rather than N.
 pub mod sys_deps {

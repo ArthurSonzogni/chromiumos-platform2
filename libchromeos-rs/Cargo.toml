@@ -8,7 +8,6 @@ edition = "2018"
 pkg-config = { version = "0.3.11", optional = true }
 
 [dependencies]
-crosvm-base = { version = "0.1.0" }
 dbus = { version = "0.9", optional = true }
 lazy_static = { version = "1.4.0", optional = true }
 libc = "0.2"
