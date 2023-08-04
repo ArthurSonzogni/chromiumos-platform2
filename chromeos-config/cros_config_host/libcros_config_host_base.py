@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -100,7 +99,7 @@ FirmwareImage = namedtuple(
 DeviceSignerInfo = namedtuple("DeviceSignerInfo", ["key_id", "sig_id"])
 
 
-class PathComponent(object):
+class PathComponent:
     """A component in a directory/file tree
 
     Attributes:
@@ -112,7 +111,7 @@ class PathComponent(object):
 
     def __init__(self, name):
         self.name = name
-        self.children = dict()
+        self.children = {}
 
     def AddPath(self, path):
         parts = path.split("/", 1)
@@ -158,7 +157,7 @@ class PathComponent(object):
             self.children[child].ShowTree(base_path, path, indent + 1)
 
 
-class DeviceConfig(object):
+class DeviceConfig:
     """Configuration for a unique Device/SKU/Product combination.
 
     Provides an abstraction layer between DTS/JSON for accessing config for a
@@ -355,7 +354,7 @@ class DeviceConfig(object):
         """
 
 
-class CrosConfigBaseImpl(object):
+class CrosConfigBaseImpl:
     """The ChromeOS Configuration API for the host."""
 
     def GetConfig(self, name):
@@ -717,9 +716,7 @@ class CrosConfigBaseImpl(object):
         Returns:
             List of model names, each a string
         """
-        return sorted(
-            set([device.GetName() for device in self.GetDeviceConfigs()])
-        )
+        return sorted({device.GetName() for device in self.GetDeviceConfigs()})
 
     def GetFirmwareInfo(self):
         firmware_info = OrderedDict()

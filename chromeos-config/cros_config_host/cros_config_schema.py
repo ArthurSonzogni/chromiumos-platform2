@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -747,7 +746,7 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
             hw_props = config_minus_brand.get("hardware-properties", None)
             if hw_props:
                 stylus = hw_props.get("stylus-category", "none")
-                if stylus == "none" or stylus == EXTERNAL_STYLUS:
+                if stylus in ("none", EXTERNAL_STYLUS):
                     hw_props.pop("stylus-category", None)
 
             # Remove /ui:help-content-id

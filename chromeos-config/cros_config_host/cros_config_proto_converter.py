@@ -582,9 +582,11 @@ def _build_derived_panel_power_prefs(config: Config) -> dict:
         ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
 
     light_sensor = hw_features.light_sensor
-    if present in (light_sensor.lid_lightsensor,
-                   light_sensor.base_lightsensor,
-                   light_sensor.camera_lightsensor):
+    if present in (
+        light_sensor.lid_lightsensor,
+        light_sensor.base_lightsensor,
+        light_sensor.camera_lightsensor,
+    ):
         if hw_features.screen.panel_properties.als_steps:
             _check_als_steps(
                 hw_features.screen.panel_properties.als_steps,
@@ -677,9 +679,11 @@ def _build_derived_power_prefs(config: Config) -> dict:
             "keyboard-backlight-user-steps"
         ] = hw_features.keyboard.backlight_user_steps
 
-    if present in (light_sensor.lid_lightsensor,
-                   light_sensor.base_lightsensor,
-                   light_sensor.camera_lightsensor):
+    if present in (
+        light_sensor.lid_lightsensor,
+        light_sensor.base_lightsensor,
+        light_sensor.camera_lightsensor,
+    ):
         if hw_features.keyboard.als_steps:
             _check_lux_threshold(
                 [step.lux_threshold for step in hw_features.keyboard.als_steps],

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -337,7 +336,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
         return self._configs
 
     def GetFirmwareConfigs(self):
-        result = dict()
+        result = {}
         for value in self.GetFirmwareInfo().values():
             fw_images = []
             ap_build_target = value.bios_build_target
