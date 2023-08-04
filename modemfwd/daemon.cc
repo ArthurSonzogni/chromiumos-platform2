@@ -521,8 +521,9 @@ void Daemon::CheckModemIsResponsive() {
 
 void Daemon::ResetModemWithHelper(const std::string& device_id,
                                   ModemHelper* helper) {
-  if (!base::Contains(device_id, "pci:14c3:4d75")) {
-    LOG(WARNING) << "Not FM350, not attempting recovery";
+  if (!base::Contains(device_id, "pci:14c3:4d75") &&
+      !base::Contains(device_id, "usb:2cb7:01a2")) {
+    LOG(WARNING) << "Not FM350 or FM101, not attempting recovery";
     metrics_->SendModemRecoveryState(
         metrics::ModemRecoveryState::kRecoveryStateSkipped);
     return;
