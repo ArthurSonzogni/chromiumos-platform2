@@ -30,12 +30,6 @@ class VmBuilder {
     bool writable;
   };
 
-  // Audio device type enumeration.
-  enum class AudioDeviceType {
-    kAC97,
-    kVirtio,
-  };
-
   VmBuilder();
   VmBuilder(VmBuilder&&);
   VmBuilder& operator=(VmBuilder&& other);
@@ -60,8 +54,7 @@ class VmBuilder {
   VmBuilder& AppendTapFd(base::ScopedFD tap_fd);
   VmBuilder& AppendKernelParam(const std::string& param);
   VmBuilder& AppendOemString(const std::string& string);
-  VmBuilder& AppendAudioDevice(const AudioDeviceType type,
-                               const std::string& params);
+  VmBuilder& AppendAudioDevice(const std::string& params);
   VmBuilder& AppendSerialDevice(const std::string& device);
   VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
   VmBuilder& AppendCustomParam(const std::string& key,
@@ -173,7 +166,6 @@ class VmBuilder {
   std::vector<base::ScopedFD> tap_fds_;
 
   struct AudioDevice {
-    AudioDeviceType type;
     std::string params;
   };
   std::vector<AudioDevice> audio_devices_;

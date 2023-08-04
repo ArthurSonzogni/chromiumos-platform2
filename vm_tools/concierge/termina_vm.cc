@@ -257,13 +257,11 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
-          VmBuilder::AudioDeviceType::kVirtio,
           "capture=true,backend=cras,client_type=borealis,"
           "socket_type=unified,num_output_devices=3,num_input_devices=3,"
           "num_output_streams=10,num_input_streams=5");
     } else {
       vm_builder.AppendAudioDevice(
-          VmBuilder::AudioDeviceType::kVirtio,
           "backend=cras,client_type=borealis,socket_type=unified,"
           "num_output_devices=3,num_input_devices=3,"
           "num_output_streams=10,num_input_streams=5");
@@ -271,11 +269,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   } else {
     if (features_.audio_capture) {
       vm_builder.AppendAudioDevice(
-          VmBuilder::AudioDeviceType::kVirtio,
           "capture=true,backend=cras,socket_type=unified");
     } else {
-      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                                   "backend=cras,socket_type=unified");
+      vm_builder.AppendAudioDevice("backend=cras,socket_type=unified");
     }
   }
 

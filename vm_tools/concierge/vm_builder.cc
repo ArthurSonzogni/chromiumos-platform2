@@ -133,9 +133,8 @@ VmBuilder& VmBuilder::AppendOemString(const std::string& string) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendAudioDevice(const AudioDeviceType type,
-                                        const std::string& params) {
-  audio_devices_.push_back(AudioDevice{.type = type, .params = params});
+VmBuilder& VmBuilder::AppendAudioDevice(const std::string& params) {
+  audio_devices_.push_back(AudioDevice{.params = params});
   return *this;
 }
 
@@ -493,14 +492,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   }
 
   for (const auto& dev : audio_devices_) {
-    switch (dev.type) {
-      case AudioDeviceType::kAC97:
-        args.emplace_back("--ac97", dev.params);
-        break;
-      case AudioDeviceType::kVirtio:
-        args.emplace_back("--virtio-snd", dev.params);
-        break;
-    }
+    args.emplace_back("--virtio-snd", dev.params);
   }
 
   for (const auto& d : disks_) {

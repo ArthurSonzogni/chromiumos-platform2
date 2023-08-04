@@ -373,7 +373,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
       .AppendAudioDevice(
-          VmBuilder::AudioDeviceType::kVirtio,
           "capture=true,backend=cras,client_type=arcvm,"
           "socket_type=unified,num_input_devices=3,"
           "num_output_devices=4,"
