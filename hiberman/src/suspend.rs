@@ -5,6 +5,7 @@
 //! Implements hibernate suspend functionality.
 
 use std::mem;
+use std::sync::RwLockReadGuard;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -48,6 +49,7 @@ use crate::snapdev::SnapshotMode;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
+use crate::volume::VOLUME_MANAGER;
 
 /// Reason why an attempt to suspend was aborted
 /// Values need to match CrosHibernateAbortReason in Chromium's enums.xml
@@ -64,18 +66,18 @@ enum SuspendAbortReason {
 
 /// The SuspendConductor weaves a delicate baton to guide us through the
 /// symphony of hibernation.
-pub struct SuspendConductor {
+pub struct SuspendConductor<'a> {
     options: HibernateOptions,
-    volume_manager: VolumeManager,
+    volume_manager: RwLockReadGuard<'a, VolumeManager>,
     timestamp_resumed: Option<Duration>,
 }
 
-impl SuspendConductor {
+impl SuspendConductor<'_> {
     /// Create a new SuspendConductor in preparation for imminent hibernation.
     pub fn new() -> Result<Self> {
         Ok(SuspendConductor {
             options: Default::default(),
-            volume_manager: VolumeManager::new()?,
+            volume_manager: VOLUME_MANAGER.read().unwrap(),
             timestamp_resumed: None,
         })
     }

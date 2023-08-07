@@ -8,6 +8,7 @@
 
 use anyhow::Context;
 use anyhow::Result;
+use lazy_static::lazy_static;
 use log::debug;
 use log::error;
 use log::info;
@@ -24,6 +25,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -109,29 +111,30 @@ const AES_GCM_INTEGRITY_BYTES_PER_BLOCK: u64 = 12 + 12;
 /// Logical disk sector size (512 bytes).
 const SECTOR_SIZE: u64 = 512;
 
+lazy_static! {
+    pub static ref VOLUME_MANAGER: RwLock<VolumeManager> =
+        RwLock::new(VolumeManager::new().expect("failed to create VolumeManager instance"));
+}
+
 /// The pending stateful merge is an object that when dropped will ask the
 /// volume manager to merge the stateful snapshots.
-pub struct PendingStatefulMerge<'a> {
-    pub volume_manager: &'a VolumeManager,
+pub struct PendingStatefulMerge {
     monitors: Vec<DmSnapshotSpaceMonitor>,
 }
 
-impl<'a> PendingStatefulMerge<'a> {
-    pub fn new(volume_manager: &'a VolumeManager) -> Result<Self> {
+impl PendingStatefulMerge {
+    pub fn new() -> Result<Self> {
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
         let monitors = volume_manager.monitor_stateful_snapshots()?;
-        Ok(Self {
-            volume_manager,
-            monitors,
-        })
+        Ok(Self { monitors })
     }
 }
 
-impl Drop for PendingStatefulMerge<'_> {
+impl Drop for PendingStatefulMerge {
     fn drop(&mut self) {
-        if let Err(e) = self
-            .volume_manager
-            .merge_stateful_snapshots(&mut self.monitors)
-        {
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
+
+        if let Err(e) = volume_manager.merge_stateful_snapshots(&mut self.monitors) {
             error!("Attempting to merge stateful snapshots returned: {:?}", e);
             // If we failed to merge the snapshots, the system is in a bad way.
             // Reboot to try and recover.
@@ -177,7 +180,7 @@ impl VolumeManager {
     const HIBERINTEGRITY: &str = "hiberintegrity";
 
     /// Create a new VolumeManager.
-    pub fn new() -> Result<Self> {
+    fn new() -> Result<Self> {
         let partition1 = stateful_block_partition_one()?;
         let vg_name = get_vg_name(&partition1)?;
         Ok(Self { vg_name })

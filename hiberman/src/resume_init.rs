@@ -20,7 +20,7 @@ use crate::cookie::HibernateCookieValue;
 use crate::files::create_resume_in_progress_file;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::ResumeInitOptions;
-use crate::volume::VolumeManager;
+use crate::volume::VOLUME_MANAGER;
 
 pub struct ResumeInitConductor {
     options: ResumeInitOptions,
@@ -131,7 +131,7 @@ impl ResumeInitConductor {
         // to a crash within this setup code.
         set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
             .context("Failed to set hibernate cookie to NoResume")?;
-        let volmgr = VolumeManager::new().context("Failed to create volume manager")?;
+        let volmgr = VOLUME_MANAGER.read().unwrap();
 
         volmgr
             .setup_stateful_snapshots()

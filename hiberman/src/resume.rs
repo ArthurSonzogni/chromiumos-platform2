@@ -52,6 +52,7 @@ use crate::snapdev::SnapshotMode;
 use crate::volume::ActiveMount;
 use crate::volume::PendingStatefulMerge;
 use crate::volume::VolumeManager;
+use crate::volume::VOLUME_MANAGER;
 
 /// The expected size of a TPM key.
 const TPM_SEED_SIZE: usize = 32;
@@ -88,8 +89,7 @@ impl ResumeConductor {
         self.options = options;
         // Create a variable that will merge the stateful snapshots when this
         // function returns one way or another.
-        let volume_manager = VolumeManager::new()?;
-        let pending_merge = PendingStatefulMerge::new(&volume_manager)?;
+        let pending_merge = PendingStatefulMerge::new()?;
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
 
@@ -108,7 +108,10 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::Syslog);
 
         // Mount hibermeta for access to logs and metrics. Create it if it doesn't exist yet.
-        let _hibermeta_mount = VolumeManager::new()?.setup_hibermeta_lv(true)?;
+        let _hibermeta_mount = {
+            let volume_manager = VOLUME_MANAGER.read().unwrap();
+            volume_manager.setup_hibermeta_lv(true)?
+        };
 
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
@@ -145,7 +148,7 @@ impl ResumeConductor {
             }
         };
 
-        let volume_manager = VolumeManager::new()?;
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
 
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate
@@ -322,12 +325,9 @@ impl ResumeConductor {
     fn setup_snapshot_device(&mut self, new_hiberimage: bool, user_key: SecureBlob) -> Result<()> {
         // Load the TPM derived key.
         let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
 
-        VolumeManager::new()?.setup_hiberimage(
-            tpm_key.as_ref(),
-            user_key.as_ref(),
-            new_hiberimage,
-        )?;
+        volume_manager.setup_hiberimage(tpm_key.as_ref(), user_key.as_ref(), new_hiberimage)?;
 
         SnapshotDevice::new(SnapshotMode::Read)?
             .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE)?)

@@ -38,7 +38,7 @@ use anyhow::Result;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
 use suspend::SuspendConductor;
-use volume::VolumeManager;
+use volume::VOLUME_MANAGER;
 
 /// Send an abort resume request to the hiberman process driving resume.
 pub fn abort_resume(options: AbortResumeOptions) -> Result<()> {
@@ -76,7 +76,7 @@ pub fn resume(options: ResumeOptions) -> Result<()> {
 /// underlying logical volume, as well as the integrity DM devices and
 /// logical volume.
 pub fn teardown_hiberimage() -> Result<()> {
-    let volume_manager = VolumeManager::new()?;
+    let volume_manager = VOLUME_MANAGER.read().unwrap();
 
     if volume_manager.hiberimage_exists() {
         SnapshotDevice::new(SnapshotMode::Read)?.release_block_device()?;
