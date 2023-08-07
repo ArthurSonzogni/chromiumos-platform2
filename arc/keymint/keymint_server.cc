@@ -129,7 +129,7 @@ void KeyMintServer::RunKeyMintRequest(
 }
 
 template <typename KmMember, typename KmResponse>
-void KeyMintServer::RunKeyMintRequest_EarlyBootEnded(
+void KeyMintServer::RunKeyMintRequest_EmptyInput(
     const base::Location& location,
     KmMember member,
     base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
@@ -159,7 +159,7 @@ void KeyMintServer::RunKeyMintRequest_EarlyBootEnded(
 }
 
 template <typename KmMember, typename KmRequest, typename KmResponse>
-void KeyMintServer::RunKeyMintRequest_DeviceLocked(
+void KeyMintServer::RunKeyMintRequest_SingleInput(
     const base::Location& location,
     KmMember member,
     std::unique_ptr<KmRequest> request,
@@ -437,9 +437,9 @@ void KeyMintServer::DeviceLocked(
       std::move(callback));
 
   // Call KeyMint.
-  RunKeyMintRequest_DeviceLocked(FROM_HERE,
-                                 &::keymaster::AndroidKeymaster::DeviceLocked,
-                                 std::move(km_request), std::move(task_lambda));
+  RunKeyMintRequest_SingleInput(FROM_HERE,
+                                &::keymaster::AndroidKeymaster::DeviceLocked,
+                                std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
@@ -452,9 +452,9 @@ void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
       std::move(callback));
 
   // Call KeyMint.
-  RunKeyMintRequest_EarlyBootEnded(
-      FROM_HERE, &::keymaster::AndroidKeymaster::EarlyBootEnded,
-      std::move(task_lambda));
+  RunKeyMintRequest_EmptyInput(FROM_HERE,
+                               &::keymaster::AndroidKeymaster::EarlyBootEnded,
+                               std::move(task_lambda));
 }
 
 void KeyMintServer::ConvertStorageKeyToEphemeral(
@@ -582,6 +582,71 @@ void KeyMintServer::Abort(uint64_t op_handle, AbortCallback callback) {
   // Call keymint.
   RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::AbortOperation,
                     std::move(km_request), std::move(task_lambda));
+}
+
+void KeyMintServer::GetSharedSecretParameters(
+    GetSharedSecretParametersCallback callback) {
+  auto task_lambda = base::BindOnce(
+      [](GetSharedSecretParametersCallback callback,
+         std::unique_ptr<::keymaster::GetHmacSharingParametersResponse>
+             km_response) {
+        // Prepare mojo response.
+        CHECK(km_response);
+        auto response = MakeGetSharedSecretParametersResult(*km_response);
+        // Run callback.
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest_EmptyInput(
+      FROM_HERE, &::keymaster::AndroidKeymaster::GetHmacSharingParameters,
+      std::move(task_lambda));
+}
+
+void KeyMintServer::ComputeSharedSecret(
+    const std::vector<arc::mojom::keymint::SharedSecretParametersPtr> request,
+    ComputeSharedSecretCallback callback) {
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request = MakeComputeSharedSecretRequest(
+      request, backend_.keymint()->message_version());
+
+  // Validate the |km_request| before passing to Reference impl.
+  if (km_request->params_array.params_array == nullptr) {
+    auto response = arc::mojom::keymint::ByteArrayOrError::NewError(
+        KM_ERROR_MEMORY_ALLOCATION_FAILED);
+    std::move(callback).Run(std::move(response));
+    return;
+  }
+
+  // Validate nonce size for each shared secret parameter.
+  for (size_t i = 0; i < request.size(); i++) {
+    if (sizeof(km_request->params_array.params_array[i].nonce) !=
+        request[i]->nonce.size()) {
+      auto response = arc::mojom::keymint::ByteArrayOrError::NewError(
+          KM_ERROR_INVALID_ARGUMENT);
+      std::move(callback).Run(std::move(response));
+      return;
+    }
+  }
+
+  auto task_lambda = base::BindOnce(
+      [](ComputeSharedSecretCallback callback,
+         std::unique_ptr<::keymaster::ComputeSharedHmacResponse> km_response) {
+        // Prepare mojo response.
+        CHECK(km_response);
+        auto response = MakeComputeSharedSecretResult(*km_response);
+
+        // Run callback.
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest_SingleInput(
+      FROM_HERE, &::keymaster::AndroidKeymaster::ComputeSharedHmac,
+      std::move(km_request), std::move(task_lambda));
 }
 
 }  // namespace arc::keymint

@@ -101,6 +101,14 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
 
   void Abort(uint64_t op_handle, AbortCallback callback) override;
 
+  void GetSharedSecretParameters(
+      GetSharedSecretParametersCallback callback) override;
+
+  void ComputeSharedSecret(
+      const std::vector<arc::mojom::keymint::SharedSecretParametersPtr>
+          secret_params,
+      ComputeSharedSecretCallback callback) override;
+
  private:
   class Backend {
    public:
@@ -134,14 +142,14 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   // TODO(b/292142659): Cleanup multiple template functions for
   // |RunKeyMintRequest|.
   template <typename KmMember, typename KmRequest, typename KmResponse>
-  void RunKeyMintRequest_DeviceLocked(
+  void RunKeyMintRequest_SingleInput(
       const base::Location& location,
       KmMember member,
       std::unique_ptr<KmRequest> request,
       base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
 
   template <typename KmMember, typename KmResponse>
-  void RunKeyMintRequest_EarlyBootEnded(
+  void RunKeyMintRequest_EmptyInput(
       const base::Location& location,
       KmMember member,
       base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);

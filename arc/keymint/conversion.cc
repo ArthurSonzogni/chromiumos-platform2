@@ -387,7 +387,7 @@ std::unique_ptr<::keymaster::FinishOperationRequest> MakeFinishOperationRequest(
       keymint_message_version);
 
   if (request.is_null()) {
-    LOG(ERROR) << "KeyMint Error : Finish Operation Request is null";
+    LOG(ERROR) << "KeyMint Error: Finish Operation Request is null";
     return out;
   }
 
@@ -413,6 +413,44 @@ std::unique_ptr<::keymaster::FinishOperationRequest> MakeFinishOperationRequest(
   // If they are added in future, they will be converted here.
   ConvertToKeymasterMessage(std::move(key_param_array),
                             &out->additional_params);
+  return out;
+}
+
+std::unique_ptr<::keymaster::ComputeSharedHmacRequest>
+MakeComputeSharedSecretRequest(
+    const std::vector<arc::mojom::keymint::SharedSecretParametersPtr>& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::ComputeSharedHmacRequest>(
+      keymint_message_version);
+
+  // Allocate memory for HmacSharingParametersArray.
+  out->params_array.params_array =
+      new (std::nothrow)::keymaster::HmacSharingParameters[request.size()];
+  if (out->params_array.params_array == nullptr) {
+    LOG(ERROR)
+        << "KeyMint Error: Null Pointer received for ComputeSharedHmacRequest";
+    return out;
+  }
+  out->params_array.num_params = request.size();
+
+  // Transform each shared secret's nonce and seed to Keymaster request.
+  for (size_t i = 0; i < request.size(); ++i) {
+    out->params_array.params_array[i].seed = {request[i]->seed.data(),
+                                              request[i]->seed.size()};
+
+    // Only copy memory if the nonce size is same for the Keymaster request
+    // and Shared secret parameter.
+    if (sizeof(out->params_array.params_array[i].nonce) !=
+        request[i]->nonce.size()) {
+      LOG(ERROR)
+          << "KeyMint Error: Different Nonce Size for Shared Secret Parameter";
+      return out;
+    }
+    std::copy(request[i]->nonce.data(),
+              request[i]->nonce.data() + request[i]->nonce.size(),
+              out->params_array.params_array[i].nonce);
+  }
+
   return out;
 }
 
@@ -602,6 +640,39 @@ std::vector<uint8_t> MakeFinishResult(
   }
   return ConvertFromKeymasterMessage(km_response.output.begin(),
                                      km_response.output.available_read());
+}
+
+arc::mojom::keymint::SharedSecretParametersOrErrorPtr
+MakeGetSharedSecretParametersResult(
+    const ::keymaster::GetHmacSharingParametersResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::SharedSecretParametersOrError::NewError(
+        km_response.error);
+  }
+
+  // Create seed and nonce.
+  std::vector<uint8_t> seed = ConvertFromKeymasterMessage(
+      km_response.params.seed.begin(), km_response.params.seed.size());
+  std::vector<uint8_t> nonce(std::begin(km_response.params.nonce),
+                             std::end(km_response.params.nonce));
+
+  auto params = arc::mojom::keymint::SharedSecretParameters::New(
+      std::move(seed), std::move(nonce));
+
+  return arc::mojom::keymint::SharedSecretParametersOrError::
+      NewSecretParameters(std::move(params));
+}
+
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeComputeSharedSecretResult(
+    const ::keymaster::ComputeSharedHmacResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::ByteArrayOrError::NewError(km_response.error);
+  }
+
+  std::vector<uint8_t> result(
+      km_response.sharing_check.data,
+      km_response.sharing_check.data + km_response.sharing_check.data_length);
+  return arc::mojom::keymint::ByteArrayOrError::NewOutput(std::move(result));
 }
 
 }  // namespace arc::keymint

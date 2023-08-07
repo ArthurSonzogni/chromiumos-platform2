@@ -90,6 +90,11 @@ std::unique_ptr<::keymaster::FinishOperationRequest> MakeFinishOperationRequest(
     const arc::mojom::keymint::FinishRequestPtr& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::ComputeSharedHmacRequest>
+MakeComputeSharedSecretRequest(
+    const std::vector<arc::mojom::keymint::SharedSecretParametersPtr>& request,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
 MakeGetKeyCharacteristicsResult(
@@ -118,6 +123,12 @@ std::optional<arc::mojom::keymint::BeginResultPtr> MakeBeginResult(
 std::vector<uint8_t> MakeFinishResult(
     const ::keymaster::FinishOperationResponse& km_response, uint32_t& error);
 
+arc::mojom::keymint::SharedSecretParametersOrErrorPtr
+MakeGetSharedSecretParametersResult(
+    const ::keymaster::GetHmacSharingParametersResponse& km_response);
+
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeComputeSharedSecretResult(
+    const ::keymaster::ComputeSharedHmacResponse& km_response);
 }  // namespace arc::keymint
 
 #endif  // ARC_KEYMINT_CONVERSION_H_
