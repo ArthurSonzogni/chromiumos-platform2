@@ -186,6 +186,9 @@ libbrillo_sublibs = [
     all_dependent_pkg_deps = [ "openssl" ]
     deps = [ ":libbrillo-core" ]
     sources = [ "brillo/cryptohome.cc" ]
+
+    # OpenSSL 3.0 has deprecated declarations.
+    cflags_cc = [ "-Wno-deprecated-declarations" ]
   },
 
   {
@@ -290,6 +293,9 @@ foreach(attr, libbrillo_sublibs) {
     }
     if (defined(attr.cflags)) {
       cflags = attr.cflags
+    }
+    if (defined(attr.cflags_cc)) {
+      cflags_cc = attr.cflags_cc
     }
     if (defined(attr.configs)) {
       configs += attr.configs
