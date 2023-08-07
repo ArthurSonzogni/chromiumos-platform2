@@ -2077,6 +2077,8 @@ bool AttestationService::ActivateAttestationKeyInternal(
   if (certificate) {
     *certificate = certificate_local;
   }
+  metrics_.ReportAttestationOpsStatus(kAttestationActivateAttestationKey,
+                                      AttestationOpsStatus::kSuccess);
   return true;
 }
 
