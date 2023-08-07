@@ -37,13 +37,18 @@ ErrorActionSet PopulateActionFromRetry(const hwsec::TPMRetryAction retry) {
       return ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot});
     case hwsec::TPMRetryAction::kDefend:
       return ErrorActionSet(PrimaryAction::kTpmLockout);
+    case hwsec::TPMRetryAction::kPinWeaverExpired:
+      return ErrorActionSet(PrimaryAction::kLeExpired);
+    case hwsec::TPMRetryAction::kPinWeaverLockedOut:
+      return ErrorActionSet(PrimaryAction::kLeLockedOut);
     case hwsec::TPMRetryAction::kUserAuth:
       return ErrorActionSet({PossibleAction::kAuth});
     case hwsec::TPMRetryAction::kNoRetry:
     case hwsec::TPMRetryAction::kEllipticCurveScalarOutOfRange:
     case hwsec::TPMRetryAction::kUserPresence:
     case hwsec::TPMRetryAction::kSpaceNotFound:
-      return ErrorActionSet({PossibleAction::kDevCheckUnexpectedState});
+    case hwsec::TPMRetryAction::kPinWeaverOutOfSync:
+      return ErrorActionSet({PossibleAction::kPowerwash});
     case hwsec::TPMRetryAction::kNone:
       return NoErrorAction();
   }

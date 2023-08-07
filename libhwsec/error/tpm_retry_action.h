@@ -43,7 +43,7 @@ enum class TPMRetryAction {
   kUserAuth,
 
   // Action failed - Retrying won't change the outcome.
-  // Recommended action: The upper layer should know what to do. And handles it
+  // Recommended action: The upper layer should know what to do and handles it
   // correctly.
   kNoRetry,
 
@@ -57,12 +57,27 @@ enum class TPMRetryAction {
   kUserPresence,
 
   // Action failed - The space for this operation is not found.
-  // Recommended action: The upper layer should know what to do. And handles it
+  // Recommended action: The upper layer should know what to do and handles it
   // correctly.
   kSpaceNotFound,
 
+  // Action failed - PinWeaver operation failed due to credential expired.
+  // Recommended action: The upper layer should know what to do and handles it
+  // correctly.
+  kPinWeaverExpired,
+
+  // Action failed - PinWeaver operation failed due to too many attempts as per
+  // delay schedule.
+  // Recommended action: The upper layer should know what to do and handles it
+  // correctly.
+  kPinWeaverLockedOut,
+
+  // Action failed - PinWeaver operation failed due to out-of-sync root hash.
+  // Recommended action: Sync the root hash. Perform log replay if needed.
+  kPinWeaverOutOfSync,
+
   // The max value should equal to the last item.
-  kMaxValue = kSpaceNotFound,
+  kMaxValue = kPinWeaverOutOfSync,
 };
 
 // Gets the name of retry action.

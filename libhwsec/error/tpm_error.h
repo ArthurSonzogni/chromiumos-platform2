@@ -88,6 +88,7 @@ typedef int64_t UnifiedError;
 // base+0x800 to base+0x87F       Allocated to tpm_manager error.
 // base+0x880 to base+0x8FF       Allocated to tpm_manager/nvram error.
 // base+0x900 to base+0x97F       Allocated to elliptic curve and related.
+// base+0x980 to base+0x9FF       Allocated to pinweaver error.
 // base+0xC00 to base+0xFFF       Allocated to hashed TPMError.
 
 // When reporting the unified error code, bit 16 (0x10000) is set to indicate
@@ -115,6 +116,11 @@ inline constexpr UnifiedError kUnifiedErrorNvramMax =
 
 inline constexpr UnifiedError kUnifiedErrorECBase = kHwsecTpmErrorBase + 0x900;
 inline constexpr UnifiedError kUnifiedErrorECMax = kHwsecTpmErrorBase + 0x97F;
+
+inline constexpr UnifiedError kUnifiedErrorPinWeaverBase =
+    kHwsecTpmErrorBase + 0x980;
+inline constexpr UnifiedError kUnifiedErrorPinWeaverMax =
+    kHwsecTpmErrorBase + 0x9FF;
 
 inline constexpr UnifiedError kUnifiedErrorHashedTpmErrorBase =
     kHwsecTpmErrorBase + 0xC00;

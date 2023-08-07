@@ -30,6 +30,12 @@ const char* GetTPMRetryActionName(TPMRetryAction action) {
       return "kUserPresence";
     case TPMRetryAction::kSpaceNotFound:
       return "kSpaceNotFound";
+    case TPMRetryAction::kPinWeaverExpired:
+      return "kPinWeaverExpired";
+    case TPMRetryAction::kPinWeaverLockedOut:
+      return "kPinWeaverLockedOut";
+    case TPMRetryAction::kPinWeaverOutOfSync:
+      return "kPinWeaverOutOfSync";
   }
   return "Invalid TPMRetryAction";
 }

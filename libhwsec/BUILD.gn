@@ -75,6 +75,7 @@ static_library("overalls_library") {
 
 source_set("error_library") {
   sources = [
+    "error/pinweaver_error.cc",
     "error/tpm_error.cc",
     "error/tpm_manager_error.cc",
     "error/tpm_nvram_error.cc",
@@ -457,6 +458,7 @@ if (use.test) {
   executable("hwsec_testrunner") {
     sources = [
       "backend/digest_algorithms_test.cc",
+      "error/pinweaver_error_test.cc",
       "error/tpm_error_test.cc",
       "error/tpm_manager_error_test.cc",
       "error/tpm_nvram_error_test.cc",
