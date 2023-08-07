@@ -40,5 +40,11 @@
     "request": [
       "CrosHealthdProbe"
     ]
+  },
+  {
+    "identity": "u:r:cros_runtime_probe:s0",
+    "request": [
+      "CrosHealthdProbe"
+    ]
   }
 ]
