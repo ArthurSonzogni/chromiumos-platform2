@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 
 #include "shill/net/attribute_list.h"
+#include "shill/net/byte_string.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
@@ -467,17 +468,16 @@ bool NetlinkManager::SendOrPostMessage(
   const uint32_t sequence_number = this->GetSequenceNumber();
   const bool is_dump_msg = message->flags() & NLM_F_DUMP;
   NetlinkPendingMessage pending_message(
-      sequence_number, is_dump_msg,
-      ByteString(message->Encode(sequence_number)),
+      sequence_number, is_dump_msg, message->Encode(sequence_number),
       NetlinkResponseHandlerRefPtr(response_handler));
 
   // TODO(samueltan): print this debug message above the actual call to
   // NetlinkSocket::SendMessage in NetlinkManager::SendMessageInternal.
   VLOG(5) << "NL Message " << pending_message.sequence_number << " to send ("
-          << pending_message.message_string.GetLength() << " bytes) ===>";
+          << pending_message.message_string.size() << " bytes) ===>";
   message->Print(6, 7);
-  NetlinkMessage::PrintBytes(8, pending_message.message_string.GetConstData(),
-                             pending_message.message_string.GetLength());
+  NetlinkMessage::PrintBytes(8, pending_message.message_string.data(),
+                             pending_message.message_string.size());
 
   if (is_dump_msg) {
     pending_messages_.push(pending_message);
@@ -535,7 +535,7 @@ bool NetlinkManager::SendMessageInternal(
     const NetlinkPendingMessage& pending_message) {
   VLOG(5) << "Sending NL message " << pending_message.sequence_number;
 
-  if (!sock_->SendMessage(pending_message.message_string)) {
+  if (!sock_->SendMessage(ByteString(pending_message.message_string))) {
     LOG(ERROR) << "Failed to send Netlink message.";
     return false;
   }

@@ -60,14 +60,15 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include <base/cancelable_callback.h>
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/net/byte_string.h"
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler_factory_container.h"
 #include "shill/net/netlink_message.h"
@@ -302,18 +303,19 @@ class SHILL_EXPORT NetlinkManager {
   struct NetlinkPendingMessage {
     NetlinkPendingMessage(uint32_t sequence_number_arg,
                           bool is_dump_request_arg,
-                          ByteString message_string_arg,
+                          base::span<const uint8_t> message_string_arg,
                           NetlinkResponseHandlerRefPtr handler_arg)
         : retries_left(kMaxNlMessageRetries),
           sequence_number(sequence_number_arg),
           is_dump_request(is_dump_request_arg),
-          message_string(message_string_arg),
+          message_string(
+              {std::begin(message_string_arg), std::end(message_string_arg)}),
           handler(handler_arg) {}
 
     int retries_left;
     uint32_t sequence_number;
     bool is_dump_request;
-    ByteString message_string;
+    std::vector<uint8_t> message_string;
     NetlinkResponseHandlerRefPtr handler;
     uint32_t last_received_error;
   };

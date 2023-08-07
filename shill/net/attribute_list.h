@@ -16,6 +16,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
@@ -25,7 +26,6 @@ class AttributeList;
 using AttributeListConstRefPtr = scoped_refptr<const AttributeList>;
 using AttributeListRefPtr = scoped_refptr<AttributeList>;
 
-class ByteString;
 class NetlinkAttribute;
 
 class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
