@@ -77,16 +77,9 @@ bool CrosvmControlImpl::ResizeDisk(const std::string& socket_path,
 }
 
 bool CrosvmControlImpl::BalloonStats(const std::string& socket_path,
-                                     std::optional<base::TimeDelta> timeout,
                                      struct BalloonStatsFfi* stats,
                                      uint64_t* actual) {
-  if (timeout) {
-    uint64_t timeout_ms = timeout->InMilliseconds();
-    return crosvm_client_balloon_stats_with_timeout(socket_path.c_str(),
-                                                    timeout_ms, stats, actual);
-  } else {
-    return crosvm_client_balloon_stats(socket_path.c_str(), stats, actual);
-  }
+  return crosvm_client_balloon_stats(socket_path.c_str(), stats, actual);
 }
 
 bool CrosvmControlImpl::SetBalloonWorkingSetConfig(

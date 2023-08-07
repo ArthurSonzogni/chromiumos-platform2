@@ -29,9 +29,8 @@ VmBaseImpl::VmBaseImpl(Config config)
   CHECK(runtime_dir_.Set(config.runtime_dir));
 }
 
-std::optional<BalloonStats> VmBaseImpl::GetBalloonStats(
-    std::optional<base::TimeDelta> timeout) {
-  return vm_tools::concierge::GetBalloonStats(GetVmSocketPath(), timeout);
+std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
+  return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
 }
 
 std::optional<BalloonWorkingSet> VmBaseImpl::GetBalloonWorkingSet() {

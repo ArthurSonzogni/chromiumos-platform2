@@ -321,11 +321,10 @@ bool CheckProcessExists(pid_t pid) {
   return kill(pid, 0) >= 0 || errno != ESRCH;
 }
 
-std::optional<BalloonStats> GetBalloonStats(
-    std::string socket_path, std::optional<base::TimeDelta> timeout) {
+std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   BalloonStats stats;
-  if (!CrosvmControl::Get()->BalloonStats(
-          socket_path, timeout, &stats.stats_ffi, &stats.balloon_actual)) {
+  if (!CrosvmControl::Get()->BalloonStats(socket_path, &stats.stats_ffi,
+                                          &stats.balloon_actual)) {
     LOG(ERROR) << "Failed to retrieve balloon stats";
     return std::nullopt;
   }

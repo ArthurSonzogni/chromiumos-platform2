@@ -273,8 +273,7 @@ ArcVm::ArcVm(Config config)
       vm_swapping_notify_callback_(
           std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
-      aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)),
-      weak_ptr_factory_(this) {
+      aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {
   if (config.vmm_swap_usage_path.has_value()) {
     vmm_swap_usage_policy_.Init(config.vmm_swap_usage_path.value());
   }
@@ -295,12 +294,6 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
   auto vm_builder = std::move(config.vm_builder);
 
   auto vm = base::WrapUnique(new ArcVm(std::move(config)));
-
-  if (!vm->balloon_stats_thread_.Start()) {
-    LOG(ERROR) << "Failed to start balloon stats thread";
-    vm.reset();
-    return vm;
-  }
 
   if (!vm->SetupLmkdVsock()) {
     vm.reset();
@@ -839,28 +832,16 @@ void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
         std::move(callback), "aggressive balloon is already ongoing");
     return;
   }
-  aggressive_balloon_callback_ = std::move(callback);
-  balloon_stats_thread_.task_runner()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&vm_tools::concierge::GetBalloonStats, GetVmSocketPath(),
-                     std::nullopt),
-      base::BindOnce(&ArcVm::StartAggressiveBalloonTimer,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ArcVm::StartAggressiveBalloonTimer(std::optional<BalloonStats> stats_opt) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!aggressive_balloon_callback_) {
-    return;
-  }
+  auto stats_opt = GetBalloonStats();
   if (!stats_opt) {
     LOG(ERROR) << "Failed to get latest balloon stats";
-    RunFailureAggressiveBalloonCallback(std::move(aggressive_balloon_callback_),
+    RunFailureAggressiveBalloonCallback(std::move(callback),
                                         "failed to get latest balloon stats");
     return;
   }
   LOG(INFO) << "Inflating aggressive balloon";
   aggressive_balloon_target_ = stats_opt->balloon_actual;
+  aggressive_balloon_callback_ = std::move(callback);
   aggressive_balloon_timer_->Start(FROM_HERE, base::Milliseconds(100), this,
                                    &ArcVm::InflateAggressiveBalloonOnTimer);
 }
@@ -976,23 +957,20 @@ uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
       // Load the latest actual balloon size. LMKD may notify multiple process
       // in a very short period and balloon size target can be not reflected to
       // the actual balloon size.
-      auto stats_opt = GetBalloonStats(base::Milliseconds(500));
-      uint64_t balloon_actual;
+      auto stats_opt = GetBalloonStats();
       if (stats_opt) {
-        balloon_actual = stats_opt->balloon_actual;
+        uint64_t balloon_target = proc_size > stats_opt->balloon_actual
+                                      ? 0
+                                      : stats_opt->balloon_actual - proc_size;
+        freed_space = stats_opt->balloon_actual - balloon_target;
+        LOG(INFO) << "Deflated VirtIO balloon to save process (OOM Score: "
+                  << oom_score_adj << ", Size: " << proc_size << ") Balloon: ("
+                  << stats_opt->balloon_actual << ") -> (" << balloon_target
+                  << ")";
+        SetBalloonSize(balloon_target);
       } else {
-        LOG(WARNING) << "Failed to query balloon stats, using target as actual";
-        balloon_actual = aggressive_balloon_target_;
+        LOG(ERROR) << "Failed to get balloon stats on lmkd message";
       }
-      uint64_t balloon_target = proc_size > stats_opt->balloon_actual
-                                    ? 0
-                                    : stats_opt->balloon_actual - proc_size;
-      freed_space = stats_opt->balloon_actual - balloon_target;
-      LOG(INFO) << "Deflated VirtIO balloon to save process (OOM Score: "
-                << oom_score_adj << ", Size: " << proc_size << ") Balloon: ("
-                << stats_opt->balloon_actual << ") -> (" << balloon_target
-                << ")";
-      SetBalloonSize(balloon_target);
       aggressive_balloon_timer_->Stop();
       if (aggressive_balloon_callback_) {
         AggressiveBalloonResponse response;

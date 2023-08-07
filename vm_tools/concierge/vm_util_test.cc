@@ -606,8 +606,7 @@ TEST(VMUtilTest, GetBalloonStats) {
       .unevictable_memory = 12,
   };
 
-  std::optional<BalloonStats> stats =
-      GetBalloonStats("/run/nothing", std::nullopt);
+  std::optional<BalloonStats> stats = GetBalloonStats("/run/nothing");
 
   ASSERT_TRUE(stats);
   ASSERT_EQ(stats->balloon_actual, 100);

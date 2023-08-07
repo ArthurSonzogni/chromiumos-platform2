@@ -1165,7 +1165,7 @@ void Service::RunBalloonPolicy() {
       continue;
     }
 
-    auto stats_opt = vm->GetBalloonStats(base::Milliseconds(100));
+    auto stats_opt = vm->GetBalloonStats();
     if (!stats_opt) {
       // Stats not available. Skip running policies.
       continue;

@@ -8,10 +8,7 @@
 #include <crosvm/crosvm_control.h>
 
 #include <memory>
-#include <optional>
 #include <string>
-
-#include <base/time/time.h>
 
 namespace vm_tools::concierge {
 
@@ -137,7 +134,6 @@ class CrosvmControl {
   //
   // Entries in `BalloonStatsFfi` that are not available will be set to `-1`.
   virtual bool BalloonStats(const std::string& socket_path,
-                            std::optional<base::TimeDelta> timeout,
                             struct BalloonStatsFfi* stats,
                             uint64_t* actual) = 0;
 
