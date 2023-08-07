@@ -53,7 +53,7 @@ static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
 // Stop tethering and return error if tethering cannot be fully started within
 // |kStartTimeout| time.
-static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
+static constexpr base::TimeDelta kStartTimeout = base::Seconds(45);
 // Return error if tethering cannot be fully stopped within |kStopTimeout| time.
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
 
