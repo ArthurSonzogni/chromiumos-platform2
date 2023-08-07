@@ -7,12 +7,13 @@
 #include <linux/netlink.h>
 
 #include <algorithm>
-#include <string>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
@@ -54,9 +55,8 @@ class NetlinkSocketTest : public Test {
 
 class FakeSocketRead {
  public:
-  explicit FakeSocketRead(const ByteString& next_read_string) {
-    next_read_string_ = next_read_string;
-  }
+  explicit FakeSocketRead(base::span<const uint8_t> next_read_string)
+      : next_read_string_(next_read_string.begin(), next_read_string.end()) {}
   // Copies |len| bytes of |next_read_string_| into |buf| and clears
   // |next_read_string_|.
   ssize_t FakeSuccessfulRead(int sockfd,
@@ -68,14 +68,14 @@ class FakeSocketRead {
     if (!buf) {
       return -1;
     }
-    int read_bytes = std::min(len, next_read_string_.GetLength());
-    memcpy(buf, next_read_string_.GetConstData(), read_bytes);
-    next_read_string_.Clear();
+    int read_bytes = std::min(len, next_read_string_.size());
+    memcpy(buf, next_read_string_.data(), read_bytes);
+    next_read_string_.clear();
     return read_bytes;
   }
 
  private:
-  ByteString next_read_string_;
+  std::vector<uint8_t> next_read_string_;
 };
 
 TEST_F(NetlinkSocketTest, InitWorkingTest) {
@@ -129,24 +129,21 @@ TEST_F(NetlinkSocketTest, SendMessageTest) {
   SetUp();
   InitializeSocket(kFakeFd);
 
-  std::string message_string = "This text is really arbitrary";
-  ByteString message(message_string.c_str(), message_string.size());
+  const std::vector<uint8_t> message =
+      net_base::byte_utils::ByteStringToBytes("This text is really arbitrary");
 
   // Good Send.
-  EXPECT_CALL(*mock_sockets_,
-              Send(kFakeFd, message.GetConstData(), message.GetLength(), 0))
-      .WillOnce(Return(message.GetLength()));
+  EXPECT_CALL(*mock_sockets_, Send(kFakeFd, message.data(), message.size(), 0))
+      .WillOnce(Return(message.size()));
   EXPECT_TRUE(netlink_socket_.SendMessage(message));
 
   // Short Send.
-  EXPECT_CALL(*mock_sockets_,
-              Send(kFakeFd, message.GetConstData(), message.GetLength(), 0))
-      .WillOnce(Return(message.GetLength() - 3));
+  EXPECT_CALL(*mock_sockets_, Send(kFakeFd, message.data(), message.size(), 0))
+      .WillOnce(Return(message.size() - 3));
   EXPECT_FALSE(netlink_socket_.SendMessage(message));
 
   // Bad Send.
-  EXPECT_CALL(*mock_sockets_,
-              Send(kFakeFd, message.GetConstData(), message.GetLength(), 0))
+  EXPECT_CALL(*mock_sockets_, Send(kFakeFd, message.data(), message.size(), 0))
       .WillOnce(Return(-1));
   EXPECT_FALSE(netlink_socket_.SendMessage(message));
 
@@ -172,24 +169,25 @@ TEST_F(NetlinkSocketTest, GoodRecvMessageTest) {
   SetUp();
   InitializeSocket(kFakeFd);
 
-  ByteString message;
-  static const std::string next_read_string =
-      "Random text may include things like 'freaking fracking foo'.";
-  static const size_t read_size = next_read_string.size();
-  ByteString expected_results(next_read_string.c_str(), read_size);
+  static const std::vector<uint8_t> expected_results =
+      net_base::byte_utils::ByteStringToBytes(
+          "Random text may include things like 'freaking fracking foo'.");
+
   FakeSocketRead fake_socket_read(expected_results);
 
   // Expect one call to get the size...
   EXPECT_CALL(*mock_sockets_,
               RecvFrom(kFakeFd, _, _, MSG_TRUNC | MSG_PEEK, _, _))
-      .WillOnce(Return(read_size));
+      .WillOnce(Return(expected_results.size()));
 
   // ...and expect a second call to get the data.
-  EXPECT_CALL(*mock_sockets_, RecvFrom(kFakeFd, _, read_size, 0, _, _))
+  EXPECT_CALL(*mock_sockets_,
+              RecvFrom(kFakeFd, _, expected_results.size(), 0, _, _))
       .WillOnce(Invoke(&fake_socket_read, &FakeSocketRead::FakeSuccessfulRead));
 
+  std::vector<uint8_t> message;
   EXPECT_TRUE(netlink_socket_.RecvMessage(&message));
-  EXPECT_TRUE(message.Equals(expected_results));
+  EXPECT_EQ(message, expected_results);
 
   // Destructor.
   EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
@@ -199,7 +197,7 @@ TEST_F(NetlinkSocketTest, BadRecvMessageTest) {
   SetUp();
   InitializeSocket(kFakeFd);
 
-  ByteString message;
+  std::vector<uint8_t> message;
   EXPECT_CALL(*mock_sockets_, RecvFrom(kFakeFd, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(netlink_socket_.RecvMessage(&message));

@@ -7,6 +7,9 @@
 
 #include "shill/net/netlink_socket.h"
 
+#include <vector>
+
+#include <base/containers/span.h>
 #include <gmock/gmock.h>
 
 namespace shill {
@@ -25,9 +28,9 @@ class MockNetlinkSocket : public NetlinkSocket {
 
   MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(int, file_descriptor, (), (const, override));
-  MOCK_METHOD(bool, SendMessage, (const ByteString&), (override));
+  MOCK_METHOD(bool, SendMessage, (base::span<const uint8_t>), (override));
   MOCK_METHOD(bool, SubscribeToEvents, (uint32_t), (override));
-  MOCK_METHOD(bool, RecvMessage, (ByteString*), (override));
+  MOCK_METHOD(bool, RecvMessage, (std::vector<uint8_t>*), (override));
 };
 
 }  // namespace shill

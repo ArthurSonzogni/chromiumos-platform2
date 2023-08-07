@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -127,30 +128,31 @@ class NetlinkManagerTest : public Test {
   // enable a test to get a response to a sent message.  They must be called
   // in the order, above, so that a) a reply message is available to b) have
   // its sequence number replaced, and then c) sent back to the code.
-  void SaveReply(const ByteString& message) { saved_message_ = message; }
+  void SaveReply(base::span<const uint8_t> message) {
+    saved_message_ = {std::begin(message), std::end(message)};
+  }
 
   // Replaces the |saved_message_|'s sequence number with the sent value.
-  bool SendMessage(const ByteString& outgoing_message) {
-    if (outgoing_message.GetLength() < sizeof(nlmsghdr)) {
+  bool SendMessage(base::span<const uint8_t> outgoing_message) {
+    if (outgoing_message.size() < sizeof(nlmsghdr)) {
       LOG(ERROR) << "Outgoing message is too short";
       return false;
     }
     const nlmsghdr* outgoing_header =
-        reinterpret_cast<const nlmsghdr*>(outgoing_message.GetConstData());
+        reinterpret_cast<const nlmsghdr*>(outgoing_message.data());
 
-    if (saved_message_.GetLength() < sizeof(nlmsghdr)) {
+    if (saved_message_.size() < sizeof(nlmsghdr)) {
       LOG(ERROR) << "Saved message is too short; have you called |SaveReply|?";
       return false;
     }
-    nlmsghdr* reply_header =
-        reinterpret_cast<nlmsghdr*>(saved_message_.GetData());
+    nlmsghdr* reply_header = reinterpret_cast<nlmsghdr*>(saved_message_.data());
 
     reply_header->nlmsg_seq = outgoing_header->nlmsg_seq;
     saved_sequence_number_ = reply_header->nlmsg_seq;
     return true;
   }
 
-  bool ReplyToSentMessage(ByteString* message) {
+  bool ReplyToSentMessage(std::vector<uint8_t>* message) {
     if (!message) {
       return false;
     }
@@ -158,7 +160,7 @@ class NetlinkManagerTest : public Test {
     return true;
   }
 
-  bool ReplyWithRandomMessage(ByteString* message) {
+  bool ReplyWithRandomMessage(std::vector<uint8_t>* message) {
     GetFamilyMessage get_family_message;
     // Any number that's not 0 or 1 is acceptable, here.  Zero is bad because
     // we want to make sure that this message is different than the main
@@ -169,8 +171,8 @@ class NetlinkManagerTest : public Test {
     if (!message) {
       return false;
     }
-    *message = ByteString(
-        get_family_message.Encode(saved_sequence_number_ + kRandomOffset));
+    *message =
+        get_family_message.Encode(saved_sequence_number_ + kRandomOffset);
     return true;
   }
 
@@ -254,7 +256,7 @@ class NetlinkManagerTest : public Test {
   MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
   MockSockets* sockets_;               // Owned by |netlink_socket_|.
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
-  ByteString saved_message_;
+  std::vector<uint8_t> saved_message_;
   uint32_t saved_sequence_number_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
@@ -339,7 +341,7 @@ TEST_F(NetlinkManagerTest, GetFamily) {
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 
   // The sequence number is immaterial since it'll be overwritten.
-  SaveReply(ByteString(new_family_message.Encode(kRandomSequenceNumber)));
+  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
@@ -368,7 +370,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 
   // The sequence number is immaterial since it'll be overwritten.
-  SaveReply(ByteString(new_family_message.Encode(kRandomSequenceNumber)));
+  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
@@ -657,9 +659,9 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   const uint32_t kSequenceNumber = 32;  // Arbitrary (replaced, later).
   NewScanResultsMessage new_scan_results;
   new_scan_results.AddFlag(NLM_F_MULTI);
-  ByteString new_scan_results_bytes(new_scan_results.Encode(kSequenceNumber));
-  MutableNetlinkPacket received_message(new_scan_results_bytes.GetData(),
-                                        new_scan_results_bytes.GetLength());
+  const auto new_scan_results_bytes = new_scan_results.Encode(kSequenceNumber);
+  MutableNetlinkPacket received_message(new_scan_results_bytes.data(),
+                                        new_scan_results_bytes.size());
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
 
   // Verify that the message-specific handler is called.
@@ -674,10 +676,10 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   // Build a Done message with the sent-message sequence number.
   DoneMessage done_message;
   done_message.AddFlag(NLM_F_MULTI);
-  ByteString done_message_bytes(
-      done_message.Encode(netlink_socket_->GetLastSequenceNumber()));
-  NetlinkPacket done_packet(done_message_bytes.GetData(),
-                            done_message_bytes.GetLength());
+  const auto done_message_bytes =
+      done_message.Encode(netlink_socket_->GetLastSequenceNumber());
+  NetlinkPacket done_packet(done_message_bytes.data(),
+                            done_message_bytes.size());
 
   // Verify that the message-specific auxiliary handler is called for the done
   // message, with the correct message type.

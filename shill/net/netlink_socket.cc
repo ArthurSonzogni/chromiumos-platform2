@@ -10,7 +10,6 @@
 
 #include <base/logging.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/sockets.h"
@@ -45,7 +44,7 @@ bool NetlinkSocket::Init() {
   return true;
 }
 
-bool NetlinkSocket::RecvMessage(ByteString* message) {
+bool NetlinkSocket::RecvMessage(std::vector<uint8_t>* message) {
   if (!message) {
     LOG(ERROR) << "Null |message|";
     return false;
@@ -53,20 +52,20 @@ bool NetlinkSocket::RecvMessage(ByteString* message) {
 
   // Determine the amount of data currently waiting.
   const size_t kFakeReadByteCount = 1;
-  ByteString fake_read(kFakeReadByteCount);
+  std::vector<uint8_t> fake_read(kFakeReadByteCount);
   ssize_t result;
-  result = sockets_->RecvFrom(file_descriptor_, fake_read.GetData(),
-                              fake_read.GetLength(), MSG_TRUNC | MSG_PEEK,
-                              nullptr, nullptr);
+  result =
+      sockets_->RecvFrom(file_descriptor_, fake_read.data(), fake_read.size(),
+                         MSG_TRUNC | MSG_PEEK, nullptr, nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed.";
     return false;
   }
 
   // Read the data that was waiting when we did our previous read.
-  message->Resize(result);
-  result = sockets_->RecvFrom(file_descriptor_, message->GetData(),
-                              message->GetLength(), 0, nullptr, nullptr);
+  message->resize(result, 0);
+  result = sockets_->RecvFrom(file_descriptor_, message->data(),
+                              message->size(), 0, nullptr, nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Second socket recvfrom failed.";
     return false;
@@ -74,16 +73,16 @@ bool NetlinkSocket::RecvMessage(ByteString* message) {
   return true;
 }
 
-bool NetlinkSocket::SendMessage(const ByteString& out_msg) {
-  ssize_t result = sockets_->Send(file_descriptor(), out_msg.GetConstData(),
-                                  out_msg.GetLength(), 0);
+bool NetlinkSocket::SendMessage(base::span<const uint8_t> out_msg) {
+  ssize_t result =
+      sockets_->Send(file_descriptor(), out_msg.data(), out_msg.size(), 0);
   if (!result) {
     PLOG(ERROR) << "Send failed.";
     return false;
   }
-  if (result != static_cast<ssize_t>(out_msg.GetLength())) {
-    LOG(ERROR) << "Only sent " << result << " bytes out of "
-               << out_msg.GetLength() << ".";
+  if (result != static_cast<ssize_t>(out_msg.size())) {
+    LOG(ERROR) << "Only sent " << result << " bytes out of " << out_msg.size()
+               << ".";
     return false;
   }
 

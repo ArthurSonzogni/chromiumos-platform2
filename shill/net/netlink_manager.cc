@@ -15,7 +15,6 @@
 #include <base/time/time.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
@@ -375,9 +374,9 @@ uint16_t NetlinkManager::GetFamily(
     }
 
     // Read and process any messages.
-    ByteString received;
+    std::vector<uint8_t> received;
     sock_->RecvMessage(&received);
-    InputData input_data(received.GetData(), received.GetLength());
+    InputData input_data(received.data(), received.size());
     OnRawNlMessageReceived(&input_data);
     if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
       uint16_t family_id = message_type.family_id;
@@ -535,7 +534,7 @@ bool NetlinkManager::SendMessageInternal(
     const NetlinkPendingMessage& pending_message) {
   VLOG(5) << "Sending NL message " << pending_message.sequence_number;
 
-  if (!sock_->SendMessage(ByteString(pending_message.message_string))) {
+  if (!sock_->SendMessage(pending_message.message_string)) {
     LOG(ERROR) << "Failed to send Netlink message.";
     return false;
   }

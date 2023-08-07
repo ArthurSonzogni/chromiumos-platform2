@@ -26,7 +26,9 @@
 #define SHILL_NET_NETLINK_SOCKET_H_
 
 #include <memory>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -36,7 +38,6 @@
 namespace shill {
 
 class Sockets;
-class ByteString;
 
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
@@ -64,10 +65,10 @@ class SHILL_EXPORT NetlinkSocket {
   // Reads data from the socket into |message| and returns true if successful.
   // The |message| parameter will be resized to hold the entirety of the read
   // message (and any data in |message| will be overwritten).
-  virtual bool RecvMessage(ByteString* message);
+  virtual bool RecvMessage(std::vector<uint8_t>* message);
 
   // Sends a message, returns true if successful.
-  virtual bool SendMessage(const ByteString& message);
+  virtual bool SendMessage(base::span<const uint8_t> message);
 
   // Subscribes to netlink broadcast events.
   virtual bool SubscribeToEvents(uint32_t group_id);
