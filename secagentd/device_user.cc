@@ -18,9 +18,12 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/types/expected.h"
 #include "base/uuid.h"
+#include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
+#include "policy/device_local_account_policy_util.h"
 
 namespace secagentd {
 
@@ -221,6 +224,10 @@ void DeviceUser::UpdateDeviceUser() {
       redacted_usernames_.push_front(username);
     }
 
+    if (SetDeviceUserIfLocalAccount(username)) {
+      return;
+    }
+
     // Check if username file exists in daemon-store.
     std::string username_file_path =
         "run/daemon-store/secagentd/" + sanitized + "/username";
@@ -313,6 +320,25 @@ bool DeviceUser::IsAffiliated(
   }
 
   return user_id == device_id_;
+}
+
+bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
+  base::expected<DeviceAccountType, policy::GetDeviceLocalAccountTypeError>
+      account_type = policy::GetDeviceLocalAccountType(&username);
+
+  if (!account_type.has_value()) {
+    return false;
+  }
+
+  auto it = local_account_map_.find(account_type.value());
+  if (it == local_account_map_.end()) {
+    LOG(ERROR) << "Unrecognized local account " << account_type.value();
+    device_user_ = "Unknown";
+  } else {
+    device_user_ = it->second;
+  }
+
+  return true;
 }
 
 }  // namespace secagentd

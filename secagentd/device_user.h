@@ -8,6 +8,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -15,11 +16,15 @@
 #include "base/files/file_path.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
+#include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "session_manager/dbus-proxies.h"
 
 namespace secagentd {
+
+using DeviceAccountType =
+    enterprise_management::DeviceLocalAccountInfoProto_AccountType;
 
 static constexpr char kStarted[] = "started";
 static constexpr char kStopping[] = "stopping";
@@ -110,6 +115,9 @@ class DeviceUser : public DeviceUserInterface {
       const std::string& account_id);
   // Return whether the current user is affiliated.
   bool IsAffiliated(const enterprise_management::PolicyData& user_policy);
+  // Returns true if the given username is a local account (kiosk, managed
+  // guest, etc.) and updates the device user.
+  bool SetDeviceUserIfLocalAccount(std::string& username);
 
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
@@ -120,6 +128,22 @@ class DeviceUser : public DeviceUserInterface {
   std::list<std::string> redacted_usernames_;
   std::string device_id_ = "";
   const base::FilePath root_path_;
+  const std::unordered_map<DeviceAccountType, std::string> local_account_map_ =
+      {{enterprise_management::DeviceLocalAccountInfoProto::
+            ACCOUNT_TYPE_PUBLIC_SESSION,
+        "ManagedGuest"},
+       {enterprise_management::DeviceLocalAccountInfoProto::
+            ACCOUNT_TYPE_KIOSK_APP,
+        "KioskApp"},
+       {enterprise_management::DeviceLocalAccountInfoProto::
+            ACCOUNT_TYPE_KIOSK_ANDROID_APP,
+        "KioskAndroidApp"},
+       {enterprise_management::DeviceLocalAccountInfoProto::
+            ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
+        "SAML-PublicSession"},
+       {enterprise_management::DeviceLocalAccountInfoProto::
+            ACCOUNT_TYPE_WEB_KIOSK_APP,
+        "KioskApp"}};
 };
 
 }  // namespace secagentd

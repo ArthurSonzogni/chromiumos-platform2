@@ -684,4 +684,44 @@ TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
+TEST_F(DeviceUserTestFixture, TestLocalAccount) {
+  const std::unordered_map<std::string, std::string> local_account_map = {
+      {"6b696f736b5f617070@public-accounts.device-local.localhost",
+       "ManagedGuest"},
+      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost", "KioskApp"},
+      {"6b696f736b5f617070@arc-kiosk-apps.device-local.localhost",
+       "KioskAndroidApp"},
+      {"6b696f736b5f617070@saml-public-accounts.device-local.localhost",
+       "SAML-PublicSession"},
+      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost", "KioskApp"}};
+
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+
+  for (auto const& [key, val] : local_account_map) {
+    EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+        .WillOnce(WithArg<0>(Invoke([](bool* is_guest) {
+          *is_guest = false;
+          return true;
+        })));
+    EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+        .WillOnce(WithArg<0>(Invoke([&key](std::string* username) {
+          *username = key;
+          return true;
+        })));
+
+    registration_cb_.Run(kStarted);
+    task_environment_.FastForwardBy(base::Seconds(2));
+
+    EXPECT_EQ(val, device_user_->GetDeviceUser());
+  }
+}
+
 }  // namespace secagentd::testing
