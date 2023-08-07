@@ -88,8 +88,8 @@ impl ResumeConductor {
         self.options = options;
         // Create a variable that will merge the stateful snapshots when this
         // function returns one way or another.
-        let mut volume_manager = VolumeManager::new()?;
-        let pending_merge = PendingStatefulMerge::new(&mut volume_manager)?;
+        let volume_manager = VolumeManager::new()?;
+        let pending_merge = PendingStatefulMerge::new(&volume_manager)?;
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
 
@@ -145,7 +145,7 @@ impl ResumeConductor {
             }
         };
 
-        let mut volume_manager = VolumeManager::new()?;
+        let volume_manager = VolumeManager::new()?;
 
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate

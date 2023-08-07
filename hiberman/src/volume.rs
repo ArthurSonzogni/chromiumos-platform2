@@ -112,12 +112,12 @@ const SECTOR_SIZE: u64 = 512;
 /// The pending stateful merge is an object that when dropped will ask the
 /// volume manager to merge the stateful snapshots.
 pub struct PendingStatefulMerge<'a> {
-    pub volume_manager: &'a mut VolumeManager,
+    pub volume_manager: &'a VolumeManager,
     monitors: Vec<DmSnapshotSpaceMonitor>,
 }
 
 impl<'a> PendingStatefulMerge<'a> {
-    pub fn new(volume_manager: &'a mut VolumeManager) -> Result<Self> {
+    pub fn new(volume_manager: &'a VolumeManager) -> Result<Self> {
         let monitors = volume_manager.monitor_stateful_snapshots()?;
         Ok(Self {
             volume_manager,
@@ -184,20 +184,20 @@ impl VolumeManager {
     }
 
     /// Activate the thinpool in RO mode.
-    pub fn activate_thinpool_ro(&mut self) -> Result<()> {
+    pub fn activate_thinpool_ro(&self) -> Result<()> {
         activate_lv(&self.vg_name, THINPOOL_NAME).context("Failed to activate thinpool")?;
         self.set_thinpool_mode(ThinpoolMode::ReadOnly)
             .context("Failed to make thin-pool RO")
     }
 
     /// Change the RO thinpool to be RW.
-    pub fn make_thinpool_rw(&mut self) -> Result<()> {
+    pub fn make_thinpool_rw(&self) -> Result<()> {
         self.set_thinpool_mode(ThinpoolMode::ReadWrite)
             .context("Failed to make thin-pool RW")
     }
 
     /// Set up the hibermeta logical volume.
-    pub fn setup_hibermeta_lv(&mut self, create: bool) -> Result<ActiveMount> {
+    pub fn setup_hibermeta_lv(&self, create: bool) -> Result<ActiveMount> {
         if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
             return Err(HibernateError::HibernateVolumeError())
                 .context(format!("{HIBERMETA_DIR} is already mounted"));
@@ -319,7 +319,7 @@ impl VolumeManager {
     }
 
     /// Mount the hibermeta LV if it isn't already mounted
-    pub fn mount_hibermeta(&mut self) -> Result<ActiveMount> {
+    pub fn mount_hibermeta(&self) -> Result<ActiveMount> {
         if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
             return Err(HibernateError::HibernateVolumeError())
                 .context(format!("{HIBERMETA_DIR} is already mounted"));
@@ -349,7 +349,7 @@ impl VolumeManager {
     }
 
     /// Create the hibermeta volume.
-    fn create_hibermeta_lv(&mut self) -> Result<()> {
+    fn create_hibermeta_lv(&self) -> Result<()> {
         self.create_lv(HibernateVolume::Meta)?;
 
         let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
@@ -421,7 +421,7 @@ impl VolumeManager {
     }
 
     /// Set up dm-snapshots for the stateful LVs.
-    pub fn setup_stateful_snapshots(&mut self) -> Result<()> {
+    pub fn setup_stateful_snapshots(&self) -> Result<()> {
         self.create_dm_snapshot_cow_files()?;
 
         for lv_name in Self::get_snapshot_file_names()? {
@@ -432,7 +432,7 @@ impl VolumeManager {
     }
 
     /// Set up a dm-snapshot for a single named LV.
-    fn setup_snapshot(&mut self, name: &str) -> Result<()> {
+    fn setup_snapshot(&self, name: &str) -> Result<()> {
         info!("Setting up snapshot for LV: {}", name);
         let path = snapshot_file_path(name);
         let loop_path = Self::setup_loop_device(path)?;
@@ -513,10 +513,7 @@ impl VolumeManager {
     /// Kick off merges of all dm-snapshots managed by hiberman, and wait for
     /// them to complete. Takes in a vector of space monitor threads which will
     /// be stopped once the merge has commenced.
-    pub fn merge_stateful_snapshots(
-        &mut self,
-        monitors: &mut [DmSnapshotSpaceMonitor],
-    ) -> Result<()> {
+    pub fn merge_stateful_snapshots(&self, monitors: &mut [DmSnapshotSpaceMonitor]) -> Result<()> {
         if !snapshot_dir().exists() {
             info!("No snapshot directory, skipping merges");
             return Ok(());

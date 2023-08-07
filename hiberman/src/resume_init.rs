@@ -131,7 +131,7 @@ impl ResumeInitConductor {
         // to a crash within this setup code.
         set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
             .context("Failed to set hibernate cookie to NoResume")?;
-        let mut volmgr = VolumeManager::new().context("Failed to create volume manager")?;
+        let volmgr = VolumeManager::new().context("Failed to create volume manager")?;
 
         volmgr
             .setup_stateful_snapshots()
