@@ -9,6 +9,7 @@ allow cros_chromeos_install cros_blockdev_exec:file rx_file_perms;
 allow cros_chromeos_install cros_cgpt_exec:file rx_file_perms;
 allow cros_chromeos_install cros_coreutils_exec:file rx_file_perms;
 allow cros_chromeos_install cros_crossystem_exec:file rx_file_perms;
+allow cros_chromeos_install cros_find_exec:file rx_file_perms;
 allow cros_chromeos_install cros_getopt_exec:file rx_file_perms;
 allow cros_chromeos_install cros_grep_exec:file rx_file_perms;
 allow cros_chromeos_install cros_initctl_exec:file rx_file_perms;

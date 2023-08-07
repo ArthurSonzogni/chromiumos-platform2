@@ -98,6 +98,7 @@ type cros_device_managementd_exec, exec_type, file_type, cros_file_type, cros_sy
 type cros_ipf_ufd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ipfhostd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_featured_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_find_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_fwupd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_flex_hwis_tool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_gdbus_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
