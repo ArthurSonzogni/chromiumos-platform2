@@ -21,7 +21,11 @@ void RecordStructuredMetric(const EventData& event_data,
       LOG(INFO) << "Event to record undefined.";
       break;
     default:
-      NOTREACHED();
+      // Recording is called in the target version. The default case is
+      // expected when the proto does not support the event tracked in a
+      // newest version yet. This is not an error but the newest metric
+      // event will not be recorded.
+      LOG(WARNING) << "Event to record not supported yet.";
       break;
   }
 }
