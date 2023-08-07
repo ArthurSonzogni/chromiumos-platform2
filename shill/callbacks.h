@@ -26,8 +26,6 @@ using ResultVariantDictionariesCallback =
 using ResultVariantDictionariesOnceCallback =
     base::OnceCallback<void(const VariantDictionaries&, const Error&)>;
 using EnabledStateChangedCallback = base::OnceCallback<void(const Error&)>;
-using KeyValueStoreCallback =
-    base::OnceCallback<void(const KeyValueStore&, const Error&)>;
 using KeyValueStoresCallback =
     base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using RpcIdentifierCallback =
