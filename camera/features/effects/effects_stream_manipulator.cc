@@ -306,8 +306,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
                    uint32_t height);
   bool ProcessStillCapture(uint32_t frame_number,
                            const Camera3StreamBuffer& result_buffer,
-                           const SharedImage* result_image,
-                           bool* result_buffer_appended);
+                           const SharedImage* result_image);
   void ReturnCaptureResult(Camera3CaptureDescriptor& result);
 
   std::unique_ptr<ReloadableConfigFile> config_;
@@ -827,7 +826,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   base::AutoLock lock(stream_contexts_lock_);
   const bool has_enabled_effects = last_set_effect_config_.HasEnabledEffects();
   size_t num_processed_streams = 0;
-  base::flat_map<Size, std::unique_ptr<ProcessContext>> process_contexts;
+  std::vector<Camera3StreamBuffer> yuv_buffers;
+  const camera3_stream_t* yuv_stream_for_blob = nullptr;
+  bool yuv_stream_appended = false;
+
+  // Pass 1: Handle blob and non-YUV buffers.
   for (auto& result_buffer : result.AcquireOutputBuffers()) {
     StreamContext* stream_context = GetStreamContext(result_buffer.stream());
     if (!stream_context) {
@@ -842,6 +845,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       CaptureContext& capture_context =
           *stream_context->GetCaptureContext(result.frame_number());
       capture_context.processing_time_start = processing_time_start;
+      yuv_stream_for_blob = stream_context->yuv_stream_for_blob;
+      yuv_stream_appended = capture_context.yuv_stream_appended;
       if (!still_capture_processor_->IsPendingOutputBufferQueued(
               result.frame_number())) {
         still_capture_processor_->QueuePendingOutputBuffer(
@@ -868,6 +873,21 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       continue;
     }
 
+    yuv_buffers.push_back(std::move(result_buffer));
+  }
+
+  // Pass 2: Process YUV buffers.
+  // Move the still capture YUV to the first so it's not put into
+  // |ProcessContext::copy_buffers|.
+  auto it = std::find_if(yuv_buffers.begin(), yuv_buffers.end(),
+                         [&](const Camera3StreamBuffer& b) {
+                           return b.stream() == yuv_stream_for_blob;
+                         });
+  if (it != yuv_buffers.end()) {
+    std::rotate(yuv_buffers.begin(), it, yuv_buffers.end());
+  }
+  base::flat_map<Size, std::unique_ptr<ProcessContext>> process_contexts;
+  for (auto& result_buffer : yuv_buffers) {
     // Check existing output buffers for one with the same size so we can just
     // copy the results to this buffer instead of running the effects pipeline.
     const Size size(result_buffer.stream()->width,
@@ -879,10 +899,10 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       continue;
     }
 
-    bool yuv_stream_appended = false;
     if (!last_set_effect_config_.HasEnabledEffects() &&
+        result_buffer.stream() == yuv_stream_for_blob &&
         !ProcessStillCapture(result.frame_number(), result_buffer,
-                             /*result_image=*/nullptr, &yuv_stream_appended)) {
+                             /*result_image=*/nullptr)) {
       LOGF(ERROR) << "Failed to process YUV for still capture on frame "
                   << result.frame_number();
       // TODO(kamesan): Fail the blob capture queued to the still capture
@@ -893,13 +913,17 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         process_contexts.emplace(size, std::make_unique<ProcessContext>());
     it->second->result_callback = callbacks_.result_callback;
     it->second->frame_number = result.frame_number();
-    it->second->result_buffer_appended = yuv_stream_appended;
+    it->second->result_buffer_appended =
+        result_buffer.stream() == yuv_stream_for_blob && yuv_stream_appended;
     it->second->result_buffer = std::move(result_buffer);
     it->second->processing_time_start = processing_time_start;
     it->second->skip_effects_processing = !has_enabled_effects;
     ++num_processed_streams;
 
-    OnFrameStarted(*stream_context, processing_time_start);
+    if (StreamContext* stream_context =
+            GetStreamContext(result_buffer.stream())) {
+      OnFrameStarted(*stream_context, processing_time_start);
+    }
   }
 
   for (auto& [size, process_context] : process_contexts) {
@@ -1130,8 +1154,7 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
 
   if (!ProcessStillCapture(process_context->frame_number,
                            process_context->result_buffer,
-                           &process_context->yuv_image,
-                           &process_context->result_buffer_appended)) {
+                           &process_context->yuv_image)) {
     LOGF(ERROR) << "Failed to process YUV for still capture on frame "
                 << process_context->frame_number;
     // TODO(kamesan): Fail the blob capture queued to the still capture
@@ -1374,8 +1397,7 @@ void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
 bool EffectsStreamManipulatorImpl::ProcessStillCapture(
     uint32_t frame_number,
     const Camera3StreamBuffer& result_buffer,
-    const SharedImage* result_image,
-    bool* result_buffer_appended) {
+    const SharedImage* result_image) {
   stream_contexts_lock_.AssertAcquired();
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS("frame_number", frame_number);
@@ -1395,7 +1417,6 @@ bool EffectsStreamManipulatorImpl::ProcessStillCapture(
   if (!capture_context) {
     return true;
   }
-  *result_buffer_appended = capture_context->yuv_stream_appended;
 
   DCHECK(capture_context->blob_intermediate_yuv_pending);
   capture_context->blob_intermediate_yuv_pending = false;

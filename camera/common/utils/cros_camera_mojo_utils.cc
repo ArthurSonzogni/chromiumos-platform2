@@ -11,6 +11,7 @@
 #include <hardware/camera3.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/ipc_util.h"
 
 namespace cros {
@@ -37,7 +38,8 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     }
   }
   if (it == streams.end()) {
-    LOGF(ERROR) << "Unknown stream set in buffer";
+    LOGF(ERROR) << "Unknown stream set in buffer: "
+                << GetDebugString(buffer->stream);
     ret.reset();
     return ret;
   }
@@ -49,7 +51,8 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     return ret;
   }
   if (buffer_handles.find(handle->buffer_id) == buffer_handles.end()) {
-    LOGF(ERROR) << "Unknown buffer handle: " << handle->buffer_id;
+    LOGF(ERROR) << "Unknown buffer handle " << handle->buffer_id
+                << " on stream " << GetDebugString(buffer->stream);
     ret.reset();
     return ret;
   }
