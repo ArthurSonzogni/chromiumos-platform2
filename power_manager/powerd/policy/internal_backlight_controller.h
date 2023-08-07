@@ -223,6 +223,9 @@ class InternalBacklightController : public BacklightController,
   double ac_explicit_brightness_percent_ = 100.0;
   double battery_explicit_brightness_percent_ = 100.0;
 
+  // Brightness percent when on battery power with battery saver on.
+  double battery_saver_explicit_brightness_percent_ = 30.0;
+
   // True if the most-recently-received policy message requested a specific
   // brightness and no user adjustments have been made since then.
   bool using_policy_brightness_ = false;

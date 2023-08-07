@@ -178,6 +178,7 @@ void InternalBacklightController::Init(
 
   int64_t max_nits = 0;
   prefs_->GetInt64(kInternalBacklightMaxNitsPref, &max_nits);
+  // TODO(sxm): Should we also save battery saver brightness as a preference?
   ac_explicit_brightness_percent_ = GetInitialBrightnessPercent(
       prefs_, kInternalBacklightNoAlsAcBrightnessPref, max_nits);
   battery_explicit_brightness_percent_ = GetInitialBrightnessPercent(
@@ -405,6 +406,18 @@ void InternalBacklightController::HandleBatterySaverModeChange(
     const BatterySaverModeState& state) {
   // TODO(sxm): Dimmed brightness levels might be too dark on low-nit screens.
   battery_saver_ = state.enabled();
+
+  // TODO(sxm): There is a caveat with this implementation.
+  //
+  // If the explicit brightness was set by a policy, we disrespect the
+  // policy and give BSM precedence. Explicit brightness policy is usually
+  // not a critical feature for display brightness, but we do need to
+  // be explicit about what takes precedence here.
+  if (battery_saver_) {
+    battery_saver_explicit_brightness_percent_ =
+        ClampPercentToVisibleRange(battery_saver_brightness_percent_);
+  }
+
   UpdateState(BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
 }
 
@@ -580,13 +593,18 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 }
 
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
-  return power_source_ == PowerSource::AC
-             ? ac_explicit_brightness_percent_
-             : battery_explicit_brightness_percent_;
+  if (power_source_ == PowerSource::BATTERY) {
+    if (battery_saver_) {
+      return battery_saver_explicit_brightness_percent_;
+    } else {
+      return battery_explicit_brightness_percent_;
+    }
+  }
+  return ac_explicit_brightness_percent_;
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
-  if (use_ambient_light_)
+  if (use_ambient_light_ && !battery_saver_)
     return ClampPercentToVisibleRange(ambient_light_brightness_percent_);
 
   const double percent = GetExplicitBrightnessPercent();
@@ -700,9 +718,17 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
   use_ambient_light_ = false;
   ac_explicit_brightness_percent_ =
       ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
-  battery_explicit_brightness_percent_ =
-      battery_percent <= kEpsilon ? 0.0
-                                  : ClampPercentToVisibleRange(battery_percent);
+  if (battery_saver_) {
+    battery_saver_explicit_brightness_percent_ =
+        battery_percent <= kEpsilon
+            ? 0.0
+            : ClampPercentToVisibleRange(battery_percent);
+  } else {
+    battery_explicit_brightness_percent_ =
+        battery_percent <= kEpsilon
+            ? 0.0
+            : ClampPercentToVisibleRange(battery_percent);
+  }
   UpdateState(cause, transition);
 }
 
@@ -754,12 +780,6 @@ void InternalBacklightController::UpdateState(
     brightness_percent =
         std::min(GetUndimmedBrightnessPercent(),
                  dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
-
-    if (battery_saver_ &&
-        brightness_percent > battery_saver_brightness_percent_ &&
-        cause != BacklightBrightnessChange_Cause_USER_REQUEST) {
-      brightness_percent = battery_saver_brightness_percent_;
-    }
 
     const bool turning_on =
         display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
