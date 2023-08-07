@@ -1,0 +1,8 @@
+[package]
+name = "metrics_rs"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[build-dependencies]
+bindgen = "0.64"
