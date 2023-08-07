@@ -14,6 +14,8 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
+#include "bindings/chrome_device_policy.pb.h"
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/system_utils_impl.h"
 

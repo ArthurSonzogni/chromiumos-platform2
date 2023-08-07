@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "bindings/chrome_device_policy.pb.h"
+#include "bindings/device_management_backend.pb.h"
 #include "install_attributes/mock_install_attributes_reader.h"
 #include "policy/device_policy_impl.h"
 

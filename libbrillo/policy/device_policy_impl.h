@@ -14,10 +14,15 @@
 
 #include <base/files/file_path.h>
 
-#include "bindings/chrome_device_policy.pb.h"
-#include "bindings/device_management_backend.pb.h"
 #include "install_attributes/libinstallattributes.h"
 #include "policy/device_policy.h"
+
+// Avoid transitive includes of protofile headers. See b:294577904.
+namespace enterprise_management {
+class PolicyFetchResponse;
+class PolicyData;
+class ChromeDeviceSettingsProto;
+}  // namespace enterprise_management
 
 #pragma GCC visibility push(default)
 
@@ -38,12 +43,12 @@ class DevicePolicyImpl : public DevicePolicy {
 
   const enterprise_management::ChromeDeviceSettingsProto& get_device_policy()
       const {
-    return device_policy_;
+    return *device_policy_;
   }
 
   const enterprise_management::PolicyFetchResponse& get_policy_fetch_response()
       const {
-    return policy_;
+    return *policy_;
   }
 
   int get_number_of_policy_files() const { return number_of_policy_files_; }
@@ -126,27 +131,15 @@ class DevicePolicyImpl : public DevicePolicy {
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(
-      const enterprise_management::PolicyData& policy_data) {
-    policy_data_ = policy_data;
-  }
-  void set_verify_root_ownership_for_testing(bool verify_root_ownership) {
-    verify_root_ownership_ = verify_root_ownership;
-  }
+      const enterprise_management::PolicyData& policy_data);
+  void set_verify_root_ownership_for_testing(bool verify_root_ownership);
   void set_install_attributes_for_testing(
-      std::unique_ptr<InstallAttributesReader> install_attributes_reader) {
-    install_attributes_reader_ = std::move(install_attributes_reader);
-  }
+      std::unique_ptr<InstallAttributesReader> install_attributes_reader);
   void set_policy_for_testing(
-      const enterprise_management::ChromeDeviceSettingsProto& device_policy) {
-    device_policy_ = device_policy;
-  }
-  void set_policy_path_for_testing(const base::FilePath& policy_path) {
-    policy_path_ = policy_path;
-  }
-  void set_key_file_path_for_testing(const base::FilePath& keyfile_path) {
-    keyfile_path_ = keyfile_path;
-  }
-  void set_verify_policy_for_testing(bool value) { verify_policy_ = value; }
+      const enterprise_management::ChromeDeviceSettingsProto& device_policy);
+  void set_policy_path_for_testing(const base::FilePath& policy_path);
+  void set_key_file_path_for_testing(const base::FilePath& keyfile_path);
+  void set_verify_policy_for_testing(bool value);
 
  private:
   // Verifies that both the policy file and the signature file exist and are
@@ -168,9 +161,10 @@ class DevicePolicyImpl : public DevicePolicy {
   base::FilePath policy_path_;
   base::FilePath keyfile_path_;
   std::unique_ptr<InstallAttributesReader> install_attributes_reader_;
-  enterprise_management::PolicyFetchResponse policy_;
-  enterprise_management::PolicyData policy_data_;
-  enterprise_management::ChromeDeviceSettingsProto device_policy_;
+  std::unique_ptr<enterprise_management::PolicyFetchResponse> policy_;
+  std::unique_ptr<enterprise_management::PolicyData> policy_data_;
+  std::unique_ptr<enterprise_management::ChromeDeviceSettingsProto>
+      device_policy_;
 
   // Total number of device policy files identified.
   int number_of_policy_files_ = 0;
