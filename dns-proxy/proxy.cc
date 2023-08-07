@@ -242,7 +242,8 @@ void Proxy::OnPatchpanelReady(bool success) {
   // Device kInterfaceProperty.
   auto res = patchpanel_->ConnectNamespace(
       getpid(), opts_.ifname, /*forward_user_traffic=*/true,
-      /*route_on_vpn=*/opts_.type == Type::kDefault, traffic_source);
+      /*route_on_vpn=*/opts_.type == Type::kDefault, traffic_source,
+      /*static_ipv6=*/true);
   if (!res.first.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoNamespace);
